@@ -2,9 +2,9 @@
 // In production, use environment variables or app config
 export const API_URL = __DEV__
   ? 'http://localhost:3001/api'
-  : 'https://api.borrowhood.com/api';
+  : 'https://borrowhood-production.up.railway.app/api';
 
-export const STRIPE_PUBLISHABLE_KEY = 'pk_test_your_key_here';
+export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Svf5v8339pJAGsp3CIJJqnVjq86eIk3TAK4N7yvgCWRybyT6jOgtMhdsiLUgFi5j5qDTGIMBjXEqNmmgjuUx2TQ006j0XBDga';
 
 // App constants
 export const CONDITION_LABELS = {
