@@ -1,0 +1,13 @@
+[build]
+builder = "nixpacks"
+watchPatterns = ["server/**"]
+
+[build.nixpacks]
+configPath = "server/nixpacks.toml"
+
+[deploy]
+startCommand = "cd server && node src/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
