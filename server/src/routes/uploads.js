@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { authenticate, requireVerified } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,7 +24,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 // POST /api/uploads/presigned-url
 // Generate a presigned URL for uploading to S3
 // ============================================
-router.post('/presigned-url', authenticate, requireVerified,
+router.post('/presigned-url', authenticate,
   body('contentType').isIn(ALLOWED_TYPES).withMessage('Invalid content type'),
   body('fileSize').isInt({ min: 1, max: MAX_FILE_SIZE }).withMessage(`File size must be under ${MAX_FILE_SIZE / 1024 / 1024}MB`),
   body('category').isIn(['listings', 'profiles', 'disputes']).withMessage('Invalid category'),
@@ -79,7 +79,7 @@ router.post('/presigned-url', authenticate, requireVerified,
 // POST /api/uploads/presigned-urls
 // Generate multiple presigned URLs for batch upload
 // ============================================
-router.post('/presigned-urls', authenticate, requireVerified,
+router.post('/presigned-urls', authenticate,
   body('files').isArray({ min: 1, max: 10 }).withMessage('Must provide 1-10 files'),
   body('files.*.contentType').isIn(ALLOWED_TYPES).withMessage('Invalid content type'),
   body('files.*.fileSize').isInt({ min: 1, max: MAX_FILE_SIZE }).withMessage(`File size must be under ${MAX_FILE_SIZE / 1024 / 1024}MB`),

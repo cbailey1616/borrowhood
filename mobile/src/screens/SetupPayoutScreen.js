@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Linking,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
@@ -16,9 +16,6 @@ import { COLORS } from '../utils/config';
 export default function SetupPayoutScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [connectStatus, setConnectStatus] = useState(null);
-  const [onboardingUrl, setOnboardingUrl] = useState(null);
-  const [showWebView, setShowWebView] = useState(false);
-  const webViewRef = useRef(null);
 
   useEffect(() => {
     loadConnectStatus();
@@ -39,69 +36,16 @@ export default function SetupPayoutScreen({ navigation, route }) {
     setLoading(true);
     try {
       const { url } = await api.getConnectOnboardingLink();
-      setOnboardingUrl(url);
-      setShowWebView(true);
+      // Open in device browser instead of WebView
+      await Linking.openURL(url);
+      // Reload status when user returns to app
+      setTimeout(() => loadConnectStatus(), 1000);
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleWebViewNavigationChange = (navState) => {
-    const { url } = navState;
-
-    // Check if user completed onboarding or needs to refresh
-    if (url.includes('/connect/return') || url.includes('/connect/refresh')) {
-      setShowWebView(false);
-      setOnboardingUrl(null);
-      loadConnectStatus();
-    }
-  };
-
-  const handleCloseWebView = () => {
-    Alert.alert(
-      'Exit Setup',
-      'Are you sure you want to exit? You can continue setup later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Exit',
-          style: 'destructive',
-          onPress: () => {
-            setShowWebView(false);
-            setOnboardingUrl(null);
-            loadConnectStatus();
-          },
-        },
-      ]
-    );
-  };
-
-  if (showWebView && onboardingUrl) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.webViewHeader}>
-          <TouchableOpacity onPress={handleCloseWebView} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.webViewTitle}>Setup Payouts</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <WebView
-          ref={webViewRef}
-          source={{ uri: onboardingUrl }}
-          onNavigationStateChange={handleWebViewNavigationChange}
-          startInLoadingState
-          renderLoading={() => (
-            <View style={styles.webViewLoading}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
-            </View>
-          )}
-        />
-      </View>
-    );
-  }
 
   if (loading) {
     return (
