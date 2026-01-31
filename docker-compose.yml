@@ -1,0 +1,63 @@
+# Borrowhood Development Docker Compose
+version: '3.8'
+
+services:
+  # PostgreSQL with PostGIS
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: borrowhood-db
+    environment:
+      POSTGRES_USER: borrowhood
+      POSTGRES_PASSWORD: borrowhood_dev
+      POSTGRES_DB: borrowhood
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U borrowhood -d borrowhood"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Server
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: borrowhood-api
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgres://borrowhood:borrowhood_dev@db:5432/borrowhood
+      CORS_ORIGINS: http://localhost:8081,http://localhost:19006
+      # Add your Stripe keys here or use .env file
+      # STRIPE_SECRET_KEY: sk_test_xxx
+      # STRIPE_WEBHOOK_SECRET: whsec_xxx
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server/src:/app/src:ro
+    restart: unless-stopped
+
+  # Redis for rate limiting (optional, for production)
+  redis:
+    image: redis:7-alpine
+    container_name: borrowhood-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

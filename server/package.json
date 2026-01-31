@@ -1,0 +1,39 @@
+{
+  "name": "borrowhood-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "node scripts/test-db.js",
+    "db:start": "pg_ctl -D .pg-data -l .pg-data/logfile start",
+    "db:stop": "pg_ctl -D .pg-data stop",
+    "db:status": "pg_ctl -D .pg-data status",
+    "migrate": "psql borrowhood < migrations/001_initial_schema.sql",
+    "migrate:all": "psql borrowhood < migrations/001_initial_schema.sql && psql borrowhood < migrations/002_neighborhoods.sql && psql borrowhood < migrations/003_messaging_and_rto.sql"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.540.0",
+    "@aws-sdk/s3-request-presigner": "^3.540.0",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0",
+    "stripe": "^14.14.0",
+    "uuid": "^9.0.1",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "pg-embedded": "^0.2.3",
+    "supertest": "^6.3.4",
+    "vitest": "^1.3.0"
+  }
+}
