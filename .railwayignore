@@ -1,0 +1,7 @@
+mobile/
+node_modules/
+.git/
+*.socket
+*.sock
+.DS_Store
+*.log
