@@ -18,42 +18,48 @@ import { COLORS } from '../utils/config';
 
 export default function MyCommunityScreen({ navigation }) {
   const { user } = useAuth();
-  const [community, setCommunity] = useState(null);
+  const [communities, setCommunities] = useState([]);
+  const [selectedCommunity, setSelectedCommunity] = useState(null);
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchCommunity = useCallback(async () => {
+  const fetchCommunities = useCallback(async () => {
     try {
-      if (user?.communityId) {
-        const [communityData, membersData] = await Promise.all([
-          api.getCommunity(user.communityId),
-          api.getCommunityMembers(user.communityId, { limit: 20 }),
-        ]);
-        setCommunity(communityData);
+      // Fetch all communities the user is a member of
+      const myCommunities = await api.getCommunities({ member: 'true' });
+      setCommunities(myCommunities || []);
+
+      // Select the first community by default
+      if (myCommunities && myCommunities.length > 0) {
+        const firstCommunity = myCommunities[0];
+        setSelectedCommunity(firstCommunity);
+
+        // Fetch members for the selected community
+        const membersData = await api.getCommunityMembers(firstCommunity.id, { limit: 20 });
         setMembers(membersData.members || membersData);
       }
     } catch (error) {
-      console.error('Failed to fetch community:', error);
+      console.error('Failed to fetch communities:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.communityId]);
+  }, []);
 
   useEffect(() => {
-    fetchCommunity();
-  }, [fetchCommunity]);
+    fetchCommunities();
+  }, [fetchCommunities]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
-    fetchCommunity();
+    fetchCommunities();
   };
 
   const handleLeaveCommunity = () => {
     Alert.alert(
       'Leave Neighborhood',
-      `Are you sure you want to leave ${community?.name}? You'll lose access to neighborhood items and members.`,
+      `Are you sure you want to leave ${selectedCommunity?.name}? You'll lose access to neighborhood items and members.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -61,8 +67,9 @@ export default function MyCommunityScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.leaveCommunity(community.id);
-              navigation.goBack();
+              await api.leaveCommunity(selectedCommunity.id);
+              // Refresh the list after leaving
+              fetchCommunities();
             } catch (error) {
               Alert.alert('Error', 'Failed to leave neighborhood');
             }
@@ -80,7 +87,7 @@ export default function MyCommunityScreen({ navigation }) {
     );
   }
 
-  if (!community) {
+  if (!selectedCommunity) {
     return (
       <View style={styles.noCommunityContainer}>
         <Ionicons name="home-outline" size={64} color={COLORS.gray[600]} />
@@ -97,6 +104,8 @@ export default function MyCommunityScreen({ navigation }) {
       </View>
     );
   }
+
+  const community = selectedCommunity;
 
   return (
     <ScrollView
