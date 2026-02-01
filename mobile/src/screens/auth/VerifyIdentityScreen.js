@@ -11,11 +11,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
 import { useAuth } from '../../context/AuthContext';
+import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
 import { COLORS } from '../../utils/config';
 
 export default function VerifyIdentityScreen({ navigation }) {
   const { refreshUser } = useAuth();
+  const { showError, showToast } = useError();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleStartVerification = async () => {
@@ -25,7 +27,11 @@ export default function VerifyIdentityScreen({ navigation }) {
       // Open Stripe Identity verification in browser
       await Linking.openURL(response.verificationUrl);
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError({
+        type: 'verification',
+        title: 'Verification Error',
+        message: error.message || 'Unable to start verification. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -36,13 +42,21 @@ export default function VerifyIdentityScreen({ navigation }) {
     try {
       const user = await refreshUser();
       if (user.isVerified) {
-        Alert.alert('Verified!', 'Your identity has been verified. Welcome to Borrowhood!');
+        showToast('Identity verified! Welcome to Borrowhood.', 'success');
         // Navigation will happen automatically due to auth state change
       } else {
-        Alert.alert('Pending', 'Your verification is still being processed. Please check back later.');
+        showError({
+          type: 'verification',
+          title: 'Verification Pending',
+          message: 'Your verification is still being processed. This usually takes a few minutes. Please check back later.',
+          primaryAction: 'OK',
+        });
       }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError({
+        type: 'network',
+        message: error.message || 'Unable to check verification status. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }

@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
+import { ErrorProvider } from './src/context/ErrorContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { setNavigationRef } from './src/hooks/usePushNotifications';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -16,13 +17,15 @@ export default function App() {
       <ErrorBoundary>
         <SafeAreaProvider>
           <AuthProvider navigationRef={navigationRef}>
-            <NavigationContainer
-              ref={navigationRef}
-              onReady={() => setNavigationRef(navigationRef)}
-            >
-              <RootNavigator />
-              <StatusBar style="auto" />
-            </NavigationContainer>
+            <ErrorProvider navigationRef={navigationRef}>
+              <NavigationContainer
+                ref={navigationRef}
+                onReady={() => setNavigationRef(navigationRef)}
+              >
+                <RootNavigator />
+                <StatusBar style="auto" />
+              </NavigationContainer>
+            </ErrorProvider>
           </AuthProvider>
         </SafeAreaProvider>
       </ErrorBoundary>

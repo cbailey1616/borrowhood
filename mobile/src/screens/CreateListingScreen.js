@@ -9,11 +9,15 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
@@ -21,6 +25,7 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateListingScreen({ navigation }) {
   const { user } = useAuth();
+  const { showError } = useError();
   const [communityId, setCommunityId] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -33,18 +38,13 @@ export default function CreateListingScreen({ navigation }) {
     minDuration: '1',
     maxDuration: '14',
     photos: [],
-    // RTO fields
-    rtoAvailable: false,
-    rtoPurchasePrice: '',
-    rtoMinPayments: '6',
-    rtoMaxPayments: '24',
-    rtoRentalCreditPercent: '50',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggested, setAiSuggested] = useState(false);
   const [showJoinCommunity, setShowJoinCommunity] = useState(false);
   const [showAddFriends, setShowAddFriends] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
 
   // Fetch user's community and friends on mount
@@ -146,30 +146,37 @@ export default function CreateListingScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter a title');
+      showError({
+        type: 'validation',
+        title: 'Missing Title',
+        message: 'Give your item a title so neighbors know what you\'re sharing.',
+      });
       return;
     }
-    // Photos optional for testing (S3 not configured)
-    // if (formData.photos.length === 0) {
-    //   Alert.alert('Error', 'Please add at least one photo');
-    //   return;
-    // }
+    if (formData.photos.length === 0) {
+      showError({
+        type: 'validation',
+        title: 'Add a Photo',
+        message: 'Items with photos get 5x more interest. Add at least one photo of your item.',
+      });
+      return;
+    }
 
-    // Temporarily disabled for testing
-    // // Check if friends visibility is selected but user has no friends
-    // const needsFriends = formData.visibility.includes('close_friends');
-    // if (needsFriends && !hasFriends) {
-    //   setShowAddFriends(true);
-    //   return;
-    // }
+    // Check if friends visibility is selected but user has no friends
+    const needsFriends = formData.visibility.includes('close_friends');
+    if (needsFriends && !hasFriends) {
+      Keyboard.dismiss();
+      setShowAddFriends(true);
+      return;
+    }
 
-    // // Check if neighborhood visibility is selected but user isn't in a community
-    // const needsCommunity = formData.visibility.includes('neighborhood');
-    // if (needsCommunity && !communityId) {
-    //   setShowJoinCommunity(true);
-    //   return;
-    // }
-    const needsCommunity = false;
+    // Check if neighborhood visibility is selected but user isn't in a community
+    const needsCommunity = formData.visibility.includes('neighborhood');
+    if (needsCommunity && !communityId) {
+      Keyboard.dismiss();
+      setShowJoinCommunity(true);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -190,24 +197,29 @@ export default function CreateListingScreen({ navigation }) {
         maxDuration: parseInt(formData.maxDuration) || 14,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
         communityId: needsCommunity ? communityId : undefined,
-        // RTO fields
-        rtoAvailable: formData.rtoAvailable,
-        rtoPurchasePrice: formData.rtoAvailable ? parseFloat(formData.rtoPurchasePrice) || 0 : undefined,
-        rtoMinPayments: formData.rtoAvailable ? parseInt(formData.rtoMinPayments) || 6 : undefined,
-        rtoMaxPayments: formData.rtoAvailable ? parseInt(formData.rtoMaxPayments) || 24 : undefined,
-        rtoRentalCreditPercent: formData.rtoAvailable ? parseFloat(formData.rtoRentalCreditPercent) || 50 : undefined,
       });
 
-      Alert.alert('Success', 'Your item has been listed!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+      navigation.goBack();
     } catch (error) {
-      // Handle neighborhood membership error with themed UI
+      // Handle subscription and membership errors with themed UI
       const errorMsg = error.message?.toLowerCase() || '';
-      if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
+      const errorCode = error.code || '';
+
+      if (errorCode === 'PLUS_REQUIRED' || errorMsg.includes('plus subscription') || errorMsg.includes('town visibility')) {
+        Keyboard.dismiss();
+        setShowUpgradePrompt(true);
+      } else if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
+        Keyboard.dismiss();
         setShowJoinCommunity(true);
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        showError({
+          type: 'network',
+          message: 'Unable to upload your listing. Please check your connection and try again.',
+        });
       } else {
-        Alert.alert('Error', error.message);
+        showError({
+          message: error.message || 'Unable to create listing. Please try again.',
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -219,11 +231,15 @@ export default function CreateListingScreen({ navigation }) {
   // This prompt only shows if communityId is null - which we now allow for non-neighborhood visibility
 
   return (
-    <View style={styles.container}>
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Photos */}
       <View style={styles.section}>
-        <Text style={styles.label}>Photos</Text>
+        <Text style={styles.label}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         {isAnalyzing && (
           <View style={styles.analyzingBanner}>
@@ -416,80 +432,6 @@ export default function CreateListingScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Rent-to-Own */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Rent-to-Own</Text>
-        <TouchableOpacity
-          style={styles.toggle}
-          onPress={() => updateField('rtoAvailable', !formData.rtoAvailable)}
-        >
-          <View>
-            <Text style={styles.toggleText}>Allow rent-to-own</Text>
-            <Text style={styles.toggleHint}>Let borrowers purchase over time</Text>
-          </View>
-          <View style={[styles.switch, formData.rtoAvailable && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.rtoAvailable && styles.switchKnobActive]} />
-          </View>
-        </TouchableOpacity>
-
-        {formData.rtoAvailable && (
-          <View style={styles.rtoFields}>
-            <View style={styles.rtoRow}>
-              <Text style={styles.subLabel}>Purchase Price</Text>
-              <View style={styles.priceInput}>
-                <Text style={styles.currency}>$</Text>
-                <TextInput
-                  style={styles.priceField}
-                  value={formData.rtoPurchasePrice}
-                  onChangeText={(v) => updateField('rtoPurchasePrice', v)}
-                  placeholder="0.00"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-
-            <View style={styles.rtoRow}>
-              <Text style={styles.subLabel}>Equity Credit Per Payment</Text>
-              <View style={styles.percentInput}>
-                <TextInput
-                  style={styles.percentField}
-                  value={formData.rtoRentalCreditPercent}
-                  onChangeText={(v) => updateField('rtoRentalCreditPercent', v)}
-                  keyboardType="number-pad"
-                  maxLength={3}
-                />
-                <Text style={styles.percentSymbol}>%</Text>
-              </View>
-            </View>
-
-            <View style={styles.rtoPaymentRange}>
-              <Text style={styles.subLabel}>Payment Range</Text>
-              <View style={styles.durationRow}>
-                <View style={styles.durationInput}>
-                  <Text style={styles.durationLabel}>Min</Text>
-                  <TextInput
-                    style={styles.durationField}
-                    value={formData.rtoMinPayments}
-                    onChangeText={(v) => updateField('rtoMinPayments', v)}
-                    keyboardType="number-pad"
-                  />
-                </View>
-                <Text style={styles.durationSeparator}>to</Text>
-                <View style={styles.durationInput}>
-                  <Text style={styles.durationLabel}>Max</Text>
-                  <TextInput
-                    style={styles.durationField}
-                    value={formData.rtoMaxPayments}
-                    onChangeText={(v) => updateField('rtoMaxPayments', v)}
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-      </View>
-
       {/* Submit */}
       <TouchableOpacity
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -564,7 +506,57 @@ export default function CreateListingScreen({ navigation }) {
         </View>
       </View>
     )}
-    </View>
+
+    {/* Subscription Upgrade Overlay */}
+    {showUpgradePrompt && (
+      <View style={styles.overlay}>
+        <View style={styles.overlayCard}>
+          <View style={[styles.overlayIconContainer, styles.upgradeIconContainer]}>
+            <Ionicons name="star" size={32} color={COLORS.primary} />
+          </View>
+          <Text style={styles.overlayTitle}>Upgrade to Plus</Text>
+          <Text style={styles.overlayText}>
+            Get more from Borrowhood with Plus. Share with your whole town and earn money from your items.
+          </Text>
+          <View style={styles.upgradeFeatures}>
+            <View style={styles.upgradeFeature}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+              <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
+            </View>
+            <View style={styles.upgradeFeature}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+              <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
+            </View>
+            <View style={styles.upgradeFeature}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+              <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.overlayButton}
+            onPress={() => {
+              setShowUpgradePrompt(false);
+              navigation.navigate('Subscription');
+            }}
+          >
+            <Text style={styles.overlayButtonText}>Get Plus - $1/mo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.overlayDismiss}
+            onPress={() => {
+              setShowUpgradePrompt(false);
+              // Reset to free options
+              updateField('isFree', true);
+              updateField('pricePerDay', '');
+              updateField('visibility', formData.visibility.filter(v => v !== 'town'));
+            }}
+          >
+            <Text style={styles.overlayDismissText}>Keep Free Settings</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -887,37 +879,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  rtoFields: {
-    marginTop: 16,
-    gap: 16,
-  },
-  rtoRow: {
-    gap: 8,
-  },
-  rtoPaymentRange: {
-    gap: 8,
-  },
-  percentInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.surface,
-    width: 100,
-  },
-  percentField: {
-    flex: 1,
-    fontSize: 18,
-    paddingVertical: 14,
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  percentSymbol: {
-    fontSize: 18,
-    color: COLORS.textSecondary,
-  },
   // Overlay styles for community join prompt
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -978,5 +939,21 @@ const styles = StyleSheet.create({
   overlayDismissText: {
     fontSize: 15,
     color: COLORS.textSecondary,
+  },
+  upgradeIconContainer: {
+    backgroundColor: COLORS.secondary + '20',
+  },
+  upgradeFeatures: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  upgradeFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  upgradeFeatureText: {
+    fontSize: 14,
+    color: COLORS.text,
   },
 });

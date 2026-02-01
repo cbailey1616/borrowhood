@@ -125,9 +125,9 @@ router.get('/:id', authenticate, async (req, res) => {
 // POST /api/communities/:id/join
 // Join a community
 // ============================================
-router.post('/:id/join', authenticate, requireVerified, async (req, res) => {
+router.post('/:id/join', authenticate, async (req, res) => {
   try {
-    // Verify community exists and user's address matches
+    // Verify community exists
     const community = await query(
       'SELECT * FROM communities WHERE id = $1',
       [req.params.id]
@@ -135,27 +135,6 @@ router.post('/:id/join', authenticate, requireVerified, async (req, res) => {
 
     if (community.rows.length === 0) {
       return res.status(404).json({ error: 'Community not found' });
-    }
-
-    // Get user's verified address
-    const user = await query(
-      'SELECT city, state FROM users WHERE id = $1',
-      [req.user.id]
-    );
-
-    const c = community.rows[0];
-    const u = user.rows[0];
-
-    // Check if user's city matches (case insensitive)
-    if (u.city?.toLowerCase() !== c.city.toLowerCase() ||
-        u.state?.toLowerCase() !== c.state.toLowerCase()) {
-      return res.status(403).json({
-        error: 'Your verified address must be in this community\'s area',
-        userCity: u.city,
-        userState: u.state,
-        communityCity: c.city,
-        communityState: c.state,
-      });
     }
 
     await query(

@@ -1,61 +1,226 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '../../components/Icon';
+import { useAuth } from '../../context/AuthContext';
+import { useError } from '../../context/ErrorContext';
+import useBiometrics from '../../hooks/useBiometrics';
 import { COLORS } from '../../utils/config';
 
 const logo = require('../../../assets/logo.png');
 
 export default function WelcomeScreen({ navigation }) {
+  const { login } = useAuth();
+  const { showError } = useError();
+  const {
+    isBiometricsAvailable,
+    isBiometricsEnabled,
+    biometricType,
+    isLoading: biometricsLoading,
+    authenticate,
+    getStoredCredentials,
+    enableBiometrics,
+    hasStoredCredentials,
+  } = useBiometrics();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [canUseBiometrics, setCanUseBiometrics] = useState(false);
+
+  useEffect(() => {
+    checkBiometricsReady();
+  }, [isBiometricsAvailable, isBiometricsEnabled]);
+
+  const checkBiometricsReady = async () => {
+    if (isBiometricsAvailable && isBiometricsEnabled) {
+      const hasCredentials = await hasStoredCredentials();
+      setCanUseBiometrics(hasCredentials);
+    } else {
+      setCanUseBiometrics(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setIsLoading(true);
+    try {
+      const success = await authenticate();
+      if (success) {
+        const credentials = await getStoredCredentials();
+        if (credentials) {
+          await login(credentials.email, credentials.password);
+        } else {
+          showError({
+            type: 'auth',
+            message: 'No stored credentials found. Please sign in with your password.',
+          });
+        }
+      }
+    } catch (error) {
+      showError({
+        type: 'auth',
+        message: error.message || 'Unable to sign in. Please check your credentials.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      showError({
+        type: 'validation',
+        title: 'Missing Information',
+        message: 'Please enter your email and password to sign in.',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await login(email, password);
+
+      // After successful login, prompt to enable biometrics if available but not enabled
+      if (isBiometricsAvailable && !isBiometricsEnabled) {
+        setTimeout(() => {
+          Alert.alert(
+            `Enable ${biometricType || 'Biometrics'}?`,
+            `Would you like to use ${biometricType || 'biometrics'} for faster sign in next time?`,
+            [
+              { text: 'Not Now', style: 'cancel' },
+              {
+                text: 'Enable',
+                onPress: async () => {
+                  await enableBiometrics(email, password);
+                },
+              },
+            ]
+          );
+        }, 500);
+      }
+    } catch (error) {
+      showError({
+        type: 'auth',
+        message: error.message || 'Unable to sign in. Please check your email and password.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const biometricIcon = biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline';
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.logoContainer}>
-          <Image source={logo} style={styles.logo} resizeMode="contain" />
-        </View>
-
-        <View style={styles.features}>
-          <FeatureItem
-            title="Borrow Tools"
-            description="Access tools you need without buying"
-          />
-          <FeatureItem
-            title="Help Neighbors"
-            description="Lend your unused items and earn"
-          />
-          <FeatureItem
-            title="Safe & Secure"
-            description="ID verification and deposit protection"
-          />
-        </View>
-      </View>
-
-      <View style={styles.buttons}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('Register')}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.primaryButtonText}>Get Started</Text>
-        </TouchableOpacity>
+          <View style={styles.content}>
+            <View style={styles.logoContainer}>
+              <Image source={logo} style={styles.logo} resizeMode="contain" />
+            </View>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.secondaryButtonText}>I already have an account</Text>
-        </TouchableOpacity>
-      </View>
+            {/* Biometric Login Button */}
+            {canUseBiometrics && !biometricsLoading && (
+              <TouchableOpacity
+                style={styles.biometricButton}
+                onPress={handleBiometricLogin}
+                disabled={isLoading}
+              >
+                <Ionicons name={biometricIcon} size={32} color={COLORS.primary} />
+                <Text style={styles.biometricButtonText}>
+                  Sign in with {biometricType}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {canUseBiometrics && (
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or use password</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            )}
+
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Enter your password"
+                    placeholderTextColor={COLORS.textMuted}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeButton}
+                  >
+                    <Text style={styles.eyeButtonText}>
+                      {showPassword ? 'Hide' : 'Show'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.background} />
+                ) : (
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.footerLink}>Create one</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-function FeatureItem({ title, description }) {
-  return (
-    <View style={styles.featureItem}>
-      <View style={styles.featureDot} />
-      <View style={styles.featureText}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
-      </View>
-    </View>
   );
 }
 
@@ -64,6 +229,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
@@ -71,63 +242,115 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 64,
+    marginBottom: 48,
   },
   logo: {
-    width: 336,
-    height: 120,
+    width: 403,
+    height: 144,
   },
-  features: {
-    gap: 20,
+  biometricButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 16,
+    gap: 8,
   },
-  featureItem: {
+  biometricButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingVertical: 4,
+    marginVertical: 24,
+    gap: 12,
   },
-  featureDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-  },
-  featureText: {
+  dividerLine: {
     flex: 1,
+    height: 1,
+    backgroundColor: COLORS.gray[700],
   },
-  featureTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 2,
+  dividerText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
   },
-  featureDescription: {
+  form: {
+    gap: 20,
+  },
+  inputContainer: {
+    gap: 8,
+  },
+  label: {
     fontSize: 14,
+    fontWeight: '500',
     color: COLORS.textSecondary,
   },
-  buttons: {
-    padding: 24,
-    paddingBottom: 32,
-    gap: 16,
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.gray[700],
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
   },
-  primaryButton: {
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.gray[700],
+    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  eyeButtonText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  loginButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
     borderRadius: 30,
     alignItems: 'center',
+    marginTop: 12,
   },
-  primaryButtonText: {
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
+  loginButtonText: {
     color: COLORS.background,
     fontSize: 17,
     fontWeight: '600',
   },
-  secondaryButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 32,
+    paddingVertical: 24,
   },
-  secondaryButtonText: {
+  footerText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+  },
+  footerLink: {
     color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

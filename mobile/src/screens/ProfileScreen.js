@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +8,127 @@ import {
   Image,
   Alert,
   Linking,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '../components/Icon';
+import UserBadges from '../components/UserBadges';
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../utils/config';
+import { useError } from '../context/ErrorContext';
+import useBiometrics from '../hooks/useBiometrics';
+import api from '../services/api';
+import { COLORS, BASE_URL } from '../utils/config';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const { showError, showToast } = useError();
+  const {
+    isBiometricsAvailable,
+    isBiometricsEnabled,
+    biometricType,
+    disableBiometrics,
+    refreshBiometrics,
+  } = useBiometrics();
+
+  const [biometricToggle, setBiometricToggle] = useState(isBiometricsEnabled);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    setBiometricToggle(isBiometricsEnabled);
+  }, [isBiometricsEnabled]);
+
+  const handleChangePhoto = () => {
+    Alert.alert(
+      'Change Photo',
+      'Choose a photo for your profile',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: handleTakePhoto },
+        { text: 'Choose from Library', onPress: handlePickPhoto },
+      ]
+    );
+  };
+
+  const handlePickPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      await uploadPhoto(result.assets[0].uri);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      showError({
+        type: 'generic',
+        title: 'Camera Access',
+        message: 'Camera permission is needed to take photos.',
+      });
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      await uploadPhoto(result.assets[0].uri);
+    }
+  };
+
+  const uploadPhoto = async (uri) => {
+    setUploadingPhoto(true);
+    try {
+      const photoUrl = await api.uploadImage(uri, 'profiles');
+      await api.updateProfile({ profilePhotoUrl: photoUrl });
+      await refreshUser();
+      showToast('Photo updated!', 'success');
+    } catch (err) {
+      showError({
+        message: err.message || 'Unable to upload photo. Please try again.',
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleBiometricToggle = async (value) => {
+    if (value) {
+      // User wants to enable - they need to log out and log back in
+      Alert.alert(
+        `Enable ${biometricType}`,
+        `To enable ${biometricType}, please sign out and sign back in with your password. You'll be prompted to enable it after login.`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      // User wants to disable
+      Alert.alert(
+        `Disable ${biometricType}?`,
+        `You'll need to enter your password to sign in.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              await disableBiometrics();
+              setBiometricToggle(false);
+              refreshBiometrics();
+            },
+          },
+        ]
+      );
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -28,31 +144,58 @@ export default function ProfileScreen({ navigation }) {
   const MenuItem = ({ icon, label, onPress, danger }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <View style={[styles.menuIcon, danger && styles.menuIconDanger]}>
-        <Text style={[styles.menuIconText, danger && { color: COLORS.danger }]}>
-          {icon}
-        </Text>
+        <Ionicons name={icon} size={20} color={danger ? COLORS.danger : COLORS.textSecondary} />
       </View>
       <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
-      <Text style={styles.chevron}>›</Text>
+      <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
     </TouchableOpacity>
+  );
+
+  const MenuItemToggle = ({ icon, label, value, onValueChange }) => (
+    <View style={styles.menuItem}>
+      <View style={styles.menuIcon}>
+        <Ionicons name={icon} size={20} color={COLORS.textSecondary} />
+      </View>
+      <Text style={styles.menuLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: COLORS.gray[700], true: COLORS.primary }}
+        thumbColor="#fff"
+      />
+    </View>
   );
 
   return (
     <ScrollView style={styles.container}>
       {/* Profile Header */}
       <View style={styles.header}>
-        <Image
-          source={{ uri: user?.profilePhotoUrl || 'https://via.placeholder.com/80' }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity onPress={handleChangePhoto} disabled={uploadingPhoto}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={{ uri: user?.profilePhotoUrl || 'https://via.placeholder.com/80' }}
+              style={styles.avatar}
+            />
+            {uploadingPhoto ? (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : (
+              <View style={styles.avatarBadge}>
+                <Ionicons name="create-outline" size={14} color="#fff" />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
           <Text style={styles.email}>{user?.email}</Text>
           {user?.isVerified ? (
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedIcon}>✓</Text>
-              <Text style={styles.verifiedText}>Verified</Text>
-            </View>
+            <UserBadges
+              isVerified={user?.isVerified}
+              totalTransactions={user?.totalTransactions || 0}
+              size="medium"
+            />
           ) : (
             <TouchableOpacity
               style={styles.verifyButton}
@@ -97,27 +240,27 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.menuGroup}>
           <MenuItem
-            icon="○"
+            icon="person-outline"
             label="Edit Profile"
             onPress={() => navigation.navigate('EditProfile')}
           />
           <MenuItem
-            icon="★"
+            icon="star-outline"
             label="Subscription"
             onPress={() => navigation.navigate('Subscription')}
           />
           <MenuItem
-            icon="◖"
+            icon="mail-outline"
             label="Messages"
             onPress={() => navigation.navigate('Conversations')}
           />
           <MenuItem
-            icon="•"
+            icon="people-outline"
             label="Friends"
             onPress={() => navigation.navigate('Friends')}
           />
           <MenuItem
-            icon="•"
+            icon="card-outline"
             label="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}
           />
@@ -128,12 +271,12 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Community</Text>
         <View style={styles.menuGroup}>
           <MenuItem
-            icon="⌂"
+            icon="home-outline"
             label="My Neighborhood"
             onPress={() => navigation.navigate('MyCommunity')}
           />
           <MenuItem
-            icon="•"
+            icon="flag-outline"
             label="Disputes"
             onPress={() => navigation.navigate('Disputes')}
           />
@@ -143,27 +286,35 @@ export default function ProfileScreen({ navigation }) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Settings</Text>
         <View style={styles.menuGroup}>
+          {isBiometricsAvailable && (
+            <MenuItemToggle
+              icon={biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline'}
+              label={biometricType || 'Biometrics'}
+              value={biometricToggle}
+              onValueChange={handleBiometricToggle}
+            />
+          )}
           <MenuItem
-            icon="○"
+            icon="notifications-outline"
             label="Notifications"
             onPress={() => navigation.navigate('NotificationSettings')}
           />
           <MenuItem
-            icon="?"
+            icon="help-circle-outline"
             label="Help & Support"
             onPress={() => Linking.openURL('mailto:support@borrowhood.com')}
           />
           <MenuItem
-            icon="•"
+            icon="document-text-outline"
             label="Terms & Privacy"
-            onPress={() => Linking.openURL('https://borrowhood.com/terms')}
+            onPress={() => Linking.openURL(`${BASE_URL}/terms`)}
           />
         </View>
       </View>
 
       <View style={styles.section}>
         <View style={styles.menuGroup}>
-          <MenuItem icon="→" label="Sign Out" onPress={handleLogout} danger />
+          <MenuItem icon="log-out-outline" label="Sign Out" onPress={handleLogout} danger />
         </View>
       </View>
 
@@ -184,11 +335,34 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     gap: 16,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: COLORS.gray[700],
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
   },
   headerInfo: {
     flex: 1,
@@ -202,21 +376,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 2,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-  },
-  verifiedIcon: {
-    fontSize: 12,
-    color: COLORS.primary,
-  },
-  verifiedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.primary,
   },
   verifyButton: {
     marginTop: 8,
@@ -294,17 +453,13 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.gray[800],
   },
   menuIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: COLORS.gray[800],
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  menuIconText: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
   },
   menuIconDanger: {
     backgroundColor: COLORS.danger + '20',
@@ -316,10 +471,6 @@ const styles = StyleSheet.create({
   },
   menuLabelDanger: {
     color: COLORS.danger,
-  },
-  chevron: {
-    fontSize: 20,
-    color: COLORS.textMuted,
   },
   version: {
     textAlign: 'center',

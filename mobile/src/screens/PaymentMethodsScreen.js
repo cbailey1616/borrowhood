@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
+import { useError } from '../context/ErrorContext';
 import { COLORS } from '../utils/config';
 
 export default function PaymentMethodsScreen({ navigation }) {
+  const { showError } = useError();
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,7 +52,10 @@ export default function PaymentMethodsScreen({ navigation }) {
               await api.removePaymentMethod(card.id);
               setPaymentMethods(prev => prev.filter(c => c.id !== card.id));
             } catch (error) {
-              Alert.alert('Error', 'Failed to remove card');
+              showError({
+                message: 'Unable to remove card. Please try again.',
+                type: 'network',
+              });
             }
           },
         },
@@ -65,7 +70,10 @@ export default function PaymentMethodsScreen({ navigation }) {
         prev.map(c => ({ ...c, isDefault: c.id === card.id }))
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to set default card');
+      showError({
+        message: 'Unable to set default card. Please try again.',
+        type: 'network',
+      });
     }
   };
 

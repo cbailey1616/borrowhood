@@ -9,11 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import { COLORS } from '../utils/config';
 import api from '../services/api';
 
 export default function SubscriptionScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
+  const { showError } = useError();
   const [tiers, setTiers] = useState([]);
   const [currentSub, setCurrentSub] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,14 +43,16 @@ export default function SubscriptionScreen({ navigation }) {
       // If no tiers from API, show default tiers
       if (!tiersRes || tiersRes.length === 0) {
         setTiers([
-          { tier: 'free', name: 'Friends', priceCents: 0, priceDisplay: 'Free', description: 'Share with your friends', features: ['Lend to your friends', 'Borrow from your friends', 'Free items only'] },
-          { tier: 'neighborhood', name: 'Neighborhood', priceCents: 100, priceDisplay: '$1/mo', description: 'Share with your neighborhood', features: ['Everything in Friends', 'Lend to your neighborhood', 'Borrow from your neighborhood', 'Charge rental fees'] },
-          { tier: 'town', name: 'Town', priceCents: 200, priceDisplay: '$2/mo', description: 'Share with your whole town', features: ['Everything in Neighborhood', 'Lend to your town', 'Borrow from your town', 'Featured listings'] },
+          { tier: 'free', name: 'Free', priceCents: 0, priceDisplay: 'Free', description: 'Share with friends and neighbors', features: ['Borrow from friends', 'Borrow from your neighborhood', 'List items for free'] },
+          { tier: 'plus', name: 'Plus', priceCents: 100, priceDisplay: '$1/mo', description: 'Unlock your whole town', features: ['Everything in Free', 'Borrow from anyone in town', 'Charge rental fees'] },
         ]);
       }
     } catch (err) {
       console.error('Load subscription data error:', err);
-      Alert.alert('Error', err.message || 'Failed to load subscription info');
+      showError({
+        message: err.message || 'Unable to load subscription information. Please check your connection and try again.',
+        type: 'network',
+      });
     } finally {
       setLoading(false);
     }
@@ -61,49 +65,47 @@ export default function SubscriptionScreen({ navigation }) {
       return;
     }
 
-    // Check if upgrading from paid tier
-    if (currentSub?.tier !== 'free' && tier.tier === 'town') {
-      Alert.alert(
-        'Upgrade to Town',
-        `Upgrade to Town tier for ${tier.priceDisplay}? You'll be charged a prorated amount.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => handleUpgrade(tier.tier) },
-        ]
-      );
+    // Plus requires verification
+    if (!user?.isVerified) {
+      showError({
+        type: 'verification',
+        title: 'Verification Required',
+        message: 'Plus requires identity verification to unlock town features and rental payments.',
+        primaryAction: 'Verify Now',
+        onPrimaryAction: () => navigation.navigate('Auth', { screen: 'VerifyIdentity' }),
+      });
       return;
     }
 
-    // New subscription - need payment method
+    // New subscription to Plus - need payment method
     navigation.navigate('PaymentMethods', {
-      onSelectMethod: (paymentMethodId) => handleSubscribe(tier.tier, paymentMethodId),
+      onSelectMethod: (paymentMethodId) => handleSubscribe(paymentMethodId),
       selectMode: true,
     });
   };
 
-  const handleSubscribe = async (tier, paymentMethodId) => {
+  const handleSubscribe = async (paymentMethodId) => {
     setSubscribing(true);
     try {
-      await api.subscribe(tier, paymentMethodId);
+      await api.subscribe(paymentMethodId);
       await loadData();
       await refreshUser();
-      Alert.alert('Success', `Welcome to the ${tier} tier!`);
+      Alert.alert('Success', 'Welcome to Borrowhood Plus!');
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to subscribe');
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
-  const handleUpgrade = async (tier) => {
-    setSubscribing(true);
-    try {
-      await api.upgradeSubscription(tier);
-      await loadData();
-      await refreshUser();
-      Alert.alert('Success', `Upgraded to ${tier} tier!`);
-    } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to upgrade');
+      if (err.code === 'VERIFICATION_REQUIRED') {
+        showError({
+          type: 'verification',
+          title: 'Verification Required',
+          message: 'Plus requires identity verification to unlock town features and rental payments.',
+          primaryAction: 'Verify Now',
+          onPrimaryAction: () => navigation.navigate('Auth', { screen: 'VerifyIdentity' }),
+        });
+      } else {
+        showError({
+          message: err.message || 'Unable to complete subscription. Please check your payment method and try again.',
+          type: 'network',
+        });
+      }
     } finally {
       setSubscribing(false);
     }
@@ -130,7 +132,10 @@ export default function SubscriptionScreen({ navigation }) {
                 `Your subscription will end on ${new Date(result.expiresAt).toLocaleDateString()}`
               );
             } catch (err) {
-              Alert.alert('Error', err.message || 'Failed to cancel');
+              showError({
+                message: err.message || 'Unable to cancel subscription. Please try again or contact support.',
+                type: 'network',
+              });
             } finally {
               setSubscribing(false);
             }
@@ -168,8 +173,7 @@ export default function SubscriptionScreen({ navigation }) {
       <View style={styles.tiersContainer}>
         {tiers.map((tier) => {
           const isCurrentTier = tier.tier === currentSub?.tier;
-          const isDowngrade = currentSub?.tier === 'town' && tier.tier !== 'town';
-          const isUpgrade = currentSub?.tier === 'neighborhood' && tier.tier === 'town';
+          const isPlus = tier.tier === 'plus';
 
           return (
             <TouchableOpacity
@@ -177,17 +181,11 @@ export default function SubscriptionScreen({ navigation }) {
               style={[
                 styles.tierCard,
                 isCurrentTier && styles.tierCardCurrent,
-                tier.tier === 'town' && styles.tierCardFeatured,
+                isPlus && styles.tierCardFeatured,
               ]}
               onPress={() => handleSelectTier(tier)}
               disabled={subscribing || isCurrentTier}
             >
-              {tier.tier === 'town' && (
-                <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>BEST VALUE</Text>
-                </View>
-              )}
-
               <Text style={styles.tierName}>{tier.name}</Text>
               <Text style={styles.tierPrice}>{tier.priceDisplay}</Text>
               <Text style={styles.tierDescription}>{tier.description}</Text>
@@ -204,7 +202,7 @@ export default function SubscriptionScreen({ navigation }) {
               <View style={[
                 styles.tierButton,
                 isCurrentTier && styles.tierButtonCurrent,
-                tier.tier === 'town' && !isCurrentTier && styles.tierButtonFeatured,
+                isPlus && !isCurrentTier && styles.tierButtonFeatured,
               ]}>
                 <Text style={[
                   styles.tierButtonText,
@@ -212,13 +210,9 @@ export default function SubscriptionScreen({ navigation }) {
                 ]}>
                   {isCurrentTier
                     ? 'Current Plan'
-                    : isUpgrade
-                    ? 'Upgrade'
-                    : isDowngrade
-                    ? 'Downgrade'
                     : tier.priceCents === 0
                     ? 'Start Free'
-                    : 'Subscribe'}
+                    : 'Get Plus'}
                 </Text>
               </View>
             </TouchableOpacity>

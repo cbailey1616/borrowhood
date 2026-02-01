@@ -9,7 +9,7 @@
     "splash": {
       "image": "./src/assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#4F46E5"
+      "backgroundColor": "#0D1F12"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.borrowhood.app",
-      "buildNumber": "1",
+      "buildNumber": "6",
       "infoPlist": {
         "NSCameraUsageDescription": "Borrowhood needs camera access to take photos of items you want to share with your neighbors.",
         "NSPhotoLibraryUsageDescription": "Borrowhood needs photo library access to select photos of items you want to share.",
@@ -42,7 +42,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#4F46E5"
+        "backgroundColor": "#4A7C59"
       },
       "package": "com.borrowhood.app",
       "versionCode": 1,
@@ -61,10 +61,7 @@
         "expo-notifications",
         {
           "icon": "./src/assets/notification-icon.png",
-          "color": "#4F46E5",
-          "sounds": [
-            "./src/assets/notification.wav"
-          ]
+          "color": "#4A7C59"
         }
       ],
       [
@@ -86,7 +83,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Borrowhood uses your location to show items and neighbors near you."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

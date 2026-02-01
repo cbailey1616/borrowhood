@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { useError } from '../../context/ErrorContext';
 import { COLORS } from '../../utils/config';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
+  const { showError } = useError();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,11 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter your email and password');
+      showError({
+        type: 'validation',
+        title: 'Missing Information',
+        message: 'Please enter your email and password to sign in.',
+      });
       return;
     }
 
@@ -31,7 +37,11 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(email, password);
     } catch (error) {
-      Alert.alert('Login Failed', error.message);
+      showError({
+        type: 'auth',
+        title: 'Login Failed',
+        message: error.message || 'Unable to sign in. Please check your credentials and try again.',
+      });
     } finally {
       setIsLoading(false);
     }

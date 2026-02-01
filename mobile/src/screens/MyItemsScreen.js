@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '../components/Icon';
+import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS } from '../utils/config';
 
@@ -21,6 +22,7 @@ const TABS = [
 ];
 
 export default function MyItemsScreen({ navigation }) {
+  const { showError } = useError();
   const [activeTab, setActiveTab] = useState('items');
   const [listings, setListings] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -75,7 +77,10 @@ export default function MyItemsScreen({ navigation }) {
               await api.deleteListing(item.id);
               setListings(prev => prev.filter(l => l.id !== item.id));
             } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to delete item');
+              showError({
+                message: error.message || 'Unable to delete this item. Please check your connection and try again.',
+                type: 'network',
+              });
             }
           },
         },
@@ -97,7 +102,10 @@ export default function MyItemsScreen({ navigation }) {
               await api.deleteRequest(item.id);
               setRequests(prev => prev.filter(r => r.id !== item.id));
             } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to delete request');
+              showError({
+                message: error.message || 'Unable to delete this request. Please check your connection and try again.',
+                type: 'network',
+              });
             }
           },
         },

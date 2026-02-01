@@ -8,14 +8,18 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
+import { useError } from '../context/ErrorContext';
 import { COLORS, VISIBILITY_LABELS } from '../utils/config';
 
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateRequestScreen({ navigation }) {
+  const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -62,7 +66,11 @@ export default function CreateRequestScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter a title');
+      showError({
+        type: 'validation',
+        title: 'Missing Title',
+        message: 'What are you looking for? Enter a title for your request.',
+      });
       return;
     }
 
@@ -77,11 +85,12 @@ export default function CreateRequestScreen({ navigation }) {
         communityId: communityId,
       });
 
-      Alert.alert('Success', 'Your request has been posted!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+      showToast('Your request has been posted!', 'success');
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError({
+        message: error.message || 'Unable to post your request. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -146,7 +155,12 @@ export default function CreateRequestScreen({ navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Title */}
       <View style={styles.section}>
         <Text style={styles.label}>What are you looking for? *</Text>
@@ -247,6 +261,7 @@ export default function CreateRequestScreen({ navigation }) {
         )}
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -254,6 +269,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

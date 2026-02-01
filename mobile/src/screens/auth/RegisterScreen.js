@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { useError } from '../../context/ErrorContext';
 import { COLORS } from '../../utils/config';
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
+  const { showError } = useError();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -36,17 +38,29 @@ export default function RegisterScreen({ navigation }) {
     const { firstName, lastName, email, phone, password, confirmPassword } = formData;
 
     if (!firstName || !lastName || !email || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      showError({
+        type: 'validation',
+        title: 'Missing Information',
+        message: 'Please fill in your name, email, and password to create an account.',
+      });
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      showError({
+        type: 'validation',
+        title: 'Password Too Short',
+        message: 'Your password needs to be at least 8 characters for security.',
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showError({
+        type: 'validation',
+        title: 'Passwords Don\'t Match',
+        message: 'Please make sure your passwords match.',
+      });
       return;
     }
 
@@ -55,7 +69,9 @@ export default function RegisterScreen({ navigation }) {
       await register({ firstName, lastName, email, phone, password });
       navigation.navigate('VerifyIdentity');
     } catch (error) {
-      Alert.alert('Registration Failed', error.message);
+      showError({
+        message: error.message || 'Unable to create account. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }

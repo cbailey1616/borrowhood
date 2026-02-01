@@ -32,13 +32,20 @@ const request = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'An error occurred');
+      const error = new Error(data.error || 'An error occurred');
+      error.code = data.code; // Preserve error code from server
+      error.requiredTier = data.requiredTier; // Preserve tier info if present
+      throw error;
     }
 
     return data;
   } catch (error) {
-    console.log('API Error:', error.message); // Debug logging
-    throw new Error(error.message || 'Network error');
+    console.log('API Error:', error.message, error.code); // Debug logging
+    // Re-throw with preserved properties
+    const apiError = new Error(error.message || 'Network error');
+    apiError.code = error.code;
+    apiError.requiredTier = error.requiredTier;
+    throw apiError;
   }
 };
 
@@ -497,44 +504,20 @@ const getSubscriptionTiers = () =>
 const getCurrentSubscription = () =>
   get('/subscriptions/current');
 
-const subscribe = (tier, paymentMethodId) =>
-  post('/subscriptions/subscribe', { tier, paymentMethodId });
+const subscribe = (paymentMethodId) =>
+  post('/subscriptions/subscribe', { paymentMethodId });
 
 const cancelSubscription = () =>
   post('/subscriptions/cancel');
 
-const upgradeSubscription = (tier) =>
-  post('/subscriptions/upgrade', { tier });
-
 const checkSubscriptionAccess = (visibility) =>
   get('/subscriptions/access-check', { visibility });
 
-// ============================================
-// Rent-to-Own
-// ============================================
-const getRTOContracts = (params) =>
-  get('/rto/contracts', params);
-
-const getRTOContract = (id) =>
-  get(`/rto/contracts/${id}`);
-
-const createRTOContract = (data) =>
-  post('/rto/contracts', data);
-
-const approveRTOContract = (id) =>
-  post(`/rto/contracts/${id}/approve`);
-
-const declineRTOContract = (id, reason) =>
-  post(`/rto/contracts/${id}/decline`, { reason });
-
-const cancelRTOContract = (id, reason) =>
-  post(`/rto/contracts/${id}/cancel`, { reason });
-
-const getRTOPayments = (contractId) =>
-  get(`/rto/contracts/${contractId}/payments`);
-
-const makeRTOPayment = (contractId) =>
-  post(`/rto/contracts/${contractId}/pay`);
+// Saved listings
+const getSavedListings = () => get('/saved');
+const saveListing = (listingId) => post(`/saved/${listingId}`);
+const unsaveListing = (listingId) => del(`/saved/${listingId}`);
+const checkSaved = (listingId) => get(`/saved/check/${listingId}`);
 
 export default {
   setAuthToken,
@@ -655,20 +638,15 @@ export default {
   donateToLibrary,
   checkoutLibraryItem,
   returnLibraryItem,
-  // Rent-to-Own
-  getRTOContracts,
-  getRTOContract,
-  createRTOContract,
-  approveRTOContract,
-  declineRTOContract,
-  cancelRTOContract,
-  getRTOPayments,
-  makeRTOPayment,
   // Subscriptions
   getSubscriptionTiers,
   getCurrentSubscription,
   subscribe,
   cancelSubscription,
-  upgradeSubscription,
   checkSubscriptionAccess,
+  // Saved listings
+  getSavedListings,
+  saveListing,
+  unsaveListing,
+  checkSaved,
 };

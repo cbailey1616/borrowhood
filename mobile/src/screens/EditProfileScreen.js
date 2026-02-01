@@ -10,17 +10,20 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
 
 export default function EditProfileScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
+  const { showError } = useError();
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -56,7 +59,10 @@ export default function EditProfileScreen({ navigation }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please enable location permissions in Settings to use this feature.');
+        showError({
+          message: 'Location permission is required. Please enable it in your device Settings to use this feature.',
+          type: 'validation',
+        });
         return;
       }
 
@@ -77,7 +83,10 @@ export default function EditProfileScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Location error:', error);
-      Alert.alert('Error', 'Could not get your location. Please enter it manually.');
+      showError({
+        message: 'Could not get your location. Please check your connection or enter it manually.',
+        type: 'network',
+      });
     } finally {
       setIsGettingLocation(false);
     }
@@ -85,7 +94,10 @@ export default function EditProfileScreen({ navigation }) {
 
   const handleSave = async () => {
     if (!formData.firstName || !formData.lastName) {
-      Alert.alert('Error', 'First and last name are required');
+      showError({
+        message: 'Please enter your first and last name to continue.',
+        type: 'validation',
+      });
       return;
     }
 
@@ -109,7 +121,10 @@ export default function EditProfileScreen({ navigation }) {
       Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError({
+        message: error.message || 'Unable to update your profile. Please try again.',
+        type: 'network',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +132,11 @@ export default function EditProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
       <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarSection}>
           <Image
@@ -256,6 +276,7 @@ export default function EditProfileScreen({ navigation }) {
           )}
         </TouchableOpacity>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -264,6 +285,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,

@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
+import { useError } from '../context/ErrorContext';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
@@ -20,6 +21,7 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function EditListingScreen({ navigation, route }) {
   const { listing } = route.params;
+  const { showError, showToast } = useError();
 
   const [formData, setFormData] = useState({
     title: listing.title || '',
@@ -91,13 +93,21 @@ export default function EditListingScreen({ navigation, route }) {
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter a title');
+      showError({
+        type: 'validation',
+        title: 'Missing Title',
+        message: 'Give your item a title so neighbors know what you\'re sharing.',
+      });
       return;
     }
 
     const totalPhotos = formData.photos.length - removedPhotos.length + newPhotos.length;
     if (totalPhotos === 0) {
-      Alert.alert('Error', 'Please add at least one photo');
+      showError({
+        type: 'validation',
+        title: 'Add a Photo',
+        message: 'Items with photos get 5x more interest. Add at least one photo of your item.',
+      });
       return;
     }
 
@@ -132,11 +142,23 @@ export default function EditListingScreen({ navigation, route }) {
         rtoRentalCreditPercent: formData.rtoAvailable ? parseFloat(formData.rtoRentalCreditPercent) || 50 : undefined,
       });
 
-      Alert.alert('Success', 'Your listing has been updated!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+      showToast('Your listing has been updated!', 'success');
+      navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', error.message);
+      const errorMsg = error.message?.toLowerCase() || '';
+      if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('plus subscription')) {
+        showError({
+          type: 'subscription',
+          title: 'Plus Required',
+          message: 'Upgrade to Plus to borrow from anyone in town and charge rental fees. Only $1/month.',
+          primaryAction: 'Get Plus',
+          onPrimaryAction: () => navigation.navigate('Subscription'),
+        });
+      } else {
+        showError({
+          message: error.message || 'Unable to update listing. Please try again.',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

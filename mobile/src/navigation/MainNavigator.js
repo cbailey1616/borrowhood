@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../utils/config';
 
 import FeedScreen from '../screens/FeedScreen';
+import SavedScreen from '../screens/SavedScreen';
 import MyItemsScreen from '../screens/MyItemsScreen';
 import ActivityScreen from '../screens/ActivityScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -13,6 +14,7 @@ const Tab = createBottomTabNavigator();
 function TabIcon({ focused, label }) {
   const icons = {
     Feed: '◉',
+    Saved: '♥',
     'My Items': '▤',
     Activity: '⇄',
     Profile: '○',
@@ -68,6 +70,11 @@ export default function MainNavigator() {
         name="Feed"
         component={FeedScreen}
         options={{ title: 'Feed' }}
+      />
+      <Tab.Screen
+        name="Saved"
+        component={SavedScreen}
+        options={{ title: 'Saved' }}
       />
       <Tab.Screen
         name="MyItems"

@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  Share,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import UserBadges from '../components/UserBadges';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
@@ -24,11 +26,50 @@ export default function ListingDetailScreen({ route, navigation }) {
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [discussions, setDiscussions] = useState([]);
   const [discussionCount, setDiscussionCount] = useState(0);
+  const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
     fetchListing();
     fetchDiscussions();
+    checkIfSaved();
   }, [id]);
+
+  const checkIfSaved = async () => {
+    try {
+      const result = await api.checkSaved(id);
+      setIsSaved(result.saved);
+    } catch (error) {
+      console.error('Failed to check saved status:', error);
+    }
+  };
+
+  const toggleSave = async () => {
+    try {
+      if (isSaved) {
+        await api.unsaveListing(id);
+        setIsSaved(false);
+      } else {
+        await api.saveListing(id);
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle save:', error);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const priceText = listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`;
+      const message = `Check out "${listing.title}" on Borrowhood!\n\n${priceText}\n\nDownload Borrowhood to borrow items from your neighbors.`;
+
+      await Share.share({
+        message,
+        title: listing.title,
+      });
+    } catch (error) {
+      console.error('Failed to share:', error);
+    }
+  };
 
   const fetchListing = async () => {
     try {
@@ -109,7 +150,23 @@ export default function ListingDetailScreen({ route, navigation }) {
 
         {/* Content */}
         <View style={styles.content}>
-          <Text style={styles.title}>{listing.title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{listing.title}</Text>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+                <Ionicons name="share-outline" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+              {listing.owner?.id !== user?.id && (
+                <TouchableOpacity style={styles.saveButton} onPress={toggleSave}>
+                  <Ionicons
+                    name={isSaved ? 'heart' : 'heart-outline'}
+                    size={28}
+                    color={isSaved ? COLORS.danger : COLORS.textSecondary}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
 
           {(listing.distanceMiles || listing.owner?.city) && (
             <View style={styles.locationRow}>
@@ -159,26 +216,6 @@ export default function ListingDetailScreen({ route, navigation }) {
               </Text>
             </View>
           </View>
-
-          {/* Rent-to-Own Option */}
-          {listing.rtoAvailable && !listing.isOwner && (
-            <TouchableOpacity
-              style={styles.rtoCard}
-              onPress={() => navigation.navigate('RentToOwn', { listing })}
-            >
-              <View style={styles.rtoHeader}>
-                <Ionicons name="trending-up" size={24} color={COLORS.primary} />
-                <Text style={styles.rtoTitle}>Rent-to-Own Available</Text>
-              </View>
-              <Text style={styles.rtoDescription}>
-                Pay over time and own this item. Purchase price: ${listing.rtoPurchasePrice}
-              </Text>
-              <View style={styles.rtoAction}>
-                <Text style={styles.rtoActionText}>View Options</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-              </View>
-            </TouchableOpacity>
-          )}
 
           {/* Description */}
           {listing.description && (
@@ -259,6 +296,11 @@ export default function ListingDetailScreen({ route, navigation }) {
               <Text style={styles.ownerName}>
                 {listing.owner.firstName} {listing.owner.lastName}
               </Text>
+              <UserBadges
+                isVerified={listing.owner.isVerified}
+                totalTransactions={listing.owner.totalTransactions || 0}
+                size="small"
+              />
               {listing.owner.rating > 0 && (
                 <View style={styles.ownerRating}>
                   <Ionicons name="star" size={14} color={COLORS.warning} />
@@ -369,11 +411,28 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   title: {
+    flex: 1,
     fontSize: 24,
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 8,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shareButton: {
+    padding: 4,
+  },
+  saveButton: {
+    padding: 4,
   },
   locationRow: {
     flexDirection: 'row',
@@ -531,40 +590,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  rtoCard: {
-    backgroundColor: COLORS.primary + '15',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '30',
-  },
-  rtoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  rtoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  rtoDescription: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: 12,
-  },
-  rtoAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  rtoActionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
   },
   discussionHeader: {
     flexDirection: 'row',

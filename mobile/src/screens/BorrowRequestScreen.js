@@ -15,11 +15,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import { COLORS } from '../utils/config';
 
 export default function BorrowRequestScreen({ route, navigation }) {
   const { listing } = route.params;
   const { user } = useAuth();
+  const { showError } = useError();
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -109,7 +111,11 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (days < listing.minDuration || days > listing.maxDuration) {
-      Alert.alert('Error', `Duration must be between ${listing.minDuration} and ${listing.maxDuration} days`);
+      showError({
+        type: 'validation',
+        title: 'Invalid Duration',
+        message: `This item can be borrowed for ${listing.minDuration}-${listing.maxDuration} days. Please adjust your dates.`,
+      });
       return;
     }
 
@@ -122,13 +128,19 @@ export default function BorrowRequestScreen({ route, navigation }) {
         message: message.trim() || undefined,
       });
 
-      Alert.alert(
-        'Request Sent!',
-        `${listing.owner.firstName} will be notified of your request.`,
-        [{ text: 'OK', onPress: () => navigation.navigate('Activity') }]
-      );
+      navigation.navigate('Activity');
     } catch (error) {
-      Alert.alert('Error', error.message);
+      const msg = error.message?.toLowerCase() || '';
+      if (msg.includes('verification')) {
+        showError({
+          type: 'verification',
+          message: 'You need to verify your identity before borrowing from town listings.',
+        });
+      } else {
+        showError({
+          message: error.message || 'Unable to send request. Please try again.',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -145,8 +157,6 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
   // Show subscription upgrade prompt
   if (!accessCheck.canAccess && accessCheck.reason === 'subscription') {
-    const tierName = accessCheck.requiredTier === 'town' ? 'Town' : 'Neighborhood';
-    const tierPrice = accessCheck.requiredTier === 'town' ? '$10' : '$5';
     return (
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.promptContent}>
@@ -165,25 +175,25 @@ export default function BorrowRequestScreen({ route, navigation }) {
           {/* Upgrade Card */}
           <View style={styles.promptCard}>
             <View style={styles.promptIconContainer}>
-              <Ionicons name="trending-up" size={32} color={COLORS.primary} />
+              <Ionicons name="star" size={32} color={COLORS.primary} />
             </View>
-            <Text style={styles.promptTitle}>Upgrade to {tierName}</Text>
+            <Text style={styles.promptTitle}>Upgrade to Plus</Text>
             <Text style={styles.promptText}>
-              This item is shared with the {tierName.toLowerCase()} community. Upgrade your plan to borrow from more neighbors and access exclusive items.
+              This item is shared town-wide. Get Plus to borrow from neighbors across your town.
             </Text>
 
             <View style={styles.promptBenefits}>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Borrow from {tierName.toLowerCase()} listings</Text>
+                <Text style={styles.promptBenefitText}>Everything in Free</Text>
               </View>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Share your items with more people</Text>
+                <Text style={styles.promptBenefitText}>Borrow from anyone in town</Text>
               </View>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Only {tierPrice}/month</Text>
+                <Text style={styles.promptBenefitText}>Charge rental fees</Text>
               </View>
             </View>
 
@@ -191,7 +201,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
               style={styles.promptButton}
               onPress={() => navigation.navigate('Subscription')}
             >
-              <Text style={styles.promptButtonText}>View Plans</Text>
+              <Text style={styles.promptButtonText}>Get Plus - $1/mo</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </TouchableOpacity>
           </View>

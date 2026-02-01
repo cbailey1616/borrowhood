@@ -11,6 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import UserBadges from '../components/UserBadges';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS } from '../utils/config';
 
@@ -38,7 +39,6 @@ export default function FeedScreen({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [visibilityFilter, setVisibilityFilter] = useState('all');
   const [showTypeMenu, setShowTypeMenu] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
 
   const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
@@ -139,9 +139,17 @@ export default function FeedScreen({ navigation }) {
             style={styles.avatar}
           />
           <View style={styles.userMeta}>
-            <Text style={styles.userName}>
-              {item.user.firstName} {item.user.lastName}
-            </Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>
+                {item.user.firstName} {item.user.lastName}
+              </Text>
+              <UserBadges
+                isVerified={item.user.isVerified}
+                totalTransactions={item.user.totalTransactions || 0}
+                size="small"
+                compact
+              />
+            </View>
             <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
           </View>
         </TouchableOpacity>
@@ -217,9 +225,17 @@ export default function FeedScreen({ navigation }) {
             style={styles.avatar}
           />
           <View style={styles.userMeta}>
-            <Text style={styles.userName}>
-              {item.user.firstName} {item.user.lastName}
-            </Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>
+                {item.user.firstName} {item.user.lastName}
+              </Text>
+              <UserBadges
+                isVerified={item.user.isVerified}
+                totalTransactions={item.user.totalTransactions || 0}
+                size="small"
+                compact
+              />
+            </View>
             <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
           </View>
         </TouchableOpacity>
@@ -289,24 +305,19 @@ export default function FeedScreen({ navigation }) {
       {/* Action Buttons Row */}
       <View style={styles.buttonRow}>
         <TouchableOpacity
-          style={styles.dropdownBtn}
+          style={[styles.dropdownBtn, (activeFilter !== 'all' || visibilityFilter !== 'all') && styles.dropdownBtnActive]}
           onPress={() => setShowTypeMenu(true)}
         >
-          <Text style={styles.dropdownBtnText}>
-            {activeFilter === 'all' ? 'All' : activeFilter === 'listings' ? 'Items' : 'Requests'}
+          <View style={styles.filterIconContainer}>
+            <Ionicons name="funnel-outline" size={16} color={(activeFilter !== 'all' || visibilityFilter !== 'all') ? COLORS.primary : COLORS.textSecondary} />
+            {(activeFilter !== 'all' || visibilityFilter !== 'all') && (
+              <View style={styles.filterBadge} />
+            )}
+          </View>
+          <Text style={[styles.dropdownBtnText, (activeFilter !== 'all' || visibilityFilter !== 'all') && styles.dropdownBtnTextActive]}>
+            Filter
           </Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.dropdownBtn}
-          onPress={() => setShowFilterMenu(true)}
-        >
-          <Ionicons name="funnel-outline" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.dropdownBtnText}>
-            {visibilityFilter === 'all' ? 'Filter' : VISIBILITY_OPTIONS.find(v => v.key === visibilityFilter)?.label}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
+          <Ionicons name="chevron-down" size={16} color={(activeFilter !== 'all' || visibilityFilter !== 'all') ? COLORS.primary : COLORS.textSecondary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -315,7 +326,6 @@ export default function FeedScreen({ navigation }) {
         >
           <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.actionBtnText}>New</Text>
-          <Ionicons name="chevron-down" size={14} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -378,7 +388,7 @@ export default function FeedScreen({ navigation }) {
         }
       />
 
-      {/* Type Menu Overlay */}
+      {/* Filter Menu Overlay */}
       {showTypeMenu && (
         <TouchableOpacity
           style={styles.filterOverlay}
@@ -386,7 +396,7 @@ export default function FeedScreen({ navigation }) {
           onPress={() => setShowTypeMenu(false)}
         >
           <View style={styles.filterMenu}>
-            <Text style={styles.filterMenuTitle}>Show</Text>
+            <Text style={styles.filterMenuTitle}>Type</Text>
             {FILTER_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.key}
@@ -396,7 +406,6 @@ export default function FeedScreen({ navigation }) {
                 ]}
                 onPress={() => {
                   handleFilterChange(option.key);
-                  setShowTypeMenu(false);
                 }}
               >
                 <View style={styles.menuItemRowSpaced}>
@@ -412,19 +421,8 @@ export default function FeedScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
-        </TouchableOpacity>
-      )}
 
-      {/* Filter Menu Overlay */}
-      {showFilterMenu && (
-        <TouchableOpacity
-          style={styles.filterOverlay}
-          activeOpacity={1}
-          onPress={() => setShowFilterMenu(false)}
-        >
-          <View style={styles.filterMenu}>
-            <Text style={styles.filterMenuTitle}>Visibility</Text>
+            <Text style={[styles.filterMenuTitle, { marginTop: 8 }]}>Visibility</Text>
             {VISIBILITY_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.key}
@@ -434,7 +432,6 @@ export default function FeedScreen({ navigation }) {
                 ]}
                 onPress={() => {
                   handleVisibilityChange(option.key);
-                  setShowFilterMenu(false);
                 }}
               >
                 <View style={styles.menuItemRowSpaced}>
@@ -450,6 +447,13 @@ export default function FeedScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
             ))}
+
+            <TouchableOpacity
+              style={styles.filterDoneButton}
+              onPress={() => setShowTypeMenu(false)}
+            >
+              <Text style={styles.filterDoneButtonText}>Done</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       )}
@@ -484,7 +488,7 @@ export default function FeedScreen({ navigation }) {
               }}
             >
               <View style={styles.menuItemRow}>
-                <Ionicons name="search-outline" size={20} color={COLORS.secondary} />
+                <Ionicons name="create-outline" size={20} color={COLORS.secondary} />
                 <Text style={styles.filterMenuItemText}>Request an Item</Text>
               </View>
               <Text style={styles.menuItemDesc}>Ask neighbors for something</Text>
@@ -531,12 +535,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
+  dropdownBtnActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '15',
+  },
+  filterIconContainer: {
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+  },
+  dropdownBtnTextActive: {
+    color: COLORS.primary,
+  },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: COLORS.primary,
@@ -669,6 +692,11 @@ const styles = StyleSheet.create({
   userMeta: {
     marginLeft: 10,
     flex: 1,
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   userName: {
     fontSize: 14,

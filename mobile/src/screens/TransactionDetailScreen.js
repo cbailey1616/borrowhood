@@ -11,12 +11,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { COLORS, TRANSACTION_STATUS_LABELS, CONDITION_LABELS } from '../utils/config';
 
 export default function TransactionDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const { user } = useAuth();
+  const { showError, showToast } = useError();
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -41,9 +43,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
     try {
       await api.approveTransaction(id);
       fetchTransaction();
-      Alert.alert('Approved', 'The borrower will be notified to complete payment.');
+      showToast('Request approved! Borrower has been notified.', 'success');
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError({ message: error.message || 'Unable to approve request.' });
     } finally {
       setActionLoading(false);
     }
@@ -59,7 +61,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           await api.declineTransaction(id, reason);
           navigation.goBack();
         } catch (error) {
-          Alert.alert('Error', error.message);
+          showError({ message: error.message || 'Unable to decline request.' });
         } finally {
           setActionLoading(false);
         }
@@ -80,8 +82,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
             try {
               await api.confirmPickup(id);
               fetchTransaction();
+              showToast('Pickup confirmed!', 'success');
             } catch (error) {
-              Alert.alert('Error', error.message);
+              showError({ message: error.message || 'Unable to confirm pickup.' });
             } finally {
               setActionLoading(false);
             }
@@ -105,10 +108,17 @@ export default function TransactionDetailScreen({ route, navigation }) {
               const result = await api.confirmReturn(id, condition);
               fetchTransaction();
               if (result.disputed) {
-                Alert.alert('Dispute Opened', 'A dispute has been opened due to condition change.');
+                showError({
+                  type: 'generic',
+                  title: 'Dispute Opened',
+                  message: 'A dispute has been opened due to the condition change. We\'ll help you resolve this.',
+                  primaryAction: 'View Details',
+                });
+              } else {
+                showToast('Return confirmed!', 'success');
               }
             } catch (error) {
-              Alert.alert('Error', error.message);
+              showError({ message: error.message || 'Unable to confirm return.' });
             } finally {
               setActionLoading(false);
             }

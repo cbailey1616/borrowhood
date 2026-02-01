@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
 
 export default function JoinCommunityScreen({ navigation }) {
   const { refreshUser } = useAuth();
+  const { showError } = useError();
   const [neighborhoods, setNeighborhoods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,7 +56,10 @@ export default function JoinCommunityScreen({ navigation }) {
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to join neighborhood');
+      showError({
+        message: error.message || 'Unable to join this neighborhood. Please check your connection and try again.',
+        type: 'network',
+      });
     } finally {
       setJoiningId(null);
     }
@@ -62,7 +67,10 @@ export default function JoinCommunityScreen({ navigation }) {
 
   const handleCreate = async () => {
     if (!newName.trim()) {
-      Alert.alert('Error', 'Please enter a neighborhood name');
+      showError({
+        message: 'Please enter a name for your neighborhood to continue.',
+        type: 'validation',
+      });
       return;
     }
 
@@ -86,7 +94,10 @@ export default function JoinCommunityScreen({ navigation }) {
         setShowCreateModal(false);
         setShowVerifyIdentity(true);
       } else {
-        Alert.alert('Error', error.message || 'Failed to create neighborhood');
+        showError({
+          message: error.message || 'Unable to create neighborhood. Please check your connection and try again.',
+          type: 'network',
+        });
       }
     } finally {
       setIsCreating(false);

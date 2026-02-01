@@ -20,8 +20,8 @@ const TABS = [
 
 const DISTANCE_FILTERS = [
   { key: 'all', label: 'All', maxDistance: null },
-  { key: 'nearby', label: 'Nearby (1 mi)', maxDistance: 1 },
-  { key: 'neighborhood', label: '5 miles', maxDistance: 5 },
+  { key: 'nearby', label: 'Walking', maxDistance: 1 },
+  { key: 'driving', label: 'Driving', maxDistance: 10 },
 ];
 
 export default function BrowseScreen({ navigation }) {

@@ -1,10 +1,11 @@
 // API Configuration
 // In production, use environment variables or app config
 // API URL - uses production URL, override with DEV_API_URL for local testing
-const PRODUCTION_URL = 'https://borrowhood-production.up.railway.app/api';
-const DEV_URL = 'http://localhost:3001/api';
+const PRODUCTION_BASE = 'https://borrowhood-production.up.railway.app';
+const DEV_BASE = 'http://192.168.7.53:3001'; // Use Mac's IP for physical device testing
 
-export const API_URL = __DEV__ ? DEV_URL : PRODUCTION_URL;
+export const BASE_URL = __DEV__ ? DEV_BASE : PRODUCTION_BASE;
+export const API_URL = `${BASE_URL}/api`;
 
 export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Svf5v8339pJAGsp3CIJJqnVjq86eIk3TAK4N7yvgCWRybyT6jOgtMhdsiLUgFi5j5qDTGIMBjXEqNmmgjuUx2TQ006j0XBDga';
 

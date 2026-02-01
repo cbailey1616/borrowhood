@@ -25,8 +25,6 @@ import MyCommunityScreen from '../screens/MyCommunityScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import DisputesScreen from '../screens/DisputesScreen';
 import SetupPayoutScreen from '../screens/SetupPayoutScreen';
-import RentToOwnScreen from '../screens/RentToOwnScreen';
-import RTOContractDetailScreen from '../screens/RTOContractDetailScreen';
 import EditListingScreen from '../screens/EditListingScreen';
 import ListingDiscussionScreen from '../screens/ListingDiscussionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
@@ -239,26 +237,6 @@ export default function RootNavigator() {
             options={{
               headerShown: true,
               title: 'Payout Settings',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
-          />
-          <Stack.Screen
-            name="RentToOwn"
-            component={RentToOwnScreen}
-            options={{
-              headerShown: true,
-              title: 'Rent-to-Own',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
-          />
-          <Stack.Screen
-            name="RTOContractDetail"
-            component={RTOContractDetailScreen}
-            options={{
-              headerShown: true,
-              title: 'Contract Details',
               headerStyle: { backgroundColor: COLORS.background },
               headerTintColor: COLORS.text,
             }}
