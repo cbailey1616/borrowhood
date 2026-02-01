@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,10 @@ import {
   RefreshControl,
   TouchableOpacity,
   Image,
+  Alert,
+  Animated,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS } from '../utils/config';
@@ -58,7 +61,77 @@ export default function MyItemsScreen({ navigation }) {
     fetchData();
   };
 
+  const handleDeleteListing = (item) => {
+    Alert.alert(
+      'Delete Item',
+      `Are you sure you want to delete "${item.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteListing(item.id);
+              setListings(prev => prev.filter(l => l.id !== item.id));
+            } catch (error) {
+              Alert.alert('Error', error.message || 'Failed to delete item');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteRequest = (item) => {
+    Alert.alert(
+      'Delete Request',
+      `Are you sure you want to delete "${item.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteRequest(item.id);
+              setRequests(prev => prev.filter(r => r.id !== item.id));
+            } catch (error) {
+              Alert.alert('Error', error.message || 'Failed to delete request');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderRightActions = (progress, dragX, onDelete) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0.5],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={onDelete}
+      >
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Ionicons name="trash-outline" size={24} color="#fff" />
+          <Text style={styles.deleteActionText}>Delete</Text>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
   const renderListingItem = ({ item }) => (
+    <Swipeable
+      renderRightActions={(progress, dragX) =>
+        renderRightActions(progress, dragX, () => handleDeleteListing(item))
+      }
+      overshootRight={false}
+    >
     <TouchableOpacity
       style={styles.card}
       onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
@@ -107,9 +180,16 @@ export default function MyItemsScreen({ navigation }) {
         </View>
       </View>
     </TouchableOpacity>
+    </Swipeable>
   );
 
   const renderRequestItem = ({ item }) => (
+    <Swipeable
+      renderRightActions={(progress, dragX) =>
+        renderRightActions(progress, dragX, () => handleDeleteRequest(item))
+      }
+      overshootRight={false}
+    >
     <TouchableOpacity
       style={styles.requestCard}
       onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
@@ -151,6 +231,7 @@ export default function MyItemsScreen({ navigation }) {
         Posted {new Date(item.createdAt).toLocaleDateString()}
       </Text>
     </TouchableOpacity>
+    </Swipeable>
   );
 
   const data = activeTab === 'items' ? listings : requests;
@@ -188,7 +269,7 @@ export default function MyItemsScreen({ navigation }) {
           !isLoading && (
             <View style={styles.emptyContainer}>
               <Ionicons
-                name={activeTab === 'items' ? 'cube-outline' : 'search-outline'}
+                name={activeTab === 'items' ? 'construct-outline' : 'search-outline'}
                 size={64}
                 color={COLORS.gray[700]}
               />
@@ -434,5 +515,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  deleteAction: {
+    backgroundColor: COLORS.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    marginBottom: 12,
+    borderRadius: 16,
+  },
+  deleteActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });

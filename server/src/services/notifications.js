@@ -104,6 +104,20 @@ const NOTIFICATION_TEMPLATES = {
       ? `${data.senderName}: ${data.messagePreview || 'Sent you a message'}`
       : 'You have a new message',
   },
+
+  // Discussions
+  discussion_reply: {
+    title: 'Reply to Your Question',
+    body: (data) => data.posterName
+      ? `${data.posterName} replied to your question on ${data.itemTitle || 'a listing'}`
+      : 'Someone replied to your question',
+  },
+  listing_comment: {
+    title: 'New Question on Your Listing',
+    body: (data) => data.posterName
+      ? `${data.posterName} asked a question about ${data.itemTitle || 'your listing'}`
+      : 'Someone asked a question about your listing',
+  },
 };
 
 /**

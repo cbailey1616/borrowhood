@@ -1,8 +1,10 @@
 // API Configuration
 // In production, use environment variables or app config
-export const API_URL = __DEV__
-  ? 'http://localhost:3001/api'
-  : 'https://borrowhood-production.up.railway.app/api';
+// API URL - uses production URL, override with DEV_API_URL for local testing
+const PRODUCTION_URL = 'https://borrowhood-production.up.railway.app/api';
+const DEV_URL = 'http://localhost:3001/api';
+
+export const API_URL = __DEV__ ? DEV_URL : PRODUCTION_URL;
 
 export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Svf5v8339pJAGsp3CIJJqnVjq86eIk3TAK4N7yvgCWRybyT6jOgtMhdsiLUgFi5j5qDTGIMBjXEqNmmgjuUx2TQ006j0XBDga';
 
@@ -15,9 +17,9 @@ export const CONDITION_LABELS = {
 };
 
 export const VISIBILITY_LABELS = {
-  close_friends: 'Close Friends Only',
+  close_friends: 'My Friends',
   neighborhood: 'My Neighborhood',
-  town: 'Entire Town',
+  town: 'My Town',
 };
 
 export const TRANSACTION_STATUS_LABELS = {
@@ -33,34 +35,34 @@ export const TRANSACTION_STATUS_LABELS = {
 };
 
 export const COLORS = {
-  // Robinhood-inspired green theme
-  primary: '#00C805',
-  primaryDark: '#00A000',
-  primaryLight: '#00E600',
-  secondary: '#5AC53A',
-  accent: '#00C805',
-  warning: '#FFB800',
-  danger: '#FF5000',
-  success: '#00C805',
+  // Forest green theme (matching logo)
+  primary: '#4A7C59',
+  primaryDark: '#3D6B4F',
+  primaryLight: '#5A8F6A',
+  secondary: '#6B8F71',
+  accent: '#4A7C59',
+  warning: '#D4A04A',
+  danger: '#C45C4A',
+  success: '#4A7C59',
   // Backgrounds
-  background: '#000000',
-  surface: '#1C1C1E',
-  card: '#2C2C2E',
+  background: '#0D1F12',
+  surface: '#162419',
+  card: '#1E2E22',
   // Text colors
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textMuted: '#636366',
-  // Gray scale
+  textSecondary: '#A8B5AA',
+  textMuted: '#6B7D6E',
+  // Gray scale (with green tint)
   gray: {
-    50: '#F2F2F7',
-    100: '#E5E5EA',
-    200: '#D1D1D6',
-    300: '#C7C7CC',
-    400: '#AEAEB2',
-    500: '#8E8E93',
-    600: '#636366',
-    700: '#48484A',
-    800: '#3A3A3C',
-    900: '#1C1C1E',
+    50: '#F2F5F3',
+    100: '#E0E5E1',
+    200: '#C5CFC7',
+    300: '#A8B5AA',
+    400: '#8A9A8D',
+    500: '#6B7D6E',
+    600: '#4F5D51',
+    700: '#3A4A3D',
+    800: '#2A3A2D',
+    900: '#1A2A1D',
   },
 };

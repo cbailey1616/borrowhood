@@ -4,21 +4,34 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const router = Router();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Initialize S3 client
-const s3Client = new S3Client({
+// Check if AWS is configured
+const AWS_CONFIGURED = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
+
+// Initialize S3 client only if configured
+const s3Client = AWS_CONFIGURED ? new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
-});
+}) : null;
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'borrowhood-uploads';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+
+// Local uploads directory for development
+const LOCAL_UPLOADS_DIR = path.join(__dirname, '../../uploads');
+if (!AWS_CONFIGURED && !fs.existsSync(LOCAL_UPLOADS_DIR)) {
+  fs.mkdirSync(LOCAL_UPLOADS_DIR, { recursive: true });
+}
 
 // ============================================
 // POST /api/uploads/presigned-url
@@ -41,6 +54,19 @@ router.post('/presigned-url', authenticate,
       const extension = contentType.split('/')[1].replace('jpeg', 'jpg');
       const filename = `${uuidv4()}.${extension}`;
       const key = `${category}/${req.user.id}/${filename}`;
+
+      // Dev mode: use local file storage
+      if (!AWS_CONFIGURED) {
+        const localPath = path.join(LOCAL_UPLOADS_DIR, filename);
+        const baseUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
+        return res.json({
+          uploadUrl: `${baseUrl}/api/uploads/local/${filename}`,
+          publicUrl: `${baseUrl}/uploads/${filename}`,
+          key: filename,
+          expiresIn: 300,
+          isLocal: true,
+        });
+      }
 
       // Create presigned URL for PUT operation
       const command = new PutObjectCommand({
@@ -93,11 +119,23 @@ router.post('/presigned-urls', authenticate,
     const { files, category } = req.body;
 
     try {
+      const baseUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
+
       const results = await Promise.all(
         files.map(async (file) => {
           const extension = file.contentType.split('/')[1].replace('jpeg', 'jpg');
           const filename = `${uuidv4()}.${extension}`;
           const key = `${category}/${req.user.id}/${filename}`;
+
+          // Dev mode: use local file storage
+          if (!AWS_CONFIGURED) {
+            return {
+              uploadUrl: `${baseUrl}/api/uploads/local/${filename}`,
+              publicUrl: `${baseUrl}/uploads/${filename}`,
+              key: filename,
+              isLocal: true,
+            };
+          }
 
           const command = new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -134,5 +172,31 @@ router.post('/presigned-urls', authenticate,
     }
   }
 );
+
+// ============================================
+// PUT /api/uploads/local/:filename
+// Local file upload endpoint for development
+// ============================================
+router.put('/local/:filename', authenticate, async (req, res) => {
+  if (AWS_CONFIGURED) {
+    return res.status(400).json({ error: 'Use S3 for uploads' });
+  }
+
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(LOCAL_UPLOADS_DIR, filename);
+
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      fs.writeFileSync(filePath, buffer);
+      res.json({ success: true });
+    });
+  } catch (err) {
+    console.error('Local upload error:', err);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
 
 export default router;

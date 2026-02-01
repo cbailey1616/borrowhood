@@ -28,6 +28,10 @@ import SetupPayoutScreen from '../screens/SetupPayoutScreen';
 import RentToOwnScreen from '../screens/RentToOwnScreen';
 import RTOContractDetailScreen from '../screens/RTOContractDetailScreen';
 import EditListingScreen from '../screens/EditListingScreen';
+import ListingDiscussionScreen from '../screens/ListingDiscussionScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
+import BundlesScreen from '../screens/BundlesScreen';
+import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -52,27 +56,52 @@ export default function RootNavigator() {
           <Stack.Screen
             name="ListingDetail"
             component={ListingDetailScreen}
-            options={{ headerShown: true, title: 'Item Details' }}
+            options={{
+              headerShown: true,
+              title: 'Item Details',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
           />
           <Stack.Screen
             name="TransactionDetail"
             component={TransactionDetailScreen}
-            options={{ headerShown: true, title: 'Transaction' }}
+            options={{
+              headerShown: true,
+              title: 'Transaction',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
           />
           <Stack.Screen
             name="UserProfile"
             component={UserProfileScreen}
-            options={{ headerShown: true, title: 'Profile' }}
+            options={{
+              headerShown: true,
+              title: 'Profile',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
           />
           <Stack.Screen
             name="DisputeDetail"
             component={DisputeDetailScreen}
-            options={{ headerShown: true, title: 'Dispute' }}
+            options={{
+              headerShown: true,
+              title: 'Dispute',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
           />
           <Stack.Screen
             name="CreateListing"
             component={CreateListingScreen}
-            options={{ headerShown: true, title: 'List an Item' }}
+            options={{
+              headerShown: true,
+              title: 'List an Item',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
           />
           <Stack.Screen
             name="EditListing"
@@ -87,7 +116,12 @@ export default function RootNavigator() {
           <Stack.Screen
             name="BorrowRequest"
             component={BorrowRequestScreen}
-            options={{ headerShown: true, title: 'Request to Borrow' }}
+            options={{
+              headerShown: true,
+              title: 'Request to Borrow',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
           />
           <Stack.Screen
             name="EditProfile"
@@ -154,7 +188,7 @@ export default function RootNavigator() {
             component={FriendsScreen}
             options={{
               headerShown: true,
-              title: 'Close Friends',
+              title: 'Friends',
               headerStyle: { backgroundColor: COLORS.background },
               headerTintColor: COLORS.text,
             }}
@@ -174,7 +208,7 @@ export default function RootNavigator() {
             component={MyCommunityScreen}
             options={{
               headerShown: true,
-              title: 'My Community',
+              title: 'My Neighborhood',
               headerStyle: { backgroundColor: COLORS.background },
               headerTintColor: COLORS.text,
             }}
@@ -225,6 +259,46 @@ export default function RootNavigator() {
             options={{
               headerShown: true,
               title: 'Contract Details',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
+          />
+          <Stack.Screen
+            name="ListingDiscussion"
+            component={ListingDiscussionScreen}
+            options={{
+              headerShown: true,
+              title: 'Questions & Answers',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
+          />
+          <Stack.Screen
+            name="Subscription"
+            component={SubscriptionScreen}
+            options={{
+              headerShown: true,
+              title: 'Subscription',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
+          />
+          <Stack.Screen
+            name="Bundles"
+            component={BundlesScreen}
+            options={{
+              headerShown: true,
+              title: 'Item Bundles',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
+          />
+          <Stack.Screen
+            name="JoinCommunity"
+            component={JoinCommunityScreen}
+            options={{
+              headerShown: true,
+              title: 'Find Your Neighborhood',
               headerStyle: { backgroundColor: COLORS.background },
               headerTintColor: COLORS.text,
             }}

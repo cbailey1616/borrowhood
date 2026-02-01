@@ -1,13 +1,17 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
+import usePushNotifications from '../hooks/usePushNotifications';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
+export function AuthProvider({ children, navigationRef }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Initialize push notifications when user is authenticated
+  usePushNotifications(isAuthenticated);
 
   useEffect(() => {
     checkAuth();

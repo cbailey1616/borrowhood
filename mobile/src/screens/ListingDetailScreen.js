@@ -22,9 +22,12 @@ export default function ListingDetailScreen({ route, navigation }) {
   const [listing, setListing] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPhoto, setCurrentPhoto] = useState(0);
+  const [discussions, setDiscussions] = useState([]);
+  const [discussionCount, setDiscussionCount] = useState(0);
 
   useEffect(() => {
     fetchListing();
+    fetchDiscussions();
   }, [id]);
 
   const fetchListing = async () => {
@@ -35,6 +38,16 @@ export default function ListingDetailScreen({ route, navigation }) {
       console.error('Failed to fetch listing:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDiscussions = async () => {
+    try {
+      const data = await api.getDiscussions(id, { limit: 3 });
+      setDiscussions(data.posts || []);
+      setDiscussionCount(data.total || 0);
+    } catch (error) {
+      console.error('Failed to fetch discussions:', error);
     }
   };
 
@@ -174,6 +187,64 @@ export default function ListingDetailScreen({ route, navigation }) {
               <Text style={styles.description}>{listing.description}</Text>
             </View>
           )}
+
+          {/* Discussions Section */}
+          <View style={styles.section}>
+            <View style={styles.discussionHeader}>
+              <Text style={styles.sectionTitle}>
+                Questions & Answers {discussionCount > 0 && `(${discussionCount})`}
+              </Text>
+              {discussionCount > 3 && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('ListingDiscussion', { listingId: id, listing })}
+                >
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {discussions.length > 0 ? (
+              <View style={styles.discussionList}>
+                {discussions.map((post) => (
+                  <TouchableOpacity
+                    key={post.id}
+                    style={styles.discussionPreview}
+                    onPress={() => navigation.navigate('ListingDiscussion', { listingId: id, listing })}
+                  >
+                    <Image
+                      source={{ uri: post.user.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+                      style={styles.discussionAvatar}
+                    />
+                    <View style={styles.discussionContent}>
+                      <Text style={styles.discussionAuthor}>
+                        {post.user.firstName} {post.user.lastName}
+                      </Text>
+                      <Text style={styles.discussionText} numberOfLines={2}>
+                        {post.content}
+                      </Text>
+                      {post.replyCount > 0 && (
+                        <Text style={styles.replyCount}>
+                          {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noDiscussions}>
+                No questions yet. Be the first to ask!
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.askQuestionButton}
+              onPress={() => navigation.navigate('ListingDiscussion', { listingId: id, listing, autoFocus: true })}
+            >
+              <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.askQuestionText}>Ask a Question</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Owner */}
           <TouchableOpacity
@@ -492,6 +563,74 @@ const styles = StyleSheet.create({
   },
   rtoActionText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  discussionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  discussionList: {
+    gap: 12,
+  },
+  discussionPreview: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  discussionAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.gray[200],
+  },
+  discussionContent: {
+    flex: 1,
+  },
+  discussionAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  discussionText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  replyCount: {
+    fontSize: 12,
+    color: COLORS.primary,
+    marginTop: 4,
+  },
+  noDiscussions: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  askQuestionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
+  },
+  askQuestionText: {
+    fontSize: 15,
     fontWeight: '600',
     color: COLORS.primary,
   },

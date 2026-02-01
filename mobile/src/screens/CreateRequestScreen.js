@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,24 @@ export default function CreateRequestScreen({ navigation }) {
     neededUntil: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [communityId, setCommunityId] = useState(undefined); // undefined = loading, null = no community
+
+  useEffect(() => {
+    const fetchCommunity = async () => {
+      try {
+        const communities = await api.getCommunities({ member: true });
+        if (communities && communities.length > 0) {
+          setCommunityId(communities[0].id);
+        } else {
+          setCommunityId(null);
+        }
+      } catch (err) {
+        console.log('Failed to fetch communities:', err);
+        setCommunityId(null);
+      }
+    };
+    fetchCommunity();
+  }, []);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -56,7 +74,7 @@ export default function CreateRequestScreen({ navigation }) {
         visibility: formData.visibility,
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
         neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
-        communityId: '00000000-0000-0000-0000-000000000001', // Would come from user's community
+        communityId: communityId,
       });
 
       Alert.alert('Success', 'Your request has been posted!', [
@@ -68,6 +86,64 @@ export default function CreateRequestScreen({ navigation }) {
       setIsSubmitting(false);
     }
   };
+
+  // Loading state while checking community
+  if (communityId === undefined) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  // Show prompt to join neighborhood if user isn't in one
+  if (communityId === null) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.promptContent}>
+          <View style={styles.promptCard}>
+            <View style={styles.promptIconContainer}>
+              <Ionicons name="home" size={32} color={COLORS.primary} />
+            </View>
+            <Text style={styles.promptTitle}>Join Your Neighborhood</Text>
+            <Text style={styles.promptText}>
+              Connect with your neighbors to request items you need. Join or create your neighborhood to get started.
+            </Text>
+
+            <View style={styles.promptBenefits}>
+              <View style={styles.promptBenefit}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                <Text style={styles.promptBenefitText}>Request items from neighbors</Text>
+              </View>
+              <View style={styles.promptBenefit}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                <Text style={styles.promptBenefitText}>Get notified when items are available</Text>
+              </View>
+              <View style={styles.promptBenefit}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                <Text style={styles.promptBenefitText}>Share your own items</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.promptButton}
+              onPress={() => navigation.navigate('JoinCommunity')}
+            >
+              <Text style={styles.promptButtonText}>Find Your Neighborhood</Text>
+              <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.promptSecondaryButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.promptSecondaryText}>Maybe Later</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -178,6 +254,84 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  promptContent: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  promptCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.gray[800],
+  },
+  promptIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  promptTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  promptText: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  promptBenefits: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  promptBenefit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  promptBenefitText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  promptButton: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  promptButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.background,
+  },
+  promptSecondaryButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 12,
+  },
+  promptSecondaryText: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
   },
   content: {
     padding: 20,

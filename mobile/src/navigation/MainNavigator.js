@@ -2,10 +2,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../utils/config';
 
-import BrowseScreen from '../screens/BrowseScreen';
+import FeedScreen from '../screens/FeedScreen';
 import MyItemsScreen from '../screens/MyItemsScreen';
 import ActivityScreen from '../screens/ActivityScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -13,10 +12,9 @@ const Tab = createBottomTabNavigator();
 // Simple tab icon component
 function TabIcon({ focused, label }) {
   const icons = {
-    Browse: '⌕',
+    Feed: '◉',
     'My Items': '▤',
     Activity: '⇄',
-    Notifications: '●',
     Profile: '○',
   };
 
@@ -67,9 +65,9 @@ export default function MainNavigator() {
       })}
     >
       <Tab.Screen
-        name="Browse"
-        component={BrowseScreen}
-        options={{ title: 'Browse' }}
+        name="Feed"
+        component={FeedScreen}
+        options={{ title: 'Feed' }}
       />
       <Tab.Screen
         name="MyItems"
@@ -80,11 +78,6 @@ export default function MainNavigator() {
         name="Activity"
         component={ActivityScreen}
         options={{ title: 'Activity' }}
-      />
-      <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{ title: 'Notifications' }}
       />
       <Tab.Screen
         name="Profile"

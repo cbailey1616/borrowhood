@@ -13,6 +13,13 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Navigation ref will be set from App.js
+let navigationRef = null;
+
+export function setNavigationRef(ref) {
+  navigationRef = ref;
+}
+
 export default function usePushNotifications(isAuthenticated) {
   const [expoPushToken, setExpoPushToken] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -43,10 +50,10 @@ export default function usePushNotifications(isAuthenticated) {
 
     return () => {
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, [isAuthenticated]);
@@ -89,7 +96,56 @@ async function registerForPushNotifications() {
 }
 
 function handleNotificationResponse(data) {
-  // Navigation would be handled here based on notification type
-  // This requires access to navigation ref
-  console.log('Notification tapped:', data);
+  if (!navigationRef || !data?.type) {
+    console.log('Notification tapped (no navigation):', data);
+    return;
+  }
+
+  switch (data.type) {
+    case 'borrow_request':
+    case 'request_approved':
+    case 'request_declined':
+    case 'pickup_confirmed':
+    case 'return_confirmed':
+    case 'payment_confirmed':
+      if (data.transactionId) {
+        navigationRef.navigate('TransactionDetail', { id: data.transactionId });
+      }
+      break;
+
+    case 'new_message':
+      if (data.conversationId) {
+        navigationRef.navigate('Chat', { conversationId: data.conversationId });
+      }
+      break;
+
+    case 'rating_received':
+    case 'new_rating':
+      navigationRef.navigate('Profile');
+      break;
+
+    case 'item_match':
+      if (data.listingId) {
+        navigationRef.navigate('ListingDetail', { id: data.listingId });
+      }
+      break;
+
+    case 'discussion_reply':
+    case 'listing_comment':
+      if (data.listingId) {
+        navigationRef.navigate('ListingDiscussion', { listingId: data.listingId });
+      }
+      break;
+
+    case 'dispute_opened':
+    case 'dispute_resolved':
+      if (data.disputeId) {
+        navigationRef.navigate('DisputeDetail', { id: data.disputeId });
+      }
+      break;
+
+    default:
+      navigationRef.navigate('Notifications');
+      break;
+  }
 }

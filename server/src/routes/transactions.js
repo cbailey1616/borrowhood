@@ -19,7 +19,7 @@ const PLATFORM_FEE_PERCENT = 0.02; // 2%
 // POST /api/transactions
 // Request to borrow an item
 // ============================================
-router.post('/', authenticate, requireVerified,
+router.post('/', authenticate,
   body('listingId').isUUID(),
   body('startDate').isISO8601(),
   body('endDate').isISO8601(),
@@ -47,6 +47,14 @@ router.post('/', authenticate, requireVerified,
       }
 
       const item = listing.rows[0];
+
+      // Require identity verification for town-level listings
+      if (item.visibility === 'town' && req.user.status !== 'verified') {
+        return res.status(403).json({
+          error: 'Identity verification required to borrow from town listings',
+          code: 'VERIFICATION_REQUIRED',
+        });
+      }
 
       if (item.owner_id === req.user.id) {
         return res.status(400).json({ error: 'Cannot borrow your own item' });

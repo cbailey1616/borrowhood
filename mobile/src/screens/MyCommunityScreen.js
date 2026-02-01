@@ -52,8 +52,8 @@ export default function MyCommunityScreen({ navigation }) {
 
   const handleLeaveCommunity = () => {
     Alert.alert(
-      'Leave Community',
-      `Are you sure you want to leave ${community?.name}? You'll lose access to community items and members.`,
+      'Leave Neighborhood',
+      `Are you sure you want to leave ${community?.name}? You'll lose access to neighborhood items and members.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -64,7 +64,7 @@ export default function MyCommunityScreen({ navigation }) {
               await api.leaveCommunity(community.id);
               navigation.goBack();
             } catch (error) {
-              Alert.alert('Error', 'Failed to leave community');
+              Alert.alert('Error', 'Failed to leave neighborhood');
             }
           },
         },
@@ -83,16 +83,16 @@ export default function MyCommunityScreen({ navigation }) {
   if (!community) {
     return (
       <View style={styles.noCommunityContainer}>
-        <Ionicons name="people-outline" size={64} color={COLORS.gray[600]} />
-        <Text style={styles.noCommunityTitle}>No Community Yet</Text>
+        <Ionicons name="home-outline" size={64} color={COLORS.gray[600]} />
+        <Text style={styles.noCommunityTitle}>No Neighborhood Yet</Text>
         <Text style={styles.noCommunityText}>
-          Join a community to borrow from and lend to your neighbors.
+          Join or create your neighborhood to borrow from and lend to your neighbors.
         </Text>
         <TouchableOpacity
           style={styles.joinButton}
           onPress={() => navigation.navigate('JoinCommunity')}
         >
-          <Text style={styles.joinButtonText}>Find a Community</Text>
+          <Text style={styles.joinButtonText}>Find Your Neighborhood</Text>
         </TouchableOpacity>
       </View>
     );
@@ -128,7 +128,7 @@ export default function MyCommunityScreen({ navigation }) {
       <View style={styles.stats}>
         <View style={styles.stat}>
           <Text style={styles.statValue}>{community.memberCount || members.length}</Text>
-          <Text style={styles.statLabel}>Members</Text>
+          <Text style={styles.statLabel}>Neighbors</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.stat}>
@@ -142,10 +142,10 @@ export default function MyCommunityScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Members Section */}
+      {/* Neighbors Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Members</Text>
+          <Text style={styles.sectionTitle}>Neighbors</Text>
           <TouchableOpacity onPress={() => navigation.navigate('CommunityMembers', { id: community.id })}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
@@ -176,7 +176,7 @@ export default function MyCommunityScreen({ navigation }) {
           onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}
         >
           <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>Invite Members</Text>
+          <Text style={styles.actionButtonText}>Invite Neighbors</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </TouchableOpacity>
 
@@ -185,7 +185,7 @@ export default function MyCommunityScreen({ navigation }) {
           onPress={() => navigation.navigate('CommunitySettings', { id: community.id })}
         >
           <Ionicons name="settings-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>Community Settings</Text>
+          <Text style={styles.actionButtonText}>Neighborhood Settings</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </TouchableOpacity>
 
@@ -194,7 +194,7 @@ export default function MyCommunityScreen({ navigation }) {
           onPress={handleLeaveCommunity}
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-          <Text style={[styles.actionButtonText, styles.dangerText]}>Leave Community</Text>
+          <Text style={[styles.actionButtonText, styles.dangerText]}>Leave Neighborhood</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

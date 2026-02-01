@@ -1,0 +1,806 @@
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  TextInput,
+} from 'react-native';
+import { Ionicons } from '../components/Icon';
+import api from '../services/api';
+import { COLORS, CONDITION_LABELS } from '../utils/config';
+
+const FILTER_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'listings', label: 'Items' },
+  { key: 'requests', label: 'Wanted' },
+];
+
+const VISIBILITY_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'close_friends', label: 'My Friends' },
+  { key: 'neighborhood', label: 'My Neighborhood' },
+  { key: 'town', label: 'My Town' },
+];
+
+export default function FeedScreen({ navigation }) {
+  const [feed, setFeed] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [visibilityFilter, setVisibilityFilter] = useState('all');
+  const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+
+  const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
+    try {
+      const params = { page: pageNum, limit: 20 };
+      if (search) params.search = search;
+      if (activeFilter !== 'all') params.type = activeFilter;
+      if (visibilityFilter !== 'all') params.visibility = visibilityFilter;
+
+      const data = await api.getFeed(params);
+
+      if (append) {
+        setFeed(prev => [...prev, ...data.items]);
+      } else {
+        setFeed(data.items || []);
+      }
+      setHasMore(data.hasMore);
+      setPage(pageNum);
+    } catch (error) {
+      console.error('Failed to fetch feed:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      setIsLoadingMore(false);
+    }
+  }, [search, activeFilter, visibilityFilter]);
+
+  useEffect(() => {
+    fetchFeed();
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchFeed(1, false);
+    });
+    return unsubscribe;
+  }, [navigation, fetchFeed]);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchFeed(1, false);
+  };
+
+  const onEndReached = () => {
+    if (!isLoadingMore && hasMore) {
+      setIsLoadingMore(true);
+      fetchFeed(page + 1, true);
+    }
+  };
+
+  const handleSearch = () => {
+    setIsLoading(true);
+    fetchFeed(1, false);
+  };
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    setIsLoading(true);
+  };
+
+  const handleVisibilityChange = (visibility) => {
+    setVisibilityFilter(visibility);
+    setIsLoading(true);
+  };
+
+  useEffect(() => {
+    fetchFeed(1, false);
+  }, [activeFilter, visibilityFilter]);
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const renderListingItem = (item) => (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+      activeOpacity={0.7}
+    >
+      <View style={styles.cardHeader}>
+        <TouchableOpacity
+          style={styles.userInfo}
+          onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+        >
+          <Image
+            source={{ uri: item.user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+            style={styles.avatar}
+          />
+          <View style={styles.userMeta}>
+            <Text style={styles.userName}>
+              {item.user.firstName} {item.user.lastName}
+            </Text>
+            <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={styles.typeBadge}>
+          <Ionicons name="cube-outline" size={12} color={COLORS.primary} />
+          <Text style={styles.typeBadgeText}>New Item</Text>
+        </View>
+      </View>
+
+      {item.photoUrl && (
+        <Image
+          source={{ uri: item.photoUrl }}
+          style={styles.listingImage}
+        />
+      )}
+
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+
+        <View style={styles.listingMeta}>
+          <View style={styles.conditionBadge}>
+            <Text style={styles.conditionText}>{CONDITION_LABELS[item.condition]}</Text>
+          </View>
+          {item.isFree ? (
+            <Text style={styles.freeLabel}>Free to borrow</Text>
+          ) : (
+            <Text style={styles.priceLabel}>${item.pricePerDay}/day</Text>
+          )}
+        </View>
+
+        {item.description && (
+          <Text style={styles.description} numberOfLines={2}>
+            {item.description}
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('BorrowRequest', { listing: item })}
+        >
+          <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.actionText}>Request</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Chat', {
+            recipientId: item.user.id,
+            listingId: item.id,
+          })}
+        >
+          <Ionicons name="chatbubble-outline" size={18} color={COLORS.textSecondary} />
+          <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Message</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderRequestItem = (item) => (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+      activeOpacity={0.7}
+    >
+      <View style={styles.cardHeader}>
+        <TouchableOpacity
+          style={styles.userInfo}
+          onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+        >
+          <Image
+            source={{ uri: item.user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+            style={styles.avatar}
+          />
+          <View style={styles.userMeta}>
+            <Text style={styles.userName}>
+              {item.user.firstName} {item.user.lastName}
+            </Text>
+            <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={[styles.typeBadge, styles.requestBadge]}>
+          <Ionicons name="search-outline" size={12} color={COLORS.secondary} />
+          <Text style={[styles.typeBadgeText, { color: COLORS.secondary }]}>Looking For</Text>
+        </View>
+      </View>
+
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+
+        {item.description && (
+          <Text style={styles.description} numberOfLines={3}>
+            {item.description}
+          </Text>
+        )}
+
+        {(item.neededFrom || item.neededUntil) && (
+          <View style={styles.dateRow}>
+            <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+            <Text style={styles.dateText}>
+              {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
+              {item.neededFrom && item.neededUntil && ' - '}
+              {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
+        >
+          <Ionicons name="hand-right-outline" size={18} color={COLORS.secondary} />
+          <Text style={[styles.actionText, { color: COLORS.secondary }]}>I Have This</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Chat', { recipientId: item.user.id })}
+        >
+          <Ionicons name="chatbubble-outline" size={18} color={COLORS.textSecondary} />
+          <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Message</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderItem = ({ item }) => {
+    if (item.type === 'listing') {
+      return renderListingItem(item);
+    }
+    return renderRequestItem(item);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Action Buttons Row */}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={styles.dropdownBtn}
+          onPress={() => setShowTypeMenu(true)}
+        >
+          <Text style={styles.dropdownBtnText}>
+            {activeFilter === 'all' ? 'All' : activeFilter === 'listings' ? 'Items' : 'Requests'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.dropdownBtn}
+          onPress={() => setShowFilterMenu(true)}
+        >
+          <Ionicons name="funnel-outline" size={16} color={COLORS.textSecondary} />
+          <Text style={styles.dropdownBtnText}>
+            {visibilityFilter === 'all' ? 'Filter' : VISIBILITY_OPTIONS.find(v => v.key === visibilityFilter)?.label}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => setShowActionMenu(true)}
+        >
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={styles.actionBtnText}>New</Text>
+          <Ionicons name="chevron-down" size={14} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search..."
+            placeholderTextColor={COLORS.textMuted}
+            value={search}
+            onChangeText={setSearch}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => { setSearch(''); setIsLoading(true); fetchFeed(1, false); }}>
+              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <FlatList
+        data={feed}
+        renderItem={renderItem}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+          />
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoadingMore && (
+            <View style={styles.loadingMore}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            </View>
+          )
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="construct-outline" size={64} color={COLORS.gray[700]} />
+            <Text style={styles.emptyTitle}>No activity yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Be the first to list an item or post a request!
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => navigation.navigate('CreateListing')}
+            >
+              <Text style={styles.emptyButtonText}>List an Item</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
+
+      {/* Type Menu Overlay */}
+      {showTypeMenu && (
+        <TouchableOpacity
+          style={styles.filterOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTypeMenu(false)}
+        >
+          <View style={styles.filterMenu}>
+            <Text style={styles.filterMenuTitle}>Show</Text>
+            {FILTER_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.filterMenuItem,
+                  activeFilter === option.key && styles.filterMenuItemActive,
+                ]}
+                onPress={() => {
+                  handleFilterChange(option.key);
+                  setShowTypeMenu(false);
+                }}
+              >
+                <View style={styles.menuItemRowSpaced}>
+                  <Text style={[
+                    styles.filterMenuItemText,
+                    activeFilter === option.key && styles.filterMenuItemTextActive,
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {activeFilter === option.key && (
+                    <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Filter Menu Overlay */}
+      {showFilterMenu && (
+        <TouchableOpacity
+          style={styles.filterOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterMenu(false)}
+        >
+          <View style={styles.filterMenu}>
+            <Text style={styles.filterMenuTitle}>Visibility</Text>
+            {VISIBILITY_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.filterMenuItem,
+                  visibilityFilter === option.key && styles.filterMenuItemActive,
+                ]}
+                onPress={() => {
+                  handleVisibilityChange(option.key);
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.menuItemRowSpaced}>
+                  <Text style={[
+                    styles.filterMenuItemText,
+                    visibilityFilter === option.key && styles.filterMenuItemTextActive,
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {visibilityFilter === option.key && (
+                    <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Action Menu Overlay */}
+      {showActionMenu && (
+        <TouchableOpacity
+          style={styles.filterOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionMenu(false)}
+        >
+          <View style={styles.filterMenu}>
+            <Text style={styles.filterMenuTitle}>Create</Text>
+            <TouchableOpacity
+              style={styles.filterMenuItem}
+              onPress={() => {
+                setShowActionMenu(false);
+                navigation.navigate('CreateListing');
+              }}
+            >
+              <View style={styles.menuItemRow}>
+                <Ionicons name="cube-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.filterMenuItemText}>List an Item</Text>
+              </View>
+              <Text style={styles.menuItemDesc}>Share something you own</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.filterMenuItem}
+              onPress={() => {
+                setShowActionMenu(false);
+                navigation.navigate('CreateRequest');
+              }}
+            >
+              <View style={styles.menuItemRow}>
+                <Ionicons name="search-outline" size={20} color={COLORS.secondary} />
+                <Text style={styles.filterMenuItemText}>Request an Item</Text>
+              </View>
+              <Text style={styles.menuItemDesc}>Ask neighbors for something</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
+    gap: 10,
+  },
+  dropdownBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.gray[700],
+  },
+  dropdownBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+  },
+  actionBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray[800],
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  filterOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  filterMenu: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.gray[700],
+    width: '100%',
+    maxWidth: 300,
+    overflow: 'hidden',
+  },
+  filterMenuTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  filterMenuItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray[800],
+  },
+  filterMenuItemActive: {
+    backgroundColor: COLORS.primary + '15',
+  },
+  filterMenuItemText: {
+    fontSize: 17,
+    color: COLORS.text,
+  },
+  filterMenuItemTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  menuItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  menuItemRowSpaced: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  menuItemDesc: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+    marginLeft: 30,
+  },
+  filterDoneButton: {
+    backgroundColor: COLORS.primary,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  filterDoneButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    paddingBottom: 8,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray[700],
+  },
+  userMeta: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  timeAgo: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  requestBadge: {
+    backgroundColor: COLORS.secondary + '15',
+  },
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  listingImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: COLORS.gray[800],
+  },
+  cardBody: {
+    padding: 12,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  listingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  conditionBadge: {
+    backgroundColor: COLORS.gray[800],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  conditionText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  freeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  priceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  description: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  dateText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray[800],
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  loadingMore: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyButton: {
+    marginTop: 24,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+});

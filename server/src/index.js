@@ -2,6 +2,10 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import rateLimit from 'express-rate-limit';
 import { logger } from './utils/logger.js';
 
@@ -18,6 +22,16 @@ import requestRoutes from './routes/requests.js';
 import messageRoutes from './routes/messages.js';
 import uploadRoutes from './routes/uploads.js';
 import rtoRoutes from './routes/rto.js';
+import discussionRoutes from './routes/discussions.js';
+import feedRoutes from './routes/feed.js';
+import sustainabilityRoutes from './routes/sustainability.js';
+import badgeRoutes from './routes/badges.js';
+import bundleRoutes from './routes/bundles.js';
+import circleRoutes from './routes/circles.js';
+import seasonalRoutes from './routes/seasonal.js';
+import availabilityRoutes from './routes/availability.js';
+import libraryRoutes from './routes/library.js';
+import subscriptionRoutes from './routes/subscriptions.js';
 
 const app = express();
 
@@ -27,29 +41,16 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:8081', 'http://localhost:19006'];
-
+// CORS configuration - allow all for development
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true,
   credentials: true,
 }));
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 500, // More lenient in dev
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -59,7 +60,7 @@ const limiter = rateLimit({
 // Stricter rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 attempts per 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 20 : 100, // More lenient in dev
   message: { error: 'Too many authentication attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -76,6 +77,9 @@ app.use('/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // Parse JSON for all other routes
 app.use(express.json({ limit: '10mb' }));
+
+// Serve uploaded files (for local development without S3)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Request logging
 app.use((req, res, next) => {
@@ -98,6 +102,16 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/rto', rtoRoutes);
+app.use('/api/feed', feedRoutes);
+app.use('/api/sustainability', sustainabilityRoutes);
+app.use('/api/badges', badgeRoutes);
+app.use('/api/bundles', bundleRoutes);
+app.use('/api/circles', circleRoutes);
+app.use('/api/seasonal', seasonalRoutes);
+app.use('/api/listings', availabilityRoutes);
+app.use('/api/library', libraryRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/listings', discussionRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // Health check
@@ -119,6 +133,7 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Borrowhood server running on port ${PORT}`);
+  logger.info(`Accessible at http://192.168.7.53:${PORT}`);
 });

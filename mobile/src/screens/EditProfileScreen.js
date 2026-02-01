@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +23,8 @@ export default function EditProfileScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -33,6 +36,19 @@ export default function EditProfileScreen({ navigation }) {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleChangePhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setSelectedPhoto(result.assets[0].uri);
+    }
   };
 
   const handleGetLocation = async () => {
@@ -75,7 +91,20 @@ export default function EditProfileScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      await api.updateProfile(formData);
+      let profileData = { ...formData };
+
+      // Upload new photo if selected
+      if (selectedPhoto) {
+        setIsUploadingPhoto(true);
+        try {
+          const photoUrl = await api.uploadImage(selectedPhoto, 'profiles');
+          profileData.profilePhotoUrl = photoUrl;
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+
+      await api.updateProfile(profileData);
       if (refreshUser) await refreshUser();
       Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
@@ -91,12 +120,15 @@ export default function EditProfileScreen({ navigation }) {
       <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarSection}>
           <Image
-            source={{ uri: user?.profilePhotoUrl || 'https://via.placeholder.com/100' }}
+            source={{ uri: selectedPhoto || user?.profilePhotoUrl || 'https://via.placeholder.com/100' }}
             style={styles.avatar}
           />
-          <TouchableOpacity style={styles.changePhotoButton}>
+          <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
             <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
+          {selectedPhoto && (
+            <Text style={styles.photoHint}>New photo will be saved when you save changes</Text>
+          )}
         </View>
 
         <View style={styles.form}>
@@ -215,7 +247,10 @@ export default function EditProfileScreen({ navigation }) {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={COLORS.background} />
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={COLORS.background} />
+              {isUploadingPhoto && <Text style={styles.uploadingText}>Uploading photo...</Text>}
+            </View>
           ) : (
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
@@ -250,6 +285,20 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 15,
     fontWeight: '600',
+  },
+  photoHint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 8,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadingText: {
+    color: COLORS.background,
+    fontSize: 14,
   },
   form: {
     padding: 16,

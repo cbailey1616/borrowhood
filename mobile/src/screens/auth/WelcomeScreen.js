@@ -1,17 +1,15 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../utils/config';
+
+const logo = require('../../../assets/logo.png');
 
 export default function WelcomeScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoIconText}>B</Text>
-          </View>
-          <Text style={styles.logoText}>Borrowhood</Text>
-          <Text style={styles.tagline}>Share tools with your neighbors</Text>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
         </View>
 
         <View style={styles.features}>
@@ -75,30 +73,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 64,
   },
-  logoIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  logoIconText: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: COLORS.background,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
+  logo: {
+    width: 336,
+    height: 120,
   },
   features: {
     gap: 20,

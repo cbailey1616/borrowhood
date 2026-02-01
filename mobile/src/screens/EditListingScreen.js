@@ -25,7 +25,7 @@ export default function EditListingScreen({ navigation, route }) {
     title: listing.title || '',
     description: listing.description || '',
     condition: listing.condition || 'good',
-    visibility: listing.visibility || 'neighborhood',
+    visibility: Array.isArray(listing.visibility) ? listing.visibility : [listing.visibility || 'close_friends'],
     isFree: listing.isFree ?? true,
     pricePerDay: listing.pricePerDay?.toString() || '',
     depositAmount: listing.depositAmount?.toString() || '',
@@ -240,18 +240,37 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
+        <Text style={styles.hint}>Select all that apply</Text>
         <View style={styles.options}>
-          {VISIBILITIES.map((visibility) => (
-            <TouchableOpacity
-              key={visibility}
-              style={[styles.option, formData.visibility === visibility && styles.optionActive]}
-              onPress={() => updateField('visibility', visibility)}
-            >
-              <Text style={[styles.optionText, formData.visibility === visibility && styles.optionTextActive]}>
-                {VISIBILITY_LABELS[visibility]}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {VISIBILITIES.map((visibility) => {
+            const isSelected = formData.visibility.includes(visibility);
+            return (
+              <TouchableOpacity
+                key={visibility}
+                style={[styles.option, isSelected && styles.optionActive]}
+                onPress={() => {
+                  const current = formData.visibility;
+                  if (isSelected) {
+                    if (current.length > 1) {
+                      updateField('visibility', current.filter(v => v !== visibility));
+                    }
+                  } else {
+                    updateField('visibility', [...current, visibility]);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={isSelected ? "#fff" : COLORS.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                  {VISIBILITY_LABELS[visibility]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 

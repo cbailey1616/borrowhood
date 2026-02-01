@@ -18,6 +18,7 @@
     "migrate:all": "psql borrowhood < migrations/001_initial_schema.sql && psql borrowhood < migrations/002_neighborhoods.sql && psql borrowhood < migrations/003_messaging_and_rto.sql"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "@aws-sdk/client-s3": "^3.540.0",
     "@aws-sdk/s3-request-presigner": "^3.540.0",
     "bcrypt": "^5.1.1",

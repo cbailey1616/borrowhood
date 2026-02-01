@@ -102,13 +102,18 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('EditProfile')}
           />
           <MenuItem
+            icon="★"
+            label="Subscription"
+            onPress={() => navigation.navigate('Subscription')}
+          />
+          <MenuItem
             icon="◖"
             label="Messages"
             onPress={() => navigation.navigate('Conversations')}
           />
           <MenuItem
             icon="•"
-            label="Close Friends"
+            label="Friends"
             onPress={() => navigation.navigate('Friends')}
           />
           <MenuItem
@@ -124,7 +129,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.menuGroup}>
           <MenuItem
             icon="⌂"
-            label="My Community"
+            label="My Neighborhood"
             onPress={() => navigation.navigate('MyCommunity')}
           />
           <MenuItem

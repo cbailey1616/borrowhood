@@ -11,6 +11,8 @@ const setAuthToken = (token) => {
 const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
 
+  console.log('API Request:', url); // Debug logging
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -35,6 +37,7 @@ const request = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
+    console.log('API Error:', error.message); // Debug logging
     throw new Error(error.message || 'Network error');
   }
 };
@@ -144,6 +147,15 @@ const updateListing = (id, data) =>
 
 const deleteListing = (id) =>
   del(`/listings/${id}`);
+
+const analyzeListingImage = (imageUrl) =>
+  post('/listings/analyze-image', { imageUrl });
+
+// ============================================
+// Feed
+// ============================================
+const getFeed = (params) =>
+  get('/feed', params);
 
 // ============================================
 // Transactions
@@ -274,21 +286,30 @@ const getPresignedUrl = (contentType, fileSize, category) =>
 const getPresignedUrls = (files, category) =>
   post('/uploads/presigned-urls', { files, category });
 
-const uploadToS3 = async (uploadUrl, fileUri, contentType) => {
+const uploadToS3 = async (uploadUrl, fileUri, contentType, isLocal = false) => {
   // Read file as blob for upload
   const response = await fetch(fileUri);
   const blob = await response.blob();
 
+  const headers = {
+    'Content-Type': contentType,
+  };
+
+  // Add auth token for local uploads
+  if (isLocal && authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
   const uploadResponse = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-    },
+    headers,
     body: blob,
   });
 
   if (!uploadResponse.ok) {
-    throw new Error('Failed to upload file to S3');
+    const errorText = await uploadResponse.text().catch(() => 'Unknown error');
+    console.log('Upload failed:', uploadResponse.status, errorText);
+    throw new Error('Failed to upload file');
   }
 
   return true;
@@ -302,10 +323,10 @@ const uploadImage = async (fileUri, category = 'listings') => {
   const fileSize = blob.size;
 
   // Get presigned URL
-  const { uploadUrl, publicUrl } = await getPresignedUrl(contentType, fileSize, category);
+  const { uploadUrl, publicUrl, isLocal } = await getPresignedUrl(contentType, fileSize, category);
 
-  // Upload to S3
-  await uploadToS3(uploadUrl, fileUri, contentType);
+  // Upload file
+  await uploadToS3(uploadUrl, fileUri, contentType, isLocal);
 
   return publicUrl;
 };
@@ -333,13 +354,127 @@ const uploadImages = async (fileUris, category = 'listings') => {
   // Upload all files in parallel
   await Promise.all(
     urls.map((urlInfo, index) =>
-      uploadToS3(urlInfo.uploadUrl, fileInfos[index].uri, fileInfos[index].contentType)
+      uploadToS3(urlInfo.uploadUrl, fileInfos[index].uri, fileInfos[index].contentType, urlInfo.isLocal)
     )
   );
 
   // Return public URLs
   return urls.map(u => u.publicUrl);
 };
+
+// ============================================
+// Discussions
+// ============================================
+const getDiscussions = (listingId, params) =>
+  get(`/listings/${listingId}/discussions`, params);
+
+const getDiscussionReplies = (listingId, postId, params) =>
+  get(`/listings/${listingId}/discussions/${postId}/replies`, params);
+
+const createDiscussionPost = (listingId, data) =>
+  post(`/listings/${listingId}/discussions`, data);
+
+const deleteDiscussionPost = (listingId, postId) =>
+  del(`/listings/${listingId}/discussions/${postId}`);
+
+// ============================================
+// Sustainability
+// ============================================
+const getSustainabilityStats = () =>
+  get('/sustainability/stats');
+
+const getCommunitySustainability = () =>
+  get('/sustainability/community');
+
+// ============================================
+// Badges
+// ============================================
+const getAllBadges = () =>
+  get('/badges');
+
+const getMyBadges = () =>
+  get('/badges/mine');
+
+const getUserBadges = (userId) =>
+  get(`/badges/user/${userId}`);
+
+const getLeaderboard = () =>
+  get('/badges/leaderboard');
+
+const checkBadges = () =>
+  post('/badges/check');
+
+// ============================================
+// Bundles
+// ============================================
+const getBundles = () =>
+  get('/bundles');
+
+const getMyBundles = () =>
+  get('/bundles/mine');
+
+const createBundle = (data) =>
+  post('/bundles', data);
+
+const deleteBundle = (id) =>
+  del(`/bundles/${id}`);
+
+// ============================================
+// Lending Circles
+// ============================================
+const getCircles = () =>
+  get('/circles');
+
+const getCircle = (id) =>
+  get(`/circles/${id}`);
+
+const createCircle = (data) =>
+  post('/circles', data);
+
+const inviteToCircle = (circleId, userId) =>
+  post(`/circles/${circleId}/invite`, { userId });
+
+const joinCircle = (circleId) =>
+  post(`/circles/${circleId}/join`);
+
+const leaveCircle = (circleId) =>
+  post(`/circles/${circleId}/leave`);
+
+// ============================================
+// Seasonal Suggestions
+// ============================================
+const getSeasonalSuggestions = () =>
+  get('/seasonal/suggestions');
+
+const getFeaturedSeasonal = () =>
+  get('/seasonal/featured');
+
+// ============================================
+// Availability Calendar
+// ============================================
+const getListingAvailability = (listingId, params) =>
+  get(`/listings/${listingId}/availability`, params);
+
+const setListingAvailability = (listingId, data) =>
+  post(`/listings/${listingId}/availability`, data);
+
+const checkAvailability = (listingId, startDate, endDate) =>
+  get(`/listings/${listingId}/check-availability`, { startDate, endDate });
+
+// ============================================
+// Community Library
+// ============================================
+const getLibraryItems = () =>
+  get('/library');
+
+const donateToLibrary = (listingId, conditionNotes) =>
+  post('/library/donate', { listingId, conditionNotes });
+
+const checkoutLibraryItem = (itemId, returnDate) =>
+  post(`/library/${itemId}/checkout`, { returnDate });
+
+const returnLibraryItem = (itemId) =>
+  post(`/library/${itemId}/return`);
 
 // ============================================
 // Stripe Connect
@@ -352,6 +487,27 @@ const createConnectAccount = () =>
 
 const getConnectOnboardingLink = (returnUrl) =>
   post('/users/me/connect-onboarding', { returnUrl });
+
+// ============================================
+// Subscriptions
+// ============================================
+const getSubscriptionTiers = () =>
+  get('/subscriptions/tiers');
+
+const getCurrentSubscription = () =>
+  get('/subscriptions/current');
+
+const subscribe = (tier, paymentMethodId) =>
+  post('/subscriptions/subscribe', { tier, paymentMethodId });
+
+const cancelSubscription = () =>
+  post('/subscriptions/cancel');
+
+const upgradeSubscription = (tier) =>
+  post('/subscriptions/upgrade', { tier });
+
+const checkSubscriptionAccess = (visibility) =>
+  get('/subscriptions/access-check', { visibility });
 
 // ============================================
 // Rent-to-Own
@@ -408,6 +564,9 @@ export default {
   createListing,
   updateListing,
   deleteListing,
+  analyzeListingImage,
+  // Feed
+  getFeed,
   // Transactions
   getTransactions,
   getTransaction,
@@ -458,6 +617,44 @@ export default {
   getConnectStatus,
   createConnectAccount,
   getConnectOnboardingLink,
+  // Discussions
+  getDiscussions,
+  getDiscussionReplies,
+  createDiscussionPost,
+  deleteDiscussionPost,
+  // Sustainability
+  getSustainabilityStats,
+  getCommunitySustainability,
+  // Badges
+  getAllBadges,
+  getMyBadges,
+  getUserBadges,
+  getLeaderboard,
+  checkBadges,
+  // Bundles
+  getBundles,
+  getMyBundles,
+  createBundle,
+  deleteBundle,
+  // Lending Circles
+  getCircles,
+  getCircle,
+  createCircle,
+  inviteToCircle,
+  joinCircle,
+  leaveCircle,
+  // Seasonal
+  getSeasonalSuggestions,
+  getFeaturedSeasonal,
+  // Availability
+  getListingAvailability,
+  setListingAvailability,
+  checkAvailability,
+  // Community Library
+  getLibraryItems,
+  donateToLibrary,
+  checkoutLibraryItem,
+  returnLibraryItem,
   // Rent-to-Own
   getRTOContracts,
   getRTOContract,
@@ -467,4 +664,11 @@ export default {
   cancelRTOContract,
   getRTOPayments,
   makeRTOPayment,
+  // Subscriptions
+  getSubscriptionTiers,
+  getCurrentSubscription,
+  subscribe,
+  cancelSubscription,
+  upgradeSubscription,
+  checkSubscriptionAccess,
 };

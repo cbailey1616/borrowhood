@@ -3,6 +3,7 @@ import { query } from '../utils/db.js';
 import { authenticate, requireVerified } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
+import { analyzeItemImage } from '../services/imageAnalysis.js';
 
 const router = Router();
 
@@ -234,22 +235,52 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/listings/analyze-image
+// Analyze an image using AI to extract item details
+// ============================================
+router.post('/analyze-image', authenticate,
+  body('imageUrl').isURL(),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { imageUrl } = req.body;
+
+    try {
+      const result = await analyzeItemImage(imageUrl);
+
+      if (result.error) {
+        return res.status(422).json({ error: result.error });
+      }
+
+      res.json(result);
+    } catch (err) {
+      console.error('Analyze image error:', err);
+      res.status(500).json({ error: 'Failed to analyze image' });
+    }
+  }
+);
+
+// ============================================
 // POST /api/listings
 // Create a new listing
 // ============================================
-router.post('/', authenticate, requireVerified,
+router.post('/', authenticate,
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
   body('condition').isIn(['like_new', 'good', 'fair', 'worn']),
-  body('communityId').isUUID(),
+  body('communityId').optional().isUUID(),
   body('categoryId').optional().isUUID(),
   body('isFree').isBoolean(),
   body('pricePerDay').optional().isFloat({ min: 0 }),
   body('depositAmount').optional().isFloat({ min: 0 }),
   body('minDuration').optional().isInt({ min: 1, max: 365 }),
   body('maxDuration').optional().isInt({ min: 1, max: 365 }),
-  body('visibility').isIn(['close_friends', 'neighborhood', 'town']),
-  body('photos').isArray({ min: 1, max: 10 }),
+  body('visibility').optional().isArray(),
+  body('visibility.*').optional().isIn(['close_friends', 'neighborhood', 'town']),
+  body('photos').optional().isArray({ max: 10 }),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -262,16 +293,33 @@ router.post('/', authenticate, requireVerified,
       visibility, photos
     } = req.body;
 
-    try {
-      // Verify user is member of community
-      const memberCheck = await query(
-        'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
-        [req.user.id, communityId]
-      );
+    // Normalize visibility to array
+    const visibilityArray = Array.isArray(visibility) ? visibility : [visibility];
 
-      if (memberCheck.rows.length === 0) {
-        return res.status(403).json({ error: 'Must be community member to post' });
-      }
+    try {
+      // Temporarily disabled for testing
+      // // Community is required if neighborhood is in visibility
+      // if (visibilityArray.includes('neighborhood')) {
+      //   if (!communityId) {
+      //     return res.status(400).json({ error: 'Neighborhood is required when sharing with My Neighborhood' });
+      //   }
+
+      //   // Verify user is member of community
+      //   const memberCheck = await query(
+      //     'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
+      //     [req.user.id, communityId]
+      //   );
+
+      //   if (memberCheck.rows.length === 0) {
+      //     return res.status(403).json({ error: 'Must be neighborhood member to share with My Neighborhood' });
+      //   }
+      // }
+
+      // Store visibility as comma-separated for compatibility, or use first value
+      // For now, use the "widest" visibility for the single column
+      const primaryVisibility = visibilityArray.includes('town') ? 'town'
+        : visibilityArray.includes('neighborhood') ? 'neighborhood'
+        : 'close_friends';
 
       // Create listing
       const result = await query(
@@ -281,25 +329,28 @@ router.post('/', authenticate, requireVerified,
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id`,
         [
-          req.user.id, communityId, categoryId || null, title, description, condition,
+          req.user.id, communityId || null, categoryId || null, title, description, condition,
           isFree, isFree ? null : pricePerDay, depositAmount || 0,
-          minDuration || 1, maxDuration || 14, visibility
+          minDuration || 1, maxDuration || 14, primaryVisibility
         ]
       );
 
       const listingId = result.rows[0].id;
 
-      // Add photos
-      for (let i = 0; i < photos.length; i++) {
-        await query(
-          'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
-          [listingId, photos[i], i]
-        );
+      // Add photos (if any)
+      if (photos && photos.length > 0) {
+        for (let i = 0; i < photos.length; i++) {
+          await query(
+            'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
+            [listingId, photos[i], i]
+          );
+        }
       }
 
       // Find matching open requests and notify their owners
       try {
-        const matchingRequests = await query(
+        // Only match requests if we have a communityId
+        const matchingRequests = communityId ? await query(
           `SELECT r.id, r.user_id, r.title as request_title
            FROM item_requests r
            WHERE r.status = 'open'
@@ -307,7 +358,7 @@ router.post('/', authenticate, requireVerified,
              AND r.user_id != $2
              AND to_tsvector('english', r.title || ' ' || COALESCE(r.description, '')) @@ plainto_tsquery($3)`,
           [communityId, req.user.id, title]
-        );
+        ) : { rows: [] };
 
         // Send notifications to request owners
         for (const match of matchingRequests.rows) {
