@@ -16,13 +16,16 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Get user's location and friends
+    // Get user's location, verified city, and subscription tier
     const userResult = await query(
-      'SELECT location, city, state FROM users WHERE id = $1',
+      'SELECT location, city, state, subscription_tier, is_verified FROM users WHERE id = $1',
       [req.user.id]
     );
     const userLocation = userResult.rows[0]?.location;
     const userCity = userResult.rows[0]?.city;
+    const userTier = userResult.rows[0]?.subscription_tier || 'free';
+    const isVerified = userResult.rows[0]?.is_verified;
+    const canAccessTown = userTier === 'plus' && isVerified && userCity;
 
     const friendsResult = await query(
       'SELECT friend_id FROM friendships WHERE user_id = $1',
@@ -67,15 +70,30 @@ router.get('/', authenticate, async (req, res) => {
       params.push(search);
     }
 
-    // Visibility: user can see their own, close_friends if friend, or neighborhood/town
-    whereConditions.push(`(
-      l.owner_id = $${paramIndex} OR
-      l.visibility = 'town' OR
-      l.visibility = 'neighborhood' OR
-      (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
-    )`);
-    params.push(req.user.id, friendIds.length > 0 ? friendIds : [null]);
-    paramIndex += 2;
+    // Visibility rules:
+    // - Own listings: always visible
+    // - close_friends: visible if owner is in user's friends list
+    // - neighborhood: visible if in same community (handled elsewhere)
+    // - town: visible only if user has Explorer+ subscription, is verified, and owner is in same city
+    if (canAccessTown) {
+      whereConditions.push(`(
+        l.owner_id = $${paramIndex} OR
+        (l.visibility = 'town' AND owner.city = $${paramIndex + 1} AND owner.city IS NOT NULL) OR
+        l.visibility = 'neighborhood' OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
+      )`);
+      params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
+      paramIndex += 3;
+    } else {
+      // User can't access town listings - only show friends and neighborhood
+      whereConditions.push(`(
+        l.owner_id = $${paramIndex} OR
+        l.visibility = 'neighborhood' OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
+      )`);
+      params.push(req.user.id, friendIds.length > 0 ? friendIds : [null]);
+      paramIndex += 2;
+    }
 
     // Don't show user's own listings in browse
     whereConditions.push(`l.owner_id != $${paramIndex++}`);
@@ -89,6 +107,7 @@ router.get('/', authenticate, async (req, res) => {
     const result = await query(
       `SELECT l.*, u.first_name, u.last_name, u.profile_photo_url,
               u.lender_rating, u.lender_rating_count, u.city as owner_city,
+              u.total_transactions, u.status as owner_status,
               owner.location as owner_location,
               cat.name as category_name,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
@@ -125,6 +144,8 @@ router.get('/', authenticate, async (req, res) => {
         rating: parseFloat(l.lender_rating) || 0,
         ratingCount: l.lender_rating_count,
         city: l.owner_city,
+        totalTransactions: l.total_transactions || 0,
+        isVerified: l.owner_status === 'verified',
       },
       createdAt: l.created_at,
     })));
@@ -180,7 +201,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = await query(
       `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.profile_photo_url,
               u.lender_rating, u.lender_rating_count, u.total_transactions,
-              c.name as category_name
+              u.status as owner_status, c.name as category_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id
        LEFT JOIN categories c ON l.category_id = c.id
@@ -223,7 +244,8 @@ router.get('/:id', authenticate, async (req, res) => {
         profilePhotoUrl: l.profile_photo_url,
         rating: parseFloat(l.lender_rating) || 0,
         ratingCount: l.lender_rating_count,
-        totalTransactions: l.total_transactions,
+        totalTransactions: l.total_transactions || 0,
+        isVerified: l.owner_status === 'verified',
       },
       isOwner: l.owner_id === req.user.id,
       createdAt: l.created_at,
@@ -278,9 +300,9 @@ router.post('/', authenticate,
   body('depositAmount').optional().isFloat({ min: 0 }),
   body('minDuration').optional().isInt({ min: 1, max: 365 }),
   body('maxDuration').optional().isInt({ min: 1, max: 365 }),
-  body('visibility').optional().isArray(),
-  body('visibility.*').optional().isIn(['close_friends', 'neighborhood', 'town']),
-  body('photos').optional().isArray({ max: 10 }),
+  body('visibility').isArray({ min: 1 }),
+  body('visibility.*').isIn(['close_friends', 'neighborhood', 'town']),
+  body('photos').isArray({ min: 1, max: 10 }),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -297,23 +319,55 @@ router.post('/', authenticate,
     const visibilityArray = Array.isArray(visibility) ? visibility : [visibility];
 
     try {
-      // Temporarily disabled for testing
-      // // Community is required if neighborhood is in visibility
-      // if (visibilityArray.includes('neighborhood')) {
-      //   if (!communityId) {
-      //     return res.status(400).json({ error: 'Neighborhood is required when sharing with My Neighborhood' });
-      //   }
+      // Check subscription for paid rentals
+      if (!isFree && pricePerDay > 0) {
+        const subCheck = await query(
+          'SELECT subscription_tier FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const tier = subCheck.rows[0]?.subscription_tier || 'free';
 
-      //   // Verify user is member of community
-      //   const memberCheck = await query(
-      //     'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
-      //     [req.user.id, communityId]
-      //   );
+        if (tier !== 'plus') {
+          return res.status(403).json({
+            error: 'Plus subscription required to charge for rentals',
+            code: 'PLUS_REQUIRED',
+            requiredTier: 'plus',
+          });
+        }
+      }
 
-      //   if (memberCheck.rows.length === 0) {
-      //     return res.status(403).json({ error: 'Must be neighborhood member to share with My Neighborhood' });
-      //   }
-      // }
+      // Check subscription for town visibility
+      if (visibilityArray.includes('town')) {
+        const subCheck = await query(
+          'SELECT subscription_tier FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const tier = subCheck.rows[0]?.subscription_tier || 'free';
+
+        if (tier !== 'plus') {
+          return res.status(403).json({
+            error: 'Plus subscription required for town-wide visibility',
+            code: 'PLUS_REQUIRED',
+            requiredTier: 'plus',
+          });
+        }
+      }
+      // Community is required if neighborhood is in visibility
+      if (visibilityArray.includes('neighborhood')) {
+        if (!communityId) {
+          return res.status(400).json({ error: 'Neighborhood is required when sharing with My Neighborhood' });
+        }
+
+        // Verify user is member of community
+        const memberCheck = await query(
+          'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
+          [req.user.id, communityId]
+        );
+
+        if (memberCheck.rows.length === 0) {
+          return res.status(403).json({ error: 'Must be neighborhood member to share with My Neighborhood' });
+        }
+      }
 
       // Store visibility as comma-separated for compatibility, or use first value
       // For now, use the "widest" visibility for the single column

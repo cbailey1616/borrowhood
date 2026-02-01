@@ -6,10 +6,34 @@ import Stripe from 'stripe';
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Tier structure:
+// - free: Friends + Neighborhood, free listings only
+// - plus ($1/mo): Town visibility + can charge for rentals
+
 const TIER_PRICES = {
   free: 0,
-  neighborhood: 100, // $1.00
-  town: 200, // $2.00
+  plus: 100, // $1.00
+};
+
+const TIER_INFO = {
+  free: {
+    name: 'Free',
+    description: 'Share with friends and neighbors',
+    features: [
+      'Borrow from friends',
+      'Borrow from your neighborhood',
+      'List items for free',
+    ],
+  },
+  plus: {
+    name: 'Plus',
+    description: 'Unlock your whole town',
+    features: [
+      'Everything in Free',
+      'Borrow from anyone in town',
+      'Charge rental fees',
+    ],
+  },
 };
 
 // ============================================
@@ -18,21 +42,16 @@ const TIER_PRICES = {
 // ============================================
 router.get('/tiers', authenticate, async (req, res) => {
   try {
-    const result = await query(
-      `SELECT tier, price_cents, name, description, features
-       FROM subscription_pricing
-       WHERE is_active = true
-       ORDER BY price_cents`
-    );
+    const tiers = Object.entries(TIER_INFO).map(([tier, info]) => ({
+      tier,
+      priceCents: TIER_PRICES[tier],
+      priceDisplay: TIER_PRICES[tier] === 0 ? 'Free' : `$${(TIER_PRICES[tier] / 100).toFixed(0)}/mo`,
+      name: info.name,
+      description: info.description,
+      features: info.features,
+    }));
 
-    res.json(result.rows.map(t => ({
-      tier: t.tier,
-      priceCents: t.price_cents,
-      priceDisplay: t.price_cents === 0 ? 'Free' : `$${(t.price_cents / 100).toFixed(0)}/mo`,
-      name: t.name,
-      description: t.description,
-      features: t.features,
-    })));
+    res.json(tiers);
   } catch (err) {
     console.error('Get tiers error:', err);
     res.status(500).json({ error: 'Failed to get tiers' });
@@ -46,11 +65,8 @@ router.get('/tiers', authenticate, async (req, res) => {
 router.get('/current', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT u.subscription_tier, u.subscription_started_at, u.subscription_expires_at,
-              sp.name, sp.price_cents, sp.features
-       FROM users u
-       LEFT JOIN subscription_pricing sp ON u.subscription_tier = sp.tier
-       WHERE u.id = $1`,
+      `SELECT subscription_tier, subscription_started_at, subscription_expires_at
+       FROM users WHERE id = $1`,
       [req.user.id]
     );
 
@@ -58,16 +74,21 @@ router.get('/current', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const sub = result.rows[0];
+    const user = result.rows[0];
+    const tier = user.subscription_tier || 'free';
+    const info = TIER_INFO[tier] || TIER_INFO.free;
+    const isPlus = tier === 'plus';
 
     res.json({
-      tier: sub.subscription_tier,
-      name: sub.name,
-      priceCents: sub.price_cents,
-      features: sub.features,
-      startedAt: sub.subscription_started_at,
-      expiresAt: sub.subscription_expires_at,
-      isActive: !sub.subscription_expires_at || new Date(sub.subscription_expires_at) > new Date(),
+      tier,
+      name: info.name,
+      priceCents: TIER_PRICES[tier] || 0,
+      features: info.features,
+      startedAt: user.subscription_started_at,
+      expiresAt: user.subscription_expires_at,
+      isActive: !user.subscription_expires_at || new Date(user.subscription_expires_at) > new Date(),
+      canAccessTown: isPlus,
+      canCharge: isPlus,
     });
   } catch (err) {
     console.error('Get current subscription error:', err);
@@ -77,23 +98,39 @@ router.get('/current', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/subscriptions/subscribe
-// Subscribe to a tier
+// Subscribe to Plus tier
 // ============================================
 router.post('/subscribe', authenticate, async (req, res) => {
-  const { tier, paymentMethodId } = req.body;
-
-  if (!['neighborhood', 'town'].includes(tier)) {
-    return res.status(400).json({ error: 'Invalid tier' });
-  }
+  const { paymentMethodId } = req.body;
 
   try {
     const user = await query(
-      `SELECT email, stripe_customer_id, subscription_tier FROM users WHERE id = $1`,
+      `SELECT email, stripe_customer_id, subscription_tier, is_verified, city FROM users WHERE id = $1`,
       [req.user.id]
     );
 
     if (user.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Plus requires identity verification (for town matching and rental payments)
+    if (!user.rows[0].is_verified) {
+      return res.status(403).json({
+        error: 'Identity verification required for Plus subscription',
+        code: 'VERIFICATION_REQUIRED',
+      });
+    }
+
+    // Must have a verified city for town features
+    if (!user.rows[0].city) {
+      return res.status(403).json({
+        error: 'Verified address required for Plus subscription. Please complete identity verification.',
+        code: 'VERIFICATION_REQUIRED',
+      });
+    }
+
+    if (user.rows[0].subscription_tier === 'plus') {
+      return res.status(400).json({ error: 'Already subscribed to Plus' });
     }
 
     let customerId = user.rows[0].stripe_customer_id;
@@ -121,13 +158,9 @@ router.post('/subscribe', authenticate, async (req, res) => {
     }
 
     // Create subscription
-    const priceId = tier === 'neighborhood'
-      ? process.env.STRIPE_PRICE_NEIGHBORHOOD
-      : process.env.STRIPE_PRICE_TOWN;
-
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: priceId }],
+      items: [{ price: process.env.STRIPE_PRICE_PLUS }],
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
     });
@@ -135,19 +168,12 @@ router.post('/subscribe', authenticate, async (req, res) => {
     // Update user's subscription
     await query(
       `UPDATE users SET
-        subscription_tier = $1,
+        subscription_tier = 'plus',
         subscription_started_at = NOW(),
         subscription_expires_at = NULL,
-        stripe_subscription_id = $2
-       WHERE id = $3`,
-      [tier, subscription.id, req.user.id]
-    );
-
-    // Log subscription history
-    await query(
-      `INSERT INTO subscription_history (user_id, tier, action, amount_cents, stripe_payment_id)
-       VALUES ($1, $2, 'subscribe', $3, $4)`,
-      [req.user.id, tier, TIER_PRICES[tier], subscription.id]
+        stripe_subscription_id = $1
+       WHERE id = $2`,
+      [subscription.id, req.user.id]
     );
 
     res.json({
@@ -189,13 +215,6 @@ router.post('/cancel', authenticate, async (req, res) => {
       [subscription.current_period_end, req.user.id]
     );
 
-    // Log cancellation
-    await query(
-      `INSERT INTO subscription_history (user_id, tier, action)
-       VALUES ($1, (SELECT subscription_tier FROM users WHERE id = $1), 'cancel')`,
-      [req.user.id]
-    );
-
     res.json({
       message: 'Subscription will be cancelled at end of billing period',
       expiresAt: new Date(subscription.current_period_end * 1000).toISOString(),
@@ -207,70 +226,11 @@ router.post('/cancel', authenticate, async (req, res) => {
 });
 
 // ============================================
-// POST /api/subscriptions/upgrade
-// Upgrade to a higher tier
-// ============================================
-router.post('/upgrade', authenticate, async (req, res) => {
-  const { tier } = req.body;
-
-  if (tier !== 'town') {
-    return res.status(400).json({ error: 'Can only upgrade to town tier' });
-  }
-
-  try {
-    const user = await query(
-      `SELECT stripe_subscription_id, subscription_tier FROM users WHERE id = $1`,
-      [req.user.id]
-    );
-
-    if (!user.rows[0]?.stripe_subscription_id) {
-      return res.status(400).json({ error: 'No active subscription to upgrade' });
-    }
-
-    if (user.rows[0].subscription_tier === 'town') {
-      return res.status(400).json({ error: 'Already on town tier' });
-    }
-
-    // Get current subscription
-    const subscription = await stripe.subscriptions.retrieve(
-      user.rows[0].stripe_subscription_id
-    );
-
-    // Update to new price
-    await stripe.subscriptions.update(subscription.id, {
-      items: [{
-        id: subscription.items.data[0].id,
-        price: process.env.STRIPE_PRICE_TOWN,
-      }],
-      proration_behavior: 'create_prorations',
-    });
-
-    // Update user
-    await query(
-      `UPDATE users SET subscription_tier = 'town' WHERE id = $1`,
-      [req.user.id]
-    );
-
-    // Log upgrade
-    await query(
-      `INSERT INTO subscription_history (user_id, tier, action, amount_cents)
-       VALUES ($1, 'town', 'upgrade', $2)`,
-      [req.user.id, TIER_PRICES.town - TIER_PRICES.neighborhood]
-    );
-
-    res.json({ success: true, tier: 'town' });
-  } catch (err) {
-    console.error('Upgrade error:', err);
-    res.status(500).json({ error: 'Failed to upgrade' });
-  }
-});
-
-// ============================================
 // GET /api/subscriptions/access-check
-// Check if user can access a visibility level
+// Check if user can access a feature
 // ============================================
 router.get('/access-check', authenticate, async (req, res) => {
-  const { visibility } = req.query;
+  const { feature } = req.query; // 'town' or 'rentals'
 
   try {
     const result = await query(
@@ -279,36 +239,50 @@ router.get('/access-check', authenticate, async (req, res) => {
     );
 
     const tier = result.rows[0]?.subscription_tier || 'free';
+    const isPlus = tier === 'plus';
 
-    let canAccess = false;
-    let canCharge = false;
+    let hasAccess = false;
 
-    switch (visibility) {
-      case 'close_friends':
-        canAccess = true;
-        canCharge = tier !== 'free';
-        break;
-      case 'neighborhood':
-        canAccess = tier === 'neighborhood' || tier === 'town';
-        canCharge = canAccess;
-        break;
+    switch (feature) {
       case 'town':
-        canAccess = tier === 'town';
-        canCharge = canAccess;
+      case 'rentals':
+        hasAccess = isPlus;
         break;
+      default:
+        hasAccess = true;
     }
 
     res.json({
       tier,
-      visibility,
-      canAccess,
-      canCharge,
-      upgradeRequired: !canAccess,
-      requiredTier: visibility === 'town' ? 'town' : visibility === 'neighborhood' ? 'neighborhood' : 'free',
+      feature,
+      hasAccess,
+      upgradeRequired: !hasAccess,
+      requiredTier: 'plus',
     });
   } catch (err) {
     console.error('Access check error:', err);
     res.status(500).json({ error: 'Failed to check access' });
+  }
+});
+
+// ============================================
+// GET /api/subscriptions/can-charge
+// Quick check if user can charge for rentals
+// ============================================
+router.get('/can-charge', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT subscription_tier FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    const tier = result.rows[0]?.subscription_tier || 'free';
+    const canCharge = tier === 'plus';
+
+    res.json({ canCharge, tier });
+  } catch (err) {
+    console.error('Can charge check error:', err);
+    res.status(500).json({ error: 'Failed to check' });
   }
 });
 

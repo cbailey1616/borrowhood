@@ -21,7 +21,6 @@ import webhookRoutes from './routes/webhooks.js';
 import requestRoutes from './routes/requests.js';
 import messageRoutes from './routes/messages.js';
 import uploadRoutes from './routes/uploads.js';
-import rtoRoutes from './routes/rto.js';
 import discussionRoutes from './routes/discussions.js';
 import feedRoutes from './routes/feed.js';
 import sustainabilityRoutes from './routes/sustainability.js';
@@ -32,6 +31,7 @@ import seasonalRoutes from './routes/seasonal.js';
 import availabilityRoutes from './routes/availability.js';
 import libraryRoutes from './routes/library.js';
 import subscriptionRoutes from './routes/subscriptions.js';
+import savedRoutes from './routes/saved.js';
 
 const app = express();
 
@@ -81,6 +81,15 @@ app.use(express.json({ limit: '10mb' }));
 // Serve uploaded files (for local development without S3)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Serve legal pages (terms, privacy)
+app.use(express.static(path.join(__dirname, '../public')));
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/terms.html'));
+});
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/privacy.html'));
+});
+
 // Request logging
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`, {
@@ -101,7 +110,6 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/uploads', uploadRoutes);
-app.use('/api/rto', rtoRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/sustainability', sustainabilityRoutes);
 app.use('/api/badges', badgeRoutes);
@@ -111,6 +119,7 @@ app.use('/api/seasonal', seasonalRoutes);
 app.use('/api/listings', availabilityRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/saved', savedRoutes);
 app.use('/api/listings', discussionRoutes);
 app.use('/webhooks', webhookRoutes);
 

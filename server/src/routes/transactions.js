@@ -33,9 +33,9 @@ router.post('/', authenticate,
     const { listingId, startDate, endDate, message } = req.body;
 
     try {
-      // Get listing details
+      // Get listing details with lender's city
       const listing = await query(
-        `SELECT l.*, u.stripe_connect_account_id as lender_stripe_id
+        `SELECT l.*, u.stripe_connect_account_id as lender_stripe_id, u.city as lender_city
          FROM listings l
          JOIN users u ON l.owner_id = u.id
          WHERE l.id = $1`,
@@ -48,12 +48,40 @@ router.post('/', authenticate,
 
       const item = listing.rows[0];
 
-      // Require identity verification for town-level listings
-      if (item.visibility === 'town' && req.user.status !== 'verified') {
-        return res.status(403).json({
-          error: 'Identity verification required to borrow from town listings',
-          code: 'VERIFICATION_REQUIRED',
-        });
+      // For town-level listings, verify:
+      // 1. User is verified
+      // 2. User has Explorer+ subscription
+      // 3. User's verified city matches lender's city
+      if (item.visibility === 'town') {
+        const borrowerInfo = await query(
+          'SELECT is_verified, city, subscription_tier FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const borrower = borrowerInfo.rows[0];
+
+        if (!borrower?.is_verified) {
+          return res.status(403).json({
+            error: 'Identity verification required to borrow from town listings',
+            code: 'VERIFICATION_REQUIRED',
+          });
+        }
+
+        const tier = borrower.subscription_tier || 'free';
+        if (tier !== 'plus') {
+          return res.status(403).json({
+            error: 'Plus subscription required to borrow from town listings',
+            code: 'PLUS_REQUIRED',
+            requiredTier: 'plus',
+          });
+        }
+
+        // City matching - both must have verified cities that match
+        if (!borrower.city || !item.lender_city || borrower.city !== item.lender_city) {
+          return res.status(403).json({
+            error: 'This item is only available to verified users in the same town',
+            code: 'TOWN_MISMATCH',
+          });
+        }
       }
 
       if (item.owner_id === req.user.id) {
