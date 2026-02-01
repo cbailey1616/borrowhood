@@ -206,6 +206,63 @@ router.get('/search', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/users/contacts/match
+// Find users matching phone contacts
+// ============================================
+router.post('/contacts/match', authenticate, async (req, res) => {
+  const { phoneNumbers } = req.body;
+
+  if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+    return res.json([]);
+  }
+
+  try {
+    // Normalize phone numbers (remove all non-digits)
+    const normalizedNumbers = phoneNumbers
+      .map(p => p.replace(/\D/g, ''))
+      .filter(p => p.length >= 10)
+      .map(p => p.slice(-10)); // Get last 10 digits
+
+    if (normalizedNumbers.length === 0) {
+      return res.json([]);
+    }
+
+    // Find users with matching phone numbers
+    const placeholders = normalizedNumbers.map((_, i) => `$${i + 2}`).join(', ');
+    const result = await query(
+      `SELECT id, first_name, last_name, profile_photo_url, city, state, phone,
+              RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) as normalized_phone
+       FROM users
+       WHERE id != $1
+         AND phone IS NOT NULL
+         AND RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) IN (${placeholders})`,
+      [req.user.id, ...normalizedNumbers]
+    );
+
+    // Check which users are already friends
+    const friendResult = await query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      [req.user.id]
+    );
+    const friendIds = new Set(friendResult.rows.map(r => r.friend_id));
+
+    res.json(result.rows.map(u => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      profilePhotoUrl: u.profile_photo_url,
+      city: u.city,
+      state: u.state,
+      isFriend: friendIds.has(u.id),
+      matchedPhone: u.normalized_phone,
+    })));
+  } catch (err) {
+    console.error('Match contacts error:', err);
+    res.status(500).json({ error: 'Failed to match contacts' });
+  }
+});
+
+// ============================================
 // POST /api/users/me/friends
 // Add close friend
 // ============================================

@@ -22,6 +22,7 @@
         "NSCameraUsageDescription": "Borrowhood needs camera access to take photos of items you want to share with your neighbors.",
         "NSPhotoLibraryUsageDescription": "Borrowhood needs photo library access to select photos of items you want to share.",
         "NSLocationWhenInUseUsageDescription": "Borrowhood uses your location to find items and neighbors near you.",
+        "NSContactsUsageDescription": "Borrowhood uses your contacts to help you find friends who are already on the app.",
         "NSUserTrackingUsageDescription": "This helps us improve your experience and show relevant items in your neighborhood.",
         "UIBackgroundModes": [
           "remote-notification"
@@ -84,7 +85,13 @@
           "locationAlwaysAndWhenInUsePermission": "Borrowhood uses your location to show items and neighbors near you."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Borrowhood uses your contacts to help you find friends who are already on the app."
+        }
+      ]
     ],
     "extra": {
       "eas": {

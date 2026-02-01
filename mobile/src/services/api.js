@@ -116,6 +116,9 @@ const getUserRatings = (userId) =>
 const searchUsers = (query) =>
   get('/users/search', { q: query });
 
+const matchContacts = (phoneNumbers) =>
+  post('/users/contacts/match', { phoneNumbers });
+
 // ============================================
 // Communities
 // ============================================
@@ -537,6 +540,7 @@ export default {
   removeFriend,
   getUserRatings,
   searchUsers,
+  matchContacts,
   // Communities
   getCommunities,
   getCommunity,
