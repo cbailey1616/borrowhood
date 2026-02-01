@@ -92,6 +92,12 @@ const getMe = () =>
 const startIdentityVerification = () =>
   post('/auth/verify-identity');
 
+const forgotPassword = (email) =>
+  post('/auth/forgot-password', { email });
+
+const resetPassword = (email, code, newPassword) =>
+  post('/auth/reset-password', { email, code, newPassword });
+
 // ============================================
 // Users
 // ============================================
@@ -532,6 +538,8 @@ export default {
   register,
   getMe,
   startIdentityVerification,
+  forgotPassword,
+  resetPassword,
   // Users
   getUser,
   updateProfile,

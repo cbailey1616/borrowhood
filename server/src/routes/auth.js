@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { query } from '../utils/db.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
 import { createStripeCustomer, createIdentityVerificationSession } from '../services/stripe.js';
@@ -206,5 +207,103 @@ router.get('/me', authenticate, async (req, res) => {
     res.status(500).json({ error: 'Failed to get user' });
   }
 });
+
+// ============================================
+// POST /api/auth/forgot-password
+// Request password reset
+// ============================================
+router.post('/forgot-password',
+  body('email').isEmail().normalizeEmail(),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+
+    try {
+      // Check if user exists
+      const result = await query('SELECT id, email FROM users WHERE email = $1', [email]);
+
+      // Always return success to prevent email enumeration
+      if (result.rows.length === 0) {
+        return res.json({ message: 'If an account exists, a reset code has been sent' });
+      }
+
+      const user = result.rows[0];
+
+      // Generate a 6-digit reset code
+      const resetToken = crypto.randomInt(100000, 999999).toString();
+      const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+      // Store reset token
+      await query(
+        'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
+        [resetToken, resetExpires, user.id]
+      );
+
+      // TODO: Send email with reset code
+      // For now, log it (in production, integrate with email service)
+      console.log(`Password reset code for ${email}: ${resetToken}`);
+
+      res.json({ message: 'If an account exists, a reset code has been sent' });
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      res.status(500).json({ error: 'Failed to process request' });
+    }
+  }
+);
+
+// ============================================
+// POST /api/auth/reset-password
+// Reset password with code
+// ============================================
+router.post('/reset-password',
+  body('email').isEmail().normalizeEmail(),
+  body('code').isLength({ min: 6, max: 6 }),
+  body('newPassword').isLength({ min: 8 }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, code, newPassword } = req.body;
+
+    try {
+      // Find user with valid reset token
+      const result = await query(
+        `SELECT id FROM users
+         WHERE email = $1
+           AND password_reset_token = $2
+           AND password_reset_expires > NOW()`,
+        [email, code]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(400).json({ error: 'Invalid or expired reset code' });
+      }
+
+      const user = result.rows[0];
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+
+      // Update password and clear reset token
+      await query(
+        `UPDATE users
+         SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL
+         WHERE id = $2`,
+        [passwordHash, user.id]
+      );
+
+      res.json({ message: 'Password reset successfully' });
+    } catch (err) {
+      console.error('Reset password error:', err);
+      res.status(500).json({ error: 'Failed to reset password' });
+    }
+  }
+);
 
 export default router;

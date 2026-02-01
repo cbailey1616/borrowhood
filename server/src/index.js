@@ -60,7 +60,7 @@ const limiter = rateLimit({
 // Stricter rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 20 : 100, // More lenient in dev
+  max: process.env.NODE_ENV === 'production' ? 50 : 200, // Increased limits
   message: { error: 'Too many authentication attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
