@@ -35,6 +35,8 @@ export default function EditProfileScreen({ navigation }) {
     bio: user?.bio || '',
     city: user?.city || '',
     state: user?.state || '',
+    latitude: user?.latitude || null,
+    longitude: user?.longitude || null,
   });
 
   const updateField = (field, value) => {
@@ -104,6 +106,20 @@ export default function EditProfileScreen({ navigation }) {
     setIsLoading(true);
     try {
       let profileData = { ...formData };
+
+      // If city/state are set but lat/lng are missing, geocode the address
+      if (profileData.city && profileData.state && (!profileData.latitude || !profileData.longitude)) {
+        try {
+          const geocoded = await Location.geocodeAsync(`${profileData.city}, ${profileData.state}`);
+          if (geocoded && geocoded.length > 0) {
+            profileData.latitude = geocoded[0].latitude;
+            profileData.longitude = geocoded[0].longitude;
+          }
+        } catch (geoError) {
+          console.log('Geocoding failed:', geoError);
+          // Continue without coordinates - user can use "Use Current" later
+        }
+      }
 
       // Upload new photo if selected
       if (selectedPhoto) {
