@@ -104,10 +104,13 @@ router.patch('/me', authenticate,
       values.push(profilePhotoUrl);
     }
     // Update location if lat/lng provided
-    if (latitude !== undefined && longitude !== undefined) {
-      updates.push(`location = ST_SetSRID(ST_MakePoint($${paramIndex}, $${paramIndex + 1}), 4326)::geography`);
-      values.push(longitude, latitude); // PostGIS uses lon, lat order
-      paramIndex += 2;
+    if (latitude !== undefined) {
+      updates.push(`latitude = $${paramIndex++}`);
+      values.push(latitude);
+    }
+    if (longitude !== undefined) {
+      updates.push(`longitude = $${paramIndex++}`);
+      values.push(longitude);
     }
 
     if (updates.length === 0) {
@@ -157,10 +160,56 @@ router.get('/me/friends', authenticate, async (req, res) => {
 });
 
 // ============================================
+// GET /api/users/search
+// Search for users to add as friends
+// ============================================
+router.get('/search', authenticate, async (req, res) => {
+  const { q } = req.query;
+
+  if (!q || q.length < 2) {
+    return res.json([]);
+  }
+
+  try {
+    const result = await query(
+      `SELECT id, first_name, last_name, profile_photo_url, city, state
+       FROM users
+       WHERE id != $1
+         AND (
+           LOWER(first_name || ' ' || last_name) LIKE LOWER($2)
+           OR LOWER(email) LIKE LOWER($2)
+         )
+       LIMIT 20`,
+      [req.user.id, `%${q}%`]
+    );
+
+    // Check which users are already friends
+    const friendResult = await query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      [req.user.id]
+    );
+    const friendIds = new Set(friendResult.rows.map(r => r.friend_id));
+
+    res.json(result.rows.map(u => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      profilePhotoUrl: u.profile_photo_url,
+      city: u.city,
+      state: u.state,
+      isFriend: friendIds.has(u.id),
+    })));
+  } catch (err) {
+    console.error('Search users error:', err);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+// ============================================
 // POST /api/users/me/friends
 // Add close friend
 // ============================================
-router.post('/me/friends', authenticate, requireVerified,
+router.post('/me/friends', authenticate,
   body('friendId').isUUID(),
   async (req, res) => {
     const errors = validationResult(req);

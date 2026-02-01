@@ -883,9 +883,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    padding: 20,
+    paddingTop: 100,
+    paddingHorizontal: 20,
   },
   overlayCard: {
     backgroundColor: COLORS.surface,

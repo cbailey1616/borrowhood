@@ -113,6 +113,9 @@ const removeFriend = (friendId) =>
 const getUserRatings = (userId) =>
   get(`/users/${userId}/ratings`);
 
+const searchUsers = (query) =>
+  get('/users/search', { q: query });
+
 // ============================================
 // Communities
 // ============================================
@@ -533,6 +536,7 @@ export default {
   addFriend,
   removeFriend,
   getUserRatings,
+  searchUsers,
   // Communities
   getCommunities,
   getCommunity,
