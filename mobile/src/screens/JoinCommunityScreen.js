@@ -10,6 +10,8 @@ import {
   TextInput,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
@@ -17,8 +19,10 @@ import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
 
+const NEEDS_LOCATION_MESSAGE = 'Set your location in your profile to discover neighborhoods nearby.';
+
 export default function JoinCommunityScreen({ navigation }) {
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showError } = useError();
   const [neighborhoods, setNeighborhoods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +32,7 @@ export default function JoinCommunityScreen({ navigation }) {
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [showVerifyIdentity, setShowVerifyIdentity] = useState(false);
+  const [needsLocation, setNeedsLocation] = useState(false);
 
   useEffect(() => {
     fetchNeighborhoods();
@@ -36,8 +40,15 @@ export default function JoinCommunityScreen({ navigation }) {
 
   const fetchNeighborhoods = async () => {
     try {
-      const data = await api.getCommunities();
-      setNeighborhoods(data || []);
+      // Check if user has location set
+      if (!user?.latitude || !user?.longitude) {
+        setNeedsLocation(true);
+        setNeighborhoods([]);
+      } else {
+        setNeedsLocation(false);
+        const data = await api.getCommunities();
+        setNeighborhoods(data || []);
+      }
     } catch (error) {
       console.error('Failed to fetch neighborhoods:', error);
     } finally {
@@ -89,10 +100,14 @@ export default function JoinCommunityScreen({ navigation }) {
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      const errorMsg = error.message?.toLowerCase() || '';
-      if (errorMsg.includes('verif') || errorMsg.includes('identity')) {
+      const errorCode = error.code || '';
+      if (errorCode === 'LOCATION_REQUIRED') {
         setShowCreateModal(false);
-        setShowVerifyIdentity(true);
+        showError({
+          message: 'Please set your location in your profile first.',
+          type: 'validation',
+        });
+        navigation.navigate('EditProfile');
       } else {
         showError({
           message: error.message || 'Unable to create neighborhood. Please check your connection and try again.',
@@ -122,7 +137,7 @@ export default function JoinCommunityScreen({ navigation }) {
         <View style={styles.neighborhoodInfo}>
           <Text style={styles.neighborhoodName}>{item.name}</Text>
           <Text style={styles.neighborhoodStats}>
-            {item.memberCount || 0} neighbors
+            {item.memberCount || 0} neighbors{item.distanceMiles ? ` • ${item.distanceMiles} mi away` : ''}
           </Text>
         </View>
       </View>
@@ -206,44 +221,26 @@ export default function JoinCommunityScreen({ navigation }) {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="home-outline" size={48} color={COLORS.gray[600]} />
-            <Text style={styles.emptyText}>No neighborhoods found</Text>
-            <Text style={styles.emptySubtext}>
-              Be the first to create your neighborhood!
+            <Ionicons name={needsLocation ? "location-outline" : "home-outline"} size={48} color={COLORS.gray[600]} />
+            <Text style={styles.emptyText}>
+              {needsLocation ? 'Location Required' : 'No neighborhoods nearby'}
             </Text>
+            <Text style={styles.emptySubtext}>
+              {needsLocation
+                ? 'Set your location in your profile to discover neighborhoods within 1 mile.'
+                : 'Be the first to create a neighborhood in your area!'}
+            </Text>
+            {needsLocation && (
+              <TouchableOpacity
+                style={styles.setLocationButton}
+                onPress={() => navigation.navigate('EditProfile')}
+              >
+                <Text style={styles.setLocationButtonText}>Set Location</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
-
-      {/* Verify Identity Overlay */}
-      {showVerifyIdentity && (
-        <View style={styles.overlay}>
-          <View style={styles.overlayCard}>
-            <View style={styles.overlayIconContainer}>
-              <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
-            </View>
-            <Text style={styles.overlayTitle}>Verify Your Identity</Text>
-            <Text style={styles.overlayText}>
-              To create a neighborhood, we need to verify your identity first. This helps keep our community safe and trusted.
-            </Text>
-            <TouchableOpacity
-              style={styles.overlayButton}
-              onPress={() => {
-                setShowVerifyIdentity(false);
-                navigation.navigate('VerifyIdentity');
-              }}
-            >
-              <Text style={styles.overlayButtonText}>Verify Now</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.overlayDismiss}
-              onPress={() => setShowVerifyIdentity(false)}
-            >
-              <Text style={styles.overlayDismissText}>Maybe Later</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
       {/* Create Modal */}
       <Modal
@@ -252,7 +249,10 @@ export default function JoinCommunityScreen({ navigation }) {
         transparent={true}
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Neighborhood</Text>
@@ -295,7 +295,7 @@ export default function JoinCommunityScreen({ navigation }) {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -449,6 +449,19 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 4,
     textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  setLocationButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  setLocationButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   // Modal styles
   modalOverlay: {

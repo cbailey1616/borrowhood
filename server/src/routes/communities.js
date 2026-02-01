@@ -7,28 +7,67 @@ const router = Router();
 
 // ============================================
 // GET /api/communities
-// List communities (filtered by location)
+// List communities within 1 mile of user's location
 // ============================================
 router.get('/', authenticate, async (req, res) => {
-  const { city, state, search } = req.query;
+  const { search, member } = req.query;
 
   try {
-    let whereConditions = ['c.is_active = true'];
-    let params = [];
-    let paramIndex = 1;
+    // Get user's saved location
+    const userResult = await query(
+      'SELECT latitude, longitude FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const user = userResult.rows[0];
 
-    if (city) {
-      whereConditions.push(`LOWER(c.city) = LOWER($${paramIndex++})`);
-      params.push(city);
+    // If requesting only joined communities, skip distance filter
+    if (member === 'true') {
+      const result = await query(
+        `SELECT c.*,
+                (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                true as is_member
+         FROM communities c
+         JOIN community_memberships m ON m.community_id = c.id AND m.user_id = $1
+         WHERE c.is_active = true
+         ORDER BY c.name`,
+        [req.user.id]
+      );
+
+      return res.json(result.rows.map(c => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        city: c.city,
+        state: c.state,
+        memberCount: parseInt(c.member_count),
+        listingCount: parseInt(c.listing_count),
+        isMember: true,
+      })));
     }
 
-    if (state) {
-      whereConditions.push(`LOWER(c.state) = LOWER($${paramIndex++})`);
-      params.push(state);
+    // If user has no location, return empty (they need to set location first)
+    if (!user.latitude || !user.longitude) {
+      return res.json([]);
     }
+
+    // Find communities within 1 mile (1609 meters)
+    // Using Haversine formula approximation
+    const MILES_TO_DEGREES = 1 / 69.0; // Approximate degrees per mile
+    const radiusDegrees = 1 * MILES_TO_DEGREES;
+
+    let whereConditions = [
+      'c.is_active = true',
+      'c.latitude IS NOT NULL',
+      'c.longitude IS NOT NULL',
+      `ABS(c.latitude - $1) < $3`,
+      `ABS(c.longitude - $2) < $3`
+    ];
+    let params = [user.latitude, user.longitude, radiusDegrees, req.user.id];
 
     if (search) {
-      whereConditions.push(`c.name ILIKE $${paramIndex++}`);
+      whereConditions.push(`c.name ILIKE $5`);
       params.push(`%${search}%`);
     }
 
@@ -36,11 +75,12 @@ router.get('/', authenticate, async (req, res) => {
       `SELECT c.*,
               (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
               (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
-              EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $${paramIndex}) as is_member
+              EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $4) as is_member,
+              SQRT(POW(c.latitude - $1, 2) + POW(c.longitude - $2, 2)) * 69 as distance_miles
        FROM communities c
        WHERE ${whereConditions.join(' AND ')}
-       ORDER BY c.name`,
-      [...params, req.user.id]
+       ORDER BY distance_miles, c.name`,
+      params
     );
 
     res.json(result.rows.map(c => ({
@@ -53,6 +93,7 @@ router.get('/', authenticate, async (req, res) => {
       memberCount: parseInt(c.member_count),
       listingCount: parseInt(c.listing_count),
       isMember: c.is_member,
+      distanceMiles: parseFloat(c.distance_miles).toFixed(2),
     })));
   } catch (err) {
     console.error('Get communities error:', err);
@@ -231,12 +272,10 @@ router.get('/:id/members', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/communities
-// Request to create a new community (for areas without one)
+// Create a new neighborhood (creator becomes moderator)
 // ============================================
-router.post('/', authenticate, requireVerified,
+router.post('/', authenticate,
   body('name').trim().isLength({ min: 3, max: 255 }),
-  body('city').trim().notEmpty(),
-  body('state').trim().notEmpty(),
   body('description').optional().isLength({ max: 1000 }),
   async (req, res) => {
     const errors = validationResult(req);
@@ -244,45 +283,96 @@ router.post('/', authenticate, requireVerified,
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, city, state, description } = req.body;
+    const { name, description } = req.body;
 
     try {
-      // Check if community exists for this city
-      const existing = await query(
-        'SELECT id FROM communities WHERE LOWER(city) = LOWER($1) AND LOWER(state) = LOWER($2)',
-        [city, state]
+      // Get creator's location from profile
+      const userResult = await query(
+        'SELECT city, state, latitude, longitude FROM users WHERE id = $1',
+        [req.user.id]
       );
+      const user = userResult.rows[0];
 
-      if (existing.rows.length > 0) {
+      if (!user.latitude || !user.longitude) {
         return res.status(400).json({
-          error: 'A community already exists for this area',
-          existingId: existing.rows[0].id,
+          error: 'Please set your location in your profile before creating a neighborhood',
+          code: 'LOCATION_REQUIRED'
         });
       }
 
-      // Create community with requester as organizer
-      const slug = `${city.toLowerCase().replace(/\s+/g, '-')}-${state.toLowerCase()}`;
+      if (!user.city || !user.state) {
+        return res.status(400).json({
+          error: 'Please set your city and state in your profile before creating a neighborhood',
+          code: 'LOCATION_REQUIRED'
+        });
+      }
 
+      // Create slug from name
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+
+      // Create community at creator's location
       const result = await query(
-        `INSERT INTO communities (name, slug, city, state, description)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO communities (name, slug, city, state, description, latitude, longitude)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
-        [name, slug, city, state, description]
+        [name, uniqueSlug, user.city, user.state, description, user.latitude, user.longitude]
       );
 
-      // Add creator as organizer
+      // Add creator as organizer (moderator)
       await query(
         `INSERT INTO community_memberships (user_id, community_id, role)
          VALUES ($1, $2, 'organizer')`,
         [req.user.id, result.rows[0].id]
       );
 
-      res.status(201).json({ id: result.rows[0].id, slug });
+      res.status(201).json({ id: result.rows[0].id, slug: uniqueSlug });
     } catch (err) {
       console.error('Create community error:', err);
       res.status(500).json({ error: 'Failed to create community' });
     }
   }
 );
+
+// ============================================
+// POST /api/communities/:id/add-admin
+// Add another user as admin/organizer (only current organizers can do this)
+// ============================================
+router.post('/:id/add-admin', authenticate, async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    // Check if requester is an organizer
+    const membership = await query(
+      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+
+    if (membership.rows.length === 0 || membership.rows[0].role !== 'organizer') {
+      return res.status(403).json({ error: 'Only organizers can add admins' });
+    }
+
+    // Check if target user is a member
+    const targetMembership = await query(
+      'SELECT id FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [req.params.id, userId]
+    );
+
+    if (targetMembership.rows.length === 0) {
+      return res.status(400).json({ error: 'User must be a member first' });
+    }
+
+    // Promote to organizer
+    await query(
+      `UPDATE community_memberships SET role = 'organizer' WHERE community_id = $1 AND user_id = $2`,
+      [req.params.id, userId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Add admin error:', err);
+    res.status(500).json({ error: 'Failed to add admin' });
+  }
+});
 
 export default router;
