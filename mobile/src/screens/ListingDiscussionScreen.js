@@ -9,14 +9,17 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
+  InputAccessoryView,
   Platform,
   Keyboard,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
+
+const INPUT_ACCESSORY_ID = 'discussionInput';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
   const { listingId, listing, autoFocus } = route.params;
@@ -289,72 +292,81 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     );
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-    >
-        {/* Listing Header */}
-        {listing && (
-          <View style={styles.listingHeader}>
-            <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
-          </View>
-        )}
-
-        <FlatList
-          data={posts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray[600]} />
-              <Text style={styles.emptyTitle}>No questions yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Be the first to ask a question about this item
-              </Text>
-            </View>
-          }
-        />
-
-        {/* Compose Input */}
-        <View style={styles.composeContainer}>
-          {replyingTo && (
-            <View style={styles.replyingToBar}>
-              <Text style={styles.replyingToText}>
-                Replying to {replyingTo.user.firstName}
-              </Text>
-              <TouchableOpacity onPress={cancelReply}>
-                <Ionicons name="close" size={18} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          )}
-          <View style={styles.inputRow}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={newComment}
-              onChangeText={setNewComment}
-              placeholder={replyingTo ? 'Write a reply...' : 'Ask a question...'}
-              placeholderTextColor={COLORS.textMuted}
-              multiline
-              maxLength={2000}
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={!newComment.trim() || isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="send" size={18} color="#fff" />
-              )}
-            </TouchableOpacity>
-          </View>
+  const renderInputBar = () => (
+    <View style={styles.composeContainer}>
+      {replyingTo && (
+        <View style={styles.replyingToBar}>
+          <Text style={styles.replyingToText}>
+            Replying to {replyingTo.user.firstName}
+          </Text>
+          <TouchableOpacity onPress={cancelReply}>
+            <Ionicons name="close" size={18} color={COLORS.textSecondary} />
+          </TouchableOpacity>
         </View>
-    </KeyboardAvoidingView>
+      )}
+      <View style={styles.inputRow}>
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={newComment}
+          onChangeText={setNewComment}
+          placeholder={replyingTo ? 'Write a reply...' : 'Ask a question...'}
+          placeholderTextColor={COLORS.textMuted}
+          multiline
+          maxLength={2000}
+          inputAccessoryViewID={Platform.OS === 'ios' ? INPUT_ACCESSORY_ID : undefined}
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={!newComment.trim() || isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="send" size={18} color="#fff" />
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {/* Listing Header */}
+      {listing && (
+        <View style={styles.listingHeader}>
+          <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+        </View>
+      )}
+
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray[600]} />
+            <Text style={styles.emptyTitle}>No questions yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Be the first to ask a question about this item
+            </Text>
+          </View>
+        }
+      />
+
+      {/* Input - rendered normally on Android, via InputAccessoryView on iOS */}
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={INPUT_ACCESSORY_ID}>
+          {renderInputBar()}
+        </InputAccessoryView>
+      ) : (
+        renderInputBar()
+      )}
+    </View>
   );
 }
 

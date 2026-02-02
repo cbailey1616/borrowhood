@@ -172,8 +172,8 @@ router.post('/verify-identity', authenticate, async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, email, first_name, last_name, profile_photo_url, bio,
-              city, state, status, borrower_rating, borrower_rating_count,
+      `SELECT id, email, first_name, last_name, phone, profile_photo_url, bio,
+              city, state, latitude, longitude, status, borrower_rating, borrower_rating_count,
               lender_rating, lender_rating_count, total_transactions,
               stripe_identity_verified_at
        FROM users WHERE id = $1`,
@@ -190,10 +190,13 @@ router.get('/me', authenticate, async (req, res) => {
       email: user.email,
       firstName: user.first_name,
       lastName: user.last_name,
+      phone: user.phone,
       profilePhotoUrl: user.profile_photo_url,
       bio: user.bio,
       city: user.city,
       state: user.state,
+      latitude: user.latitude ? parseFloat(user.latitude) : null,
+      longitude: user.longitude ? parseFloat(user.longitude) : null,
       status: user.status,
       isVerified: user.status === 'verified',
       borrowerRating: parseFloat(user.borrower_rating) || 0,

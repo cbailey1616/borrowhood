@@ -5,16 +5,15 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Image,
   Alert,
   ActivityIndicator,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -148,12 +147,12 @@ export default function EditProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      <KeyboardAwareScrollView
+        style={styles.scrollView}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       >
-      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarSection}>
           <Image
             source={{ uri: selectedPhoto || user?.profilePhotoUrl || 'https://via.placeholder.com/100' }}
@@ -274,7 +273,6 @@ export default function EditProfileScreen({ navigation }) {
             <Text style={styles.infoNote}>Email cannot be changed</Text>
           </View>
         </View>
-      </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
@@ -292,7 +290,7 @@ export default function EditProfileScreen({ navigation }) {
           )}
         </TouchableOpacity>
       </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

@@ -3,13 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Image,
   Alert,
   ActivityIndicator,
+  ScrollView,
+  Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
@@ -168,7 +170,13 @@ export default function EditListingScreen({ navigation, route }) {
   const totalPhotos = existingPhotosToShow.length + newPhotos.length;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAwareScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      enableOnAndroid={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Photos */}
       <View style={styles.section}>
         <Text style={styles.label}>Photos *</Text>
@@ -450,7 +458,7 @@ export default function EditListingScreen({ navigation, route }) {
           <Text style={styles.submitButtonText}>Save Changes</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -29,7 +29,8 @@
     "testflight": {
       "distribution": "store",
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "autoIncrement": "buildNumber"
       }
     },
     "production": {
@@ -45,6 +46,13 @@
     }
   },
   "submit": {
+    "testflight": {
+      "ios": {
+        "appleId": "cbailey1616@gmail.com",
+        "ascAppId": "6758581435",
+        "appleTeamId": "8H5NL2H27M"
+      }
+    },
     "production": {
       "ios": {
         "appleId": "cbailey1616@gmail.com",

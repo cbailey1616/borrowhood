@@ -9,10 +9,10 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Keyboard,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
@@ -231,12 +231,14 @@ export default function CreateListingScreen({ navigation }) {
   // This prompt only shows if communityId is null - which we now allow for non-neighborhood visibility
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+    <View style={styles.container}>
+    <KeyboardAwareScrollView
+      style={styles.scrollContainer}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
     >
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Photos */}
       <View style={styles.section}>
         <Text style={styles.label}>Photos *</Text>
@@ -445,7 +447,7 @@ export default function CreateListingScreen({ navigation }) {
         )}
       </TouchableOpacity>
 
-    </ScrollView>
+    </KeyboardAwareScrollView>
 
     {/* Neighborhood Join Overlay */}
     {showJoinCommunity && (
@@ -556,7 +558,7 @@ export default function CreateListingScreen({ navigation }) {
         </View>
       </View>
     )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
