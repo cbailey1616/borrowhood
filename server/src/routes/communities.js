@@ -24,6 +24,7 @@ router.get('/', authenticate, async (req, res) => {
     if (member === 'true') {
       const result = await query(
         `SELECT c.*,
+                m.role,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
                 (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
                 true as is_member
@@ -44,6 +45,7 @@ router.get('/', authenticate, async (req, res) => {
         memberCount: parseInt(c.member_count),
         listingCount: parseInt(c.listing_count),
         isMember: true,
+        role: c.role,
       })));
     }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ export default function FriendsScreen({ navigation }) {
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  const [contactsFetched, setContactsFetched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
@@ -109,6 +110,7 @@ export default function FriendsScreen({ navigation }) {
       console.error('Failed to fetch contacts:', error);
     } finally {
       setIsLoadingContacts(false);
+      setContactsFetched(true);
     }
   }, []);
 
@@ -119,19 +121,17 @@ export default function FriendsScreen({ navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchFriends();
-      if (activeTab === 'contacts') {
-        fetchContactMatches();
-      }
+      // Don't refetch contacts on every focus - it causes flashing
     });
     return unsubscribe;
-  }, [navigation, fetchFriends, fetchContactMatches, activeTab]);
+  }, [navigation, fetchFriends]);
 
-  // Fetch contacts when switching to contacts tab
+  // Fetch contacts when switching to contacts tab (only once)
   useEffect(() => {
-    if (activeTab === 'contacts' && contactMatches.length === 0 && !isLoadingContacts) {
+    if (activeTab === 'contacts' && !contactsFetched && !isLoadingContacts) {
       fetchContactMatches();
     }
-  }, [activeTab, contactMatches.length, isLoadingContacts, fetchContactMatches]);
+  }, [activeTab, contactsFetched, isLoadingContacts, fetchContactMatches]);
 
   // Search for users
   useEffect(() => {
@@ -159,9 +159,20 @@ export default function FriendsScreen({ navigation }) {
     setIsRefreshing(true);
     fetchFriends();
     if (activeTab === 'contacts') {
+      setContactsFetched(false); // Allow refetch on manual pull-to-refresh
       fetchContactMatches();
     }
   };
+
+  // Memoize combined contacts list to prevent re-renders
+  const contactsData = useMemo(() => {
+    // Add stable keys to non-user contacts
+    const inviteContacts = nonUserContacts.slice(0, 10).map((contact, idx) => ({
+      ...contact,
+      _inviteKey: `invite-${contact.phone?.replace(/\D/g, '').slice(-10) || idx}`,
+    }));
+    return [...contactMatches, ...inviteContacts];
+  }, [contactMatches, nonUserContacts]);
 
   const handleAddFriend = async (user) => {
     setAddingId(user.id);
@@ -438,11 +449,11 @@ export default function FriendsScreen({ navigation }) {
             </View>
           ) : (
             <FlatList
-              data={[...contactMatches, ...nonUserContacts.slice(0, 10)]}
+              data={contactsData}
               renderItem={({ item }) =>
                 item.id ? renderContactItem({ item }) : renderInviteItem({ item })
               }
-              keyExtractor={(item, index) => item.id || `invite-${index}`}
+              keyExtractor={(item) => item.id || item._inviteKey}
               contentContainerStyle={styles.listContent}
               refreshControl={
                 <RefreshControl

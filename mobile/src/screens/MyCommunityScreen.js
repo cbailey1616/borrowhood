@@ -30,13 +30,15 @@ export default function MyCommunityScreen({ navigation }) {
       const myCommunities = await api.getCommunities({ member: 'true' });
       setCommunities(myCommunities || []);
 
-      // Select the first community by default
+      // Select the first community by default if none selected
       if (myCommunities && myCommunities.length > 0) {
-        const firstCommunity = myCommunities[0];
-        setSelectedCommunity(firstCommunity);
+        const communityToSelect = selectedCommunity
+          ? myCommunities.find(c => c.id === selectedCommunity.id) || myCommunities[0]
+          : myCommunities[0];
+        setSelectedCommunity(communityToSelect);
 
         // Fetch members for the selected community
-        const membersData = await api.getCommunityMembers(firstCommunity.id, { limit: 20 });
+        const membersData = await api.getCommunityMembers(communityToSelect.id, { limit: 20 });
         setMembers(membersData.members || membersData);
       }
     } catch (error) {
@@ -44,6 +46,16 @@ export default function MyCommunityScreen({ navigation }) {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+    }
+  }, [selectedCommunity?.id]);
+
+  const selectCommunity = useCallback(async (community) => {
+    setSelectedCommunity(community);
+    try {
+      const membersData = await api.getCommunityMembers(community.id, { limit: 20 });
+      setMembers(membersData.members || membersData);
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
     }
   }, []);
 
@@ -118,6 +130,43 @@ export default function MyCommunityScreen({ navigation }) {
         />
       }
     >
+      {/* Community Selector - show when user has multiple neighborhoods */}
+      {communities.length > 1 && (
+        <View style={styles.communitySelector}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {communities.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[
+                  styles.communitySelectorItem,
+                  c.id === selectedCommunity?.id && styles.communitySelectorItemActive
+                ]}
+                onPress={() => selectCommunity(c)}
+              >
+                <Text
+                  style={[
+                    styles.communitySelectorText,
+                    c.id === selectedCommunity?.id && styles.communitySelectorTextActive
+                  ]}
+                  numberOfLines={1}
+                >
+                  {c.name}
+                </Text>
+                {c.role === 'organizer' && (
+                  <Ionicons name="shield-checkmark" size={14} color={c.id === selectedCommunity?.id ? '#fff' : COLORS.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.addCommunityButton}
+              onPress={() => navigation.navigate('JoinCommunity')}
+            >
+              <Ionicons name="add" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
+
       {/* Community Header */}
       <View style={styles.header}>
         {community.imageUrl ? (
@@ -166,10 +215,17 @@ export default function MyCommunityScreen({ navigation }) {
               style={styles.memberCard}
               onPress={() => navigation.navigate('UserProfile', { id: member.id })}
             >
-              <Image
-                source={{ uri: member.profilePhotoUrl || 'https://via.placeholder.com/60' }}
-                style={styles.memberAvatar}
-              />
+              <View style={styles.memberAvatarContainer}>
+                <Image
+                  source={{ uri: member.profilePhotoUrl || 'https://via.placeholder.com/60' }}
+                  style={styles.memberAvatar}
+                />
+                {member.role === 'organizer' && (
+                  <View style={styles.modBadge}>
+                    <Ionicons name="shield-checkmark" size={12} color="#fff" />
+                  </View>
+                )}
+              </View>
               <Text style={styles.memberName} numberOfLines={1}>
                 {member.firstName}
               </Text>
@@ -220,6 +276,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  communitySelector: {
+    backgroundColor: COLORS.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray[800],
+  },
+  communitySelectorItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray[800],
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    gap: 6,
+  },
+  communitySelectorItemActive: {
+    backgroundColor: COLORS.primary,
+  },
+  communitySelectorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    maxWidth: 120,
+  },
+  communitySelectorTextActive: {
+    color: '#fff',
+  },
+  addCommunityButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.gray[800],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noCommunityContainer: {
     flex: 1,
@@ -333,11 +426,27 @@ const styles = StyleSheet.create({
     marginRight: 16,
     width: 70,
   },
+  memberAvatarContainer: {
+    position: 'relative',
+  },
   memberAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
     backgroundColor: COLORS.gray[700],
+  },
+  modBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
   },
   memberName: {
     fontSize: 12,
