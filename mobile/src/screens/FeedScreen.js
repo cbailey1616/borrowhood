@@ -190,20 +190,25 @@ export default function FeedScreen({ navigation }) {
       <View style={styles.cardActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('BorrowRequest', { listing: item })}
+          onPress={() => navigation.navigate('ListingDiscussion', {
+            listingId: item.id,
+            listing: item,
+          })}
         >
-          <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
-          <Text style={styles.actionText}>Request</Text>
+          <Ionicons name="chatbubbles-outline" size={18} color={COLORS.textSecondary} />
+          <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Discuss</Text>
         </TouchableOpacity>
+        <View style={styles.actionDivider} />
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => navigation.navigate('Chat', {
             recipientId: item.user.id,
             listingId: item.id,
+            listing: item,
           })}
         >
-          <Ionicons name="chatbubble-outline" size={18} color={COLORS.textSecondary} />
-          <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Message</Text>
+          <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.actionText}>Message</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -792,6 +797,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     gap: 6,
+  },
+  actionDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: COLORS.gray[800],
   },
   actionText: {
     fontSize: 14,

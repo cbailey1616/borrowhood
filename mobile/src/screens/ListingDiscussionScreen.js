@@ -9,17 +9,13 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  InputAccessoryView,
+  KeyboardAvoidingView,
   Platform,
-  Keyboard,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
-
-const INPUT_ACCESSORY_ID = 'discussionInput';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
   const { listingId, listing, autoFocus } = route.params;
@@ -314,7 +310,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           placeholderTextColor={COLORS.textMuted}
           multiline
           maxLength={2000}
-          inputAccessoryViewID={Platform.OS === 'ios' ? INPUT_ACCESSORY_ID : undefined}
         />
         <TouchableOpacity
           style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
@@ -332,7 +327,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       {/* Listing Header */}
       {listing && (
         <View style={styles.listingHeader}>
@@ -358,15 +357,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         }
       />
 
-      {/* Input - rendered normally on Android, via InputAccessoryView on iOS */}
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={INPUT_ACCESSORY_ID}>
-          {renderInputBar()}
-        </InputAccessoryView>
-      ) : (
-        renderInputBar()
-      )}
-    </View>
+      {/* Input Bar */}
+      {renderInputBar()}
+    </KeyboardAvoidingView>
   );
 }
 

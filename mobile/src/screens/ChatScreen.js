@@ -7,7 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  InputAccessoryView,
+  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
@@ -15,8 +15,6 @@ import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
-
-const INPUT_ACCESSORY_ID = 'chatInput';
 
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, recipientId, listingId, listing: passedListing } = route.params;
@@ -164,34 +162,12 @@ export default function ChatScreen({ route, navigation }) {
     );
   }
 
-  const renderInputBar = () => (
-    <View style={styles.inputContainer}>
-      <TextInput
-        style={styles.input}
-        value={newMessage}
-        onChangeText={setNewMessage}
-        placeholder="Type a message..."
-        placeholderTextColor={COLORS.textMuted}
-        multiline
-        maxLength={2000}
-        inputAccessoryViewID={Platform.OS === 'ios' ? INPUT_ACCESSORY_ID : undefined}
-      />
-      <TouchableOpacity
-        style={[styles.sendButton, (!newMessage.trim() || isSending) && styles.sendButtonDisabled]}
-        onPress={handleSend}
-        disabled={!newMessage.trim() || isSending}
-      >
-        {isSending ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Ionicons name="send" size={20} color="#fff" />
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       {/* Listing Context Header */}
       {conversation?.listing && (
         <TouchableOpacity
@@ -232,15 +208,30 @@ export default function ChatScreen({ route, navigation }) {
         }
       />
 
-      {/* Input - rendered normally on Android, via InputAccessoryView on iOS */}
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={INPUT_ACCESSORY_ID}>
-          {renderInputBar()}
-        </InputAccessoryView>
-      ) : (
-        renderInputBar()
-      )}
-    </View>
+      {/* Input Bar */}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          value={newMessage}
+          onChangeText={setNewMessage}
+          placeholder="Type a message..."
+          placeholderTextColor={COLORS.textMuted}
+          multiline
+          maxLength={2000}
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, (!newMessage.trim() || isSending) && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={!newMessage.trim() || isSending}
+        >
+          {isSending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="send" size={20} color="#fff" />
+          )}
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
