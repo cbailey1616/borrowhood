@@ -15,7 +15,8 @@
     "db:stop": "pg_ctl -D .pg-data stop",
     "db:status": "pg_ctl -D .pg-data status",
     "migrate": "psql borrowhood < migrations/001_initial_schema.sql",
-    "migrate:all": "psql borrowhood < migrations/001_initial_schema.sql && psql borrowhood < migrations/002_neighborhoods.sql && psql borrowhood < migrations/003_messaging_and_rto.sql"
+    "migrate:all": "psql borrowhood < migrations/001_initial_schema.sql && psql borrowhood < migrations/002_neighborhoods.sql && psql borrowhood < migrations/003_messaging_and_rto.sql",
+    "demo:update": "node scripts/update-demo-password.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
