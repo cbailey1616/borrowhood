@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../utils/config';
 
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, recipientId, listingId, listing: passedListing } = route.params;
@@ -125,6 +125,7 @@ export default function ChatScreen({ route, navigation }) {
   const renderMessage = ({ item, index }) => {
     const showDate = index === 0 ||
       formatDate(messages[index - 1].createdAt) !== formatDate(item.createdAt);
+    const otherUser = conversation?.otherUser;
 
     return (
       <View>
@@ -134,21 +135,32 @@ export default function ChatScreen({ route, navigation }) {
           </View>
         )}
         <View style={[
-          styles.messageBubble,
-          item.isOwnMessage ? styles.ownMessage : styles.otherMessage
+          styles.messageRow,
+          item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
         ]}>
-          <Text style={[
-            styles.messageText,
-            item.isOwnMessage ? styles.ownMessageText : styles.otherMessageText
+          {!item.isOwnMessage && (
+            <Image
+              source={{ uri: otherUser?.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+              style={styles.messageAvatar}
+            />
+          )}
+          <View style={[
+            styles.messageBubble,
+            item.isOwnMessage ? styles.ownMessage : styles.otherMessage
           ]}>
-            {item.content}
-          </Text>
-          <Text style={[
-            styles.messageTime,
-            item.isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime
-          ]}>
-            {formatTime(item.createdAt)}
-          </Text>
+            <Text style={[
+              styles.messageText,
+              item.isOwnMessage ? styles.ownMessageText : styles.otherMessageText
+            ]}>
+              {item.content}
+            </Text>
+            <Text style={[
+              styles.messageTime,
+              item.isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime
+            ]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </View>
         </View>
       </View>
     );
@@ -249,16 +261,15 @@ const styles = StyleSheet.create({
   listingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
-    gap: 12,
+    backgroundColor: COLORS.surfaceElevated,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    ...SHADOWS.sm,
   },
   listingImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.gray[700],
   },
   listingInfo: {
@@ -266,48 +277,71 @@ const styles = StyleSheet.create({
   },
   listingLabel: {
     fontSize: 11,
+    fontWeight: '500',
     color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   listingTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: COLORS.text,
+    marginTop: 2,
   },
   messagesContent: {
-    padding: 16,
+    padding: SPACING.lg,
     flexGrow: 1,
   },
   dateHeader: {
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: SPACING.xl,
   },
   dateText: {
     fontSize: 12,
+    fontWeight: '500',
     color: COLORS.textMuted,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: COLORS.surfaceElevated,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.full,
+    overflow: 'hidden',
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: SPACING.sm,
+  },
+  ownMessageRow: {
+    justifyContent: 'flex-end',
+  },
+  otherMessageRow: {
+    justifyContent: 'flex-start',
+  },
+  messageAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: SPACING.sm,
+    backgroundColor: COLORS.gray[700],
   },
   messageBubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
+    maxWidth: '75%',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.xl,
   },
   ownMessage: {
-    alignSelf: 'flex-end',
     backgroundColor: COLORS.primary,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: SPACING.xs,
+    ...SHADOWS.sm,
   },
   otherMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: 4,
+    backgroundColor: COLORS.surfaceElevated,
+    borderBottomLeftRadius: SPACING.xs,
   },
   messageText: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   ownMessageText: {
     color: '#fff',
@@ -317,10 +351,10 @@ const styles = StyleSheet.create({
   },
   messageTime: {
     fontSize: 10,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   ownMessageTime: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
     textAlign: 'right',
   },
   otherMessageTime: {
@@ -330,34 +364,33 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.textSecondary,
-    marginTop: 12,
+    marginTop: SPACING.lg,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 12,
-    paddingBottom: 24,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xl,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray[800],
-    gap: 12,
+    gap: SPACING.md,
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     fontSize: 16,
     color: COLORS.text,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    maxHeight: 120,
   },
   sendButton: {
     width: 44,
@@ -366,8 +399,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.md,
   },
   sendButtonDisabled: {
     backgroundColor: COLORS.gray[700],
+    ...SHADOWS.sm,
   },
 });

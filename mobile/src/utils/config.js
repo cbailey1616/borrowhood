@@ -40,19 +40,25 @@ export const COLORS = {
   primary: '#4A7C59',
   primaryDark: '#3D6B4F',
   primaryLight: '#5A8F6A',
+  primaryMuted: 'rgba(74, 124, 89, 0.15)',
   secondary: '#6B8F71',
+  secondaryMuted: 'rgba(107, 143, 113, 0.15)',
   accent: '#4A7C59',
   warning: '#D4A04A',
+  warningMuted: 'rgba(212, 160, 74, 0.15)',
   danger: '#C45C4A',
+  dangerMuted: 'rgba(196, 92, 74, 0.15)',
   success: '#4A7C59',
   // Backgrounds
-  background: '#0D1F12',
-  surface: '#162419',
+  background: '#0A1A0E',
+  surface: '#121F16',
+  surfaceElevated: '#1A2B1E',
   card: '#1E2E22',
+  cardHover: '#243526',
   // Text colors
   text: '#FFFFFF',
-  textSecondary: '#A8B5AA',
-  textMuted: '#6B7D6E',
+  textSecondary: '#B5C4B8',
+  textMuted: '#7A8D7D',
   // Gray scale (with green tint)
   gray: {
     50: '#F2F5F3',
@@ -63,7 +69,62 @@ export const COLORS = {
     500: '#6B7D6E',
     600: '#4F5D51',
     700: '#3A4A3D',
-    800: '#2A3A2D',
+    800: '#252F27',
     900: '#1A2A1D',
   },
+  // Overlay
+  overlay: 'rgba(0, 0, 0, 0.7)',
+  overlayLight: 'rgba(0, 0, 0, 0.4)',
+};
+
+// Design tokens for consistency
+export const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+};
+
+export const RADIUS = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  full: 9999,
+};
+
+export const SHADOWS = {
+  sm: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  md: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+};
+
+export const TYPOGRAPHY = {
+  h1: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  h2: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3 },
+  h3: { fontSize: 18, fontWeight: '600' },
+  body: { fontSize: 15, fontWeight: '400', lineHeight: 22 },
+  bodySmall: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
+  caption: { fontSize: 11, fontWeight: '500', letterSpacing: 0.3 },
+  button: { fontSize: 15, fontWeight: '600' },
 };
