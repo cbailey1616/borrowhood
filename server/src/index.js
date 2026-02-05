@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import rateLimit from 'express-rate-limit';
 import { logger } from './utils/logger.js';
+import { runMigrations } from './utils/migrations.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -142,7 +143,10 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  logger.info(`Borrowhood server running on port ${PORT}`);
-  logger.info(`Accessible at http://192.168.7.53:${PORT}`);
+
+// Run migrations before starting server
+runMigrations().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`Borrowhood server running on port ${PORT}`);
+  });
 });
