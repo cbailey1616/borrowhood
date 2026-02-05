@@ -30,6 +30,8 @@ import ListingDiscussionScreen from '../screens/ListingDiscussionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import BundlesScreen from '../screens/BundlesScreen';
 import JoinCommunityScreen from '../screens/JoinCommunityScreen';
+import InviteMembersScreen from '../screens/InviteMembersScreen';
+import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -277,6 +279,26 @@ export default function RootNavigator() {
             options={{
               headerShown: true,
               title: 'Find Your Neighborhood',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
+          />
+          <Stack.Screen
+            name="InviteMembers"
+            component={InviteMembersScreen}
+            options={{
+              headerShown: true,
+              title: 'Invite Neighbors',
+              headerStyle: { backgroundColor: COLORS.background },
+              headerTintColor: COLORS.text,
+            }}
+          />
+          <Stack.Screen
+            name="CommunitySettings"
+            component={CommunitySettingsScreen}
+            options={{
+              headerShown: true,
+              title: 'Neighborhood Settings',
               headerStyle: { backgroundColor: COLORS.background },
               headerTintColor: COLORS.text,
             }}
