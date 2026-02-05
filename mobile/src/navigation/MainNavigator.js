@@ -1,21 +1,26 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../utils/config';
+import api from '../services/api';
 
 import FeedScreen from '../screens/FeedScreen';
 import SavedScreen from '../screens/SavedScreen';
 import MyItemsScreen from '../screens/MyItemsScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
 import ActivityScreen from '../screens/ActivityScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
 // Simple tab icon component
-function TabIcon({ focused, label }) {
+function TabIcon({ focused, label, badge }) {
   const icons = {
     Feed: '◉',
     Saved: '♥',
     'My Items': '▤',
+    Messages: '✉',
     Activity: '⇄',
     Profile: '○',
   };
@@ -28,16 +33,51 @@ function TabIcon({ focused, label }) {
       ]}>
         {icons[label] || '•'}
       </Text>
+      {badge > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>
+            {badge > 9 ? '9+' : badge}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
+// Wrapper for Messages tab to handle badge
+function MessagesTabWrapper({ unreadCount, ...props }) {
+  return <ConversationsScreen {...props} />;
+}
+
 export default function MainNavigator() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const data = await api.getConversations();
+      const total = (data || []).reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      setUnreadCount(total);
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
+  }, []);
+
+  // Fetch on mount and periodically
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused }) => (
-          <TabIcon focused={focused} label={route.name === 'MyItems' ? 'My Items' : route.name} />
+          <TabIcon
+            focused={focused}
+            label={route.name === 'MyItems' ? 'My Items' : route.name}
+            badge={route.name === 'Messages' ? unreadCount : 0}
+          />
         ),
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
@@ -82,6 +122,18 @@ export default function MainNavigator() {
         options={{ title: 'My Items' }}
       />
       <Tab.Screen
+        name="Messages"
+        options={{ title: 'Messages' }}
+        listeners={{
+          tabPress: () => {
+            // Refresh unread count when tab is pressed
+            setTimeout(fetchUnreadCount, 1000);
+          },
+        }}
+      >
+        {(props) => <ConversationsScreen {...props} onRead={fetchUnreadCount} />}
+      </Tab.Screen>
+      <Tab.Screen
         name="Activity"
         component={ActivityScreen}
         options={{ title: 'Activity' }}
@@ -105,5 +157,22 @@ const styles = StyleSheet.create({
   icon: {
     fontSize: 22,
     fontWeight: '400',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#E53935',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

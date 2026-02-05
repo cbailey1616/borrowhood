@@ -12,7 +12,7 @@ import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS } from '../utils/config';
 
-export default function ConversationsScreen({ navigation }) {
+export default function ConversationsScreen({ navigation, onRead }) {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -28,6 +28,14 @@ export default function ConversationsScreen({ navigation }) {
       setIsRefreshing(false);
     }
   }, []);
+
+  // Refresh badge count when returning to this screen
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      if (onRead) onRead();
+    });
+    return unsubscribeFocus;
+  }, [navigation, onRead]);
 
   useEffect(() => {
     fetchConversations();
