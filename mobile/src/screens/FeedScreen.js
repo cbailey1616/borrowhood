@@ -313,12 +313,7 @@ export default function FeedScreen({ navigation }) {
           style={[styles.dropdownBtn, (activeFilter !== 'all' || visibilityFilter !== 'all') && styles.dropdownBtnActive]}
           onPress={() => setShowTypeMenu(true)}
         >
-          <View style={styles.filterIconContainer}>
-            <Ionicons name="funnel-outline" size={16} color={(activeFilter !== 'all' || visibilityFilter !== 'all') ? COLORS.primary : COLORS.textSecondary} />
-            {(activeFilter !== 'all' || visibilityFilter !== 'all') && (
-              <View style={styles.filterBadge} />
-            )}
-          </View>
+          <Ionicons name="funnel-outline" size={16} color={(activeFilter !== 'all' || visibilityFilter !== 'all') ? COLORS.primary : COLORS.textSecondary} />
           <Text style={[styles.dropdownBtnText, (activeFilter !== 'all' || visibilityFilter !== 'all') && styles.dropdownBtnTextActive]}>
             Filter
           </Text>
@@ -329,7 +324,6 @@ export default function FeedScreen({ navigation }) {
           style={styles.actionBtn}
           onPress={() => setShowActionMenu(true)}
         >
-          <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.actionBtnText}>New</Text>
         </TouchableOpacity>
       </View>
