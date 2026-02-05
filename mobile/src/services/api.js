@@ -122,6 +122,15 @@ const getUserRatings = (userId) =>
 const getUserListings = (userId) =>
   get(`/users/${userId}/listings`);
 
+const getFriendRequests = () =>
+  get('/users/me/friend-requests');
+
+const acceptFriendRequest = (requestId) =>
+  post(`/users/me/friend-requests/${requestId}/accept`);
+
+const declineFriendRequest = (requestId) =>
+  post(`/users/me/friend-requests/${requestId}/decline`);
+
 const searchUsers = (query) =>
   get('/users/search', { q: query });
 
@@ -549,6 +558,9 @@ export default {
   getFriends,
   addFriend,
   removeFriend,
+  getFriendRequests,
+  acceptFriendRequest,
+  declineFriendRequest,
   getUserRatings,
   getUserListings,
   searchUsers,

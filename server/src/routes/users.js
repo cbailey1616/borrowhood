@@ -169,7 +169,7 @@ router.patch('/me', authenticate,
 
 // ============================================
 // GET /api/users/me/friends
-// Get close friends list
+// Get accepted friends list
 // ============================================
 router.get('/me/friends', authenticate, async (req, res) => {
   try {
@@ -177,7 +177,7 @@ router.get('/me/friends', authenticate, async (req, res) => {
       `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url
        FROM friendships f
        JOIN users u ON f.friend_id = u.id
-       WHERE f.user_id = $1
+       WHERE f.user_id = $1 AND f.status = 'accepted'
        ORDER BY u.first_name, u.last_name`,
       [req.user.id]
     );
@@ -191,6 +191,99 @@ router.get('/me/friends', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Get friends error:', err);
     res.status(500).json({ error: 'Failed to get friends' });
+  }
+});
+
+// ============================================
+// GET /api/users/me/friend-requests
+// Get pending friend requests (people who want to be your friend)
+// ============================================
+router.get('/me/friend-requests', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT f.id as request_id, u.id, u.first_name, u.last_name, u.profile_photo_url, f.created_at
+       FROM friendships f
+       JOIN users u ON f.user_id = u.id
+       WHERE f.friend_id = $1 AND f.status = 'pending'
+       ORDER BY f.created_at DESC`,
+      [req.user.id]
+    );
+
+    res.json(result.rows.map(r => ({
+      requestId: r.request_id,
+      id: r.id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      profilePhotoUrl: r.profile_photo_url,
+      requestedAt: r.created_at,
+    })));
+  } catch (err) {
+    console.error('Get friend requests error:', err);
+    res.status(500).json({ error: 'Failed to get friend requests' });
+  }
+});
+
+// ============================================
+// POST /api/users/me/friend-requests/:requestId/accept
+// Accept a friend request
+// ============================================
+router.post('/me/friend-requests/:requestId/accept', authenticate, async (req, res) => {
+  try {
+    // Find the pending request
+    const request = await query(
+      `SELECT user_id, friend_id FROM friendships
+       WHERE id = $1 AND friend_id = $2 AND status = 'pending'`,
+      [req.params.requestId, req.user.id]
+    );
+
+    if (request.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+
+    const { user_id: requesterId } = request.rows[0];
+
+    // Accept the request and create the reverse friendship
+    await query(
+      `UPDATE friendships SET status = 'accepted' WHERE id = $1`,
+      [req.params.requestId]
+    );
+
+    // Create reverse friendship (so both can see each other)
+    await query(
+      `INSERT INTO friendships (user_id, friend_id, status)
+       VALUES ($1, $2, 'accepted')
+       ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'`,
+      [req.user.id, requesterId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Accept friend request error:', err);
+    res.status(500).json({ error: 'Failed to accept friend request' });
+  }
+});
+
+// ============================================
+// POST /api/users/me/friend-requests/:requestId/decline
+// Decline a friend request
+// ============================================
+router.post('/me/friend-requests/:requestId/decline', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `DELETE FROM friendships
+       WHERE id = $1 AND friend_id = $2 AND status = 'pending'
+       RETURNING id`,
+      [req.params.requestId, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Decline friend request error:', err);
+    res.status(500).json({ error: 'Failed to decline friend request' });
   }
 });
 
@@ -299,7 +392,7 @@ router.post('/contacts/match', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/users/me/friends
-// Add close friend (bidirectional)
+// Send a friend request (pending until accepted)
 // ============================================
 router.post('/me/friends', authenticate,
   body('friendId').isUUID(),
@@ -316,17 +409,51 @@ router.post('/me/friends', authenticate,
     }
 
     try {
-      // Create bidirectional friendship
-      await query(
-        `INSERT INTO friendships (user_id, friend_id)
-         VALUES ($1, $2), ($2, $1)
-         ON CONFLICT DO NOTHING`,
+      // Check if they already sent us a request - if so, auto-accept
+      const existingRequest = await query(
+        `SELECT id FROM friendships
+         WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'`,
+        [friendId, req.user.id]
+      );
+
+      if (existingRequest.rows.length > 0) {
+        // They already requested us, so accept their request and create mutual friendship
+        await query(
+          `UPDATE friendships SET status = 'accepted' WHERE id = $1`,
+          [existingRequest.rows[0].id]
+        );
+        await query(
+          `INSERT INTO friendships (user_id, friend_id, status)
+           VALUES ($1, $2, 'accepted')
+           ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'`,
+          [req.user.id, friendId]
+        );
+        return res.status(201).json({ success: true, status: 'accepted' });
+      }
+
+      // Check if already friends
+      const alreadyFriends = await query(
+        `SELECT id FROM friendships
+         WHERE user_id = $1 AND friend_id = $2 AND status = 'accepted'`,
         [req.user.id, friendId]
       );
-      res.status(201).json({ success: true });
+
+      if (alreadyFriends.rows.length > 0) {
+        return res.status(200).json({ success: true, status: 'already_friends' });
+      }
+
+      // Send new friend request
+      await query(
+        `INSERT INTO friendships (user_id, friend_id, status)
+         VALUES ($1, $2, 'pending')
+         ON CONFLICT (user_id, friend_id) DO NOTHING`,
+        [req.user.id, friendId]
+      );
+
+      res.status(201).json({ success: true, status: 'pending' });
     } catch (err) {
       console.error('Add friend error:', err);
-      res.status(500).json({ error: 'Failed to add friend' });
+      res.status(500).json({ error: 'Failed to send friend request' });
     }
   }
 );

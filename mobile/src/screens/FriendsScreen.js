@@ -19,8 +19,9 @@ import api from '../services/api';
 import { COLORS } from '../utils/config';
 
 export default function FriendsScreen({ navigation }) {
-  const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'contacts', or 'search'
+  const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'requests', 'contacts', or 'search'
   const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
   const [contactMatches, setContactMatches] = useState([]);
   const [nonUserContacts, setNonUserContacts] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
@@ -31,6 +32,7 @@ export default function FriendsScreen({ navigation }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [addingId, setAddingId] = useState(null);
+  const [respondingId, setRespondingId] = useState(null);
   const [contactsPermission, setContactsPermission] = useState(null);
 
   const fetchFriends = useCallback(async () => {
@@ -42,6 +44,15 @@ export default function FriendsScreen({ navigation }) {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+    }
+  }, []);
+
+  const fetchFriendRequests = useCallback(async () => {
+    try {
+      const data = await api.getFriendRequests();
+      setFriendRequests(data);
+    } catch (error) {
+      console.error('Failed to fetch friend requests:', error);
     }
   }, []);
 
@@ -116,15 +127,17 @@ export default function FriendsScreen({ navigation }) {
 
   useEffect(() => {
     fetchFriends();
-  }, [fetchFriends]);
+    fetchFriendRequests();
+  }, [fetchFriends, fetchFriendRequests]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchFriends();
+      fetchFriendRequests();
       // Don't refetch contacts on every focus - it causes flashing
     });
     return unsubscribe;
-  }, [navigation, fetchFriends]);
+  }, [navigation, fetchFriends, fetchFriendRequests]);
 
   // Fetch contacts when switching to contacts tab (only once)
   useEffect(() => {
@@ -158,9 +171,36 @@ export default function FriendsScreen({ navigation }) {
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchFriends();
+    fetchFriendRequests();
     if (activeTab === 'contacts') {
       setContactsFetched(false); // Allow refetch on manual pull-to-refresh
       fetchContactMatches();
+    }
+  };
+
+  const handleAcceptRequest = async (request) => {
+    setRespondingId(request.requestId);
+    try {
+      await api.acceptFriendRequest(request.requestId);
+      setFriendRequests(prev => prev.filter(r => r.requestId !== request.requestId));
+      fetchFriends(); // Refresh friends list
+      Alert.alert('Friend Added', `${request.firstName} is now your friend!`);
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to accept request');
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const handleDeclineRequest = async (request) => {
+    setRespondingId(request.requestId);
+    try {
+      await api.declineFriendRequest(request.requestId);
+      setFriendRequests(prev => prev.filter(r => r.requestId !== request.requestId));
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to decline request');
+    } finally {
+      setRespondingId(null);
     }
   };
 
@@ -177,17 +217,30 @@ export default function FriendsScreen({ navigation }) {
   const handleAddFriend = async (user) => {
     setAddingId(user.id);
     try {
-      await api.addFriend(user.id);
-      // Update lists to show as friend
-      setSearchResults(prev =>
-        prev.map(u => u.id === user.id ? { ...u, isFriend: true } : u)
-      );
-      setContactMatches(prev =>
-        prev.map(u => u.id === user.id ? { ...u, isFriend: true } : u)
-      );
-      fetchFriends();
+      const result = await api.addFriend(user.id);
+      if (result.status === 'accepted') {
+        // They had already requested us, so we're now friends
+        setSearchResults(prev =>
+          prev.map(u => u.id === user.id ? { ...u, isFriend: true, requestPending: false } : u)
+        );
+        setContactMatches(prev =>
+          prev.map(u => u.id === user.id ? { ...u, isFriend: true, requestPending: false } : u)
+        );
+        fetchFriends();
+        fetchFriendRequests();
+        Alert.alert('Friend Added', `You and ${user.firstName} are now friends!`);
+      } else {
+        // Request sent, waiting for them to accept
+        setSearchResults(prev =>
+          prev.map(u => u.id === user.id ? { ...u, requestPending: true } : u)
+        );
+        setContactMatches(prev =>
+          prev.map(u => u.id === user.id ? { ...u, requestPending: true } : u)
+        );
+        Alert.alert('Request Sent', `Friend request sent to ${user.firstName}`);
+      }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to add friend');
+      Alert.alert('Error', error.message || 'Failed to send friend request');
     } finally {
       setAddingId(null);
     }
@@ -281,6 +334,10 @@ export default function FriendsScreen({ navigation }) {
         <View style={styles.friendBadge}>
           <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
         </View>
+      ) : item.requestPending ? (
+        <View style={styles.pendingBadge}>
+          <Text style={styles.pendingText}>Requested</Text>
+        </View>
       ) : (
         <TouchableOpacity
           style={styles.addButton}
@@ -316,6 +373,10 @@ export default function FriendsScreen({ navigation }) {
       {item.isFriend ? (
         <View style={styles.friendBadge}>
           <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+        </View>
+      ) : item.requestPending ? (
+        <View style={styles.pendingBadge}>
+          <Text style={styles.pendingText}>Requested</Text>
         </View>
       ) : (
         <TouchableOpacity
@@ -362,6 +423,21 @@ export default function FriendsScreen({ navigation }) {
           <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>
             Friends
           </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'requests' && styles.tabActive]}
+          onPress={() => setActiveTab('requests')}
+        >
+          <View style={styles.tabWithBadge}>
+            <Text style={[styles.tabText, activeTab === 'requests' && styles.tabTextActive]}>
+              Requests
+            </Text>
+            {friendRequests.length > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{friendRequests.length}</Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'contacts' && styles.tabActive]}
@@ -425,6 +501,68 @@ export default function FriendsScreen({ navigation }) {
                 </Text>
               </View>
             )
+          }
+        />
+      )}
+
+      {activeTab === 'requests' && (
+        <FlatList
+          data={friendRequests}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.cardContent}
+                onPress={() => navigation.navigate('UserProfile', { id: item.id })}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/50' }}
+                  style={styles.avatar}
+                />
+                <View style={styles.info}>
+                  <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
+                  <Text style={styles.subtitle}>Wants to be your friend</Text>
+                </View>
+              </TouchableOpacity>
+              <View style={styles.requestActions}>
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={() => handleAcceptRequest(item)}
+                  disabled={respondingId === item.requestId}
+                >
+                  {respondingId === item.requestId ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="checkmark" size={20} color="#fff" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.declineButton}
+                  onPress={() => handleDeclineRequest(item)}
+                  disabled={respondingId === item.requestId}
+                >
+                  <Ionicons name="close" size={20} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          keyExtractor={(item) => item.requestId}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="mail-outline" size={64} color={COLORS.gray[700]} />
+              <Text style={styles.emptyTitle}>No pending requests</Text>
+              <Text style={styles.emptySubtitle}>
+                When someone sends you a friend request, it will appear here
+              </Text>
+            </View>
           }
         />
       )}
@@ -545,6 +683,25 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
+  tabWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  badge: {
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   searchContainer: {
     padding: 16,
     paddingBottom: 8,
@@ -629,6 +786,43 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: COLORS.gray[800],
+  },
+  pendingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  acceptButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  declineButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray[800],
     alignItems: 'center',
     justifyContent: 'center',
   },
