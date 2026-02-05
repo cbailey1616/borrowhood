@@ -48,21 +48,21 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
+// Rate limiting - relaxed for alpha testing
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 500, // More lenient in dev
+  max: 500, // Relaxed for alpha
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.path === '/health', // Skip health checks
 });
 
-// Stricter rate limit for auth routes
+// Rate limit for auth routes - relaxed for alpha testing
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 50 : 200, // Increased limits
-  message: { error: 'Too many authentication attempts, please try again later' },
+  max: 100, // Relaxed for alpha
+  message: { error: 'Too many login attempts. Please wait 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
