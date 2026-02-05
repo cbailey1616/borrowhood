@@ -45,17 +45,16 @@ router.get('/', authenticate, async (req, res) => {
         FROM listings l
         JOIN users u ON l.owner_id = u.id
         WHERE l.status = 'active'
-          AND l.owner_id != $1
           AND (
             l.visibility = 'town' OR
             l.visibility = 'neighborhood' OR
-            (l.visibility = 'close_friends' AND l.owner_id = ANY($2))
+            (l.visibility = 'close_friends' AND l.owner_id = ANY($1))
           )`;
 
-      const listingParams = [req.user.id, friendIds.length > 0 ? friendIds : [null]];
+      const listingParams = [friendIds.length > 0 ? friendIds : [null]];
 
       if (search) {
-        listingQuery += ` AND (l.title ILIKE $3 OR l.description ILIKE $3)`;
+        listingQuery += ` AND (l.title ILIKE $2 OR l.description ILIKE $2)`;
         listingParams.push(`%${search}%`);
       }
 
@@ -82,13 +81,12 @@ router.get('/', authenticate, async (req, res) => {
           u.profile_photo_url
         FROM item_requests r
         JOIN users u ON r.user_id = u.id
-        WHERE r.status = 'open'
-          AND r.user_id != $1`;
+        WHERE r.status = 'open'`;
 
-      const requestParams = [req.user.id];
+      const requestParams = [];
 
       if (search) {
-        requestQuery += ` AND (r.title ILIKE $2 OR r.description ILIKE $2)`;
+        requestQuery += ` AND (r.title ILIKE $1 OR r.description ILIKE $1)`;
         requestParams.push(`%${search}%`);
       }
 
