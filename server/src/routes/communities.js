@@ -49,27 +49,34 @@ router.get('/', authenticate, async (req, res) => {
       })));
     }
 
-    // If user has no location, return empty (they need to set location first)
-    if (!user.latitude || !user.longitude) {
+    // Get user's city for matching
+    const cityResult = await query(
+      'SELECT city, state FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const userCity = cityResult.rows[0]?.city;
+    const userState = cityResult.rows[0]?.state;
+
+    // If user has no city set, return empty
+    if (!userCity) {
       return res.json([]);
     }
 
-    // Find communities within 1 mile (1609 meters)
-    // Using Haversine formula approximation
-    const MILES_TO_DEGREES = 1 / 69.0; // Approximate degrees per mile
-    const radiusDegrees = 1 * MILES_TO_DEGREES;
-
+    // Find communities in the same city/town
     let whereConditions = [
       'c.is_active = true',
-      'c.latitude IS NOT NULL',
-      'c.longitude IS NOT NULL',
-      `ABS(c.latitude - $1) < $3`,
-      `ABS(c.longitude - $2) < $3`
+      'LOWER(c.city) = LOWER($1)'
     ];
-    let params = [user.latitude, user.longitude, radiusDegrees, req.user.id];
+    let params = [userCity, req.user.id];
+
+    // Optionally also match state if set
+    if (userState) {
+      whereConditions.push('(c.state IS NULL OR LOWER(c.state) = LOWER($3))');
+      params.push(userState);
+    }
 
     if (search) {
-      whereConditions.push(`c.name ILIKE $5`);
+      whereConditions.push(`c.name ILIKE $${params.length + 1}`);
       params.push(`%${search}%`);
     }
 
@@ -77,11 +84,10 @@ router.get('/', authenticate, async (req, res) => {
       `SELECT c.*,
               (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
               (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
-              EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $4) as is_member,
-              SQRT(POW(c.latitude - $1, 2) + POW(c.longitude - $2, 2)) * 69 as distance_miles
+              EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
        FROM communities c
        WHERE ${whereConditions.join(' AND ')}
-       ORDER BY distance_miles, c.name`,
+       ORDER BY c.name`,
       params
     );
 
@@ -95,7 +101,6 @@ router.get('/', authenticate, async (req, res) => {
       memberCount: parseInt(c.member_count),
       listingCount: parseInt(c.listing_count),
       isMember: c.is_member,
-      distanceMiles: parseFloat(c.distance_miles).toFixed(2),
     })));
   } catch (err) {
     console.error('Get communities error:', err);
