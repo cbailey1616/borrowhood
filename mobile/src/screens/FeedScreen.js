@@ -30,7 +30,7 @@ const VISIBILITY_OPTIONS = [
 
 export default function FeedScreen({ navigation }) {
   const [feed, setFeed] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -60,22 +60,34 @@ export default function FeedScreen({ navigation }) {
     } catch (error) {
       console.error('Failed to fetch feed:', error);
     } finally {
-      setIsLoading(false);
+      setIsInitialLoad(false);
       setIsRefreshing(false);
       setIsLoadingMore(false);
     }
   }, [search, activeFilter, visibilityFilter]);
 
+  // Initial load only
   useEffect(() => {
     fetchFeed();
-  }, [fetchFeed]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Refetch when filters change
+  useEffect(() => {
+    if (!isInitialLoad) {
+      fetchFeed(1, false);
+    }
+  }, [activeFilter, visibilityFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh on screen focus (but not on initial mount)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchFeed(1, false);
+      if (!isInitialLoad) {
+        setIsRefreshing(true);
+        fetchFeed(1, false);
+      }
     });
     return unsubscribe;
-  }, [navigation, fetchFeed]);
+  }, [navigation, isInitialLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -90,13 +102,11 @@ export default function FeedScreen({ navigation }) {
   };
 
   const handleSearch = () => {
-    setIsLoading(true);
     fetchFeed(1, false);
   };
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
-    setIsLoading(true);
   };
 
   const handleVisibilityChange = (visibility) => {
@@ -297,7 +307,7 @@ export default function FeedScreen({ navigation }) {
     return renderRequestItem(item);
   };
 
-  if (isLoading) {
+  if (isInitialLoad) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
