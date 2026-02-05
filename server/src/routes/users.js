@@ -299,7 +299,7 @@ router.post('/contacts/match', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/users/me/friends
-// Add close friend
+// Add close friend (bidirectional)
 // ============================================
 router.post('/me/friends', authenticate,
   body('friendId').isUUID(),
@@ -316,9 +316,10 @@ router.post('/me/friends', authenticate,
     }
 
     try {
+      // Create bidirectional friendship
       await query(
         `INSERT INTO friendships (user_id, friend_id)
-         VALUES ($1, $2)
+         VALUES ($1, $2), ($2, $1)
          ON CONFLICT DO NOTHING`,
         [req.user.id, friendId]
       );
@@ -332,12 +333,15 @@ router.post('/me/friends', authenticate,
 
 // ============================================
 // DELETE /api/users/me/friends/:friendId
-// Remove close friend
+// Remove close friend (bidirectional)
 // ============================================
 router.delete('/me/friends/:friendId', authenticate, async (req, res) => {
   try {
+    // Remove both directions of the friendship
     await query(
-      'DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2',
+      `DELETE FROM friendships
+       WHERE (user_id = $1 AND friend_id = $2)
+          OR (user_id = $2 AND friend_id = $1)`,
       [req.user.id, req.params.friendId]
     );
     res.json({ success: true });
