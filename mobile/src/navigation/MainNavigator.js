@@ -1,15 +1,13 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../utils/config';
 import api from '../services/api';
 
 import FeedScreen from '../screens/FeedScreen';
 import SavedScreen from '../screens/SavedScreen';
 import MyItemsScreen from '../screens/MyItemsScreen';
-import ConversationsScreen from '../screens/ConversationsScreen';
-import ActivityScreen from '../screens/ActivityScreen';
+import InboxScreen from '../screens/InboxScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -20,8 +18,7 @@ function TabIcon({ focused, label, badge }) {
     Feed: '◉',
     Saved: '♥',
     'My Items': '▤',
-    Messages: '✉',
-    Activity: '⇄',
+    Inbox: '✉',
     Profile: '○',
   };
 
@@ -42,11 +39,6 @@ function TabIcon({ focused, label, badge }) {
       )}
     </View>
   );
-}
-
-// Wrapper for Messages tab to handle badge
-function MessagesTabWrapper({ unreadCount, ...props }) {
-  return <ConversationsScreen {...props} />;
 }
 
 export default function MainNavigator() {
@@ -76,7 +68,7 @@ export default function MainNavigator() {
           <TabIcon
             focused={focused}
             label={route.name === 'MyItems' ? 'My Items' : route.name}
-            badge={route.name === 'Messages' ? unreadCount : 0}
+            badge={route.name === 'Inbox' ? unreadCount : 0}
           />
         ),
         tabBarActiveTintColor: COLORS.primary,
@@ -122,22 +114,16 @@ export default function MainNavigator() {
         options={{ title: 'My Items' }}
       />
       <Tab.Screen
-        name="Messages"
-        options={{ title: 'Messages' }}
+        name="Inbox"
+        options={{ title: 'Inbox' }}
         listeners={{
           tabPress: () => {
-            // Refresh unread count when tab is pressed
             setTimeout(fetchUnreadCount, 1000);
           },
         }}
       >
-        {(props) => <ConversationsScreen {...props} onRead={fetchUnreadCount} />}
+        {(props) => <InboxScreen {...props} onRead={fetchUnreadCount} />}
       </Tab.Screen>
-      <Tab.Screen
-        name="Activity"
-        component={ActivityScreen}
-        options={{ title: 'Activity' }}
-      />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
