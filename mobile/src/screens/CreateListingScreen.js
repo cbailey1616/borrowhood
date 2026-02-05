@@ -369,13 +369,14 @@ export default function CreateListingScreen({ navigation }) {
       {/* Pricing */}
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
+        <Text style={styles.freeLabel}>Free to borrow</Text>
         <TouchableOpacity
           style={styles.toggle}
           onPress={() => updateField('isFree', !formData.isFree)}
         >
-          <Text style={styles.toggleText}>Free to borrow</Text>
-          <View style={[styles.switch, formData.isFree && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.isFree && styles.switchKnobActive]} />
+          <Text style={styles.toggleText}>Charge a rental fee</Text>
+          <View style={[styles.switch, !formData.isFree && styles.switchActive]}>
+            <View style={[styles.switchKnob, !formData.isFree && styles.switchKnobActive]} />
           </View>
         </TouchableOpacity>
 
@@ -775,6 +776,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  freeLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 8,
   },
   toggleText: {
     fontSize: 16,

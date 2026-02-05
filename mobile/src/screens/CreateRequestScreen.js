@@ -22,7 +22,7 @@ export default function CreateRequestScreen({ navigation }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    visibility: 'neighborhood',
+    visibility: ['neighborhood'], // Array for multi-select
     neededFrom: '',
     neededUntil: '',
   });
@@ -225,18 +225,38 @@ export default function CreateRequestScreen({ navigation }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
+        <Text style={styles.hint}>Select all that apply</Text>
         <View style={styles.options}>
-          {VISIBILITIES.map((visibility) => (
-            <TouchableOpacity
-              key={visibility}
-              style={[styles.option, formData.visibility === visibility && styles.optionActive]}
-              onPress={() => updateField('visibility', visibility)}
-            >
-              <Text style={[styles.optionText, formData.visibility === visibility && styles.optionTextActive]}>
-                {VISIBILITY_LABELS[visibility]}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {VISIBILITIES.map((visibility) => {
+            const isSelected = formData.visibility.includes(visibility);
+            return (
+              <TouchableOpacity
+                key={visibility}
+                style={[styles.option, isSelected && styles.optionActive]}
+                onPress={() => {
+                  const current = formData.visibility;
+                  if (isSelected) {
+                    // Don't allow deselecting if it's the only one
+                    if (current.length > 1) {
+                      updateField('visibility', current.filter(v => v !== visibility));
+                    }
+                  } else {
+                    updateField('visibility', [...current, visibility]);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={isSelected ? "#fff" : COLORS.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                  {VISIBILITY_LABELS[visibility]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
