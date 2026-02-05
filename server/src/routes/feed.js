@@ -34,7 +34,7 @@ router.get('/', authenticate, async (req, res) => {
           u.profile_photo_url,
           u.lender_rating,
           u.lender_rating_count,
-          u.is_verified,
+          u.status,
           u.total_transactions,
           l.owner_id,
           (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
@@ -105,7 +105,7 @@ router.get('/', authenticate, async (req, res) => {
         profilePhotoUrl: l.profile_photo_url,
         rating: parseFloat(l.lender_rating) || 0,
         ratingCount: l.lender_rating_count,
-        isVerified: l.is_verified,
+        isVerified: l.status === 'verified',
         totalTransactions: l.total_transactions,
       },
       owner: {
