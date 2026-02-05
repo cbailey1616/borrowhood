@@ -153,18 +153,16 @@ export default function ListingDetailScreen({ route, navigation }) {
           <View style={styles.titleRow}>
             <Text style={styles.title}>{listing.title}</Text>
             <View style={styles.actionButtons}>
+              <TouchableOpacity style={styles.saveButton} onPress={toggleSave}>
+                <Ionicons
+                  name={isSaved ? 'heart' : 'heart-outline'}
+                  size={28}
+                  color={isSaved ? COLORS.error : COLORS.textSecondary}
+                />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
                 <Ionicons name="share-outline" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
-              {listing.owner?.id !== user?.id && (
-                <TouchableOpacity style={styles.saveButton} onPress={toggleSave}>
-                  <Ionicons
-                    name={isSaved ? 'heart' : 'heart-outline'}
-                    size={28}
-                    color={isSaved ? COLORS.danger : COLORS.textSecondary}
-                  />
-                </TouchableOpacity>
-              )}
             </View>
           </View>
 
