@@ -19,8 +19,9 @@ export default function UserProfileScreen({ route, navigation }) {
   const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
   const [ratings, setRatings] = useState([]);
+  const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('lender');
+  const [activeTab, setActiveTab] = useState('listings');
   const [isFriend, setIsFriend] = useState(false);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
 
@@ -29,6 +30,7 @@ export default function UserProfileScreen({ route, navigation }) {
   useEffect(() => {
     fetchUser();
     fetchRatings();
+    fetchListings();
     checkFriendStatus();
   }, [id]);
 
@@ -49,6 +51,15 @@ export default function UserProfileScreen({ route, navigation }) {
       setRatings(data);
     } catch (error) {
       console.error('Failed to fetch ratings:', error);
+    }
+  };
+
+  const fetchListings = async () => {
+    try {
+      const data = await api.getUserListings(id);
+      setListings(data);
+    } catch (error) {
+      console.error('Failed to fetch listings:', error);
     }
   };
 
@@ -185,65 +196,94 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Ratings */}
+        {/* Tabs */}
         <View style={styles.ratingsSection}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
-
           <View style={styles.tabs}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'lender' && styles.tabActive]}
-              onPress={() => setActiveTab('lender')}
+              style={[styles.tab, activeTab === 'listings' && styles.tabActive]}
+              onPress={() => setActiveTab('listings')}
             >
-              <Text style={[styles.tabText, activeTab === 'lender' && styles.tabTextActive]}>
-                As Lender ({user.lenderRatingCount || 0})
+              <Text style={[styles.tabText, activeTab === 'listings' && styles.tabTextActive]}>
+                Items ({listings.length})
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'borrower' && styles.tabActive]}
-              onPress={() => setActiveTab('borrower')}
+              style={[styles.tab, activeTab === 'reviews' && styles.tabActive]}
+              onPress={() => setActiveTab('reviews')}
             >
-              <Text style={[styles.tabText, activeTab === 'borrower' && styles.tabTextActive]}>
-                As Borrower ({user.borrowerRatingCount || 0})
+              <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>
+                Reviews ({ratings.length})
               </Text>
             </TouchableOpacity>
           </View>
 
-          {filteredRatings.length === 0 ? (
-            <View style={styles.emptyRatings}>
-              <Text style={styles.emptyText}>No reviews yet</Text>
-            </View>
-          ) : (
-            filteredRatings.map((rating) => (
-              <View key={rating.id} style={styles.ratingCard}>
-                <View style={styles.ratingHeader}>
-                  <Image
-                    source={{ uri: rating.raterPhoto || 'https://via.placeholder.com/36' }}
-                    style={styles.raterAvatar}
-                  />
-                  <View style={styles.raterInfo}>
-                    <Text style={styles.raterName}>
-                      {rating.raterFirstName} {rating.raterLastName[0]}.
-                    </Text>
-                    <Text style={styles.ratingDate}>
-                      {new Date(rating.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <View style={styles.ratingStars}>
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <Ionicons
-                        key={star}
-                        name={star <= rating.rating ? 'star' : 'star-outline'}
-                        size={14}
-                        color={COLORS.warning}
-                      />
-                    ))}
-                  </View>
-                </View>
-                {rating.comment && (
-                  <Text style={styles.ratingComment}>{rating.comment}</Text>
-                )}
+          {activeTab === 'listings' ? (
+            listings.length === 0 ? (
+              <View style={styles.emptyRatings}>
+                <Ionicons name="cube-outline" size={32} color={COLORS.textMuted} />
+                <Text style={styles.emptyText}>No items listed yet</Text>
               </View>
-            ))
+            ) : (
+              <View style={styles.listingsGrid}>
+                {listings.map((listing) => (
+                  <TouchableOpacity
+                    key={listing.id}
+                    style={styles.listingCard}
+                    onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
+                  >
+                    <Image
+                      source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
+                      style={styles.listingImage}
+                    />
+                    <View style={styles.listingInfo}>
+                      <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+                      <Text style={styles.listingPrice}>
+                        {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )
+          ) : (
+            filteredRatings.length === 0 ? (
+              <View style={styles.emptyRatings}>
+                <Ionicons name="star-outline" size={32} color={COLORS.textMuted} />
+                <Text style={styles.emptyText}>No reviews yet</Text>
+              </View>
+            ) : (
+              filteredRatings.map((rating) => (
+                <View key={rating.id} style={styles.ratingCard}>
+                  <View style={styles.ratingHeader}>
+                    <Image
+                      source={{ uri: rating.raterPhoto || 'https://via.placeholder.com/36' }}
+                      style={styles.raterAvatar}
+                    />
+                    <View style={styles.raterInfo}>
+                      <Text style={styles.raterName}>
+                        {rating.raterFirstName} {rating.raterLastName?.[0]}.
+                      </Text>
+                      <Text style={styles.ratingDate}>
+                        {new Date(rating.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingStars}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Ionicons
+                          key={star}
+                          name={star <= rating.rating ? 'star' : 'star-outline'}
+                          size={14}
+                          color={COLORS.warning}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                  {rating.comment && (
+                    <Text style={styles.ratingComment}>{rating.comment}</Text>
+                  )}
+                </View>
+              ))
+            )
           )}
         </View>
       </ScrollView>
@@ -434,10 +474,41 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 32,
     alignItems: 'center',
+    gap: 8,
   },
   emptyText: {
     fontSize: 14,
     color: COLORS.textMuted,
+  },
+  listingsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  listingCard: {
+    width: '47%',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  listingImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: COLORS.gray[700],
+  },
+  listingInfo: {
+    padding: 10,
+  },
+  listingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  listingPrice: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginTop: 4,
   },
   ratingCard: {
     backgroundColor: COLORS.surface,

@@ -53,6 +53,36 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================
+// GET /api/users/:id/listings
+// Get user's active listings
+// ============================================
+router.get('/:id/listings', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT l.id, l.title, l.condition, l.is_free, l.price_per_day,
+              (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
+       FROM listings l
+       WHERE l.owner_id = $1 AND l.status = 'active'
+       ORDER BY l.created_at DESC
+       LIMIT 20`,
+      [req.params.id]
+    );
+
+    res.json(result.rows.map(l => ({
+      id: l.id,
+      title: l.title,
+      condition: l.condition,
+      isFree: l.is_free,
+      pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
+      photoUrl: l.photo_url,
+    })));
+  } catch (err) {
+    console.error('Get user listings error:', err);
+    res.status(500).json({ error: 'Failed to get listings' });
+  }
+});
+
+// ============================================
 // PATCH /api/users/me
 // Update current user profile
 // ============================================
