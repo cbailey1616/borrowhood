@@ -13,13 +13,6 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Get user's friends for visibility filtering
-    const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1',
-      [req.user.id]
-    );
-    const friendIds = friendsResult.rows.map(f => f.friend_id);
-
     let listingsResult = { rows: [] };
     let requestsResult = { rows: [] };
 
@@ -41,20 +34,18 @@ router.get('/', authenticate, async (req, res) => {
           u.profile_photo_url,
           u.lender_rating,
           u.lender_rating_count,
+          u.is_verified,
+          u.total_transactions,
+          l.owner_id,
           (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
         FROM listings l
         JOIN users u ON l.owner_id = u.id
-        WHERE l.status = 'active'
-          AND (
-            l.visibility = 'town' OR
-            l.visibility = 'neighborhood' OR
-            (l.visibility = 'close_friends' AND l.owner_id = ANY($1))
-          )`;
+        WHERE l.status = 'active'`;
 
-      const listingParams = [friendIds.length > 0 ? friendIds : [null]];
+      const listingParams = [];
 
       if (search) {
-        listingQuery += ` AND (l.title ILIKE $2 OR l.description ILIKE $2)`;
+        listingQuery += ` AND (l.title ILIKE $1 OR l.description ILIKE $1)`;
         listingParams.push(`%${search}%`);
       }
 
@@ -114,6 +105,11 @@ router.get('/', authenticate, async (req, res) => {
         profilePhotoUrl: l.profile_photo_url,
         rating: parseFloat(l.lender_rating) || 0,
         ratingCount: l.lender_rating_count,
+        isVerified: l.is_verified,
+        totalTransactions: l.total_transactions,
+      },
+      owner: {
+        id: l.owner_id,
       },
     }));
 
