@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/config';
 import api from '../services/api';
 
@@ -12,24 +13,23 @@ import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-// Simple tab icon component
+// Tab icon component with real Ionicons
 function TabIcon({ focused, label, badge }) {
   const icons = {
-    Feed: '◉',
-    Saved: '♥',
-    'My Items': '▤',
-    Inbox: '✉',
-    Profile: '○',
+    Feed: focused ? 'home' : 'home-outline',
+    Saved: focused ? 'heart' : 'heart-outline',
+    'My Items': focused ? 'cube' : 'cube-outline',
+    Inbox: focused ? 'mail' : 'mail-outline',
+    Profile: focused ? 'person' : 'person-outline',
   };
 
   return (
     <View style={styles.iconContainer}>
-      <Text style={[
-        styles.icon,
-        { color: focused ? COLORS.primary : COLORS.textMuted }
-      ]}>
-        {icons[label] || '•'}
-      </Text>
+      <Ionicons
+        name={icons[label] || 'ellipse'}
+        size={24}
+        color={focused ? COLORS.primary : COLORS.textMuted}
+      />
       {badge > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -139,10 +139,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 28,
     height: 28,
-  },
-  icon: {
-    fontSize: 22,
-    fontWeight: '400',
   },
   badge: {
     position: 'absolute',
