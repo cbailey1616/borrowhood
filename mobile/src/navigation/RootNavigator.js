@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
@@ -5,6 +6,7 @@ import { COLORS } from '../utils/config';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+import OnboardingScreen from '../screens/OnboardingScreen';
 
 // Detail screens accessible from anywhere
 import ListingDetailScreen from '../screens/ListingDetailScreen';
@@ -36,13 +38,29 @@ import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+
+  // Check if user needs onboarding (no city set)
+  const needsOnboarding = isAuthenticated && user && !user.city && !onboardingComplete;
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
+    );
+  }
+
+  // Show onboarding for new users
+  if (needsOnboarding) {
+    return (
+      <OnboardingScreen
+        onComplete={() => {
+          refreshUser();
+          setOnboardingComplete(true);
+        }}
+      />
     );
   }
 
