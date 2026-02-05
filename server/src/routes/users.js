@@ -63,12 +63,15 @@ router.patch('/me', authenticate,
   body('bio').optional().isLength({ max: 500 }),
   body('city').optional().trim().isLength({ max: 100 }),
   body('state').optional().trim().isLength({ max: 50 }),
-  body('profilePhotoUrl').optional().isURL(),
+  body('profilePhotoUrl').optional(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Profile update validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
+
+    console.log('Profile update request for user:', req.user.id, 'data:', Object.keys(req.body));
 
     const { firstName, lastName, phone, bio, city, state, latitude, longitude, profilePhotoUrl } = req.body;
     const updates = [];
@@ -120,13 +123,15 @@ router.patch('/me', authenticate,
     values.push(req.user.id);
 
     try {
-      await query(
-        `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-        values
-      );
+      const updateQuery = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+      console.log('Profile update query:', updateQuery, 'values count:', values.length);
+
+      await query(updateQuery, values);
+      console.log('Profile updated successfully for user:', req.user.id);
       res.json({ success: true });
     } catch (err) {
       console.error('Update user error:', err);
+      console.error('Query was:', `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`);
       res.status(500).json({ error: 'Failed to update profile' });
     }
   }
