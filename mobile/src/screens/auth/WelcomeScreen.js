@@ -24,7 +24,7 @@ import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 GoogleSignin.configure({
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
 });
 
 const logo = require('../../../assets/logo.png');
