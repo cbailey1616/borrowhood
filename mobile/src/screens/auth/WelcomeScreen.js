@@ -25,6 +25,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 GoogleSignin.configure({
   iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
+  webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
 });
 
 const logo = require('../../../assets/logo.png');
@@ -125,7 +126,6 @@ export default function WelcomeScreen({ navigation }) {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
       const idToken = response.data?.idToken;
       if (!idToken) throw new Error('No ID token received from Google');
