@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.borrowhood.app",
-      "buildNumber": "29",
+      "buildNumber": "31",
       "infoPlist": {
         "NSCameraUsageDescription": "Borrowhood needs camera access to take photos of items you want to share with your neighbors.",
         "NSPhotoLibraryUsageDescription": "Borrowhood needs photo library access to select photos of items you want to share.",
@@ -94,9 +94,12 @@
         }
       ],
       "expo-apple-authentication",
-      ["@react-native-google-signin/google-signin", {
-        "iosUrlScheme": "com.googleusercontent.apps.GOOGLE_IOS_CLIENT_ID"
-      }]
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.GOOGLE_IOS_CLIENT_ID"
+        }
+      ]
     ],
     "extra": {
       "eas": {
