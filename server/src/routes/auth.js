@@ -127,7 +127,7 @@ router.post('/login',
 
     try {
       const result = await query(
-        `SELECT id, email, password_hash, first_name, last_name, status
+        `SELECT id, email, password_hash, first_name, last_name, status, city, state
          FROM users WHERE email = $1`,
         [email]
       );
@@ -161,6 +161,8 @@ router.post('/login',
           firstName: user.first_name,
           lastName: user.last_name,
           status: user.status,
+          city: user.city,
+          state: user.state,
         },
         ...tokens,
       });
