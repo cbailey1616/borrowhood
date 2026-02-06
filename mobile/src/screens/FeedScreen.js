@@ -156,13 +156,13 @@ export default function FeedScreen({ navigation }) {
       const result = await api.checkSubscriptionAccess('town');
       if (!result.canAccess) {
         setActiveDropdown(null);
-        setShowUpgradePrompt(true);
+        // Delay so the ActionSheet portal closes before the overlay renders
+        setTimeout(() => setShowUpgradePrompt(true), 350);
         return;
       }
     } catch {
-      // If the check fails, show upgrade prompt as a safe fallback
       setActiveDropdown(null);
-      setShowUpgradePrompt(true);
+      setTimeout(() => setShowUpgradePrompt(true), 350);
       return;
     }
     toggleFilter('town', visibilityKeys, setVisibilityFilters);
