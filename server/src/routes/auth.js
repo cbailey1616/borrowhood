@@ -202,8 +202,7 @@ router.get('/me', authenticate, async (req, res) => {
     const result = await query(
       `SELECT id, email, first_name, last_name, phone, profile_photo_url, bio,
               city, state,
-              ST_Y(location::geometry) as latitude,
-              ST_X(location::geometry) as longitude,
+              latitude, longitude,
               status, rating, rating_count,
               total_transactions, stripe_identity_verified_at
        FROM users WHERE id = $1`,
