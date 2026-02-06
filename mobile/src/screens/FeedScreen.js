@@ -6,7 +6,6 @@ import {
   FlatList,
   RefreshControl,
   Image,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
@@ -15,14 +14,12 @@ import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import SearchBar from '../components/SearchBar';
-import SegmentedControl from '../components/SegmentedControl';
 import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonCard } from '../components/SkeletonLoader';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
-import { haptics } from '../utils/haptics';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
@@ -47,11 +44,13 @@ export default function FeedScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [visibilityFilter, setVisibilityFilter] = useState('all');
+  const [activeFilters, setActiveFilters] = useState([]);
+  const [visibilityFilters, setVisibilityFilters] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [categoryFilter, setCategoryFilter] = useState(null);
+  const [categoryFilters, setCategoryFilters] = useState([]);
   const [showActionSheet, setShowActionSheet] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -64,9 +63,9 @@ export default function FeedScreen({ navigation }) {
     try {
       const params = { page: pageNum, limit: 20 };
       if (search) params.search = search;
-      if (activeFilter !== 'all') params.type = activeFilter;
-      if (visibilityFilter !== 'all') params.visibility = visibilityFilter;
-      if (categoryFilter) params.categoryId = categoryFilter;
+      if (activeFilters.length > 0) params.type = activeFilters.join(',');
+      if (visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
+      if (categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
 
       const data = await api.getFeed(params);
 
@@ -84,7 +83,7 @@ export default function FeedScreen({ navigation }) {
       setIsRefreshing(false);
       setIsLoadingMore(false);
     }
-  }, [search, activeFilter, visibilityFilter, categoryFilter]);
+  }, [search, activeFilters, visibilityFilters, categoryFilters]);
 
   useEffect(() => {
     fetchFeed();
@@ -104,7 +103,7 @@ export default function FeedScreen({ navigation }) {
     if (!isInitialLoad) {
       fetchFeed(1, false);
     }
-  }, [activeFilter, visibilityFilter, categoryFilter]);
+  }, [activeFilters, visibilityFilters, categoryFilters]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -152,8 +151,54 @@ export default function FeedScreen({ navigation }) {
     return date.toLocaleDateString();
   };
 
-  const typeSegments = FILTER_OPTIONS.map(opt => opt.label);
-  const typeIndex = FILTER_OPTIONS.findIndex(opt => opt.key === activeFilter);
+  const handleTownToggle = async () => {
+    try {
+      const result = await api.checkSubscriptionAccess('town');
+      if (!result.canAccess) {
+        setActiveDropdown(null);
+        setShowUpgradePrompt(true);
+        return;
+      }
+    } catch {
+      // If the check fails, show upgrade prompt as a safe fallback
+      setActiveDropdown(null);
+      setShowUpgradePrompt(true);
+      return;
+    }
+    toggleFilter('town', visibilityKeys, setVisibilityFilters);
+  };
+
+  const toggleFilter = (key, allKeys, setFilters) => {
+    setFilters(prev => {
+      if (prev.includes(key)) {
+        return prev.filter(k => k !== key);
+      }
+      const next = [...prev, key];
+      if (allKeys.every(k => next.includes(k))) return [];
+      return next;
+    });
+  };
+
+  const typeKeys = FILTER_OPTIONS.filter(o => o.key !== 'all').map(o => o.key);
+  const visibilityKeys = VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(o => o.key);
+
+  const typeChipLabel = activeFilters.length === 0
+    ? 'All Types'
+    : activeFilters.length === 1
+      ? FILTER_OPTIONS.find(o => o.key === activeFilters[0])?.label
+      : `${activeFilters.length} Types`;
+
+  const visibilityChipLabel = visibilityFilters.length === 0
+    ? 'Everyone'
+    : visibilityFilters.length === 1
+      ? VISIBILITY_OPTIONS.find(o => o.key === visibilityFilters[0])?.label
+      : `${visibilityFilters.length} Areas`;
+
+  const categoryChipLabel = categoryFilters.length === 0
+    ? 'All Categories'
+    : categoryFilters.length === 1
+      ? categories.find(c => c.id === categoryFilters[0])?.name || 'Category'
+      : `${categoryFilters.length} Categories`;
 
   const createActions = [
     {
@@ -388,86 +433,42 @@ export default function FeedScreen({ navigation }) {
           onSubmitEditing={handleSearch}
         />
 
-        {/* Type filter */}
-        <View style={styles.filterGroup}>
-          <Text style={styles.filterLabel}>Type</Text>
-          <SegmentedControl
-            segments={typeSegments}
-            selectedIndex={typeIndex}
-            onIndexChange={(index) => setActiveFilter(FILTER_OPTIONS[index].key)}
-          />
-        </View>
+        <View style={styles.filterChipsRow}>
+          <HapticPressable
+            style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
+            onPress={() => setActiveDropdown('type')}
+            haptic="light"
+          >
+            <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
+              {typeChipLabel}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+          </HapticPressable>
 
-        {/* Visibility filter */}
-        <View style={styles.filterGroup}>
-          <Text style={styles.filterLabel}>Visibility</Text>
-          <View style={styles.pillRow}>
-            {VISIBILITY_OPTIONS.map((opt) => {
-              const isActive = visibilityFilter === opt.key;
-              return (
-                <HapticPressable
-                  key={opt.key}
-                  style={[styles.filterPill, isActive && styles.filterPillActive]}
-                  onPress={() => {
-                    setVisibilityFilter(opt.key);
-                    haptics.selection();
-                  }}
-                  haptic={null}
-                >
-                  <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                    {opt.label}
-                  </Text>
-                </HapticPressable>
-              );
-            })}
-          </View>
-        </View>
+          <HapticPressable
+            style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
+            onPress={() => setActiveDropdown('visibility')}
+            haptic="light"
+          >
+            <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
+              {visibilityChipLabel}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+          </HapticPressable>
 
-        {/* Category filter */}
-        {categories.length > 0 && (
-          <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryFilterScroll}>
-              <View style={styles.pillRow}>
-                <HapticPressable
-                  style={[styles.filterPill, !categoryFilter && styles.filterPillActive]}
-                  onPress={() => {
-                    setCategoryFilter(null);
-                    haptics.selection();
-                  }}
-                  haptic={null}
-                >
-                  <Text style={[styles.filterPillText, !categoryFilter && styles.filterPillTextActive]}>
-                    All
-                  </Text>
-                </HapticPressable>
-                {categories.map((cat) => {
-                  const isActive = categoryFilter === cat.id;
-                  return (
-                    <HapticPressable
-                      key={cat.id}
-                      style={[styles.filterPill, styles.categoryFilterPill, isActive && styles.filterPillActive]}
-                      onPress={() => {
-                        setCategoryFilter(isActive ? null : cat.id);
-                        haptics.selection();
-                      }}
-                      haptic={null}
-                    >
-                      <Ionicons
-                        name={cat.icon || 'pricetag-outline'}
-                        size={12}
-                        color={isActive ? '#fff' : COLORS.textSecondary}
-                      />
-                      <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
-                        {cat.name}
-                      </Text>
-                    </HapticPressable>
-                  );
-                })}
-              </View>
-            </ScrollView>
-          </View>
-        )}
+          {categories.length > 0 && (
+            <HapticPressable
+              style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
+              onPress={() => setActiveDropdown('category')}
+              haptic="light"
+            >
+              <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
+                {categoryChipLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+            </HapticPressable>
+          )}
+        </View>
       </View>
 
       <AnimatedFlatList
@@ -517,6 +518,127 @@ export default function FeedScreen({ navigation }) {
         title="Create"
         actions={createActions}
       />
+
+      <ActionSheet
+        isVisible={activeDropdown === 'type'}
+        onClose={() => setActiveDropdown(null)}
+        title="Type"
+        multiSelect
+        actions={[
+          {
+            label: 'All',
+            icon: activeFilters.length === 0
+              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+            onPress: () => setActiveFilters([]),
+          },
+          ...FILTER_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
+            label: opt.label,
+            icon: activeFilters.includes(opt.key)
+              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+            onPress: () => toggleFilter(opt.key, typeKeys, setActiveFilters),
+          })),
+        ]}
+      />
+
+      <ActionSheet
+        isVisible={activeDropdown === 'visibility'}
+        onClose={() => setActiveDropdown(null)}
+        title="Visibility"
+        multiSelect
+        actions={[
+          {
+            label: 'Everyone',
+            icon: visibilityFilters.length === 0
+              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+            onPress: () => setVisibilityFilters([]),
+          },
+          ...VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
+            label: opt.key === 'town' ? `${opt.label} ★` : opt.label,
+            icon: visibilityFilters.includes(opt.key)
+              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+            onPress: opt.key === 'town'
+              ? handleTownToggle
+              : () => toggleFilter(opt.key, visibilityKeys, setVisibilityFilters),
+          })),
+        ]}
+      />
+
+      <ActionSheet
+        isVisible={activeDropdown === 'category'}
+        onClose={() => setActiveDropdown(null)}
+        title="Category"
+        multiSelect
+        actions={[
+          {
+            label: 'All Categories',
+            icon: categoryFilters.length === 0
+              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+            onPress: () => setCategoryFilters([]),
+          },
+          ...categories.map(cat => ({
+            label: cat.name,
+            icon: categoryFilters.includes(cat.id)
+              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              : <Ionicons name={cat.icon || 'pricetag-outline'} size={20} color={COLORS.textMuted} />,
+            onPress: () => {
+              const allCatIds = categories.map(c => c.id);
+              toggleFilter(cat.id, allCatIds, setCategoryFilters);
+            },
+          })),
+        ]}
+      />
+
+      {showUpgradePrompt && (
+        <View style={styles.overlay}>
+          <BlurCard style={styles.overlayCard}>
+            <View style={styles.overlayCardInner}>
+              <View style={styles.overlayIconContainer}>
+                <Ionicons name="star" size={32} color={COLORS.primary} />
+              </View>
+              <Text style={styles.overlayTitle}>Upgrade to Plus</Text>
+              <Text style={styles.overlayText}>
+                Get more from Borrowhood with Plus. Browse items from your whole town and discover what's available nearby.
+              </Text>
+              <View style={styles.upgradeFeatures}>
+                <View style={styles.upgradeFeature}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                  <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                  <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                  <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
+                </View>
+              </View>
+              <HapticPressable
+                style={styles.overlayButton}
+                onPress={() => {
+                  setShowUpgradePrompt(false);
+                  navigation.navigate('Subscription');
+                }}
+                haptic="medium"
+              >
+                <Text style={styles.overlayButtonText}>Get Plus - $1/mo</Text>
+              </HapticPressable>
+              <HapticPressable
+                style={styles.overlayDismiss}
+                onPress={() => setShowUpgradePrompt(false)}
+                haptic="light"
+              >
+                <Text style={styles.overlayDismissText}>Not Now</Text>
+              </HapticPressable>
+            </View>
+          </BlurCard>
+        </View>
+      )}
     </View>
   );
 }
@@ -534,44 +656,101 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
     gap: SPACING.md,
   },
-  filterGroup: {
-    gap: SPACING.xs,
-  },
-  filterLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-  },
-  pillRow: {
+  filterChipsRow: {
     flexDirection: 'row',
     gap: SPACING.sm,
   },
-  filterPill: {
+  dropdownChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceElevated,
   },
-  filterPillActive: {
+  dropdownChipActive: {
     backgroundColor: COLORS.primary,
   },
-  filterPillText: {
+  dropdownChipText: {
     ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
-  filterPillTextActive: {
+  dropdownChipTextActive: {
     color: '#fff',
     fontWeight: '600',
   },
-  categoryFilterScroll: {
-    marginHorizontal: -SPACING.lg,
-    paddingHorizontal: SPACING.lg,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 100,
+    paddingHorizontal: SPACING.xl,
+    zIndex: 1000,
   },
-  categoryFilterPill: {
+  overlayCard: {
+    width: '100%',
+    maxWidth: 340,
+  },
+  overlayCardInner: {
+    padding: 28,
+  },
+  overlayIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.secondary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: SPACING.lg,
+  },
+  overlayTitle: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  overlayText: {
+    ...TYPOGRAPHY.subheadline,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: SPACING.xl,
+  },
+  overlayButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+  },
+  overlayButtonText: {
+    ...TYPOGRAPHY.button,
+    color: COLORS.background,
+  },
+  overlayDismiss: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginTop: SPACING.sm,
+  },
+  overlayDismissText: {
+    ...TYPOGRAPHY.subheadline,
+    color: COLORS.textSecondary,
+  },
+  upgradeFeatures: {
+    gap: 10,
+    marginBottom: SPACING.xl,
+  },
+  upgradeFeature: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 10,
+  },
+  upgradeFeatureText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
   },
   listContent: {
     padding: SPACING.lg,

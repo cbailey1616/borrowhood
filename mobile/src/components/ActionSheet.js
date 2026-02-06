@@ -13,6 +13,7 @@ export default function ActionSheet({
   message,
   actions = [],
   cancelLabel = 'Cancel',
+  multiSelect = false,
 }) {
   const bottomSheetRef = useRef(null);
 
@@ -45,13 +46,17 @@ export default function ActionSheet({
       } else {
         haptics.light();
       }
-      bottomSheetRef.current?.close();
-      // Delay action to let sheet close animation finish
-      setTimeout(() => {
+      if (multiSelect) {
         action.onPress?.();
-      }, 200);
+      } else {
+        bottomSheetRef.current?.close();
+        // Delay action to let sheet close animation finish
+        setTimeout(() => {
+          action.onPress?.();
+        }, 200);
+      }
     },
-    []
+    [multiSelect]
   );
 
   const renderBackdrop = useCallback(
@@ -123,7 +128,7 @@ export default function ActionSheet({
           haptic="light"
           style={styles.cancelButton}
         >
-          <Text style={styles.cancelText}>{cancelLabel}</Text>
+          <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
         </HapticPressable>
       </BottomSheetView>
     </BottomSheet>

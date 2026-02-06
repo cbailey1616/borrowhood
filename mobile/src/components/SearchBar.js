@@ -10,6 +10,7 @@ export default function SearchBar({
   placeholder = 'Search',
   onFocus,
   onBlur,
+  onSubmitEditing,
   autoFocus = false,
   style,
 }) {
@@ -37,6 +38,7 @@ export default function SearchBar({
         returnKeyType="search"
         onFocus={onFocus}
         onBlur={onBlur}
+        onSubmitEditing={onSubmitEditing}
       />
       {value && value.length > 0 ? (
         <HapticPressable onPress={handleClear} haptic="light" style={styles.clearButton}>
