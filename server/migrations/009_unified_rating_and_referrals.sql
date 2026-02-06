@@ -60,6 +60,29 @@ BEGIN
   END IF;
 END $$;
 
+-- Add referral notification types to notification_type enum
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum
+    WHERE enumlabel = 'referral_joined'
+    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'notification_type')
+  ) THEN
+    ALTER TYPE notification_type ADD VALUE 'referral_joined';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum
+    WHERE enumlabel = 'referral_reward'
+    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'notification_type')
+  ) THEN
+    ALTER TYPE notification_type ADD VALUE 'referral_reward';
+  END IF;
+END $$;
+
 -- Add referral columns to users
 ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES users(id);
