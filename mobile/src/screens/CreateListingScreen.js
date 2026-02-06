@@ -229,14 +229,6 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
-    // Check if friends visibility is selected but user has no friends
-    const needsFriends = formData.visibility.includes('close_friends');
-    if (needsFriends && !hasFriends) {
-      Keyboard.dismiss();
-      setShowAddFriends(true);
-      return;
-    }
-
     // Check if neighborhood visibility is selected but user isn't in a community
     const needsCommunity = formData.visibility.includes('neighborhood');
     if (needsCommunity && !communityId) {
@@ -267,6 +259,7 @@ export default function CreateListingScreen({ navigation, route }) {
         communityId: needsCommunity ? communityId : undefined,
       });
 
+      setIsSubmitting(false);
       haptics.success();
       navigation.goBack();
     } catch (error) {
