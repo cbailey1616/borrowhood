@@ -27,6 +27,7 @@ export default function RegisterScreen({ navigation }) {
     phone: '',
     password: '',
     confirmPassword: '',
+    referralCode: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +68,7 @@ export default function RegisterScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      await register({ firstName, lastName, email, phone, password });
+      await register({ firstName, lastName, email, phone, password, referralCode: formData.referralCode || undefined });
       haptics.success();
       navigation.navigate('VerifyIdentity');
     } catch (error) {
@@ -151,6 +152,19 @@ export default function RegisterScreen({ navigation }) {
                   placeholder="(555) 123-4567"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Referral code (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.referralCode}
+                  onChangeText={(v) => updateField('referralCode', v)}
+                  placeholder="BH-XXXXXXXX"
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
                 />
               </View>
 

@@ -23,8 +23,8 @@ router.get('/', authenticate, async (req, res) => {
         u.first_name,
         u.last_name,
         u.profile_photo_url,
-        u.lender_rating,
-        u.lender_rating_count,
+        u.rating,
+        u.rating_count,
         (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
         s.created_at as saved_at
       FROM saved_listings s
@@ -51,8 +51,8 @@ router.get('/', authenticate, async (req, res) => {
         firstName: l.first_name,
         lastName: l.last_name,
         profilePhotoUrl: l.profile_photo_url,
-        rating: parseFloat(l.lender_rating) || 0,
-        ratingCount: l.lender_rating_count,
+        rating: parseFloat(l.rating) || 0,
+        ratingCount: l.rating_count,
       },
     }));
 

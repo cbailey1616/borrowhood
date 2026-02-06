@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { query } from '../utils/db.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
 import { createStripeCustomer, createIdentityVerificationSession } from '../services/stripe.js';
+import { sendNotification } from '../services/notifications.js';
 import { body, validationResult } from 'express-validator';
 
 const router = Router();
@@ -23,13 +24,25 @@ router.post('/register',
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName, phone, referralCode } = req.body;
 
     try {
       // Check if email exists
       const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
       if (existing.rows.length > 0) {
         return res.status(400).json({ error: 'Email already registered' });
+      }
+
+      // Look up referrer by referral code (if provided)
+      let referrerId = null;
+      if (referralCode) {
+        const referrerResult = await query(
+          'SELECT id FROM users WHERE referral_code = $1',
+          [referralCode.trim()]
+        );
+        if (referrerResult.rows.length > 0) {
+          referrerId = referrerResult.rows[0].id;
+        }
       }
 
       // Hash password
@@ -44,15 +57,30 @@ router.post('/register',
         console.warn('Stripe customer creation skipped:', stripeErr.message);
       }
 
-      // Insert user
+      // Insert user with referral info
       const result = await query(
-        `INSERT INTO users (email, password_hash, first_name, last_name, phone, stripe_customer_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO users (email, password_hash, first_name, last_name, phone, stripe_customer_id, referred_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, email, first_name, last_name, status`,
-        [email, passwordHash, firstName, lastName, phone, stripeCustomerId]
+        [email, passwordHash, firstName, lastName, phone, stripeCustomerId, referrerId]
       );
 
       const user = result.rows[0];
+
+      // Generate referral code for new user
+      const newReferralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
+      await query(
+        'UPDATE users SET referral_code = $1 WHERE id = $2',
+        [newReferralCode, user.id]
+      );
+
+      // Notify referrer that someone joined with their code
+      if (referrerId) {
+        await sendNotification(referrerId, 'referral_joined', {
+          friendName: `${firstName} ${lastName}`,
+        }, { fromUserId: user.id });
+      }
+
       const tokens = generateTokens(user.id);
 
       res.status(201).json({
@@ -173,9 +201,8 @@ router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT id, email, first_name, last_name, phone, profile_photo_url, bio,
-              city, state, latitude, longitude, status, borrower_rating, borrower_rating_count,
-              lender_rating, lender_rating_count, total_transactions,
-              stripe_identity_verified_at
+              city, state, latitude, longitude, status, rating, rating_count,
+              total_transactions, stripe_identity_verified_at
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -199,10 +226,8 @@ router.get('/me', authenticate, async (req, res) => {
       longitude: user.longitude ? parseFloat(user.longitude) : null,
       status: user.status,
       isVerified: user.status === 'verified',
-      borrowerRating: parseFloat(user.borrower_rating) || 0,
-      borrowerRatingCount: user.borrower_rating_count,
-      lenderRating: parseFloat(user.lender_rating) || 0,
-      lenderRatingCount: user.lender_rating_count,
+      rating: parseFloat(user.rating) || 0,
+      ratingCount: user.rating_count,
       totalTransactions: user.total_transactions,
     });
   } catch (err) {

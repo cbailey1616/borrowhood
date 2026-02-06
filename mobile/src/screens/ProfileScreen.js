@@ -185,20 +185,10 @@ export default function ProfileScreen({ navigation }) {
               <View style={styles.ratingRow}>
                 <Text style={styles.starIcon}>★</Text>
                 <Text style={styles.statValue}>
-                  {user?.lenderRating?.toFixed(1) || '0.0'}
+                  {user?.rating?.toFixed(1) || '0.0'}
                 </Text>
               </View>
-              <Text style={styles.statLabel}>As Lender ({user?.lenderRatingCount || 0})</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <View style={styles.ratingRow}>
-                <Text style={styles.starIcon}>★</Text>
-                <Text style={styles.statValue}>
-                  {user?.borrowerRating?.toFixed(1) || '0.0'}
-                </Text>
-              </View>
-              <Text style={styles.statLabel}>As Borrower ({user?.borrowerRatingCount || 0})</Text>
+              <Text style={styles.statLabel}>Rating ({user?.ratingCount || 0})</Text>
             </View>
           </View>
         </BlurCard>
@@ -229,6 +219,11 @@ export default function ProfileScreen({ navigation }) {
             icon="card-outline"
             title="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}
+          />
+          <GroupedListItem
+            icon="gift-outline"
+            title="Invite Friends"
+            onPress={() => navigation.navigate('Referral')}
           />
         </GroupedListSection>
 

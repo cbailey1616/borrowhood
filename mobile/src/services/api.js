@@ -549,6 +549,13 @@ const saveListing = (listingId) => post(`/saved/${listingId}`);
 const unsaveListing = (listingId) => del(`/saved/${listingId}`);
 const checkSaved = (listingId) => get(`/saved/check/${listingId}`);
 
+// ============================================
+// Referrals
+// ============================================
+const getReferralCode = () => get('/referrals/code');
+const getReferralStatus = () => get('/referrals/status');
+const claimReferralReward = () => post('/referrals/claim');
+
 export default {
   setAuthToken,
   // Auth
@@ -689,4 +696,8 @@ export default {
   saveListing,
   unsaveListing,
   checkSaved,
+  // Referrals
+  getReferralCode,
+  getReferralStatus,
+  claimReferralReward,
 };

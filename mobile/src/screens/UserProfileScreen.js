@@ -123,10 +123,6 @@ export default function UserProfileScreen({ route, navigation }) {
     );
   }
 
-  const filteredRatings = ratings.filter(r =>
-    activeTab === 'lender' ? r.isLenderRating : !r.isLenderRating
-  );
-
   return (
     <View style={styles.container}>
       <ScrollView>
@@ -169,20 +165,10 @@ export default function UserProfileScreen({ route, navigation }) {
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={16} color={COLORS.warning} />
               <Text style={styles.statValue}>
-                {user.lenderRating?.toFixed(1) || '-'}
+                {user.rating?.toFixed(1) || '-'}
               </Text>
             </View>
-            <Text style={styles.statLabel}>As Lender</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={16} color={COLORS.warning} />
-              <Text style={styles.statValue}>
-                {user.borrowerRating?.toFixed(1) || '-'}
-              </Text>
-            </View>
-            <Text style={styles.statLabel}>As Borrower</Text>
+            <Text style={styles.statLabel}>Rating ({user.ratingCount || 0})</Text>
           </View>
         </View>
 
@@ -239,13 +225,13 @@ export default function UserProfileScreen({ route, navigation }) {
               </View>
             )
           ) : (
-            filteredRatings.length === 0 ? (
+            ratings.length === 0 ? (
               <View style={styles.emptyRatings}>
                 <Ionicons name="star-outline" size={32} color={COLORS.textMuted} />
                 <Text style={styles.emptyText}>No reviews yet</Text>
               </View>
             ) : (
-              filteredRatings.map((rating) => (
+              ratings.map((rating) => (
                 <BlurCard key={rating.id} style={styles.ratingCard}>
                   <View style={styles.ratingHeader}>
                     <Image

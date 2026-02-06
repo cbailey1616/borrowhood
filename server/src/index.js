@@ -35,6 +35,7 @@ import subscriptionRoutes from './routes/subscriptions.js';
 import paymentMethodRoutes from './routes/paymentMethods.js';
 import savedRoutes from './routes/saved.js';
 import categoryRoutes from './routes/categories.js';
+import referralRoutes from './routes/referrals.js';
 
 const app = express();
 
@@ -126,6 +127,7 @@ app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/saved', savedRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/listings', discussionRoutes);
+app.use('/api/referrals', referralRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // Health check

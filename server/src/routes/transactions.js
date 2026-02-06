@@ -227,7 +227,7 @@ router.get('/:id', authenticate, async (req, res) => {
               l.condition as listing_condition,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
               b.first_name as borrower_first_name, b.last_name as borrower_last_name,
-              b.profile_photo_url as borrower_photo, b.borrower_rating, b.borrower_rating_count,
+              b.profile_photo_url as borrower_photo, b.rating as borrower_rating, b.rating_count as borrower_rating_count,
               lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
               lnd.profile_photo_url as lender_photo
        FROM borrow_transactions t

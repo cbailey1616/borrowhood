@@ -249,7 +249,7 @@ router.get('/:id/members', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url,
-              u.lender_rating, u.lender_rating_count, u.borrower_rating, u.borrower_rating_count,
+              u.rating, u.rating_count,
               m.role, m.joined_at
        FROM community_memberships m
        JOIN users u ON m.user_id = u.id
@@ -265,10 +265,8 @@ router.get('/:id/members', authenticate, async (req, res) => {
       lastName: m.last_name,
       profilePhotoUrl: m.profile_photo_url,
       role: m.role,
-      lenderRating: parseFloat(m.lender_rating) || 0,
-      lenderRatingCount: m.lender_rating_count,
-      borrowerRating: parseFloat(m.borrower_rating) || 0,
-      borrowerRatingCount: m.borrower_rating_count,
+      rating: parseFloat(m.rating) || 0,
+      ratingCount: m.rating_count,
       joinedAt: m.joined_at,
     })));
   } catch (err) {

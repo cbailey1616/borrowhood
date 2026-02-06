@@ -35,6 +35,7 @@ import BundlesScreen from '../screens/BundlesScreen';
 import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 import InviteMembersScreen from '../screens/InviteMembersScreen';
 import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
+import ReferralScreen from '../screens/ReferralScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -217,6 +218,11 @@ export default function RootNavigator() {
             name="CommunitySettings"
             component={CommunitySettingsScreen}
             options={{ ...sharedScreenOptions, title: 'Neighborhood Settings' }}
+          />
+          <Stack.Screen
+            name="Referral"
+            component={ReferralScreen}
+            options={{ ...sharedScreenOptions, title: 'Invite Friends' }}
           />
         </>
       )}

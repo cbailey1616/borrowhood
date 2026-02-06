@@ -18,8 +18,7 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT id, first_name, last_name, profile_photo_url, bio,
-              city, state, status, borrower_rating, borrower_rating_count,
-              lender_rating, lender_rating_count, total_transactions,
+              city, state, status, rating, rating_count, total_transactions,
               created_at
        FROM users WHERE id = $1`,
       [req.params.id]
@@ -39,10 +38,8 @@ router.get('/:id', authenticate, async (req, res) => {
       city: user.city,
       state: user.state,
       isVerified: user.status === 'verified',
-      borrowerRating: parseFloat(user.borrower_rating) || 0,
-      borrowerRatingCount: user.borrower_rating_count,
-      lenderRating: parseFloat(user.lender_rating) || 0,
-      lenderRatingCount: user.lender_rating_count,
+      rating: parseFloat(user.rating) || 0,
+      ratingCount: user.rating_count,
       totalTransactions: user.total_transactions,
       memberSince: user.created_at,
     });
@@ -483,22 +480,13 @@ router.delete('/me/friends/:friendId', authenticate, async (req, res) => {
 // Get user ratings
 // ============================================
 router.get('/:id/ratings', authenticate, async (req, res) => {
-  const { type } = req.query; // 'lender' or 'borrower'
-
   try {
-    let whereClause = 'r.ratee_id = $1';
-    if (type === 'lender') {
-      whereClause += ' AND r.is_lender_rating = true';
-    } else if (type === 'borrower') {
-      whereClause += ' AND r.is_lender_rating = false';
-    }
-
     const result = await query(
-      `SELECT r.rating, r.comment, r.is_lender_rating, r.created_at,
+      `SELECT r.rating, r.comment, r.created_at,
               u.id as rater_id, u.first_name, u.last_name, u.profile_photo_url
        FROM ratings r
        JOIN users u ON r.rater_id = u.id
-       WHERE ${whereClause}
+       WHERE r.ratee_id = $1
        ORDER BY r.created_at DESC
        LIMIT 50`,
       [req.params.id]
@@ -507,7 +495,6 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
     res.json(result.rows.map(r => ({
       rating: r.rating,
       comment: r.comment,
-      type: r.is_lender_rating ? 'lender' : 'borrower',
       createdAt: r.created_at,
       rater: {
         id: r.rater_id,

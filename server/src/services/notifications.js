@@ -118,6 +118,18 @@ const NOTIFICATION_TEMPLATES = {
       ? `${data.posterName} asked a question about ${data.itemTitle || 'your listing'}`
       : 'Someone asked a question about your listing',
   },
+
+  // Referrals
+  referral_joined: {
+    title: 'Friend Joined!',
+    body: (data) => data.friendName
+      ? `${data.friendName} joined BorrowHood using your referral code!`
+      : 'Someone joined using your referral code!',
+  },
+  referral_reward: {
+    title: 'Free Plus Unlocked!',
+    body: () => 'Congratulations! You\'ve earned free Plus for a year by inviting 3 friends!',
+  },
 };
 
 /**

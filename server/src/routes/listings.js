@@ -106,7 +106,7 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await query(
       `SELECT l.*, u.first_name, u.last_name, u.profile_photo_url,
-              u.lender_rating, u.lender_rating_count, u.city as owner_city,
+              u.rating, u.rating_count, u.city as owner_city,
               u.total_transactions, u.status as owner_status,
               owner.location as owner_location,
               cat.name as category_name,
@@ -141,8 +141,8 @@ router.get('/', authenticate, async (req, res) => {
         firstName: l.first_name,
         lastName: l.last_name,
         profilePhotoUrl: l.profile_photo_url,
-        rating: parseFloat(l.lender_rating) || 0,
-        ratingCount: l.lender_rating_count,
+        rating: parseFloat(l.rating) || 0,
+        ratingCount: l.rating_count,
         city: l.owner_city,
         totalTransactions: l.total_transactions || 0,
         isVerified: l.owner_status === 'verified',
@@ -201,7 +201,7 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.profile_photo_url,
-              u.lender_rating, u.lender_rating_count, u.total_transactions,
+              u.rating, u.rating_count, u.total_transactions,
               u.status as owner_status, c.name as category_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id
@@ -244,8 +244,8 @@ router.get('/:id', authenticate, async (req, res) => {
         firstName: l.first_name,
         lastName: l.last_name,
         profilePhotoUrl: l.profile_photo_url,
-        rating: parseFloat(l.lender_rating) || 0,
-        ratingCount: l.lender_rating_count,
+        rating: parseFloat(l.rating) || 0,
+        ratingCount: l.rating_count,
         totalTransactions: l.total_transactions || 0,
         isVerified: l.owner_status === 'verified',
       },
