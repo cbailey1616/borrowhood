@@ -33,6 +33,7 @@ import availabilityRoutes from './routes/availability.js';
 import libraryRoutes from './routes/library.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import savedRoutes from './routes/saved.js';
+import categoryRoutes from './routes/categories.js';
 
 const app = express();
 
@@ -121,6 +122,7 @@ app.use('/api/listings', availabilityRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/saved', savedRoutes);
+app.use('/api/categories', categoryRoutes);
 app.use('/api/listings', discussionRoutes);
 app.use('/webhooks', webhookRoutes);
 

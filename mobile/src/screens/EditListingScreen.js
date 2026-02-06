@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   ScrollView,
   Platform,
@@ -14,9 +12,11 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
+import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
-import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
@@ -25,10 +25,13 @@ export default function EditListingScreen({ navigation, route }) {
   const { listing } = route.params;
   const { showError, showToast } = useError();
 
+  const [categories, setCategories] = useState([]);
+
   const [formData, setFormData] = useState({
     title: listing.title || '',
     description: listing.description || '',
     condition: listing.condition || 'good',
+    categoryId: listing.categoryId || null,
     visibility: Array.isArray(listing.visibility) ? listing.visibility : [listing.visibility || 'close_friends'],
     isFree: listing.isFree ?? true,
     pricePerDay: listing.pricePerDay?.toString() || '',
@@ -46,6 +49,18 @@ export default function EditListingScreen({ navigation, route }) {
   const [newPhotos, setNewPhotos] = useState([]); // Local URIs of newly added photos
   const [removedPhotos, setRemovedPhotos] = useState([]); // URLs of removed photos
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const cats = await api.getCategories();
+        setCategories(cats || []);
+      } catch (e) {
+        console.log('Failed to fetch categories:', e);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,7 +84,7 @@ export default function EditListingScreen({ navigation, route }) {
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Camera permission is required to take photos');
+      showError({ type: 'permission', title: 'Camera Access', message: 'Camera permission is required to take photos.' });
       return;
     }
 
@@ -129,6 +144,7 @@ export default function EditListingScreen({ navigation, route }) {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         condition: formData.condition,
+        categoryId: formData.categoryId || undefined,
         visibility: formData.visibility,
         isFree: formData.isFree,
         pricePerDay: formData.isFree ? undefined : parseFloat(formData.pricePerDay) || 0,
@@ -144,9 +160,11 @@ export default function EditListingScreen({ navigation, route }) {
         rtoRentalCreditPercent: formData.rtoAvailable ? parseFloat(formData.rtoRentalCreditPercent) || 50 : undefined,
       });
 
+      haptics.success();
       showToast('Your listing has been updated!', 'success');
       navigation.goBack();
     } catch (error) {
+      haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';
       if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('plus subscription')) {
         showError({
@@ -187,36 +205,38 @@ export default function EditListingScreen({ navigation, route }) {
             {existingPhotosToShow.map((url, index) => (
               <View key={`existing-${index}`} style={styles.photoWrapper}>
                 <Image source={{ uri: url }} style={styles.photo} />
-                <TouchableOpacity
+                <HapticPressable
+                  haptic="light"
                   style={styles.removePhoto}
                   onPress={() => handleRemoveExistingPhoto(url)}
                 >
                   <Ionicons name="close" size={16} color="#fff" />
-                </TouchableOpacity>
+                </HapticPressable>
               </View>
             ))}
             {/* New photos */}
             {newPhotos.map((uri, index) => (
               <View key={`new-${index}`} style={styles.photoWrapper}>
                 <Image source={{ uri }} style={styles.photo} />
-                <TouchableOpacity
+                <HapticPressable
+                  haptic="light"
                   style={styles.removePhoto}
                   onPress={() => handleRemoveNewPhoto(index)}
                 >
                   <Ionicons name="close" size={16} color="#fff" />
-                </TouchableOpacity>
+                </HapticPressable>
               </View>
             ))}
             {totalPhotos < 10 && (
               <View style={styles.addPhotoButtons}>
-                <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
+                <HapticPressable haptic="light" style={styles.addPhotoButton} onPress={handlePickImage}>
                   <Ionicons name="images-outline" size={24} color={COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.addPhotoButton} onPress={handleTakePhoto}>
+                </HapticPressable>
+                <HapticPressable haptic="light" style={styles.addPhotoButton} onPress={handleTakePhoto}>
                   <Ionicons name="camera-outline" size={24} color={COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Camera</Text>
-                </TouchableOpacity>
+                </HapticPressable>
               </View>
             )}
           </View>
@@ -254,18 +274,53 @@ export default function EditListingScreen({ navigation, route }) {
         <Text style={styles.label}>Condition *</Text>
         <View style={styles.options}>
           {CONDITIONS.map((condition) => (
-            <TouchableOpacity
+            <HapticPressable
               key={condition}
+              haptic="light"
               style={[styles.option, formData.condition === condition && styles.optionActive]}
               onPress={() => updateField('condition', condition)}
             >
               <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
                 {CONDITION_LABELS[condition]}
               </Text>
-            </TouchableOpacity>
+            </HapticPressable>
           ))}
         </View>
       </View>
+
+      {/* Category */}
+      {categories.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.label}>Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+            <View style={styles.categoryRow}>
+              {categories.map((cat) => {
+                const isSelected = formData.categoryId === cat.id;
+                return (
+                  <HapticPressable
+                    key={cat.id}
+                    haptic={null}
+                    style={[styles.option, styles.categoryPill, isSelected && styles.optionActive]}
+                    onPress={() => {
+                      updateField('categoryId', isSelected ? null : cat.id);
+                      haptics.selection();
+                    }}
+                  >
+                    <Ionicons
+                      name={cat.icon || 'pricetag-outline'}
+                      size={16}
+                      color={isSelected ? '#fff' : COLORS.textSecondary}
+                    />
+                    <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                      {cat.name}
+                    </Text>
+                  </HapticPressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Visibility */}
       <View style={styles.section}>
@@ -275,8 +330,9 @@ export default function EditListingScreen({ navigation, route }) {
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
             return (
-              <TouchableOpacity
+              <HapticPressable
                 key={visibility}
+                haptic="light"
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
                   const current = formData.visibility;
@@ -293,12 +349,12 @@ export default function EditListingScreen({ navigation, route }) {
                   name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                   size={18}
                   color={isSelected ? "#fff" : COLORS.textSecondary}
-                  style={{ marginRight: 6 }}
+                  style={{ marginRight: SPACING.xs + 2 }}
                 />
                 <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
                   {VISIBILITY_LABELS[visibility]}
                 </Text>
-              </TouchableOpacity>
+              </HapticPressable>
             );
           })}
         </View>
@@ -307,7 +363,8 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Pricing */}
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
-        <TouchableOpacity
+        <HapticPressable
+          haptic="light"
           style={styles.toggle}
           onPress={() => updateField('isFree', !formData.isFree)}
         >
@@ -315,7 +372,7 @@ export default function EditListingScreen({ navigation, route }) {
           <View style={[styles.switch, formData.isFree && styles.switchActive]}>
             <View style={[styles.switchKnob, formData.isFree && styles.switchKnobActive]} />
           </View>
-        </TouchableOpacity>
+        </HapticPressable>
 
         {!formData.isFree && (
           <View style={styles.priceInput}>
@@ -375,7 +432,8 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Rent-to-Own */}
       <View style={styles.section}>
         <Text style={styles.label}>Rent-to-Own</Text>
-        <TouchableOpacity
+        <HapticPressable
+          haptic="light"
           style={styles.toggle}
           onPress={() => updateField('rtoAvailable', !formData.rtoAvailable)}
         >
@@ -386,7 +444,7 @@ export default function EditListingScreen({ navigation, route }) {
           <View style={[styles.switch, formData.rtoAvailable && styles.switchActive]}>
             <View style={[styles.switchKnob, formData.rtoAvailable && styles.switchKnobActive]} />
           </View>
-        </TouchableOpacity>
+        </HapticPressable>
 
         {formData.rtoAvailable && (
           <View style={styles.rtoFields}>
@@ -447,7 +505,8 @@ export default function EditListingScreen({ navigation, route }) {
       </View>
 
       {/* Submit */}
-      <TouchableOpacity
+      <HapticPressable
+        haptic="medium"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
@@ -457,7 +516,7 @@ export default function EditListingScreen({ navigation, route }) {
         ) : (
           <Text style={styles.submitButtonText}>Save Changes</Text>
         )}
-      </TouchableOpacity>
+      </HapticPressable>
     </KeyboardAwareScrollView>
   );
 }
@@ -468,29 +527,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    padding: 20,
+    padding: SPACING.xl,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   label: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   hint: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   photoScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+    marginHorizontal: -SPACING.xl,
+    paddingHorizontal: SPACING.xl,
   },
   photoRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   photoWrapper: {
     position: 'relative',
@@ -498,7 +557,7 @@ const styles = StyleSheet.create({
   photo: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.gray[200],
   },
   removePhoto: {
@@ -506,7 +565,7 @@ const styles = StyleSheet.create({
     top: -6,
     right: -6,
     backgroundColor: COLORS.danger,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     width: 24,
     height: 24,
     alignItems: 'center',
@@ -514,12 +573,12 @@ const styles = StyleSheet.create({
   },
   addPhotoButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   addPhotoButton: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 2,
     borderColor: COLORS.gray[700],
     borderStyle: 'dashed',
@@ -527,15 +586,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addPhotoText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
     backgroundColor: COLORS.surface,
@@ -545,21 +604,35 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
+  categoryScroll: {
+    marginHorizontal: -SPACING.xl,
+    paddingHorizontal: SPACING.xl,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs + 2,
+  },
   options: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: SPACING.sm,
   },
   option: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray[800],
+    borderRadius: RADIUS.xl,
+    backgroundColor: COLORS.separator,
   },
   optionActive: {
     backgroundColor: COLORS.primary,
   },
   optionText: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.textSecondary,
   },
@@ -571,14 +644,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: SPACING.sm,
   },
   toggleText: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
   },
   toggleHint: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
@@ -605,11 +679,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     backgroundColor: COLORS.surface,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   currency: {
     fontSize: 18,
@@ -619,66 +693,69 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     paddingVertical: 14,
-    marginLeft: 4,
+    marginLeft: SPACING.xs,
     color: COLORS.text,
   },
   priceSuffix: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.textSecondary,
   },
   depositSection: {
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   subLabel: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.textSecondary,
   },
   durationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.md,
   },
   durationInput: {
     flex: 1,
   },
   durationLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   durationField: {
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     fontSize: 16,
     textAlign: 'center',
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
   durationSeparator: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginTop: 20,
+    marginTop: SPACING.xl,
   },
   rtoFields: {
-    marginTop: 16,
-    gap: 16,
+    marginTop: SPACING.lg,
+    gap: SPACING.lg,
   },
   rtoRow: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   rtoPaymentRange: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   percentInput: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     backgroundColor: COLORS.surface,
     width: 100,
   },
@@ -695,18 +772,18 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 32,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xxl,
   },
   submitButtonDisabled: {
     opacity: 0.7,
   },
   submitButtonText: {
+    ...TYPOGRAPHY.button,
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
   },
 });

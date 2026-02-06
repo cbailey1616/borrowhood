@@ -5,9 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   Platform,
   Keyboard,
@@ -18,19 +16,25 @@ import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
+import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
+import { haptics } from '../utils/haptics';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
-export default function CreateListingScreen({ navigation }) {
+export default function CreateListingScreen({ navigation, route }) {
   const { user } = useAuth();
   const { showError } = useError();
   const [communityId, setCommunityId] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     condition: 'good',
+    categoryId: null,
     visibility: ['close_friends'], // Array for multi-select, default to friends
     isFree: true,
     pricePerDay: '',
@@ -46,6 +50,31 @@ export default function CreateListingScreen({ navigation }) {
   const [showAddFriends, setShowAddFriends] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
+  const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
+  const [removePhotoIndex, setRemovePhotoIndex] = useState(null);
+  const [isRelist, setIsRelist] = useState(false);
+
+  // Pre-populate from relist data
+  useEffect(() => {
+    const relistFrom = route?.params?.relistFrom;
+    if (relistFrom) {
+      setIsRelist(true);
+      setFormData(prev => ({
+        ...prev,
+        title: relistFrom.title || '',
+        description: relistFrom.description || '',
+        condition: relistFrom.condition || 'good',
+        categoryId: relistFrom.categoryId || null,
+        visibility: Array.isArray(relistFrom.visibility) ? relistFrom.visibility : [relistFrom.visibility || 'close_friends'],
+        isFree: relistFrom.isFree ?? true,
+        pricePerDay: relistFrom.pricePerDay?.toString() || '',
+        depositAmount: relistFrom.depositAmount?.toString() || '',
+        minDuration: relistFrom.minDuration?.toString() || '1',
+        maxDuration: relistFrom.maxDuration?.toString() || '14',
+        photos: [], // Photos left empty — originals are S3 URLs
+      }));
+    }
+  }, [route?.params?.relistFrom]);
 
   // Fetch user's community and friends on mount
   useEffect(() => {
@@ -55,6 +84,14 @@ export default function CreateListingScreen({ navigation }) {
         const communities = await api.getCommunities({ member: true });
         if (communities && communities.length > 0) {
           setCommunityId(communities[0].id);
+        }
+
+        // Fetch categories
+        try {
+          const cats = await api.getCategories();
+          setCategories(cats || []);
+        } catch (e) {
+          console.log('Failed to fetch categories:', e);
         }
 
         // Fetch friends count
@@ -81,13 +118,25 @@ export default function CreateListingScreen({ navigation }) {
       const result = await api.analyzeListingImage(imageUrl);
 
       if (result && !result.error) {
-        setFormData(prev => ({
-          ...prev,
-          title: result.title || prev.title,
-          description: result.description || prev.description,
-          condition: result.condition || prev.condition,
-        }));
+        setFormData(prev => {
+          const updates = {
+            ...prev,
+            title: result.title || prev.title,
+            description: result.description || prev.description,
+            condition: result.condition || prev.condition,
+          };
+          // Auto-select category if AI returns one
+          if (result.category && categories.length > 0) {
+            const match = categories.find(c =>
+              c.name.toLowerCase().includes(result.category.toLowerCase()) ||
+              c.slug.includes(result.category.toLowerCase())
+            );
+            if (match) updates.categoryId = match.id;
+          }
+          return updates;
+        });
         setAiSuggested(true);
+        haptics.success();
       }
     } catch (error) {
       console.log('AI analysis failed:', error.message);
@@ -109,9 +158,10 @@ export default function CreateListingScreen({ navigation }) {
       const newPhotos = result.assets.map(a => a.uri);
       const allPhotos = [...formData.photos, ...newPhotos].slice(0, 10);
       updateField('photos', allPhotos);
+      haptics.light();
 
-      // Analyze the first photo if this is the first photo added and no title yet
-      if (formData.photos.length === 0 && newPhotos.length > 0 && !formData.title) {
+      // Analyze the first photo if this is the first photo added and no title yet (skip for relist)
+      if (!isRelist && formData.photos.length === 0 && newPhotos.length > 0 && !formData.title) {
         analyzeImage(newPhotos[0]);
       }
     }
@@ -120,7 +170,12 @@ export default function CreateListingScreen({ navigation }) {
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Camera permission is required to take photos');
+      haptics.error();
+      showError({
+        type: 'validation',
+        title: 'Permission Needed',
+        message: 'Camera permission is required to take photos',
+      });
       return;
     }
 
@@ -132,20 +187,31 @@ export default function CreateListingScreen({ navigation }) {
       const photoUri = result.assets[0].uri;
       const allPhotos = [...formData.photos, photoUri].slice(0, 10);
       updateField('photos', allPhotos);
+      haptics.light();
 
-      // Analyze the photo if this is the first photo and no title yet
-      if (formData.photos.length === 0 && !formData.title) {
+      // Analyze the photo if this is the first photo and no title yet (skip for relist)
+      if (!isRelist && formData.photos.length === 0 && !formData.title) {
         analyzeImage(photoUri);
       }
     }
   };
 
   const handleRemovePhoto = (index) => {
-    updateField('photos', formData.photos.filter((_, i) => i !== index));
+    setRemovePhotoIndex(index);
+    setShowPhotoActionSheet(true);
+  };
+
+  const confirmRemovePhoto = () => {
+    if (removePhotoIndex !== null) {
+      updateField('photos', formData.photos.filter((_, i) => i !== removePhotoIndex));
+      haptics.medium();
+    }
+    setRemovePhotoIndex(null);
   };
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
+      haptics.warning();
       showError({
         type: 'validation',
         title: 'Missing Title',
@@ -154,6 +220,7 @@ export default function CreateListingScreen({ navigation }) {
       return;
     }
     if (formData.photos.length === 0) {
+      haptics.warning();
       showError({
         type: 'validation',
         title: 'Add a Photo',
@@ -189,6 +256,7 @@ export default function CreateListingScreen({ navigation }) {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         condition: formData.condition,
+        categoryId: formData.categoryId || undefined,
         visibility: formData.visibility, // Send as array
         isFree: formData.isFree,
         pricePerDay: formData.isFree ? undefined : parseFloat(formData.pricePerDay) || 0,
@@ -199,6 +267,7 @@ export default function CreateListingScreen({ navigation }) {
         communityId: needsCommunity ? communityId : undefined,
       });
 
+      haptics.success();
       navigation.goBack();
     } catch (error) {
       // Handle subscription and membership errors with themed UI
@@ -212,11 +281,13 @@ export default function CreateListingScreen({ navigation }) {
         Keyboard.dismiss();
         setShowJoinCommunity(true);
       } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        haptics.error();
         showError({
           type: 'network',
           message: 'Unable to upload your listing. Please check your connection and try again.',
         });
       } else {
+        haptics.error();
         showError({
           message: error.message || 'Unable to create listing. Please try again.',
         });
@@ -225,10 +296,6 @@ export default function CreateListingScreen({ navigation }) {
       setIsSubmitting(false);
     }
   };
-
-  // Show prompt to join neighborhood if user isn't in one AND they selected neighborhood visibility
-  // But for close_friends and town, they don't need to be in a neighborhood
-  // This prompt only shows if communityId is null - which we now allow for non-neighborhood visibility
 
   return (
     <View style={styles.container}>
@@ -244,40 +311,45 @@ export default function CreateListingScreen({ navigation }) {
         <Text style={styles.label}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         {isAnalyzing && (
-          <View style={styles.analyzingBanner}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
-            <Text style={styles.analyzingText}>Analyzing image with AI...</Text>
-          </View>
+          <BlurCard style={styles.analyzingBanner}>
+            <View style={styles.analyzingBannerInner}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.analyzingText}>Analyzing image with AI...</Text>
+            </View>
+          </BlurCard>
         )}
         {aiSuggested && !isAnalyzing && (
-          <View style={styles.aiSuggestedBanner}>
-            <Ionicons name="sparkles" size={16} color={COLORS.secondary} />
-            <Text style={styles.aiSuggestedText}>AI filled in details - feel free to edit</Text>
-          </View>
+          <BlurCard style={styles.aiSuggestedBanner}>
+            <View style={styles.aiSuggestedBannerInner}>
+              <Ionicons name="sparkles" size={16} color={COLORS.secondary} />
+              <Text style={styles.aiSuggestedText}>AI filled in details - feel free to edit</Text>
+            </View>
+          </BlurCard>
         )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
             {formData.photos.map((uri, index) => (
               <View key={index} style={styles.photoWrapper}>
                 <Image source={{ uri }} style={styles.photo} />
-                <TouchableOpacity
+                <HapticPressable
                   style={styles.removePhoto}
                   onPress={() => handleRemovePhoto(index)}
+                  haptic="light"
                 >
                   <Ionicons name="close" size={16} color="#fff" />
-                </TouchableOpacity>
+                </HapticPressable>
               </View>
             ))}
             {formData.photos.length < 10 && (
               <View style={styles.addPhotoButtons}>
-                <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
+                <HapticPressable style={styles.addPhotoButton} onPress={handlePickImage} haptic="light">
                   <Ionicons name="image" size={28} color={COLORS.primary} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.addPhotoButton} onPress={handleTakePhoto}>
+                </HapticPressable>
+                <HapticPressable style={styles.addPhotoButton} onPress={handleTakePhoto} haptic="light">
                   <Ionicons name="camera" size={28} color={COLORS.primary} />
                   <Text style={styles.addPhotoText}>Camera</Text>
-                </TouchableOpacity>
+                </HapticPressable>
               </View>
             )}
           </View>
@@ -292,6 +364,7 @@ export default function CreateListingScreen({ navigation }) {
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
           placeholder="e.g., DeWalt Cordless Drill"
+          placeholderTextColor={COLORS.textMuted}
           maxLength={255}
         />
       </View>
@@ -304,6 +377,7 @@ export default function CreateListingScreen({ navigation }) {
           value={formData.description}
           onChangeText={(v) => updateField('description', v)}
           placeholder="Add details about your item..."
+          placeholderTextColor={COLORS.textMuted}
           multiline
           numberOfLines={4}
           maxLength={2000}
@@ -315,18 +389,56 @@ export default function CreateListingScreen({ navigation }) {
         <Text style={styles.label}>Condition *</Text>
         <View style={styles.options}>
           {CONDITIONS.map((condition) => (
-            <TouchableOpacity
+            <HapticPressable
               key={condition}
               style={[styles.option, formData.condition === condition && styles.optionActive]}
-              onPress={() => updateField('condition', condition)}
+              onPress={() => {
+                updateField('condition', condition);
+                haptics.selection();
+              }}
+              haptic={null}
             >
               <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
                 {CONDITION_LABELS[condition]}
               </Text>
-            </TouchableOpacity>
+            </HapticPressable>
           ))}
         </View>
       </View>
+
+      {/* Category */}
+      {categories.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.label}>Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+            <View style={styles.categoryRow}>
+              {categories.map((cat) => {
+                const isSelected = formData.categoryId === cat.id;
+                return (
+                  <HapticPressable
+                    key={cat.id}
+                    style={[styles.categoryPill, isSelected && styles.categoryPillActive]}
+                    onPress={() => {
+                      updateField('categoryId', isSelected ? null : cat.id);
+                      haptics.selection();
+                    }}
+                    haptic={null}
+                  >
+                    <Ionicons
+                      name={cat.icon || 'pricetag-outline'}
+                      size={16}
+                      color={isSelected ? '#fff' : COLORS.textSecondary}
+                    />
+                    <Text style={[styles.categoryPillText, isSelected && styles.categoryPillTextActive]}>
+                      {cat.name}
+                    </Text>
+                  </HapticPressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Visibility */}
       <View style={styles.section}>
@@ -336,7 +448,7 @@ export default function CreateListingScreen({ navigation }) {
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
             return (
-              <TouchableOpacity
+              <HapticPressable
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
@@ -345,11 +457,16 @@ export default function CreateListingScreen({ navigation }) {
                     // Don't allow deselecting if it's the only one
                     if (current.length > 1) {
                       updateField('visibility', current.filter(v => v !== visibility));
+                      haptics.selection();
+                    } else {
+                      haptics.warning();
                     }
                   } else {
                     updateField('visibility', [...current, visibility]);
+                    haptics.selection();
                   }
                 }}
+                haptic={null}
               >
                 <Ionicons
                   name={isSelected ? "checkmark-circle" : "ellipse-outline"}
@@ -360,7 +477,7 @@ export default function CreateListingScreen({ navigation }) {
                 <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
                   {VISIBILITY_LABELS[visibility]}
                 </Text>
-              </TouchableOpacity>
+              </HapticPressable>
             );
           })}
         </View>
@@ -370,15 +487,19 @@ export default function CreateListingScreen({ navigation }) {
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
         <Text style={styles.freeLabel}>Free to borrow</Text>
-        <TouchableOpacity
+        <HapticPressable
           style={styles.toggle}
-          onPress={() => updateField('isFree', !formData.isFree)}
+          onPress={() => {
+            updateField('isFree', !formData.isFree);
+            haptics.light();
+          }}
+          haptic={null}
         >
           <Text style={styles.toggleText}>Charge a rental fee</Text>
           <View style={[styles.switch, !formData.isFree && styles.switchActive]}>
             <View style={[styles.switchKnob, !formData.isFree && styles.switchKnobActive]} />
           </View>
-        </TouchableOpacity>
+        </HapticPressable>
 
         {!formData.isFree && (
           <View style={styles.priceInput}>
@@ -388,6 +509,7 @@ export default function CreateListingScreen({ navigation }) {
               value={formData.pricePerDay}
               onChangeText={(v) => updateField('pricePerDay', v)}
               placeholder="0.00"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
             <Text style={styles.priceSuffix}>/day</Text>
@@ -403,6 +525,7 @@ export default function CreateListingScreen({ navigation }) {
               value={formData.depositAmount}
               onChangeText={(v) => updateField('depositAmount', v)}
               placeholder="0.00"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
           </View>
@@ -436,127 +559,159 @@ export default function CreateListingScreen({ navigation }) {
       </View>
 
       {/* Submit */}
-      <TouchableOpacity
+      <HapticPressable
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
+        haptic="medium"
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>List Item</Text>
         )}
-      </TouchableOpacity>
+      </HapticPressable>
 
     </KeyboardAwareScrollView>
+
+    {/* Remove Photo Action Sheet */}
+    <ActionSheet
+      isVisible={showPhotoActionSheet}
+      onClose={() => {
+        setShowPhotoActionSheet(false);
+        setRemovePhotoIndex(null);
+      }}
+      title="Remove Photo"
+      message="Are you sure you want to remove this photo?"
+      actions={[
+        {
+          label: 'Remove',
+          destructive: true,
+          onPress: confirmRemovePhoto,
+        },
+      ]}
+      cancelLabel="Cancel"
+    />
 
     {/* Neighborhood Join Overlay */}
     {showJoinCommunity && (
       <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <View style={styles.overlayIconContainer}>
-            <Ionicons name="home" size={32} color={COLORS.primary} />
+        <BlurCard style={styles.overlayCard}>
+          <View style={styles.overlayCardInner}>
+            <View style={styles.overlayIconContainer}>
+              <Ionicons name="home" size={32} color={COLORS.primary} />
+            </View>
+            <Text style={styles.overlayTitle}>Join Your Neighborhood</Text>
+            <Text style={styles.overlayText}>
+              To share with "My Neighborhood", you need to join or create one first.
+            </Text>
+            <HapticPressable
+              style={styles.overlayButton}
+              onPress={() => {
+                setShowJoinCommunity(false);
+                navigation.navigate('JoinCommunity');
+              }}
+              haptic="medium"
+            >
+              <Text style={styles.overlayButtonText}>Find Neighborhood</Text>
+            </HapticPressable>
+            <HapticPressable
+              style={styles.overlayDismiss}
+              onPress={() => setShowJoinCommunity(false)}
+              haptic="light"
+            >
+              <Text style={styles.overlayDismissText}>Cancel</Text>
+            </HapticPressable>
           </View>
-          <Text style={styles.overlayTitle}>Join Your Neighborhood</Text>
-          <Text style={styles.overlayText}>
-            To share with "My Neighborhood", you need to join or create one first.
-          </Text>
-          <TouchableOpacity
-            style={styles.overlayButton}
-            onPress={() => {
-              setShowJoinCommunity(false);
-              navigation.navigate('JoinCommunity');
-            }}
-          >
-            <Text style={styles.overlayButtonText}>Find Neighborhood</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.overlayDismiss}
-            onPress={() => setShowJoinCommunity(false)}
-          >
-            <Text style={styles.overlayDismissText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
+        </BlurCard>
       </View>
     )}
 
     {/* Add Friends Overlay */}
     {showAddFriends && (
       <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <View style={styles.overlayIconContainer}>
-            <Ionicons name="people" size={32} color={COLORS.primary} />
+        <BlurCard style={styles.overlayCard}>
+          <View style={styles.overlayCardInner}>
+            <View style={styles.overlayIconContainer}>
+              <Ionicons name="people" size={32} color={COLORS.primary} />
+            </View>
+            <Text style={styles.overlayTitle}>Add Some Friends</Text>
+            <Text style={styles.overlayText}>
+              To share with "My Friends", you need to add friends first. Invite people you know or find friends nearby.
+            </Text>
+            <HapticPressable
+              style={styles.overlayButton}
+              onPress={() => {
+                setShowAddFriends(false);
+                navigation.navigate('Friends');
+              }}
+              haptic="medium"
+            >
+              <Text style={styles.overlayButtonText}>Find Friends</Text>
+            </HapticPressable>
+            <HapticPressable
+              style={styles.overlayDismiss}
+              onPress={() => setShowAddFriends(false)}
+              haptic="light"
+            >
+              <Text style={styles.overlayDismissText}>Cancel</Text>
+            </HapticPressable>
           </View>
-          <Text style={styles.overlayTitle}>Add Some Friends</Text>
-          <Text style={styles.overlayText}>
-            To share with "My Friends", you need to add friends first. Invite people you know or find friends nearby.
-          </Text>
-          <TouchableOpacity
-            style={styles.overlayButton}
-            onPress={() => {
-              setShowAddFriends(false);
-              navigation.navigate('Friends');
-            }}
-          >
-            <Text style={styles.overlayButtonText}>Find Friends</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.overlayDismiss}
-            onPress={() => setShowAddFriends(false)}
-          >
-            <Text style={styles.overlayDismissText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
+        </BlurCard>
       </View>
     )}
 
     {/* Subscription Upgrade Overlay */}
     {showUpgradePrompt && (
       <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <View style={[styles.overlayIconContainer, styles.upgradeIconContainer]}>
-            <Ionicons name="star" size={32} color={COLORS.primary} />
+        <BlurCard style={styles.overlayCard}>
+          <View style={styles.overlayCardInner}>
+            <View style={[styles.overlayIconContainer, styles.upgradeIconContainer]}>
+              <Ionicons name="star" size={32} color={COLORS.primary} />
+            </View>
+            <Text style={styles.overlayTitle}>Upgrade to Plus</Text>
+            <Text style={styles.overlayText}>
+              Get more from Borrowhood with Plus. Share with your whole town and earn money from your items.
+            </Text>
+            <View style={styles.upgradeFeatures}>
+              <View style={styles.upgradeFeature}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
+              </View>
+              <View style={styles.upgradeFeature}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
+              </View>
+              <View style={styles.upgradeFeature}>
+                <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
+              </View>
+            </View>
+            <HapticPressable
+              style={styles.overlayButton}
+              onPress={() => {
+                setShowUpgradePrompt(false);
+                navigation.navigate('Subscription');
+              }}
+              haptic="medium"
+            >
+              <Text style={styles.overlayButtonText}>Get Plus - $1/mo</Text>
+            </HapticPressable>
+            <HapticPressable
+              style={styles.overlayDismiss}
+              onPress={() => {
+                setShowUpgradePrompt(false);
+                // Reset to free options
+                updateField('isFree', true);
+                updateField('pricePerDay', '');
+                updateField('visibility', formData.visibility.filter(v => v !== 'town'));
+              }}
+              haptic="light"
+            >
+              <Text style={styles.overlayDismissText}>Keep Free Settings</Text>
+            </HapticPressable>
           </View>
-          <Text style={styles.overlayTitle}>Upgrade to Plus</Text>
-          <Text style={styles.overlayText}>
-            Get more from Borrowhood with Plus. Share with your whole town and earn money from your items.
-          </Text>
-          <View style={styles.upgradeFeatures}>
-            <View style={styles.upgradeFeature}>
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-              <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
-            </View>
-            <View style={styles.upgradeFeature}>
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-              <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
-            </View>
-            <View style={styles.upgradeFeature}>
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-              <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.overlayButton}
-            onPress={() => {
-              setShowUpgradePrompt(false);
-              navigation.navigate('Subscription');
-            }}
-          >
-            <Text style={styles.overlayButtonText}>Get Plus - $1/mo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.overlayDismiss}
-            onPress={() => {
-              setShowUpgradePrompt(false);
-              // Reset to free options
-              updateField('isFree', true);
-              updateField('pricePerDay', '');
-              updateField('visibility', formData.visibility.filter(v => v !== 'town'));
-            }}
-          >
-            <Text style={styles.overlayDismissText}>Keep Free Settings</Text>
-          </TouchableOpacity>
-        </View>
+        </BlurCard>
       </View>
     )}
     </View>
@@ -572,129 +727,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 20,
-  },
-  promptContent: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  promptCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
-  },
-  promptIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  promptTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  promptText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  promptBenefits: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  promptBenefit: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  promptBenefitText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  promptButton: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  promptButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.background,
-  },
-  promptSecondaryButton: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 12,
-  },
-  promptSecondaryText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    padding: SPACING.xl,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   hint: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   analyzingBanner: {
+    marginBottom: SPACING.md,
+  },
+  analyzingBannerInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.primary + '15',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    gap: SPACING.sm,
+    padding: SPACING.md,
   },
   analyzingText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.primary,
     fontWeight: '500',
   },
   aiSuggestedBanner: {
+    marginBottom: SPACING.md,
+  },
+  aiSuggestedBannerInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.secondary + '15',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    gap: SPACING.sm,
+    padding: SPACING.md,
   },
   aiSuggestedText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.secondary,
     fontWeight: '500',
   },
   photoScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+    marginHorizontal: -SPACING.xl,
+    paddingHorizontal: SPACING.xl,
   },
   photoRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   photoWrapper: {
     position: 'relative',
@@ -702,7 +784,7 @@ const styles = StyleSheet.create({
   photo: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.gray[200],
   },
   removePhoto: {
@@ -710,7 +792,7 @@ const styles = StyleSheet.create({
     top: -6,
     right: -6,
     backgroundColor: COLORS.danger,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     width: 24,
     height: 24,
     alignItems: 'center',
@@ -718,12 +800,12 @@ const styles = StyleSheet.create({
   },
   addPhotoButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   addPhotoButton: {
     width: 100,
     height: 100,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 2,
     borderColor: COLORS.gray[700],
     borderStyle: 'dashed',
@@ -731,17 +813,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addPhotoText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
@@ -749,22 +831,51 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
+  categoryScroll: {
+    marginHorizontal: -SPACING.xl,
+    paddingHorizontal: SPACING.xl,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs + 2,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceElevated,
+  },
+  categoryPillActive: {
+    backgroundColor: COLORS.primary,
+  },
+  categoryPillText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  categoryPillTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   options: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: SPACING.sm,
   },
   option: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray[800],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceElevated,
   },
   optionActive: {
     backgroundColor: COLORS.primary,
   },
   optionText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
   optionTextActive: {
@@ -775,15 +886,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: SPACING.sm,
   },
   freeLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   toggleText: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   switch: {
@@ -809,83 +920,77 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     backgroundColor: COLORS.surface,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   currency: {
-    fontSize: 18,
+    ...TYPOGRAPHY.h3,
     color: COLORS.textSecondary,
   },
   priceField: {
     flex: 1,
-    fontSize: 18,
+    ...TYPOGRAPHY.h3,
     paddingVertical: 14,
-    marginLeft: 4,
+    marginLeft: SPACING.xs,
     color: COLORS.text,
   },
   priceSuffix: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
   depositSection: {
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   subLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
   durationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.md,
   },
   durationInput: {
     flex: 1,
   },
   durationLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   durationField: {
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    ...TYPOGRAPHY.body,
     textAlign: 'center',
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
   durationSeparator: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 20,
+    marginTop: SPACING.xl,
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 32,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xxl,
   },
   submitButtonDisabled: {
     opacity: 0.7,
   },
   submitButtonText: {
+    ...TYPOGRAPHY.button,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  toggleHint: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
   },
   // Overlay styles for community join prompt
   overlay: {
@@ -894,16 +999,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
   },
   overlayCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    padding: 28,
     width: '100%',
     maxWidth: 340,
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
+  },
+  overlayCardInner: {
+    padding: 28,
   },
   overlayIconContainer: {
     width: 64,
@@ -913,40 +1016,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   overlayTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 10,
   },
   overlayText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   overlayButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   overlayButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: COLORS.background,
   },
   overlayDismiss: {
     alignItems: 'center',
     paddingVertical: 14,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   overlayDismissText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
   },
   upgradeIconContainer: {
@@ -954,7 +1055,7 @@ const styles = StyleSheet.create({
   },
   upgradeFeatures: {
     gap: 10,
-    marginBottom: 20,
+    marginBottom: SPACING.xl,
   },
   upgradeFeature: {
     flexDirection: 'row',
@@ -962,7 +1063,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   upgradeFeatureText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.text,
   },
 });

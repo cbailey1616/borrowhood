@@ -175,6 +175,7 @@ router.get('/mine', authenticate, async (req, res) => {
       id: l.id,
       title: l.title,
       condition: l.condition,
+      categoryId: l.category_id,
       isFree: l.is_free,
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
@@ -236,6 +237,7 @@ router.get('/:id', authenticate, async (req, res) => {
       status: l.status,
       photos: photos.rows.map(p => p.url),
       category: l.category_name,
+      categoryId: l.category_id,
       timesBorrowed: l.times_borrowed,
       owner: {
         id: l.owner_id,
@@ -458,7 +460,7 @@ router.patch('/:id', authenticate,
       }
 
       const allowedFields = [
-        'title', 'description', 'condition', 'is_free', 'price_per_day',
+        'title', 'description', 'condition', 'category_id', 'is_free', 'price_per_day',
         'deposit_amount', 'min_duration', 'max_duration', 'visibility', 'status'
       ];
 

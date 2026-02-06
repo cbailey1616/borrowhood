@@ -5,13 +5,16 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   TextInput,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS } from '../utils/config';
+import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import AnimatedCard from '../components/AnimatedCard';
+import { haptics } from '../utils/haptics';
 
 const TABS = [
   { key: 'items', label: 'Items' },
@@ -73,103 +76,122 @@ export default function BrowseScreen({ navigation }) {
     fetchData();
   };
 
-  const renderListingItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-      activeOpacity={0.7}
-    >
-      <Image
-        source={{ uri: item.photoUrl || 'https://via.placeholder.com/150' }}
-        style={styles.cardImage}
-      />
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
-
-        <View style={styles.cardPricing}>
-          {item.isFree ? (
-            <Text style={styles.freeLabel}>Free to borrow</Text>
-          ) : (
-            <Text style={styles.priceLabel}>
-              ${item.pricePerDay}/day
-            </Text>
-          )}
-        </View>
-
-        {item.distanceMiles && (
-          <View style={styles.distanceRow}>
-            <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.distanceText}>{item.distanceMiles} mi</Text>
+  const renderListingItem = ({ item, index }) => (
+    <AnimatedCard index={index} style={styles.cardAnimated}>
+      <HapticPressable
+        style={styles.card}
+        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+        haptic="light"
+      >
+        {item.photoUrl ? (
+          <Image source={{ uri: item.photoUrl }} style={styles.cardImage} />
+        ) : (
+          <View style={[styles.cardImage, styles.imagePlaceholder]}>
+            <Ionicons name="image-outline" size={32} color={COLORS.gray[500]} />
           </View>
         )}
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+          <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
 
-        <View style={styles.cardOwner}>
-          <Image
-            source={{ uri: item.owner.profilePhotoUrl || 'https://via.placeholder.com/32' }}
-            style={styles.ownerAvatar}
-          />
-          <Text style={styles.ownerName} numberOfLines={1}>
-            {item.owner.firstName} {item.owner.lastName[0]}.
-          </Text>
-          {item.owner.rating > 0 && (
-            <View style={styles.rating}>
-              <Text style={styles.star}>★</Text>
-              <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
+          <View style={styles.cardPricing}>
+            {item.isFree ? (
+              <Text style={styles.freeLabel}>Free to borrow</Text>
+            ) : (
+              <Text style={styles.priceLabel}>
+                ${item.pricePerDay}/day
+              </Text>
+            )}
+          </View>
+
+          {item.distanceMiles && (
+            <View style={styles.distanceRow}>
+              <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
+              <Text style={styles.distanceText}>{item.distanceMiles} mi</Text>
             </View>
           )}
+
+          <View style={styles.cardOwner}>
+            {item.owner.profilePhotoUrl ? (
+              <Image source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+            ) : (
+              <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
+                <Ionicons name="person" size={12} color={COLORS.gray[400]} />
+              </View>
+            )}
+            <Text style={styles.ownerName} numberOfLines={1}>
+              {item.owner.firstName} {item.owner.lastName[0]}.
+            </Text>
+            {item.owner.rating > 0 && (
+              <View style={styles.rating}>
+                <Text style={styles.star}>★</Text>
+                <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </HapticPressable>
+    </AnimatedCard>
   );
 
-  const renderRequestItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.requestCard}
-      onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.requestHeader}>
-        <Image
-          source={{ uri: item.requester.profilePhotoUrl || 'https://via.placeholder.com/40' }}
-          style={styles.requesterAvatar}
-        />
-        <View style={styles.requesterInfo}>
-          <Text style={styles.requesterName}>
-            {item.requester.firstName} {item.requester.lastName[0]}.
-          </Text>
-          <Text style={styles.requestTime}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-      </View>
+  const renderRequestItem = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <BlurCard style={styles.requestCardOuter}>
+        <HapticPressable
+          style={styles.requestCard}
+          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+          haptic="light"
+        >
+          <View style={styles.requestHeader}>
+            {item.requester.profilePhotoUrl ? (
+              <Image source={{ uri: item.requester.profilePhotoUrl }} style={styles.requesterAvatar} />
+            ) : (
+              <View style={[styles.requesterAvatar, styles.avatarPlaceholder]}>
+                <Ionicons name="person" size={20} color={COLORS.gray[400]} />
+              </View>
+            )}
+            <View style={styles.requesterInfo}>
+              <Text style={styles.requesterName}>
+                {item.requester.firstName} {item.requester.lastName[0]}.
+              </Text>
+              <Text style={styles.requestTime}>
+                {new Date(item.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
 
-      <Text style={styles.requestTitle}>{item.title}</Text>
-      {item.description && (
-        <Text style={styles.requestDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-      )}
+          <Text style={styles.requestTitle}>{item.title}</Text>
+          {item.description && (
+            <Text style={styles.requestDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+          )}
 
-      {(item.neededFrom || item.neededUntil) && (
-        <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.dateText}>
-            {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
-            {item.neededFrom && item.neededUntil && ' - '}
-            {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
-          </Text>
-        </View>
-      )}
+          {(item.neededFrom || item.neededUntil) && (
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+              <Text style={styles.dateText}>
+                {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
+                {item.neededFrom && item.neededUntil && ' - '}
+                {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
 
-      <TouchableOpacity
-        style={styles.haveThisButton}
-        onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
-      >
-        <Ionicons name="hand-right-outline" size={16} color={COLORS.primary} />
-        <Text style={styles.haveThisText}>I Have This</Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
+          <HapticPressable
+            style={styles.haveThisButton}
+            onPress={() => {
+              haptics.medium();
+              navigation.navigate('CreateListing', { requestMatch: item });
+            }}
+            haptic={null}
+          >
+            <Ionicons name="hand-right-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.haveThisText}>I Have This</Text>
+          </HapticPressable>
+        </HapticPressable>
+      </BlurCard>
+    </AnimatedCard>
   );
 
   const data = activeTab === 'items' ? listings : requests;
@@ -179,15 +201,19 @@ export default function BrowseScreen({ navigation }) {
       {/* Tab Switcher */}
       <View style={styles.tabs}>
         {TABS.map((tab) => (
-          <TouchableOpacity
+          <HapticPressable
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => setActiveTab(tab.key)}
+            onPress={() => {
+              setActiveTab(tab.key);
+              haptics.selection();
+            }}
+            haptic={null}
           >
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
               {tab.label}
             </Text>
-          </TouchableOpacity>
+          </HapticPressable>
         ))}
       </View>
 
@@ -197,7 +223,7 @@ export default function BrowseScreen({ navigation }) {
           <Ionicons name="search" size={18} color={COLORS.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder={activeTab === 'items' ? 'Search tools...' : 'Search wanted items...'}
+            placeholder={activeTab === 'items' ? 'Search items...' : 'Search wanted items...'}
             placeholderTextColor={COLORS.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -205,9 +231,9 @@ export default function BrowseScreen({ navigation }) {
             returnKeyType="search"
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearch(''); }}>
+            <HapticPressable onPress={() => { setSearch(''); }} haptic="light">
               <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            </HapticPressable>
           )}
         </View>
 
@@ -215,13 +241,17 @@ export default function BrowseScreen({ navigation }) {
         {activeTab === 'items' && (
           <View style={styles.filterRow}>
             {DISTANCE_FILTERS.map((filter) => (
-              <TouchableOpacity
+              <HapticPressable
                 key={filter.key}
                 style={[
                   styles.filterPill,
                   distanceFilter === filter.key && styles.filterPillActive,
                 ]}
-                onPress={() => setDistanceFilter(filter.key)}
+                onPress={() => {
+                  setDistanceFilter(filter.key);
+                  haptics.selection();
+                }}
+                haptic={null}
               >
                 <Text
                   style={[
@@ -231,7 +261,7 @@ export default function BrowseScreen({ navigation }) {
                 >
                   {filter.label}
                 </Text>
-              </TouchableOpacity>
+              </HapticPressable>
             ))}
           </View>
         )}
@@ -304,23 +334,23 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
-    gap: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
+    gap: SPACING.sm,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
   },
   tabActive: {
     backgroundColor: COLORS.primary + '15',
   },
   tabText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
@@ -328,46 +358,46 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   searchContainer: {
-    padding: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    padding: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
     backgroundColor: COLORS.background,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    gap: 8,
+    borderColor: COLORS.separator,
+    gap: SPACING.sm,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingVertical: SPACING.md,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   filterRow: {
     flexDirection: 'row',
     marginTop: 10,
-    gap: 8,
+    gap: SPACING.sm,
   },
   filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderColor: COLORS.separator,
   },
   filterPillActive: {
     backgroundColor: COLORS.primary + '20',
     borderColor: COLORS.primary,
   },
   filterPillText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
@@ -375,72 +405,82 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   listContent: {
-    padding: 8,
+    padding: SPACING.sm,
     flexGrow: 1,
   },
   requestListContent: {
-    padding: 16,
+    padding: SPACING.lg,
     flexGrow: 1,
   },
   row: {
     justifyContent: 'space-between',
   },
   // Item card styles
-  card: {
+  cardAnimated: {
     width: '48%',
+    marginBottom: SPACING.md,
+  },
+  card: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.separator,
   },
   cardImage: {
     width: '100%',
     height: 120,
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.separator,
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardContent: {
-    padding: 12,
+    padding: SPACING.md,
   },
   cardTitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   cardCondition: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   cardPricing: {
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   freeLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.primary,
   },
   priceLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.primary,
   },
   distanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   distanceText: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
   },
   cardOwner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.xs + 2,
   },
   ownerAvatar: {
     width: 20,
@@ -450,7 +490,7 @@ const styles = StyleSheet.create({
   },
   ownerName: {
     flex: 1,
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   rating: {
@@ -459,25 +499,25 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   star: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.warning,
   },
   ratingText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
   // Request card styles
+  requestCardOuter: {
+    marginBottom: SPACING.md,
+  },
   requestCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    padding: SPACING.lg,
   },
   requestHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   requesterAvatar: {
     width: 40,
@@ -486,39 +526,38 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray[700],
   },
   requesterInfo: {
-    marginLeft: 12,
+    marginLeft: SPACING.md,
     flex: 1,
   },
   requesterName: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.text,
   },
   requestTime: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   requestTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   requestDescription: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
+    gap: SPACING.xs + 2,
+    marginBottom: SPACING.md,
   },
   dateText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   haveThisButton: {
@@ -526,13 +565,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm + 2,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    gap: 6,
+    gap: SPACING.xs + 2,
   },
   haveThisText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.primary,
   },
@@ -544,14 +583,13 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
-    marginBottom: 4,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
 });

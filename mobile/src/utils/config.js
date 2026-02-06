@@ -4,10 +4,25 @@
 const PRODUCTION_BASE = 'https://borrowhood-production.up.railway.app';
 const DEV_BASE = 'http://192.168.7.53:3001'; // Use Mac's IP for physical device testing
 
-export const BASE_URL = __DEV__ ? DEV_BASE : PRODUCTION_BASE;
+// Using production API for testing - switch to DEV_BASE for local server
+export const BASE_URL = PRODUCTION_BASE;
 export const API_URL = `${BASE_URL}/api`;
 
 export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Svf5v8339pJAGsp3CIJJqnVjq86eIk3TAK4N7yvgCWRybyT6jOgtMhdsiLUgFi5j5qDTGIMBjXEqNmmgjuUx2TQ006j0XBDga';
+
+// Category icon fallback map (slug → Ionicons name)
+export const CATEGORY_ICONS = {
+  'tools-hardware': 'hammer-outline',
+  'kitchen-cooking': 'restaurant-outline',
+  'garden-outdoor': 'leaf-outline',
+  'sports-recreation': 'football-outline',
+  'electronics-tech': 'laptop-outline',
+  'party-events': 'gift-outline',
+  'kids-baby': 'happy-outline',
+  'camping-travel': 'bonfire-outline',
+  'cleaning': 'sparkles-outline',
+  'other': 'ellipsis-horizontal-outline',
+};
 
 // App constants
 export const CONDITION_LABELS = {
@@ -75,6 +90,16 @@ export const COLORS = {
   // Overlay
   overlay: 'rgba(0, 0, 0, 0.7)',
   overlayLight: 'rgba(0, 0, 0, 0.4)',
+  // Materials — translucency levels for blur card backgrounds
+  materials: {
+    ultraThin: 'rgba(18, 31, 22, 0.3)',
+    thin: 'rgba(18, 31, 22, 0.45)',
+    regular: 'rgba(18, 31, 22, 0.6)',
+    thick: 'rgba(18, 31, 22, 0.75)',
+    ultraThick: 'rgba(18, 31, 22, 0.88)',
+  },
+  // iOS-style thin divider
+  separator: 'rgba(122, 141, 125, 0.2)',
 };
 
 // Design tokens for consistency
@@ -88,10 +113,12 @@ export const SPACING = {
 };
 
 export const RADIUS = {
+  xs: 6,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 20,
+  xxl: 24,
   full: 9999,
 };
 
@@ -120,6 +147,13 @@ export const SHADOWS = {
 };
 
 export const TYPOGRAPHY = {
+  // SF-aligned type scale
+  largeTitle: { fontSize: 34, fontWeight: '700', letterSpacing: 0.37 },
+  headline: { fontSize: 17, fontWeight: '600', lineHeight: 22 },
+  subheadline: { fontSize: 15, fontWeight: '400', lineHeight: 20 },
+  footnote: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
+  caption1: { fontSize: 12, fontWeight: '400', lineHeight: 16 },
+  // Existing aliases (kept for migration)
   h1: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
   h2: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3 },
   h3: { fontSize: 18, fontWeight: '600' },
@@ -127,4 +161,30 @@ export const TYPOGRAPHY = {
   bodySmall: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
   caption: { fontSize: 11, fontWeight: '500', letterSpacing: 0.3 },
   button: { fontSize: 15, fontWeight: '600' },
+};
+
+// Animation presets
+export const ANIMATION = {
+  spring: {
+    default: { damping: 20, stiffness: 300, mass: 0.8 },
+    gentle: { damping: 20, stiffness: 120, mass: 0.8 },
+    bouncy: { damping: 12, stiffness: 200, mass: 0.6 },
+    stiff: { damping: 26, stiffness: 400, mass: 0.8 },
+  },
+  timing: {
+    fast: 150,
+    normal: 250,
+    slow: 400,
+  },
+};
+
+// Haptic feedback types
+export const HAPTICS = {
+  light: 'light',
+  medium: 'medium',
+  heavy: 'heavy',
+  selection: 'selection',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
 };

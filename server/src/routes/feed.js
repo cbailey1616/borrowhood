@@ -9,7 +9,7 @@ const router = Router();
 // Get combined feed of listings and requests
 // ============================================
 router.get('/', authenticate, async (req, res) => {
-  const { page = 1, limit = 20, search, type } = req.query;
+  const { page = 1, limit = 20, search, type, categoryId } = req.query;
   const offset = (page - 1) * limit;
 
   try {
@@ -37,16 +37,24 @@ router.get('/', authenticate, async (req, res) => {
           u.status,
           u.total_transactions,
           l.owner_id,
+          cat.name as category_name,
+          cat.icon as category_icon,
           (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
         FROM listings l
         JOIN users u ON l.owner_id = u.id
+        LEFT JOIN categories cat ON l.category_id = cat.id
         WHERE l.status = 'active'`;
 
       const listingParams = [];
 
       if (search) {
-        listingQuery += ` AND (l.title ILIKE $1 OR l.description ILIKE $1)`;
+        listingQuery += ` AND (l.title ILIKE $${listingParams.length + 1} OR l.description ILIKE $${listingParams.length + 1})`;
         listingParams.push(`%${search}%`);
+      }
+
+      if (categoryId) {
+        listingQuery += ` AND l.category_id = $${listingParams.length + 1}`;
+        listingParams.push(categoryId);
       }
 
       listingQuery += ` ORDER BY l.created_at DESC LIMIT $${listingParams.length + 1}`;
@@ -97,6 +105,8 @@ router.get('/', authenticate, async (req, res) => {
       isFree: l.is_free,
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       photoUrl: l.photo_url,
+      category: l.category_name || null,
+      categoryIcon: l.category_icon || null,
       createdAt: l.created_at,
       user: {
         id: l.user_id,

@@ -183,6 +183,12 @@ const analyzeListingImage = (imageUrl) =>
   post('/listings/analyze-image', { imageUrl });
 
 // ============================================
+// Categories
+// ============================================
+const getCategories = () =>
+  get('/categories');
+
+// ============================================
 // Feed
 // ============================================
 const getFeed = (params) =>
@@ -580,6 +586,8 @@ export default {
   updateListing,
   deleteListing,
   analyzeListingImage,
+  // Categories
+  getCategories,
   // Feed
   getFeed,
   // Transactions
