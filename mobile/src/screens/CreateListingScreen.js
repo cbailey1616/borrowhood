@@ -256,7 +256,7 @@ export default function CreateListingScreen({ navigation, route }) {
         minDuration: parseInt(formData.minDuration) || 1,
         maxDuration: parseInt(formData.maxDuration) || 14,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
-        communityId: needsCommunity ? communityId : undefined,
+        communityId: communityId || undefined, // Always send communityId (required by DB)
       });
 
       setIsSubmitting(false);

@@ -1,22 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import { query, pool } from '../src/utils/db.js';
+import jwt from 'jsonwebtoken';
+import { query } from '../src/utils/db.js';
 
 // Create a test app instance
 const createTestApp = async () => {
   const app = express();
   app.use(express.json());
 
-  // Import routes dynamically
   const { default: transactionRoutes } = await import('../src/routes/transactions.js');
-
-  // Mock authentication middleware for testing
-  app.use((req, res, next) => {
-    req.user = { id: 'test-user-id' };
-    next();
-  });
-
   app.use('/api/transactions', transactionRoutes);
   return app;
 };
@@ -27,14 +20,15 @@ describe('Transactions API', () => {
   let testLenderId;
   let testListingId;
   let testCommunityId;
+  let authToken;
 
   beforeAll(async () => {
     app = await createTestApp();
 
-    // Create test community
+    // Create test community (city and state are NOT NULL)
     const communityResult = await query(
-      `INSERT INTO communities (name, slug, description, latitude, longitude, radius_km)
-       VALUES ('Test Community', 'test-community', 'For testing', 0, 0, 10)
+      `INSERT INTO communities (name, slug, description, city, state)
+       VALUES ('Test Community', 'test-community-txn', 'For testing', 'TestCity', 'MA')
        RETURNING id`
     );
     testCommunityId = communityResult.rows[0].id;
@@ -42,17 +36,20 @@ describe('Transactions API', () => {
     // Create test users
     const borrowerResult = await query(
       `INSERT INTO users (email, password_hash, first_name, last_name, status)
-       VALUES ('borrower@test.com', 'hash', 'Test', 'Borrower', 'verified')
+       VALUES ('borrower-txn@test.com', 'hash', 'Test', 'Borrower', 'verified')
        RETURNING id`
     );
     testUserId = borrowerResult.rows[0].id;
 
     const lenderResult = await query(
       `INSERT INTO users (email, password_hash, first_name, last_name, status)
-       VALUES ('lender@test.com', 'hash', 'Test', 'Lender', 'verified')
+       VALUES ('lender-txn@test.com', 'hash', 'Test', 'Lender', 'verified')
        RETURNING id`
     );
     testLenderId = lenderResult.rows[0].id;
+
+    // Generate a real JWT for the borrower
+    authToken = jwt.sign({ userId: testUserId }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     // Create test listing
     const listingResult = await query(
@@ -65,12 +62,10 @@ describe('Transactions API', () => {
   });
 
   afterAll(async () => {
-    // Cleanup test data
     await query('DELETE FROM borrow_transactions WHERE borrower_id = $1', [testUserId]);
     await query('DELETE FROM listings WHERE id = $1', [testListingId]);
     await query('DELETE FROM users WHERE id IN ($1, $2)', [testUserId, testLenderId]);
     await query('DELETE FROM communities WHERE id = $1', [testCommunityId]);
-    await pool.end();
   });
 
   describe('POST /api/transactions', () => {
@@ -82,6 +77,7 @@ describe('Transactions API', () => {
 
       const response = await request(app)
         .post('/api/transactions')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           listingId: testListingId,
           startDate: startDate.toISOString(),
@@ -96,6 +92,7 @@ describe('Transactions API', () => {
     it('should reject invalid listing ID', async () => {
       const response = await request(app)
         .post('/api/transactions')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           listingId: '00000000-0000-0000-0000-000000000000',
           startDate: new Date().toISOString(),
@@ -109,7 +106,8 @@ describe('Transactions API', () => {
   describe('GET /api/transactions', () => {
     it('should return user transactions', async () => {
       const response = await request(app)
-        .get('/api/transactions');
+        .get('/api/transactions')
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -117,7 +115,8 @@ describe('Transactions API', () => {
 
     it('should filter by role', async () => {
       const response = await request(app)
-        .get('/api/transactions?role=borrower');
+        .get('/api/transactions?role=borrower')
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -127,7 +126,8 @@ describe('Transactions API', () => {
   describe('GET /api/transactions/:id', () => {
     it('should return 404 for non-existent transaction', async () => {
       const response = await request(app)
-        .get('/api/transactions/00000000-0000-0000-0000-000000000000');
+        .get('/api/transactions/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(404);
     });

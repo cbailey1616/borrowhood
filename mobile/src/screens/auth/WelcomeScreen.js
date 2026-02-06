@@ -135,8 +135,24 @@ export default function WelcomeScreen({ navigation }) {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!googleConfigured) {
+      try {
+        GoogleSignin.configure({
+          iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
+          webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
+        });
+        googleConfigured = true;
+      } catch (e) {
+        showError({ message: 'Google sign-in is not available right now.' });
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
+      // Clear any stale session before signing in
+      try { await GoogleSignin.signOut(); } catch (_) {}
+
       const response = await GoogleSignin.signIn();
       if (response.type === 'cancelled') return;
       const idToken = response.data?.idToken || response.idToken;
@@ -145,7 +161,7 @@ export default function WelcomeScreen({ navigation }) {
       haptics.success();
     } catch (error) {
       const code = error.code || '';
-      if (code !== 'SIGN_IN_CANCELLED' && code !== 'CANCELED') {
+      if (code !== 'SIGN_IN_CANCELLED' && code !== 'CANCELED' && code !== 'SIGN_IN_REQUIRED') {
         showError({
           type: 'auth',
           message: error.message || 'Google sign-in failed. Please try again.',
