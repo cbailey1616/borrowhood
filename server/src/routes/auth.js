@@ -400,19 +400,31 @@ router.post('/apple', async (req, res) => {
 // ============================================
 router.post('/verify-identity', authenticate, async (req, res) => {
   try {
-    // Get user's Stripe customer ID
+    // Get user's Stripe customer ID, create one if needed
     const userResult = await query(
-      'SELECT stripe_customer_id FROM users WHERE id = $1',
+      'SELECT stripe_customer_id, email, first_name, last_name FROM users WHERE id = $1',
       [req.user.id]
     );
 
-    if (!userResult.rows[0]?.stripe_customer_id) {
-      return res.status(400).json({ error: 'User does not have a payment account' });
+    let customerId = userResult.rows[0]?.stripe_customer_id;
+
+    if (!customerId) {
+      const user = userResult.rows[0];
+      const customer = await createStripeCustomer(
+        user.email,
+        `${user.first_name} ${user.last_name}`,
+        { userId: req.user.id }
+      );
+      customerId = customer.id;
+      await query(
+        'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
+        [customerId, req.user.id]
+      );
     }
 
     const returnUrl = `${process.env.FRONTEND_URL}/verification-complete`;
     const session = await createIdentityVerificationSession(
-      userResult.rows[0].stripe_customer_id,
+      customerId,
       returnUrl
     );
 
