@@ -329,9 +329,17 @@ const getPresignedUrl = (contentType, fileSize, category) =>
 const getPresignedUrls = (files, category) =>
   post('/uploads/presigned-urls', { files, category });
 
+const withTimeout = (promise, ms) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Upload timed out. Please check your connection and try again.')), ms)
+    ),
+  ]);
+
 const uploadToS3 = async (uploadUrl, fileUri, contentType, isLocal = false) => {
   // Read file as blob for upload
-  const response = await fetch(fileUri);
+  const response = await withTimeout(fetch(fileUri), 30000);
   const blob = await response.blob();
 
   const headers = {
@@ -343,11 +351,11 @@ const uploadToS3 = async (uploadUrl, fileUri, contentType, isLocal = false) => {
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
-  const uploadResponse = await fetch(uploadUrl, {
+  const uploadResponse = await withTimeout(fetch(uploadUrl, {
     method: 'PUT',
     headers,
     body: blob,
-  });
+  }), 60000);
 
   if (!uploadResponse.ok) {
     const errorText = await uploadResponse.text().catch(() => 'Unknown error');
