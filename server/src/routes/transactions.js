@@ -243,6 +243,13 @@ router.get('/:id', authenticate, async (req, res) => {
 
     const t = result.rows[0];
 
+    // Fetch current user's rating for this transaction
+    const myRatingResult = await query(
+      'SELECT rating, comment FROM ratings WHERE transaction_id = $1 AND rater_id = $2',
+      [req.params.id, req.user.id]
+    );
+    const myRatingRow = myRatingResult.rows[0] || null;
+
     res.json({
       id: t.id,
       status: t.status,
@@ -284,6 +291,7 @@ router.get('/:id', authenticate, async (req, res) => {
       lenderResponse: t.lender_response,
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
+      myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       createdAt: t.created_at,
     });
   } catch (err) {

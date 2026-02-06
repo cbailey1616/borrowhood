@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   Image,
@@ -26,6 +27,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingFormVisible, setRatingFormVisible] = useState(false);
 
   useEffect(() => {
     fetchTransaction();
@@ -114,6 +118,25 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleSubmitRating = async () => {
+    if (selectedRating === 0) return;
+    setActionLoading(true);
+    try {
+      await api.rateTransaction(id, selectedRating, ratingComment || undefined);
+      haptics.success();
+      showToast('Rating submitted!', 'success');
+      setRatingFormVisible(false);
+      fetchTransaction();
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Unable to submit rating.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const canRate = ['returned', 'completed'].includes(transaction?.status) && !transaction?.myRating;
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -156,10 +179,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
           style={styles.listingCard}
           onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}
         >
-          <Image
-            source={{ uri: transaction.listing.photos?.[0] || 'https://via.placeholder.com/80' }}
-            style={styles.listingImage}
-          />
+          {transaction.listing.photos?.[0] ? (
+            <Image
+              source={{ uri: transaction.listing.photos[0] }}
+              style={styles.listingImage}
+            />
+          ) : (
+            <View style={[styles.listingImage, styles.imagePlaceholder]}>
+              <Ionicons name="image-outline" size={24} color={COLORS.gray[400]} />
+            </View>
+          )}
           <View style={styles.listingInfo}>
             <Text style={styles.listingTitle}>{transaction.listing.title}</Text>
             <Text style={styles.listingCondition}>
@@ -184,10 +213,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
           style={styles.personCard}
           onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}
         >
-          <Image
-            source={{ uri: otherPerson.profilePhotoUrl || 'https://via.placeholder.com/48' }}
-            style={styles.personAvatar}
-          />
+          {otherPerson.profilePhotoUrl ? (
+            <Image
+              source={{ uri: otherPerson.profilePhotoUrl }}
+              style={styles.personAvatar}
+            />
+          ) : (
+            <View style={[styles.personAvatar, styles.avatarPlaceholder]}>
+              <Ionicons name="person" size={22} color={COLORS.gray[400]} />
+            </View>
+          )}
           <View style={styles.personInfo}>
             <Text style={styles.personRole}>{roleLabel}</Text>
             <Text style={styles.personName}>
@@ -255,6 +290,28 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Text style={styles.messageText}>{transaction.lenderResponse}</Text>
           </View>
         )}
+
+        {/* Your Rating (read-only) */}
+        {transaction.myRating && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Rating</Text>
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Ionicons
+                  key={star}
+                  name={star <= transaction.myRating.rating ? 'star' : 'star-outline'}
+                  size={24}
+                  color={COLORS.warning}
+                />
+              ))}
+            </View>
+            {transaction.myRating.comment ? (
+              <Text style={[styles.messageText, { marginTop: SPACING.sm }]}>
+                {transaction.myRating.comment}
+              </Text>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
 
       {/* Actions */}
@@ -306,6 +363,75 @@ export default function TransactionDetailScreen({ route, navigation }) {
           >
             <Text style={styles.approveButtonText}>Confirm Return</Text>
           </HapticPressable>
+        </View>
+      )}
+
+      {/* Rate button */}
+      {canRate && !ratingFormVisible && (
+        <View style={styles.footer}>
+          <HapticPressable
+            haptic="medium"
+            style={styles.approveButton}
+            onPress={() => setRatingFormVisible(true)}
+          >
+            <Text style={styles.approveButtonText}>Rate {otherPerson.firstName}</Text>
+          </HapticPressable>
+        </View>
+      )}
+
+      {/* Inline rating form */}
+      {canRate && ratingFormVisible && (
+        <View style={styles.ratingFooter}>
+          <View style={styles.starsRow}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <HapticPressable
+                key={star}
+                haptic="light"
+                style={styles.starButton}
+                onPress={() => setSelectedRating(star)}
+              >
+                <Ionicons
+                  name={star <= selectedRating ? 'star' : 'star-outline'}
+                  size={32}
+                  color={COLORS.warning}
+                />
+              </HapticPressable>
+            ))}
+          </View>
+          <TextInput
+            style={styles.ratingInput}
+            placeholder="Add a comment (optional)"
+            placeholderTextColor={COLORS.gray[500]}
+            value={ratingComment}
+            onChangeText={setRatingComment}
+            maxLength={500}
+            multiline
+          />
+          <View style={styles.ratingActions}>
+            <HapticPressable
+              haptic="light"
+              style={styles.declineButton}
+              onPress={() => {
+                setRatingFormVisible(false);
+                setSelectedRating(0);
+                setRatingComment('');
+              }}
+            >
+              <Text style={styles.declineButtonText}>Cancel</Text>
+            </HapticPressable>
+            <HapticPressable
+              haptic="medium"
+              style={[styles.approveButton, selectedRating === 0 && { opacity: 0.5 }]}
+              onPress={handleSubmitRating}
+              disabled={actionLoading || selectedRating === 0}
+            >
+              {actionLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.approveButtonText}>Submit</Text>
+              )}
+            </HapticPressable>
+          </View>
         </View>
       )}
 
@@ -527,5 +653,43 @@ const styles = StyleSheet.create({
   approveButtonText: {
     ...TYPOGRAPHY.button,
     color: '#fff',
+  },
+  imagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray[800],
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray[800],
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  starButton: {
+    padding: SPACING.xs,
+  },
+  ratingFooter: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.separator,
+    gap: SPACING.md,
+  },
+  ratingInput: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.text,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  ratingActions: {
+    flexDirection: 'row',
+    gap: SPACING.md,
   },
 });
