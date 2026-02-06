@@ -150,6 +150,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          psql $DATABASE_URL -f server/migrations/001_initial_schema.sql || true
-          psql $DATABASE_URL -f server/migrations/002_neighborhoods.sql || true
-          psql $DATABASE_URL -f server/migrations/003_messaging_and_rto.sql || true
+          for f in server/migrations/0*.sql; do
+            echo "Running $f..."
+            psql $DATABASE_URL -f "$f" || true
+          done

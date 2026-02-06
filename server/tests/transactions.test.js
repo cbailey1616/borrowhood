@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import { query } from '../src/utils/db.js';
+import { query, pool } from '../src/utils/db.js';
 
 // Create a test app instance
 const createTestApp = async () => {
@@ -69,6 +69,8 @@ describe('Transactions API', () => {
     await query('DELETE FROM borrow_transactions WHERE borrower_id = $1', [testUserId]);
     await query('DELETE FROM listings WHERE id = $1', [testListingId]);
     await query('DELETE FROM users WHERE id IN ($1, $2)', [testUserId, testLenderId]);
+    await query('DELETE FROM communities WHERE id = $1', [testCommunityId]);
+    await pool.end();
   });
 
   describe('POST /api/transactions', () => {
