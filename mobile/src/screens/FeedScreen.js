@@ -595,7 +595,7 @@ export default function FeedScreen({ navigation }) {
 
       {showUpgradePrompt && (
         <View style={styles.overlay}>
-          <BlurCard style={styles.overlayCard}>
+          <View style={styles.overlayCard}>
             <View style={styles.overlayCardInner}>
               <View style={styles.overlayIconContainer}>
                 <Ionicons name="star" size={32} color={COLORS.primary} />
@@ -636,7 +636,7 @@ export default function FeedScreen({ navigation }) {
                 <Text style={styles.overlayDismissText}>Not Now</Text>
               </HapticPressable>
             </View>
-          </BlurCard>
+          </View>
         </View>
       )}
     </View>
@@ -693,6 +693,9 @@ const styles = StyleSheet.create({
   overlayCard: {
     width: '100%',
     maxWidth: 340,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
   },
   overlayCardInner: {
     padding: 28,
