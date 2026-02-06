@@ -5,14 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function UserProfileScreen({ route, navigation }) {
   const { id } = route.params;
@@ -24,6 +26,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const [activeTab, setActiveTab] = useState('listings');
   const [isFriend, setIsFriend] = useState(false);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
+  const [removeFriendSheetVisible, setRemoveFriendSheetVisible] = useState(false);
 
   const isOwnProfile = currentUser?.id === id;
 
@@ -77,37 +80,24 @@ export default function UserProfileScreen({ route, navigation }) {
     try {
       await api.addFriend(id);
       setIsFriend(true);
-      Alert.alert('Success', `${user.firstName} added to your close friends!`);
+      haptics.success();
     } catch (error) {
-      Alert.alert('Error', 'Failed to add friend');
+      haptics.error();
     } finally {
       setIsAddingFriend(false);
     }
   };
 
   const handleRemoveFriend = async () => {
-    Alert.alert(
-      'Remove Friend',
-      `Remove ${user.firstName} from your close friends?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            setIsAddingFriend(true);
-            try {
-              await api.removeFriend(id);
-              setIsFriend(false);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to remove friend');
-            } finally {
-              setIsAddingFriend(false);
-            }
-          },
-        },
-      ]
-    );
+    setIsAddingFriend(true);
+    try {
+      await api.removeFriend(id);
+      setIsFriend(false);
+    } catch (error) {
+      haptics.error();
+    } finally {
+      setIsAddingFriend(false);
+    }
   };
 
   const handleMessage = () => {
@@ -199,22 +189,24 @@ export default function UserProfileScreen({ route, navigation }) {
         {/* Tabs */}
         <View style={styles.ratingsSection}>
           <View style={styles.tabs}>
-            <TouchableOpacity
+            <HapticPressable
+              haptic="light"
               style={[styles.tab, activeTab === 'listings' && styles.tabActive]}
               onPress={() => setActiveTab('listings')}
             >
               <Text style={[styles.tabText, activeTab === 'listings' && styles.tabTextActive]}>
                 Items ({listings.length})
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </HapticPressable>
+            <HapticPressable
+              haptic="light"
               style={[styles.tab, activeTab === 'reviews' && styles.tabActive]}
               onPress={() => setActiveTab('reviews')}
             >
               <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>
                 Reviews ({ratings.length})
               </Text>
-            </TouchableOpacity>
+            </HapticPressable>
           </View>
 
           {activeTab === 'listings' ? (
@@ -226,8 +218,9 @@ export default function UserProfileScreen({ route, navigation }) {
             ) : (
               <View style={styles.listingsGrid}>
                 {listings.map((listing) => (
-                  <TouchableOpacity
+                  <HapticPressable
                     key={listing.id}
+                    haptic="light"
                     style={styles.listingCard}
                     onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
                   >
@@ -241,7 +234,7 @@ export default function UserProfileScreen({ route, navigation }) {
                         {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
                       </Text>
                     </View>
-                  </TouchableOpacity>
+                  </HapticPressable>
                 ))}
               </View>
             )
@@ -253,7 +246,7 @@ export default function UserProfileScreen({ route, navigation }) {
               </View>
             ) : (
               filteredRatings.map((rating) => (
-                <View key={rating.id} style={styles.ratingCard}>
+                <BlurCard key={rating.id} style={styles.ratingCard}>
                   <View style={styles.ratingHeader}>
                     <Image
                       source={{ uri: rating.raterPhoto || 'https://via.placeholder.com/36' }}
@@ -281,7 +274,7 @@ export default function UserProfileScreen({ route, navigation }) {
                   {rating.comment && (
                     <Text style={styles.ratingComment}>{rating.comment}</Text>
                   )}
-                </View>
+                </BlurCard>
               ))
             )
           )}
@@ -291,17 +284,19 @@ export default function UserProfileScreen({ route, navigation }) {
       {/* Action Buttons */}
       {!isOwnProfile && (
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticPressable
+            haptic="light"
             style={styles.messageButton}
             onPress={handleMessage}
           >
             <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
+          </HapticPressable>
 
           {isFriend ? (
-            <TouchableOpacity
+            <HapticPressable
+              haptic="light"
               style={[styles.friendButton, styles.friendButtonActive]}
-              onPress={handleRemoveFriend}
+              onPress={() => setRemoveFriendSheetVisible(true)}
               disabled={isAddingFriend}
             >
               {isAddingFriend ? (
@@ -312,9 +307,10 @@ export default function UserProfileScreen({ route, navigation }) {
                   <Text style={styles.friendButtonTextActive}>Friends</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </HapticPressable>
           ) : (
-            <TouchableOpacity
+            <HapticPressable
+              haptic="medium"
               style={styles.friendButton}
               onPress={handleAddFriend}
               disabled={isAddingFriend}
@@ -327,10 +323,24 @@ export default function UserProfileScreen({ route, navigation }) {
                   <Text style={styles.friendButtonText}>Add Friend</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </HapticPressable>
           )}
         </View>
       )}
+
+      <ActionSheet
+        isVisible={removeFriendSheetVisible}
+        onClose={() => setRemoveFriendSheetVisible(false)}
+        title="Remove Friend"
+        message={`Remove ${user.firstName} from your close friends?`}
+        actions={[
+          {
+            label: 'Remove',
+            destructive: true,
+            onPress: handleRemoveFriend,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -353,65 +363,64 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   errorText: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
   },
   header: {
     alignItems: 'center',
-    padding: 24,
+    padding: SPACING.xl,
     backgroundColor: COLORS.surface,
   },
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   name: {
+    ...TYPOGRAPHY.h1,
     fontSize: 24,
-    fontWeight: '700',
     color: COLORS.text,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    gap: SPACING.xs,
+    marginTop: SPACING.xs,
   },
   location: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 12,
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
     backgroundColor: COLORS.secondary + '15',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.lg,
   },
   verifiedText: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...TYPOGRAPHY.caption,
     color: COLORS.secondary,
   },
   bioSection: {
-    padding: 16,
+    padding: SPACING.lg,
     backgroundColor: COLORS.surface,
     marginTop: 1,
   },
   bio: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
   stats: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    paddingVertical: 20,
+    paddingVertical: SPACING.xl,
     marginTop: 1,
   },
   stat: {
@@ -425,44 +434,43 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: SPACING.xs,
   },
   statValue: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   ratingsSection: {
-    padding: 16,
+    padding: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   tabs: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
   },
   tabActive: {
     backgroundColor: COLORS.primary + '15',
   },
   tabText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
@@ -471,24 +479,24 @@ const styles = StyleSheet.create({
   },
   emptyRatings: {
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 32,
+    borderRadius: RADIUS.md,
+    padding: SPACING.xxl,
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   emptyText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textMuted,
   },
   listingsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: SPACING.md,
   },
   listingCard: {
     width: '47%',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     overflow: 'hidden',
   },
   listingImage: {
@@ -500,21 +508,19 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   listingTitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.text,
   },
   listingPrice: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.primary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   ratingCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    padding: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
   ratingHeader: {
     flexDirection: 'row',
@@ -523,20 +529,20 @@ const styles = StyleSheet.create({
   raterAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   raterInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: SPACING.md,
   },
   raterName: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.text,
   },
   ratingDate: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   ratingStars: {
@@ -544,24 +550,24 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingComment: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 12,
+    marginTop: SPACING.md,
     lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
-    padding: 16,
-    paddingBottom: 32,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
     backgroundColor: COLORS.surface,
-    gap: 12,
+    gap: SPACING.md,
   },
   messageButton: {
     width: 52,
     height: 52,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.primary,
     alignItems: 'center',
@@ -573,9 +579,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.sm,
   },
   friendButtonActive: {
     backgroundColor: 'transparent',
@@ -583,13 +589,11 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   friendButtonText: {
+    ...TYPOGRAPHY.button,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   friendButtonTextActive: {
+    ...TYPOGRAPHY.button,
     color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

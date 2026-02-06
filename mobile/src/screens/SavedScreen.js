@@ -5,17 +5,61 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import AnimatedCard from '../components/AnimatedCard';
+import NativeHeader from '../components/NativeHeader';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS } from '../utils/config';
+import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+
+function HeartButton({ onUnsave }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = useCallback(() => {
+    haptics.light();
+    scale.value = withSequence(
+      withSpring(1.3, ANIMATION.spring.bouncy),
+      withSpring(1, ANIMATION.spring.default)
+    );
+    onUnsave();
+  }, [onUnsave]);
+
+  return (
+    <HapticPressable onPress={handlePress} haptic={null} style={styles.heartButton}>
+      <Animated.View style={animStyle}>
+        <Ionicons name="heart" size={22} color={COLORS.danger} />
+      </Animated.View>
+    </HapticPressable>
+  );
+}
 
 export default function SavedScreen({ navigation }) {
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const fetchSaved = useCallback(async () => {
     try {
@@ -54,63 +98,65 @@ export default function SavedScreen({ navigation }) {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-      activeOpacity={0.7}
-    >
-      <Image
-        source={{ uri: item.photoUrl || 'https://via.placeholder.com/120' }}
-        style={styles.cardImage}
-      />
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <TouchableOpacity
-            style={styles.heartButton}
-            onPress={() => handleUnsave(item.id)}
-          >
-            <Ionicons name="heart" size={22} color={COLORS.danger} />
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
-
-        <View style={styles.priceRow}>
-          {item.isFree ? (
-            <Text style={styles.freeTag}>Free</Text>
-          ) : (
-            <Text style={styles.price}>${item.pricePerDay}/day</Text>
-          )}
-        </View>
-
-        <View style={styles.ownerRow}>
+  const renderItem = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <HapticPressable
+        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+        haptic="light"
+      >
+        <BlurCard style={styles.card}>
           <Image
-            source={{ uri: item.owner.profilePhotoUrl || 'https://via.placeholder.com/24' }}
-            style={styles.ownerAvatar}
+            source={{ uri: item.photoUrl || 'https://via.placeholder.com/120' }}
+            style={styles.cardImage}
           />
-          <Text style={styles.ownerName}>
-            {item.owner.firstName} {item.owner.lastName?.charAt(0)}.
-          </Text>
-          {item.owner.rating > 0 && (
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={12} color={COLORS.warning} />
-              <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
+          <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              <HeartButton onUnsave={() => handleUnsave(item.id)} />
             </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
+
+            <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
+
+            <View style={styles.priceRow}>
+              {item.isFree ? (
+                <Text style={styles.freeTag}>Free</Text>
+              ) : (
+                <Text style={styles.price}>${item.pricePerDay}/day</Text>
+              )}
+            </View>
+
+            <View style={styles.ownerRow}>
+              <Image
+                source={{ uri: item.owner.profilePhotoUrl || 'https://via.placeholder.com/24' }}
+                style={styles.ownerAvatar}
+              />
+              <Text style={styles.ownerName}>
+                {item.owner.firstName} {item.owner.lastName?.charAt(0)}.
+              </Text>
+              {item.owner.rating > 0 && (
+                <View style={styles.ratingRow}>
+                  <Ionicons name="star" size={12} color={COLORS.warning} />
+                  <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </BlurCard>
+      </HapticPressable>
+    </AnimatedCard>
   );
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <NativeHeader title="Saved" scrollY={scrollY} />
+
+      <AnimatedFlatList
         data={listings}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -126,12 +172,13 @@ export default function SavedScreen({ navigation }) {
               <Text style={styles.emptySubtitle}>
                 Tap the heart icon on items you like to save them here
               </Text>
-              <TouchableOpacity
+              <HapticPressable
                 style={styles.browseButton}
                 onPress={() => navigation.navigate('Feed')}
+                haptic="medium"
               >
                 <Text style={styles.browseButtonText}>Browse Items</Text>
-              </TouchableOpacity>
+              </HapticPressable>
             </View>
           )
         }
@@ -146,13 +193,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.lg,
+    paddingBottom: 100,
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.md,
     overflow: 'hidden',
   },
   cardImage: {
@@ -162,7 +209,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-    padding: 12,
+    padding: SPACING.md,
     justifyContent: 'space-between',
   },
   cardHeader: {
@@ -172,16 +219,15 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    marginRight: 8,
+    marginRight: SPACING.sm,
   },
   heartButton: {
     padding: 4,
   },
   cardCondition: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   priceRow: {
@@ -189,23 +235,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   price: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.primary,
   },
   freeTag: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.primary,
-    backgroundColor: COLORS.primary + '20',
-    paddingHorizontal: 8,
+    backgroundColor: COLORS.primaryMuted,
+    paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: RADIUS.xs,
+    overflow: 'hidden',
   },
   ownerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   ownerAvatar: {
     width: 24,
@@ -214,7 +261,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray[700],
   },
   ownerName: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   ratingRow: {
@@ -223,7 +270,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   emptyContainer: {
@@ -233,28 +280,26 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: SPACING.xxl,
   },
   browseButton: {
-    marginTop: 24,
+    marginTop: SPACING.xl,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
   },
   browseButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
   },
 });

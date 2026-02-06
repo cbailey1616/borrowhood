@@ -5,15 +5,17 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
-import { COLORS, TRANSACTION_STATUS_LABELS, CONDITION_LABELS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, TRANSACTION_STATUS_LABELS, CONDITION_LABELS } from '../utils/config';
 
 export default function TransactionDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -22,6 +24,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
+  const [returnSheetVisible, setReturnSheetVisible] = useState(false);
 
   useEffect(() => {
     fetchTransaction();
@@ -43,8 +47,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
     try {
       await api.approveTransaction(id);
       fetchTransaction();
+      haptics.success();
       showToast('Request approved! Borrower has been notified.', 'success');
     } catch (error) {
+      haptics.error();
       showError({ message: error.message || 'Unable to approve request.' });
     } finally {
       setActionLoading(false);
@@ -69,63 +75,43 @@ export default function TransactionDetailScreen({ route, navigation }) {
     );
   };
 
-  const handleConfirmPickup = () => {
-    Alert.alert(
-      'Confirm Pickup',
-      'Confirm that the item has been picked up?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await api.confirmPickup(id);
-              fetchTransaction();
-              showToast('Pickup confirmed!', 'success');
-            } catch (error) {
-              showError({ message: error.message || 'Unable to confirm pickup.' });
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  const handleConfirmPickup = async () => {
+    setActionLoading(true);
+    try {
+      await api.confirmPickup(id);
+      fetchTransaction();
+      haptics.success();
+      showToast('Pickup confirmed!', 'success');
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Unable to confirm pickup.' });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleConfirmReturn = () => {
-    Alert.alert(
-      'Confirm Return',
-      'What condition is the item in?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        ...['like_new', 'good', 'fair', 'worn'].map(condition => ({
-          text: CONDITION_LABELS[condition],
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              const result = await api.confirmReturn(id, condition);
-              fetchTransaction();
-              if (result.disputed) {
-                showError({
-                  type: 'generic',
-                  title: 'Dispute Opened',
-                  message: 'A dispute has been opened due to the condition change. We\'ll help you resolve this.',
-                  primaryAction: 'View Details',
-                });
-              } else {
-                showToast('Return confirmed!', 'success');
-              }
-            } catch (error) {
-              showError({ message: error.message || 'Unable to confirm return.' });
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        })),
-      ]
-    );
+  const handleConfirmReturn = async (condition) => {
+    setActionLoading(true);
+    try {
+      const result = await api.confirmReturn(id, condition);
+      fetchTransaction();
+      if (result.disputed) {
+        showError({
+          type: 'generic',
+          title: 'Dispute Opened',
+          message: 'A dispute has been opened due to the condition change. We\'ll help you resolve this.',
+          primaryAction: 'View Details',
+        });
+      } else {
+        haptics.success();
+        showToast('Return confirmed!', 'success');
+      }
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Unable to confirm return.' });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -165,7 +151,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <ScrollView>
         {/* Item Info */}
-        <TouchableOpacity
+        <HapticPressable
+          haptic="light"
           style={styles.listingCard}
           onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}
         >
@@ -180,7 +167,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
-        </TouchableOpacity>
+        </HapticPressable>
 
         {/* Status */}
         <View style={styles.statusCard}>
@@ -192,7 +179,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
 
         {/* Other Person */}
-        <TouchableOpacity
+        <HapticPressable
+          haptic="light"
           style={styles.personCard}
           onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}
         >
@@ -207,7 +195,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
-        </TouchableOpacity>
+        </HapticPressable>
 
         {/* Dates */}
         <View style={styles.section}>
@@ -272,14 +260,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
       {/* Actions */}
       {transaction.isLender && transaction.status === 'pending' && (
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticPressable
+            haptic="light"
             style={styles.declineButton}
             onPress={handleDecline}
             disabled={actionLoading}
           >
             <Text style={styles.declineButtonText}>Decline</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </HapticPressable>
+          <HapticPressable
+            haptic="medium"
             style={styles.approveButton}
             onPress={handleApprove}
             disabled={actionLoading}
@@ -289,33 +279,59 @@ export default function TransactionDetailScreen({ route, navigation }) {
             ) : (
               <Text style={styles.approveButtonText}>Approve</Text>
             )}
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
 
       {transaction.isLender && transaction.status === 'paid' && (
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticPressable
+            haptic="medium"
             style={styles.approveButton}
-            onPress={handleConfirmPickup}
+            onPress={() => setPickupSheetVisible(true)}
             disabled={actionLoading}
           >
             <Text style={styles.approveButtonText}>Confirm Pickup</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
 
       {transaction.isLender && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticPressable
+            haptic="medium"
             style={styles.approveButton}
-            onPress={handleConfirmReturn}
+            onPress={() => setReturnSheetVisible(true)}
             disabled={actionLoading}
           >
             <Text style={styles.approveButtonText}>Confirm Return</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
+
+      <ActionSheet
+        isVisible={pickupSheetVisible}
+        onClose={() => setPickupSheetVisible(false)}
+        title="Confirm Pickup"
+        message="Confirm that the item has been picked up?"
+        actions={[
+          {
+            label: 'Confirm Pickup',
+            onPress: handleConfirmPickup,
+          },
+        ]}
+      />
+
+      <ActionSheet
+        isVisible={returnSheetVisible}
+        onClose={() => setReturnSheetVisible(false)}
+        title="Confirm Return"
+        message="What condition is the item in?"
+        actions={['like_new', 'good', 'fair', 'worn'].map(condition => ({
+          label: CONDITION_LABELS[condition],
+          onPress: () => handleConfirmReturn(condition),
+        }))}
+      />
     </View>
   );
 }
@@ -338,86 +354,86 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   errorText: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
   },
   listingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 16,
-    gap: 12,
+    padding: SPACING.lg,
+    gap: SPACING.md,
   },
   listingImage: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.gray[200],
   },
   listingInfo: {
     flex: 1,
   },
   listingTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   listingCondition: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   statusCard: {
     alignItems: 'center',
-    padding: 16,
+    padding: SPACING.lg,
     backgroundColor: COLORS.surface,
     marginTop: 1,
   },
   statusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.xl,
   },
   statusText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
   },
   personCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 16,
-    marginTop: 12,
-    gap: 12,
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
+    gap: SPACING.md,
   },
   personAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[200],
   },
   personInfo: {
     flex: 1,
   },
   personRole: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   personName: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   section: {
     backgroundColor: COLORS.surface,
-    padding: 16,
-    marginTop: 12,
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   dateRow: {
     flexDirection: 'row',
@@ -428,89 +444,88 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   dateValue: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   daysText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   priceBreakdown: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   priceLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
   priceValue: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.text,
   },
   totalRow: {
-    marginTop: 8,
-    paddingTop: 12,
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
   },
   totalLabel: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   totalValue: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.text,
   },
   messageText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
-    padding: 16,
-    paddingBottom: 32,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
-    gap: 12,
+    borderTopColor: COLORS.separator,
+    gap: SPACING.md,
   },
   declineButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.gray[700],
     alignItems: 'center',
   },
   declineButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   approveButton: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
   },
   approveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: '#fff',
   },
 });

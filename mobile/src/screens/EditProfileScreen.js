@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -15,10 +13,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function EditProfileScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
@@ -133,9 +134,10 @@ export default function EditProfileScreen({ navigation }) {
 
       await api.updateProfile(profileData);
       if (refreshUser) await refreshUser();
-      Alert.alert('Success', 'Profile updated successfully');
+      haptics.success();
       navigation.goBack();
     } catch (error) {
+      haptics.error();
       showError({
         message: error.message || 'Unable to update your profile. Please try again.',
         type: 'network',
@@ -158,9 +160,9 @@ export default function EditProfileScreen({ navigation }) {
             source={{ uri: selectedPhoto || user?.profilePhotoUrl || 'https://via.placeholder.com/100' }}
             style={styles.avatar}
           />
-          <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
+          <HapticPressable haptic="light" style={styles.changePhotoButton} onPress={handleChangePhoto}>
             <Text style={styles.changePhotoText}>Change Photo</Text>
-          </TouchableOpacity>
+          </HapticPressable>
           {selectedPhoto && (
             <Text style={styles.photoHint}>New photo will be saved when you save changes</Text>
           )}
@@ -221,7 +223,8 @@ export default function EditProfileScreen({ navigation }) {
           {/* Location Section */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Location</Text>
-            <TouchableOpacity
+            <HapticPressable
+              haptic="light"
               style={styles.locationButton}
               onPress={handleGetLocation}
               disabled={isGettingLocation}
@@ -234,7 +237,7 @@ export default function EditProfileScreen({ navigation }) {
                   <Text style={styles.locationButtonText}>Use Current</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </HapticPressable>
           </View>
 
           <View style={styles.row}>
@@ -267,15 +270,16 @@ export default function EditProfileScreen({ navigation }) {
             Your location helps show nearby items and connect you with neighbors.
           </Text>
 
-          <View style={styles.infoBox}>
+          <BlurCard style={styles.infoBox}>
             <Text style={styles.infoTitle}>Email</Text>
             <Text style={styles.infoValue}>{user?.email}</Text>
             <Text style={styles.infoNote}>Email cannot be changed</Text>
-          </View>
+          </BlurCard>
         </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
+        <HapticPressable
+          haptic="medium"
           style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isLoading}
@@ -288,7 +292,7 @@ export default function EditProfileScreen({ navigation }) {
           ) : (
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
       </KeyboardAwareScrollView>
     </SafeAreaView>
@@ -308,57 +312,56 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: SPACING.xl,
   },
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   changePhotoButton: {
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   changePhotoText: {
+    ...TYPOGRAPHY.button,
     color: COLORS.primary,
-    fontSize: 15,
-    fontWeight: '600',
   },
   photoHint: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   uploadingText: {
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.background,
-    fontSize: 14,
   },
   form: {
-    padding: 16,
+    padding: SPACING.lg,
     gap: 20,
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   inputContainer: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   label: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
   input: {
     borderWidth: 1,
     borderColor: COLORS.gray[700],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
     backgroundColor: COLORS.surface,
@@ -372,71 +375,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   sectionTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   locationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.primary + '15',
   },
   locationButtonText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.primary,
   },
   locationNote: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
-    marginTop: -8,
+    marginTop: -SPACING.sm,
   },
   infoBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
+    padding: SPACING.lg,
   },
   infoTitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   infoValue: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   infoNote: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   footer: {
-    padding: 16,
+    padding: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
   },
   saveButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 30,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.7,
   },
   saveButtonText: {
+    ...TYPOGRAPHY.headline,
     color: COLORS.background,
-    fontSize: 17,
-    fontWeight: '600',
   },
 });

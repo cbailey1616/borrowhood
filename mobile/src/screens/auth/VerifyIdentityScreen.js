@@ -3,22 +3,25 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
+import HapticPressable from '../../components/HapticPressable';
+import ActionSheet from '../../components/ActionSheet';
+import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
-import { COLORS } from '../../utils/config';
+import { haptics } from '../../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function VerifyIdentityScreen({ navigation }) {
   const { refreshUser } = useAuth();
   const { showError, showToast } = useError();
   const [isLoading, setIsLoading] = useState(false);
+  const [skipSheetVisible, setSkipSheetVisible] = useState(false);
 
   const handleStartVerification = async () => {
     setIsLoading(true);
@@ -42,6 +45,7 @@ export default function VerifyIdentityScreen({ navigation }) {
     try {
       const user = await refreshUser();
       if (user.isVerified) {
+        haptics.success();
         showToast('Identity verified! Welcome to Borrowhood.', 'success');
         // Navigation will happen automatically due to auth state change
       } else {
@@ -63,14 +67,7 @@ export default function VerifyIdentityScreen({ navigation }) {
   };
 
   const handleSkipForNow = () => {
-    Alert.alert(
-      'Skip Verification?',
-      'You can browse items, but you won\'t be able to borrow or lend until your identity is verified.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Skip', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) },
-      ]
-    );
+    setSkipSheetVisible(true);
   };
 
   return (
@@ -85,53 +82,72 @@ export default function VerifyIdentityScreen({ navigation }) {
           To keep our community safe, we verify all members with a valid government ID.
         </Text>
 
-        <View style={styles.benefits}>
-          <BenefitItem
-            icon="lock-closed"
-            text="Your data is encrypted and secure"
-          />
-          <BenefitItem
-            icon="people"
-            text="Build trust with your neighbors"
-          />
-          <BenefitItem
-            icon="checkmark-circle"
-            text="Required to borrow or lend items"
-          />
-        </View>
+        <BlurCard style={styles.benefits}>
+          <View style={styles.benefitsInner}>
+            <BenefitItem
+              icon="lock-closed"
+              text="Your data is encrypted and secure"
+            />
+            <BenefitItem
+              icon="people"
+              text="Build trust with your neighbors"
+            />
+            <BenefitItem
+              icon="checkmark-circle"
+              text="Required to borrow or lend items"
+            />
+          </View>
+        </BlurCard>
 
         <View style={styles.buttons}>
-          <TouchableOpacity
+          <HapticPressable
             style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
             onPress={handleStartVerification}
             disabled={isLoading}
+            haptic="medium"
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="card" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
                 <Text style={styles.primaryButtonText}>Verify with ID</Text>
               </>
             )}
-          </TouchableOpacity>
+          </HapticPressable>
 
-          <TouchableOpacity
+          <HapticPressable
             style={styles.secondaryButton}
             onPress={handleCheckStatus}
             disabled={isLoading}
+            haptic="light"
           >
             <Text style={styles.secondaryButtonText}>I've already verified</Text>
-          </TouchableOpacity>
+          </HapticPressable>
 
-          <TouchableOpacity
+          <HapticPressable
             style={styles.skipButton}
             onPress={handleSkipForNow}
+            haptic="light"
           >
             <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       </View>
+
+      <ActionSheet
+        isVisible={skipSheetVisible}
+        onClose={() => setSkipSheetVisible(false)}
+        title="Skip Verification?"
+        message="You can browse items, but you won't be able to borrow or lend until your identity is verified."
+        actions={[
+          {
+            label: 'Skip',
+            onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }),
+          },
+        ]}
+        cancelLabel="Cancel"
+      />
     </SafeAreaView>
   );
 }
@@ -148,55 +164,54 @@ function BenefitItem({ icon, text }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: SPACING.xl,
     justifyContent: 'center',
   },
   iconContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.gray[900],
+    ...TYPOGRAPHY.h1,
+    color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   subtitle: {
-    fontSize: 16,
-    color: COLORS.gray[500],
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: SPACING.xxl,
   },
   benefits: {
-    backgroundColor: COLORS.gray[50],
-    borderRadius: 16,
-    padding: 20,
-    gap: 16,
-    marginBottom: 32,
+    marginBottom: SPACING.xxl,
+    padding: SPACING.xl - SPACING.xs,
+  },
+  benefitsInner: {
+    gap: SPACING.lg,
   },
   benefitItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.md,
   },
   benefitText: {
-    fontSize: 14,
-    color: COLORS.gray[700],
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
     flex: 1,
   },
   buttons: {
-    gap: 12,
+    gap: SPACING.md,
   },
   primaryButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -206,27 +221,27 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#fff',
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: COLORS.gray[200],
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderColor: COLORS.separator,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: COLORS.gray[700],
+    color: COLORS.textSecondary,
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '500',
   },
   skipButton: {
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
     alignItems: 'center',
   },
   skipButtonText: {
-    color: COLORS.gray[400],
-    fontSize: 14,
+    color: COLORS.textMuted,
+    ...TYPOGRAPHY.footnote,
   },
 });

@@ -4,8 +4,6 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -13,7 +11,9 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
-import { COLORS, VISIBILITY_LABELS } from '../utils/config';
+import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
@@ -109,45 +109,49 @@ export default function CreateRequestScreen({ navigation }) {
     return (
       <View style={styles.container}>
         <View style={styles.promptContent}>
-          <View style={styles.promptCard}>
-            <View style={styles.promptIconContainer}>
-              <Ionicons name="home" size={32} color={COLORS.primary} />
+          <BlurCard style={styles.promptCard}>
+            <View style={styles.promptCardContent}>
+              <View style={styles.promptIconContainer}>
+                <Ionicons name="home" size={32} color={COLORS.primary} />
+              </View>
+              <Text style={styles.promptTitle}>Join Your Neighborhood</Text>
+              <Text style={styles.promptText}>
+                Connect with your neighbors to request items you need. Join or create your neighborhood to get started.
+              </Text>
+
+              <View style={styles.promptBenefits}>
+                <View style={styles.promptBenefit}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                  <Text style={styles.promptBenefitText}>Request items from neighbors</Text>
+                </View>
+                <View style={styles.promptBenefit}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                  <Text style={styles.promptBenefitText}>Get notified when items are available</Text>
+                </View>
+                <View style={styles.promptBenefit}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                  <Text style={styles.promptBenefitText}>Share your own items</Text>
+                </View>
+              </View>
+
+              <HapticPressable
+                style={styles.promptButton}
+                onPress={() => navigation.navigate('JoinCommunity')}
+                haptic="medium"
+              >
+                <Text style={styles.promptButtonText}>Find Your Neighborhood</Text>
+                <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
+              </HapticPressable>
             </View>
-            <Text style={styles.promptTitle}>Join Your Neighborhood</Text>
-            <Text style={styles.promptText}>
-              Connect with your neighbors to request items you need. Join or create your neighborhood to get started.
-            </Text>
+          </BlurCard>
 
-            <View style={styles.promptBenefits}>
-              <View style={styles.promptBenefit}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Request items from neighbors</Text>
-              </View>
-              <View style={styles.promptBenefit}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Get notified when items are available</Text>
-              </View>
-              <View style={styles.promptBenefit}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Share your own items</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.promptButton}
-              onPress={() => navigation.navigate('JoinCommunity')}
-            >
-              <Text style={styles.promptButtonText}>Find Your Neighborhood</Text>
-              <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
+          <HapticPressable
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
+            haptic="light"
           >
             <Text style={styles.promptSecondaryText}>Maybe Later</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       </View>
     );
@@ -230,7 +234,7 @@ export default function CreateRequestScreen({ navigation }) {
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
             return (
-              <TouchableOpacity
+              <HapticPressable
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
@@ -244,17 +248,18 @@ export default function CreateRequestScreen({ navigation }) {
                     updateField('visibility', [...current, visibility]);
                   }
                 }}
+                haptic="light"
               >
                 <Ionicons
                   name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                   size={18}
                   color={isSelected ? "#fff" : COLORS.textSecondary}
-                  style={{ marginRight: 6 }}
+                  style={{ marginRight: SPACING.xs + 2 }}
                 />
                 <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
                   {VISIBILITY_LABELS[visibility]}
                 </Text>
-              </TouchableOpacity>
+              </HapticPressable>
             );
           })}
         </View>
@@ -269,17 +274,18 @@ export default function CreateRequestScreen({ navigation }) {
       </View>
 
       {/* Submit */}
-      <TouchableOpacity
+      <HapticPressable
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
+        haptic="medium"
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>Post Request</Text>
         )}
-      </TouchableOpacity>
+      </HapticPressable>
     </KeyboardAwareScrollView>
   );
 }
@@ -301,98 +307,98 @@ const styles = StyleSheet.create({
   promptContent: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: SPACING.xl - 4,
   },
   promptCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderColor: COLORS.separator,
+  },
+  promptCardContent: {
+    padding: SPACING.xl,
   },
   promptIconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   promptTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     textAlign: 'center',
   },
   promptText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: SPACING.xl - 4,
   },
   promptBenefits: {
-    gap: 12,
-    marginBottom: 24,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   promptBenefit: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: SPACING.md - 2,
   },
   promptBenefitText: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.text,
   },
   promptButton: {
     flexDirection: 'row',
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: SPACING.md + 2,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   promptButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.background,
   },
   promptSecondaryButton: {
     alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 12,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.md,
   },
   promptSecondaryText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
   },
   content: {
-    padding: 20,
+    padding: SPACING.xl - 4,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   label: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   hint: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md + 2,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
@@ -403,31 +409,34 @@ const styles = StyleSheet.create({
   },
   dateRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   dateInput: {
     flex: 1,
   },
   dateLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   options: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: SPACING.sm,
   },
   option: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray[800],
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md - 2,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.separator,
   },
   optionActive: {
     backgroundColor: COLORS.primary,
   },
   optionText: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
   },
@@ -439,12 +448,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: COLORS.primary + '15',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-    marginBottom: 24,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   infoText: {
+    ...TYPOGRAPHY.footnote,
     flex: 1,
     fontSize: 14,
     color: COLORS.text,
@@ -452,17 +462,17 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: SPACING.xxl,
   },
   submitButtonDisabled: {
     opacity: 0.7,
   },
   submitButtonText: {
-    color: '#fff',
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
   },
 });

@@ -5,14 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS } from '../utils/config';
+import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function DisputeDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -24,6 +26,9 @@ export default function DisputeDetailScreen({ route, navigation }) {
   const [outcome, setOutcome] = useState('split');
   const [lenderPercent, setLenderPercent] = useState('50');
   const [notes, setNotes] = useState('');
+
+  const [showResolveSheet, setShowResolveSheet] = useState(false);
+  const [validationError, setValidationError] = useState(null);
 
   useEffect(() => {
     fetchDispute();
@@ -42,32 +47,25 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
   const handleResolve = async () => {
     if (notes.length < 10) {
-      Alert.alert('Error', 'Please provide resolution notes (at least 10 characters)');
+      setValidationError('Please provide resolution notes (at least 10 characters)');
+      haptics.warning();
       return;
     }
+    setValidationError(null);
+    setShowResolveSheet(true);
+  };
 
-    Alert.alert(
-      'Confirm Resolution',
-      `Are you sure you want to resolve this dispute? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Resolve',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await api.resolveDispute(id, outcome, parseFloat(lenderPercent), notes);
-              fetchDispute();
-              Alert.alert('Success', 'Dispute has been resolved');
-            } catch (error) {
-              Alert.alert('Error', error.message);
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  const performResolve = async () => {
+    setActionLoading(true);
+    try {
+      await api.resolveDispute(id, outcome, parseFloat(lenderPercent), notes);
+      haptics.success();
+      fetchDispute();
+    } catch (error) {
+      haptics.error();
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -118,9 +116,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
       </View>
 
       {/* Item */}
-      <TouchableOpacity
+      <HapticPressable
         style={styles.itemCard}
         onPress={() => navigation.navigate('ListingDetail', { id: dispute.listing.id })}
+        haptic="light"
       >
         <Image
           source={{ uri: dispute.listing.photos?.[0] || 'https://via.placeholder.com/60' }}
@@ -130,186 +129,222 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <Text style={styles.itemTitle}>{dispute.listing.title}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
-      </TouchableOpacity>
+      </HapticPressable>
 
       {/* Parties */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Parties Involved</Text>
-        <View style={styles.partiesRow}>
-          <TouchableOpacity
-            style={styles.partyCard}
-            onPress={() => navigation.navigate('UserProfile', { id: dispute.lender.id })}
-          >
-            <Image
-              source={{ uri: dispute.lender.profilePhotoUrl || 'https://via.placeholder.com/40' }}
-              style={styles.partyAvatar}
-            />
-            <Text style={styles.partyRole}>Lender</Text>
-            <Text style={styles.partyName}>{dispute.lender.firstName}</Text>
-          </TouchableOpacity>
+      <BlurCard style={styles.section}>
+        <View style={styles.sectionContent}>
+          <Text style={styles.sectionTitle}>Parties Involved</Text>
+          <View style={styles.partiesRow}>
+            <HapticPressable
+              style={styles.partyCard}
+              onPress={() => navigation.navigate('UserProfile', { id: dispute.lender.id })}
+              haptic="light"
+            >
+              <Image
+                source={{ uri: dispute.lender.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+                style={styles.partyAvatar}
+              />
+              <Text style={styles.partyRole}>Lender</Text>
+              <Text style={styles.partyName}>{dispute.lender.firstName}</Text>
+            </HapticPressable>
 
-          <Ionicons name="swap-horizontal" size={24} color={COLORS.gray[300]} />
+            <Ionicons name="swap-horizontal" size={24} color={COLORS.gray[300]} />
 
-          <TouchableOpacity
-            style={styles.partyCard}
-            onPress={() => navigation.navigate('UserProfile', { id: dispute.borrower.id })}
-          >
-            <Image
-              source={{ uri: dispute.borrower.profilePhotoUrl || 'https://via.placeholder.com/40' }}
-              style={styles.partyAvatar}
-            />
-            <Text style={styles.partyRole}>Borrower</Text>
-            <Text style={styles.partyName}>{dispute.borrower.firstName}</Text>
-          </TouchableOpacity>
+            <HapticPressable
+              style={styles.partyCard}
+              onPress={() => navigation.navigate('UserProfile', { id: dispute.borrower.id })}
+              haptic="light"
+            >
+              <Image
+                source={{ uri: dispute.borrower.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+                style={styles.partyAvatar}
+              />
+              <Text style={styles.partyRole}>Borrower</Text>
+              <Text style={styles.partyName}>{dispute.borrower.firstName}</Text>
+            </HapticPressable>
+          </View>
         </View>
-      </View>
+      </BlurCard>
 
       {/* Reason */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Dispute Reason</Text>
-        <Text style={styles.reasonText}>{dispute.reason}</Text>
-      </View>
+      <BlurCard style={styles.section}>
+        <View style={styles.sectionContent}>
+          <Text style={styles.sectionTitle}>Dispute Reason</Text>
+          <Text style={styles.reasonText}>{dispute.reason}</Text>
+        </View>
+      </BlurCard>
 
       {/* Condition */}
       {dispute.transaction && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Condition Change</Text>
-          <View style={styles.conditionRow}>
-            <View style={styles.conditionItem}>
-              <Text style={styles.conditionLabel}>At Pickup</Text>
-              <Text style={styles.conditionValue}>
-                {CONDITION_LABELS[dispute.transaction.conditionAtPickup]}
-              </Text>
-            </View>
-            <Ionicons name="arrow-forward" size={20} color={COLORS.danger} />
-            <View style={styles.conditionItem}>
-              <Text style={styles.conditionLabel}>At Return</Text>
-              <Text style={[styles.conditionValue, { color: COLORS.danger }]}>
-                {CONDITION_LABELS[dispute.transaction.conditionAtReturn]}
-              </Text>
+        <BlurCard style={styles.section}>
+          <View style={styles.sectionContent}>
+            <Text style={styles.sectionTitle}>Condition Change</Text>
+            <View style={styles.conditionRow}>
+              <View style={styles.conditionItem}>
+                <Text style={styles.conditionLabel}>At Pickup</Text>
+                <Text style={styles.conditionValue}>
+                  {CONDITION_LABELS[dispute.transaction.conditionAtPickup]}
+                </Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={COLORS.danger} />
+              <View style={styles.conditionItem}>
+                <Text style={styles.conditionLabel}>At Return</Text>
+                <Text style={[styles.conditionValue, { color: COLORS.danger }]}>
+                  {CONDITION_LABELS[dispute.transaction.conditionAtReturn]}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        </BlurCard>
       )}
 
       {/* Evidence */}
       {dispute.evidenceUrls?.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Evidence ({dispute.evidenceUrls.length})</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.evidenceRow}>
-              {dispute.evidenceUrls.map((url, index) => (
-                <Image
-                  key={index}
-                  source={{ uri: url }}
-                  style={styles.evidenceImage}
-                />
-              ))}
-            </View>
-          </ScrollView>
-        </View>
+        <BlurCard style={styles.section}>
+          <View style={styles.sectionContent}>
+            <Text style={styles.sectionTitle}>Evidence ({dispute.evidenceUrls.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.evidenceRow}>
+                {dispute.evidenceUrls.map((url, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri: url }}
+                    style={styles.evidenceImage}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </BlurCard>
       )}
 
       {/* Amounts */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Amounts at Stake</Text>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Rental Fee</Text>
-          <Text style={styles.amountValue}>${dispute.transaction?.rentalFee?.toFixed(2)}</Text>
+      <BlurCard style={styles.section}>
+        <View style={styles.sectionContent}>
+          <Text style={styles.sectionTitle}>Amounts at Stake</Text>
+          <View style={styles.amountRow}>
+            <Text style={styles.amountLabel}>Rental Fee</Text>
+            <Text style={styles.amountValue}>${dispute.transaction?.rentalFee?.toFixed(2)}</Text>
+          </View>
+          <View style={styles.amountRow}>
+            <Text style={styles.amountLabel}>Deposit</Text>
+            <Text style={styles.amountValue}>${dispute.transaction?.depositAmount?.toFixed(2)}</Text>
+          </View>
         </View>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Deposit</Text>
-          <Text style={styles.amountValue}>${dispute.transaction?.depositAmount?.toFixed(2)}</Text>
-        </View>
-      </View>
+      </BlurCard>
 
       {/* Resolution (if resolved) */}
       {dispute.resolution && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resolution</Text>
-          <View style={styles.resolutionCard}>
-            <View style={styles.resolutionRow}>
-              <Text style={styles.resolutionLabel}>To Lender</Text>
-              <Text style={styles.resolutionValue}>${dispute.resolution.depositToLender?.toFixed(2)}</Text>
+        <BlurCard style={styles.section}>
+          <View style={styles.sectionContent}>
+            <Text style={styles.sectionTitle}>Resolution</Text>
+            <View style={styles.resolutionCard}>
+              <View style={styles.resolutionRow}>
+                <Text style={styles.resolutionLabel}>To Lender</Text>
+                <Text style={styles.resolutionValue}>${dispute.resolution.depositToLender?.toFixed(2)}</Text>
+              </View>
+              <View style={styles.resolutionRow}>
+                <Text style={styles.resolutionLabel}>To Borrower</Text>
+                <Text style={styles.resolutionValue}>${dispute.resolution.depositToBorrower?.toFixed(2)}</Text>
+              </View>
+              <View style={styles.resolutionRow}>
+                <Text style={styles.resolutionLabel}>Organizer Fee</Text>
+                <Text style={styles.resolutionValue}>${dispute.resolution.organizerFee?.toFixed(2)}</Text>
+              </View>
+              <Text style={styles.resolutionNotes}>{dispute.resolution.notes}</Text>
+              <Text style={styles.resolvedBy}>
+                Resolved by {dispute.resolution.resolvedBy} on{' '}
+                {new Date(dispute.resolution.resolvedAt).toLocaleDateString()}
+              </Text>
             </View>
-            <View style={styles.resolutionRow}>
-              <Text style={styles.resolutionLabel}>To Borrower</Text>
-              <Text style={styles.resolutionValue}>${dispute.resolution.depositToBorrower?.toFixed(2)}</Text>
-            </View>
-            <View style={styles.resolutionRow}>
-              <Text style={styles.resolutionLabel}>Organizer Fee</Text>
-              <Text style={styles.resolutionValue}>${dispute.resolution.organizerFee?.toFixed(2)}</Text>
-            </View>
-            <Text style={styles.resolutionNotes}>{dispute.resolution.notes}</Text>
-            <Text style={styles.resolvedBy}>
-              Resolved by {dispute.resolution.resolvedBy} on{' '}
-              {new Date(dispute.resolution.resolvedAt).toLocaleDateString()}
-            </Text>
           </View>
-        </View>
+        </BlurCard>
       )}
 
       {/* Resolution Form (for organizers) */}
       {dispute.isOrganizer && dispute.status === 'open' && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resolve Dispute</Text>
+        <BlurCard style={styles.section}>
+          <View style={styles.sectionContent}>
+            <Text style={styles.sectionTitle}>Resolve Dispute</Text>
 
-          <Text style={styles.formLabel}>Outcome</Text>
-          <View style={styles.outcomeOptions}>
-            {[
-              { key: 'lender', label: 'Full to Lender' },
-              { key: 'split', label: 'Split' },
-              { key: 'borrower', label: 'Full to Borrower' },
-            ].map(opt => (
-              <TouchableOpacity
-                key={opt.key}
-                style={[styles.outcomeOption, outcome === opt.key && styles.outcomeOptionActive]}
-                onPress={() => setOutcome(opt.key)}
-              >
-                <Text style={[styles.outcomeText, outcome === opt.key && styles.outcomeTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+            <Text style={styles.formLabel}>Outcome</Text>
+            <View style={styles.outcomeOptions}>
+              {[
+                { key: 'lender', label: 'Full to Lender' },
+                { key: 'split', label: 'Split' },
+                { key: 'borrower', label: 'Full to Borrower' },
+              ].map(opt => (
+                <HapticPressable
+                  key={opt.key}
+                  style={[styles.outcomeOption, outcome === opt.key && styles.outcomeOptionActive]}
+                  onPress={() => setOutcome(opt.key)}
+                  haptic="light"
+                >
+                  <Text style={[styles.outcomeText, outcome === opt.key && styles.outcomeTextActive]}>
+                    {opt.label}
+                  </Text>
+                </HapticPressable>
+              ))}
+            </View>
 
-          {outcome === 'split' && (
-            <>
-              <Text style={styles.formLabel}>Lender Percentage: {lenderPercent}%</Text>
-              <TextInput
-                style={styles.input}
-                value={lenderPercent}
-                onChangeText={setLenderPercent}
-                keyboardType="number-pad"
-                maxLength={3}
-              />
-            </>
-          )}
-
-          <Text style={styles.formLabel}>Resolution Notes *</Text>
-          <TextInput
-            style={[styles.input, styles.notesInput]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Explain your decision..."
-            multiline
-            numberOfLines={4}
-            maxLength={1000}
-          />
-
-          <TouchableOpacity
-            style={[styles.resolveButton, actionLoading && styles.resolveButtonDisabled]}
-            onPress={handleResolve}
-            disabled={actionLoading}
-          >
-            {actionLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.resolveButtonText}>Resolve Dispute</Text>
+            {outcome === 'split' && (
+              <>
+                <Text style={styles.formLabel}>Lender Percentage: {lenderPercent}%</Text>
+                <TextInput
+                  style={styles.input}
+                  value={lenderPercent}
+                  onChangeText={setLenderPercent}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+              </>
             )}
-          </TouchableOpacity>
-        </View>
+
+            <Text style={styles.formLabel}>Resolution Notes *</Text>
+            <TextInput
+              style={[styles.input, styles.notesInput]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Explain your decision..."
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              numberOfLines={4}
+              maxLength={1000}
+            />
+
+            {validationError && (
+              <Text style={styles.validationError}>{validationError}</Text>
+            )}
+
+            <HapticPressable
+              style={[styles.resolveButton, actionLoading && styles.resolveButtonDisabled]}
+              onPress={handleResolve}
+              disabled={actionLoading}
+              haptic="medium"
+            >
+              {actionLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.resolveButtonText}>Resolve Dispute</Text>
+              )}
+            </HapticPressable>
+          </View>
+        </BlurCard>
       )}
+
+      <ActionSheet
+        isVisible={showResolveSheet}
+        onClose={() => setShowResolveSheet(false)}
+        title="Confirm Resolution"
+        message="Are you sure you want to resolve this dispute? This action cannot be undone."
+        actions={[
+          {
+            label: 'Resolve',
+            onPress: performResolve,
+          },
+        ]}
+      />
     </ScrollView>
   );
 }
@@ -317,7 +352,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.gray[50],
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
@@ -330,55 +365,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
-    color: COLORS.gray[500],
+    color: COLORS.textSecondary,
   },
   statusCard: {
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    padding: SPACING.lg,
+    backgroundColor: COLORS.surface,
   },
   statusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
   },
   statusText: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     fontWeight: '600',
   },
   itemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
+    backgroundColor: COLORS.surface,
+    padding: SPACING.lg,
     marginTop: 1,
-    gap: 12,
+    gap: SPACING.md,
   },
   itemImage: {
     width: 60,
     height: 60,
-    borderRadius: 8,
-    backgroundColor: COLORS.gray[200],
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.gray[700],
   },
   itemInfo: {
     flex: 1,
   },
   itemTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.gray[900],
+    color: COLORS.text,
   },
   section: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginTop: 12,
+    marginTop: SPACING.md,
+  },
+  sectionContent: {
+    padding: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
-    color: COLORS.gray[900],
-    marginBottom: 12,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
   },
   partiesRow: {
     flexDirection: 'row',
@@ -391,22 +429,23 @@ const styles = StyleSheet.create({
   partyAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.gray[200],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.gray[700],
   },
   partyRole: {
-    fontSize: 11,
-    color: COLORS.gray[500],
-    marginTop: 8,
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textMuted,
+    marginTop: SPACING.sm,
   },
   partyName: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
-    color: COLORS.gray[900],
+    color: COLORS.text,
   },
   reasonText: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
-    color: COLORS.gray[600],
+    color: COLORS.textSecondary,
     lineHeight: 20,
   },
   conditionRow: {
@@ -418,125 +457,136 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   conditionLabel: {
-    fontSize: 12,
-    color: COLORS.gray[500],
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
   },
   conditionValue: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.gray[900],
-    marginTop: 4,
+    color: COLORS.text,
+    marginTop: SPACING.xs,
   },
   evidenceRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SPACING.sm,
   },
   evidenceImage: {
     width: 100,
     height: 100,
-    borderRadius: 8,
-    backgroundColor: COLORS.gray[200],
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.gray[700],
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   amountLabel: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
-    color: COLORS.gray[600],
+    color: COLORS.textSecondary,
   },
   amountValue: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.gray[900],
+    color: COLORS.text,
   },
   resolutionCard: {
-    backgroundColor: COLORS.gray[50],
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
   },
   resolutionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   resolutionLabel: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
-    color: COLORS.gray[600],
+    color: COLORS.textSecondary,
   },
   resolutionValue: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.secondary,
   },
   resolutionNotes: {
-    fontSize: 13,
-    color: COLORS.gray[600],
-    marginTop: 12,
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.md,
     fontStyle: 'italic',
   },
   resolvedBy: {
-    fontSize: 12,
-    color: COLORS.gray[400],
-    marginTop: 8,
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    marginTop: SPACING.sm,
   },
   formLabel: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
-    color: COLORS.gray[700],
-    marginBottom: 8,
-    marginTop: 12,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    marginTop: SPACING.md,
   },
   outcomeOptions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SPACING.sm,
   },
   outcomeOption: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: COLORS.gray[100],
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceElevated,
     alignItems: 'center',
   },
   outcomeOptionActive: {
     backgroundColor: COLORS.primary,
   },
   outcomeText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '500',
-    color: COLORS.gray[600],
+    color: COLORS.textSecondary,
   },
   outcomeTextActive: {
     color: '#fff',
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.gray[200],
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md - 2,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
-    backgroundColor: COLORS.gray[50],
+    backgroundColor: COLORS.surfaceElevated,
+    color: COLORS.text,
   },
   notesInput: {
     height: 100,
     textAlignVertical: 'top',
   },
+  validationError: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.danger,
+    marginTop: SPACING.sm,
+  },
   resolveButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: SPACING.md + 2,
+    borderRadius: RADIUS.sm,
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 32,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.xxl,
   },
   resolveButtonDisabled: {
     opacity: 0.7,
   },
   resolveButtonText: {
-    color: '#fff',
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
   },
 });

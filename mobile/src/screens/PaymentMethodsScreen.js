@@ -4,19 +4,23 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function PaymentMethodsScreen({ navigation }) {
   const { showError } = useError();
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [removeSheetVisible, setRemoveSheetVisible] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
 
   useEffect(() => {
     fetchPaymentMethods();
@@ -38,29 +42,19 @@ export default function PaymentMethodsScreen({ navigation }) {
     navigation.navigate('AddPaymentMethod');
   };
 
-  const handleRemoveCard = (card) => {
-    Alert.alert(
-      'Remove Card',
-      `Remove card ending in ${card.last4}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.removePaymentMethod(card.id);
-              setPaymentMethods(prev => prev.filter(c => c.id !== card.id));
-            } catch (error) {
-              showError({
-                message: 'Unable to remove card. Please try again.',
-                type: 'network',
-              });
-            }
-          },
-        },
-      ]
-    );
+  const handleRemoveCard = async () => {
+    if (!selectedCard) return;
+    try {
+      await api.removePaymentMethod(selectedCard.id);
+      setPaymentMethods(prev => prev.filter(c => c.id !== selectedCard.id));
+      haptics.success();
+    } catch (error) {
+      haptics.error();
+      showError({
+        message: 'Unable to remove card. Please try again.',
+        type: 'network',
+      });
+    }
   };
 
   const handleSetDefault = async (card) => {
@@ -69,7 +63,9 @@ export default function PaymentMethodsScreen({ navigation }) {
       setPaymentMethods(prev =>
         prev.map(c => ({ ...c, isDefault: c.id === card.id }))
       );
+      haptics.success();
     } catch (error) {
+      haptics.error();
       showError({
         message: 'Unable to set default card. Please try again.',
         type: 'network',
@@ -82,7 +78,7 @@ export default function PaymentMethodsScreen({ navigation }) {
       case 'visa': return 'V';
       case 'mastercard': return 'M';
       case 'amex': return 'A';
-      default: return '•';
+      default: return '\u2022';
     }
   };
 
@@ -102,13 +98,13 @@ export default function PaymentMethodsScreen({ navigation }) {
         {paymentMethods.length > 0 ? (
           <View style={styles.cardList}>
             {paymentMethods.map((card) => (
-              <View key={card.id} style={styles.card}>
+              <BlurCard key={card.id} style={styles.card}>
                 <View style={styles.cardIcon}>
                   <Text style={styles.cardIconText}>{getCardIcon(card.brand)}</Text>
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardBrand}>
-                    {card.brand} •••• {card.last4}
+                    {card.brand} {'\u2022\u2022\u2022\u2022'} {card.last4}
                   </Text>
                   <Text style={styles.cardExpiry}>
                     Expires {card.expMonth}/{card.expYear}
@@ -119,54 +115,74 @@ export default function PaymentMethodsScreen({ navigation }) {
                     <Text style={styles.defaultText}>Default</Text>
                   </View>
                 ) : (
-                  <TouchableOpacity
+                  <HapticPressable
+                    haptic="light"
                     style={styles.setDefaultButton}
                     onPress={() => handleSetDefault(card)}
                   >
                     <Text style={styles.setDefaultText}>Set Default</Text>
-                  </TouchableOpacity>
+                  </HapticPressable>
                 )}
-                <TouchableOpacity
+                <HapticPressable
+                  haptic="light"
                   style={styles.removeButton}
-                  onPress={() => handleRemoveCard(card)}
+                  onPress={() => {
+                    setSelectedCard(card);
+                    setRemoveSheetVisible(true);
+                  }}
                 >
                   <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-                </TouchableOpacity>
-              </View>
+                </HapticPressable>
+              </BlurCard>
             ))}
           </View>
         ) : (
-          <View style={styles.emptyCard}>
+          <BlurCard style={styles.emptyCard}>
             <Ionicons name="card-outline" size={48} color={COLORS.gray[600]} />
             <Text style={styles.emptyText}>No payment methods added</Text>
             <Text style={styles.emptySubtext}>
               Add a card to pay for borrowing items with rental fees
             </Text>
-          </View>
+          </BlurCard>
         )}
 
-        <TouchableOpacity style={styles.addButton} onPress={handleAddCard}>
+        <HapticPressable haptic="medium" style={styles.addButton} onPress={handleAddCard}>
           <Ionicons name="add" size={20} color={COLORS.primary} />
           <Text style={styles.addButtonText}>Add Payment Method</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payout Account</Text>
-        <View style={styles.infoCard}>
+        <BlurCard style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
           <Text style={styles.infoText}>
             Set up a payout account to receive payments when others borrow your items.
           </Text>
-        </View>
-        <TouchableOpacity
+        </BlurCard>
+        <HapticPressable
+          haptic="medium"
           style={styles.addButton}
           onPress={() => navigation.navigate('SetupPayout')}
         >
           <Ionicons name="add" size={20} color={COLORS.primary} />
           <Text style={styles.addButtonText}>Set Up Payout Account</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
+
+      <ActionSheet
+        isVisible={removeSheetVisible}
+        onClose={() => setRemoveSheetVisible(false)}
+        title="Remove Card"
+        message={`Remove card ending in ${selectedCard?.last4}?`}
+        actions={[
+          {
+            label: 'Remove',
+            destructive: true,
+            onPress: handleRemoveCard,
+          },
+        ]}
+      />
     </ScrollView>
   );
 }
@@ -183,91 +199,85 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   section: {
-    padding: 16,
-    paddingTop: 24,
+    padding: SPACING.lg,
+    paddingTop: SPACING.xl,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     textTransform: 'uppercase',
   },
   cardList: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
+    padding: SPACING.lg,
+    gap: SPACING.md,
   },
   cardIcon: {
     width: 40,
     height: 28,
-    borderRadius: 4,
+    borderRadius: RADIUS.xs,
     backgroundColor: COLORS.gray[700],
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardIconText: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '700',
     color: COLORS.text,
   },
   cardInfo: {
     flex: 1,
   },
   cardBrand: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.text,
   },
   cardExpiry: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   defaultBadge: {
     backgroundColor: COLORS.primary + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
   },
   defaultText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '600',
     color: COLORS.primary,
   },
   setDefaultButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   setDefaultText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   removeButton: {
-    padding: 8,
+    padding: SPACING.sm,
   },
   emptyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 32,
+    padding: SPACING.xxl,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   emptySubtext: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
   },
   addButton: {
@@ -275,30 +285,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-    gap: 8,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
+    gap: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.primary,
     borderStyle: 'dashed',
   },
   addButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: COLORS.primary,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
+    padding: SPACING.lg,
+    gap: SPACING.md,
     alignItems: 'flex-start',
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
   },

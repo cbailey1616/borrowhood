@@ -5,12 +5,14 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
-  TouchableOpacity,
   Image,
 } from 'react-native';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import AnimatedCard from '../components/AnimatedCard';
 
 export default function BadgesScreen({ navigation }) {
   const [myBadges, setMyBadges] = useState([]);
@@ -33,8 +35,9 @@ export default function BadgesScreen({ navigation }) {
       setMyBadges(mine);
       setAllBadges(all);
       setLeaderboard(leaders);
+      haptics.success();
     } catch (err) {
-      Alert.alert('Error', 'Failed to load badges');
+      haptics.error();
     } finally {
       setLoading(false);
     }
@@ -50,91 +53,107 @@ export default function BadgesScreen({ navigation }) {
     );
   }
 
-  const BadgeCard = ({ badge, earned }) => (
-    <View style={[styles.badgeCard, !earned && styles.badgeCardLocked]}>
-      <Text style={[styles.badgeIcon, !earned && styles.badgeIconLocked]}>
-        {badge.icon}
-      </Text>
-      <Text style={[styles.badgeName, !earned && styles.badgeNameLocked]}>
-        {badge.name}
-      </Text>
-      <Text style={[styles.badgeDescription, !earned && styles.badgeDescriptionLocked]}>
-        {badge.description}
-      </Text>
-      {earned && (
-        <Text style={styles.badgeEarned}>
-          Earned {new Date(earned.earnedAt).toLocaleDateString()}
+  const BadgeCard = ({ badge, earned, index }) => (
+    <AnimatedCard index={index} style={styles.badgeCardWrapper}>
+      <BlurCard style={[styles.badgeCard, !earned && styles.badgeCardLocked]}>
+        <Text style={[styles.badgeIcon, !earned && styles.badgeIconLocked]}>
+          {badge.icon}
         </Text>
-      )}
-      {!earned && badge.requirement && (
-        <Text style={styles.badgeRequirement}>{badge.requirement}</Text>
-      )}
-    </View>
+        <Text style={[styles.badgeName, !earned && styles.badgeNameLocked]}>
+          {badge.name}
+        </Text>
+        <Text style={[styles.badgeDescription, !earned && styles.badgeDescriptionLocked]}>
+          {badge.description}
+        </Text>
+        {earned && (
+          <Text style={styles.badgeEarned}>
+            Earned {new Date(earned.earnedAt).toLocaleDateString()}
+          </Text>
+        )}
+        {!earned && badge.requirement && (
+          <Text style={styles.badgeRequirement}>{badge.requirement}</Text>
+        )}
+      </BlurCard>
+    </AnimatedCard>
   );
 
   const LeaderboardRow = ({ user, rank }) => (
-    <TouchableOpacity
-      style={styles.leaderboardRow}
-      onPress={() => navigation.navigate('UserProfile', { userId: user.id })}
-    >
-      <Text style={[styles.rank, rank <= 3 && styles.rankTop]}>
-        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
-      </Text>
-      <Image
-        source={{ uri: user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
-        style={styles.leaderAvatar}
-      />
-      <View style={styles.leaderInfo}>
-        <Text style={styles.leaderName}>{user.firstName} {user.lastName?.charAt(0)}.</Text>
-        <Text style={styles.leaderStats}>{user.badgeCount} badges</Text>
-      </View>
-      <Text style={styles.leaderPoints}>{user.totalPoints} pts</Text>
-    </TouchableOpacity>
+    <AnimatedCard index={rank - 1}>
+      <HapticPressable
+        style={styles.leaderboardRow}
+        onPress={() => navigation.navigate('UserProfile', { userId: user.id })}
+        haptic="light"
+      >
+        <Text style={[styles.rank, rank <= 3 && styles.rankTop]}>
+          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+        </Text>
+        <Image
+          source={{ uri: user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+          style={styles.leaderAvatar}
+        />
+        <View style={styles.leaderInfo}>
+          <Text style={styles.leaderName}>{user.firstName} {user.lastName?.charAt(0)}.</Text>
+          <Text style={styles.leaderStats}>{user.badgeCount} badges</Text>
+        </View>
+        <Text style={styles.leaderPoints}>{user.totalPoints} pts</Text>
+      </HapticPressable>
+    </AnimatedCard>
   );
 
   return (
     <View style={styles.container}>
       <View style={styles.tabs}>
-        <TouchableOpacity
+        <HapticPressable
           style={[styles.tab, activeTab === 'badges' && styles.tabActive]}
-          onPress={() => setActiveTab('badges')}
+          onPress={() => {
+            setActiveTab('badges');
+            haptics.selection();
+          }}
+          haptic={null}
         >
           <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
             Badges
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </HapticPressable>
+        <HapticPressable
           style={[styles.tab, activeTab === 'leaderboard' && styles.tabActive]}
-          onPress={() => setActiveTab('leaderboard')}
+          onPress={() => {
+            setActiveTab('leaderboard');
+            haptics.selection();
+          }}
+          haptic={null}
         >
           <Text style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
             Leaderboard
           </Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       {activeTab === 'badges' ? (
         <ScrollView style={styles.content}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{myBadges.length}</Text>
-              <Text style={styles.statLabel}>Badges Earned</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{allBadges.length}</Text>
-              <Text style={styles.statLabel}>Total Available</Text>
-            </View>
-          </View>
+          <AnimatedCard index={0}>
+            <BlurCard style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{myBadges.length}</Text>
+                <Text style={styles.statLabel}>Badges Earned</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{allBadges.length}</Text>
+                <Text style={styles.statLabel}>Total Available</Text>
+              </View>
+            </BlurCard>
+          </AnimatedCard>
 
           <Text style={styles.sectionTitle}>Earned</Text>
           {myBadges.length > 0 ? (
             <View style={styles.badgesGrid}>
-              {myBadges.map((badge) => (
+              {myBadges.map((badge, idx) => (
                 <BadgeCard
                   key={badge.badgeId}
                   badge={allBadges.find(b => b.id === badge.badgeId) || badge}
                   earned={badge}
+                  index={idx + 1}
                 />
               ))}
             </View>
@@ -148,8 +167,8 @@ export default function BadgesScreen({ navigation }) {
           <View style={styles.badgesGrid}>
             {allBadges
               .filter(b => !earnedBadgeIds.has(b.id))
-              .map((badge) => (
-                <BadgeCard key={badge.id} badge={badge} earned={null} />
+              .map((badge, idx) => (
+                <BadgeCard key={badge.id} badge={badge} earned={null} index={idx + myBadges.length + 1} />
               ))}
           </View>
         </ScrollView>
@@ -191,8 +210,8 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   tab: {
     flex: 1,
@@ -204,8 +223,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.primary,
   },
   tabText: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
   },
   tabTextActive: {
@@ -214,16 +232,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: SPACING.lg,
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   statItem: {
     flex: 1,
@@ -231,52 +246,49 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.separator,
   },
   statValue: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h1,
     color: COLORS.primary,
   },
   statLabel: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: SPACING.md,
+    marginTop: SPACING.sm,
   },
   badgesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
+  },
+  badgeCardWrapper: {
+    width: '47%',
   },
   badgeCard: {
-    width: '47%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
   },
   badgeCardLocked: {
     opacity: 0.6,
   },
   badgeIcon: {
     fontSize: 40,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   badgeIconLocked: {
     opacity: 0.5,
   },
   badgeName: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.text,
     textAlign: 'center',
@@ -285,59 +297,55 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   badgeDescription: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   badgeDescriptionLocked: {
     color: COLORS.textMuted,
   },
   badgeEarned: {
-    fontSize: 10,
+    ...TYPOGRAPHY.caption,
     color: COLORS.primary,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   badgeRequirement: {
-    fontSize: 10,
+    ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
-    marginTop: 8,
+    marginTop: SPACING.sm,
     textAlign: 'center',
   },
   emptyState: {
-    padding: 24,
+    padding: SPACING.xl,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   leaderboardHeader: {
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   leaderboardTitle: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.text,
   },
   leaderboardSubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   leaderboardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
   },
   rank: {
     width: 32,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
@@ -347,26 +355,25 @@ const styles = StyleSheet.create({
   leaderAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
-    marginRight: 12,
+    marginRight: SPACING.md,
   },
   leaderInfo: {
     flex: 1,
   },
   leaderName: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.text,
   },
   leaderStats: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   leaderPoints: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...TYPOGRAPHY.headline,
     color: COLORS.primary,
   },
 });

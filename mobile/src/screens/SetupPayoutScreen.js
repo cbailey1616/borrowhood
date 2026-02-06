@@ -4,16 +4,19 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
-  Alert,
   ScrollView,
   Linking,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { useError } from '../context/ErrorContext';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function SetupPayoutScreen({ navigation, route }) {
+  const { showError } = useError();
   const [loading, setLoading] = useState(true);
   const [connectStatus, setConnectStatus] = useState(null);
 
@@ -26,7 +29,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       const status = await api.getConnectStatus();
       setConnectStatus(status);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load payout status');
+      showError({ message: 'Failed to load payout status' });
     } finally {
       setLoading(false);
     }
@@ -41,7 +44,8 @@ export default function SetupPayoutScreen({ navigation, route }) {
       // Reload status when user returns to app
       setTimeout(() => loadConnectStatus(), 1000);
     } catch (error) {
-      Alert.alert('Error', error.message);
+      haptics.error();
+      showError({ message: error.message || 'Something went wrong. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -79,7 +83,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       </View>
 
       {isComplete ? (
-        <View style={styles.statusCard}>
+        <BlurCard style={styles.statusCard}>
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Account Status</Text>
             <View style={styles.statusBadge}>
@@ -94,9 +98,9 @@ export default function SetupPayoutScreen({ navigation, route }) {
             <Text style={styles.statusLabel}>Payouts Enabled</Text>
             <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
           </View>
-        </View>
+        </BlurCard>
       ) : (
-        <View style={styles.infoCard}>
+        <BlurCard style={styles.infoCard}>
           <Text style={styles.infoTitle}>What you'll need:</Text>
           <View style={styles.infoItem}>
             <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
@@ -114,11 +118,12 @@ export default function SetupPayoutScreen({ navigation, route }) {
             <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.textSecondary} />
             <Text style={styles.infoText}>Last 4 digits of SSN (for verification)</Text>
           </View>
-        </View>
+        </BlurCard>
       )}
 
       {!isComplete && (
-        <TouchableOpacity
+        <HapticPressable
+          haptic="medium"
           style={styles.setupButton}
           onPress={handleSetupPayout}
           disabled={loading}
@@ -133,7 +138,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
               </Text>
             </>
           )}
-        </TouchableOpacity>
+        </HapticPressable>
       )}
 
       {needsAction && connectStatus?.requirements?.currently_due?.length > 0 && (
@@ -161,7 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    padding: 20,
+    padding: SPACING.xl,
   },
   loadingContainer: {
     flex: 1,
@@ -171,81 +176,75 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: SPACING.xxl,
   },
   iconContainer: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   iconContainerSuccess: {
     backgroundColor: COLORS.primaryDark,
   },
   title: {
+    ...TYPOGRAPHY.h1,
     fontSize: 24,
-    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
   },
   statusCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    padding: SPACING.xl,
+    marginBottom: SPACING.xl,
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomColor: COLORS.separator,
   },
   statusLabel: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   statusBadge: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.md,
   },
   statusBadgeText: {
-    color: '#fff',
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '600',
+    color: '#fff',
   },
   infoCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    padding: SPACING.xl,
+    marginBottom: SPACING.xl,
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    marginBottom: SPACING.md,
+    gap: SPACING.md,
   },
   infoText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     flex: 1,
   },
@@ -254,50 +253,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    marginBottom: 16,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
   },
   setupButtonText: {
+    ...TYPOGRAPHY.button,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   warningCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 193, 7, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    marginBottom: 16,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   warningText: {
     flex: 1,
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.warning,
   },
   securityNote: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
   },
   securityText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   webViewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomColor: COLORS.separator,
   },
   closeButton: {
     width: 40,
@@ -306,8 +304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   webViewTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
   webViewLoading: {

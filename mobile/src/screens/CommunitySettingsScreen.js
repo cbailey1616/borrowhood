@@ -3,15 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Switch,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function CommunitySettingsScreen({ route, navigation }) {
   const { id } = route.params;
@@ -19,6 +21,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [showInDirectory, setShowInDirectory] = useState(true);
+  const [showLeaveSheet, setShowLeaveSheet] = useState(false);
 
   useEffect(() => {
     fetchCommunity();
@@ -36,25 +39,17 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   };
 
   const handleLeaveCommunity = () => {
-    Alert.alert(
-      'Leave Neighborhood',
-      `Are you sure you want to leave ${community?.name}? You'll lose access to neighborhood items and members.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.leaveCommunity(id);
-              navigation.navigate('Main');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to leave neighborhood');
-            }
-          },
-        },
-      ]
-    );
+    setShowLeaveSheet(true);
+  };
+
+  const performLeaveCommunity = async () => {
+    try {
+      await api.leaveCommunity(id);
+      haptics.success();
+      navigation.navigate('Main');
+    } catch (error) {
+      haptics.error();
+    }
   };
 
   if (isLoading) {
@@ -70,105 +65,130 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       {/* Neighborhood Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Neighborhood</Text>
-        <View style={styles.infoCard}>
-          <Text style={styles.communityName}>{community?.name || 'My Neighborhood'}</Text>
-          {community?.description && (
-            <Text style={styles.communityDescription}>{community.description}</Text>
-          )}
-        </View>
+        <BlurCard>
+          <View style={styles.infoCardContent}>
+            <Text style={styles.communityName}>{community?.name || 'My Neighborhood'}</Text>
+            {community?.description && (
+              <Text style={styles.communityDescription}>{community.description}</Text>
+            )}
+          </View>
+        </BlurCard>
       </View>
 
       {/* Notification Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notifications</Text>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.settingLabel}>New Items</Text>
-            <Text style={styles.settingDescription}>
-              Get notified when neighbors list new items
-            </Text>
+        <BlurCard style={styles.settingCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>New Items</Text>
+              <Text style={styles.settingDescription}>
+                Get notified when neighbors list new items
+              </Text>
+            </View>
+            <Switch
+              value={notifications}
+              onValueChange={setNotifications}
+              trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
+              thumbColor={notifications ? COLORS.primary : COLORS.gray[400]}
+            />
           </View>
-          <Switch
-            value={notifications}
-            onValueChange={setNotifications}
-            trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
-            thumbColor={notifications ? COLORS.primary : COLORS.gray[400]}
-          />
-        </View>
+        </BlurCard>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.settingLabel}>Messages</Text>
-            <Text style={styles.settingDescription}>
-              Receive notifications for new messages
-            </Text>
+        <BlurCard style={styles.settingCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Messages</Text>
+              <Text style={styles.settingDescription}>
+                Receive notifications for new messages
+              </Text>
+            </View>
+            <Switch
+              value={true}
+              trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
+              thumbColor={COLORS.primary}
+            />
           </View>
-          <Switch
-            value={true}
-            trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
-            thumbColor={COLORS.primary}
-          />
-        </View>
+        </BlurCard>
       </View>
 
       {/* Privacy */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Privacy</Text>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.settingLabel}>Show in Member Directory</Text>
-            <Text style={styles.settingDescription}>
-              Let other neighbors see your profile
-            </Text>
+        <BlurCard style={styles.settingCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Show in Member Directory</Text>
+              <Text style={styles.settingDescription}>
+                Let other neighbors see your profile
+              </Text>
+            </View>
+            <Switch
+              value={showInDirectory}
+              onValueChange={setShowInDirectory}
+              trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
+              thumbColor={showInDirectory ? COLORS.primary : COLORS.gray[400]}
+            />
           </View>
-          <Switch
-            value={showInDirectory}
-            onValueChange={setShowInDirectory}
-            trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
-            thumbColor={showInDirectory ? COLORS.primary : COLORS.gray[400]}
-          />
-        </View>
+        </BlurCard>
       </View>
 
       {/* Actions */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Actions</Text>
 
-        <TouchableOpacity
+        <HapticPressable
           style={styles.actionButton}
           onPress={() => navigation.navigate('InviteMembers', { communityId: id })}
+          haptic="light"
         >
           <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Invite Neighbors</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </TouchableOpacity>
+        </HapticPressable>
 
-        <TouchableOpacity
+        <HapticPressable
           style={styles.actionButton}
           onPress={() => navigation.navigate('CommunityMembers', { id })}
+          haptic="light"
         >
           <Ionicons name="people-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>View All Members</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       {/* Danger Zone */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: COLORS.danger }]}>Danger Zone</Text>
 
-        <TouchableOpacity
+        <HapticPressable
           style={[styles.actionButton, styles.dangerButton]}
           onPress={handleLeaveCommunity}
+          haptic="medium"
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
           <Text style={[styles.actionButtonText, styles.dangerText]}>Leave Neighborhood</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       <View style={styles.bottomPadding} />
+
+      <ActionSheet
+        isVisible={showLeaveSheet}
+        onClose={() => setShowLeaveSheet(false)}
+        title="Leave Neighborhood"
+        message={`Are you sure you want to leave ${community?.name}? You'll lose access to neighborhood items and members.`}
+        actions={[
+          {
+            label: 'Leave',
+            destructive: true,
+            onPress: performLeaveCommunity,
+          },
+        ]}
+      />
     </ScrollView>
   );
 }
@@ -186,10 +206,11 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   sectionTitle: {
+    ...TYPOGRAPHY.caption,
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.textMuted,
@@ -197,41 +218,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: SPACING.md,
   },
-  infoCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
+  infoCardContent: {
     padding: SPACING.lg,
   },
   communityName: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
   },
   communityDescription: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+  },
+  settingCard: {
+    marginBottom: SPACING.sm,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
     padding: SPACING.lg,
-    marginBottom: SPACING.sm,
   },
   settingInfo: {
     flex: 1,
     marginRight: SPACING.md,
   },
   settingLabel: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.text,
   },
   settingDescription: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
@@ -245,8 +264,8 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   actionButtonText: {
+    ...TYPOGRAPHY.body,
     flex: 1,
-    fontSize: 15,
     color: COLORS.text,
   },
   dangerButton: {

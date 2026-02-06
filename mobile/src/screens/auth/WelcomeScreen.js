@@ -3,21 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Image,
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
+import HapticPressable from '../../components/HapticPressable';
+import ActionSheet from '../../components/ActionSheet';
+import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import useBiometrics from '../../hooks/useBiometrics';
-import { COLORS } from '../../utils/config';
+import { haptics } from '../../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 const logo = require('../../../assets/logo.png');
 
@@ -40,6 +42,8 @@ export default function WelcomeScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
+  const [biometricSheetVisible, setBiometricSheetVisible] = useState(false);
+  const [pendingCredentials, setPendingCredentials] = useState(null);
 
   useEffect(() => {
     checkBiometricsReady();
@@ -62,6 +66,7 @@ export default function WelcomeScreen({ navigation }) {
         const credentials = await getStoredCredentials();
         if (credentials) {
           await login(credentials.email, credentials.password);
+          haptics.success();
         } else {
           showError({
             type: 'auth',
@@ -92,23 +97,13 @@ export default function WelcomeScreen({ navigation }) {
     setIsLoading(true);
     try {
       await login(email, password);
+      haptics.success();
 
       // After successful login, prompt to enable biometrics if available but not enabled
       if (isBiometricsAvailable && !isBiometricsEnabled) {
+        setPendingCredentials({ email, password });
         setTimeout(() => {
-          Alert.alert(
-            `Enable ${biometricType || 'Biometrics'}?`,
-            `Would you like to use ${biometricType || 'biometrics'} for faster sign in next time?`,
-            [
-              { text: 'Not Now', style: 'cancel' },
-              {
-                text: 'Enable',
-                onPress: async () => {
-                  await enableBiometrics(email, password);
-                },
-              },
-            ]
-          );
+          setBiometricSheetVisible(true);
         }, 500);
       }
     } catch (error) {
@@ -141,16 +136,17 @@ export default function WelcomeScreen({ navigation }) {
 
             {/* Biometric Login Button */}
             {canUseBiometrics && !biometricsLoading && (
-              <TouchableOpacity
+              <HapticPressable
                 style={styles.biometricButton}
                 onPress={handleBiometricLogin}
                 disabled={isLoading}
+                haptic="medium"
               >
                 <Ionicons name={biometricIcon} size={32} color={COLORS.primary} />
                 <Text style={styles.biometricButtonText}>
                   Sign in with {biometricType}
                 </Text>
-              </TouchableOpacity>
+              </HapticPressable>
             )}
 
             {canUseBiometrics && (
@@ -161,65 +157,88 @@ export default function WelcomeScreen({ navigation }) {
               </View>
             )}
 
-            <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <View style={styles.passwordContainer}>
+            <BlurCard style={styles.formCard}>
+              <View style={styles.form}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Email</Text>
                   <TextInput
-                    style={styles.passwordInput}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Enter your password"
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
                     placeholderTextColor={COLORS.textMuted}
-                    secureTextEntry={!showPassword}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeButton}
-                  >
-                    <Text style={styles.eyeButtonText}>
-                      {showPassword ? 'Hide' : 'Show'}
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
 
-              <TouchableOpacity
-                style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-                onPress={handleLogin}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={COLORS.background} />
-                ) : (
-                  <Text style={styles.loginButtonText}>Sign In</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Password</Text>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder="Enter your password"
+                      placeholderTextColor={COLORS.textMuted}
+                      secureTextEntry={!showPassword}
+                    />
+                    <HapticPressable
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeButton}
+                      haptic="light"
+                    >
+                      <Text style={styles.eyeButtonText}>
+                        {showPassword ? 'Hide' : 'Show'}
+                      </Text>
+                    </HapticPressable>
+                  </View>
+                </View>
+
+                <HapticPressable
+                  style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  haptic="medium"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={COLORS.background} />
+                  ) : (
+                    <Text style={styles.loginButtonText}>Sign In</Text>
+                  )}
+                </HapticPressable>
+              </View>
+            </BlurCard>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <HapticPressable onPress={() => navigation.navigate('Register')} haptic="light">
                 <Text style={styles.footerLink}>Create one</Text>
-              </TouchableOpacity>
+              </HapticPressable>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ActionSheet
+        isVisible={biometricSheetVisible}
+        onClose={() => setBiometricSheetVisible(false)}
+        title={`Enable ${biometricType || 'Biometrics'}?`}
+        message={`Would you like to use ${biometricType || 'biometrics'} for faster sign in next time?`}
+        actions={[
+          {
+            label: 'Enable',
+            onPress: async () => {
+              if (pendingCredentials) {
+                await enableBiometrics(pendingCredentials.email, pendingCredentials.password);
+                setPendingCredentials(null);
+              }
+            },
+          },
+        ]}
+        cancelLabel="Not Now"
+      />
     </SafeAreaView>
   );
 }
@@ -237,12 +256,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.xl,
     justifyContent: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: SPACING.xxl + SPACING.lg,
   },
   logo: {
     width: 403,
@@ -251,106 +270,104 @@ const styles = StyleSheet.create({
   biometricButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    marginBottom: 8,
+    paddingVertical: SPACING.xl - SPACING.xs,
+    marginBottom: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    borderRadius: 16,
-    gap: 8,
+    borderRadius: RADIUS.lg,
+    gap: SPACING.sm,
   },
   biometricButtonText: {
     color: COLORS.primary,
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
-    gap: 12,
+    marginVertical: SPACING.xl,
+    gap: SPACING.md,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.separator,
   },
   dividerText: {
     color: COLORS.textMuted,
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
+  },
+  formCard: {
+    padding: SPACING.xl,
   },
   form: {
-    gap: 20,
+    gap: SPACING.xl - SPACING.xs,
   },
   inputContainer: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   label: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
   input: {
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceElevated,
     color: COLORS.text,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
-    borderRadius: 12,
-    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
   },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
     color: COLORS.text,
   },
   eyeButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
   },
   eyeButtonText: {
     color: COLORS.primary,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
   },
   loginButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 30,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   loginButtonDisabled: {
     opacity: 0.7,
   },
   loginButtonText: {
     color: COLORS.background,
-    fontSize: 17,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 32,
-    paddingVertical: 24,
+    marginTop: SPACING.xxl,
+    paddingVertical: SPACING.xl,
   },
   footerText: {
     color: COLORS.textSecondary,
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
   },
   footerLink: {
     color: COLORS.primary,
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
   },
 });

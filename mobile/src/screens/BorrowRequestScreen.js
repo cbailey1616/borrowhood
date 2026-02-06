@@ -5,18 +5,19 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function BorrowRequestScreen({ route, navigation }) {
   const { listing } = route.params;
@@ -128,8 +129,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
         message: message.trim() || undefined,
       });
 
+      haptics.success();
       navigation.navigate('Activity');
     } catch (error) {
+      haptics.error();
       const msg = error.message?.toLowerCase() || '';
       if (msg.includes('verification')) {
         showError({
@@ -161,7 +164,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
-          <View style={styles.promptItemCard}>
+          <BlurCard style={styles.promptItemCard}>
             <Image
               source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/80' }}
               style={styles.promptItemImage}
@@ -170,10 +173,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
               <Text style={styles.promptItemOwner}>from {listing.owner.firstName}</Text>
             </View>
-          </View>
+          </BlurCard>
 
           {/* Upgrade Card */}
-          <View style={styles.promptCard}>
+          <BlurCard style={styles.promptCard}>
             <View style={styles.promptIconContainer}>
               <Ionicons name="star" size={32} color={COLORS.primary} />
             </View>
@@ -197,21 +200,23 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
             </View>
 
-            <TouchableOpacity
+            <HapticPressable
+              haptic="medium"
               style={styles.promptButton}
               onPress={() => navigation.navigate('Subscription')}
             >
               <Text style={styles.promptButtonText}>Get Plus - $1/mo</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
-            </TouchableOpacity>
-          </View>
+            </HapticPressable>
+          </BlurCard>
 
-          <TouchableOpacity
+          <HapticPressable
+            haptic="light"
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
           >
             <Text style={styles.promptSecondaryText}>Maybe Later</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </ScrollView>
       </View>
     );
@@ -223,7 +228,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
-          <View style={styles.promptItemCard}>
+          <BlurCard style={styles.promptItemCard}>
             <Image
               source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/80' }}
               style={styles.promptItemImage}
@@ -232,10 +237,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
               <Text style={styles.promptItemOwner}>from {listing.owner.firstName}</Text>
             </View>
-          </View>
+          </BlurCard>
 
           {/* Verification Card */}
-          <View style={styles.promptCard}>
+          <BlurCard style={styles.promptCard}>
             <View style={styles.promptIconContainer}>
               <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
             </View>
@@ -259,21 +264,23 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
             </View>
 
-            <TouchableOpacity
+            <HapticPressable
+              haptic="medium"
               style={styles.promptButton}
               onPress={() => navigation.navigate('Auth', { screen: 'VerifyIdentity' })}
             >
               <Text style={styles.promptButtonText}>Verify Now</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
-            </TouchableOpacity>
-          </View>
+            </HapticPressable>
+          </BlurCard>
 
-          <TouchableOpacity
+          <HapticPressable
+            haptic="light"
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
           >
             <Text style={styles.promptSecondaryText}>Maybe Later</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </ScrollView>
       </View>
     );
@@ -282,7 +289,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Item Summary */}
-      <View style={styles.itemCard}>
+      <BlurCard style={styles.itemCard}>
         <Image
           source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/60' }}
           style={styles.itemImage}
@@ -293,7 +300,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             from {listing.owner.firstName} {listing.owner.lastName[0]}.
           </Text>
         </View>
-      </View>
+      </BlurCard>
 
       {/* Dates */}
       <View style={styles.section}>
@@ -303,20 +310,22 @@ export default function BorrowRequestScreen({ route, navigation }) {
         </Text>
 
         <View style={styles.dateRow}>
-          <TouchableOpacity
+          <HapticPressable
+            haptic="light"
             style={styles.dateButton}
             onPress={() => setShowStartPicker(true)}
           >
             <Text style={styles.dateLabel}>Start Date</Text>
             <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </HapticPressable>
+          <HapticPressable
+            haptic="light"
             style={styles.dateButton}
             onPress={() => setShowEndPicker(true)}
           >
             <Text style={styles.dateLabel}>End Date</Text>
             <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
 
         {showStartPicker && (
@@ -359,7 +368,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       {/* Pricing */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Summary</Text>
-        <View style={styles.pricingCard}>
+        <BlurCard style={styles.pricingCard}>
           {!listing.isFree && days > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>
@@ -382,7 +391,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <Text style={styles.totalLabel}>Total due at approval</Text>
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
-        </View>
+        </BlurCard>
         <Text style={styles.depositNote}>
           <Ionicons name="information-circle-outline" size={14} color={COLORS.gray[400]} />
           {' '}Deposit is refunded when you return the item in good condition
@@ -390,7 +399,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
       </View>
 
       {/* Submit */}
-      <TouchableOpacity
+      <HapticPressable
+        haptic="medium"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
@@ -400,7 +410,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         ) : (
           <Text style={styles.submitButtonText}>Send Request</Text>
         )}
-      </TouchableOpacity>
+      </HapticPressable>
 
       <Text style={styles.termsText}>
         By sending this request, you agree to our borrowing terms and conditions
@@ -421,23 +431,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   promptContent: {
-    padding: 20,
+    padding: SPACING.xl,
     paddingBottom: 40,
   },
   promptItemCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    padding: SPACING.md,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   promptItemImage: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.gray[700],
   },
   promptItemInfo: {
@@ -445,49 +451,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   promptItemTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   promptItemOwner: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   promptCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    padding: SPACING.xl,
   },
   promptIconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   promptTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     textAlign: 'center',
   },
   promptText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: SPACING.xl,
   },
   promptBenefits: {
-    gap: 12,
-    marginBottom: 24,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   promptBenefit: {
     flexDirection: 'row',
@@ -495,6 +495,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   promptBenefitText: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.text,
   },
@@ -502,40 +503,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   promptButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.background,
   },
   promptSecondaryButton: {
     alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 12,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.md,
   },
   promptSecondaryText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
   },
   content: {
-    padding: 20,
+    padding: SPACING.xl,
   },
   itemCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-    marginBottom: 24,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   itemImage: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.gray[200],
   },
   itemInfo: {
@@ -543,56 +542,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   itemTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   itemOwner: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   sectionTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   hint: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   dateRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   dateButton: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderColor: COLORS.separator,
   },
   dateLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   dateValue: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
     backgroundColor: COLORS.surface,
@@ -600,75 +599,77 @@ const styles = StyleSheet.create({
   },
   daysText: {
     textAlign: 'center',
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.primary,
     fontWeight: '500',
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   messageInput: {
     height: 100,
     textAlignVertical: 'top',
   },
   pricingCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
+    padding: SPACING.lg,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   priceLabel: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.textSecondary,
   },
   priceValue: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.text,
   },
   totalRow: {
-    marginTop: 8,
-    paddingTop: 12,
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
     marginBottom: 0,
   },
   totalLabel: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   totalValue: {
+    ...TYPOGRAPHY.h3,
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.primary,
   },
   depositNote: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonText: {
+    ...TYPOGRAPHY.button,
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
   },
   termsText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textAlign: 'center',
-    marginTop: 12,
-    marginBottom: 32,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.xxl,
   },
 });

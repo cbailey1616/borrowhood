@@ -5,11 +5,15 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import AnimatedCard from '../components/AnimatedCard';
+import ActionSheet from '../components/ActionSheet';
+import { haptics } from '../utils/haptics';
 
 const NOTIFICATION_ICONS = {
   borrow_request: 'hand-left',
@@ -34,6 +38,7 @@ export default function NotificationsScreen({ navigation }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showMarkAllSheet, setShowMarkAllSheet] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -81,8 +86,10 @@ export default function NotificationsScreen({ navigation }) {
       await api.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
+      haptics.success();
     } catch (error) {
       console.error('Failed to mark all as read:', error);
+      haptics.error();
     }
   };
 
@@ -90,6 +97,7 @@ export default function NotificationsScreen({ navigation }) {
     if (!notification.isRead) {
       handleMarkRead(notification.id);
     }
+    haptics.light();
 
     // Navigate based on notification type
     if (notification.type === 'new_message' && notification.conversationId) {
@@ -116,28 +124,30 @@ export default function NotificationsScreen({ navigation }) {
     return new Date(date).toLocaleDateString();
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.card, !item.isRead && styles.cardUnread]}
-      onPress={() => handleNotificationPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
-        <Ionicons
-          name={NOTIFICATION_ICONS[item.type] || NOTIFICATION_ICONS.default}
-          size={20}
-          color={!item.isRead ? COLORS.primary : COLORS.gray[400]}
-        />
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
-          {item.title}
-        </Text>
-        <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
-        <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
-      </View>
-      {!item.isRead && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
+  const renderItem = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <HapticPressable
+        style={[styles.card, !item.isRead && styles.cardUnread]}
+        onPress={() => handleNotificationPress(item)}
+        haptic={null}
+      >
+        <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
+          <Ionicons
+            name={NOTIFICATION_ICONS[item.type] || NOTIFICATION_ICONS.default}
+            size={20}
+            color={!item.isRead ? COLORS.primary : COLORS.gray[400]}
+          />
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
+            {item.title}
+          </Text>
+          <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
+          <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
+        </View>
+        {!item.isRead && <View style={styles.unreadDot} />}
+      </HapticPressable>
+    </AnimatedCard>
   );
 
   return (
@@ -145,9 +155,12 @@ export default function NotificationsScreen({ navigation }) {
       {unreadCount > 0 && (
         <View style={styles.header}>
           <Text style={styles.unreadLabel}>{unreadCount} unread</Text>
-          <TouchableOpacity onPress={handleMarkAllRead}>
+          <HapticPressable
+            onPress={() => setShowMarkAllSheet(true)}
+            haptic="light"
+          >
             <Text style={styles.markAllRead}>Mark all read</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
 
@@ -157,7 +170,7 @@ export default function NotificationsScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }
         ListEmptyComponent={
           !isLoading && (
@@ -170,6 +183,20 @@ export default function NotificationsScreen({ navigation }) {
             </View>
           )
         }
+      />
+
+      <ActionSheet
+        isVisible={showMarkAllSheet}
+        onClose={() => setShowMarkAllSheet(false)}
+        title="Mark All Read"
+        message={`Mark all ${unreadCount} notifications as read?`}
+        actions={[
+          {
+            label: 'Mark All as Read',
+            onPress: handleMarkAllRead,
+          },
+        ]}
+        cancelLabel="Cancel"
       />
     </View>
   );
@@ -184,42 +211,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   unreadLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.text,
   },
   markAllRead: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
     color: COLORS.primary,
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.lg,
   },
   card: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
+    marginBottom: SPACING.sm,
     alignItems: 'flex-start',
-    gap: 12,
+    gap: SPACING.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.separator,
   },
   cardUnread: {
     backgroundColor: COLORS.primary + '08',
+    borderColor: COLORS.primary + '20',
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -230,23 +260,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   titleUnread: {
     fontWeight: '600',
     color: COLORS.text,
   },
   body: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    lineHeight: 18,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   time: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   unreadDot: {
@@ -254,7 +283,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.primary,
-    marginTop: 6,
+    marginTop: SPACING.xs + 2,
   },
   emptyContainer: {
     flex: 1,
@@ -263,15 +292,14 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
   },
 });

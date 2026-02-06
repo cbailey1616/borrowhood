@@ -3,24 +3,38 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
   RefreshControl,
   Image,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import AnimatedCard from '../components/AnimatedCard';
+import SegmentedControl from '../components/SegmentedControl';
+import NativeHeader from '../components/NativeHeader';
+import { SkeletonListItem } from '../components/SkeletonLoader';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 export default function InboxScreen({ navigation, onRead }) {
-  const [activeTab, setActiveTab] = useState('messages');
+  const [activeTab, setActiveTab] = useState(0);
   const [conversations, setConversations] = useState([]);
   const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const fetchData = useCallback(async () => {
     try {
@@ -67,47 +81,49 @@ export default function InboxScreen({ navigation, onRead }) {
     return new Date(date).toLocaleDateString();
   };
 
-  const renderConversation = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.avatarContainer}>
-        <Image
-          source={{ uri: item.otherUser?.profilePhotoUrl || 'https://via.placeholder.com/50' }}
-          style={styles.avatar}
-        />
-        {item.unreadCount > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadBadgeText}>
-              {item.unreadCount > 9 ? '9+' : item.unreadCount}
-            </Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
-            {item.otherUser?.firstName} {item.otherUser?.lastName}
-          </Text>
-          <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
+  const renderConversation = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <HapticPressable
+        style={styles.card}
+        onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
+        haptic="light"
+      >
+        <View style={styles.avatarContainer}>
+          <Image
+            source={{ uri: item.otherUser?.profilePhotoUrl || 'https://via.placeholder.com/50' }}
+            style={styles.avatar}
+          />
+          {item.unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>
+                {item.unreadCount > 9 ? '9+' : item.unreadCount}
+              </Text>
+            </View>
+          )}
         </View>
-        {item.listing && (
-          <View style={styles.listingRow}>
-            <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />
-            <Text style={styles.listingText} numberOfLines={1}>{item.listing.title}</Text>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
+              {item.otherUser?.firstName} {item.otherUser?.lastName}
+            </Text>
+            <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
-        )}
-        <Text
-          style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
-          numberOfLines={1}
-        >
-          {item.lastMessage || 'No messages yet'}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-    </TouchableOpacity>
+          {item.listing && (
+            <View style={styles.listingRow}>
+              <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />
+              <Text style={styles.listingText} numberOfLines={1}>{item.listing.title}</Text>
+            </View>
+          )}
+          <Text
+            style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
+            numberOfLines={1}
+          >
+            {item.lastMessage || 'No messages yet'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+      </HapticPressable>
+    </AnimatedCard>
   );
 
   const getStatusColor = (status) => {
@@ -139,73 +155,66 @@ export default function InboxScreen({ navigation, onRead }) {
     return labels[status] || status;
   };
 
-  const renderActivity = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
-      activeOpacity={0.7}
-    >
-      <Image
-        source={{ uri: item.listing?.photoUrl || 'https://via.placeholder.com/50' }}
-        style={styles.itemImage}
-      />
-      <View style={styles.cardContent}>
-        <Text style={styles.name} numberOfLines={1}>{item.listing?.title}</Text>
-        <Text style={styles.lastMessage} numberOfLines={1}>
-          {item.isOwner ? `To: ${item.borrower?.firstName}` : `From: ${item.owner?.firstName}`}
-        </Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {getStatusLabel(item.status)}
+  const renderActivity = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <HapticPressable
+        style={styles.card}
+        onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
+        haptic="light"
+      >
+        <Image
+          source={{ uri: item.listing?.photoUrl || 'https://via.placeholder.com/50' }}
+          style={styles.itemImage}
+        />
+        <View style={styles.cardContent}>
+          <Text style={styles.name} numberOfLines={1}>{item.listing?.title}</Text>
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            {item.isOwner ? `To: ${item.borrower?.firstName}` : `From: ${item.owner?.firstName}`}
           </Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+              {getStatusLabel(item.status)}
+            </Text>
+          </View>
         </View>
-      </View>
-      <Text style={styles.time}>{getTimeAgo(item.updatedAt)}</Text>
-    </TouchableOpacity>
+        <Text style={styles.time}>{getTimeAgo(item.updatedAt)}</Text>
+      </HapticPressable>
+    </AnimatedCard>
   );
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={styles.container}>
+        <NativeHeader title="Inbox" scrollY={scrollY} />
+        <View style={styles.skeletonContainer}>
+          <SkeletonListItem />
+          <SkeletonListItem />
+          <SkeletonListItem />
+          <SkeletonListItem />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Tab Switcher */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'messages' && styles.tabActive]}
-          onPress={() => setActiveTab('messages')}
-        >
-          <Text style={[styles.tabText, activeTab === 'messages' && styles.tabTextActive]}>
-            Messages
-          </Text>
-          {unreadCount > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'activity' && styles.tabActive]}
-          onPress={() => setActiveTab('activity')}
-        >
-          <Text style={[styles.tabText, activeTab === 'activity' && styles.tabTextActive]}>
-            Activity
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <NativeHeader title="Inbox" scrollY={scrollY}>
+        <SegmentedControl
+          segments={[`Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`, 'Activity']}
+          selectedIndex={activeTab}
+          onIndexChange={setActiveTab}
+          style={styles.segmented}
+        />
+      </NativeHeader>
 
-      {/* Content */}
-      {activeTab === 'messages' ? (
-        <FlatList
+      {activeTab === 0 ? (
+        <AnimatedFlatList
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -224,11 +233,13 @@ export default function InboxScreen({ navigation, onRead }) {
           }
         />
       ) : (
-        <FlatList
+        <AnimatedFlatList
           data={activities}
           renderItem={renderActivity}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -256,56 +267,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
+  skeletonContainer: {
+    padding: SPACING.lg,
   },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
-    gap: SPACING.sm,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    gap: SPACING.sm,
-  },
-  tabActive: {
-    borderBottomColor: COLORS.primary,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
-  tabTextActive: {
-    color: COLORS.primary,
-  },
-  tabBadge: {
-    backgroundColor: '#E53935',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  tabBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
+  segmented: {
+    marginTop: SPACING.sm,
   },
   listContent: {
     padding: SPACING.lg,
+    paddingBottom: 100,
     flexGrow: 1,
   },
   card: {
@@ -360,7 +330,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   name: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.text,
     flex: 1,
@@ -369,7 +339,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   time: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   listingRow: {
@@ -379,13 +349,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   listingText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   lastMessage: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   lastMessageUnread: {
     color: COLORS.text,
@@ -399,7 +369,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   statusText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -409,17 +379,15 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
     marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     marginTop: SPACING.sm,
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
-    lineHeight: 20,
   },
 });

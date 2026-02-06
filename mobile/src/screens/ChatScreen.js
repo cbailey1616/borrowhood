@@ -1,20 +1,60 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TextInput,
-  TouchableOpacity,
   Image,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  FadeInDown,
+  FadeInUp,
+} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 import { useAuth } from '../context/AuthContext';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+
+function SendButton({ onPress, disabled }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = useCallback(() => {
+    haptics.light();
+    scale.value = withSequence(
+      withSpring(0.85, ANIMATION.spring.stiff),
+      withSpring(1, ANIMATION.spring.bouncy)
+    );
+    onPress();
+  }, [onPress]);
+
+  return (
+    <HapticPressable
+      style={[styles.sendButton, disabled && styles.sendButtonDisabled]}
+      onPress={handlePress}
+      disabled={disabled}
+      haptic={null}
+    >
+      <Animated.View style={animStyle}>
+        <Ionicons name="send" size={20} color="#fff" />
+      </Animated.View>
+    </HapticPressable>
+  );
+}
 
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, recipientId, listingId, listing: passedListing } = route.params;
@@ -102,6 +142,7 @@ export default function ChatScreen({ route, navigation }) {
       console.error('Failed to send message:', error);
       // Restore message on error
       setNewMessage(messageContent);
+      haptics.error();
     } finally {
       setIsSending(false);
     }
@@ -131,37 +172,44 @@ export default function ChatScreen({ route, navigation }) {
       <View>
         {showDate && (
           <View style={styles.dateHeader}>
-            <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+            <BlurCard style={styles.datePill} intensity={60}>
+              <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+            </BlurCard>
           </View>
         )}
-        <View style={[
-          styles.messageRow,
-          item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
-        ]}>
+        <Animated.View
+          entering={FadeInUp.delay(50).duration(200)}
+          style={[
+            styles.messageRow,
+            item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
+          ]}
+        >
           {!item.isOwnMessage && (
             <Image
               source={{ uri: otherUser?.profilePhotoUrl || 'https://via.placeholder.com/32' }}
               style={styles.messageAvatar}
             />
           )}
-          <View style={[
-            styles.messageBubble,
-            item.isOwnMessage ? styles.ownMessage : styles.otherMessage
-          ]}>
-            <Text style={[
-              styles.messageText,
-              item.isOwnMessage ? styles.ownMessageText : styles.otherMessageText
-            ]}>
-              {item.content}
-            </Text>
-            <Text style={[
-              styles.messageTime,
-              item.isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime
-            ]}>
-              {formatTime(item.createdAt)}
-            </Text>
-          </View>
-        </View>
+          {item.isOwnMessage ? (
+            <View style={[styles.messageBubble, styles.ownMessage]}>
+              <Text style={[styles.messageText, styles.ownMessageText]}>
+                {item.content}
+              </Text>
+              <Text style={[styles.messageTime, styles.ownMessageTime]}>
+                {formatTime(item.createdAt)}
+              </Text>
+            </View>
+          ) : (
+            <BlurCard style={[styles.messageBubble, styles.otherMessage]} intensity={40}>
+              <Text style={[styles.messageText, styles.otherMessageText]}>
+                {item.content}
+              </Text>
+              <Text style={[styles.messageTime, styles.otherMessageTime]}>
+                {formatTime(item.createdAt)}
+              </Text>
+            </BlurCard>
+          )}
+        </Animated.View>
       </View>
     );
   };
@@ -182,9 +230,10 @@ export default function ChatScreen({ route, navigation }) {
     >
       {/* Listing Context Header */}
       {conversation?.listing && (
-        <TouchableOpacity
+        <HapticPressable
           style={styles.listingHeader}
           onPress={() => navigation.navigate('ListingDetail', { id: conversation.listing.id })}
+          haptic="light"
         >
           <Image
             source={{ uri: conversation.listing.photoUrl || 'https://via.placeholder.com/40' }}
@@ -197,7 +246,7 @@ export default function ChatScreen({ route, navigation }) {
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </TouchableOpacity>
+        </HapticPressable>
       )}
 
       {/* Messages List */}
@@ -220,29 +269,42 @@ export default function ChatScreen({ route, navigation }) {
         }
       />
 
-      {/* Input Bar */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Type a message..."
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          maxLength={2000}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (!newMessage.trim() || isSending) && styles.sendButtonDisabled]}
-          onPress={handleSend}
-          disabled={!newMessage.trim() || isSending}
-        >
-          {isSending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="send" size={20} color="#fff" />
-          )}
-        </TouchableOpacity>
-      </View>
+      {/* Input Bar with Blur Background */}
+      {Platform.OS === 'ios' ? (
+        <BlurView intensity={80} tint="dark" style={styles.inputBlur}>
+          <View style={styles.inputInner}>
+            <TextInput
+              style={styles.input}
+              value={newMessage}
+              onChangeText={setNewMessage}
+              placeholder="Type a message..."
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              maxLength={2000}
+            />
+            <SendButton
+              onPress={handleSend}
+              disabled={!newMessage.trim() || isSending}
+            />
+          </View>
+        </BlurView>
+      ) : (
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Type a message..."
+            placeholderTextColor={COLORS.textMuted}
+            multiline
+            maxLength={2000}
+          />
+          <SendButton
+            onPress={handleSend}
+            disabled={!newMessage.trim() || isSending}
+          />
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -264,7 +326,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceElevated,
     padding: SPACING.md,
     gap: SPACING.md,
-    ...SHADOWS.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   listingImage: {
     width: 48,
@@ -276,14 +339,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listingLabel: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   listingTitle: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.text,
     marginTop: 2,
@@ -296,15 +359,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: SPACING.xl,
   },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-    backgroundColor: COLORS.surfaceElevated,
+  datePill: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
-    overflow: 'hidden',
+  },
+  dateText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
   },
   messageRow: {
     flexDirection: 'row',
@@ -333,14 +396,12 @@ const styles = StyleSheet.create({
   ownMessage: {
     backgroundColor: COLORS.primary,
     borderBottomRightRadius: SPACING.xs,
-    ...SHADOWS.sm,
   },
   otherMessage: {
-    backgroundColor: COLORS.surfaceElevated,
     borderBottomLeftRadius: SPACING.xs,
   },
   messageText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     lineHeight: 21,
   },
   ownMessageText: {
@@ -350,6 +411,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   messageTime: {
+    ...TYPOGRAPHY.caption1,
     fontSize: 10,
     marginTop: SPACING.xs,
   },
@@ -367,9 +429,21 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
     marginTop: SPACING.lg,
+  },
+  inputBlur: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  inputInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xl,
+    gap: SPACING.md,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -378,8 +452,8 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.md,
     paddingBottom: SPACING.xl,
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
     gap: SPACING.md,
   },
   input: {
@@ -399,10 +473,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.md,
   },
   sendButtonDisabled: {
     backgroundColor: COLORS.gray[700],
-    ...SHADOWS.sm,
   },
 });

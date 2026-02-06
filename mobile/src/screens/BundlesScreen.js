@@ -5,15 +5,17 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Alert,
-  TouchableOpacity,
   Image,
   Modal,
   TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../utils/config';
 import api from '../services/api';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function BundlesScreen({ navigation }) {
   const [bundles, setBundles] = useState([]);
@@ -24,6 +26,9 @@ export default function BundlesScreen({ navigation }) {
   const [newBundle, setNewBundle] = useState({ name: '', description: '', listingIds: [] });
   const [creating, setCreating] = useState(false);
   const [activeTab, setActiveTab] = useState('browse');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [validationError, setValidationError] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,7 +47,7 @@ export default function BundlesScreen({ navigation }) {
       setMyBundles(mine);
       setMyListings(listings);
     } catch (err) {
-      Alert.alert('Error', 'Failed to load bundles');
+      haptics.error();
     } finally {
       setLoading(false);
     }
@@ -50,13 +55,16 @@ export default function BundlesScreen({ navigation }) {
 
   const handleCreateBundle = async () => {
     if (!newBundle.name.trim()) {
-      Alert.alert('Error', 'Bundle name is required');
+      setValidationError('Bundle name is required');
+      haptics.warning();
       return;
     }
     if (newBundle.listingIds.length < 2) {
-      Alert.alert('Error', 'Select at least 2 items for the bundle');
+      setValidationError('Select at least 2 items for the bundle');
+      haptics.warning();
       return;
     }
+    setValidationError(null);
 
     setCreating(true);
     try {
@@ -64,34 +72,29 @@ export default function BundlesScreen({ navigation }) {
       setShowCreateModal(false);
       setNewBundle({ name: '', description: '', listingIds: [] });
       loadData();
-      Alert.alert('Success', 'Bundle created!');
+      haptics.success();
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to create bundle');
+      haptics.error();
     } finally {
       setCreating(false);
     }
   };
 
   const handleDeleteBundle = async (bundleId) => {
-    Alert.alert(
-      'Delete Bundle',
-      'Are you sure you want to delete this bundle?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.deleteBundle(bundleId);
-              loadData();
-            } catch (err) {
-              Alert.alert('Error', err.message || 'Failed to delete bundle');
-            }
-          },
-        },
-      ]
-    );
+    setDeleteTarget(bundleId);
+    setShowDeleteSheet(true);
+  };
+
+  const performDeleteBundle = async () => {
+    if (!deleteTarget) return;
+    try {
+      await api.deleteBundle(deleteTarget);
+      haptics.success();
+      loadData();
+    } catch (err) {
+      haptics.error();
+    }
+    setDeleteTarget(null);
   };
 
   const toggleListingSelection = (listingId) => {
@@ -104,45 +107,50 @@ export default function BundlesScreen({ navigation }) {
   };
 
   const renderBundle = ({ item }) => (
-    <TouchableOpacity
-      style={styles.bundleCard}
+    <HapticPressable
       onPress={() => navigation.navigate('BundleDetail', { bundleId: item.id })}
+      haptic="light"
     >
-      <View style={styles.bundleImages}>
-        {item.listings?.slice(0, 4).map((listing, idx) => (
-          <Image
-            key={idx}
-            source={{ uri: listing.photoUrl || 'https://via.placeholder.com/60' }}
-            style={[
-              styles.bundleImage,
-              { position: 'absolute', left: idx * 20, zIndex: 4 - idx }
-            ]}
-          />
-        ))}
-      </View>
-      <View style={styles.bundleInfo}>
-        <Text style={styles.bundleName}>{item.name}</Text>
-        <Text style={styles.bundleCount}>{item.listings?.length || 0} items</Text>
-        {item.description && (
-          <Text style={styles.bundleDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-        )}
-        {item.discountPercent > 0 && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{item.discountPercent}% bundle discount</Text>
+      <BlurCard style={styles.bundleCard}>
+        <View style={styles.bundleCardContent}>
+          <View style={styles.bundleImages}>
+            {item.listings?.slice(0, 4).map((listing, idx) => (
+              <Image
+                key={idx}
+                source={{ uri: listing.photoUrl || 'https://via.placeholder.com/60' }}
+                style={[
+                  styles.bundleImage,
+                  { position: 'absolute', left: idx * 20, zIndex: 4 - idx }
+                ]}
+              />
+            ))}
           </View>
-        )}
-      </View>
-      {item.isOwner && (
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteBundle(item.id)}
-        >
-          <Text style={styles.deleteButtonText}>×</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+          <View style={styles.bundleInfo}>
+            <Text style={styles.bundleName}>{item.name}</Text>
+            <Text style={styles.bundleCount}>{item.listings?.length || 0} items</Text>
+            {item.description && (
+              <Text style={styles.bundleDescription} numberOfLines={2}>
+                {item.description}
+              </Text>
+            )}
+            {item.discountPercent > 0 && (
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>{item.discountPercent}% bundle discount</Text>
+              </View>
+            )}
+          </View>
+          {item.isOwner && (
+            <HapticPressable
+              style={styles.deleteButton}
+              onPress={() => handleDeleteBundle(item.id)}
+              haptic="medium"
+            >
+              <Text style={styles.deleteButtonText}>x</Text>
+            </HapticPressable>
+          )}
+        </View>
+      </BlurCard>
+    </HapticPressable>
   );
 
   if (loading) {
@@ -158,22 +166,24 @@ export default function BundlesScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.tabs}>
-        <TouchableOpacity
+        <HapticPressable
           style={[styles.tab, activeTab === 'browse' && styles.tabActive]}
           onPress={() => setActiveTab('browse')}
+          haptic="light"
         >
           <Text style={[styles.tabText, activeTab === 'browse' && styles.tabTextActive]}>
             Browse
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </HapticPressable>
+        <HapticPressable
           style={[styles.tab, activeTab === 'mine' && styles.tabActive]}
           onPress={() => setActiveTab('mine')}
+          haptic="light"
         >
           <Text style={[styles.tabText, activeTab === 'mine' && styles.tabTextActive]}>
             My Bundles
           </Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       {displayBundles.length > 0 ? (
@@ -197,12 +207,13 @@ export default function BundlesScreen({ navigation }) {
         </View>
       )}
 
-      <TouchableOpacity
+      <HapticPressable
         style={styles.fab}
         onPress={() => setShowCreateModal(true)}
+        haptic="medium"
       >
         <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      </HapticPressable>
 
       <Modal
         visible={showCreateModal}
@@ -237,12 +248,13 @@ export default function BundlesScreen({ navigation }) {
               keyExtractor={(item) => item.id}
               style={styles.listingsList}
               renderItem={({ item }) => (
-                <TouchableOpacity
+                <HapticPressable
                   style={[
                     styles.listingItem,
                     newBundle.listingIds.includes(item.id) && styles.listingItemSelected
                   ]}
                   onPress={() => toggleListingSelection(item.id)}
+                  haptic="light"
                 >
                   <Image
                     source={{ uri: item.photos?.[0] || 'https://via.placeholder.com/50' }}
@@ -252,32 +264,52 @@ export default function BundlesScreen({ navigation }) {
                   {newBundle.listingIds.includes(item.id) && (
                     <Text style={styles.checkmark}>✓</Text>
                   )}
-                </TouchableOpacity>
+                </HapticPressable>
               )}
             />
 
+            {validationError && (
+              <Text style={styles.validationError}>{validationError}</Text>
+            )}
+
             <View style={styles.modalButtons}>
-              <TouchableOpacity
+              <HapticPressable
                 style={styles.cancelButton}
                 onPress={() => setShowCreateModal(false)}
+                haptic="light"
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </HapticPressable>
+              <HapticPressable
                 style={styles.createButton}
                 onPress={handleCreateBundle}
                 disabled={creating}
+                haptic="medium"
               >
                 {creating ? (
                   <ActivityIndicator size="small" color={COLORS.background} />
                 ) : (
                   <Text style={styles.createButtonText}>Create</Text>
                 )}
-              </TouchableOpacity>
+              </HapticPressable>
             </View>
           </View>
         </View>
       </Modal>
+
+      <ActionSheet
+        isVisible={showDeleteSheet}
+        onClose={() => { setShowDeleteSheet(false); setDeleteTarget(null); }}
+        title="Delete Bundle"
+        message="Are you sure you want to delete this bundle?"
+        actions={[
+          {
+            label: 'Delete',
+            destructive: true,
+            onPress: performDeleteBundle,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -296,12 +328,12 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   tab: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: SPACING.md + 2,
     alignItems: 'center',
   },
   tabActive: {
@@ -309,7 +341,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.primary,
   },
   tabText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
@@ -318,16 +350,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.lg,
   },
   bundleCard: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderColor: COLORS.separator,
+  },
+  bundleCardContent: {
+    flexDirection: 'row',
+    padding: SPACING.lg,
   },
   bundleImages: {
     width: 80,
@@ -337,52 +369,52 @@ const styles = StyleSheet.create({
   bundleImage: {
     width: 50,
     height: 50,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.gray[700],
     borderWidth: 2,
     borderColor: COLORS.surface,
   },
   bundleInfo: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: SPACING.lg,
   },
   bundleName: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   bundleCount: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   bundleDescription: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   discountBadge: {
     backgroundColor: COLORS.primary + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.md,
     alignSelf: 'flex-start',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   discountText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...TYPOGRAPHY.caption,
     color: COLORS.primary,
   },
   deleteButton: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.danger + '20',
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteButtonText: {
+    ...TYPOGRAPHY.body,
     fontSize: 18,
     color: COLORS.danger,
     fontWeight: '500',
@@ -395,15 +427,15 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   emptyText: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
@@ -415,15 +447,11 @@ const styles = StyleSheet.create({
     bottom: 20,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
+    ...SHADOWS.lg,
   },
   fabText: {
     fontSize: 28,
@@ -432,29 +460,30 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    padding: SPACING.xl,
     maxHeight: '80%',
   },
   modalTitle: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   input: {
-    backgroundColor: COLORS.gray[800],
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md + 2,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.gray[700],
   },
@@ -462,22 +491,22 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   selectLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   listingsList: {
     maxHeight: 200,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   listingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: COLORS.gray[800],
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: SPACING.md - 2,
+    backgroundColor: COLORS.separator,
+    borderRadius: RADIUS.sm,
+    marginBottom: SPACING.sm,
   },
   listingItemSelected: {
     backgroundColor: COLORS.primary + '20',
@@ -487,47 +516,54 @@ const styles = StyleSheet.create({
   listingItemImage: {
     width: 40,
     height: 40,
-    borderRadius: 6,
+    borderRadius: RADIUS.xs,
     backgroundColor: COLORS.gray[700],
   },
   listingItemTitle: {
+    ...TYPOGRAPHY.footnote,
     flex: 1,
     fontSize: 14,
     color: COLORS.text,
-    marginLeft: 10,
+    marginLeft: SPACING.md - 2,
   },
   checkmark: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.primary,
     fontWeight: '600',
   },
+  validationError: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.danger,
+    marginBottom: SPACING.sm,
+  },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: SPACING.md + 2,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.gray[700],
     alignItems: 'center',
   },
   cancelButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   createButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: SPACING.md + 2,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
   },
   createButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.background,
   },
 });

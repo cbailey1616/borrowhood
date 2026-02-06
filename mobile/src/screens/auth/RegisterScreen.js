@@ -4,17 +4,18 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import HapticPressable from '../../components/HapticPressable';
+import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
-import { COLORS } from '../../utils/config';
+import { haptics } from '../../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
@@ -67,6 +68,7 @@ export default function RegisterScreen({ navigation }) {
     setIsLoading(true);
     try {
       await register({ firstName, lastName, email, phone, password });
+      haptics.success();
       navigation.navigate('VerifyIdentity');
     } catch (error) {
       showError({
@@ -88,124 +90,129 @@ export default function RegisterScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity
+          <HapticPressable
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            haptic="light"
           >
-            <Text style={styles.backButtonText}>‹</Text>
-          </TouchableOpacity>
+            <Text style={styles.backButtonText}>{'\u2039'}</Text>
+          </HapticPressable>
 
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Join your neighborhood sharing community</Text>
 
-          <View style={styles.form}>
-            <View style={styles.row}>
-              <View style={[styles.inputContainer, { flex: 1 }]}>
-                <Text style={styles.label}>First name</Text>
+          <BlurCard style={styles.formCard}>
+            <View style={styles.form}>
+              <View style={styles.row}>
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <Text style={styles.label}>First name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.firstName}
+                    onChangeText={(v) => updateField('firstName', v)}
+                    placeholder="John"
+                    placeholderTextColor={COLORS.textMuted}
+                    autoCapitalize="words"
+                  />
+                </View>
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <Text style={styles.label}>Last name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.lastName}
+                    onChangeText={(v) => updateField('lastName', v)}
+                    placeholder="Doe"
+                    placeholderTextColor={COLORS.textMuted}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  value={formData.firstName}
-                  onChangeText={(v) => updateField('firstName', v)}
-                  placeholder="John"
+                  value={formData.email}
+                  onChangeText={(v) => updateField('email', v)}
+                  placeholder="you@example.com"
                   placeholderTextColor={COLORS.textMuted}
-                  autoCapitalize="words"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
-              <View style={[styles.inputContainer, { flex: 1 }]}>
-                <Text style={styles.label}>Last name</Text>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Phone (optional)</Text>
                 <TextInput
                   style={styles.input}
-                  value={formData.lastName}
-                  onChangeText={(v) => updateField('lastName', v)}
-                  placeholder="Doe"
+                  value={formData.phone}
+                  onChangeText={(v) => updateField('phone', v)}
+                  placeholder="(555) 123-4567"
                   placeholderTextColor={COLORS.textMuted}
-                  autoCapitalize="words"
+                  keyboardType="phone-pad"
                 />
               </View>
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.email}
-                onChangeText={(v) => updateField('email', v)}
-                placeholder="you@example.com"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={formData.password}
+                    onChangeText={(v) => updateField('password', v)}
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={COLORS.textMuted}
+                    secureTextEntry={!showPassword}
+                  />
+                  <HapticPressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeButton}
+                    haptic="light"
+                  >
+                    <Text style={styles.eyeButtonText}>
+                      {showPassword ? 'Hide' : 'Show'}
+                    </Text>
+                  </HapticPressable>
+                </View>
+              </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Phone (optional)</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.phone}
-                onChangeText={(v) => updateField('phone', v)}
-                placeholder="(555) 123-4567"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm password</Text>
                 <TextInput
-                  style={styles.passwordInput}
-                  value={formData.password}
-                  onChangeText={(v) => updateField('password', v)}
-                  placeholder="At least 8 characters"
+                  style={styles.input}
+                  value={formData.confirmPassword}
+                  onChangeText={(v) => updateField('confirmPassword', v)}
+                  placeholder="Re-enter your password"
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Text style={styles.eyeButtonText}>
-                    {showPassword ? 'Hide' : 'Show'}
-                  </Text>
-                </TouchableOpacity>
               </View>
+
+              <HapticPressable
+                style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
+                onPress={handleRegister}
+                disabled={isLoading}
+                haptic="medium"
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.background} />
+                ) : (
+                  <Text style={styles.registerButtonText}>Create Account</Text>
+                )}
+              </HapticPressable>
+
+              <Text style={styles.terms}>
+                By creating an account, you agree to our Terms of Service and Privacy Policy
+              </Text>
             </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm password</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.confirmPassword}
-                onChangeText={(v) => updateField('confirmPassword', v)}
-                placeholder="Re-enter your password"
-                placeholderTextColor={COLORS.textMuted}
-                secureTextEntry={!showPassword}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={COLORS.background} />
-              ) : (
-                <Text style={styles.registerButtonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
-
-            <Text style={styles.terms}>
-              By creating an account, you agree to our Terms of Service and Privacy Policy
-            </Text>
-          </View>
+          </BlurCard>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <HapticPressable onPress={() => navigation.navigate('Login')} haptic="light">
               <Text style={styles.footerLink}>Sign in</Text>
-            </TouchableOpacity>
+            </HapticPressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -222,13 +229,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    padding: SPACING.xl,
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   backButtonText: {
     fontSize: 36,
@@ -236,98 +243,94 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h1,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    marginBottom: 32,
+    marginBottom: SPACING.xxl,
+  },
+  formCard: {
+    padding: SPACING.xl,
   },
   form: {
-    gap: 20,
+    gap: SPACING.xl - SPACING.xs,
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
   },
   inputContainer: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   label: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
   input: {
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceElevated,
     color: COLORS.text,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
-    borderRadius: 12,
-    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
   },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
     color: COLORS.text,
   },
   eyeButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
   },
   eyeButtonText: {
     color: COLORS.primary,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
   },
   registerButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 30,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   registerButtonDisabled: {
     opacity: 0.7,
   },
   registerButtonText: {
     color: COLORS.background,
-    fontSize: 17,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
   },
   terms: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textAlign: 'center',
-    lineHeight: 18,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingVertical: SPACING.xl,
   },
   footerText: {
     color: COLORS.textSecondary,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
   },
   footerLink: {
     color: COLORS.primary,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
   },
 });

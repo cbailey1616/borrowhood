@@ -1,22 +1,23 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   Image,
   TextInput,
-  Alert,
   ActivityIndicator,
   Linking,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
 import * as SMS from 'expo-sms';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function FriendsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'requests', 'contacts', or 'search'
@@ -34,6 +35,9 @@ export default function FriendsScreen({ navigation }) {
   const [addingId, setAddingId] = useState(null);
   const [respondingId, setRespondingId] = useState(null);
   const [contactsPermission, setContactsPermission] = useState(null);
+  const [removeFriendSheetVisible, setRemoveFriendSheetVisible] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const searchInputRef = useRef(null);
 
   const fetchFriends = useCallback(async () => {
     try {
@@ -146,6 +150,13 @@ export default function FriendsScreen({ navigation }) {
     }
   }, [activeTab, contactsFetched, isLoadingContacts, fetchContactMatches]);
 
+  // Auto-focus search input when switching to search tab
+  useEffect(() => {
+    if (activeTab === 'search') {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  }, [activeTab]);
+
   // Search for users
   useEffect(() => {
     if (activeTab !== 'search' || search.length < 2) {
@@ -184,9 +195,9 @@ export default function FriendsScreen({ navigation }) {
       await api.acceptFriendRequest(request.requestId);
       setFriendRequests(prev => prev.filter(r => r.requestId !== request.requestId));
       fetchFriends(); // Refresh friends list
-      Alert.alert('Friend Added', `${request.firstName} is now your friend!`);
+      haptics.success();
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to accept request');
+      haptics.error();
     } finally {
       setRespondingId(null);
     }
@@ -198,7 +209,7 @@ export default function FriendsScreen({ navigation }) {
       await api.declineFriendRequest(request.requestId);
       setFriendRequests(prev => prev.filter(r => r.requestId !== request.requestId));
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to decline request');
+      haptics.error();
     } finally {
       setRespondingId(null);
     }
@@ -228,7 +239,7 @@ export default function FriendsScreen({ navigation }) {
         );
         fetchFriends();
         fetchFriendRequests();
-        Alert.alert('Friend Added', `You and ${user.firstName} are now friends!`);
+        haptics.success();
       } else {
         // Request sent, waiting for them to accept
         setSearchResults(prev =>
@@ -237,41 +248,28 @@ export default function FriendsScreen({ navigation }) {
         setContactMatches(prev =>
           prev.map(u => u.id === user.id ? { ...u, requestPending: true } : u)
         );
-        Alert.alert('Request Sent', `Friend request sent to ${user.firstName}`);
+        haptics.success();
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to send friend request');
+      haptics.error();
     } finally {
       setAddingId(null);
     }
   };
 
-  const handleRemoveFriend = (friend) => {
-    Alert.alert(
-      'Remove Friend',
-      `Remove ${friend.firstName} from your close friends?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.removeFriend(friend.id);
-              setFriends(prev => prev.filter(f => f.id !== friend.id));
-            } catch (error) {
-              Alert.alert('Error', 'Failed to remove friend');
-            }
-          },
-        },
-      ]
-    );
+  const handleRemoveFriend = async () => {
+    if (!selectedFriend) return;
+    try {
+      await api.removeFriend(selectedFriend.id);
+      setFriends(prev => prev.filter(f => f.id !== selectedFriend.id));
+    } catch (error) {
+      haptics.error();
+    }
   };
 
   const handleInvite = async (contact) => {
     const isAvailable = await SMS.isAvailableAsync();
     if (!isAvailable) {
-      Alert.alert('SMS not available', 'SMS is not available on this device');
       return;
     }
 
@@ -290,10 +288,10 @@ export default function FriendsScreen({ navigation }) {
   );
 
   const renderFriendItem = ({ item }) => (
-    <TouchableOpacity
+    <HapticPressable
+      haptic="light"
       style={styles.card}
       onPress={() => navigation.navigate('UserProfile', { id: item.id })}
-      activeOpacity={0.7}
     >
       <Image
         source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/50' }}
@@ -305,20 +303,24 @@ export default function FriendsScreen({ navigation }) {
           <Text style={styles.subtitle}>{item.totalTransactions} transactions</Text>
         )}
       </View>
-      <TouchableOpacity
+      <HapticPressable
+        haptic="light"
         style={styles.removeButton}
-        onPress={() => handleRemoveFriend(item)}
+        onPress={() => {
+          setSelectedFriend(item);
+          setRemoveFriendSheetVisible(true);
+        }}
       >
         <Ionicons name="close" size={20} color={COLORS.textMuted} />
-      </TouchableOpacity>
-    </TouchableOpacity>
+      </HapticPressable>
+    </HapticPressable>
   );
 
   const renderContactItem = ({ item }) => (
-    <TouchableOpacity
+    <HapticPressable
+      haptic="light"
       style={styles.card}
       onPress={() => navigation.navigate('UserProfile', { id: item.id })}
-      activeOpacity={0.7}
     >
       <Image
         source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/50' }}
@@ -339,7 +341,8 @@ export default function FriendsScreen({ navigation }) {
           <Text style={styles.pendingText}>Requested</Text>
         </View>
       ) : (
-        <TouchableOpacity
+        <HapticPressable
+          haptic="medium"
           style={styles.addButton}
           onPress={() => handleAddFriend(item)}
           disabled={addingId === item.id}
@@ -349,16 +352,16 @@ export default function FriendsScreen({ navigation }) {
           ) : (
             <Ionicons name="person-add" size={18} color="#fff" />
           )}
-        </TouchableOpacity>
+        </HapticPressable>
       )}
-    </TouchableOpacity>
+    </HapticPressable>
   );
 
   const renderSearchItem = ({ item }) => (
-    <TouchableOpacity
+    <HapticPressable
+      haptic="light"
       style={styles.card}
       onPress={() => navigation.navigate('UserProfile', { id: item.id })}
-      activeOpacity={0.7}
     >
       <Image
         source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/50' }}
@@ -379,7 +382,8 @@ export default function FriendsScreen({ navigation }) {
           <Text style={styles.pendingText}>Requested</Text>
         </View>
       ) : (
-        <TouchableOpacity
+        <HapticPressable
+          haptic="medium"
           style={styles.addButton}
           onPress={() => handleAddFriend(item)}
           disabled={addingId === item.id}
@@ -389,9 +393,9 @@ export default function FriendsScreen({ navigation }) {
           ) : (
             <Ionicons name="person-add" size={18} color="#fff" />
           )}
-        </TouchableOpacity>
+        </HapticPressable>
       )}
-    </TouchableOpacity>
+    </HapticPressable>
   );
 
   const renderInviteItem = ({ item }) => (
@@ -403,12 +407,13 @@ export default function FriendsScreen({ navigation }) {
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.subtitle}>Not on Borrowhood yet</Text>
       </View>
-      <TouchableOpacity
+      <HapticPressable
+        haptic="light"
         style={styles.inviteButton}
         onPress={() => handleInvite(item)}
       >
         <Text style={styles.inviteButtonText}>Invite</Text>
-      </TouchableOpacity>
+      </HapticPressable>
     </View>
   );
 
@@ -416,15 +421,17 @@ export default function FriendsScreen({ navigation }) {
     <View style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity
+        <HapticPressable
+          haptic="light"
           style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
           onPress={() => setActiveTab('friends')}
         >
           <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>
             Friends
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </HapticPressable>
+        <HapticPressable
+          haptic="light"
           style={[styles.tab, activeTab === 'requests' && styles.tabActive]}
           onPress={() => setActiveTab('requests')}
         >
@@ -438,23 +445,25 @@ export default function FriendsScreen({ navigation }) {
               </View>
             )}
           </View>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </HapticPressable>
+        <HapticPressable
+          haptic="light"
           style={[styles.tab, activeTab === 'contacts' && styles.tabActive]}
           onPress={() => setActiveTab('contacts')}
         >
           <Text style={[styles.tabText, activeTab === 'contacts' && styles.tabTextActive]}>
             Contacts
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </HapticPressable>
+        <HapticPressable
+          haptic="light"
           style={[styles.tab, activeTab === 'search' && styles.tabActive]}
           onPress={() => setActiveTab('search')}
         >
           <Text style={[styles.tabText, activeTab === 'search' && styles.tabTextActive]}>
             Search
           </Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       {/* Search bar for friends and search tabs */}
@@ -463,16 +472,18 @@ export default function FriendsScreen({ navigation }) {
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={18} color={COLORS.textMuted} />
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               placeholder={activeTab === 'friends' ? "Search friends..." : "Search by name..."}
               placeholderTextColor={COLORS.textMuted}
               value={search}
               onChangeText={setSearch}
+              autoFocus={activeTab === 'search'}
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
+              <HapticPressable haptic="light" onPress={() => setSearch('')}>
                 <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-              </TouchableOpacity>
+              </HapticPressable>
             )}
           </View>
         </View>
@@ -491,13 +502,85 @@ export default function FriendsScreen({ navigation }) {
               tintColor={COLORS.primary}
             />
           }
+          ListHeaderComponent={
+            <View style={styles.friendsHeader}>
+              {/* Pending requests banner */}
+              {friendRequests.length > 0 && (
+                <HapticPressable
+                  haptic="light"
+                  style={styles.requestsBanner}
+                  onPress={() => setActiveTab('requests')}
+                >
+                  <View style={styles.requestsBannerIcon}>
+                    <Ionicons name="person-add" size={20} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.requestsBannerInfo}>
+                    <Text style={styles.requestsBannerTitle}>
+                      {friendRequests.length} friend request{friendRequests.length > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={styles.requestsBannerSubtitle}>Tap to accept or decline</Text>
+                  </View>
+                  <View style={styles.requestsBannerBadge}>
+                    <Text style={styles.requestsBannerBadgeText}>{friendRequests.length}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                </HapticPressable>
+              )}
+
+              {/* Quick actions */}
+              <View style={styles.quickActions}>
+                <HapticPressable
+                  haptic="light"
+                  style={styles.quickAction}
+                  onPress={() => setActiveTab('contacts')}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.primaryMuted }]}>
+                    <Ionicons name="people" size={20} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.quickActionText}>From Contacts</Text>
+                </HapticPressable>
+                <HapticPressable
+                  haptic="light"
+                  style={styles.quickAction}
+                  onPress={() => setActiveTab('search')}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.secondaryMuted }]}>
+                    <Ionicons name="search" size={20} color={COLORS.secondary} />
+                  </View>
+                  <Text style={styles.quickActionText}>Search Users</Text>
+                </HapticPressable>
+                <HapticPressable
+                  haptic="light"
+                  style={styles.quickAction}
+                  onPress={async () => {
+                    const isAvailable = await SMS.isAvailableAsync();
+                    if (isAvailable) {
+                      await SMS.sendSMSAsync(
+                        [],
+                        `Hey! I'm using Borrowhood to share and borrow items with neighbors. Join me! https://borrowhood.com/download`
+                      );
+                    }
+                  }}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.warningMuted }]}>
+                    <Ionicons name="paper-plane" size={20} color={COLORS.warning} />
+                  </View>
+                  <Text style={styles.quickActionText}>Invite via SMS</Text>
+                </HapticPressable>
+              </View>
+
+              {filteredFriends.length > 0 && (
+                <Text style={styles.sectionHeader}>My Friends</Text>
+              )}
+            </View>
+          }
           ListEmptyComponent={
             !isLoading && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={COLORS.gray[700]} />
                 <Text style={styles.emptyTitle}>No close friends yet</Text>
                 <Text style={styles.emptySubtitle}>
-                  Check your Contacts or Search to find friends
+                  Use the options above to find and invite friends
                 </Text>
               </View>
             )
@@ -510,10 +593,10 @@ export default function FriendsScreen({ navigation }) {
           data={friendRequests}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <TouchableOpacity
+              <HapticPressable
+                haptic="light"
                 style={styles.cardContent}
                 onPress={() => navigation.navigate('UserProfile', { id: item.id })}
-                activeOpacity={0.7}
               >
                 <Image
                   source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/50' }}
@@ -523,9 +606,10 @@ export default function FriendsScreen({ navigation }) {
                   <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
                   <Text style={styles.subtitle}>Wants to be your friend</Text>
                 </View>
-              </TouchableOpacity>
+              </HapticPressable>
               <View style={styles.requestActions}>
-                <TouchableOpacity
+                <HapticPressable
+                  haptic="medium"
                   style={styles.acceptButton}
                   onPress={() => handleAcceptRequest(item)}
                   disabled={respondingId === item.requestId}
@@ -535,14 +619,15 @@ export default function FriendsScreen({ navigation }) {
                   ) : (
                     <Ionicons name="checkmark" size={20} color="#fff" />
                   )}
-                </TouchableOpacity>
-                <TouchableOpacity
+                </HapticPressable>
+                <HapticPressable
+                  haptic="light"
                   style={styles.declineButton}
                   onPress={() => handleDeclineRequest(item)}
                   disabled={respondingId === item.requestId}
                 >
                   <Ionicons name="close" size={20} color={COLORS.textMuted} />
-                </TouchableOpacity>
+                </HapticPressable>
               </View>
             </View>
           )}
@@ -576,9 +661,9 @@ export default function FriendsScreen({ navigation }) {
               <Text style={styles.emptySubtitle}>
                 Allow access to find friends from your contacts
               </Text>
-              <TouchableOpacity style={styles.settingsButton} onPress={openSettings}>
+              <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
                 <Text style={styles.settingsButtonText}>Open Settings</Text>
-              </TouchableOpacity>
+              </HapticPressable>
             </View>
           ) : isLoadingContacts ? (
             <View style={styles.emptyContainer}>
@@ -650,6 +735,20 @@ export default function FriendsScreen({ navigation }) {
           }
         />
       )}
+
+      <ActionSheet
+        isVisible={removeFriendSheetVisible}
+        onClose={() => setRemoveFriendSheetVisible(false)}
+        title="Remove Friend"
+        message={`Remove ${selectedFriend?.firstName} from your close friends?`}
+        actions={[
+          {
+            label: 'Remove',
+            destructive: true,
+            onPress: handleRemoveFriend,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -661,14 +760,14 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 8,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    gap: SPACING.sm,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm + 2,
     backgroundColor: COLORS.surface,
     alignItems: 'center',
   },
@@ -676,7 +775,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   tabText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
@@ -686,67 +785,67 @@ const styles = StyleSheet.create({
   tabWithBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.xs + 2,
   },
   badge: {
-    backgroundColor: COLORS.error,
-    borderRadius: 10,
+    backgroundColor: COLORS.danger,
+    borderRadius: RADIUS.sm + 2,
     minWidth: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: SPACING.xs + 2,
   },
   badgeText: {
-    color: '#fff',
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '700',
+    color: '#fff',
   },
   searchContainer: {
-    padding: 16,
-    paddingBottom: 8,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.sm,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    gap: 8,
+    borderColor: COLORS.separator,
+    gap: SPACING.sm,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
     fontSize: 16,
     color: COLORS.text,
   },
   listContent: {
-    padding: 16,
-    paddingTop: 8,
+    padding: SPACING.lg,
+    paddingTop: SPACING.sm,
     flexGrow: 1,
   },
   sectionHeader: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.textSecondary,
-    marginBottom: 12,
-    marginTop: 4,
+    marginBottom: SPACING.md,
+    marginTop: SPACING.xs,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    gap: 12,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    gap: SPACING.md,
   },
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   avatarPlaceholder: {
@@ -757,27 +856,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   subtitle: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   removeButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.gray[800],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.separator,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -785,18 +884,18 @@ const styles = StyleSheet.create({
   friendBadge: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pendingBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: COLORS.gray[800],
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.separator,
   },
   pendingText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
@@ -804,16 +903,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: SPACING.md,
   },
   requestActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SPACING.sm,
   },
   acceptButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -821,33 +920,105 @@ const styles = StyleSheet.create({
   declineButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray[800],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.separator,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inviteButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.primary + '20',
   },
   inviteButtonText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
     color: COLORS.primary,
   },
   settingsButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    marginTop: 20,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.sm + 2,
+    marginTop: SPACING.xl,
   },
   settingsButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: '#fff',
+  },
+  friendsHeader: {
+    marginBottom: SPACING.sm,
+  },
+  requestsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    gap: SPACING.md,
+  },
+  requestsBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary + '30',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  requestsBannerInfo: {
+    flex: 1,
+  },
+  requestsBannerTitle: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
+  },
+  requestsBannerSubtitle: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  requestsBannerBadge: {
+    backgroundColor: COLORS.danger,
+    borderRadius: RADIUS.full,
+    minWidth: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.sm,
+  },
+  requestsBannerBadgeText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  quickAction: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md,
+    gap: SPACING.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.separator,
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.text,
   },
   emptyContainer: {
     flex: 1,
@@ -856,16 +1027,15 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: SPACING.xxl,
   },
 });

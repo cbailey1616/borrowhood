@@ -3,21 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   TextInput,
   FlatList,
   Image,
   ActivityIndicator,
-  Alert,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const { width } = Dimensions.get('window');
 
@@ -42,12 +44,18 @@ export default function OnboardingScreen({ onComplete }) {
   const [isSearching, setIsSearching] = useState(false);
   const [addedFriends, setAddedFriends] = useState([]);
 
+  // ActionSheet states
+  const [locationErrorSheet, setLocationErrorSheet] = useState({ visible: false, title: '', message: '' });
+  const [genericErrorSheet, setGenericErrorSheet] = useState({ visible: false, title: '', message: '' });
+  const [createNeighborhoodSheet, setCreateNeighborhoodSheet] = useState(false);
+  const [neighborhoodName, setNeighborhoodName] = useState('');
+
   const handleGetLocation = async () => {
     setIsGettingLocation(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please enter your location manually.');
+        setLocationErrorSheet({ visible: true, title: 'Permission Denied', message: 'Please enter your location manually.' });
         setIsGettingLocation(false);
         return;
       }
@@ -63,7 +71,7 @@ export default function OnboardingScreen({ onComplete }) {
         setState(address.region || '');
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not get your location. Please enter manually.');
+      setLocationErrorSheet({ visible: true, title: 'Error', message: 'Could not get your location. Please enter manually.' });
     } finally {
       setIsGettingLocation(false);
     }
@@ -71,7 +79,7 @@ export default function OnboardingScreen({ onComplete }) {
 
   const handleSaveLocation = async () => {
     if (!city.trim() || !state.trim()) {
-      Alert.alert('Required', 'Please enter your city and state.');
+      setGenericErrorSheet({ visible: true, title: 'Required', message: 'Please enter your city and state.' });
       return;
     }
 
@@ -82,7 +90,7 @@ export default function OnboardingScreen({ onComplete }) {
       setStep(2);
       fetchNeighborhoods();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save location.');
+      setGenericErrorSheet({ visible: true, title: 'Error', message: 'Failed to save location.' });
     } finally {
       setIsLoading(false);
     }
@@ -109,31 +117,30 @@ export default function OnboardingScreen({ onComplete }) {
         prev.map(n => n.id === community.id ? { ...n, isMember: true } : n)
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to join neighborhood.');
+      setGenericErrorSheet({ visible: true, title: 'Error', message: 'Failed to join neighborhood.' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCreateNeighborhood = async () => {
-    Alert.prompt(
-      'Create Neighborhood',
-      'Enter a name for your neighborhood:',
-      async (name) => {
-        if (!name?.trim()) return;
-        setIsLoading(true);
-        try {
-          const result = await api.createCommunity({ name: name.trim() });
-          setJoinedCommunity({ id: result.id, name: name.trim() });
-          setStep(3);
-        } catch (error) {
-          Alert.alert('Error', error.message || 'Failed to create neighborhood.');
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      'plain-text'
-    );
+  const handleCreateNeighborhood = () => {
+    setNeighborhoodName('');
+    setCreateNeighborhoodSheet(true);
+  };
+
+  const handleConfirmCreateNeighborhood = async () => {
+    if (!neighborhoodName?.trim()) return;
+    setCreateNeighborhoodSheet(false);
+    setIsLoading(true);
+    try {
+      const result = await api.createCommunity({ name: neighborhoodName.trim() });
+      setJoinedCommunity({ id: result.id, name: neighborhoodName.trim() });
+      setStep(3);
+    } catch (error) {
+      setGenericErrorSheet({ visible: true, title: 'Error', message: error.message || 'Failed to create neighborhood.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Search for friends
@@ -166,11 +173,12 @@ export default function OnboardingScreen({ onComplete }) {
         prev.map(u => u.id === user.id ? { ...u, requestPending: true } : u)
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to send friend request.');
+      setGenericErrorSheet({ visible: true, title: 'Error', message: 'Failed to send friend request.' });
     }
   };
 
   const handleFinish = async () => {
+    haptics.success();
     if (onComplete) {
       onComplete();
     }
@@ -186,10 +194,11 @@ export default function OnboardingScreen({ onComplete }) {
         We'll show you items and neighbors in your area
       </Text>
 
-      <TouchableOpacity
+      <HapticPressable
         style={styles.locationButton}
         onPress={handleGetLocation}
         disabled={isGettingLocation}
+        haptic="medium"
       >
         {isGettingLocation ? (
           <ActivityIndicator color={COLORS.primary} />
@@ -199,7 +208,7 @@ export default function OnboardingScreen({ onComplete }) {
             <Text style={styles.locationButtonText}>Use My Location</Text>
           </>
         )}
-      </TouchableOpacity>
+      </HapticPressable>
 
       <Text style={styles.orText}>or enter manually</Text>
 
@@ -222,17 +231,18 @@ export default function OnboardingScreen({ onComplete }) {
         />
       </View>
 
-      <TouchableOpacity
+      <HapticPressable
         style={[styles.primaryButton, (!city || !state) && styles.buttonDisabled]}
         onPress={handleSaveLocation}
         disabled={!city || !state || isLoading}
+        haptic="medium"
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.primaryButtonText}>Continue</Text>
         )}
-      </TouchableOpacity>
+      </HapticPressable>
     </View>
   );
 
@@ -252,10 +262,10 @@ export default function OnboardingScreen({ onComplete }) {
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No neighborhoods in {city} yet.</Text>
           <Text style={styles.emptySubtext}>Be the first to create one!</Text>
-          <TouchableOpacity style={styles.createButton} onPress={handleCreateNeighborhood}>
+          <HapticPressable style={styles.createButton} onPress={handleCreateNeighborhood} haptic="medium">
             <Ionicons name="add" size={20} color="#fff" />
             <Text style={styles.createButtonText}>Create Neighborhood</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       ) : (
         <FlatList
@@ -263,46 +273,50 @@ export default function OnboardingScreen({ onComplete }) {
           keyExtractor={(item) => item.id}
           style={styles.list}
           renderItem={({ item }) => (
-            <View style={styles.neighborhoodCard}>
-              <View style={styles.neighborhoodInfo}>
-                <Text style={styles.neighborhoodName}>{item.name}</Text>
-                <Text style={styles.neighborhoodStats}>
-                  {item.memberCount} members · {item.listingCount} items
-                </Text>
-              </View>
-              {item.isMember ? (
-                <View style={styles.joinedBadge}>
-                  <Ionicons name="checkmark" size={16} color={COLORS.primary} />
-                  <Text style={styles.joinedText}>Joined</Text>
+            <BlurCard style={styles.neighborhoodCard}>
+              <View style={styles.neighborhoodRow}>
+                <View style={styles.neighborhoodInfo}>
+                  <Text style={styles.neighborhoodName}>{item.name}</Text>
+                  <Text style={styles.neighborhoodStats}>
+                    {item.memberCount} members · {item.listingCount} items
+                  </Text>
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.joinButton}
-                  onPress={() => handleJoinNeighborhood(item)}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.joinButtonText}>Join</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                {item.isMember ? (
+                  <View style={styles.joinedBadge}>
+                    <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                    <Text style={styles.joinedText}>Joined</Text>
+                  </View>
+                ) : (
+                  <HapticPressable
+                    style={styles.joinButton}
+                    onPress={() => handleJoinNeighborhood(item)}
+                    disabled={isLoading}
+                    haptic="medium"
+                  >
+                    <Text style={styles.joinButtonText}>Join</Text>
+                  </HapticPressable>
+                )}
+              </View>
+            </BlurCard>
           )}
           ListFooterComponent={
-            <TouchableOpacity style={styles.createLinkButton} onPress={handleCreateNeighborhood}>
+            <HapticPressable style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
               <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
               <Text style={styles.createLinkText}>Create a new neighborhood</Text>
-            </TouchableOpacity>
+            </HapticPressable>
           }
         />
       )}
 
-      <TouchableOpacity
+      <HapticPressable
         style={styles.primaryButton}
         onPress={() => setStep(3)}
+        haptic="medium"
       >
         <Text style={styles.primaryButtonText}>
           {joinedCommunity || neighborhoods.some(n => n.isMember) ? 'Continue' : 'Skip for now'}
         </Text>
-      </TouchableOpacity>
+      </HapticPressable>
     </View>
   );
 
@@ -338,30 +352,33 @@ export default function OnboardingScreen({ onComplete }) {
           keyExtractor={(item) => item.id}
           style={styles.list}
           renderItem={({ item }) => (
-            <View style={styles.friendCard}>
-              <Image
-                source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/44' }}
-                style={styles.friendAvatar}
-              />
-              <View style={styles.friendInfo}>
-                <Text style={styles.friendName}>{item.firstName} {item.lastName}</Text>
-                {item.city && <Text style={styles.friendLocation}>{item.city}, {item.state}</Text>}
-              </View>
-              {item.isFriend || addedFriends.includes(item.id) || item.requestPending ? (
-                <View style={styles.requestedBadge}>
-                  <Text style={styles.requestedText}>
-                    {item.isFriend ? 'Friends' : 'Requested'}
-                  </Text>
+            <BlurCard style={styles.friendCard}>
+              <View style={styles.friendRow}>
+                <Image
+                  source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/44' }}
+                  style={styles.friendAvatar}
+                />
+                <View style={styles.friendInfo}>
+                  <Text style={styles.friendName}>{item.firstName} {item.lastName}</Text>
+                  {item.city && <Text style={styles.friendLocation}>{item.city}, {item.state}</Text>}
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => handleAddFriend(item)}
-                >
-                  <Ionicons name="person-add" size={18} color="#fff" />
-                </TouchableOpacity>
-              )}
-            </View>
+                {item.isFriend || addedFriends.includes(item.id) || item.requestPending ? (
+                  <View style={styles.requestedBadge}>
+                    <Text style={styles.requestedText}>
+                      {item.isFriend ? 'Friends' : 'Requested'}
+                    </Text>
+                  </View>
+                ) : (
+                  <HapticPressable
+                    style={styles.addButton}
+                    onPress={() => handleAddFriend(item)}
+                    haptic="light"
+                  >
+                    <Ionicons name="person-add" size={18} color="#fff" />
+                  </HapticPressable>
+                )}
+              </View>
+            </BlurCard>
           )}
           ListEmptyComponent={
             <Text style={styles.noResults}>No users found</Text>
@@ -376,14 +393,15 @@ export default function OnboardingScreen({ onComplete }) {
         </View>
       )}
 
-      <TouchableOpacity
+      <HapticPressable
         style={styles.primaryButton}
         onPress={handleFinish}
+        haptic="medium"
       >
         <Text style={styles.primaryButtonText}>
           {addedFriends.length > 0 ? "Let's Go!" : 'Skip for now'}
         </Text>
-      </TouchableOpacity>
+      </HapticPressable>
     </KeyboardAvoidingView>
   );
 
@@ -406,6 +424,28 @@ export default function OnboardingScreen({ onComplete }) {
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
+
+      <ActionSheet
+        isVisible={locationErrorSheet.visible}
+        onClose={() => setLocationErrorSheet({ visible: false, title: '', message: '' })}
+        title={locationErrorSheet.title}
+        message={locationErrorSheet.message}
+        actions={[
+          { label: 'OK', onPress: () => {} },
+        ]}
+        cancelLabel="Dismiss"
+      />
+
+      <ActionSheet
+        isVisible={genericErrorSheet.visible}
+        onClose={() => setGenericErrorSheet({ visible: false, title: '', message: '' })}
+        title={genericErrorSheet.title}
+        message={genericErrorSheet.message}
+        actions={[
+          { label: 'OK', onPress: () => {} },
+        ]}
+        cancelLabel="Dismiss"
+      />
     </View>
   );
 }
@@ -418,18 +458,18 @@ const styles = StyleSheet.create({
   progress: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.sm,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: SPACING.xl - SPACING.xs,
   },
   progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: SPACING.sm,
+    height: SPACING.sm,
+    borderRadius: SPACING.xs,
     backgroundColor: COLORS.gray[700],
   },
   progressDotActive: {
-    width: 24,
+    width: SPACING.xl,
     backgroundColor: COLORS.primary,
   },
   progressDotComplete: {
@@ -437,7 +477,7 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     flex: 1,
-    padding: 24,
+    padding: SPACING.xl,
   },
   iconContainer: {
     width: 80,
@@ -447,55 +487,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h1,
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 22,
+    marginBottom: SPACING.xxl,
   },
   locationButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.sm,
     backgroundColor: COLORS.primary + '15',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.lg,
   },
   locationButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.primary,
   },
   orText: {
     textAlign: 'center',
     color: COLORS.textMuted,
-    marginBottom: 16,
+    ...TYPOGRAPHY.footnote,
+    marginBottom: SPACING.lg,
   },
   inputRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   input: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    padding: SPACING.lg,
     fontSize: 16,
     color: COLORS.text,
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
   },
   inputCity: {
     flex: 2,
@@ -506,7 +543,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: COLORS.primary,
     padding: 18,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     marginTop: 'auto',
   },
@@ -514,43 +551,43 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
+    ...TYPOGRAPHY.headline,
     fontSize: 18,
-    fontWeight: '600',
     color: '#fff',
   },
   loader: {
-    marginTop: 32,
+    marginTop: SPACING.xxl,
   },
   list: {
     flex: 1,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   neighborhoodCard: {
+    marginBottom: SPACING.sm,
+    padding: SPACING.lg,
+  },
+  neighborhoodRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
   },
   neighborhoodInfo: {
     flex: 1,
   },
   neighborhoodName: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   neighborhoodStats: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   joinButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xl - SPACING.xs,
+    borderRadius: RADIUS.xl,
   },
   joinButtonText: {
     color: '#fff',
@@ -559,7 +596,7 @@ const styles = StyleSheet.create({
   joinedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: SPACING.xs,
   },
   joinedText: {
     color: COLORS.primary,
@@ -569,51 +606,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.sm,
     backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.lg,
   },
   createButtonText: {
     color: '#fff',
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
   },
   createLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 16,
+    gap: SPACING.sm,
+    padding: SPACING.lg,
   },
   createLinkText: {
     color: COLORS.primary,
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: SPACING.xxl,
   },
   emptyText: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   emptySubtext: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   searchInput: {
     flex: 1,
@@ -622,12 +657,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   friendCard: {
+    marginBottom: SPACING.sm,
+    padding: SPACING.md,
+  },
+  friendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
   },
   friendAvatar: {
     width: 44,
@@ -637,15 +672,15 @@ const styles = StyleSheet.create({
   },
   friendInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: SPACING.md,
   },
   friendName: {
-    fontSize: 15,
+    ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.text,
   },
   friendLocation: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   addButton: {
@@ -657,13 +692,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   requestedBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: COLORS.gray[800],
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
   },
   requestedText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
@@ -671,15 +706,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: SPACING.md,
   },
   searchPromptText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
   },
   noResults: {
     textAlign: 'center',
     color: COLORS.textMuted,
-    marginTop: 24,
+    ...TYPOGRAPHY.footnote,
+    marginTop: SPACING.xl,
   },
 });

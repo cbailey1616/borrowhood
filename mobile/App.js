@@ -23,7 +23,7 @@ export default function App() {
                 onReady={() => setNavigationRef(navigationRef)}
               >
                 <RootNavigator />
-                <StatusBar style="auto" />
+                <StatusBar style="light" />
               </NavigationContainer>
             </ErrorProvider>
           </AuthProvider>

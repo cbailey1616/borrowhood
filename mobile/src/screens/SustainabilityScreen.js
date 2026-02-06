@@ -5,10 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
+import BlurCard from '../components/BlurCard';
+import AnimatedCard from '../components/AnimatedCard';
 
 export default function SustainabilityScreen() {
   const [stats, setStats] = useState(null);
@@ -27,8 +29,9 @@ export default function SustainabilityScreen() {
       ]);
       setStats(userStats);
       setCommunityStats(community);
+      haptics.success();
     } catch (err) {
-      Alert.alert('Error', 'Failed to load sustainability data');
+      haptics.error();
     } finally {
       setLoading(false);
     }
@@ -42,13 +45,15 @@ export default function SustainabilityScreen() {
     );
   }
 
-  const StatCard = ({ icon, value, label, sublabel }) => (
-    <View style={styles.statCard}>
-      <Text style={styles.statIcon}>{icon}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      {sublabel && <Text style={styles.statSublabel}>{sublabel}</Text>}
-    </View>
+  const StatCard = ({ icon, value, label, sublabel, index }) => (
+    <AnimatedCard index={index} style={styles.statCardWrapper}>
+      <BlurCard style={styles.statCard}>
+        <Text style={styles.statIcon}>{icon}</Text>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+        {sublabel && <Text style={styles.statSublabel}>{sublabel}</Text>}
+      </BlurCard>
+    </AnimatedCard>
   );
 
   const ImpactRow = ({ icon, label, value, unit }) => (
@@ -73,21 +78,25 @@ export default function SustainabilityScreen() {
 
       <View style={styles.statsGrid}>
         <StatCard
+          index={0}
           icon="🔄"
           value={stats?.totalBorrows || 0}
           label="Items Borrowed"
         />
         <StatCard
+          index={1}
           icon="🤝"
           value={stats?.totalLends || 0}
           label="Items Lent"
         />
         <StatCard
+          index={2}
           icon="💰"
           value={`$${(stats?.moneySavedCents / 100 || 0).toFixed(0)}`}
           label="Money Saved"
         />
         <StatCard
+          index={3}
           icon="🌍"
           value={`${(stats?.co2SavedKg || 0).toFixed(1)}kg`}
           label="CO₂ Saved"
@@ -96,114 +105,124 @@ export default function SustainabilityScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Environmental Impact</Text>
-        <View style={styles.impactCard}>
-          <ImpactRow
-            icon="🌲"
-            label="Trees equivalent"
-            value={((stats?.co2SavedKg || 0) / 21).toFixed(1)}
-            unit="trees/year"
-          />
-          <ImpactRow
-            icon="🚗"
-            label="Car miles avoided"
-            value={((stats?.co2SavedKg || 0) * 2.5).toFixed(0)}
-            unit="miles"
-          />
-          <ImpactRow
-            icon="🗑️"
-            label="Waste prevented"
-            value={((stats?.wastePreventedKg || 0)).toFixed(1)}
-            unit="kg"
-          />
-        </View>
+        <AnimatedCard index={4}>
+          <BlurCard style={styles.impactCard}>
+            <ImpactRow
+              icon="🌲"
+              label="Trees equivalent"
+              value={((stats?.co2SavedKg || 0) / 21).toFixed(1)}
+              unit="trees/year"
+            />
+            <View style={styles.impactDivider} />
+            <ImpactRow
+              icon="🚗"
+              label="Car miles avoided"
+              value={((stats?.co2SavedKg || 0) * 2.5).toFixed(0)}
+              unit="miles"
+            />
+            <View style={styles.impactDivider} />
+            <ImpactRow
+              icon="🗑️"
+              label="Waste prevented"
+              value={((stats?.wastePreventedKg || 0)).toFixed(1)}
+              unit="kg"
+            />
+          </BlurCard>
+        </AnimatedCard>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Community Impact</Text>
-        <View style={styles.communityCard}>
-          <View style={styles.communityHeader}>
-            <Text style={styles.communityName}>{communityStats?.name || 'Your Community'}</Text>
-            <Text style={styles.communityMembers}>
-              {communityStats?.memberCount || 0} members
-            </Text>
-          </View>
+        <AnimatedCard index={5}>
+          <BlurCard style={styles.communityCard}>
+            <View style={styles.communityHeader}>
+              <Text style={styles.communityName}>{communityStats?.name || 'Your Community'}</Text>
+              <Text style={styles.communityMembers}>
+                {communityStats?.memberCount || 0} members
+              </Text>
+            </View>
 
-          <View style={styles.communityStats}>
-            <View style={styles.communityStat}>
-              <Text style={styles.communityStatValue}>
-                {communityStats?.totalTransactions || 0}
-              </Text>
-              <Text style={styles.communityStatLabel}>Total Shares</Text>
+            <View style={styles.communityStats}>
+              <View style={styles.communityStat}>
+                <Text style={styles.communityStatValue}>
+                  {communityStats?.totalTransactions || 0}
+                </Text>
+                <Text style={styles.communityStatLabel}>Total Shares</Text>
+              </View>
+              <View style={styles.communityStatDivider} />
+              <View style={styles.communityStat}>
+                <Text style={styles.communityStatValue}>
+                  ${((communityStats?.totalSavedCents || 0) / 100).toFixed(0)}
+                </Text>
+                <Text style={styles.communityStatLabel}>Community Savings</Text>
+              </View>
+              <View style={styles.communityStatDivider} />
+              <View style={styles.communityStat}>
+                <Text style={styles.communityStatValue}>
+                  {(communityStats?.totalCo2SavedKg || 0).toFixed(0)}kg
+                </Text>
+                <Text style={styles.communityStatLabel}>CO₂ Saved</Text>
+              </View>
             </View>
-            <View style={styles.communityStatDivider} />
-            <View style={styles.communityStat}>
-              <Text style={styles.communityStatValue}>
-                ${((communityStats?.totalSavedCents || 0) / 100).toFixed(0)}
-              </Text>
-              <Text style={styles.communityStatLabel}>Community Savings</Text>
-            </View>
-            <View style={styles.communityStatDivider} />
-            <View style={styles.communityStat}>
-              <Text style={styles.communityStatValue}>
-                {(communityStats?.totalCo2SavedKg || 0).toFixed(0)}kg
-              </Text>
-              <Text style={styles.communityStatLabel}>CO₂ Saved</Text>
-            </View>
-          </View>
-        </View>
+          </BlurCard>
+        </AnimatedCard>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your Rank</Text>
-        <View style={styles.rankCard}>
-          <Text style={styles.rankEmoji}>
-            {stats?.totalLends >= 50 ? '🏆' :
-             stats?.totalLends >= 20 ? '🥇' :
-             stats?.totalLends >= 10 ? '🥈' :
-             stats?.totalLends >= 5 ? '🥉' : '🌱'}
-          </Text>
-          <Text style={styles.rankTitle}>
-            {stats?.totalLends >= 50 ? 'Sustainability Champion' :
-             stats?.totalLends >= 20 ? 'Eco Warrior' :
-             stats?.totalLends >= 10 ? 'Green Neighbor' :
-             stats?.totalLends >= 5 ? 'Sharing Starter' : 'New Sharer'}
-          </Text>
-          <Text style={styles.rankDescription}>
-            {stats?.totalLends >= 50
-              ? 'You\'re a community legend! Your sharing has made a huge impact.'
-              : stats?.totalLends >= 20
-              ? 'Amazing work! You\'re helping build a sustainable community.'
-              : stats?.totalLends >= 10
-              ? 'Great progress! Keep sharing to level up.'
-              : stats?.totalLends >= 5
-              ? 'You\'re off to a great start on your sharing journey.'
-              : 'Start lending to track your sustainability impact!'}
-          </Text>
-          {stats?.totalLends < 50 && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${Math.min((stats?.totalLends || 0) / 50 * 100, 100)}%` }
-                  ]}
-                />
+        <AnimatedCard index={6}>
+          <BlurCard style={styles.rankCard}>
+            <Text style={styles.rankEmoji}>
+              {stats?.totalLends >= 50 ? '🏆' :
+               stats?.totalLends >= 20 ? '🥇' :
+               stats?.totalLends >= 10 ? '🥈' :
+               stats?.totalLends >= 5 ? '🥉' : '🌱'}
+            </Text>
+            <Text style={styles.rankTitle}>
+              {stats?.totalLends >= 50 ? 'Sustainability Champion' :
+               stats?.totalLends >= 20 ? 'Eco Warrior' :
+               stats?.totalLends >= 10 ? 'Green Neighbor' :
+               stats?.totalLends >= 5 ? 'Sharing Starter' : 'New Sharer'}
+            </Text>
+            <Text style={styles.rankDescription}>
+              {stats?.totalLends >= 50
+                ? 'You\'re a community legend! Your sharing has made a huge impact.'
+                : stats?.totalLends >= 20
+                ? 'Amazing work! You\'re helping build a sustainable community.'
+                : stats?.totalLends >= 10
+                ? 'Great progress! Keep sharing to level up.'
+                : stats?.totalLends >= 5
+                ? 'You\'re off to a great start on your sharing journey.'
+                : 'Start lending to track your sustainability impact!'}
+            </Text>
+            {stats?.totalLends < 50 && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${Math.min((stats?.totalLends || 0) / 50 * 100, 100)}%` }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressText}>
+                  {50 - (stats?.totalLends || 0)} more lends to Champion
+                </Text>
               </View>
-              <Text style={styles.progressText}>
-                {50 - (stats?.totalLends || 0)} more lends to Champion
-              </Text>
-            </View>
-          )}
-        </View>
+            )}
+          </BlurCard>
+        </AnimatedCard>
       </View>
 
-      <View style={styles.tipCard}>
-        <Text style={styles.tipIcon}>💡</Text>
-        <Text style={styles.tipText}>
-          Every item shared prevents manufacturing of a new one and keeps it out of landfills.
-          You're making a real difference!
-        </Text>
-      </View>
+      <AnimatedCard index={7}>
+        <View style={styles.tipCard}>
+          <Text style={styles.tipIcon}>💡</Text>
+          <Text style={styles.tipText}>
+            Every item shared prevents manufacturing of a new one and keeps it out of landfills.
+            You're making a real difference!
+          </Text>
+        </View>
+      </AnimatedCard>
     </ScrollView>
   );
 }
@@ -220,70 +239,67 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    padding: 24,
+    padding: SPACING.xl,
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    gap: 12,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.md,
+  },
+  statCardWrapper: {
+    width: '47%',
   },
   statCard: {
-    width: '47%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
+    padding: SPACING.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderRadius: RADIUS.lg,
   },
   statIcon: {
     fontSize: 32,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h1,
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   statSublabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     marginTop: 2,
   },
   section: {
-    marginTop: 24,
-    paddingHorizontal: 16,
+    marginTop: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   impactCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    gap: 16,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
+  },
+  impactDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.separator,
+    marginVertical: SPACING.md,
   },
   impactRow: {
     flexDirection: 'row',
@@ -295,40 +311,35 @@ const styles = StyleSheet.create({
   },
   impactLabel: {
     flex: 1,
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   impactValueContainer: {
     alignItems: 'flex-end',
   },
   impactValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h3,
     color: COLORS.primary,
   },
   impactUnit: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   communityCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
   },
   communityHeader: {
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   communityName: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
   },
   communityMembers: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   communityStats: {
     flexDirection: 'row',
@@ -339,81 +350,78 @@ const styles = StyleSheet.create({
   },
   communityStatDivider: {
     width: 1,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.separator,
   },
   communityStatValue: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.primary,
   },
   communityStatLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
   },
   rankCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
+    padding: SPACING.xl,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderRadius: RADIUS.lg,
   },
   rankEmoji: {
     fontSize: 48,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   rankTitle: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   rankDescription: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   progressContainer: {
     width: '100%',
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   progressBar: {
     height: 8,
-    backgroundColor: COLORS.gray[700],
-    borderRadius: 4,
+    backgroundColor: COLORS.separator,
+    borderRadius: RADIUS.xs,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: COLORS.primary,
-    borderRadius: 4,
+    borderRadius: RADIUS.xs,
   },
   progressText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   tipCard: {
-    margin: 16,
-    marginTop: 24,
-    marginBottom: 32,
+    margin: SPACING.lg,
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.xxl,
     backgroundColor: COLORS.primary + '15',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: SPACING.md,
   },
   tipIcon: {
     fontSize: 24,
   },
   tipText: {
     flex: 1,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.text,
     lineHeight: 20,
   },

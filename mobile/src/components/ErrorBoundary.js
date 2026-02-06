@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { COLORS } from '../utils/config';
 
 class ErrorBoundary extends React.Component {
@@ -33,9 +33,9 @@ class ErrorBoundary extends React.Component {
               We're sorry for the inconvenience. Please try again.
             </Text>
 
-            <TouchableOpacity style={styles.retryButton} onPress={this.handleRetry}>
+            <Pressable style={styles.retryButton} onPress={this.handleRetry}>
               <Text style={styles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
+            </Pressable>
 
             {__DEV__ && this.state.error && (
               <ScrollView style={styles.errorDetails}>

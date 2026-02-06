@@ -6,10 +6,11 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import BlurCard from '../components/BlurCard';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const NOTIFICATION_SETTINGS = [
   {
@@ -83,10 +84,11 @@ export default function NotificationSettingsScreen() {
     try {
       setIsSaving(true);
       await api.updateNotificationPreferences({ [key]: value });
+      haptics.selection();
     } catch (error) {
       // Revert on error
       setPreferences(preferences);
-      Alert.alert('Error', 'Failed to update notification settings');
+      haptics.error();
     } finally {
       setIsSaving(false);
     }
@@ -105,7 +107,7 @@ export default function NotificationSettingsScreen() {
       {NOTIFICATION_SETTINGS.map((category, index) => (
         <View key={category.category} style={styles.section}>
           <Text style={styles.sectionTitle}>{category.category}</Text>
-          <View style={styles.settingsGroup}>
+          <BlurCard style={styles.settingsGroup}>
             {category.settings.map((setting, settingIndex) => (
               <View
                 key={setting.key}
@@ -127,7 +129,7 @@ export default function NotificationSettingsScreen() {
                 />
               </View>
             ))}
-          </View>
+          </BlurCard>
         </View>
       ))}
 
@@ -150,50 +152,48 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   section: {
-    padding: 16,
-    paddingTop: 24,
+    padding: SPACING.lg,
+    paddingTop: SPACING.xl,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: SPACING.sm,
+    marginLeft: SPACING.xs,
     textTransform: 'uppercase',
   },
   settingsGroup: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
     overflow: 'hidden',
+    padding: 0,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    gap: 12,
+    padding: SPACING.lg,
+    gap: SPACING.md,
   },
   settingRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomColor: COLORS.separator,
   },
   settingInfo: {
     flex: 1,
   },
   settingLabel: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '500',
     color: COLORS.text,
   },
   settingDescription: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   footerText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
     textAlign: 'center',
-    padding: 24,
-    paddingTop: 8,
+    padding: SPACING.xl,
+    paddingTop: SPACING.sm,
   },
 });

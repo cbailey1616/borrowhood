@@ -4,14 +4,16 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function SubscriptionScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
@@ -20,6 +22,7 @@ export default function SubscriptionScreen({ navigation }) {
   const [currentSub, setCurrentSub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
+  const [showCancelSheet, setShowCancelSheet] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -90,8 +93,9 @@ export default function SubscriptionScreen({ navigation }) {
       await api.subscribe(paymentMethodId);
       await loadData();
       await refreshUser();
-      Alert.alert('Success', 'Welcome to Borrowhood Plus!');
+      haptics.success();
     } catch (err) {
+      haptics.error();
       if (err.code === 'VERIFICATION_REQUIRED') {
         showError({
           type: 'verification',
@@ -113,36 +117,24 @@ export default function SubscriptionScreen({ navigation }) {
 
   const handleCancel = () => {
     if (currentSub?.tier === 'free') return;
+    setShowCancelSheet(true);
+  };
 
-    Alert.alert(
-      'Cancel Subscription',
-      'Your subscription will remain active until the end of the billing period. After that, you\'ll be downgraded to the Free tier.',
-      [
-        { text: 'Keep Subscription', style: 'cancel' },
-        {
-          text: 'Cancel Subscription',
-          style: 'destructive',
-          onPress: async () => {
-            setSubscribing(true);
-            try {
-              const result = await api.cancelSubscription();
-              await loadData();
-              Alert.alert(
-                'Subscription Cancelled',
-                `Your subscription will end on ${new Date(result.expiresAt).toLocaleDateString()}`
-              );
-            } catch (err) {
-              showError({
-                message: err.message || 'Unable to cancel subscription. Please try again or contact support.',
-                type: 'network',
-              });
-            } finally {
-              setSubscribing(false);
-            }
-          },
-        },
-      ]
-    );
+  const performCancel = async () => {
+    setSubscribing(true);
+    try {
+      const result = await api.cancelSubscription();
+      await loadData();
+      haptics.success();
+    } catch (err) {
+      haptics.error();
+      showError({
+        message: err.message || 'Unable to cancel subscription. Please try again or contact support.',
+        type: 'network',
+      });
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   if (loading) {
@@ -176,54 +168,60 @@ export default function SubscriptionScreen({ navigation }) {
           const isPlus = tier.tier === 'plus';
 
           return (
-            <TouchableOpacity
+            <HapticPressable
               key={tier.tier}
-              style={[
-                styles.tierCard,
-                isCurrentTier && styles.tierCardCurrent,
-                isPlus && styles.tierCardFeatured,
-              ]}
               onPress={() => handleSelectTier(tier)}
               disabled={subscribing || isCurrentTier}
+              haptic="medium"
             >
-              <Text style={styles.tierName}>{tier.name}</Text>
-              <Text style={styles.tierPrice}>{tier.priceDisplay}</Text>
-              <Text style={styles.tierDescription}>{tier.description}</Text>
+              <BlurCard
+                style={[
+                  styles.tierCard,
+                  isCurrentTier && styles.tierCardCurrent,
+                  isPlus && styles.tierCardFeatured,
+                ]}
+              >
+                <View style={styles.tierCardContent}>
+                  <Text style={styles.tierName}>{tier.name}</Text>
+                  <Text style={styles.tierPrice}>{tier.priceDisplay}</Text>
+                  <Text style={styles.tierDescription}>{tier.description}</Text>
 
-              <View style={styles.featuresContainer}>
-                {tier.features?.map((feature, idx) => (
-                  <View key={idx} style={styles.featureRow}>
-                    <Text style={styles.featureCheck}>✓</Text>
-                    <Text style={styles.featureText}>{feature}</Text>
+                  <View style={styles.featuresContainer}>
+                    {tier.features?.map((feature, idx) => (
+                      <View key={idx} style={styles.featureRow}>
+                        <Text style={styles.featureCheck}>✓</Text>
+                        <Text style={styles.featureText}>{feature}</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
 
-              <View style={[
-                styles.tierButton,
-                isCurrentTier && styles.tierButtonCurrent,
-                isPlus && !isCurrentTier && styles.tierButtonFeatured,
-              ]}>
-                <Text style={[
-                  styles.tierButtonText,
-                  isCurrentTier && styles.tierButtonTextCurrent,
-                ]}>
-                  {isCurrentTier
-                    ? 'Current Plan'
-                    : tier.priceCents === 0
-                    ? 'Start Free'
-                    : 'Get Plus'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+                  <View style={[
+                    styles.tierButton,
+                    isCurrentTier && styles.tierButtonCurrent,
+                    isPlus && !isCurrentTier && styles.tierButtonFeatured,
+                  ]}>
+                    <Text style={[
+                      styles.tierButtonText,
+                      isCurrentTier && styles.tierButtonTextCurrent,
+                    ]}>
+                      {isCurrentTier
+                        ? 'Current Plan'
+                        : tier.priceCents === 0
+                        ? 'Start Free'
+                        : 'Get Plus'}
+                    </Text>
+                  </View>
+                </View>
+              </BlurCard>
+            </HapticPressable>
           );
         })}
       </View>
 
       {currentSub?.tier !== 'free' && !currentSub?.expiresAt && (
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+        <HapticPressable style={styles.cancelButton} onPress={handleCancel} haptic="medium">
           <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       )}
 
       <View style={styles.footer}>
@@ -241,6 +239,21 @@ export default function SubscriptionScreen({ navigation }) {
           <Text style={styles.overlayText}>Processing...</Text>
         </View>
       )}
+
+      <ActionSheet
+        isVisible={showCancelSheet}
+        onClose={() => setShowCancelSheet(false)}
+        title="Cancel Subscription"
+        message="Your subscription will remain active until the end of the billing period. After that, you'll be downgraded to the Free tier."
+        actions={[
+          {
+            label: 'Cancel Subscription',
+            destructive: true,
+            onPress: performCancel,
+          },
+        ]}
+        cancelLabel="Keep Subscription"
+      />
     </ScrollView>
   );
 }
@@ -257,42 +270,43 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    padding: 24,
+    padding: SPACING.xl,
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h1,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
   expiryBanner: {
     backgroundColor: COLORS.warning + '20',
-    padding: 12,
-    marginHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 16,
+    padding: SPACING.md,
+    marginHorizontal: SPACING.lg,
+    borderRadius: RADIUS.sm,
+    marginBottom: SPACING.lg,
   },
   expiryText: {
+    ...TYPOGRAPHY.footnote,
+    fontSize: 14,
     color: COLORS.warning,
     textAlign: 'center',
-    fontSize: 14,
   },
   tiersContainer: {
-    paddingHorizontal: 16,
-    gap: 16,
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.lg,
   },
   tierCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
     borderWidth: 2,
     borderColor: COLORS.gray[700],
+  },
+  tierCardContent: {
+    padding: SPACING.xl,
   },
   tierCardCurrent: {
     borderColor: COLORS.primary,
@@ -300,24 +314,9 @@ const styles = StyleSheet.create({
   tierCardFeatured: {
     borderColor: COLORS.primary,
   },
-  featuredBadge: {
-    position: 'absolute',
-    top: -12,
-    left: '50%',
-    transform: [{ translateX: -40 }],
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  featuredBadgeText: {
-    color: COLORS.background,
-    fontSize: 10,
-    fontWeight: '700',
-  },
   tierName: {
+    ...TYPOGRAPHY.h2,
     fontSize: 24,
-    fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
   },
@@ -326,38 +325,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   tierDescription: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 16,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.lg,
   },
   featuresContainer: {
-    gap: 12,
-    marginBottom: 20,
+    gap: SPACING.md,
+    marginBottom: SPACING.xl - 4,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: SPACING.md,
   },
   featureCheck: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.primary,
     fontWeight: '600',
   },
   featureText: {
+    ...TYPOGRAPHY.footnote,
     flex: 1,
     fontSize: 14,
     color: COLORS.text,
   },
   tierButton: {
     backgroundColor: COLORS.gray[700],
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md + 2,
     alignItems: 'center',
   },
   tierButtonCurrent: {
@@ -367,30 +369,31 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   tierButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   tierButtonTextCurrent: {
     color: COLORS.primary,
   },
   cancelButton: {
-    marginHorizontal: 16,
-    marginTop: 24,
-    paddingVertical: 14,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.xl,
+    paddingVertical: SPACING.md + 2,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: COLORS.danger,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
+    color: COLORS.danger,
   },
   footer: {
-    padding: 24,
+    padding: SPACING.xl,
     alignItems: 'center',
-    gap: 4,
+    gap: SPACING.xs,
   },
   footerText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textAlign: 'center',
   },
@@ -401,8 +404,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   overlayText: {
-    color: COLORS.text,
-    marginTop: 12,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
+    color: COLORS.text,
+    marginTop: SPACING.md,
   },
 });

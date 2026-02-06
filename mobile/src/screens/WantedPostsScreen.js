@@ -5,13 +5,14 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   Image,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 
 export default function WantedPostsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);
@@ -58,56 +59,60 @@ export default function WantedPostsScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
+    <HapticPressable
       onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-      activeOpacity={0.7}
+      haptic="light"
     >
-      <View style={styles.cardHeader}>
-        <Image
-          source={{ uri: item.requester.profilePhotoUrl || 'https://via.placeholder.com/40' }}
-          style={styles.avatar}
-        />
-        <View style={styles.requesterInfo}>
-          <Text style={styles.requesterName}>
-            {item.requester.firstName} {item.requester.lastName[0]}.
-          </Text>
-          <Text style={styles.timeAgo}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
+      <BlurCard style={styles.card}>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Image
+              source={{ uri: item.requester.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+              style={styles.avatar}
+            />
+            <View style={styles.requesterInfo}>
+              <Text style={styles.requesterName}>
+                {item.requester.firstName} {item.requester.lastName[0]}.
+              </Text>
+              <Text style={styles.timeAgo}>
+                {new Date(item.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          {item.description && (
+            <Text style={styles.cardDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+          )}
+
+          {(item.neededFrom || item.neededUntil) && (
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+              <Text style={styles.dateText}>
+                {formatDateRange(item.neededFrom, item.neededUntil)}
+              </Text>
+            </View>
+          )}
+
+          {item.category && (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{item.category}</Text>
+            </View>
+          )}
+
+          <HapticPressable
+            style={styles.haveThisButton}
+            onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
+            haptic="medium"
+          >
+            <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.haveThisText}>I Have This</Text>
+          </HapticPressable>
         </View>
-      </View>
-
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      {item.description && (
-        <Text style={styles.cardDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-      )}
-
-      {(item.neededFrom || item.neededUntil) && (
-        <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.dateText}>
-            {formatDateRange(item.neededFrom, item.neededUntil)}
-          </Text>
-        </View>
-      )}
-
-      {item.category && (
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{item.category}</Text>
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={styles.haveThisButton}
-        onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
-      >
-        <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
-        <Text style={styles.haveThisText}>I Have This</Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
+      </BlurCard>
+    </HapticPressable>
   );
 
   return (
@@ -124,9 +129,9 @@ export default function WantedPostsScreen({ navigation }) {
           returnKeyType="search"
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <HapticPressable onPress={() => setSearchQuery('')} haptic="light">
             <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+          </HapticPressable>
         )}
       </View>
 
@@ -169,99 +174,100 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    margin: 16,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 12,
+    margin: SPACING.lg,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    gap: SPACING.md,
   },
   searchInput: {
     flex: 1,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
   },
   listContent: {
-    padding: 16,
-    paddingTop: 8,
+    padding: SPACING.lg,
+    paddingTop: SPACING.sm,
   },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
+  },
+  cardContent: {
+    padding: SPACING.lg,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   requesterInfo: {
-    marginLeft: 12,
+    marginLeft: SPACING.md,
     flex: 1,
   },
   requesterName: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.text,
   },
   timeAgo: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   cardDescription: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
+    gap: SPACING.xs + 2,
+    marginBottom: SPACING.md,
   },
   dateText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.gray[800],
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 12,
+    backgroundColor: COLORS.separator,
+    paddingHorizontal: SPACING.md - 2,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
+    marginBottom: SPACING.md,
   },
   categoryText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   haveThisButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md - 2,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    gap: 8,
+    gap: SPACING.sm,
   },
   haveThisText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.primary,
   },
@@ -272,16 +278,16 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtitle: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: SPACING.xxl,
   },
 });

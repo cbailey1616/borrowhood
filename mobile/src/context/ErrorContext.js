@@ -1,15 +1,28 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
-  TouchableOpacity,
-  Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  FadeInUp,
+  FadeOutUp,
+  SlideInUp,
+  SlideOutUp,
+  runOnJS,
+} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '../components/Icon';
-import { COLORS } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
 const ErrorContext = createContext(null);
 
@@ -65,6 +78,12 @@ const ERROR_CONFIGS = {
     defaultMessage: 'The item you\'re looking for doesn\'t exist.',
     primaryAction: 'Go Back',
   },
+  success: {
+    icon: 'checkmark-circle-outline',
+    title: 'Success',
+    defaultMessage: 'Operation completed successfully.',
+    primaryAction: 'OK',
+  },
   generic: {
     icon: 'warning-outline',
     title: 'Something Went Wrong',
@@ -105,6 +124,29 @@ function detectErrorType(message) {
   return 'generic';
 }
 
+function Toast({ toast, onRemove }) {
+  return (
+    <Animated.View
+      entering={SlideInUp.springify().damping(15)}
+      exiting={FadeOutUp.duration(200)}
+      style={[
+        styles.toast,
+        toast.type === 'success' && styles.toastSuccess,
+      ]}
+    >
+      <Ionicons
+        name={toast.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
+        size={20}
+        color={toast.type === 'success' ? COLORS.secondary : COLORS.danger}
+      />
+      <Text style={styles.toastText}>{toast.message}</Text>
+      <HapticPressable onPress={() => onRemove(toast.id)} haptic={null} style={styles.toastDismiss}>
+        <Ionicons name="close" size={16} color={COLORS.textMuted} />
+      </HapticPressable>
+    </Animated.View>
+  );
+}
+
 export function ErrorProvider({ children, navigationRef }) {
   const [error, setError] = useState(null);
   const [toasts, setToasts] = useState([]);
@@ -116,11 +158,21 @@ export function ErrorProvider({ children, navigationRef }) {
     primaryAction,
     secondaryAction,
     onPrimaryPress,
+    onPrimaryAction,
     onSecondaryPress,
     onDismiss,
   }) => {
     const detectedType = type || detectErrorType(message);
     const config = ERROR_CONFIGS[detectedType] || ERROR_CONFIGS.generic;
+
+    // Fire haptic based on error type
+    if (detectedType === 'success') {
+      haptics.success();
+    } else if (detectedType === 'validation') {
+      haptics.warning();
+    } else {
+      haptics.error();
+    }
 
     setError({
       type: detectedType,
@@ -129,21 +181,32 @@ export function ErrorProvider({ children, navigationRef }) {
       message: message || config.defaultMessage,
       primaryAction: primaryAction || config.primaryAction,
       secondaryAction,
-      onPrimaryPress,
+      onPrimaryPress: onPrimaryPress || onPrimaryAction,
       onSecondaryPress,
       onDismiss,
     });
   }, []);
 
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const showToast = useCallback((message, type = 'error') => {
     const id = Date.now();
+
+    if (type === 'success') {
+      haptics.success();
+    } else {
+      haptics.warning();
+    }
+
     setToasts(prev => [...prev, { id, message, type }]);
 
     // Auto dismiss after 3 seconds
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
+      removeToast(id);
     }, 3000);
-  }, []);
+  }, [removeToast]);
 
   const dismissError = useCallback(() => {
     if (error?.onDismiss) {
@@ -188,11 +251,17 @@ export function ErrorProvider({ children, navigationRef }) {
     setError(null);
   }, [error]);
 
+  const getIconColor = () => {
+    if (error?.type === 'success') return COLORS.secondary;
+    if (error?.type === 'subscription') return COLORS.warning;
+    return COLORS.danger;
+  };
+
   return (
     <ErrorContext.Provider value={{ showError, showToast, dismissError }}>
       {children}
 
-      {/* Error Modal */}
+      {/* Error Modal with Blur Backdrop */}
       <Modal
         visible={!!error}
         transparent
@@ -200,12 +269,21 @@ export function ErrorProvider({ children, navigationRef }) {
         onRequestClose={dismissError}
       >
         <View style={styles.overlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.iconContainer}>
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.7)' }]} />
+          )}
+
+          <Animated.View
+            entering={FadeInUp.springify().damping(15).stiffness(150)}
+            style={styles.modalContent}
+          >
+            <View style={[styles.iconContainer, { borderColor: getIconColor() + '30' }]}>
               <Ionicons
                 name={error?.icon || 'warning-outline'}
                 size={40}
-                color={error?.type === 'subscription' ? COLORS.warning : COLORS.danger}
+                color={getIconColor()}
               />
             </View>
 
@@ -214,49 +292,39 @@ export function ErrorProvider({ children, navigationRef }) {
 
             <View style={styles.buttonContainer}>
               {error?.secondaryAction && (
-                <TouchableOpacity
+                <HapticPressable
                   style={styles.secondaryButton}
                   onPress={handleSecondaryPress}
+                  haptic="light"
                 >
                   <Text style={styles.secondaryButtonText}>{error.secondaryAction}</Text>
-                </TouchableOpacity>
+                </HapticPressable>
               )}
 
-              <TouchableOpacity
+              <HapticPressable
                 style={[
                   styles.primaryButton,
                   error?.type === 'subscription' && styles.upgradeButton,
+                  error?.type === 'success' && styles.successButton,
                 ]}
                 onPress={handlePrimaryPress}
+                haptic="medium"
               >
                 <Text style={styles.primaryButtonText}>{error?.primaryAction}</Text>
-              </TouchableOpacity>
+              </HapticPressable>
             </View>
 
-            <TouchableOpacity style={styles.dismissButton} onPress={dismissError}>
+            <HapticPressable style={styles.dismissButton} onPress={dismissError} haptic="light">
               <Ionicons name="close" size={24} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          </View>
+            </HapticPressable>
+          </Animated.View>
         </View>
       </Modal>
 
-      {/* Toast Messages */}
+      {/* Toast Messages with Reanimated Entering/Exiting */}
       <View style={styles.toastContainer} pointerEvents="box-none">
         {toasts.map((toast) => (
-          <Animated.View
-            key={toast.id}
-            style={[
-              styles.toast,
-              toast.type === 'success' && styles.toastSuccess,
-            ]}
-          >
-            <Ionicons
-              name={toast.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
-              size={20}
-              color={toast.type === 'success' ? COLORS.secondary : COLORS.danger}
-            />
-            <Text style={styles.toastText}>{toast.message}</Text>
-          </Animated.View>
+          <Toast key={toast.id} toast={toast} onRemove={removeToast} />
         ))}
       </View>
     </ErrorContext.Provider>
@@ -274,14 +342,13 @@ export function useError() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: SPACING.xl,
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
+    borderRadius: RADIUS.xxl,
     padding: 32,
     width: '100%',
     maxWidth: 340,
@@ -294,76 +361,77 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: SPACING.xl,
+    borderWidth: 2,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     textAlign: 'center',
   },
   message: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 28,
+    marginBottom: SPACING.xl + SPACING.xs,
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
     width: '100%',
   },
   primaryButton: {
     flex: 1,
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   upgradeButton: {
     backgroundColor: COLORS.warning,
   },
+  successButton: {
+    backgroundColor: COLORS.secondary,
+  },
   primaryButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
   },
   secondaryButton: {
     flex: 1,
     backgroundColor: COLORS.gray[800],
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   secondaryButtonText: {
     color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
   },
   dismissButton: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: SPACING.lg,
+    right: SPACING.lg,
     padding: 4,
   },
   toastContainer: {
     position: 'absolute',
     top: 60,
-    left: 16,
-    right: 16,
+    left: SPACING.lg,
+    right: SPACING.lg,
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 10,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    gap: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.danger + '40',
     shadowColor: '#000',
@@ -371,14 +439,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    width: '100%',
   },
   toastSuccess: {
     borderColor: COLORS.secondary + '40',
   },
   toastText: {
     color: COLORS.text,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     flex: 1,
+  },
+  toastDismiss: {
+    padding: 2,
   },
 });

@@ -5,17 +5,19 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../utils/config';
+import { haptics } from '../utils/haptics';
+import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
   const { listingId, listing, autoFocus } = route.params;
@@ -27,6 +29,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState(null);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -124,48 +128,43 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         }, ...prev]);
       }
 
+      haptics.success();
       setNewComment('');
       setReplyingTo(null);
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to post');
+      haptics.error();
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = (postId, isReply = false, parentId = null) => {
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.deleteDiscussionPost(listingId, postId);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { postId, isReply, parentId } = deleteTarget;
+    try {
+      await api.deleteDiscussionPost(listingId, postId);
 
-              if (isReply && parentId) {
-                setReplies(prev => ({
-                  ...prev,
-                  [parentId]: (prev[parentId] || []).filter(r => r.id !== postId),
-                }));
-                setPosts(prev => prev.map(p =>
-                  p.id === parentId
-                    ? { ...p, replyCount: Math.max(0, (p.replyCount || 0) - 1) }
-                    : p
-                ));
-              } else {
-                setPosts(prev => prev.filter(p => p.id !== postId));
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete post');
-            }
-          },
-        },
-      ]
-    );
+      if (isReply && parentId) {
+        setReplies(prev => ({
+          ...prev,
+          [parentId]: (prev[parentId] || []).filter(r => r.id !== postId),
+        }));
+        setPosts(prev => prev.map(p =>
+          p.id === parentId
+            ? { ...p, replyCount: Math.max(0, (p.replyCount || 0) - 1) }
+            : p
+        ));
+      } else {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+      }
+    } catch (error) {
+      haptics.error();
+    }
+  };
+
+  const confirmDelete = (postId, isReply = false, parentId = null) => {
+    setDeleteTarget({ postId, isReply, parentId });
+    setDeleteSheetVisible(true);
   };
 
   const startReply = (post) => {
@@ -208,12 +207,13 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         </View>
         <Text style={styles.replyText}>{reply.content}</Text>
         {(reply.isOwn || listing?.isOwner) && (
-          <TouchableOpacity
+          <HapticPressable
+            haptic="light"
             style={styles.deleteButton}
-            onPress={() => handleDelete(reply.id, true, parentId)}
+            onPress={() => confirmDelete(reply.id, true, parentId)}
           >
             <Text style={styles.deleteText}>Delete</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         )}
       </View>
     </View>
@@ -224,7 +224,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     const postReplies = replies[post.id] || [];
 
     return (
-      <View style={styles.postCard}>
+      <BlurCard style={styles.postCard}>
         <View style={styles.postHeader}>
           <Image
             source={{ uri: post.user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
@@ -237,25 +237,27 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
           </View>
           {(post.isOwn || listing?.isOwner) && (
-            <TouchableOpacity
+            <HapticPressable
+              haptic="light"
               style={styles.moreButton}
-              onPress={() => handleDelete(post.id)}
+              onPress={() => confirmDelete(post.id)}
             >
               <Ionicons name="trash-outline" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            </HapticPressable>
           )}
         </View>
 
         <Text style={styles.postContent}>{post.content}</Text>
 
         <View style={styles.postActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => startReply(post)}>
+          <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply(post)}>
             <Ionicons name="arrow-undo-outline" size={16} color={COLORS.textSecondary} />
             <Text style={styles.actionText}>Reply</Text>
-          </TouchableOpacity>
+          </HapticPressable>
 
           {post.replyCount > 0 && (
-            <TouchableOpacity
+            <HapticPressable
+              haptic="light"
               style={styles.actionButton}
               onPress={() => toggleExpanded(post.id)}
             >
@@ -267,7 +269,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
               <Text style={[styles.actionText, { color: COLORS.primary }]}>
                 {isExpanded ? 'Hide' : 'View'} {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
               </Text>
-            </TouchableOpacity>
+            </HapticPressable>
           )}
         </View>
 
@@ -276,7 +278,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             {postReplies.map(reply => renderReply(reply, post.id))}
           </View>
         )}
-      </View>
+      </BlurCard>
     );
   };
 
@@ -295,9 +297,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           <Text style={styles.replyingToText}>
             Replying to {replyingTo.user.firstName}
           </Text>
-          <TouchableOpacity onPress={cancelReply}>
+          <HapticPressable haptic="light" onPress={cancelReply}>
             <Ionicons name="close" size={18} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
       <View style={styles.inputRow}>
@@ -311,7 +313,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           multiline
           maxLength={2000}
         />
-        <TouchableOpacity
+        <HapticPressable
+          haptic="medium"
           style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
           onPress={handleSubmit}
           disabled={!newComment.trim() || isSubmitting}
@@ -321,7 +324,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           ) : (
             <Ionicons name="send" size={18} color="#fff" />
           )}
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
     </View>
   );
@@ -359,6 +362,20 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
       {/* Input Bar */}
       {renderInputBar()}
+
+      <ActionSheet
+        isVisible={deleteSheetVisible}
+        onClose={() => setDeleteSheetVisible(false)}
+        title="Delete Post"
+        message="Are you sure you want to delete this post?"
+        actions={[
+          {
+            label: 'Delete',
+            destructive: true,
+            onPress: handleDelete,
+          },
+        ]}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -381,8 +398,8 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
   },
   listingTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   listContent: {
@@ -394,24 +411,20 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.text,
     marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     marginTop: SPACING.sm,
     textAlign: 'center',
-    lineHeight: 22,
   },
   postCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
     padding: SPACING.lg,
     marginBottom: SPACING.md,
-    ...SHADOWS.sm,
   },
   postHeader: {
     flexDirection: 'row',
@@ -421,7 +434,7 @@ const styles = StyleSheet.create({
   postAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
     borderWidth: 2,
     borderColor: COLORS.surfaceElevated,
@@ -431,12 +444,12 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.md,
   },
   postAuthor: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.text,
   },
   postDate: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     marginTop: 2,
   },
@@ -445,7 +458,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   postContent: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
     lineHeight: 23,
     marginBottom: SPACING.md,
@@ -455,7 +468,7 @@ const styles = StyleSheet.create({
     gap: SPACING.lg,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
   },
   actionButton: {
     flexDirection: 'row',
@@ -464,7 +477,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
   },
   actionText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     fontWeight: '600',
   },
@@ -472,7 +485,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.lg,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
     gap: SPACING.md,
   },
   reply: {
@@ -482,7 +495,7 @@ const styles = StyleSheet.create({
   replyAvatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   replyContent: {
@@ -497,16 +510,16 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   replyAuthor: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.text,
   },
   replyDate: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
   },
   replyText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
     marginTop: SPACING.xs,
@@ -515,13 +528,13 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   deleteText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.danger,
   },
   composeContainer: {
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    borderTopColor: COLORS.separator,
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
@@ -538,7 +551,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   replyingToText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.primary,
   },
@@ -553,14 +566,14 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
     maxHeight: 120,
   },
   sendButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',

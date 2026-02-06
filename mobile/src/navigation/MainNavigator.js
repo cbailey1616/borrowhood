@@ -1,9 +1,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/config';
 import api from '../services/api';
+import BlurTabBar from '../components/BlurTabBar';
 
 import FeedScreen from '../screens/FeedScreen';
 import SavedScreen from '../screens/SavedScreen';
@@ -12,34 +11,6 @@ import InboxScreen from '../screens/InboxScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
-
-// Tab icon component with real Ionicons
-function TabIcon({ focused, label, badge }) {
-  const icons = {
-    Feed: focused ? 'home' : 'home-outline',
-    Saved: focused ? 'heart' : 'heart-outline',
-    'My Items': focused ? 'cube' : 'cube-outline',
-    Inbox: focused ? 'mail' : 'mail-outline',
-    Profile: focused ? 'person' : 'person-outline',
-  };
-
-  return (
-    <View style={styles.iconContainer}>
-      <Ionicons
-        name={icons[label] || 'ellipse'}
-        size={24}
-        color={focused ? COLORS.primary : COLORS.textMuted}
-      />
-      {badge > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {badge > 9 ? '9+' : badge}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
 
 export default function MainNavigator() {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -57,46 +28,18 @@ export default function MainNavigator() {
   // Fetch on mount and periodically
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Check every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused }) => (
-          <TabIcon
-            focused={focused}
-            label={route.name === 'MyItems' ? 'My Items' : route.name}
-            badge={route.name === 'Inbox' ? unreadCount : 0}
-          />
-        ),
+      tabBar={(props) => <BlurTabBar {...props} unreadCount={unreadCount} />}
+      screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.gray[800],
-          borderTopWidth: 1,
-          paddingTop: 8,
-          height: 85,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-        },
-        headerStyle: {
-          backgroundColor: COLORS.background,
-          borderBottomWidth: 0,
-          shadowOpacity: 0,
-          elevation: 0,
-        },
-        headerTitleStyle: {
-          fontWeight: '600',
-          color: COLORS.text,
-          fontSize: 17,
-        },
-        headerTintColor: COLORS.text,
-      })}
+      }}
     >
       <Tab.Screen
         name="Feed"
@@ -132,29 +75,3 @@ export default function MainNavigator() {
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 28,
-    height: 28,
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: '#E53935',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-});

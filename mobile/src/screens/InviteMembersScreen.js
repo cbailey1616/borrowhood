@@ -3,15 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   TextInput,
   Share,
-  Alert,
   ScrollView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '../components/Icon';
-import { COLORS, SPACING, RADIUS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function InviteMembersScreen({ route, navigation }) {
   const { communityId } = route.params;
@@ -33,21 +34,21 @@ export default function InviteMembersScreen({ route, navigation }) {
 
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(inviteCode);
-    Alert.alert('Copied!', 'Invite code copied to clipboard');
+    haptics.success();
   };
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(inviteLink);
-    Alert.alert('Copied!', 'Invite link copied to clipboard');
+    haptics.success();
   };
 
   const handleSendEmail = () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+      haptics.warning();
       return;
     }
     // In production, this would call an API to send an invite email
-    Alert.alert('Invite Sent!', `An invitation has been sent to ${email}`);
+    haptics.success();
     setEmail('');
   };
 
@@ -60,10 +61,10 @@ export default function InviteMembersScreen({ route, navigation }) {
           Share your neighborhood with friends and family
         </Text>
 
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+        <HapticPressable style={styles.shareButton} onPress={handleShare} haptic="medium">
           <Ionicons name="share-outline" size={22} color="#fff" />
           <Text style={styles.shareButtonText}>Share Invite Link</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
 
       {/* Invite Code Section */}
@@ -73,24 +74,28 @@ export default function InviteMembersScreen({ route, navigation }) {
           Share this code with neighbors to let them join
         </Text>
 
-        <View style={styles.codeContainer}>
-          <Text style={styles.codeText}>{inviteCode}</Text>
-          <TouchableOpacity style={styles.copyButton} onPress={handleCopyCode}>
-            <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
+        <BlurCard style={styles.codeCard}>
+          <View style={styles.codeContainer}>
+            <Text style={styles.codeText}>{inviteCode}</Text>
+            <HapticPressable style={styles.copyButton} onPress={handleCopyCode} haptic="light">
+              <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
+            </HapticPressable>
+          </View>
+        </BlurCard>
       </View>
 
       {/* Link Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Invite Link</Text>
 
-        <View style={styles.linkContainer}>
-          <Text style={styles.linkText} numberOfLines={1}>{inviteLink}</Text>
-          <TouchableOpacity style={styles.copyButton} onPress={handleCopyLink}>
-            <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
+        <BlurCard style={styles.linkCard}>
+          <View style={styles.linkContainer}>
+            <Text style={styles.linkText} numberOfLines={1}>{inviteLink}</Text>
+            <HapticPressable style={styles.copyButton} onPress={handleCopyLink} haptic="light">
+              <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
+            </HapticPressable>
+          </View>
+        </BlurCard>
       </View>
 
       {/* Email Invite Section */}
@@ -110,9 +115,9 @@ export default function InviteMembersScreen({ route, navigation }) {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSendEmail}>
+          <HapticPressable style={styles.sendButton} onPress={handleSendEmail} haptic="medium">
             <Ionicons name="send" size={20} color="#fff" />
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       </View>
 
@@ -134,16 +139,16 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
   sectionDescription: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     marginBottom: SPACING.lg,
@@ -158,15 +163,16 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   shareButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
+  },
+  codeCard: {
+    // BlurCard handles the styling
   },
   codeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
     padding: SPACING.lg,
   },
   codeText: {
@@ -179,14 +185,16 @@ const styles = StyleSheet.create({
   copyButton: {
     padding: SPACING.sm,
   },
+  linkCard: {
+    // BlurCard handles the styling
+  },
   linkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
     padding: SPACING.md,
   },
   linkText: {
+    ...TYPOGRAPHY.footnote,
     flex: 1,
     fontSize: 14,
     color: COLORS.textSecondary,
@@ -201,6 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
   },
@@ -222,6 +231,7 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   tipsText: {
+    ...TYPOGRAPHY.footnote,
     flex: 1,
     fontSize: 14,
     color: COLORS.warning,

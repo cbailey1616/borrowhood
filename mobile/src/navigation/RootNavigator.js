@@ -37,6 +37,22 @@ import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
+// Shared screen options for native iOS feel
+const sharedScreenOptions = {
+  headerShown: true,
+  headerStyle: {
+    backgroundColor: COLORS.surface,
+  },
+  headerShadowVisible: false,
+  headerTintColor: COLORS.text,
+  headerTitleStyle: {
+    fontWeight: '600',
+    color: COLORS.text,
+    fontSize: 17,
+  },
+  contentStyle: { backgroundColor: COLORS.background },
+};
+
 export default function RootNavigator() {
   const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -46,7 +62,7 @@ export default function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
@@ -74,252 +90,127 @@ export default function RootNavigator() {
           <Stack.Screen
             name="ListingDetail"
             component={ListingDetailScreen}
-            options={{
-              headerShown: true,
-              title: 'Item Details',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Item Details' }}
           />
           <Stack.Screen
             name="TransactionDetail"
             component={TransactionDetailScreen}
-            options={{
-              headerShown: true,
-              title: 'Transaction',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Transaction' }}
           />
           <Stack.Screen
             name="UserProfile"
             component={UserProfileScreen}
-            options={{
-              headerShown: true,
-              title: 'Profile',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Profile' }}
           />
           <Stack.Screen
             name="DisputeDetail"
             component={DisputeDetailScreen}
-            options={{
-              headerShown: true,
-              title: 'Dispute',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Dispute' }}
           />
           <Stack.Screen
             name="CreateListing"
             component={CreateListingScreen}
-            options={{
-              headerShown: true,
-              title: 'List an Item',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'List an Item', presentation: 'modal' }}
           />
           <Stack.Screen
             name="EditListing"
             component={EditListingScreen}
-            options={{
-              headerShown: true,
-              title: 'Edit Listing',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Edit Listing', presentation: 'modal' }}
           />
           <Stack.Screen
             name="BorrowRequest"
             component={BorrowRequestScreen}
-            options={{
-              headerShown: true,
-              title: 'Request to Borrow',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Request to Borrow', presentation: 'modal' }}
           />
           <Stack.Screen
             name="EditProfile"
             component={EditProfileScreen}
-            options={{
-              headerShown: true,
-              title: 'Edit Profile',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Edit Profile', presentation: 'modal' }}
           />
           <Stack.Screen
             name="WantedPosts"
             component={WantedPostsScreen}
-            options={{
-              headerShown: true,
-              title: 'Wanted Items',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Wanted Items' }}
           />
           <Stack.Screen
             name="CreateRequest"
             component={CreateRequestScreen}
-            options={{
-              headerShown: true,
-              title: 'Post a Request',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Post a Request', presentation: 'modal' }}
           />
           <Stack.Screen
             name="RequestDetail"
             component={RequestDetailScreen}
-            options={{
-              headerShown: true,
-              title: 'Request Details',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Request Details' }}
           />
           <Stack.Screen
             name="Conversations"
             component={ConversationsScreen}
-            options={{
-              headerShown: true,
-              title: 'Messages',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Messages' }}
           />
           <Stack.Screen
             name="Chat"
             component={ChatScreen}
-            options={{
-              headerShown: true,
-              title: 'Chat',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Chat' }}
           />
           <Stack.Screen
             name="Friends"
             component={FriendsScreen}
-            options={{
-              headerShown: true,
-              title: 'Friends',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Friends' }}
           />
           <Stack.Screen
             name="PaymentMethods"
             component={PaymentMethodsScreen}
-            options={{
-              headerShown: true,
-              title: 'Payment Methods',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Payment Methods' }}
           />
           <Stack.Screen
             name="MyCommunity"
             component={MyCommunityScreen}
-            options={{
-              headerShown: true,
-              title: 'My Neighborhood',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'My Neighborhood' }}
           />
           <Stack.Screen
             name="NotificationSettings"
             component={NotificationSettingsScreen}
-            options={{
-              headerShown: true,
-              title: 'Notification Settings',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Notification Settings', presentation: 'formSheet' }}
           />
           <Stack.Screen
             name="Disputes"
             component={DisputesScreen}
-            options={{
-              headerShown: true,
-              title: 'Disputes',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Disputes' }}
           />
           <Stack.Screen
             name="SetupPayout"
             component={SetupPayoutScreen}
-            options={{
-              headerShown: true,
-              title: 'Payout Settings',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Payout Settings', presentation: 'formSheet' }}
           />
           <Stack.Screen
             name="ListingDiscussion"
             component={ListingDiscussionScreen}
-            options={{
-              headerShown: true,
-              title: 'Questions & Answers',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Questions & Answers' }}
           />
           <Stack.Screen
             name="Subscription"
             component={SubscriptionScreen}
-            options={{
-              headerShown: true,
-              title: 'Subscription',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Subscription' }}
           />
           <Stack.Screen
             name="Bundles"
             component={BundlesScreen}
-            options={{
-              headerShown: true,
-              title: 'Item Bundles',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Item Bundles' }}
           />
           <Stack.Screen
             name="JoinCommunity"
             component={JoinCommunityScreen}
-            options={{
-              headerShown: true,
-              title: 'Find Your Neighborhood',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Find Your Neighborhood' }}
           />
           <Stack.Screen
             name="InviteMembers"
             component={InviteMembersScreen}
-            options={{
-              headerShown: true,
-              title: 'Invite Neighbors',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Invite Neighbors' }}
           />
           <Stack.Screen
             name="CommunitySettings"
             component={CommunitySettingsScreen}
-            options={{
-              headerShown: true,
-              title: 'Neighborhood Settings',
-              headerStyle: { backgroundColor: COLORS.background },
-              headerTintColor: COLORS.text,
-            }}
+            options={{ ...sharedScreenOptions, title: 'Neighborhood Settings' }}
           />
         </>
       )}

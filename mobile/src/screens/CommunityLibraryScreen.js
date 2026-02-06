@@ -1,23 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Alert,
-  TouchableOpacity,
   Image,
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import AnimatedCard from '../components/AnimatedCard';
+import ActionSheet from '../components/ActionSheet';
 
 export default function CommunityLibraryScreen({ navigation }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [checkoutSheetVisible, setCheckoutSheetVisible] = useState(false);
+  const [checkoutTarget, setCheckoutTarget] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -30,94 +35,103 @@ export default function CommunityLibraryScreen({ navigation }) {
       const data = await api.getLibraryItems();
       setItems(data);
     } catch (err) {
-      Alert.alert('Error', 'Failed to load library items');
+      haptics.error();
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const handleCheckout = async (item) => {
+  const handleCheckout = (item) => {
+    setCheckoutTarget(item);
+    setCheckoutSheetVisible(true);
+  };
+
+  const confirmCheckout = async () => {
+    if (!checkoutTarget) return;
+    const item = checkoutTarget;
     const returnDate = new Date();
     returnDate.setDate(returnDate.getDate() + (item.checkoutLimitDays || 14));
 
-    Alert.alert(
-      'Check Out Item',
-      `Check out "${item.title}"? Return by ${returnDate.toLocaleDateString()}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Check Out',
-          onPress: async () => {
-            try {
-              await api.checkoutLibraryItem(item.id, returnDate.toISOString());
-              loadItems();
-              Alert.alert('Success', 'Item checked out!');
-            } catch (err) {
-              Alert.alert('Error', err.message || 'Failed to check out');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      await api.checkoutLibraryItem(item.id, returnDate.toISOString());
+      loadItems();
+      haptics.success();
+    } catch (err) {
+      haptics.error();
+    }
   };
 
   const handleReturn = async (item) => {
     try {
       await api.returnLibraryItem(item.id);
       loadItems();
-      Alert.alert('Success', 'Item returned!');
+      haptics.success();
     } catch (err) {
-      Alert.alert('Error', err.message || 'Failed to return');
+      haptics.error();
     }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.itemCard}
-      onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
-    >
-      <Image
-        source={{ uri: item.photoUrl || 'https://via.placeholder.com/100' }}
-        style={styles.itemImage}
-      />
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.itemCondition}>Condition: {item.condition}</Text>
-        {item.donatedBy && (
-          <Text style={styles.donatedBy}>Donated by {item.donatedBy}</Text>
-        )}
-        <View style={styles.statusRow}>
-          <View style={[
-            styles.statusBadge,
-            item.isAvailable ? styles.statusAvailable : styles.statusUnavailable
-          ]}>
-            <Text style={[
-              styles.statusText,
-              item.isAvailable ? styles.statusTextAvailable : styles.statusTextUnavailable
-            ]}>
-              {item.isAvailable ? 'Available' : 'Checked Out'}
-            </Text>
+  const getCheckoutMessage = () => {
+    if (!checkoutTarget) return '';
+    const returnDate = new Date();
+    returnDate.setDate(returnDate.getDate() + (checkoutTarget.checkoutLimitDays || 14));
+    return `Check out "${checkoutTarget.title}"? Return by ${returnDate.toLocaleDateString()}`;
+  };
+
+  const renderItem = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <HapticPressable
+        style={styles.itemCardPressable}
+        onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
+        haptic="light"
+      >
+        <BlurCard style={styles.itemCard}>
+          <Image
+            source={{ uri: item.photoUrl || 'https://via.placeholder.com/100' }}
+            style={styles.itemImage}
+          />
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+            <Text style={styles.itemCondition}>Condition: {item.condition}</Text>
+            {item.donatedBy && (
+              <Text style={styles.donatedBy}>Donated by {item.donatedBy}</Text>
+            )}
+            <View style={styles.statusRow}>
+              <View style={[
+                styles.statusBadge,
+                item.isAvailable ? styles.statusAvailable : styles.statusUnavailable
+              ]}>
+                <Text style={[
+                  styles.statusText,
+                  item.isAvailable ? styles.statusTextAvailable : styles.statusTextUnavailable
+                ]}>
+                  {item.isAvailable ? 'Available' : 'Checked Out'}
+                </Text>
+              </View>
+              <Text style={styles.checkoutLimit}>{item.checkoutLimitDays} day limit</Text>
+            </View>
           </View>
-          <Text style={styles.checkoutLimit}>{item.checkoutLimitDays} day limit</Text>
-        </View>
-      </View>
-      {item.isAvailable ? (
-        <TouchableOpacity
-          style={styles.checkoutButton}
-          onPress={() => handleCheckout(item)}
-        >
-          <Text style={styles.checkoutButtonText}>Check Out</Text>
-        </TouchableOpacity>
-      ) : item.isCheckedOutByMe ? (
-        <TouchableOpacity
-          style={styles.returnButton}
-          onPress={() => handleReturn(item)}
-        >
-          <Text style={styles.returnButtonText}>Return</Text>
-        </TouchableOpacity>
-      ) : null}
-    </TouchableOpacity>
+          {item.isAvailable ? (
+            <HapticPressable
+              style={styles.checkoutButton}
+              onPress={() => handleCheckout(item)}
+              haptic="medium"
+            >
+              <Text style={styles.checkoutButtonText}>Check Out</Text>
+            </HapticPressable>
+          ) : item.isCheckedOutByMe ? (
+            <HapticPressable
+              style={styles.returnButton}
+              onPress={() => handleReturn(item)}
+              haptic="medium"
+            >
+              <Text style={styles.returnButtonText}>Return</Text>
+            </HapticPressable>
+          ) : null}
+        </BlurCard>
+      </HapticPressable>
+    </AnimatedCard>
   );
 
   if (loading) {
@@ -161,16 +175,17 @@ export default function CommunityLibraryScreen({ navigation }) {
           <Text style={styles.emptyText}>
             Be the first to donate an item to the community library!
           </Text>
-          <TouchableOpacity
+          <HapticPressable
             style={styles.donateButton}
             onPress={() => navigation.navigate('MyItems')}
+            haptic="medium"
           >
             <Text style={styles.donateButtonText}>Donate an Item</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
 
-      <View style={styles.infoCard}>
+      <BlurCard style={styles.infoCard}>
         <Text style={styles.infoIcon}>ℹ️</Text>
         <View style={styles.infoContent}>
           <Text style={styles.infoTitle}>How it works</Text>
@@ -178,7 +193,24 @@ export default function CommunityLibraryScreen({ navigation }) {
             Community library items are free to borrow. Just return them on time so others can enjoy them too!
           </Text>
         </View>
-      </View>
+      </BlurCard>
+
+      <ActionSheet
+        isVisible={checkoutSheetVisible}
+        onClose={() => {
+          setCheckoutSheetVisible(false);
+          setCheckoutTarget(null);
+        }}
+        title="Check Out Item"
+        message={getCheckoutMessage()}
+        actions={[
+          {
+            label: 'Check Out',
+            onPress: confirmCheckout,
+          },
+        ]}
+        cancelLabel="Cancel"
+      />
     </View>
   );
 }
@@ -195,68 +227,67 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    padding: SPACING.xl,
+    paddingBottom: SPACING.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   title: {
+    ...TYPOGRAPHY.h1,
     fontSize: 24,
-    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   subtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.lg,
+  },
+  itemCardPressable: {
+    marginBottom: SPACING.md,
   },
   itemCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
     alignItems: 'center',
   },
   itemImage: {
     width: 80,
     height: 80,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.gray[700],
   },
   itemInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: SPACING.md,
   },
   itemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
   itemCondition: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   donatedBy: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     marginTop: 2,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    gap: 8,
+    marginTop: SPACING.sm,
+    gap: SPACING.sm,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.md,
   },
   statusAvailable: {
     backgroundColor: COLORS.primary + '20',
@@ -265,8 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warning + '20',
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...TYPOGRAPHY.caption,
   },
   statusTextAvailable: {
     color: COLORS.primary,
@@ -275,31 +305,31 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
   },
   checkoutLimit: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
   },
   checkoutButton: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 8,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    marginLeft: SPACING.sm,
   },
   checkoutButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 13,
-    fontWeight: '600',
     color: COLORS.background,
   },
   returnButton: {
     backgroundColor: COLORS.gray[700],
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 8,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    marginLeft: SPACING.sm,
   },
   returnButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 13,
-    fontWeight: '600',
     color: COLORS.text,
   },
   emptyState: {
@@ -310,57 +340,52 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   emptyText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: SPACING.xl,
   },
   donateButton: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.xxl,
   },
   donateButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: COLORS.background,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    margin: 16,
+    margin: SPACING.lg,
     marginTop: 0,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
   },
   infoIcon: {
     fontSize: 20,
-    marginRight: 12,
+    marginRight: SPACING.md,
   },
   infoContent: {
     flex: 1,
   },
   infoTitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   infoText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     lineHeight: 18,
   },

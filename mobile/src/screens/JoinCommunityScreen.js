@@ -4,11 +4,9 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
   TextInput,
-  Alert,
   Modal,
   KeyboardAvoidingView,
   Platform,
@@ -17,7 +15,10 @@ import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 const NEEDS_LOCATION_MESSAGE = 'Set your location in your profile to discover neighborhoods nearby.';
 
@@ -61,12 +62,10 @@ export default function JoinCommunityScreen({ navigation }) {
     try {
       await api.joinCommunity(neighborhood.id);
       await refreshUser();
-      Alert.alert(
-        'Welcome!',
-        `You've joined ${neighborhood.name}. Start browsing items from your neighbors!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      haptics.success();
+      navigation.goBack();
     } catch (error) {
+      haptics.error();
       showError({
         message: error.message || 'Unable to join this neighborhood. Please check your connection and try again.',
         type: 'network',
@@ -94,12 +93,10 @@ export default function JoinCommunityScreen({ navigation }) {
       await api.joinCommunity(result.id);
       await refreshUser();
       setShowCreateModal(false);
-      Alert.alert(
-        'Neighborhood Created!',
-        `You've created and joined ${newName}. Invite your neighbors to start sharing!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      haptics.success();
+      navigation.goBack();
     } catch (error) {
+      haptics.error();
       const errorCode = error.code || '';
       if (errorCode === 'LOCATION_REQUIRED') {
         setShowCreateModal(false);
@@ -125,48 +122,51 @@ export default function JoinCommunityScreen({ navigation }) {
   );
 
   const renderNeighborhood = ({ item }) => (
-    <View style={styles.neighborhoodCard}>
-      <View style={styles.neighborhoodHeader}>
-        {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={styles.neighborhoodImage} />
-        ) : (
-          <View style={[styles.neighborhoodImage, styles.placeholderImage]}>
-            <Ionicons name="home" size={24} color={COLORS.gray[500]} />
-          </View>
-        )}
-        <View style={styles.neighborhoodInfo}>
-          <Text style={styles.neighborhoodName}>{item.name}</Text>
-          <Text style={styles.neighborhoodStats}>
-            {item.memberCount || 0} neighbors{item.distanceMiles ? ` • ${item.distanceMiles} mi away` : ''}
-          </Text>
-        </View>
-      </View>
-
-      {item.description && (
-        <Text style={styles.neighborhoodDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-      )}
-
-      {item.isMember ? (
-        <View style={styles.memberBadge}>
-          <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-          <Text style={styles.memberBadgeText}>Joined</Text>
-        </View>
-      ) : (
-        <TouchableOpacity
-          style={styles.joinButton}
-          onPress={() => handleJoin(item)}
-          disabled={joiningId === item.id}
-        >
-          {joiningId === item.id ? (
-            <ActivityIndicator size="small" color="#fff" />
+    <BlurCard style={styles.neighborhoodCard}>
+      <View style={styles.neighborhoodCardContent}>
+        <View style={styles.neighborhoodHeader}>
+          {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.neighborhoodImage} />
           ) : (
-            <Text style={styles.joinButtonText}>Join Neighborhood</Text>
+            <View style={[styles.neighborhoodImage, styles.placeholderImage]}>
+              <Ionicons name="home" size={24} color={COLORS.gray[500]} />
+            </View>
           )}
-        </TouchableOpacity>
-      )}
-    </View>
+          <View style={styles.neighborhoodInfo}>
+            <Text style={styles.neighborhoodName}>{item.name}</Text>
+            <Text style={styles.neighborhoodStats}>
+              {item.memberCount || 0} neighbors{item.distanceMiles ? ` • ${item.distanceMiles} mi away` : ''}
+            </Text>
+          </View>
+        </View>
+
+        {item.description && (
+          <Text style={styles.neighborhoodDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+        )}
+
+        {item.isMember ? (
+          <View style={styles.memberBadge}>
+            <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+            <Text style={styles.memberBadgeText}>Joined</Text>
+          </View>
+        ) : (
+          <HapticPressable
+            style={styles.joinButton}
+            onPress={() => handleJoin(item)}
+            disabled={joiningId === item.id}
+            haptic="medium"
+          >
+            {joiningId === item.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.joinButtonText}>Join Neighborhood</Text>
+            )}
+          </HapticPressable>
+        )}
+      </View>
+    </BlurCard>
   );
 
   if (isLoading) {
@@ -190,9 +190,9 @@ export default function JoinCommunityScreen({ navigation }) {
           placeholderTextColor={COLORS.textSecondary}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <HapticPressable onPress={() => setSearchQuery('')} haptic="light">
             <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+          </HapticPressable>
         )}
       </View>
 
@@ -205,13 +205,14 @@ export default function JoinCommunityScreen({ navigation }) {
       </View>
 
       {/* Create Button */}
-      <TouchableOpacity
+      <HapticPressable
         style={styles.createButton}
         onPress={() => setShowCreateModal(true)}
+        haptic="medium"
       >
         <Ionicons name="add-circle-outline" size={22} color={COLORS.primary} />
         <Text style={styles.createButtonText}>Create New Neighborhood</Text>
-      </TouchableOpacity>
+      </HapticPressable>
 
       {/* Neighborhoods List */}
       <FlatList
@@ -231,12 +232,13 @@ export default function JoinCommunityScreen({ navigation }) {
                 : 'Be the first to create a neighborhood in your area!'}
             </Text>
             {needsLocation && (
-              <TouchableOpacity
+              <HapticPressable
                 style={styles.setLocationButton}
                 onPress={() => navigation.navigate('EditProfile')}
+                haptic="medium"
               >
                 <Text style={styles.setLocationButtonText}>Set Location</Text>
-              </TouchableOpacity>
+              </HapticPressable>
             )}
           </View>
         }
@@ -256,9 +258,9 @@ export default function JoinCommunityScreen({ navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Neighborhood</Text>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+              <HapticPressable onPress={() => setShowCreateModal(false)} haptic="light">
                 <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
+              </HapticPressable>
             </View>
 
             <Text style={styles.inputLabel}>Neighborhood Name *</Text>
@@ -283,17 +285,18 @@ export default function JoinCommunityScreen({ navigation }) {
               maxLength={500}
             />
 
-            <TouchableOpacity
+            <HapticPressable
               style={[styles.modalButton, isCreating && styles.modalButtonDisabled]}
               onPress={handleCreate}
               disabled={isCreating}
+              haptic="medium"
             >
               {isCreating ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.modalButtonText}>Create & Join</Text>
               )}
-            </TouchableOpacity>
+            </HapticPressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -316,75 +319,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    margin: 16,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    margin: SPACING.lg,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderColor: COLORS.separator,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: SPACING.md + 2,
+    paddingHorizontal: SPACING.md,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
   },
   infoCard: {
     flexDirection: 'row',
     backgroundColor: COLORS.primary + '15',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 14,
-    borderRadius: 12,
-    gap: 10,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+    padding: SPACING.md + 2,
+    borderRadius: RADIUS.md,
+    gap: SPACING.md - 2,
   },
   infoText: {
+    ...TYPOGRAPHY.footnote,
     flex: 1,
-    fontSize: 13,
     color: COLORS.text,
-    lineHeight: 18,
   },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 14,
-    borderRadius: 12,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+    padding: SPACING.md + 2,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.primary,
     borderStyle: 'dashed',
-    gap: 8,
+    gap: SPACING.sm,
   },
   createButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: COLORS.primary,
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.lg,
     paddingTop: 0,
   },
   neighborhoodCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
+    borderColor: COLORS.separator,
+  },
+  neighborhoodCardContent: {
+    padding: SPACING.lg,
   },
   neighborhoodHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   neighborhoodImage: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   placeholderImage: {
@@ -393,44 +395,43 @@ const styles = StyleSheet.create({
   },
   neighborhoodInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: SPACING.md,
   },
   neighborhoodName: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
   neighborhoodStats: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   neighborhoodDescription: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   joinButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md - 2,
     alignItems: 'center',
   },
   joinButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: '#fff',
   },
   memberBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
+    gap: SPACING.xs + 2,
+    paddingVertical: SPACING.md,
   },
   memberBadgeText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     fontWeight: '500',
     color: COLORS.primary,
   },
@@ -439,28 +440,27 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   emptyText: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtext: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl - 4,
   },
   setLocationButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    marginTop: 20,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.md - 2,
+    marginTop: SPACING.xl - 4,
   },
   setLocationButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPOGRAPHY.button,
     color: '#fff',
   },
   // Modal styles
@@ -472,37 +472,39 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 24,
-    marginHorizontal: 16,
+    borderRadius: RADIUS.xxl,
+    padding: SPACING.xl,
+    marginHorizontal: SPACING.lg,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   modalTitle: {
+    ...TYPOGRAPHY.h2,
     fontSize: 20,
-    fontWeight: '700',
     color: COLORS.text,
   },
   inputLabel: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     fontWeight: '500',
     color: COLORS.textSecondary,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   input: {
     backgroundColor: COLORS.background,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md + 2,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.text,
     borderWidth: 1,
-    borderColor: COLORS.gray[800],
-    marginBottom: 16,
+    borderColor: COLORS.separator,
+    marginBottom: SPACING.lg,
   },
   textArea: {
     height: 80,
@@ -510,17 +512,17 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   modalButtonDisabled: {
     opacity: 0.7,
   },
   modalButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
   },
   // Overlay styles
@@ -530,11 +532,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl - 4,
   },
   overlayCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    borderRadius: RADIUS.xl,
     padding: 28,
     width: '100%',
     maxWidth: 340,
@@ -544,45 +546,43 @@ const styles = StyleSheet.create({
   overlayIconContainer: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   overlayTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: SPACING.md - 2,
   },
   overlayText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   overlayButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: SPACING.md + 2,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   overlayButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
   },
   overlayDismiss: {
     alignItems: 'center',
-    paddingVertical: 14,
-    marginTop: 8,
+    paddingVertical: SPACING.md + 2,
+    marginTop: SPACING.sm,
   },
   overlayDismissText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
   },
 });

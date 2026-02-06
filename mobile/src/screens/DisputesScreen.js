@@ -5,12 +5,13 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import BlurCard from '../components/BlurCard';
 
 const STATUS_LABELS = {
   open: 'Open',
@@ -51,32 +52,35 @@ export default function DisputesScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
+    <HapticPressable
       onPress={() => navigation.navigate('DisputeDetail', { id: item.id })}
-      activeOpacity={0.7}
+      haptic="light"
     >
-      <View style={styles.cardHeader}>
-        <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[item.status] + '20' }]}>
-          <Text style={[styles.statusText, { color: STATUS_COLORS[item.status] }]}>
-            {STATUS_LABELS[item.status]}
-          </Text>
+      <BlurCard style={styles.card}>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[item.status] + '20' }]}>
+              <Text style={[styles.statusText, { color: STATUS_COLORS[item.status] }]}>
+                {STATUS_LABELS[item.status]}
+              </Text>
+            </View>
+            <Text style={styles.date}>
+              {new Date(item.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+
+          <Text style={styles.title}>{item.listing?.title || 'Item'}</Text>
+          <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
+
+          <View style={styles.cardFooter}>
+            <Text style={styles.transactionLabel}>
+              Transaction #{item.transactionId?.slice(-6)}
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
+          </View>
         </View>
-        <Text style={styles.date}>
-          {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
-      </View>
-
-      <Text style={styles.title}>{item.listing?.title || 'Item'}</Text>
-      <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.transactionLabel}>
-          Transaction #{item.transactionId?.slice(-6)}
-        </Text>
-        <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-      </View>
-    </TouchableOpacity>
+      </BlurCard>
+    </HapticPressable>
   );
 
   if (isLoading) {
@@ -127,56 +131,57 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.lg,
     flexGrow: 1,
   },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
+  },
+  cardContent: {
+    padding: SPACING.lg,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: SPACING.md - 2,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
   },
   statusText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '600',
   },
   date: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   title: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   reason: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
   },
   transactionLabel: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
   },
   emptyContainer: {
@@ -186,15 +191,15 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtitle: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
   },
 });

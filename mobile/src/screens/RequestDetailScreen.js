@@ -5,19 +5,22 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, VISIBILITY_LABELS } from '../utils/config';
+import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function RequestDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSheet, setShowDeleteSheet] = useState(false);
 
   useEffect(() => {
     fetchRequest();
@@ -35,28 +38,20 @@ export default function RequestDetailScreen({ route, navigation }) {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Close Request',
-      'Are you sure you want to close this request? It will no longer be visible to others.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Close',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await api.deleteRequest(id);
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Error', error.message);
-            } finally {
-              setIsDeleting(false);
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteSheet(true);
+  };
+
+  const performDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await api.deleteRequest(id);
+      haptics.success();
+      navigation.goBack();
+    } catch (error) {
+      haptics.error();
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formatDateRange = (from, until) => {
@@ -93,7 +88,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         <View style={styles.statusRow}>
           <View style={[
             styles.statusBadge,
-            { backgroundColor: request.status === 'open' ? COLORS.secondary + '20' : COLORS.gray[800] }
+            { backgroundColor: request.status === 'open' ? COLORS.secondary + '20' : COLORS.separator }
           ]}>
             <Text style={[
               styles.statusText,
@@ -121,13 +116,15 @@ export default function RequestDetailScreen({ route, navigation }) {
 
         {/* Date Range */}
         {dateRange && (
-          <View style={styles.dateCard}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
-            <View style={styles.dateInfo}>
-              <Text style={styles.dateLabel}>Needed</Text>
-              <Text style={styles.dateValue}>{dateRange}</Text>
+          <BlurCard style={styles.dateCard}>
+            <View style={styles.dateCardContent}>
+              <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
+              <View style={styles.dateInfo}>
+                <Text style={styles.dateLabel}>Needed</Text>
+                <Text style={styles.dateValue}>{dateRange}</Text>
+              </View>
             </View>
-          </View>
+          </BlurCard>
         )}
 
         {/* Description */}
@@ -139,9 +136,10 @@ export default function RequestDetailScreen({ route, navigation }) {
         )}
 
         {/* Requester */}
-        <TouchableOpacity
+        <HapticPressable
           style={styles.requesterCard}
           onPress={() => navigation.navigate('UserProfile', { id: request.requester.id })}
+          haptic="light"
         >
           <Image
             source={{ uri: request.requester.profilePhotoUrl || 'https://via.placeholder.com/48' }}
@@ -159,7 +157,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             )}
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </TouchableOpacity>
+        </HapticPressable>
 
         {/* Posted date */}
         <Text style={styles.postedDate}>
@@ -170,22 +168,24 @@ export default function RequestDetailScreen({ route, navigation }) {
       {/* Action Buttons */}
       {!request.isOwner && request.status === 'open' && (
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticPressable
             style={styles.haveThisButton}
             onPress={() => navigation.navigate('CreateListing', { requestMatch: request })}
+            haptic="medium"
           >
             <Ionicons name="hand-right-outline" size={20} color="#fff" />
             <Text style={styles.haveThisButtonText}>I Have This</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
 
       {request.isOwner && request.status === 'open' && (
         <View style={styles.footer}>
-          <TouchableOpacity
+          <HapticPressable
             style={styles.deleteButton}
             onPress={handleDelete}
             disabled={isDeleting}
+            haptic="medium"
           >
             {isDeleting ? (
               <ActivityIndicator color={COLORS.danger} size="small" />
@@ -195,9 +195,23 @@ export default function RequestDetailScreen({ route, navigation }) {
                 <Text style={styles.deleteButtonText}>Close Request</Text>
               </>
             )}
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
       )}
+
+      <ActionSheet
+        isVisible={showDeleteSheet}
+        onClose={() => setShowDeleteSheet(false)}
+        title="Close Request"
+        message="Are you sure you want to close this request? It will no longer be visible to others."
+        actions={[
+          {
+            label: 'Close',
+            destructive: true,
+            onPress: performDelete,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -220,80 +234,82 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   errorText: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.textSecondary,
   },
   content: {
-    padding: 20,
+    padding: SPACING.xl - 4,
   },
   statusRow: {
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   statusBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.sm,
   },
   statusText: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
   },
   title: {
+    ...TYPOGRAPHY.h2,
     fontSize: 24,
-    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   badges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
+    gap: SPACING.sm,
+    marginBottom: SPACING.xl - 4,
   },
   badge: {
-    backgroundColor: COLORS.gray[800],
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: COLORS.separator,
+    paddingHorizontal: SPACING.md - 2,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.sm,
   },
   badgeText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
   dateCard: {
+    marginBottom: SPACING.xl - 4,
+  },
+  dateCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    marginBottom: 20,
+    padding: SPACING.lg,
+    gap: SPACING.md,
   },
   dateInfo: {
     flex: 1,
   },
   dateLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   dateValue: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
     marginTop: 2,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: SPACING.xl - 4,
   },
   sectionTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   description: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 22,
@@ -302,44 +318,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-    marginBottom: 16,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   requesterAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   requesterInfo: {
     flex: 1,
   },
   requesterLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
   },
   requesterName: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   requesterTransactions: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     marginTop: 2,
   },
   postedDate: {
-    fontSize: 13,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
     textAlign: 'center',
   },
   footer: {
-    padding: 16,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray[800],
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
     backgroundColor: COLORS.surface,
   },
   haveThisButton: {
@@ -347,28 +363,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.sm,
   },
   haveThisButtonText: {
-    color: '#fff',
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.danger,
-    gap: 8,
+    gap: SPACING.sm,
   },
   deleteButtonText: {
-    color: COLORS.danger,
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
+    color: COLORS.danger,
   },
 });

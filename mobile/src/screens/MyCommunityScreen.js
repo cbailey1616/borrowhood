@@ -4,17 +4,19 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Image,
   FlatList,
   RefreshControl,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import HapticPressable from '../components/HapticPressable';
+import ActionSheet from '../components/ActionSheet';
+import BlurCard from '../components/BlurCard';
+import { haptics } from '../utils/haptics';
 
 export default function MyCommunityScreen({ navigation }) {
   const { user } = useAuth();
@@ -23,6 +25,7 @@ export default function MyCommunityScreen({ navigation }) {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showLeaveSheet, setShowLeaveSheet] = useState(false);
 
   const fetchCommunities = useCallback(async () => {
     try {
@@ -69,26 +72,18 @@ export default function MyCommunityScreen({ navigation }) {
   };
 
   const handleLeaveCommunity = () => {
-    Alert.alert(
-      'Leave Neighborhood',
-      `Are you sure you want to leave ${selectedCommunity?.name}? You'll lose access to neighborhood items and members.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.leaveCommunity(selectedCommunity.id);
-              // Refresh the list after leaving
-              fetchCommunities();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to leave neighborhood');
-            }
-          },
-        },
-      ]
-    );
+    setShowLeaveSheet(true);
+  };
+
+  const performLeaveCommunity = async () => {
+    try {
+      await api.leaveCommunity(selectedCommunity.id);
+      haptics.success();
+      // Refresh the list after leaving
+      fetchCommunities();
+    } catch (error) {
+      haptics.error();
+    }
   };
 
   if (isLoading) {
@@ -107,12 +102,13 @@ export default function MyCommunityScreen({ navigation }) {
         <Text style={styles.noCommunityText}>
           Join or create your neighborhood to borrow from and lend to your neighbors.
         </Text>
-        <TouchableOpacity
+        <HapticPressable
           style={styles.joinButton}
           onPress={() => navigation.navigate('JoinCommunity')}
+          haptic="medium"
         >
           <Text style={styles.joinButtonText}>Find Your Neighborhood</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
     );
   }
@@ -135,13 +131,14 @@ export default function MyCommunityScreen({ navigation }) {
         <View style={styles.communitySelector}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {communities.map((c) => (
-              <TouchableOpacity
+              <HapticPressable
                 key={c.id}
                 style={[
                   styles.communitySelectorItem,
                   c.id === selectedCommunity?.id && styles.communitySelectorItemActive
                 ]}
                 onPress={() => selectCommunity(c)}
+                haptic="light"
               >
                 <Text
                   style={[
@@ -155,14 +152,15 @@ export default function MyCommunityScreen({ navigation }) {
                 {c.role === 'organizer' && (
                   <Ionicons name="shield-checkmark" size={14} color={c.id === selectedCommunity?.id ? '#fff' : COLORS.primary} />
                 )}
-              </TouchableOpacity>
+              </HapticPressable>
             ))}
-            <TouchableOpacity
+            <HapticPressable
               style={styles.addCommunityButton}
               onPress={() => navigation.navigate('JoinCommunity')}
+              haptic="light"
             >
               <Ionicons name="add" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
+            </HapticPressable>
           </ScrollView>
         </View>
       )}
@@ -183,37 +181,40 @@ export default function MyCommunityScreen({ navigation }) {
       </View>
 
       {/* Stats */}
-      <View style={styles.stats}>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{community.memberCount || members.length}</Text>
-          <Text style={styles.statLabel}>Neighbors</Text>
+      <BlurCard style={styles.stats}>
+        <View style={styles.statsInner}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{community.memberCount || members.length}</Text>
+            <Text style={styles.statLabel}>Neighbors</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{community.listingCount || 0}</Text>
+            <Text style={styles.statLabel}>Items</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{community.transactionCount || 0}</Text>
+            <Text style={styles.statLabel}>Borrows</Text>
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{community.listingCount || 0}</Text>
-          <Text style={styles.statLabel}>Items</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{community.transactionCount || 0}</Text>
-          <Text style={styles.statLabel}>Borrows</Text>
-        </View>
-      </View>
+      </BlurCard>
 
       {/* Neighbors Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Neighbors</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CommunityMembers', { id: community.id })}>
+          <HapticPressable onPress={() => navigation.navigate('CommunityMembers', { id: community.id })} haptic="light">
             <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
+          </HapticPressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.membersList}>
           {members.slice(0, 10).map((member) => (
-            <TouchableOpacity
+            <HapticPressable
               key={member.id}
               style={styles.memberCard}
               onPress={() => navigation.navigate('UserProfile', { id: member.id })}
+              haptic="light"
             >
               <View style={styles.memberAvatarContainer}>
                 <Image
@@ -229,39 +230,56 @@ export default function MyCommunityScreen({ navigation }) {
               <Text style={styles.memberName} numberOfLines={1}>
                 {member.firstName}
               </Text>
-            </TouchableOpacity>
+            </HapticPressable>
           ))}
         </ScrollView>
       </View>
 
       {/* Actions */}
       <View style={styles.section}>
-        <TouchableOpacity
+        <HapticPressable
           style={styles.actionButton}
           onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}
+          haptic="light"
         >
           <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Invite Neighbors</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </TouchableOpacity>
+        </HapticPressable>
 
-        <TouchableOpacity
+        <HapticPressable
           style={styles.actionButton}
           onPress={() => navigation.navigate('CommunitySettings', { id: community.id })}
+          haptic="light"
         >
           <Ionicons name="settings-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Neighborhood Settings</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </TouchableOpacity>
+        </HapticPressable>
 
-        <TouchableOpacity
+        <HapticPressable
           style={[styles.actionButton, styles.dangerButton]}
           onPress={handleLeaveCommunity}
+          haptic="medium"
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
           <Text style={[styles.actionButtonText, styles.dangerText]}>Leave Neighborhood</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
+
+      <ActionSheet
+        isVisible={showLeaveSheet}
+        onClose={() => setShowLeaveSheet(false)}
+        title="Leave Neighborhood"
+        message={`Are you sure you want to leave ${selectedCommunity?.name}? You'll lose access to neighborhood items and members.`}
+        actions={[
+          {
+            label: 'Leave',
+            destructive: true,
+            onPress: performLeaveCommunity,
+          },
+        ]}
+      />
     </ScrollView>
   );
 }
@@ -279,26 +297,26 @@ const styles = StyleSheet.create({
   },
   communitySelector: {
     backgroundColor: COLORS.surface,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   communitySelectorItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray[800],
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    gap: 6,
+    backgroundColor: COLORS.separator,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    marginRight: SPACING.sm,
+    gap: SPACING.xs + 2,
   },
   communitySelectorItemActive: {
     backgroundColor: COLORS.primary,
   },
   communitySelectorText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.textSecondary,
     maxWidth: 120,
@@ -309,8 +327,8 @@ const styles = StyleSheet.create({
   addCommunityButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.gray[800],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.separator,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -319,42 +337,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
-    padding: 32,
+    padding: SPACING.xxl,
   },
   noCommunityTitle: {
+    ...TYPOGRAPHY.h3,
     fontSize: 20,
     fontWeight: '700',
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   noCommunityText: {
-    fontSize: 15,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 22,
+    marginTop: SPACING.sm,
   },
   joinButton: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 24,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md + 2,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.xl,
   },
   joinButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
   },
   header: {
     alignItems: 'center',
-    padding: 24,
+    padding: SPACING.xl,
     backgroundColor: COLORS.surface,
   },
   communityImage: {
     width: 80,
     height: 80,
-    borderRadius: 40,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   placeholderImage: {
@@ -362,23 +380,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   communityName: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   communityDescription: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: SPACING.sm,
     lineHeight: 20,
   },
   stats: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    paddingVertical: 16,
     marginTop: 1,
+  },
+  statsInner: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.lg,
   },
   stat: {
     flex: 1,
@@ -386,7 +405,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.separator,
   },
   statValue: {
     fontSize: 20,
@@ -394,36 +413,37 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   statLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   section: {
-    padding: 16,
-    paddingTop: 24,
+    padding: SPACING.lg,
+    paddingTop: SPACING.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   sectionTitle: {
+    ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.text,
   },
   seeAll: {
+    ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.primary,
   },
   membersList: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+    marginHorizontal: -SPACING.lg,
+    paddingHorizontal: SPACING.lg,
   },
   memberCard: {
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.lg,
     width: 70,
   },
   memberAvatarContainer: {
@@ -432,7 +452,7 @@ const styles = StyleSheet.create({
   memberAvatar: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   modBadge: {
@@ -441,7 +461,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -449,27 +469,27 @@ const styles = StyleSheet.create({
     borderColor: COLORS.surface,
   },
   memberName: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginTop: 6,
+    marginTop: SPACING.xs + 2,
     textAlign: 'center',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.sm,
+    gap: SPACING.md,
   },
   actionButtonText: {
+    ...TYPOGRAPHY.body,
     flex: 1,
-    fontSize: 15,
     color: COLORS.text,
   },
   dangerButton: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   dangerText: {
     color: COLORS.danger,

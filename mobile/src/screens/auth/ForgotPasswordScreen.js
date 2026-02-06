@@ -4,15 +4,17 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import HapticPressable from '../../components/HapticPressable';
+import BlurCard from '../../components/BlurCard';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
-import { COLORS } from '../../utils/config';
+import { haptics } from '../../utils/haptics';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const { showError } = useError();
@@ -74,6 +76,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     setIsLoading(true);
     try {
       await api.resetPassword(email, code, newPassword);
+      haptics.success();
       showError({
         type: 'success',
         title: 'Password Reset',
@@ -96,12 +99,13 @@ export default function ForgotPasswordScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
-        <TouchableOpacity
+        <HapticPressable
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          haptic="light"
         >
-          <Text style={styles.backButtonText}>‹</Text>
-        </TouchableOpacity>
+          <Text style={styles.backButtonText}>{'\u2039'}</Text>
+        </HapticPressable>
 
         <Text style={styles.title}>Reset password</Text>
         <Text style={styles.subtitle}>
@@ -110,95 +114,100 @@ export default function ForgotPasswordScreen({ navigation }) {
             : 'Enter the code from your email and your new password.'}
         </Text>
 
-        <View style={styles.form}>
-          {step === 'email' ? (
-            <>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+        <BlurCard style={styles.formCard}>
+          <View style={styles.form}>
+            {step === 'email' ? (
+              <>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
 
-              <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
-                onPress={handleRequestReset}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={COLORS.background} />
-                ) : (
-                  <Text style={styles.buttonText}>Send Reset Code</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Reset Code</Text>
-                <TextInput
-                  style={styles.input}
-                  value={code}
-                  onChangeText={setCode}
-                  placeholder="123456"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-              </View>
+                <HapticPressable
+                  style={[styles.button, isLoading && styles.buttonDisabled]}
+                  onPress={handleRequestReset}
+                  disabled={isLoading}
+                  haptic="medium"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={COLORS.background} />
+                  ) : (
+                    <Text style={styles.buttonText}>Send Reset Code</Text>
+                  )}
+                </HapticPressable>
+              </>
+            ) : (
+              <>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Reset Code</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={code}
+                    onChangeText={setCode}
+                    placeholder="123456"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                  />
+                </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>New Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="At least 8 characters"
-                  placeholderTextColor={COLORS.textMuted}
-                  secureTextEntry
-                />
-              </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>New Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={COLORS.textMuted}
+                    secureTextEntry
+                  />
+                </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Confirm Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Re-enter your password"
-                  placeholderTextColor={COLORS.textMuted}
-                  secureTextEntry
-                />
-              </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Re-enter your password"
+                    placeholderTextColor={COLORS.textMuted}
+                    secureTextEntry
+                  />
+                </View>
 
-              <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
-                onPress={handleResetPassword}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={COLORS.background} />
-                ) : (
-                  <Text style={styles.buttonText}>Reset Password</Text>
-                )}
-              </TouchableOpacity>
+                <HapticPressable
+                  style={[styles.button, isLoading && styles.buttonDisabled]}
+                  onPress={handleResetPassword}
+                  disabled={isLoading}
+                  haptic="medium"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={COLORS.background} />
+                  ) : (
+                    <Text style={styles.buttonText}>Reset Password</Text>
+                  )}
+                </HapticPressable>
 
-              <TouchableOpacity
-                style={styles.resendButton}
-                onPress={handleRequestReset}
-              >
-                <Text style={styles.resendButtonText}>Resend code</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+                <HapticPressable
+                  style={styles.resendButton}
+                  onPress={handleRequestReset}
+                  haptic="light"
+                >
+                  <Text style={styles.resendButtonText}>Resend code</Text>
+                </HapticPressable>
+              </>
+            )}
+          </View>
+        </BlurCard>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -211,13 +220,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: SPACING.xl,
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   backButtonText: {
     fontSize: 36,
@@ -225,60 +234,58 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TYPOGRAPHY.h1,
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    marginBottom: 32,
-    lineHeight: 22,
+    marginBottom: SPACING.xxl,
+  },
+  formCard: {
+    padding: SPACING.xl,
   },
   form: {
-    gap: 20,
+    gap: SPACING.xl - SPACING.xs,
   },
   inputContainer: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   label: {
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
   input: {
-    borderWidth: 1,
-    borderColor: COLORS.gray[700],
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceElevated,
     color: COLORS.text,
   },
   button: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 30,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: SPACING.md,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonText: {
     color: COLORS.background,
-    fontSize: 17,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
   },
   resendButton: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
   },
   resendButtonText: {
     color: COLORS.primary,
-    fontSize: 14,
+    ...TYPOGRAPHY.footnote,
     fontWeight: '500',
   },
 });

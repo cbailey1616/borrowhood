@@ -5,12 +5,12 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
-import { COLORS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ConversationsScreen({ navigation, onRead }) {
   const [conversations, setConversations] = useState([]);
@@ -68,10 +68,10 @@ export default function ConversationsScreen({ navigation, onRead }) {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
+    <HapticPressable
+      haptic="light"
       style={styles.card}
       onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
-      activeOpacity={0.7}
     >
       <View style={styles.avatarContainer}>
         <Image
@@ -113,7 +113,7 @@ export default function ConversationsScreen({ navigation, onRead }) {
       </View>
 
       <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-    </TouchableOpacity>
+    </HapticPressable>
   );
 
   return (
@@ -158,10 +158,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 16,
+    padding: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[800],
-    gap: 12,
+    borderBottomColor: COLORS.separator,
+    gap: SPACING.md,
   },
   avatarContainer: {
     position: 'relative',
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.gray[700],
   },
   unreadBadge: {
@@ -177,16 +177,16 @@ const styles = StyleSheet.create({
     top: -2,
     right: -2,
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm + 2,
     minWidth: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: SPACING.xs + 2,
   },
   unreadCount: {
+    ...TYPOGRAPHY.caption,
     color: '#fff',
-    fontSize: 11,
     fontWeight: '700',
   },
   content: {
@@ -196,10 +196,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   name: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     fontWeight: '500',
     color: COLORS.text,
   },
@@ -207,22 +207,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   time: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
   listingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
   },
   listingTitle: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     flex: 1,
   },
   lastMessage: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },
   lastMessageUnread: {
@@ -236,16 +236,15 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...TYPOGRAPHY.h3,
     color: COLORS.text,
-    marginTop: 16,
+    marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 4,
+    marginTop: SPACING.xs,
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: SPACING.xxl,
   },
 });
