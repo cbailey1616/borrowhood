@@ -42,12 +42,14 @@ export default function RegisterScreen({ navigation }) {
     setIsLoading(true);
     try {
       const response = await GoogleSignin.signIn();
-      const idToken = response.data?.idToken;
+      if (response.type === 'cancelled') return;
+      const idToken = response.data?.idToken || response.idToken;
       if (!idToken) throw new Error('No ID token received from Google');
       await loginWithGoogle(idToken);
       haptics.success();
     } catch (error) {
-      if (error.code !== 'SIGN_IN_CANCELLED') {
+      const code = error.code || '';
+      if (code !== 'SIGN_IN_CANCELLED' && code !== 'CANCELED') {
         showError({
           message: error.message || 'Google sign-in failed. Please try again.',
         });

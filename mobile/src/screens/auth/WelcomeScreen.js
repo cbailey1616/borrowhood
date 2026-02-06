@@ -23,15 +23,26 @@ import useBiometrics from '../../hooks/useBiometrics';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
-GoogleSignin.configure({
-  iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
-  webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
-});
-
 const logo = require('../../../assets/logo.png');
+
+let googleConfigured = false;
 
 export default function WelcomeScreen({ navigation }) {
   const { login, loginWithGoogle, loginWithApple } = useAuth();
+
+  useEffect(() => {
+    if (!googleConfigured) {
+      try {
+        GoogleSignin.configure({
+          iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
+          webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
+        });
+        googleConfigured = true;
+      } catch (e) {
+        console.log('Google Sign-In configure error:', e);
+      }
+    }
+  }, []);
   const { showError } = useError();
   const {
     isBiometricsAvailable,
@@ -127,12 +138,14 @@ export default function WelcomeScreen({ navigation }) {
     setIsLoading(true);
     try {
       const response = await GoogleSignin.signIn();
-      const idToken = response.data?.idToken;
+      if (response.type === 'cancelled') return;
+      const idToken = response.data?.idToken || response.idToken;
       if (!idToken) throw new Error('No ID token received from Google');
       await loginWithGoogle(idToken);
       haptics.success();
     } catch (error) {
-      if (error.code !== 'SIGN_IN_CANCELLED') {
+      const code = error.code || '';
+      if (code !== 'SIGN_IN_CANCELLED' && code !== 'CANCELED') {
         showError({
           type: 'auth',
           message: error.message || 'Google sign-in failed. Please try again.',
