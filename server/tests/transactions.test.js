@@ -31,8 +31,13 @@ describe('Transactions API', () => {
   beforeAll(async () => {
     app = await createTestApp();
 
-    // Create test data
-    testCommunityId = '00000000-0000-0000-0000-000000000001';
+    // Create test community
+    const communityResult = await query(
+      `INSERT INTO communities (name, slug, description, latitude, longitude, radius_km)
+       VALUES ('Test Community', 'test-community', 'For testing', 0, 0, 10)
+       RETURNING id`
+    );
+    testCommunityId = communityResult.rows[0].id;
 
     // Create test users
     const borrowerResult = await query(

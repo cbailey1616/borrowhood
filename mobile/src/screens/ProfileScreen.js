@@ -154,20 +154,12 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.headerInfo}>
               <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
               <Text style={styles.email}>{user?.email}</Text>
-              {user?.isVerified ? (
+              {user?.isVerified && (
                 <UserBadges
                   isVerified={user?.isVerified}
                   totalTransactions={user?.totalTransactions || 0}
                   size="medium"
                 />
-              ) : (
-                <HapticPressable
-                  style={styles.verifyButton}
-                  onPress={() => navigation.navigate('Auth', { screen: 'VerifyIdentity' })}
-                  haptic="light"
-                >
-                  <Text style={styles.verifyButtonText}>Verify Identity</Text>
-                </HapticPressable>
               )}
             </View>
           </View>
@@ -399,19 +391,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
-  },
-  verifyButton: {
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.full,
-    alignSelf: 'flex-start',
-  },
-  verifyButtonText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
-    color: COLORS.background,
   },
   stats: {
     marginBottom: SPACING.xl,
