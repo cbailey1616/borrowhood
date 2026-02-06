@@ -428,11 +428,11 @@ router.post('/verify-identity', authenticate, async (req, res) => {
       returnUrl
     );
 
-    // Store session ID
-    await query(
+    // Store session ID (non-blocking — column may not exist yet)
+    query(
       'UPDATE users SET stripe_identity_session_id = $1 WHERE id = $2',
       [session.id, req.user.id]
-    );
+    ).catch(err => console.log('Could not store identity session ID:', err.message));
 
     res.json({
       verificationUrl: session.url,
