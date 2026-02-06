@@ -227,7 +227,7 @@ export function ErrorProvider({ children, navigationRef }) {
           navigationRef.current.navigate('Auth');
           break;
         case 'verification':
-          navigationRef.current.navigate('Auth', { screen: 'VerifyIdentity' });
+          navigationRef.current.navigate('VerifyIdentity');
           break;
         case 'subscription':
           navigationRef.current.navigate('Subscription');

@@ -267,7 +267,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <HapticPressable
               haptic="medium"
               style={styles.promptButton}
-              onPress={() => navigation.navigate('Auth', { screen: 'VerifyIdentity' })}
+              onPress={() => navigation.navigate('VerifyIdentity')}
             >
               <Text style={styles.promptButtonText}>Verify Now</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />

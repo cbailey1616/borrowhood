@@ -471,8 +471,17 @@ router.patch('/:id', authenticate,
       for (const field of allowedFields) {
         const camelField = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
         if (req.body[camelField] !== undefined) {
+          let value = req.body[camelField];
+
+          // Convert visibility array to single enum value (widest scope)
+          if (field === 'visibility' && Array.isArray(value)) {
+            value = value.includes('town') ? 'town'
+              : value.includes('neighborhood') ? 'neighborhood'
+              : 'close_friends';
+          }
+
           updates.push(`${field} = $${paramIndex++}`);
-          values.push(req.body[camelField]);
+          values.push(value);
         }
       }
 

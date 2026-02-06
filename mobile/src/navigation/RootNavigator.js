@@ -36,6 +36,7 @@ import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 import InviteMembersScreen from '../screens/InviteMembersScreen';
 import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
 import ReferralScreen from '../screens/ReferralScreen';
+import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -223,6 +224,11 @@ export default function RootNavigator() {
             name="Referral"
             component={ReferralScreen}
             options={{ ...sharedScreenOptions, title: 'Invite Friends' }}
+          />
+          <Stack.Screen
+            name="VerifyIdentity"
+            component={VerifyIdentityScreen}
+            options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
           />
         </>
       )}

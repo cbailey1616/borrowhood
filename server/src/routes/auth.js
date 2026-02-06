@@ -439,7 +439,6 @@ router.get('/me', authenticate, async (req, res) => {
     const result = await query(
       `SELECT id, email, first_name, last_name, phone, profile_photo_url, bio,
               city, state,
-              latitude, longitude,
               status, rating, rating_count,
               total_transactions, stripe_identity_verified_at
        FROM users WHERE id = $1`,
@@ -461,8 +460,6 @@ router.get('/me', authenticate, async (req, res) => {
       bio: user.bio,
       city: user.city,
       state: user.state,
-      latitude: user.latitude ? parseFloat(user.latitude) : null,
-      longitude: user.longitude ? parseFloat(user.longitude) : null,
       status: user.status,
       isVerified: user.status === 'verified',
       rating: parseFloat(user.rating) || 0,

@@ -11,8 +11,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
@@ -25,24 +23,9 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 const logo = require('../../../assets/logo.png');
 
-let googleConfigured = false;
-
 export default function WelcomeScreen({ navigation }) {
-  const { login, loginWithGoogle, loginWithApple } = useAuth();
+  const { login } = useAuth();
 
-  useEffect(() => {
-    if (!googleConfigured) {
-      try {
-        GoogleSignin.configure({
-          iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
-          webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
-        });
-        googleConfigured = true;
-      } catch (e) {
-        console.log('Google Sign-In configure error:', e);
-      }
-    }
-  }, []);
   const { showError } = useError();
   const {
     isBiometricsAvailable,
@@ -134,70 +117,6 @@ export default function WelcomeScreen({ navigation }) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    if (!googleConfigured) {
-      try {
-        GoogleSignin.configure({
-          iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
-          webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
-        });
-        googleConfigured = true;
-      } catch (e) {
-        showError({ message: 'Google sign-in is not available right now.' });
-        return;
-      }
-    }
-
-    setIsLoading(true);
-    try {
-      // Clear any stale session before signing in
-      try { await GoogleSignin.signOut(); } catch (_) {}
-
-      const response = await GoogleSignin.signIn();
-      if (response.type === 'cancelled') return;
-      const idToken = response.data?.idToken || response.idToken;
-      if (!idToken) throw new Error('No ID token received from Google');
-      await loginWithGoogle(idToken);
-      haptics.success();
-    } catch (error) {
-      const code = error.code || '';
-      if (code !== 'SIGN_IN_CANCELLED' && code !== 'CANCELED' && code !== 'SIGN_IN_REQUIRED') {
-        showError({
-          type: 'auth',
-          message: error.message || 'Google sign-in failed. Please try again.',
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      const fullName = credential.fullName
-        ? { givenName: credential.fullName.givenName, familyName: credential.fullName.familyName }
-        : null;
-      await loginWithApple(credential.identityToken, fullName);
-      haptics.success();
-    } catch (error) {
-      if (error.code !== 'ERR_REQUEST_CANCELED') {
-        showError({
-          type: 'auth',
-          message: error.message || 'Apple sign-in failed. Please try again.',
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const biometricIcon = biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline';
 
   return (
@@ -230,32 +149,6 @@ export default function WelcomeScreen({ navigation }) {
                 </Text>
               </HapticPressable>
             )}
-
-            {/* Social Sign-In Buttons */}
-            {Platform.OS === 'ios' && (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-                cornerRadius={RADIUS.full}
-                style={styles.appleButton}
-                onPress={handleAppleSignIn}
-              />
-            )}
-
-            <HapticPressable
-              style={styles.googleButton}
-              onPress={handleGoogleSignIn}
-              disabled={isLoading}
-              haptic="medium"
-            >
-              <Text style={styles.googleButtonText}>Sign in with Google</Text>
-            </HapticPressable>
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or sign in with email</Text>
-              <View style={styles.dividerLine} />
-            </View>
 
             <BlurCard style={styles.formCard}>
               <View style={styles.form}>
@@ -382,21 +275,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
     fontSize: 16,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: SPACING.xl,
-    gap: SPACING.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.separator,
-  },
-  dividerText: {
-    color: COLORS.textMuted,
-    ...TYPOGRAPHY.footnote,
-  },
   formCard: {
     padding: SPACING.xl,
   },
@@ -469,21 +347,5 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
-  },
-  appleButton: {
-    height: 50,
-    marginBottom: SPACING.sm,
-  },
-  googleButton: {
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
-  googleButtonText: {
-    color: '#1f1f1f',
-    ...TYPOGRAPHY.headline,
   },
 });

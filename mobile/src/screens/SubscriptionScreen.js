@@ -75,7 +75,7 @@ export default function SubscriptionScreen({ navigation }) {
         title: 'Verification Required',
         message: 'Plus requires identity verification to unlock town features and rental payments.',
         primaryAction: 'Verify Now',
-        onPrimaryAction: () => navigation.navigate('Auth', { screen: 'VerifyIdentity' }),
+        onPrimaryAction: () => navigation.navigate('VerifyIdentity'),
       });
       return;
     }
@@ -102,7 +102,7 @@ export default function SubscriptionScreen({ navigation }) {
           title: 'Verification Required',
           message: 'Plus requires identity verification to unlock town features and rental payments.',
           primaryAction: 'Verify Now',
-          onPrimaryAction: () => navigation.navigate('Auth', { screen: 'VerifyIdentity' }),
+          onPrimaryAction: () => navigation.navigate('VerifyIdentity'),
         });
       } else {
         showError({

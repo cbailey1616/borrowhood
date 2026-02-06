@@ -10,8 +10,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import HapticPressable from '../../components/HapticPressable';
 import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
@@ -19,10 +17,8 @@ import { useError } from '../../context/ErrorContext';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
-let googleConfigured = false;
-
 export default function RegisterScreen({ navigation }) {
-  const { register, loginWithGoogle, loginWithApple } = useAuth();
+  const { register } = useAuth();
   const { showError } = useError();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -38,67 +34,6 @@ export default function RegisterScreen({ navigation }) {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleGoogleSignIn = async () => {
-    if (!googleConfigured) {
-      try {
-        GoogleSignin.configure({
-          iosClientId: '676290787470-472asl7h2othaifi7p9pj8bfs7ojo234.apps.googleusercontent.com',
-          webClientId: '676290787470-if537f9tva31uouasphdak0mtnnm6peo.apps.googleusercontent.com',
-        });
-        googleConfigured = true;
-      } catch (e) {
-        showError({ message: 'Google sign-in is not available right now.' });
-        return;
-      }
-    }
-
-    setIsLoading(true);
-    try {
-      try { await GoogleSignin.signOut(); } catch (_) {}
-
-      const response = await GoogleSignin.signIn();
-      if (response.type === 'cancelled') return;
-      const idToken = response.data?.idToken || response.idToken;
-      if (!idToken) throw new Error('No ID token received from Google');
-      await loginWithGoogle(idToken);
-      haptics.success();
-    } catch (error) {
-      const code = error.code || '';
-      if (code !== 'SIGN_IN_CANCELLED' && code !== 'CANCELED' && code !== 'SIGN_IN_REQUIRED') {
-        showError({
-          message: error.message || 'Google sign-in failed. Please try again.',
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      const fullName = credential.fullName
-        ? { givenName: credential.fullName.givenName, familyName: credential.fullName.familyName }
-        : null;
-      await loginWithApple(credential.identityToken, fullName);
-      haptics.success();
-    } catch (error) {
-      if (error.code !== 'ERR_REQUEST_CANCELED') {
-        showError({
-          message: error.message || 'Apple sign-in failed. Please try again.',
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleRegister = async () => {
@@ -166,32 +101,6 @@ export default function RegisterScreen({ navigation }) {
 
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Join your neighborhood sharing community</Text>
-
-          {/* Social Sign-Up Buttons */}
-          {Platform.OS === 'ios' && (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-              cornerRadius={RADIUS.full}
-              style={styles.appleButton}
-              onPress={handleAppleSignIn}
-            />
-          )}
-
-          <HapticPressable
-            style={styles.googleButton}
-            onPress={handleGoogleSignIn}
-            disabled={isLoading}
-            haptic="medium"
-          >
-            <Text style={styles.googleButtonText}>Sign up with Google</Text>
-          </HapticPressable>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or sign up with email</Text>
-            <View style={styles.dividerLine} />
-          </View>
 
           <BlurCard style={styles.formCard}>
             <View style={styles.form}>
@@ -437,36 +346,5 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
     fontWeight: '600',
-  },
-  appleButton: {
-    height: 50,
-    marginBottom: SPACING.sm,
-  },
-  googleButton: {
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
-  googleButtonText: {
-    color: '#1f1f1f',
-    ...TYPOGRAPHY.headline,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-    gap: SPACING.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.separator,
-  },
-  dividerText: {
-    color: COLORS.textMuted,
-    ...TYPOGRAPHY.footnote,
   },
 });
