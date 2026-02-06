@@ -596,7 +596,7 @@ export default function CreateListingScreen({ navigation, route }) {
     {/* Neighborhood Join Overlay */}
     {showJoinCommunity && (
       <View style={styles.overlay}>
-        <BlurCard style={styles.overlayCard}>
+        <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
             <View style={styles.overlayIconContainer}>
               <Ionicons name="home" size={32} color={COLORS.primary} />
@@ -623,14 +623,14 @@ export default function CreateListingScreen({ navigation, route }) {
               <Text style={styles.overlayDismissText}>Cancel</Text>
             </HapticPressable>
           </View>
-        </BlurCard>
+        </View>
       </View>
     )}
 
     {/* Add Friends Overlay */}
     {showAddFriends && (
       <View style={styles.overlay}>
-        <BlurCard style={styles.overlayCard}>
+        <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
             <View style={styles.overlayIconContainer}>
               <Ionicons name="people" size={32} color={COLORS.primary} />
@@ -657,14 +657,14 @@ export default function CreateListingScreen({ navigation, route }) {
               <Text style={styles.overlayDismissText}>Cancel</Text>
             </HapticPressable>
           </View>
-        </BlurCard>
+        </View>
       </View>
     )}
 
     {/* Subscription Upgrade Overlay */}
     {showUpgradePrompt && (
       <View style={styles.overlay}>
-        <BlurCard style={styles.overlayCard}>
+        <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
             <View style={[styles.overlayIconContainer, styles.upgradeIconContainer]}>
               <Ionicons name="star" size={32} color={COLORS.primary} />
@@ -711,7 +711,7 @@ export default function CreateListingScreen({ navigation, route }) {
               <Text style={styles.overlayDismissText}>Keep Free Settings</Text>
             </HapticPressable>
           </View>
-        </BlurCard>
+        </View>
       </View>
     )}
     </View>
@@ -1004,6 +1004,9 @@ const styles = StyleSheet.create({
   overlayCard: {
     width: '100%',
     maxWidth: 340,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
   },
   overlayCardInner: {
     padding: 28,
