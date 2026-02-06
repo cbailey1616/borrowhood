@@ -36,6 +36,7 @@
       "associatedDomains": [
         "applinks:borrowhood.com"
       ],
+      "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -91,7 +92,11 @@
         {
           "contactsPermission": "Borrowhood uses your contacts to help you find friends who are already on the app."
         }
-      ]
+      ],
+      "expo-apple-authentication",
+      ["@react-native-google-signin/google-signin", {
+        "iosUrlScheme": "com.googleusercontent.apps.GOOGLE_IOS_CLIENT_ID"
+      }]
     ],
     "extra": {
       "eas": {

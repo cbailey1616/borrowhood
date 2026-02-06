@@ -1,11 +1,22 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+import jwksClient from 'jwks-rsa';
 import { query } from '../utils/db.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
 import { createStripeCustomer, createIdentityVerificationSession } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
 import { body, validationResult } from 'express-validator';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const appleJwksClient = jwksClient({
+  jwksUri: 'https://appleid.apple.com/auth/keys',
+  cache: true,
+  cacheMaxAge: 86400000, // 24 hours
+});
 
 const router = Router();
 
@@ -126,6 +137,11 @@ router.post('/login',
       }
 
       const user = result.rows[0];
+
+      if (!user.password_hash) {
+        return res.status(401).json({ error: 'This account uses social sign-in. Please use Google or Apple to sign in.' });
+      }
+
       const validPassword = await bcrypt.compare(password, user.password_hash);
 
       if (!validPassword) {
@@ -154,6 +170,227 @@ router.post('/login',
     }
   }
 );
+
+// ============================================
+// POST /api/auth/google
+// Google Sign-In
+// ============================================
+router.post('/google', async (req, res) => {
+  const { idToken } = req.body;
+  if (!idToken) {
+    return res.status(400).json({ error: 'idToken is required' });
+  }
+
+  try {
+    // Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    // Try to find existing user by google_id or email
+    let result = await query(
+      'SELECT id, email, first_name, last_name, status, google_id FROM users WHERE google_id = $1',
+      [googleId]
+    );
+
+    let user;
+    let isNewUser = false;
+
+    if (result.rows.length > 0) {
+      // Found by google_id
+      user = result.rows[0];
+    } else {
+      // Check by email
+      result = await query(
+        'SELECT id, email, first_name, last_name, status, google_id FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length > 0) {
+        // Link Google to existing email account
+        user = result.rows[0];
+        await query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, user.id]);
+      } else {
+        // Create new user
+        isNewUser = true;
+        const nameParts = (name || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Create Stripe customer
+        let stripeCustomerId = null;
+        try {
+          const stripeCustomer = await createStripeCustomer(email, name);
+          stripeCustomerId = stripeCustomer.id;
+        } catch (stripeErr) {
+          console.warn('Stripe customer creation skipped:', stripeErr.message);
+        }
+
+        result = await query(
+          `INSERT INTO users (email, first_name, last_name, google_id, profile_photo_url, stripe_customer_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, email, first_name, last_name, status`,
+          [email, firstName, lastName, googleId, picture || null, stripeCustomerId]
+        );
+        user = result.rows[0];
+
+        // Generate referral code
+        const referralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
+        await query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, user.id]);
+      }
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({ error: 'Account suspended' });
+    }
+
+    const tokens = generateTokens(user.id);
+
+    res.status(isNewUser ? 201 : 200).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        status: user.status,
+      },
+      ...tokens,
+    });
+  } catch (err) {
+    console.error('Google sign-in error:', err);
+    res.status(401).json({ error: 'Invalid Google token' });
+  }
+});
+
+// ============================================
+// POST /api/auth/apple
+// Apple Sign-In
+// ============================================
+router.post('/apple', async (req, res) => {
+  const { identityToken, fullName } = req.body;
+  if (!identityToken) {
+    return res.status(400).json({ error: 'identityToken is required' });
+  }
+
+  try {
+    // Decode the JWT header to get the kid
+    const decoded = jwt.decode(identityToken, { complete: true });
+    if (!decoded) {
+      return res.status(401).json({ error: 'Invalid Apple token' });
+    }
+
+    // Fetch the matching public key from Apple's JWKS
+    const key = await appleJwksClient.getSigningKey(decoded.header.kid);
+    const signingKey = key.getPublicKey();
+
+    // Verify the token
+    const payload = jwt.verify(identityToken, signingKey, {
+      algorithms: ['RS256'],
+      issuer: 'https://appleid.apple.com',
+      audience: 'com.borrowhood.app',
+    });
+
+    const { sub: appleId, email } = payload;
+
+    // Try to find existing user by apple_id or email
+    let result = await query(
+      'SELECT id, email, first_name, last_name, status, apple_id FROM users WHERE apple_id = $1',
+      [appleId]
+    );
+
+    let user;
+    let isNewUser = false;
+
+    if (result.rows.length > 0) {
+      // Found by apple_id
+      user = result.rows[0];
+    } else if (email) {
+      // Check by email
+      result = await query(
+        'SELECT id, email, first_name, last_name, status, apple_id FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length > 0) {
+        // Link Apple to existing email account
+        user = result.rows[0];
+        await query('UPDATE users SET apple_id = $1 WHERE id = $2', [appleId, user.id]);
+      } else {
+        // Create new user — Apple only sends name on first sign-in
+        isNewUser = true;
+        const firstName = fullName?.givenName || '';
+        const lastName = fullName?.familyName || '';
+
+        let stripeCustomerId = null;
+        try {
+          const stripeCustomer = await createStripeCustomer(email, `${firstName} ${lastName}`.trim());
+          stripeCustomerId = stripeCustomer.id;
+        } catch (stripeErr) {
+          console.warn('Stripe customer creation skipped:', stripeErr.message);
+        }
+
+        result = await query(
+          `INSERT INTO users (email, first_name, last_name, apple_id, stripe_customer_id)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, email, first_name, last_name, status`,
+          [email, firstName, lastName, appleId, stripeCustomerId]
+        );
+        user = result.rows[0];
+
+        // Generate referral code
+        const referralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
+        await query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, user.id]);
+      }
+    } else {
+      // No email and no existing apple_id match — create with just apple_id
+      isNewUser = true;
+      const firstName = fullName?.givenName || '';
+      const lastName = fullName?.familyName || '';
+
+      let stripeCustomerId = null;
+      try {
+        const stripeCustomer = await createStripeCustomer('', `${firstName} ${lastName}`.trim());
+        stripeCustomerId = stripeCustomer.id;
+      } catch (stripeErr) {
+        console.warn('Stripe customer creation skipped:', stripeErr.message);
+      }
+
+      result = await query(
+        `INSERT INTO users (first_name, last_name, apple_id, stripe_customer_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, email, first_name, last_name, status`,
+        [firstName, lastName, appleId, stripeCustomerId]
+      );
+      user = result.rows[0];
+
+      const referralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
+      await query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, user.id]);
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({ error: 'Account suspended' });
+    }
+
+    const tokens = generateTokens(user.id);
+
+    res.status(isNewUser ? 201 : 200).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        status: user.status,
+      },
+      ...tokens,
+    });
+  } catch (err) {
+    console.error('Apple sign-in error:', err);
+    res.status(401).json({ error: 'Invalid Apple token' });
+  }
+});
 
 // ============================================
 // POST /api/auth/verify-identity

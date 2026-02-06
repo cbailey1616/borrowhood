@@ -98,6 +98,12 @@ const forgotPassword = (email) =>
 const resetPassword = (email, code, newPassword) =>
   post('/auth/reset-password', { email, code, newPassword });
 
+const loginWithGoogle = (idToken) =>
+  post('/auth/google', { idToken });
+
+const loginWithApple = (identityToken, fullName) =>
+  post('/auth/apple', { identityToken, fullName });
+
 // ============================================
 // Users
 // ============================================
@@ -565,6 +571,8 @@ export default {
   startIdentityVerification,
   forgotPassword,
   resetPassword,
+  loginWithGoogle,
+  loginWithApple,
   // Users
   getUser,
   updateProfile,

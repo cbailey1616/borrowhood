@@ -54,6 +54,26 @@ export function AuthProvider({ children, navigationRef }) {
     return response.user;
   };
 
+  const loginWithGoogle = async (idToken) => {
+    const response = await api.loginWithGoogle(idToken);
+    await SecureStore.setItemAsync('accessToken', response.accessToken);
+    await SecureStore.setItemAsync('refreshToken', response.refreshToken);
+    api.setAuthToken(response.accessToken);
+    setUser(response.user);
+    setIsAuthenticated(true);
+    return response.user;
+  };
+
+  const loginWithApple = async (identityToken, fullName) => {
+    const response = await api.loginWithApple(identityToken, fullName);
+    await SecureStore.setItemAsync('accessToken', response.accessToken);
+    await SecureStore.setItemAsync('refreshToken', response.refreshToken);
+    api.setAuthToken(response.accessToken);
+    setUser(response.user);
+    setIsAuthenticated(true);
+    return response.user;
+  };
+
   const logout = async () => {
     await SecureStore.deleteItemAsync('accessToken');
     await SecureStore.deleteItemAsync('refreshToken');
@@ -78,6 +98,8 @@ export function AuthProvider({ children, navigationRef }) {
     isLoading,
     isAuthenticated,
     login,
+    loginWithGoogle,
+    loginWithApple,
     register,
     logout,
     refreshUser,

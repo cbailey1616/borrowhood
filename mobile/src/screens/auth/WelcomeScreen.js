@@ -11,6 +11,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
@@ -21,10 +23,14 @@ import useBiometrics from '../../hooks/useBiometrics';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
+GoogleSignin.configure({
+  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+});
+
 const logo = require('../../../assets/logo.png');
 
 export default function WelcomeScreen({ navigation }) {
-  const { login } = useAuth();
+  const { login, loginWithGoogle, loginWithApple } = useAuth();
   const { showError } = useError();
   const {
     isBiometricsAvailable,
@@ -116,6 +122,53 @@ export default function WelcomeScreen({ navigation }) {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken;
+      if (!idToken) throw new Error('No ID token received from Google');
+      await loginWithGoogle(idToken);
+      haptics.success();
+    } catch (error) {
+      if (error.code !== 'SIGN_IN_CANCELLED') {
+        showError({
+          type: 'auth',
+          message: error.message || 'Google sign-in failed. Please try again.',
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      const fullName = credential.fullName
+        ? { givenName: credential.fullName.givenName, familyName: credential.fullName.familyName }
+        : null;
+      await loginWithApple(credential.identityToken, fullName);
+      haptics.success();
+    } catch (error) {
+      if (error.code !== 'ERR_REQUEST_CANCELED') {
+        showError({
+          type: 'auth',
+          message: error.message || 'Apple sign-in failed. Please try again.',
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const biometricIcon = biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline';
 
   return (
@@ -149,13 +202,31 @@ export default function WelcomeScreen({ navigation }) {
               </HapticPressable>
             )}
 
-            {canUseBiometrics && (
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or use password</Text>
-                <View style={styles.dividerLine} />
-              </View>
+            {/* Social Sign-In Buttons */}
+            {Platform.OS === 'ios' && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={RADIUS.full}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
             )}
+
+            <HapticPressable
+              style={styles.googleButton}
+              onPress={handleGoogleSignIn}
+              disabled={isLoading}
+              haptic="medium"
+            >
+              <Text style={styles.googleButtonText}>Sign in with Google</Text>
+            </HapticPressable>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or sign in with email</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
             <BlurCard style={styles.formCard}>
               <View style={styles.form}>
@@ -369,5 +440,21 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
+  },
+  appleButton: {
+    height: 50,
+    marginBottom: SPACING.sm,
+  },
+  googleButton: {
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  googleButtonText: {
+    color: '#1f1f1f',
+    ...TYPOGRAPHY.headline,
   },
 });
