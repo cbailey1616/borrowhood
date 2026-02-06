@@ -23,6 +23,7 @@ import ConversationsScreen from '../screens/ConversationsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
+import AddPaymentMethodScreen from '../screens/AddPaymentMethodScreen';
 import MyCommunityScreen from '../screens/MyCommunityScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import DisputesScreen from '../screens/DisputesScreen';
@@ -161,6 +162,11 @@ export default function RootNavigator() {
             name="PaymentMethods"
             component={PaymentMethodsScreen}
             options={{ ...sharedScreenOptions, title: 'Payment Methods' }}
+          />
+          <Stack.Screen
+            name="AddPaymentMethod"
+            component={AddPaymentMethodScreen}
+            options={{ ...sharedScreenOptions, title: 'Add Card', presentation: 'modal' }}
           />
           <Stack.Screen
             name="MyCommunity"

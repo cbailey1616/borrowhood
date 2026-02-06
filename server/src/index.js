@@ -32,6 +32,7 @@ import seasonalRoutes from './routes/seasonal.js';
 import availabilityRoutes from './routes/availability.js';
 import libraryRoutes from './routes/library.js';
 import subscriptionRoutes from './routes/subscriptions.js';
+import paymentMethodRoutes from './routes/paymentMethods.js';
 import savedRoutes from './routes/saved.js';
 import categoryRoutes from './routes/categories.js';
 
@@ -121,6 +122,7 @@ app.use('/api/seasonal', seasonalRoutes);
 app.use('/api/listings', availabilityRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/saved', savedRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/listings', discussionRoutes);

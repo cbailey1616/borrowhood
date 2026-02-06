@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { useConfirmPayment } from '@stripe/stripe-react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -22,9 +23,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
+  const { confirmPayment } = useConfirmPayment();
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -132,6 +135,39 @@ export default function TransactionDetailScreen({ route, navigation }) {
       showError({ message: error.message || 'Unable to submit rating.' });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handlePayNow = async () => {
+    setPaymentLoading(true);
+    try {
+      // Ask server for PaymentIntent status
+      const result = await api.confirmPayment(id);
+
+      if (result.requiresPayment && result.clientSecret) {
+        // Confirm payment via Stripe SDK
+        const { error } = await confirmPayment(result.clientSecret, {
+          paymentMethodType: 'Card',
+        });
+
+        if (error) {
+          haptics.error();
+          showError({ message: error.message || 'Payment failed.' });
+          return;
+        }
+
+        // Finalize on backend
+        await api.confirmPayment(id);
+      }
+
+      haptics.success();
+      showToast('Payment successful!', 'success');
+      fetchTransaction();
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Payment failed. Please try again.' });
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -335,6 +371,40 @@ export default function TransactionDetailScreen({ route, navigation }) {
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <Text style={styles.approveButtonText}>Approve</Text>
+            )}
+          </HapticPressable>
+        </View>
+      )}
+
+      {/* Borrower: Pay Now for approved transactions */}
+      {transaction.isBorrower && transaction.status === 'approved' && (
+        <View style={styles.paymentFooter}>
+          <View style={styles.paymentSummary}>
+            <View style={styles.paymentRow}>
+              <Text style={styles.paymentLabel}>Rental fee</Text>
+              <Text style={styles.paymentValue}>${transaction.rentalFee.toFixed(2)}</Text>
+            </View>
+            <View style={styles.paymentRow}>
+              <Text style={styles.paymentLabel}>Refundable deposit</Text>
+              <Text style={styles.paymentValue}>${transaction.depositAmount.toFixed(2)}</Text>
+            </View>
+            <View style={[styles.paymentRow, styles.paymentTotalRow]}>
+              <Text style={styles.paymentTotalLabel}>Total</Text>
+              <Text style={styles.paymentTotalValue}>
+                ${(transaction.rentalFee + transaction.depositAmount).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+          <HapticPressable
+            haptic="medium"
+            style={[styles.approveButton, paymentLoading && { opacity: 0.5 }]}
+            onPress={handlePayNow}
+            disabled={paymentLoading}
+          >
+            {paymentLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.approveButtonText}>Pay Now</Text>
             )}
           </HapticPressable>
         </View>
@@ -691,5 +761,45 @@ const styles = StyleSheet.create({
   ratingActions: {
     flexDirection: 'row',
     gap: SPACING.md,
+  },
+  paymentFooter: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.separator,
+    gap: SPACING.md,
+  },
+  paymentSummary: {
+    gap: SPACING.xs,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  paymentLabel: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
+  },
+  paymentValue: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.text,
+  },
+  paymentTotalRow: {
+    marginTop: SPACING.xs,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.separator,
+  },
+  paymentTotalLabel: {
+    ...TYPOGRAPHY.headline,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  paymentTotalValue: {
+    ...TYPOGRAPHY.headline,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
   },
 });

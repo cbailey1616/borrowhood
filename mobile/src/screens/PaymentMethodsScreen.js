@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -15,16 +16,26 @@ import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-export default function PaymentMethodsScreen({ navigation }) {
+export default function PaymentMethodsScreen({ navigation, route }) {
+  const selectMode = route.params?.selectMode || false;
+  const onSelectMethod = route.params?.onSelectMethod;
   const { showError } = useError();
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removeSheetVisible, setRemoveSheetVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
     fetchPaymentMethods();
   }, []);
+
+  // Refresh list when returning from AddPaymentMethod
+  useFocusEffect(
+    useCallback(() => {
+      fetchPaymentMethods();
+    }, [])
+  );
 
   const fetchPaymentMethods = async () => {
     try {
@@ -91,49 +102,70 @@ export default function PaymentMethodsScreen({ navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+    <ScrollView style={styles.scrollContainer}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your Cards</Text>
 
         {paymentMethods.length > 0 ? (
           <View style={styles.cardList}>
             {paymentMethods.map((card) => (
-              <BlurCard key={card.id} style={styles.card}>
-                <View style={styles.cardIcon}>
-                  <Text style={styles.cardIconText}>{getCardIcon(card.brand)}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardBrand}>
-                    {card.brand} {'\u2022\u2022\u2022\u2022'} {card.last4}
-                  </Text>
-                  <Text style={styles.cardExpiry}>
-                    Expires {card.expMonth}/{card.expYear}
-                  </Text>
-                </View>
-                {card.isDefault ? (
-                  <View style={styles.defaultBadge}>
-                    <Text style={styles.defaultText}>Default</Text>
+              <HapticPressable
+                key={card.id}
+                haptic="light"
+                onPress={() => {
+                  if (selectMode) {
+                    setSelectedId(card.id);
+                  }
+                }}
+                disabled={!selectMode}
+              >
+                <BlurCard style={styles.card}>
+                  {selectMode && (
+                    <Ionicons
+                      name={selectedId === card.id ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={22}
+                      color={selectedId === card.id ? COLORS.primary : COLORS.gray[500]}
+                    />
+                  )}
+                  <View style={styles.cardIcon}>
+                    <Text style={styles.cardIconText}>{getCardIcon(card.brand)}</Text>
                   </View>
-                ) : (
-                  <HapticPressable
-                    haptic="light"
-                    style={styles.setDefaultButton}
-                    onPress={() => handleSetDefault(card)}
-                  >
-                    <Text style={styles.setDefaultText}>Set Default</Text>
-                  </HapticPressable>
-                )}
-                <HapticPressable
-                  haptic="light"
-                  style={styles.removeButton}
-                  onPress={() => {
-                    setSelectedCard(card);
-                    setRemoveSheetVisible(true);
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-                </HapticPressable>
-              </BlurCard>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardBrand}>
+                      {card.brand} {'\u2022\u2022\u2022\u2022'} {card.last4}
+                    </Text>
+                    <Text style={styles.cardExpiry}>
+                      Expires {card.expMonth}/{card.expYear}
+                    </Text>
+                  </View>
+                  {!selectMode && card.isDefault ? (
+                    <View style={styles.defaultBadge}>
+                      <Text style={styles.defaultText}>Default</Text>
+                    </View>
+                  ) : !selectMode ? (
+                    <HapticPressable
+                      haptic="light"
+                      style={styles.setDefaultButton}
+                      onPress={() => handleSetDefault(card)}
+                    >
+                      <Text style={styles.setDefaultText}>Set Default</Text>
+                    </HapticPressable>
+                  ) : null}
+                  {!selectMode && (
+                    <HapticPressable
+                      haptic="light"
+                      style={styles.removeButton}
+                      onPress={() => {
+                        setSelectedCard(card);
+                        setRemoveSheetVisible(true);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+                    </HapticPressable>
+                  )}
+                </BlurCard>
+              </HapticPressable>
             ))}
           </View>
         ) : (
@@ -152,7 +184,7 @@ export default function PaymentMethodsScreen({ navigation }) {
         </HapticPressable>
       </View>
 
-      <View style={styles.section}>
+      {!selectMode && <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payout Account</Text>
         <BlurCard style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
@@ -168,7 +200,7 @@ export default function PaymentMethodsScreen({ navigation }) {
           <Ionicons name="add" size={20} color={COLORS.primary} />
           <Text style={styles.addButtonText}>Set Up Payout Account</Text>
         </HapticPressable>
-      </View>
+      </View>}
 
       <ActionSheet
         isVisible={removeSheetVisible}
@@ -184,6 +216,22 @@ export default function PaymentMethodsScreen({ navigation }) {
         ]}
       />
     </ScrollView>
+
+    {selectMode && selectedId && (
+      <View style={styles.selectFooter}>
+        <HapticPressable
+          haptic="medium"
+          style={styles.selectButton}
+          onPress={() => {
+            onSelectMethod?.(selectedId);
+            navigation.goBack();
+          }}
+        >
+          <Text style={styles.selectButtonText}>Use This Card</Text>
+        </HapticPressable>
+      </View>
+    )}
+    </View>
   );
 }
 
@@ -191,6 +239,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollContainer: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -308,5 +359,22 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
+  },
+  selectFooter: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.separator,
+  },
+  selectButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+  },
+  selectButtonText: {
+    ...TYPOGRAPHY.button,
+    color: '#fff',
   },
 });

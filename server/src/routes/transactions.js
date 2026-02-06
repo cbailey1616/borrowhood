@@ -4,6 +4,7 @@ import { authenticate, requireVerified } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
   createPaymentIntent,
+  getPaymentIntent,
   capturePaymentIntent,
   cancelPaymentIntent,
   createTransfer,
@@ -398,22 +399,40 @@ router.post('/:id/decline', authenticate,
 // ============================================
 router.post('/:id/confirm-payment', authenticate, async (req, res) => {
   try {
-    const result = await query(
-      `UPDATE borrow_transactions
-       SET status = 'paid'
-       WHERE id = $1 AND borrower_id = $2 AND status = 'approved'
-       RETURNING *`,
+    const txn = await query(
+      `SELECT * FROM borrow_transactions
+       WHERE id = $1 AND borrower_id = $2 AND status = 'approved'`,
       [req.params.id, req.user.id]
     );
 
-    if (result.rows.length === 0) {
+    if (txn.rows.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
+
+    const t = txn.rows[0];
+
+    // Check PaymentIntent status if one exists
+    if (t.stripe_payment_intent_id) {
+      const pi = await getPaymentIntent(t.stripe_payment_intent_id);
+
+      if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
+        return res.json({
+          requiresPayment: true,
+          clientSecret: pi.client_secret,
+        });
+      }
+    }
+
+    // Payment confirmed or captured — mark as paid
+    await query(
+      `UPDATE borrow_transactions SET status = 'paid' WHERE id = $1`,
+      [req.params.id]
+    );
 
     // Mark listing as unavailable
     await query(
       'UPDATE listings SET is_available = false WHERE id = $1',
-      [result.rows[0].listing_id]
+      [t.listing_id]
     );
 
     res.json({ success: true });
