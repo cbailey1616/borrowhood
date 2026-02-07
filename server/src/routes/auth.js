@@ -527,6 +527,25 @@ router.post('/admin/reset-onboarding', async (req, res) => {
   }
 });
 
+// ============================================
+// POST /api/auth/admin/reset-verifications
+// Reset all user verifications (admin only)
+// ============================================
+router.post('/admin/reset-verifications', async (req, res) => {
+  const { secret } = req.body;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const result = await query(
+      "UPDATE users SET status = 'active', is_verified = false, stripe_identity_verified_at = NULL WHERE is_verified = true RETURNING id, email"
+    );
+    res.json({ success: true, count: result.rowCount, users: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/auth/me
 // Get current user
 // ============================================
