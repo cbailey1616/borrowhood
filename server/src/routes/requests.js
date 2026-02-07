@@ -195,12 +195,19 @@ router.post('/', authenticate,
 
     let {
       title, description, communityId, categoryId,
-      neededFrom, neededUntil, visibility, expiresIn
+      neededFrom, neededUntil, visibility, expiresIn, expiresAt
     } = req.body;
 
-    // Compute expires_at interval
-    const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
-    const expiresInterval = expiresInMap[expiresIn] || '1 day';
+    // Compute expires_at value
+    let expiresAtValue = null;
+    if (expiresIn === 'never') {
+      expiresAtValue = null; // No expiration
+    } else if (expiresAt) {
+      expiresAtValue = new Date(expiresAt); // Custom date
+    } else {
+      const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
+      expiresAtValue = expiresInMap[expiresIn] || '1 day';
+    }
 
     // Convert visibility array to single enum value (widest scope)
     if (Array.isArray(visibility)) {
@@ -226,17 +233,47 @@ router.post('/', authenticate,
       }
 
       // Create request
-      const result = await query(
-        `INSERT INTO item_requests (
-          user_id, community_id, category_id, title, description,
-          needed_from, needed_until, visibility, status, expires_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval)
-        RETURNING id`,
-        [
-          req.user.id, communityId, categoryId || null, title, description,
-          neededFrom || null, neededUntil || null, visibility, expiresInterval
-        ]
-      );
+      let result;
+      if (expiresAtValue === null) {
+        // No expiration
+        result = await query(
+          `INSERT INTO item_requests (
+            user_id, community_id, category_id, title, description,
+            needed_from, needed_until, visibility, status, expires_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL)
+          RETURNING id`,
+          [
+            req.user.id, communityId, categoryId || null, title, description,
+            neededFrom || null, neededUntil || null, visibility
+          ]
+        );
+      } else if (expiresAtValue instanceof Date) {
+        // Custom date
+        result = await query(
+          `INSERT INTO item_requests (
+            user_id, community_id, category_id, title, description,
+            needed_from, needed_until, visibility, status, expires_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9)
+          RETURNING id`,
+          [
+            req.user.id, communityId, categoryId || null, title, description,
+            neededFrom || null, neededUntil || null, visibility, expiresAtValue
+          ]
+        );
+      } else {
+        // Interval string (1 day, 3 days, 7 days)
+        result = await query(
+          `INSERT INTO item_requests (
+            user_id, community_id, category_id, title, description,
+            needed_from, needed_until, visibility, status, expires_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval)
+          RETURNING id`,
+          [
+            req.user.id, communityId, categoryId || null, title, description,
+            neededFrom || null, neededUntil || null, visibility, expiresAtValue
+          ]
+        );
+      }
 
       res.status(201).json({ id: result.rows[0].id });
     } catch (err) {
@@ -271,13 +308,20 @@ router.post('/:id/renew', authenticate, async (req, res) => {
     }
 
     const { expiresIn } = req.body;
-    const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
-    const interval = expiresInMap[expiresIn] || '1 day';
 
-    await query(
-      `UPDATE item_requests SET expires_at = NOW() + $1::interval WHERE id = $2`,
-      [interval, req.params.id]
-    );
+    if (expiresIn === 'never') {
+      await query(
+        `UPDATE item_requests SET expires_at = NULL WHERE id = $1`,
+        [req.params.id]
+      );
+    } else {
+      const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
+      const interval = expiresInMap[expiresIn] || '1 day';
+      await query(
+        `UPDATE item_requests SET expires_at = NOW() + $1::interval WHERE id = $2`,
+        [interval, req.params.id]
+      );
+    }
 
     res.json({ success: true });
   } catch (err) {

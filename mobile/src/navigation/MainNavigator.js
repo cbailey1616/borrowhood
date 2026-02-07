@@ -33,7 +33,7 @@ export default function MainNavigator() {
 
   return (
     <Tab.Navigator
-      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.total} />}
+      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.messages + badgeCounts.actions} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,

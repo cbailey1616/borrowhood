@@ -160,7 +160,14 @@ router.post('/subscribe', authenticate, async (req, res) => {
     // Create subscription
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: process.env.STRIPE_PRICE_PLUS }],
+      items: [{
+        price_data: {
+          currency: 'usd',
+          product: 'prod_Tw6rY768inoM0H',
+          recurring: { interval: 'month' },
+          unit_amount: 100, // $1.00
+        },
+      }],
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
     });

@@ -418,7 +418,7 @@ export default function CreateListingScreen({ navigation, route }) {
           <HapticPressable
             haptic="light"
             style={styles.dropdownButton}
-            onPress={() => setShowCategorySheet(true)}
+            onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
             {formData.categoryId ? (
               <View style={styles.dropdownSelected}>
@@ -560,7 +560,7 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Submit */}
       <HapticPressable
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-        onPress={handleSubmit}
+        onPress={() => handleSubmit()}
         disabled={isSubmitting}
         haptic="medium"
       >

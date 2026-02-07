@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
@@ -25,6 +26,8 @@ const EXPIRATION_OPTIONS = [
   { value: '1d', label: '1 Day' },
   { value: '3d', label: '3 Days' },
   { value: '1w', label: '1 Week' },
+  { value: 'never', label: "Doesn't Expire" },
+  { value: 'custom', label: 'Custom' },
 ];
 
 export default function CreateRequestScreen({ navigation }) {
@@ -41,6 +44,12 @@ export default function CreateRequestScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customExpiryDate, setCustomExpiryDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
   const [communityId, setCommunityId] = useState(undefined); // undefined = loading, null = no community
 
   useEffect(() => {
@@ -105,7 +114,7 @@ export default function CreateRequestScreen({ navigation }) {
 
     setIsSubmitting(true);
     try {
-      await api.createRequest({
+      const requestData = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         categoryId: formData.categoryId,
@@ -113,8 +122,17 @@ export default function CreateRequestScreen({ navigation }) {
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
         neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
         communityId: communityId,
-        expiresIn: formData.expiresIn,
-      });
+      };
+
+      if (formData.expiresIn === 'never') {
+        requestData.expiresIn = 'never';
+      } else if (formData.expiresIn === 'custom') {
+        requestData.expiresAt = customExpiryDate.toISOString();
+      } else {
+        requestData.expiresIn = formData.expiresIn;
+      }
+
+      await api.createRequest(requestData);
 
       showToast('Your request has been posted!', 'success');
       navigation.goBack();
@@ -298,7 +316,13 @@ export default function CreateRequestScreen({ navigation }) {
               <HapticPressable
                 key={opt.value}
                 style={[styles.option, isSelected && styles.optionActive]}
-                onPress={() => updateField('expiresIn', opt.value)}
+                onPress={() => {
+                  updateField('expiresIn', opt.value);
+                  if (opt.value === 'custom') {
+                    Keyboard.dismiss();
+                    setShowDatePicker(true);
+                  }
+                }}
                 haptic="light"
               >
                 <Ionicons
@@ -314,6 +338,42 @@ export default function CreateRequestScreen({ navigation }) {
             );
           })}
         </View>
+        {formData.expiresIn === 'custom' && (
+          <View style={styles.customDateContainer}>
+            <HapticPressable
+              style={styles.customDateButton}
+              onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
+              haptic="light"
+            >
+              <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.customDateText}>
+                {customExpiryDate.toLocaleDateString()}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+            </HapticPressable>
+            {showDatePicker && (
+              <DateTimePicker
+                value={customExpiryDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date()}
+                onChange={(event, date) => {
+                  if (Platform.OS === 'android') setShowDatePicker(false);
+                  if (date) setCustomExpiryDate(date);
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && showDatePicker && (
+              <HapticPressable
+                style={styles.datePickerDone}
+                onPress={() => setShowDatePicker(false)}
+                haptic="light"
+              >
+                <Text style={styles.datePickerDoneText}>Done</Text>
+              </HapticPressable>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Visibility */}
@@ -497,6 +557,34 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
+  },
+  customDateContainer: {
+    marginTop: SPACING.md,
+  },
+  customDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md + 2,
+    backgroundColor: COLORS.surface,
+  },
+  customDateText: {
+    ...TYPOGRAPHY.body,
+    flex: 1,
+    color: COLORS.text,
+  },
+  datePickerDone: {
+    alignSelf: 'flex-end',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+  },
+  datePickerDoneText: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.primary,
   },
   input: {
     borderWidth: 1,

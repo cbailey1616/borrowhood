@@ -310,7 +310,7 @@ export default function FeedScreen({ navigation }) {
 
   const renderRequestItem = (item, index) => (
     <AnimatedCard index={index}>
-      <BlurCard style={styles.card}>
+      <BlurCard style={[styles.card, styles.requestCard]}>
         <HapticPressable
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"
@@ -368,7 +368,7 @@ export default function FeedScreen({ navigation }) {
             )}
           </View>
 
-          <View style={styles.cardActions}>
+          <View style={[styles.cardActions, styles.requestActions]}>
             <HapticPressable
               style={styles.actionButton}
               onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
@@ -817,6 +817,11 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
   },
+  requestCard: {
+    backgroundColor: COLORS.secondary + '12',
+    borderWidth: 1,
+    borderColor: COLORS.secondary + '25',
+  },
   requestBadge: {
     backgroundColor: COLORS.secondaryMuted,
   },
@@ -886,6 +891,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surfaceElevated,
     paddingVertical: SPACING.xs,
+  },
+  requestActions: {
+    backgroundColor: COLORS.secondary + '10',
   },
   actionButton: {
     flex: 1,
