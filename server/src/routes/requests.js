@@ -178,34 +178,45 @@ router.get('/:id', authenticate, async (req, res) => {
 // POST /api/requests
 // Create a new item request
 // ============================================
-router.post('/', authenticate, requireVerified,
+router.post('/', authenticate,
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
-  body('communityId').isUUID(),
+  body('communityId').optional({ nullable: true }).isUUID(),
   body('categoryId').optional().isUUID(),
   body('neededFrom').optional().isISO8601(),
   body('neededUntil').optional().isISO8601(),
-  body('visibility').isIn(['close_friends', 'neighborhood', 'town']),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const {
+    let {
       title, description, communityId, categoryId,
       neededFrom, neededUntil, visibility
     } = req.body;
 
-    try {
-      // Verify user is member of community
-      const memberCheck = await query(
-        'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
-        [req.user.id, communityId]
-      );
+    // Convert visibility array to single enum value (widest scope)
+    if (Array.isArray(visibility)) {
+      visibility = visibility.includes('town') ? 'town'
+        : visibility.includes('neighborhood') ? 'neighborhood'
+        : 'close_friends';
+    }
+    if (!['close_friends', 'neighborhood', 'town'].includes(visibility)) {
+      visibility = 'neighborhood';
+    }
 
-      if (memberCheck.rows.length === 0) {
-        return res.status(403).json({ error: 'Must be community member to post' });
+    try {
+      // Verify user is member of community (if community specified)
+      if (communityId) {
+        const memberCheck = await query(
+          'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
+          [req.user.id, communityId]
+        );
+
+        if (memberCheck.rows.length === 0) {
+          return res.status(403).json({ error: 'Must be community member to post' });
+        }
       }
 
       // Create request
@@ -261,9 +272,16 @@ router.patch('/:id', authenticate,
 
       for (const field of allowedFields) {
         const camelField = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-        if (req.body[camelField] !== undefined) {
+        let value = req.body[camelField];
+        if (value !== undefined) {
+          // Convert visibility array to single enum value
+          if (field === 'visibility' && Array.isArray(value)) {
+            value = value.includes('town') ? 'town'
+              : value.includes('neighborhood') ? 'neighborhood'
+              : 'close_friends';
+          }
           updates.push(`${field} = $${paramIndex++}`);
-          values.push(req.body[camelField]);
+          values.push(value);
         }
       }
 
