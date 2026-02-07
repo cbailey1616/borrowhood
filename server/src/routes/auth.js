@@ -28,10 +28,11 @@ router.post('/register',
   body('password').isLength({ min: 8 }),
   body('firstName').trim().notEmpty(),
   body('lastName').trim().notEmpty(),
-  body('phone').optional().isMobilePhone(),
+  body('phone').optional({ values: 'falsy' }).isMobilePhone(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Registration validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
