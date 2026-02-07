@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Platform } from 'react-native';
-import { useConfirmPayment, useApplePay } from '@stripe/stripe-react-native';
+import { useConfirmPayment, usePlatformPay } from '@stripe/stripe-react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -25,9 +25,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { user } = useAuth();
   const { showError, showToast } = useError();
   const { confirmPayment } = useConfirmPayment();
-  const { isApplePaySupported, presentApplePay, confirmApplePayPayment } = useApplePay();
+  const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [applePaySupported, setApplePaySupported] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
@@ -38,6 +39,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchTransaction();
+    if (Platform.OS === 'ios') {
+      isPlatformPaySupported().then(setApplePaySupported);
+    }
   }, [id]);
 
   const fetchTransaction = async () => {
@@ -181,29 +185,23 @@ export default function TransactionDetailScreen({ route, navigation }) {
       if (result.requiresPayment && result.clientSecret) {
         const total = (transaction.rentalFee + transaction.depositAmount).toFixed(2);
 
-        const { error: presentError } = await presentApplePay({
-          cartItems: [
-            { label: 'Rental fee', amount: transaction.rentalFee.toFixed(2) },
-            { label: 'Refundable deposit', amount: transaction.depositAmount.toFixed(2) },
-            { label: 'BorrowHood', amount: total },
-          ],
-          country: 'US',
-          currency: 'USD',
+        const { error } = await confirmPlatformPayPayment(result.clientSecret, {
+          applePay: {
+            merchantCountryCode: 'US',
+            currencyCode: 'USD',
+            cartItems: [
+              { paymentType: 'Immediate', label: 'Rental fee', amount: transaction.rentalFee.toFixed(2) },
+              { paymentType: 'Immediate', label: 'Refundable deposit', amount: transaction.depositAmount.toFixed(2) },
+              { paymentType: 'Immediate', label: 'BorrowHood', amount: total },
+            ],
+          },
         });
 
-        if (presentError) {
-          if (presentError.code !== 'Canceled') {
+        if (error) {
+          if (error.code !== 'Canceled') {
             haptics.error();
-            showError({ message: presentError.message || 'Apple Pay failed.' });
+            showError({ message: error.message || 'Apple Pay failed.' });
           }
-          return;
-        }
-
-        const { error: confirmError } = await confirmApplePayPayment(result.clientSecret);
-
-        if (confirmError) {
-          haptics.error();
-          showError({ message: confirmError.message || 'Payment failed.' });
           return;
         }
 
@@ -446,7 +444,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               </Text>
             </View>
           </View>
-          {Platform.OS === 'ios' && isApplePaySupported && (
+          {Platform.OS === 'ios' && applePaySupported && (
             <HapticPressable
               haptic="medium"
               style={[styles.applePayButton, paymentLoading && { opacity: 0.5 }]}

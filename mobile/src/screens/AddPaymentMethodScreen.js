@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { CardField, useConfirmSetupIntent, useApplePay } from '@stripe/stripe-react-native';
+import { CardField, useConfirmSetupIntent, usePlatformPay } from '@stripe/stripe-react-native';
 import HapticPressable from '../components/HapticPressable';
 import { Ionicons } from '../components/Icon';
 import { useError } from '../context/ErrorContext';
@@ -17,15 +17,24 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 export default function AddPaymentMethodScreen({ navigation }) {
   const { showError, showToast } = useError();
   const { confirmSetupIntent } = useConfirmSetupIntent();
-  const { isApplePaySupported, presentApplePay, confirmApplePayPayment } = useApplePay();
+  const { isPlatformPaySupported, confirmPlatformPaySetupIntent } = usePlatformPay();
   const [clientSecret, setClientSecret] = useState(null);
   const [cardComplete, setCardComplete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [applePaySupported, setApplePaySupported] = useState(false);
 
   useEffect(() => {
     createSetupIntent();
+    checkApplePay();
   }, []);
+
+  const checkApplePay = async () => {
+    if (Platform.OS === 'ios') {
+      const supported = await isPlatformPaySupported();
+      setApplePaySupported(supported);
+    }
+  };
 
   const createSetupIntent = async () => {
     try {
@@ -69,25 +78,19 @@ export default function AddPaymentMethodScreen({ navigation }) {
 
     setSaving(true);
     try {
-      const { error: presentError } = await presentApplePay({
-        cartItems: [{ label: 'BorrowHood', amount: '0.00', paymentType: 'Pending' }],
-        country: 'US',
-        currency: 'USD',
+      const { error } = await confirmPlatformPaySetupIntent(clientSecret, {
+        applePay: {
+          merchantCountryCode: 'US',
+          currencyCode: 'USD',
+          cartItems: [{ paymentType: 'Immediate', label: 'BorrowHood', amount: '0.00' }],
+        },
       });
 
-      if (presentError) {
-        if (presentError.code !== 'Canceled') {
+      if (error) {
+        if (error.code !== 'Canceled') {
           haptics.error();
-          showError({ message: presentError.message || 'Apple Pay failed.' });
+          showError({ message: error.message || 'Apple Pay failed.' });
         }
-        return;
-      }
-
-      const { error: confirmError } = await confirmApplePayPayment(clientSecret);
-
-      if (confirmError) {
-        haptics.error();
-        showError({ message: confirmError.message || 'Failed to save Apple Pay.' });
       } else {
         haptics.success();
         showToast('Apple Pay added successfully!', 'success');
@@ -112,7 +115,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {Platform.OS === 'ios' && isApplePaySupported && (
+        {Platform.OS === 'ios' && applePaySupported && (
           <>
             <HapticPressable
               haptic="medium"
