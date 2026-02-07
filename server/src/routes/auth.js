@@ -6,7 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import jwksClient from 'jwks-rsa';
 import { query } from '../utils/db.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
-import { createStripeCustomer, createIdentityVerificationSession } from '../services/stripe.js';
+import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
 import { body, validationResult } from 'express-validator';
 
@@ -422,7 +422,7 @@ router.post('/verify-identity', authenticate, async (req, res) => {
       );
     }
 
-    const returnUrl = `${process.env.FRONTEND_URL}/verification-complete`;
+    const returnUrl = 'com.borrowhood.app://verification-complete';
     const session = await createIdentityVerificationSession(
       customerId,
       returnUrl
@@ -441,6 +441,65 @@ router.post('/verify-identity', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Identity verification error:', err);
     res.status(500).json({ error: 'Failed to start identity verification' });
+  }
+});
+
+// ============================================
+// POST /api/auth/check-verification
+// Check Stripe Identity verification status
+// ============================================
+router.post('/check-verification', authenticate, async (req, res) => {
+  try {
+    // List recent verification sessions for this customer
+    const userResult = await query(
+      'SELECT stripe_customer_id, status FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    if (!userResult.rows[0]?.stripe_customer_id) {
+      return res.json({ verified: false, status: 'no_customer' });
+    }
+
+    const { stripe_customer_id, status } = userResult.rows[0];
+
+    // If already verified in our DB, return early
+    if (status === 'verified') {
+      return res.json({ verified: true, status: 'verified' });
+    }
+
+    // Check Stripe for completed verification sessions
+    const { default: Stripe } = await import('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const sessions = await stripe.identity.verificationSessions.list({
+      limit: 5,
+    });
+
+    // Find a verified session for this customer
+    const verified = sessions.data.find(
+      s => s.metadata?.customer_id === stripe_customer_id && s.status === 'verified'
+    );
+
+    if (verified) {
+      // Update user status to verified
+      await query(
+        "UPDATE users SET status = 'verified', stripe_identity_verified_at = NOW() WHERE id = $1",
+        [req.user.id]
+      );
+      return res.json({ verified: true, status: 'verified' });
+    }
+
+    // Check if any session is still processing
+    const processing = sessions.data.find(
+      s => s.metadata?.customer_id === stripe_customer_id && s.status === 'processing'
+    );
+
+    res.json({
+      verified: false,
+      status: processing ? 'processing' : 'not_verified',
+    });
+  } catch (err) {
+    console.error('Check verification error:', err);
+    res.status(500).json({ error: 'Failed to check verification status' });
   }
 });
 

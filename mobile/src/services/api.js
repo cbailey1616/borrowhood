@@ -92,6 +92,9 @@ const getMe = () =>
 const startIdentityVerification = () =>
   post('/auth/verify-identity');
 
+const checkVerification = () =>
+  post('/auth/check-verification');
+
 const forgotPassword = (email) =>
   post('/auth/forgot-password', { email });
 
@@ -577,6 +580,7 @@ export default {
   register,
   getMe,
   startIdentityVerification,
+  checkVerification,
   forgotPassword,
   resetPassword,
   loginWithGoogle,

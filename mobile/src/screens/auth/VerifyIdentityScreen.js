@@ -43,16 +43,22 @@ export default function VerifyIdentityScreen({ navigation }) {
   const handleCheckStatus = async () => {
     setIsLoading(true);
     try {
-      const user = await refreshUser();
-      if (user.isVerified) {
+      const result = await api.checkVerification();
+      if (result.verified) {
+        await refreshUser();
         haptics.success();
         showToast('Identity verified! Welcome to Borrowhood.', 'success');
-        // Navigation will happen automatically due to auth state change
+        navigation.goBack();
+      } else if (result.status === 'processing') {
+        showError({
+          title: 'Verification Processing',
+          message: 'Your verification is still being processed. This usually takes a few minutes. Please check back later.',
+          primaryAction: 'OK',
+        });
       } else {
         showError({
-          type: 'verification',
-          title: 'Verification Pending',
-          message: 'Your verification is still being processed. This usually takes a few minutes. Please check back later.',
+          title: 'Not Yet Verified',
+          message: 'We haven\'t received your verification yet. Please tap "Verify with ID" to start the process.',
           primaryAction: 'OK',
         });
       }
