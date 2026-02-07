@@ -117,14 +117,6 @@ router.post('/subscribe', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Already subscribed to Plus' });
     }
 
-    // Plus requires identity verification
-    if (!user.rows[0].is_verified) {
-      return res.status(403).json({
-        error: 'Identity verification required for Plus subscription',
-        code: 'VERIFICATION_REQUIRED',
-      });
-    }
-
     let customerId = user.rows[0].stripe_customer_id;
 
     // Create Stripe customer if doesn't exist

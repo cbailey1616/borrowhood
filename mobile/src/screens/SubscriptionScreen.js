@@ -71,20 +71,10 @@ export default function SubscriptionScreen({ navigation }) {
       haptics.success();
     } catch (err) {
       haptics.error();
-      if (err.code === 'VERIFICATION_REQUIRED') {
-        showError({
-          type: 'verification',
-          title: 'Verification Required',
-          message: 'Plus requires identity verification to unlock town features and rental payments.',
-          primaryAction: 'Verify Now',
-          onPrimaryAction: () => navigation.navigate('VerifyIdentity', { fromSubscription: true }),
-        });
-      } else {
-        showError({
-          message: err.message || 'Unable to complete subscription. Please check your payment method and try again.',
-          type: 'network',
-        });
-      }
+      showError({
+        message: err.message || 'Unable to complete subscription. Please check your payment method and try again.',
+        type: 'network',
+      });
     } finally {
       setSubscribing(false);
     }
@@ -122,6 +112,7 @@ export default function SubscriptionScreen({ navigation }) {
 
   const isPlus = currentSub?.tier === 'plus';
   const isVerified = user?.isVerified;
+  const isPaid = isPlus; // subscription active means they've paid
 
   // ── Plus user view ──
   if (isPlus) {
@@ -230,10 +221,10 @@ export default function SubscriptionScreen({ navigation }) {
 
       {/* Steps */}
       <View style={styles.stepsContainer}>
-        {/* Step 1: Verify */}
+        {/* Step 1: Pay */}
         <View style={styles.step}>
           <View style={styles.stepIndicator}>
-            {isVerified ? (
+            {isPaid ? (
               <View style={[styles.stepCircle, styles.stepCircleComplete]}>
                 <Ionicons name="checkmark" size={18} color="#fff" />
               </View>
@@ -242,12 +233,60 @@ export default function SubscriptionScreen({ navigation }) {
                 <Text style={styles.stepNumber}>1</Text>
               </View>
             )}
-            <View style={[styles.stepLine, isVerified && styles.stepLineComplete]} />
+            <View style={[styles.stepLine, isPaid && styles.stepLineComplete]} />
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Verify Your Identity</Text>
+            <Text style={styles.stepTitle}>Subscribe & Pay</Text>
             <Text style={styles.stepDescription}>
-              Quick identity check to keep the community safe. Takes about 2 minutes.
+              Add a payment method and start your $1/mo subscription.
+            </Text>
+            {isPaid ? (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                <Text style={styles.verifiedText}>Subscribed</Text>
+              </View>
+            ) : (
+              <HapticPressable
+                style={[styles.stepButton, styles.stepButtonPrimary]}
+                onPress={() => {
+                  navigation.navigate('PaymentMethods', {
+                    onSelectMethod: (paymentMethodId) => handleSubscribe(paymentMethodId),
+                    selectMode: true,
+                  });
+                }}
+                haptic="medium"
+              >
+                <Text style={styles.stepButtonText}>Subscribe — $1/mo</Text>
+              </HapticPressable>
+            )}
+          </View>
+        </View>
+
+        {/* Step 2: Verify */}
+        <View style={[styles.step, !isPaid && styles.stepDimmed]}>
+          <View style={styles.stepIndicator}>
+            {isVerified ? (
+              <View style={[styles.stepCircle, styles.stepCircleComplete]}>
+                <Ionicons name="checkmark" size={18} color="#fff" />
+              </View>
+            ) : (
+              <View style={[
+                styles.stepCircle,
+                isPaid ? styles.stepCircleActive : styles.stepCircleInactive,
+              ]}>
+                <Text style={[
+                  styles.stepNumber,
+                  !isPaid && styles.stepNumberInactive,
+                ]}>2</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.stepContent}>
+            <Text style={[styles.stepTitle, !isPaid && styles.stepTitleDimmed]}>
+              Verify Your Identity
+            </Text>
+            <Text style={[styles.stepDescription, !isPaid && styles.stepDescriptionDimmed]}>
+              Quick identity check to keep the community safe.{'\n'}We'll notify you once verification is complete — it usually only takes a few minutes.
             </Text>
             {isVerified ? (
               <View style={styles.verifiedBadge}>
@@ -256,51 +295,18 @@ export default function SubscriptionScreen({ navigation }) {
               </View>
             ) : (
               <HapticPressable
-                style={styles.stepButton}
-                onPress={() => navigation.navigate('VerifyIdentity', { fromSubscription: true })}
+                style={[styles.stepButton, !isPaid && styles.stepButtonDisabled]}
+                onPress={() => {
+                  if (!isPaid) return;
+                  navigation.navigate('VerifyIdentity', { fromSubscription: true });
+                }}
+                disabled={!isPaid}
                 haptic="medium"
               >
                 <Text style={styles.stepButtonText}>Verify Now</Text>
                 <Ionicons name="arrow-forward" size={16} color="#fff" />
               </HapticPressable>
             )}
-          </View>
-        </View>
-
-        {/* Step 2: Pay */}
-        <View style={[styles.step, !isVerified && styles.stepDimmed]}>
-          <View style={styles.stepIndicator}>
-            <View style={[
-              styles.stepCircle,
-              isVerified ? styles.stepCircleActive : styles.stepCircleInactive,
-            ]}>
-              <Text style={[
-                styles.stepNumber,
-                !isVerified && styles.stepNumberInactive,
-              ]}>2</Text>
-            </View>
-          </View>
-          <View style={styles.stepContent}>
-            <Text style={[styles.stepTitle, !isVerified && styles.stepTitleDimmed]}>
-              Subscribe & Pay
-            </Text>
-            <Text style={[styles.stepDescription, !isVerified && styles.stepDescriptionDimmed]}>
-              Add a payment method and start your $1/mo subscription.
-            </Text>
-            <HapticPressable
-              style={[styles.stepButton, styles.stepButtonPrimary, !isVerified && styles.stepButtonDisabled]}
-              onPress={() => {
-                if (!isVerified) return;
-                navigation.navigate('PaymentMethods', {
-                  onSelectMethod: (paymentMethodId) => handleSubscribe(paymentMethodId),
-                  selectMode: true,
-                });
-              }}
-              disabled={!isVerified}
-              haptic="medium"
-            >
-              <Text style={styles.stepButtonText}>Subscribe — $1/mo</Text>
-            </HapticPressable>
           </View>
         </View>
       </View>

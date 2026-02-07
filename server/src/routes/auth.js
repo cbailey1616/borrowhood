@@ -482,9 +482,9 @@ router.post('/check-verification', authenticate, async (req, res) => {
     );
 
     if (verified) {
-      // Update user status to verified
+      // Update user status and is_verified flag
       await query(
-        "UPDATE users SET status = 'verified' WHERE id = $1",
+        "UPDATE users SET status = 'verified', is_verified = true WHERE id = $1",
         [req.user.id]
       );
       return res.json({ verified: true, status: 'verified' });

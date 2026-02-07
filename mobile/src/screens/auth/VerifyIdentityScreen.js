@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   Linking,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
@@ -23,12 +24,35 @@ export default function VerifyIdentityScreen({ navigation, route }) {
   const { showError, showToast } = useError();
   const [isLoading, setIsLoading] = useState(false);
   const [skipSheetVisible, setSkipSheetVisible] = useState(false);
+  const hasOpenedStripe = useRef(false);
+
+  // Auto-check verification when app returns to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && hasOpenedStripe.current) {
+        hasOpenedStripe.current = false;
+        handleCheckStatus();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Also handle deep link return
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      if (url?.includes('verification-complete')) {
+        handleCheckStatus();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleStartVerification = async () => {
     setIsLoading(true);
     try {
       const response = await api.startIdentityVerification();
       // Open Stripe Identity verification in browser
+      hasOpenedStripe.current = true;
       await Linking.openURL(response.verificationUrl);
     } catch (error) {
       showError({
@@ -49,23 +73,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
         await refreshUser();
         haptics.success();
         showToast('Identity verified!', 'success');
-        if (fromSubscription) {
-          // Go straight to payment to complete subscription
-          navigation.replace('PaymentMethods', {
-            selectMode: true,
-            onSelectMethod: async (paymentMethodId) => {
-              try {
-                await api.subscribe(paymentMethodId);
-                haptics.success();
-                showToast('Subscribed to Plus!', 'success');
-              } catch (err) {
-                showError({ message: err.message || 'Subscription failed. Please try again.' });
-              }
-            },
-          });
-        } else {
-          navigation.goBack();
-        }
+        navigation.goBack();
       } else if (result.status === 'processing') {
         showError({
           title: 'Verification Processing',
@@ -103,6 +111,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
         <Text style={styles.title}>Verify Your Identity</Text>
         <Text style={styles.subtitle}>
           To keep our community safe, we verify all members with a valid government ID.
+          {fromSubscription ? ' We\'ll notify you once your verification is complete — it usually only takes a few minutes.' : ''}
         </Text>
 
         <BlurCard style={styles.benefits}>
