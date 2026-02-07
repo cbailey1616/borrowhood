@@ -68,6 +68,7 @@ export default function FriendsScreen({ navigation }) {
 
       if (status !== 'granted') {
         setIsLoadingContacts(false);
+        setContactsFetched(true);
         return;
       }
 
@@ -78,30 +79,42 @@ export default function FriendsScreen({ navigation }) {
 
       if (data.length === 0) {
         setIsLoadingContacts(false);
+        setContactsFetched(true);
         return;
       }
 
       // Extract all phone numbers
       const phoneNumbers = [];
       const contactMap = new Map(); // Map phone -> contact info
+      const allContacts = []; // All contacts with a phone for invite
 
       data.forEach(contact => {
-        if (contact.phoneNumbers) {
+        if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+          const firstPhone = contact.phoneNumbers[0].number;
+          const contactInfo = {
+            name: contact.name || 'Unknown',
+            phone: firstPhone,
+          };
+
           contact.phoneNumbers.forEach(phone => {
-            const normalized = phone.number.replace(/\D/g, '').slice(-10);
-            if (normalized.length === 10) {
+            const digits = phone.number.replace(/\D/g, '');
+            const normalized = digits.slice(-10);
+            if (normalized.length >= 7) {
               phoneNumbers.push(phone.number);
-              contactMap.set(normalized, {
-                name: contact.name || 'Unknown',
-                phone: phone.number,
-              });
+              contactMap.set(normalized, contactInfo);
             }
           });
+
+          // Always include contacts with any phone number for inviting
+          allContacts.push(contactInfo);
         }
       });
 
       // Find matches on server
-      const matches = await api.matchContacts(phoneNumbers);
+      let matches = [];
+      if (phoneNumbers.length > 0) {
+        matches = await api.matchContacts(phoneNumbers);
+      }
 
       // Add contact name to matches
       const matchesWithNames = matches.map(m => ({
@@ -113,11 +126,9 @@ export default function FriendsScreen({ navigation }) {
 
       // Store non-user contacts for invite feature
       const matchedPhones = new Set(matches.map(m => m.matchedPhone));
-      const nonUsers = [];
-      contactMap.forEach((contact, phone) => {
-        if (!matchedPhones.has(phone)) {
-          nonUsers.push(contact);
-        }
+      const nonUsers = allContacts.filter(contact => {
+        const digits = contact.phone.replace(/\D/g, '').slice(-10);
+        return !matchedPhones.has(digits);
       });
       setNonUserContacts(nonUsers);
 
@@ -660,18 +671,18 @@ export default function FriendsScreen({ navigation }) {
 
       {activeTab === 'contacts' && (
         <>
-          {contactsPermission === 'denied' ? (
+          {contactsPermission !== null && contactsPermission !== 'granted' ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="lock-closed-outline" size={64} color={COLORS.gray[700]} />
               <Text style={styles.emptyTitle}>Contacts Access Needed</Text>
               <Text style={styles.emptySubtitle}>
-                Allow access to find friends from your contacts
+                Allow access to your contacts to find friends on Borrowhood and invite others
               </Text>
               <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
                 <Text style={styles.settingsButtonText}>Open Settings</Text>
               </HapticPressable>
             </View>
-          ) : isLoadingContacts ? (
+          ) : isLoadingContacts || (!contactsFetched && contactsPermission === null) ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator size="large" color={COLORS.primary} />
               <Text style={styles.emptySubtitle}>Checking your contacts...</Text>

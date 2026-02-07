@@ -17,7 +17,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary>
-        <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+        <StripeProvider
+          publishableKey={STRIPE_PUBLISHABLE_KEY}
+          merchantIdentifier="merchant.com.borrowhood.app"
+        >
           <SafeAreaProvider>
             <AuthProvider navigationRef={navigationRef}>
               <ErrorProvider navigationRef={navigationRef}>

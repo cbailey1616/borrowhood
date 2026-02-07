@@ -8,7 +8,8 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { useConfirmPayment } from '@stripe/stripe-react-native';
+import { Platform } from 'react-native';
+import { useConfirmPayment, useApplePay } from '@stripe/stripe-react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -24,6 +25,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { user } = useAuth();
   const { showError, showToast } = useError();
   const { confirmPayment } = useConfirmPayment();
+  const { isApplePaySupported, presentApplePay, confirmApplePayPayment } = useApplePay();
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -153,6 +155,55 @@ export default function TransactionDetailScreen({ route, navigation }) {
         if (error) {
           haptics.error();
           showError({ message: error.message || 'Payment failed.' });
+          return;
+        }
+
+        // Finalize on backend
+        await api.confirmPayment(id);
+      }
+
+      haptics.success();
+      showToast('Payment successful!', 'success');
+      fetchTransaction();
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Payment failed. Please try again.' });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleApplePay = async () => {
+    setPaymentLoading(true);
+    try {
+      const result = await api.confirmPayment(id);
+
+      if (result.requiresPayment && result.clientSecret) {
+        const total = (transaction.rentalFee + transaction.depositAmount).toFixed(2);
+
+        const { error: presentError } = await presentApplePay({
+          cartItems: [
+            { label: 'Rental fee', amount: transaction.rentalFee.toFixed(2) },
+            { label: 'Refundable deposit', amount: transaction.depositAmount.toFixed(2) },
+            { label: 'BorrowHood', amount: total },
+          ],
+          country: 'US',
+          currency: 'USD',
+        });
+
+        if (presentError) {
+          if (presentError.code !== 'Canceled') {
+            haptics.error();
+            showError({ message: presentError.message || 'Apple Pay failed.' });
+          }
+          return;
+        }
+
+        const { error: confirmError } = await confirmApplePayPayment(result.clientSecret);
+
+        if (confirmError) {
+          haptics.error();
+          showError({ message: confirmError.message || 'Payment failed.' });
           return;
         }
 
@@ -395,6 +446,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
               </Text>
             </View>
           </View>
+          {Platform.OS === 'ios' && isApplePaySupported && (
+            <HapticPressable
+              haptic="medium"
+              style={[styles.applePayButton, paymentLoading && { opacity: 0.5 }]}
+              onPress={handleApplePay}
+              disabled={paymentLoading}
+            >
+              {paymentLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.applePayButtonText}> Pay</Text>
+              )}
+            </HapticPressable>
+          )}
           <HapticPressable
             haptic="medium"
             style={[styles.approveButton, paymentLoading && { opacity: 0.5 }]}
@@ -404,7 +469,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             {paymentLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.approveButtonText}>Pay Now</Text>
+              <Text style={styles.approveButtonText}>Pay with Card</Text>
             )}
           </HapticPressable>
         </View>
@@ -536,6 +601,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  applePayButton: {
+    backgroundColor: '#000',
+    paddingVertical: 14,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  applePayButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
