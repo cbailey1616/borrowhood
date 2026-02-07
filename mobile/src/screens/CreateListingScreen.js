@@ -714,18 +714,16 @@ export default function CreateListingScreen({ navigation, route }) {
               onPress={() => {
                 setShowUpgradePrompt(false);
                 const freeVisibility = formData.visibility.filter(v => v !== 'town');
-                const freeData = {
-                  ...formData,
+                setFormData(prev => ({
+                  ...prev,
                   isFree: true,
                   pricePerDay: '',
                   visibility: freeVisibility.length > 0 ? freeVisibility : ['close_friends'],
-                };
-                setFormData(freeData);
-                handleSubmit(freeData);
+                }));
               }}
               haptic="light"
             >
-              <Text style={styles.overlayDismissText}>Post with Free Settings</Text>
+              <Text style={styles.overlayDismissText}>Continue with Free Settings</Text>
             </HapticPressable>
           </View>
         </View>

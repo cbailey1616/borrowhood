@@ -102,7 +102,7 @@ router.get('/mine', authenticate, async (req, res) => {
       `SELECT r.*, c.name as category_name
        FROM item_requests r
        LEFT JOIN categories c ON r.category_id = c.id
-       WHERE r.user_id = $1
+       WHERE r.user_id = $1 AND r.status = 'open'
        ORDER BY r.created_at DESC`,
       [req.user.id]
     );
