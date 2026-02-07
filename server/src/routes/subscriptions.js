@@ -153,7 +153,7 @@ router.post('/subscribe', authenticate, async (req, res) => {
       items: [{
         price_data: {
           currency: 'usd',
-          product: 'prod_Tw6rY768inoM0H',
+          product: 'prod_TwAqSD3Joum5jh',
           recurring: { interval: 'month' },
           unit_amount: 100, // $1.00
         },
