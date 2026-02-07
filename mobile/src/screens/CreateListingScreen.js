@@ -636,7 +636,7 @@ export default function CreateListingScreen({ navigation, route }) {
               style={styles.overlayButton}
               onPress={() => {
                 setShowAddFriends(false);
-                navigation.navigate('Friends');
+                navigation.navigate('Friends', { initialTab: 'contacts' });
               }}
               haptic="medium"
             >

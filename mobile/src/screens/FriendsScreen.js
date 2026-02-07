@@ -19,8 +19,8 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-export default function FriendsScreen({ navigation }) {
-  const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'requests', 'contacts', or 'search'
+export default function FriendsScreen({ navigation, route }) {
+  const [activeTab, setActiveTab] = useState(route.params?.initialTab || 'friends'); // 'friends', 'requests', 'contacts', or 'search'
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [contactMatches, setContactMatches] = useState([]);
@@ -154,12 +154,12 @@ export default function FriendsScreen({ navigation }) {
     return unsubscribe;
   }, [navigation, fetchFriends, fetchFriendRequests]);
 
-  // Fetch contacts when switching to contacts tab (only once)
+  // Fetch contacts when switching to contacts tab
   useEffect(() => {
-    if (activeTab === 'contacts' && !contactsFetched && !isLoadingContacts) {
+    if (activeTab === 'contacts' && !isLoadingContacts) {
       fetchContactMatches();
     }
-  }, [activeTab, contactsFetched, isLoadingContacts, fetchContactMatches]);
+  }, [activeTab]);
 
   // Auto-focus search input when switching to search tab
   useEffect(() => {
@@ -549,7 +549,10 @@ export default function FriendsScreen({ navigation }) {
                 <HapticPressable
                   haptic="light"
                   style={styles.quickAction}
-                  onPress={() => setActiveTab('contacts')}
+                  onPress={() => {
+                    setContactsFetched(false);
+                    setActiveTab('contacts');
+                  }}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: COLORS.primaryMuted }]}>
                     <Ionicons name="people" size={20} color={COLORS.primary} />

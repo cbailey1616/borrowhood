@@ -208,6 +208,11 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('Friends')}
           />
           <GroupedListItem
+            icon="phone-portrait-outline"
+            title="Find Friends from Contacts"
+            onPress={() => navigation.navigate('Friends', { initialTab: 'contacts' })}
+          />
+          <GroupedListItem
             icon="card-outline"
             title="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}
