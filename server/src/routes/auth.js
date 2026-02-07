@@ -507,6 +507,26 @@ router.post('/check-verification', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/auth/admin/reset-onboarding
+// Temp admin endpoint to reset a user's onboarding
+// ============================================
+router.post('/admin/reset-onboarding', async (req, res) => {
+  const { email, secret } = req.body;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const result = await query(
+      "UPDATE users SET city = NULL, state = NULL WHERE email = $1 RETURNING id, email",
+      [email]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/auth/me
 // Get current user
 // ============================================
