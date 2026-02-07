@@ -54,6 +54,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [removePhotoIndex, setRemovePhotoIndex] = useState(null);
   const [isRelist, setIsRelist] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, categoryId: false });
 
   // Pre-populate from relist data
   useEffect(() => {
@@ -107,6 +108,9 @@ export default function CreateListingScreen({ navigation, route }) {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (field in fieldErrors) {
+      setFieldErrors(prev => ({ ...prev, [field]: false }));
+    }
   };
 
   const analyzeImage = async (imageUri) => {
@@ -213,30 +217,19 @@ export default function CreateListingScreen({ navigation, route }) {
   const handleSubmit = async (overrideData) => {
     const data = overrideData || formData;
 
-    if (!data.title.trim()) {
-      haptics.warning();
-      showError({
-        type: 'validation',
-        title: 'Missing Title',
-        message: 'Give your item a title so neighbors know what you\'re sharing.',
-      });
-      return;
-    }
-    if (data.photos.length === 0) {
-      haptics.warning();
-      showError({
-        type: 'validation',
-        title: 'Add a Photo',
-        message: 'Items with photos get 5x more interest. Add at least one photo of your item.',
-      });
-      return;
-    }
+    const errors = {
+      title: !data.title.trim(),
+      photos: data.photos.length === 0,
+      categoryId: !data.categoryId,
+    };
 
-    if (!data.categoryId) {
+    if (errors.title || errors.photos || errors.categoryId) {
+      setFieldErrors(errors);
+      haptics.warning();
       showError({
         type: 'validation',
-        title: 'Category Required',
-        message: 'Please select a category for your item.',
+        title: 'Missing Fields',
+        message: 'Please fill in the highlighted fields.',
       });
       return;
     }
@@ -313,7 +306,7 @@ export default function CreateListingScreen({ navigation, route }) {
     >
       {/* Photos */}
       <View style={styles.section}>
-        <Text style={styles.label}>Photos *</Text>
+        <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         {isAnalyzing && (
           <BlurCard style={styles.analyzingBanner}>
@@ -347,12 +340,12 @@ export default function CreateListingScreen({ navigation, route }) {
             ))}
             {formData.photos.length < 10 && (
               <View style={styles.addPhotoButtons}>
-                <HapticPressable style={styles.addPhotoButton} onPress={handlePickImage} haptic="light">
-                  <Ionicons name="image" size={28} color={COLORS.primary} />
+                <HapticPressable style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage} haptic="light">
+                  <Ionicons name="image" size={28} color={fieldErrors.photos ? COLORS.danger : COLORS.primary} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
                 </HapticPressable>
-                <HapticPressable style={styles.addPhotoButton} onPress={handleTakePhoto} haptic="light">
-                  <Ionicons name="camera" size={28} color={COLORS.primary} />
+                <HapticPressable style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto} haptic="light">
+                  <Ionicons name="camera" size={28} color={fieldErrors.photos ? COLORS.danger : COLORS.primary} />
                   <Text style={styles.addPhotoText}>Camera</Text>
                 </HapticPressable>
               </View>
@@ -363,9 +356,9 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Title */}
       <View style={styles.section}>
-        <Text style={styles.label}>Title *</Text>
+        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
           placeholder="e.g., DeWalt Cordless Drill"
@@ -414,10 +407,10 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.label}>Category *</Text>
+          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
           <HapticPressable
             haptic="light"
-            style={styles.dropdownButton}
+            style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
             onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
             {formData.categoryId ? (
@@ -1102,5 +1095,12 @@ const styles = StyleSheet.create({
   upgradeFeatureText: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.text,
+  },
+  fieldError: {
+    borderColor: COLORS.danger,
+    borderWidth: 1.5,
+  },
+  fieldErrorLabel: {
+    color: COLORS.danger,
   },
 });

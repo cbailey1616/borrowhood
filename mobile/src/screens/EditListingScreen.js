@@ -162,7 +162,7 @@ export default function EditListingScreen({ navigation, route }) {
 
       haptics.success();
       showToast('Your listing has been updated!', 'success');
-      navigation.goBack();
+      setTimeout(() => navigation.goBack(), 400);
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';

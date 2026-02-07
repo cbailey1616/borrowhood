@@ -310,7 +310,11 @@ export default function FeedScreen({ navigation }) {
 
   const renderRequestItem = (item, index) => (
     <AnimatedCard index={index}>
-      <BlurCard style={[styles.card, styles.requestCard]}>
+      <BlurCard
+        style={[styles.card, styles.requestCard]}
+        innerColor="rgba(45, 35, 15, 0.5)"
+        fallbackColor={COLORS.secondary + '18'}
+      >
         <HapticPressable
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"

@@ -105,7 +105,7 @@ router.post('/subscribe', authenticate, async (req, res) => {
 
   try {
     const user = await query(
-      `SELECT email, stripe_customer_id, subscription_tier, is_verified, city FROM users WHERE id = $1`,
+      `SELECT email, stripe_customer_id, subscription_tier, is_verified FROM users WHERE id = $1`,
       [req.user.id]
     );
 
@@ -113,24 +113,16 @@ router.post('/subscribe', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Plus requires identity verification (for town matching and rental payments)
+    if (user.rows[0].subscription_tier === 'plus') {
+      return res.status(400).json({ error: 'Already subscribed to Plus' });
+    }
+
+    // Plus requires identity verification
     if (!user.rows[0].is_verified) {
       return res.status(403).json({
         error: 'Identity verification required for Plus subscription',
         code: 'VERIFICATION_REQUIRED',
       });
-    }
-
-    // Must have a verified city for town features
-    if (!user.rows[0].city) {
-      return res.status(403).json({
-        error: 'Verified address required for Plus subscription. Please complete identity verification.',
-        code: 'VERIFICATION_REQUIRED',
-      });
-    }
-
-    if (user.rows[0].subscription_tier === 'plus') {
-      return res.status(400).json({ error: 'Already subscribed to Plus' });
     }
 
     let customerId = user.rows[0].stripe_customer_id;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -15,41 +17,28 @@ import ActionSheet from '../components/ActionSheet';
 import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
+const PLUS_FEATURES = [
+  'Borrow from anyone in your town',
+  'Charge rental fees for your items',
+  'Priority placement in search results',
+  'Support local sharing infrastructure',
+];
+
 export default function SubscriptionScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const { showError } = useError();
-  const [tiers, setTiers] = useState([]);
   const [currentSub, setCurrentSub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [showCancelSheet, setShowCancelSheet] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     try {
-      const [tiersRes, subRes] = await Promise.all([
-        api.getSubscriptionTiers().catch(e => {
-          console.log('Failed to load tiers:', e);
-          return [];
-        }),
-        api.getCurrentSubscription().catch(e => {
-          console.log('Failed to load current subscription:', e);
-          return { tier: 'free', features: [] };
-        }),
-      ]);
-      setTiers(tiersRes || []);
+      const subRes = await api.getCurrentSubscription().catch(e => {
+        console.log('Failed to load current subscription:', e);
+        return { tier: 'free', features: [] };
+      });
       setCurrentSub(subRes || { tier: 'free', features: [] });
-
-      // If no tiers from API, show default tiers
-      if (!tiersRes || tiersRes.length === 0) {
-        setTiers([
-          { tier: 'free', name: 'Free', priceCents: 0, priceDisplay: 'Free', description: 'Share with friends and neighbors', features: ['Borrow from friends', 'Borrow from your neighborhood', 'List items for free'] },
-          { tier: 'plus', name: 'Plus', priceCents: 100, priceDisplay: '$1/mo', description: 'Unlock your whole town', features: ['Everything in Free', 'Borrow from anyone in town', 'Charge rental fees'] },
-        ]);
-      }
     } catch (err) {
       console.error('Load subscription data error:', err);
       showError({
@@ -61,31 +50,17 @@ export default function SubscriptionScreen({ navigation }) {
     }
   };
 
-  const handleSelectTier = async (tier) => {
-    if (tier.tier === currentSub?.tier) return;
-    if (tier.tier === 'free') {
-      handleCancel();
-      return;
-    }
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    // Plus requires verification
-    if (!user?.isVerified) {
-      showError({
-        type: 'verification',
-        title: 'Verification Required',
-        message: 'Plus requires identity verification to unlock town features and rental payments.',
-        primaryAction: 'Verify Now',
-        onPrimaryAction: () => navigation.navigate('VerifyIdentity', { fromSubscription: true }),
-      });
-      return;
-    }
-
-    // New subscription to Plus - need payment method
-    navigation.navigate('PaymentMethods', {
-      onSelectMethod: (paymentMethodId) => handleSubscribe(paymentMethodId),
-      selectMode: true,
-    });
-  };
+  // Refresh data when screen comes back into focus (e.g. after verification)
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+      loadData();
+    }, [])
+  );
 
   const handleSubscribe = async (paymentMethodId) => {
     setSubscribing(true);
@@ -123,7 +98,7 @@ export default function SubscriptionScreen({ navigation }) {
   const performCancel = async () => {
     setSubscribing(true);
     try {
-      const result = await api.cancelSubscription();
+      await api.cancelSubscription();
       await loadData();
       haptics.success();
     } catch (err) {
@@ -145,85 +120,192 @@ export default function SubscriptionScreen({ navigation }) {
     );
   }
 
+  const isPlus = currentSub?.tier === 'plus';
+  const isVerified = user?.isVerified;
+
+  // ── Plus user view ──
+  if (isPlus) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <View style={styles.plusBadge}>
+            <Ionicons name="star" size={28} color={COLORS.primary} />
+          </View>
+          <Text style={styles.title}>You're on Plus!</Text>
+          <Text style={styles.subtitle}>
+            You have full access to all BorrowHood features.
+          </Text>
+        </View>
+
+        {currentSub?.expiresAt && (
+          <View style={styles.expiryBanner}>
+            <Ionicons name="time-outline" size={18} color={COLORS.warning} />
+            <Text style={styles.expiryText}>
+              Your subscription ends on {new Date(currentSub.expiresAt).toLocaleDateString()}
+            </Text>
+          </View>
+        )}
+
+        <BlurCard style={styles.planCard}>
+          <View style={styles.planCardContent}>
+            <View style={styles.planRow}>
+              <Text style={styles.planLabel}>Plan</Text>
+              <Text style={styles.planValue}>BorrowHood Plus</Text>
+            </View>
+            <View style={styles.planDivider} />
+            <View style={styles.planRow}>
+              <Text style={styles.planLabel}>Price</Text>
+              <Text style={styles.planValue}>$1/mo</Text>
+            </View>
+            {currentSub?.startedAt && (
+              <>
+                <View style={styles.planDivider} />
+                <View style={styles.planRow}>
+                  <Text style={styles.planLabel}>Member since</Text>
+                  <Text style={styles.planValue}>
+                    {new Date(currentSub.startedAt).toLocaleDateString()}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </BlurCard>
+
+        {!currentSub?.expiresAt && (
+          <HapticPressable style={styles.cancelButton} onPress={handleCancel} haptic="medium">
+            <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
+          </HapticPressable>
+        )}
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Subscriptions are billed monthly. Cancel anytime.
+          </Text>
+          <Text style={styles.footerText}>
+            Need help? Contact support@borrowhood.com
+          </Text>
+        </View>
+
+        <ActionSheet
+          isVisible={showCancelSheet}
+          onClose={() => setShowCancelSheet(false)}
+          title="Cancel Subscription"
+          message="Your subscription will remain active until the end of the billing period. After that, you'll be downgraded to the Free tier."
+          actions={[
+            {
+              label: 'Cancel Subscription',
+              destructive: true,
+              onPress: performCancel,
+            },
+          ]}
+          cancelLabel="Keep Subscription"
+        />
+      </ScrollView>
+    );
+  }
+
+  // ── Free user: two-step upgrade flow ──
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Choose Your Plan</Text>
+        <Text style={styles.title}>BorrowHood Plus</Text>
+        <Text style={styles.price}>$1/mo</Text>
         <Text style={styles.subtitle}>
-          Expand your sharing circle and unlock more features
+          Unlock your whole town and start earning from your items.
         </Text>
       </View>
 
-      {currentSub?.expiresAt && (
-        <View style={styles.expiryBanner}>
-          <Text style={styles.expiryText}>
-            Your subscription ends on {new Date(currentSub.expiresAt).toLocaleDateString()}
-          </Text>
+      {/* Features */}
+      <BlurCard style={styles.featuresCard}>
+        <View style={styles.featuresCardContent}>
+          {PLUS_FEATURES.map((feature, idx) => (
+            <View key={idx} style={styles.featureRow}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.featureText}>{feature}</Text>
+            </View>
+          ))}
         </View>
-      )}
+      </BlurCard>
 
-      <View style={styles.tiersContainer}>
-        {tiers.map((tier) => {
-          const isCurrentTier = tier.tier === currentSub?.tier;
-          const isPlus = tier.tier === 'plus';
+      {/* Steps */}
+      <View style={styles.stepsContainer}>
+        {/* Step 1: Verify */}
+        <View style={styles.step}>
+          <View style={styles.stepIndicator}>
+            {isVerified ? (
+              <View style={[styles.stepCircle, styles.stepCircleComplete]}>
+                <Ionicons name="checkmark" size={18} color="#fff" />
+              </View>
+            ) : (
+              <View style={[styles.stepCircle, styles.stepCircleActive]}>
+                <Text style={styles.stepNumber}>1</Text>
+              </View>
+            )}
+            <View style={[styles.stepLine, isVerified && styles.stepLineComplete]} />
+          </View>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Verify Your Identity</Text>
+            <Text style={styles.stepDescription}>
+              Quick identity check to keep the community safe. Takes about 2 minutes.
+            </Text>
+            {isVerified ? (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            ) : (
+              <HapticPressable
+                style={styles.stepButton}
+                onPress={() => navigation.navigate('VerifyIdentity', { fromSubscription: true })}
+                haptic="medium"
+              >
+                <Text style={styles.stepButtonText}>Verify Now</Text>
+                <Ionicons name="arrow-forward" size={16} color="#fff" />
+              </HapticPressable>
+            )}
+          </View>
+        </View>
 
-          return (
+        {/* Step 2: Pay */}
+        <View style={[styles.step, !isVerified && styles.stepDimmed]}>
+          <View style={styles.stepIndicator}>
+            <View style={[
+              styles.stepCircle,
+              isVerified ? styles.stepCircleActive : styles.stepCircleInactive,
+            ]}>
+              <Text style={[
+                styles.stepNumber,
+                !isVerified && styles.stepNumberInactive,
+              ]}>2</Text>
+            </View>
+          </View>
+          <View style={styles.stepContent}>
+            <Text style={[styles.stepTitle, !isVerified && styles.stepTitleDimmed]}>
+              Subscribe & Pay
+            </Text>
+            <Text style={[styles.stepDescription, !isVerified && styles.stepDescriptionDimmed]}>
+              Add a payment method and start your $1/mo subscription.
+            </Text>
             <HapticPressable
-              key={tier.tier}
-              onPress={() => handleSelectTier(tier)}
-              disabled={subscribing || isCurrentTier}
+              style={[styles.stepButton, styles.stepButtonPrimary, !isVerified && styles.stepButtonDisabled]}
+              onPress={() => {
+                if (!isVerified) return;
+                navigation.navigate('PaymentMethods', {
+                  onSelectMethod: (paymentMethodId) => handleSubscribe(paymentMethodId),
+                  selectMode: true,
+                });
+              }}
+              disabled={!isVerified}
               haptic="medium"
             >
-              <BlurCard
-                style={[
-                  styles.tierCard,
-                  isCurrentTier && styles.tierCardCurrent,
-                  isPlus && styles.tierCardFeatured,
-                ]}
-              >
-                <View style={styles.tierCardContent}>
-                  <Text style={styles.tierName}>{tier.name}</Text>
-                  <Text style={styles.tierPrice}>{tier.priceDisplay}</Text>
-                  <Text style={styles.tierDescription}>{tier.description}</Text>
-
-                  <View style={styles.featuresContainer}>
-                    {tier.features?.map((feature, idx) => (
-                      <View key={idx} style={styles.featureRow}>
-                        <Text style={styles.featureCheck}>✓</Text>
-                        <Text style={styles.featureText}>{feature}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={[
-                    styles.tierButton,
-                    isCurrentTier && styles.tierButtonCurrent,
-                    isPlus && !isCurrentTier && styles.tierButtonFeatured,
-                  ]}>
-                    <Text style={[
-                      styles.tierButtonText,
-                      isCurrentTier && styles.tierButtonTextCurrent,
-                    ]}>
-                      {isCurrentTier
-                        ? 'Current Plan'
-                        : tier.priceCents === 0
-                        ? 'Start Free'
-                        : 'Get Plus'}
-                    </Text>
-                  </View>
-                </View>
-              </BlurCard>
+              <Text style={styles.stepButtonText}>Subscribe — $1/mo</Text>
             </HapticPressable>
-          );
-        })}
+          </View>
+        </View>
       </View>
 
-      {currentSub?.tier !== 'free' && !currentSub?.expiresAt && (
-        <HapticPressable style={styles.cancelButton} onPress={handleCancel} haptic="medium">
-          <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
-        </HapticPressable>
-      )}
-
+      {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Subscriptions are billed monthly. Cancel anytime.
@@ -239,21 +321,6 @@ export default function SubscriptionScreen({ navigation }) {
           <Text style={styles.overlayText}>Processing...</Text>
         </View>
       )}
-
-      <ActionSheet
-        isVisible={showCancelSheet}
-        onClose={() => setShowCancelSheet(false)}
-        title="Cancel Subscription"
-        message="Your subscription will remain active until the end of the billing period. After that, you'll be downgraded to the Free tier."
-        actions={[
-          {
-            label: 'Cancel Subscription',
-            destructive: true,
-            onPress: performCancel,
-          },
-        ]}
-        cancelLabel="Keep Subscription"
-      />
     </ScrollView>
   );
 }
@@ -263,28 +330,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  contentContainer: {
+    paddingBottom: SPACING.xxl,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
+
+  // Header
   header: {
     padding: SPACING.xl,
     alignItems: 'center',
   },
+  plusBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+  },
   title: {
     ...TYPOGRAPHY.h1,
     color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  price: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: COLORS.primary,
     marginBottom: SPACING.sm,
   },
   subtitle: {
     ...TYPOGRAPHY.body,
-    fontSize: 16,
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
+
+  // Expiry banner
   expiryBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
     backgroundColor: COLORS.warning + '20',
     padding: SPACING.md,
     marginHorizontal: SPACING.lg,
@@ -295,90 +386,162 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.warning,
-    textAlign: 'center',
+    flex: 1,
   },
-  tiersContainer: {
-    paddingHorizontal: SPACING.lg,
-    gap: SPACING.lg,
+
+  // Features card
+  featuresCard: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
-  tierCard: {
-    borderWidth: 2,
-    borderColor: COLORS.gray[700],
-  },
-  tierCardContent: {
-    padding: SPACING.xl,
-  },
-  tierCardCurrent: {
-    borderColor: COLORS.primary,
-  },
-  tierCardFeatured: {
-    borderColor: COLORS.primary,
-  },
-  tierName: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 24,
-    color: COLORS.text,
-    textAlign: 'center',
-  },
-  tierPrice: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.primary,
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-  },
-  tierDescription: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  featuresContainer: {
+  featuresCardContent: {
+    padding: SPACING.lg,
     gap: SPACING.md,
-    marginBottom: SPACING.xl - 4,
   },
   featureRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: SPACING.md,
   },
-  featureCheck: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
   featureText: {
-    ...TYPOGRAPHY.footnote,
-    flex: 1,
-    fontSize: 14,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
+    flex: 1,
   },
-  tierButton: {
-    backgroundColor: COLORS.gray[700],
-    borderRadius: RADIUS.md,
-    paddingVertical: SPACING.md + 2,
+
+  // Steps
+  stepsContainer: {
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  step: {
+    flexDirection: 'row',
+  },
+  stepDimmed: {
+    opacity: 0.5,
+  },
+  stepIndicator: {
     alignItems: 'center',
+    marginRight: SPACING.lg,
   },
-  tierButtonCurrent: {
-    backgroundColor: COLORS.primary + '20',
+  stepCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tierButtonFeatured: {
+  stepCircleActive: {
     backgroundColor: COLORS.primary,
   },
-  tierButtonText: {
-    ...TYPOGRAPHY.button,
+  stepCircleComplete: {
+    backgroundColor: COLORS.primary,
+  },
+  stepCircleInactive: {
+    backgroundColor: COLORS.gray[700],
+  },
+  stepNumber: {
+    ...TYPOGRAPHY.headline,
+    color: '#fff',
     fontSize: 16,
+  },
+  stepNumberInactive: {
+    color: COLORS.textMuted,
+  },
+  stepLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: COLORS.gray[700],
+    marginVertical: SPACING.xs,
+  },
+  stepLineComplete: {
+    backgroundColor: COLORS.primary,
+  },
+  stepContent: {
+    flex: 1,
+    paddingBottom: SPACING.xl,
+  },
+  stepTitle: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  stepTitleDimmed: {
+    color: COLORS.textMuted,
+  },
+  stepDescription: {
+    ...TYPOGRAPHY.footnote,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+    lineHeight: 20,
+  },
+  stepDescriptionDimmed: {
+    color: COLORS.textMuted,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  verifiedText: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.primary,
+    fontSize: 14,
+  },
+  stepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.md,
+    alignSelf: 'flex-start',
+  },
+  stepButtonPrimary: {
+    alignSelf: 'stretch',
+  },
+  stepButtonDisabled: {
+    backgroundColor: COLORS.gray[700],
+  },
+  stepButtonText: {
+    ...TYPOGRAPHY.button,
+    color: '#fff',
+  },
+
+  // Plus plan card
+  planCard: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  planCardContent: {
+    padding: SPACING.lg,
+  },
+  planRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  planLabel: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+  },
+  planValue: {
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
-  tierButtonTextCurrent: {
-    color: COLORS.primary,
+  planDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.separator,
   },
+
+  // Cancel
   cancelButton: {
     marginHorizontal: SPACING.lg,
-    marginTop: SPACING.xl,
+    marginTop: SPACING.sm,
     paddingVertical: SPACING.md + 2,
     alignItems: 'center',
   },
@@ -387,6 +550,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.danger,
   },
+
+  // Footer
   footer: {
     padding: SPACING.xl,
     alignItems: 'center',
@@ -397,6 +562,8 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
   },
+
+  // Overlay
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.background + 'E0',

@@ -67,6 +67,17 @@ export async function runMigrations() {
       logger.info('Migration complete: categories seeded');
     }
 
+    // Migration: Add is_verified column to users
+    const hasIsVerified = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'is_verified'
+    `);
+    if (hasIsVerified.rows.length === 0) {
+      logger.info('Running migration: Add is_verified to users');
+      await query('ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT false');
+      logger.info('Migration complete: users.is_verified added');
+    }
+
     // Migration: Add expires_at column to item_requests
     const hasExpiresAt = await query(`
       SELECT column_name FROM information_schema.columns

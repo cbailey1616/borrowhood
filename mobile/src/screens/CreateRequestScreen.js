@@ -43,6 +43,7 @@ export default function CreateRequestScreen({ navigation }) {
   });
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ title: false, categoryId: false });
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customExpiryDate, setCustomExpiryDate] = useState(() => {
@@ -78,6 +79,9 @@ export default function CreateRequestScreen({ navigation }) {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (field in fieldErrors) {
+      setFieldErrors(prev => ({ ...prev, [field]: false }));
+    }
   };
 
   // Simple date input - in production, use a date picker
@@ -94,20 +98,18 @@ export default function CreateRequestScreen({ navigation }) {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim()) {
-      showError({
-        type: 'validation',
-        title: 'Missing Title',
-        message: 'What are you looking for? Enter a title for your request.',
-      });
-      return;
-    }
+    const errors = {
+      title: !formData.title.trim(),
+      categoryId: !formData.categoryId,
+    };
 
-    if (!formData.categoryId) {
+    if (errors.title || errors.categoryId) {
+      setFieldErrors(errors);
+      haptics.warning();
       showError({
         type: 'validation',
-        title: 'Category Required',
-        message: 'Please select a category for your request.',
+        title: 'Missing Fields',
+        message: 'Please fill in the highlighted fields.',
       });
       return;
     }
@@ -135,7 +137,7 @@ export default function CreateRequestScreen({ navigation }) {
       await api.createRequest(requestData);
 
       showToast('Your request has been posted!', 'success');
-      navigation.goBack();
+      setTimeout(() => navigation.goBack(), 400);
     } catch (error) {
       showError({
         message: error.message || 'Unable to post your request. Please try again.',
@@ -218,9 +220,9 @@ export default function CreateRequestScreen({ navigation }) {
     >
       {/* Title */}
       <View style={styles.section}>
-        <Text style={styles.label}>What are you looking for? *</Text>
+        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>What are you looking for? *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
           placeholder="e.g., Power drill, Ladder, Moving boxes"
@@ -247,10 +249,10 @@ export default function CreateRequestScreen({ navigation }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.label}>Category *</Text>
+          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
           <HapticPressable
             haptic="light"
-            style={styles.dropdownButton}
+            style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
             onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
             {formData.categoryId ? (
@@ -692,5 +694,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
     fontSize: 16,
     color: '#fff',
+  },
+  fieldError: {
+    borderColor: COLORS.danger,
+    borderWidth: 1.5,
+  },
+  fieldErrorLabel: {
+    color: COLORS.danger,
   },
 });

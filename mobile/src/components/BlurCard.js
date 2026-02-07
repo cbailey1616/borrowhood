@@ -9,6 +9,7 @@ export default function BlurCard({
   style,
   children,
   fallbackColor = COLORS.surface,
+  innerColor,
 }) {
   if (Platform.OS === 'android') {
     return (
@@ -24,7 +25,7 @@ export default function BlurCard({
       tint={tint}
       style={[styles.card, style]}
     >
-      <View style={[styles.inner, { backgroundColor: COLORS.materials.thin }]}>
+      <View style={[styles.inner, { backgroundColor: innerColor || COLORS.materials.thin }]}>
         {children}
       </View>
     </BlurView>

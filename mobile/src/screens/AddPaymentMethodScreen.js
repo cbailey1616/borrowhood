@@ -63,7 +63,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
       } else {
         haptics.success();
         showToast('Card saved successfully!', 'success');
-        navigation.goBack();
+        setTimeout(() => navigation.goBack(), 400);
       }
     } catch (error) {
       haptics.error();
@@ -94,7 +94,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
       } else {
         haptics.success();
         showToast('Apple Pay added successfully!', 'success');
-        navigation.goBack();
+        setTimeout(() => navigation.goBack(), 400);
       }
     } catch (error) {
       haptics.error();
