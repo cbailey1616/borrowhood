@@ -107,7 +107,7 @@ router.post('/', authenticate,
       // Calculate pricing
       const dailyRate = parseFloat(item.price_per_day) || 0;
       const rentalFee = dailyRate * rentalDays;
-      const depositAmount = parseFloat(item.deposit_amount);
+      const depositAmount = parseFloat(item.deposit_amount) || 0;
       const platformFee = rentalFee * PLATFORM_FEE_PERCENT;
       const lenderPayout = rentalFee - platformFee;
 

@@ -17,7 +17,8 @@ import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
-export default function VerifyIdentityScreen({ navigation }) {
+export default function VerifyIdentityScreen({ navigation, route }) {
+  const fromSubscription = route.params?.fromSubscription;
   const { refreshUser } = useAuth();
   const { showError, showToast } = useError();
   const [isLoading, setIsLoading] = useState(false);
@@ -47,8 +48,24 @@ export default function VerifyIdentityScreen({ navigation }) {
       if (result.verified) {
         await refreshUser();
         haptics.success();
-        showToast('Identity verified! Welcome to Borrowhood.', 'success');
-        navigation.goBack();
+        showToast('Identity verified!', 'success');
+        if (fromSubscription) {
+          // Go straight to payment to complete subscription
+          navigation.replace('PaymentMethods', {
+            selectMode: true,
+            onSelectMethod: async (paymentMethodId) => {
+              try {
+                await api.subscribe(paymentMethodId);
+                haptics.success();
+                showToast('Subscribed to Plus!', 'success');
+              } catch (err) {
+                showError({ message: err.message || 'Subscription failed. Please try again.' });
+              }
+            },
+          });
+        } else {
+          navigation.goBack();
+        }
       } else if (result.status === 'processing') {
         showError({
           title: 'Verification Processing',

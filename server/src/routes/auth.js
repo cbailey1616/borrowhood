@@ -422,7 +422,7 @@ router.post('/verify-identity', authenticate, async (req, res) => {
       );
     }
 
-    const returnUrl = 'com.borrowhood.app://verification-complete';
+    const returnUrl = 'https://borrowhood-production.up.railway.app/verification-complete';
     const session = await createIdentityVerificationSession(
       customerId,
       returnUrl
@@ -471,18 +471,19 @@ router.post('/check-verification', authenticate, async (req, res) => {
     const { default: Stripe } = await import('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const sessions = await stripe.identity.verificationSessions.list({
-      limit: 5,
+      limit: 10,
     });
 
-    // Find a verified session for this customer
+    // Find a verified session for this customer (check metadata or any verified session)
     const verified = sessions.data.find(
-      s => s.metadata?.customer_id === stripe_customer_id && s.status === 'verified'
+      s => s.status === 'verified' &&
+        (s.metadata?.customer_id === stripe_customer_id || s.metadata?.userId === req.user.id)
     );
 
     if (verified) {
       // Update user status to verified
       await query(
-        "UPDATE users SET status = 'verified', stripe_identity_verified_at = NOW() WHERE id = $1",
+        "UPDATE users SET status = 'verified' WHERE id = $1",
         [req.user.id]
       );
       return res.json({ verified: true, status: 'verified' });
@@ -490,7 +491,8 @@ router.post('/check-verification', authenticate, async (req, res) => {
 
     // Check if any session is still processing
     const processing = sessions.data.find(
-      s => s.metadata?.customer_id === stripe_customer_id && s.status === 'processing'
+      s => s.status === 'processing' &&
+        (s.metadata?.customer_id === stripe_customer_id || s.metadata?.userId === req.user.id)
     );
 
     res.json({
