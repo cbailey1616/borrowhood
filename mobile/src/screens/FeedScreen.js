@@ -350,8 +350,14 @@ export default function FeedScreen({ navigation }) {
               </View>
             </HapticPressable>
             <View style={[styles.typeBadge, styles.requestBadge]}>
-              <Ionicons name="search-outline" size={12} color={COLORS.secondary} />
-              <Text style={[styles.typeBadgeText, { color: COLORS.secondary }]}>Looking For</Text>
+              <Ionicons
+                name={item.type === 'service' ? 'construct-outline' : 'cube-outline'}
+                size={12}
+                color={COLORS.secondary}
+              />
+              <Text style={[styles.typeBadgeText, { color: COLORS.secondary }]}>
+                {item.type === 'service' ? 'Service' : 'Item'}
+              </Text>
             </View>
           </View>
 

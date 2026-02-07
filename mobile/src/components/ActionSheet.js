@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, Platform, StyleSheet } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import { BlurView } from 'expo-blur';
@@ -16,11 +16,12 @@ export default function ActionSheet({
   multiSelect = false,
 }) {
   const bottomSheetRef = useRef(null);
+  const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
-      bottomSheetRef.current?.expand();
-    } else {
+      setRendered(true);
+    } else if (rendered) {
       bottomSheetRef.current?.close();
     }
   }, [isVisible]);
@@ -28,6 +29,7 @@ export default function ActionSheet({
   const handleSheetChange = useCallback(
     (index) => {
       if (index === -1) {
+        setRendered(false);
         onClose?.();
       }
     },
@@ -82,10 +84,12 @@ export default function ActionSheet({
     return [headerHeight + messageHeight + actionsHeight + cancelHeight + paddingHeight];
   }, [title, message, actions.length]);
 
+  if (!rendered) return null;
+
   return (
     <BottomSheet
       ref={bottomSheetRef}
-      index={-1}
+      index={0}
       snapPoints={snapPoints}
       onChange={handleSheetChange}
       enablePanDownToClose

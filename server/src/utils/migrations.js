@@ -90,6 +90,28 @@ export async function runMigrations() {
       logger.info('Migration complete: item_requests.expires_at added');
     }
 
+    // Migration: Add type column to item_requests
+    const hasType = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'item_requests' AND column_name = 'type'
+    `);
+    if (hasType.rows.length === 0) {
+      logger.info('Running migration: Add type to item_requests');
+      await query("ALTER TABLE item_requests ADD COLUMN type VARCHAR(10) DEFAULT 'item' NOT NULL");
+      logger.info('Migration complete: item_requests.type added');
+    }
+
+    // Migration: Add request_id column to notifications
+    const hasRequestId = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'notifications' AND column_name = 'request_id'
+    `);
+    if (hasRequestId.rows.length === 0) {
+      logger.info('Running migration: Add request_id to notifications');
+      await query('ALTER TABLE notifications ADD COLUMN request_id UUID REFERENCES item_requests(id) ON DELETE SET NULL');
+      logger.info('Migration complete: notifications.request_id added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

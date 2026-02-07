@@ -29,6 +29,7 @@ const NOTIFICATION_ICONS = {
   rating_received: 'star',
   join_approved: 'people',
   item_match: 'sparkles',
+  new_request: 'search',
   new_message: 'chatbubble',
   default: 'notifications',
 };
@@ -102,6 +103,8 @@ export default function NotificationsScreen({ navigation }) {
     // Navigate based on notification type
     if (notification.type === 'new_message' && notification.conversationId) {
       navigation.navigate('Chat', { conversationId: notification.conversationId });
+    } else if (notification.type === 'new_request' && notification.requestId) {
+      navigation.navigate('RequestDetail', { id: notification.requestId });
     } else if (notification.transactionId) {
       navigation.navigate('TransactionDetail', { id: notification.transactionId });
     } else if (notification.listingId) {

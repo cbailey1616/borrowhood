@@ -149,7 +149,12 @@ function Toast({ toast, onRemove }) {
 
 export function ErrorProvider({ children, navigationRef }) {
   const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    if (error) setShowModal(true);
+  }, [error]);
 
   const showError = useCallback(({
     type,
@@ -262,11 +267,13 @@ export function ErrorProvider({ children, navigationRef }) {
       {children}
 
       {/* Error Modal with Blur Backdrop */}
+      {showModal && (
       <Modal
         visible={!!error}
         transparent
         animationType="fade"
         onRequestClose={dismissError}
+        onDismiss={() => setShowModal(false)}
       >
         <View style={styles.overlay}>
           {Platform.OS === 'ios' ? (
@@ -320,6 +327,7 @@ export function ErrorProvider({ children, navigationRef }) {
           </Animated.View>
         </View>
       </Modal>
+      )}
 
       {/* Toast Messages with Reanimated Entering/Exiting */}
       <View style={styles.toastContainer} pointerEvents="box-none">

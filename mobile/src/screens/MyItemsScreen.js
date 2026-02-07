@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
-import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -30,7 +29,7 @@ export default function MyItemsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const swipeableRefs = useRef({});
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -75,14 +74,8 @@ export default function MyItemsScreen({ navigation }) {
     fetchData();
   };
 
-  const confirmDelete = (item, type) => {
+  const handleSwipeDelete = async (item, type) => {
     haptics.warning();
-    setDeleteTarget({ item, type });
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    const { item, type } = deleteTarget;
     try {
       if (type === 'listing') {
         await api.deleteListing(item.id);
@@ -94,6 +87,7 @@ export default function MyItemsScreen({ navigation }) {
       haptics.success();
     } catch (error) {
       haptics.error();
+      swipeableRefs.current[item.id]?.close();
       showError({
         message: error.message || 'Unable to delete. Please check your connection and try again.',
         type: 'network',
@@ -125,10 +119,13 @@ export default function MyItemsScreen({ navigation }) {
   const renderListingItem = ({ item, index }) => (
     <AnimatedCard index={index}>
       <Swipeable
+        ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, () => confirmDelete(item, 'listing'))
+          renderRightActions(progress, dragX, () => handleSwipeDelete(item, 'listing'))
         }
-        overshootRight={false}
+        onSwipeableOpen={(direction) => {
+          if (direction === 'right') handleSwipeDelete(item, 'listing');
+        }}
       >
         <HapticPressable
           style={styles.card}
@@ -202,10 +199,13 @@ export default function MyItemsScreen({ navigation }) {
   const renderRequestItem = ({ item, index }) => (
     <AnimatedCard index={index}>
       <Swipeable
+        ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, () => confirmDelete(item, 'request'))
+          renderRightActions(progress, dragX, () => handleSwipeDelete(item, 'request'))
         }
-        overshootRight={false}
+        onSwipeableOpen={(direction) => {
+          if (direction === 'right') handleSwipeDelete(item, 'request');
+        }}
       >
         <HapticPressable
           style={styles.requestCard}
@@ -215,6 +215,11 @@ export default function MyItemsScreen({ navigation }) {
           <View style={styles.requestHeader}>
             <Text style={styles.requestTitle} numberOfLines={1}>{item.title}</Text>
             <View style={styles.requestBadges}>
+              {item.type === 'service' && (
+                <View style={styles.serviceBadge}>
+                  <Text style={styles.serviceBadgeText}>Service</Text>
+                </View>
+              )}
               {item.isExpired && (
                 <View style={styles.expiredBadge}>
                   <Text style={styles.expiredBadgeText}>Expired</Text>
@@ -346,19 +351,6 @@ export default function MyItemsScreen({ navigation }) {
         }
       />
 
-      <ActionSheet
-        isVisible={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        title={`Delete ${deleteTarget?.type === 'listing' ? 'Item' : 'Request'}`}
-        message={`Are you sure you want to delete "${deleteTarget?.item?.title}"?`}
-        actions={[
-          {
-            label: 'Delete',
-            destructive: true,
-            onPress: handleDelete,
-          },
-        ]}
-      />
     </View>
   );
 }
@@ -481,6 +473,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
+  },
+  serviceBadge: {
+    backgroundColor: COLORS.primary + '20',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
+  },
+  serviceBadgeText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   expiredBadge: {
     backgroundColor: COLORS.textMuted + '30',

@@ -33,6 +33,7 @@ const EXPIRATION_OPTIONS = [
 export default function CreateRequestScreen({ navigation }) {
   const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
+    type: 'item',
     title: '',
     description: '',
     categoryId: null,
@@ -119,6 +120,7 @@ export default function CreateRequestScreen({ navigation }) {
       const requestData = {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
+        type: formData.type,
         categoryId: formData.categoryId,
         visibility: formData.visibility,
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
@@ -136,8 +138,9 @@ export default function CreateRequestScreen({ navigation }) {
 
       await api.createRequest(requestData);
 
-      showToast('Your request has been posted!', 'success');
-      setTimeout(() => navigation.goBack(), 400);
+      haptics.success();
+      navigation.goBack();
+      setTimeout(() => showToast('Your request has been posted!', 'success'), 500);
     } catch (error) {
       showError({
         message: error.message || 'Unable to post your request. Please try again.',
@@ -218,9 +221,42 @@ export default function CreateRequestScreen({ navigation }) {
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
     >
+      {/* Type Toggle */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Type</Text>
+        <View style={styles.options}>
+          {[
+            { value: 'item', label: 'Item', icon: 'cube-outline' },
+            { value: 'service', label: 'Service', icon: 'construct-outline' },
+          ].map((opt) => {
+            const isSelected = formData.type === opt.value;
+            return (
+              <HapticPressable
+                key={opt.value}
+                style={[styles.option, isSelected && styles.optionActive]}
+                onPress={() => updateField('type', opt.value)}
+                haptic="light"
+              >
+                <Ionicons
+                  name={opt.icon}
+                  size={16}
+                  color={isSelected ? '#fff' : COLORS.textSecondary}
+                  style={{ marginRight: SPACING.xs }}
+                />
+                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                  {opt.label}
+                </Text>
+              </HapticPressable>
+            );
+          })}
+        </View>
+      </View>
+
       {/* Title */}
       <View style={styles.section}>
-        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>What are you looking for? *</Text>
+        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
+          {formData.type === 'service' ? 'What service do you need? *' : 'What are you looking for? *'}
+        </Text>
         <TextInput
           style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}

@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Platform,
   Keyboard,
-  Modal,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
@@ -19,7 +18,6 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
@@ -47,8 +45,6 @@ export default function CreateListingScreen({ navigation, route }) {
     photos: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiSuggested, setAiSuggested] = useState(false);
   const [showJoinCommunity, setShowJoinCommunity] = useState(false);
   const [showAddFriends, setShowAddFriends] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -58,6 +54,12 @@ export default function CreateListingScreen({ navigation, route }) {
   const [removePhotoIndex, setRemovePhotoIndex] = useState(null);
   const [isRelist, setIsRelist] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, categoryId: false });
+
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: !showUpgradePrompt && !showJoinCommunity && !showAddFriends,
+    });
+  }, [showUpgradePrompt, showJoinCommunity, showAddFriends, navigation]);
 
   // Pre-populate from relist data
   useEffect(() => {
@@ -116,44 +118,6 @@ export default function CreateListingScreen({ navigation, route }) {
     }
   };
 
-  const analyzeImage = async (imageUri) => {
-    setIsAnalyzing(true);
-    try {
-      // First upload the image to get a URL
-      const imageUrl = await api.uploadImage(imageUri, 'listings');
-
-      // Then analyze it with AI
-      const result = await api.analyzeListingImage(imageUrl);
-
-      if (result && !result.error) {
-        setFormData(prev => {
-          const updates = {
-            ...prev,
-            title: result.title || prev.title,
-            description: result.description || prev.description,
-            condition: result.condition || prev.condition,
-          };
-          // Auto-select category if AI returns one
-          if (result.category && categories.length > 0) {
-            const match = categories.find(c =>
-              c.name.toLowerCase().includes(result.category.toLowerCase()) ||
-              c.slug.includes(result.category.toLowerCase())
-            );
-            if (match) updates.categoryId = match.id;
-          }
-          return updates;
-        });
-        setAiSuggested(true);
-        haptics.success();
-      }
-    } catch (error) {
-      console.log('AI analysis failed:', error.message);
-      // Silently fail - user can still fill in details manually
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -167,11 +131,6 @@ export default function CreateListingScreen({ navigation, route }) {
       const allPhotos = [...formData.photos, ...newPhotos].slice(0, 10);
       updateField('photos', allPhotos);
       haptics.light();
-
-      // Analyze the first photo if this is the first photo added and no title yet (skip for relist)
-      if (!isRelist && formData.photos.length === 0 && newPhotos.length > 0 && !formData.title) {
-        analyzeImage(newPhotos[0]);
-      }
     }
   };
 
@@ -196,11 +155,6 @@ export default function CreateListingScreen({ navigation, route }) {
       const allPhotos = [...formData.photos, photoUri].slice(0, 10);
       updateField('photos', allPhotos);
       haptics.light();
-
-      // Analyze the photo if this is the first photo and no title yet (skip for relist)
-      if (!isRelist && formData.photos.length === 0 && !formData.title) {
-        analyzeImage(photoUri);
-      }
     }
   };
 
@@ -269,6 +223,10 @@ export default function CreateListingScreen({ navigation, route }) {
 
       if (!mountedRef.current) return;
       setIsSubmitting(false);
+      setShowUpgradePrompt(false);
+      setShowJoinCommunity(false);
+      setShowAddFriends(false);
+      Keyboard.dismiss();
       haptics.success();
       navigation.goBack();
     } catch (error) {
@@ -313,22 +271,6 @@ export default function CreateListingScreen({ navigation, route }) {
       <View style={styles.section}>
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
-        {isAnalyzing && (
-          <BlurCard style={styles.analyzingBanner}>
-            <View style={styles.analyzingBannerInner}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.analyzingText}>Analyzing image with AI...</Text>
-            </View>
-          </BlurCard>
-        )}
-        {aiSuggested && !isAnalyzing && (
-          <BlurCard style={styles.aiSuggestedBanner}>
-            <View style={styles.aiSuggestedBannerInner}>
-              <Ionicons name="sparkles" size={16} color={COLORS.secondary} />
-              <Text style={styles.aiSuggestedText}>AI filled in details - feel free to edit</Text>
-            </View>
-          </BlurCard>
-        )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
             {formData.photos.map((uri, index) => (
@@ -606,7 +548,7 @@ export default function CreateListingScreen({ navigation, route }) {
     />
 
     {/* Neighborhood Join Overlay */}
-    <Modal visible={showJoinCommunity} transparent animationType="fade" onRequestClose={() => setShowJoinCommunity(false)}>
+    {showJoinCommunity && (
       <View style={styles.overlay}>
         <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
@@ -637,10 +579,10 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
-    </Modal>
+    )}
 
     {/* Add Friends Overlay */}
-    <Modal visible={showAddFriends} transparent animationType="fade" onRequestClose={() => setShowAddFriends(false)}>
+    {showAddFriends && (
       <View style={styles.overlay}>
         <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
@@ -671,10 +613,10 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
-    </Modal>
+    )}
 
     {/* Subscription Upgrade Overlay */}
-    <Modal visible={showUpgradePrompt} transparent animationType="fade" onRequestClose={() => setShowUpgradePrompt(false)}>
+    {showUpgradePrompt && (
       <View style={styles.overlay}>
         <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
@@ -728,7 +670,7 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
-    </Modal>
+    )}
     </View>
   );
 }
@@ -756,34 +698,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
-  },
-  analyzingBanner: {
-    marginBottom: SPACING.md,
-  },
-  analyzingBannerInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    padding: SPACING.md,
-  },
-  analyzingText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.primary,
-    fontWeight: '500',
-  },
-  aiSuggestedBanner: {
-    marginBottom: SPACING.md,
-  },
-  aiSuggestedBannerInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    padding: SPACING.md,
-  },
-  aiSuggestedText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.secondary,
-    fontWeight: '500',
   },
   photoScroll: {
     marginHorizontal: -SPACING.xl,

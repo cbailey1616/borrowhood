@@ -107,6 +107,12 @@ export default function RequestDetailScreen({ route, navigation }) {
 
         {/* Badges */}
         <View style={styles.badges}>
+          {request.type === 'service' && (
+            <View style={[styles.badge, styles.typeBadge]}>
+              <Ionicons name="construct-outline" size={12} color={COLORS.primary} />
+              <Text style={[styles.badgeText, { color: COLORS.primary }]}>Service</Text>
+            </View>
+          )}
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{VISIBILITY_LABELS[request.visibility]}</Text>
           </View>
@@ -282,6 +288,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md - 2,
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.sm,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: COLORS.primary + '15',
   },
   badgeText: {
     ...TYPOGRAPHY.caption1,

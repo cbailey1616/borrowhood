@@ -130,6 +130,12 @@ function handleNotificationResponse(data) {
       }
       break;
 
+    case 'new_request':
+      if (data.requestId) {
+        navigationRef.navigate('RequestDetail', { id: data.requestId });
+      }
+      break;
+
     case 'discussion_reply':
     case 'listing_comment':
       if (data.listingId) {

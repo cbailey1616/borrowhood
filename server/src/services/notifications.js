@@ -97,6 +97,14 @@ const NOTIFICATION_TEMPLATES = {
       : 'An item matching your request is available!',
   },
 
+  // New request posted
+  new_request: {
+    title: 'New Request',
+    body: (data) => data.firstName
+      ? `${data.firstName} is looking for: ${data.title || 'something'}`
+      : 'Someone posted a new request nearby',
+  },
+
   // Messages
   new_message: {
     title: 'New Message',
@@ -152,8 +160,8 @@ export async function sendNotification(userId, type, data, options = {}) {
 
     // Create notification record
     const result = await query(
-      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
       [
         userId,
@@ -163,6 +171,7 @@ export async function sendNotification(userId, type, data, options = {}) {
         options.fromUserId || null,
         options.transactionId || null,
         options.listingId || null,
+        options.requestId || null,
       ]
     );
 
@@ -179,7 +188,7 @@ export async function sendNotification(userId, type, data, options = {}) {
       const prefs = notification_preferences || {};
 
       // Send push notification if enabled and token exists
-      if (push_token && prefs.push !== false) {
+      if (push_token && prefs.push !== false && prefs[type] !== false) {
         await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data } });
       }
     }

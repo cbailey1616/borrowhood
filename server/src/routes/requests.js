@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
-import { sendNotification } from '../services/notifications.js';
+import { sendNotification, sendBulkNotification } from '../services/notifications.js';
 
 const router = Router();
 
@@ -73,6 +73,7 @@ router.get('/', authenticate, async (req, res) => {
       id: r.id,
       title: r.title,
       description: r.description,
+      type: r.type,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
       visibility: r.visibility,
@@ -111,6 +112,7 @@ router.get('/mine', authenticate, async (req, res) => {
       id: r.id,
       title: r.title,
       description: r.description,
+      type: r.type,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
       visibility: r.visibility,
@@ -153,6 +155,7 @@ router.get('/:id', authenticate, async (req, res) => {
       id: r.id,
       title: r.title,
       description: r.description,
+      type: r.type,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
       visibility: r.visibility,
@@ -186,6 +189,7 @@ router.post('/', authenticate,
   body('description').optional().isLength({ max: 2000 }),
   body('communityId').optional({ nullable: true }).isUUID(),
   body('categoryId').isUUID(),
+  body('type').optional().isIn(['item', 'service']),
   body('neededFrom').optional().isISO8601(),
   body('neededUntil').optional().isISO8601(),
   async (req, res) => {
@@ -196,8 +200,11 @@ router.post('/', authenticate,
 
     let {
       title, description, communityId, categoryId,
-      neededFrom, neededUntil, visibility, expiresIn, expiresAt
+      neededFrom, neededUntil, visibility, expiresIn, expiresAt,
+      type
     } = req.body;
+
+    type = type || 'item';
 
     // Compute expires_at value
     let expiresAtValue = null;
@@ -240,12 +247,12 @@ router.post('/', authenticate,
         result = await query(
           `INSERT INTO item_requests (
             user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL)
+            needed_from, needed_until, visibility, status, expires_at, type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL, $9)
           RETURNING id`,
           [
             req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility
+            neededFrom || null, neededUntil || null, visibility, type
           ]
         );
       } else if (expiresAtValue instanceof Date) {
@@ -253,12 +260,12 @@ router.post('/', authenticate,
         result = await query(
           `INSERT INTO item_requests (
             user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9)
+            needed_from, needed_until, visibility, status, expires_at, type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10)
           RETURNING id`,
           [
             req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, expiresAtValue
+            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type
           ]
         );
       } else {
@@ -266,17 +273,76 @@ router.post('/', authenticate,
         result = await query(
           `INSERT INTO item_requests (
             user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval)
+            needed_from, needed_until, visibility, status, expires_at, type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval, $10)
           RETURNING id`,
           [
             req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, expiresAtValue
+            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type
           ]
         );
       }
 
-      res.status(201).json({ id: result.rows[0].id });
+      const requestId = result.rows[0].id;
+      res.status(201).json({ id: requestId });
+
+      // Fire-and-forget: notify relevant users about the new request
+      (async () => {
+        try {
+          // Get the creator's name
+          const creator = await query('SELECT first_name FROM users WHERE id = $1', [req.user.id]);
+          const firstName = creator.rows[0]?.first_name || 'Someone';
+
+          let recipientIds = [];
+
+          if (visibility === 'close_friends' || visibility === 'neighborhood' || visibility === 'town') {
+            // For close_friends: notify user's accepted friends
+            if (visibility === 'close_friends') {
+              const friends = await query(
+                `SELECT CASE WHEN user_id = $1 THEN friend_id ELSE user_id END as uid
+                 FROM friendships WHERE (user_id = $1 OR friend_id = $1) AND status = 'accepted'`,
+                [req.user.id]
+              );
+              recipientIds = friends.rows.map(f => f.uid);
+            }
+
+            // For neighborhood: notify community members
+            if (visibility === 'neighborhood' && communityId) {
+              const members = await query(
+                'SELECT user_id FROM community_memberships WHERE community_id = $1 AND user_id != $2',
+                [communityId, req.user.id]
+              );
+              recipientIds = members.rows.map(m => m.user_id);
+            }
+
+            // For town: notify all users in the same city/state
+            if (visibility === 'town') {
+              const userLocation = await query(
+                'SELECT city, state FROM users WHERE id = $1',
+                [req.user.id]
+              );
+              if (userLocation.rows[0]?.city) {
+                const townUsers = await query(
+                  'SELECT id FROM users WHERE city = $1 AND state = $2 AND id != $3',
+                  [userLocation.rows[0].city, userLocation.rows[0].state, req.user.id]
+                );
+                recipientIds = townUsers.rows.map(u => u.id);
+              }
+            }
+          }
+
+          if (recipientIds.length > 0) {
+            await sendBulkNotification(
+              recipientIds,
+              'new_request',
+              { firstName, title, requestId },
+              { fromUserId: req.user.id, requestId }
+            );
+          }
+        } catch (notifErr) {
+          console.error('Request notification error:', notifErr);
+        }
+      })();
     } catch (err) {
       console.error('Create request error:', err);
       res.status(500).json({ error: 'Failed to create request' });
@@ -354,7 +420,7 @@ router.patch('/:id', authenticate,
 
       const allowedFields = [
         'title', 'description', 'category_id', 'needed_from',
-        'needed_until', 'visibility', 'status'
+        'needed_until', 'visibility', 'status', 'type'
       ];
 
       const updates = [];

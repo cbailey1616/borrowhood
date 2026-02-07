@@ -34,6 +34,7 @@ const NOTIFICATION_SETTINGS = [
     settings: [
       { key: 'new_message', label: 'Messages', description: 'New messages from other users' },
       { key: 'item_match', label: 'Item Matches', description: 'When someone lists an item you requested' },
+      { key: 'new_request', label: 'Request Posts', description: 'When someone posts a new request' },
       { key: 'community_updates', label: 'Community Updates', description: 'News and updates from your community' },
     ],
   },

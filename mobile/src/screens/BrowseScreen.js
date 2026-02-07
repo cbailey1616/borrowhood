@@ -161,6 +161,19 @@ export default function BrowseScreen({ navigation }) {
           </View>
 
           <Text style={styles.requestTitle}>{item.title}</Text>
+          <View style={styles.requestTypeBadge}>
+            <Ionicons
+              name={item.type === 'service' ? 'construct-outline' : 'cube-outline'}
+              size={12}
+              color={item.type === 'service' ? COLORS.primary : COLORS.textSecondary}
+            />
+            <Text style={[
+              styles.requestTypeBadgeText,
+              item.type === 'service' && { color: COLORS.primary },
+            ]}>
+              {item.type === 'service' ? 'Service' : 'Item'}
+            </Text>
+          </View>
           {item.description && (
             <Text style={styles.requestDescription} numberOfLines={2}>
               {item.description}
@@ -542,7 +555,23 @@ const styles = StyleSheet.create({
   requestTitle: {
     ...TYPOGRAPHY.h3,
     color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  requestTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: SPACING.xs,
+    backgroundColor: COLORS.separator,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
     marginBottom: SPACING.sm,
+  },
+  requestTypeBadgeText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
   },
   requestDescription: {
     ...TYPOGRAPHY.bodySmall,

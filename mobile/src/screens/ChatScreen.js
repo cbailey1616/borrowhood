@@ -172,9 +172,9 @@ export default function ChatScreen({ route, navigation }) {
       <View>
         {showDate && (
           <View style={styles.dateHeader}>
-            <BlurCard style={styles.datePill} intensity={60}>
+            <View style={styles.datePill}>
               <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
-            </BlurCard>
+            </View>
           </View>
         )}
         <Animated.View
@@ -226,7 +226,7 @@ export default function ChatScreen({ route, navigation }) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
       {/* Listing Context Header */}
       {conversation?.listing && (
@@ -364,6 +364,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceElevated,
   },
   dateText: {
     ...TYPOGRAPHY.caption1,
