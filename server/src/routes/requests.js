@@ -158,6 +158,7 @@ router.get('/:id', authenticate, async (req, res) => {
       visibility: r.visibility,
       status: r.status,
       category: r.category_name,
+      categoryId: r.category_id,
       requester: {
         id: r.user_id,
         firstName: r.first_name,

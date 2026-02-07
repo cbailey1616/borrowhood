@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   Keyboard,
+  Modal,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
@@ -28,6 +29,8 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 export default function CreateListingScreen({ navigation, route }) {
   const { user } = useAuth();
   const { showError } = useError();
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
   const [communityId, setCommunityId] = useState(null);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
@@ -264,10 +267,12 @@ export default function CreateListingScreen({ navigation, route }) {
         communityId: communityId || undefined, // Always send communityId (required by DB)
       });
 
+      if (!mountedRef.current) return;
       setIsSubmitting(false);
       haptics.success();
       navigation.goBack();
     } catch (error) {
+      if (!mountedRef.current) return;
       // Handle subscription and membership errors with themed UI
       const errorMsg = error.message?.toLowerCase() || '';
       const errorCode = error.code || '';
@@ -291,7 +296,7 @@ export default function CreateListingScreen({ navigation, route }) {
         });
       }
     } finally {
-      setIsSubmitting(false);
+      if (mountedRef.current) setIsSubmitting(false);
     }
   };
 
@@ -601,7 +606,7 @@ export default function CreateListingScreen({ navigation, route }) {
     />
 
     {/* Neighborhood Join Overlay */}
-    {showJoinCommunity && (
+    <Modal visible={showJoinCommunity} transparent animationType="fade" onRequestClose={() => setShowJoinCommunity(false)}>
       <View style={styles.overlay}>
         <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
@@ -632,10 +637,10 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
-    )}
+    </Modal>
 
     {/* Add Friends Overlay */}
-    {showAddFriends && (
+    <Modal visible={showAddFriends} transparent animationType="fade" onRequestClose={() => setShowAddFriends(false)}>
       <View style={styles.overlay}>
         <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
@@ -666,10 +671,10 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
-    )}
+    </Modal>
 
     {/* Subscription Upgrade Overlay */}
-    {showUpgradePrompt && (
+    <Modal visible={showUpgradePrompt} transparent animationType="fade" onRequestClose={() => setShowUpgradePrompt(false)}>
       <View style={styles.overlay}>
         <View style={styles.overlayCard}>
           <View style={styles.overlayCardInner}>
@@ -708,11 +713,12 @@ export default function CreateListingScreen({ navigation, route }) {
               style={styles.overlayDismiss}
               onPress={() => {
                 setShowUpgradePrompt(false);
+                const freeVisibility = formData.visibility.filter(v => v !== 'town');
                 const freeData = {
                   ...formData,
                   isFree: true,
                   pricePerDay: '',
-                  visibility: formData.visibility.filter(v => v !== 'town'),
+                  visibility: freeVisibility.length > 0 ? freeVisibility : ['close_friends'],
                 };
                 setFormData(freeData);
                 handleSubmit(freeData);
@@ -724,7 +730,7 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
-    )}
+    </Modal>
     </View>
   );
 }

@@ -29,6 +29,7 @@ import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import DisputesScreen from '../screens/DisputesScreen';
 import SetupPayoutScreen from '../screens/SetupPayoutScreen';
 import EditListingScreen from '../screens/EditListingScreen';
+import EditRequestScreen from '../screens/EditRequestScreen';
 import ListingDiscussionScreen from '../screens/ListingDiscussionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import BundlesScreen from '../screens/BundlesScreen';
@@ -144,6 +145,11 @@ export default function RootNavigator() {
             name="RequestDetail"
             component={RequestDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Request Details' }}
+          />
+          <Stack.Screen
+            name="EditRequest"
+            component={EditRequestScreen}
+            options={{ ...sharedScreenOptions, title: 'Edit Request', presentation: 'modal' }}
           />
           <Stack.Screen
             name="Conversations"

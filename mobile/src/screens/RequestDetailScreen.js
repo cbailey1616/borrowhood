@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function RequestDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -22,9 +23,11 @@ export default function RequestDetailScreen({ route, navigation }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
 
-  useEffect(() => {
-    fetchRequest();
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchRequest();
+    }, [id])
+  );
 
   const fetchRequest = async () => {
     try {
@@ -181,6 +184,14 @@ export default function RequestDetailScreen({ route, navigation }) {
 
       {request.isOwner && request.status === 'open' && (
         <View style={styles.footer}>
+          <HapticPressable
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditRequest', { request })}
+            haptic="medium"
+          >
+            <Ionicons name="create-outline" size={20} color="#fff" />
+            <Text style={styles.editButtonText}>Edit Request</Text>
+          </HapticPressable>
           <HapticPressable
             style={styles.deleteButton}
             onPress={handleDelete}
@@ -368,6 +379,21 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   haveThisButtonText: {
+    ...TYPOGRAPHY.button,
+    fontSize: 16,
+    color: '#fff',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  editButtonText: {
     ...TYPOGRAPHY.button,
     fontSize: 16,
     color: '#fff',
