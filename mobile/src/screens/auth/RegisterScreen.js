@@ -68,7 +68,7 @@ export default function RegisterScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      await register({ firstName, lastName, email, phone, password, referralCode: formData.referralCode || undefined });
+      await register({ firstName, lastName, email, phone: phone || undefined, password, referralCode: formData.referralCode || undefined });
       haptics.success();
       navigation.navigate('VerifyIdentity');
     } catch (error) {

@@ -42,7 +42,7 @@ export default function JoinCommunityScreen({ navigation }) {
   const fetchNeighborhoods = async () => {
     try {
       // Check if user has location set
-      if (!user?.latitude || !user?.longitude) {
+      if (!user?.city) {
         setNeedsLocation(true);
         setNeighborhoods([]);
       } else {
