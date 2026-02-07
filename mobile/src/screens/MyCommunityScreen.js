@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -62,9 +63,12 @@ export default function MyCommunityScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCommunities();
-  }, [fetchCommunities]);
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      fetchCommunities();
+    }, [fetchCommunities])
+  );
 
   const onRefresh = () => {
     setIsRefreshing(true);
