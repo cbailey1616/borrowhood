@@ -13,13 +13,6 @@ router.get('/', authenticate, async (req, res) => {
   const { search, member } = req.query;
 
   try {
-    // Get user's saved location
-    const userResult = await query(
-      'SELECT latitude, longitude FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    const user = userResult.rows[0];
-
     // If requesting only joined communities, skip distance filter
     if (member === 'true') {
       const result = await query(
@@ -293,17 +286,10 @@ router.post('/', authenticate,
     try {
       // Get creator's location from profile
       const userResult = await query(
-        'SELECT city, state, latitude, longitude FROM users WHERE id = $1',
+        'SELECT city, state FROM users WHERE id = $1',
         [req.user.id]
       );
       const user = userResult.rows[0];
-
-      if (!user.latitude || !user.longitude) {
-        return res.status(400).json({
-          error: 'Please set your location in your profile before creating a neighborhood',
-          code: 'LOCATION_REQUIRED'
-        });
-      }
 
       if (!user.city || !user.state) {
         return res.status(400).json({
@@ -318,10 +304,10 @@ router.post('/', authenticate,
 
       // Create community at creator's location
       const result = await query(
-        `INSERT INTO communities (name, slug, city, state, description, latitude, longitude)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO communities (name, slug, city, state, description)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
-        [name, uniqueSlug, user.city, user.state, description, user.latitude, user.longitude]
+        [name, uniqueSlug, user.city, user.state, description]
       );
 
       // Add creator as organizer (moderator)
