@@ -111,11 +111,11 @@ export default function FriendsScreen({ navigation }) {
 
       setContactMatches(matchesWithNames);
 
-      // Store some non-user contacts for invite feature (limit to 50)
+      // Store non-user contacts for invite feature
       const matchedPhones = new Set(matches.map(m => m.matchedPhone));
       const nonUsers = [];
       contactMap.forEach((contact, phone) => {
-        if (!matchedPhones.has(phone) && nonUsers.length < 50) {
+        if (!matchedPhones.has(phone)) {
           nonUsers.push(contact);
         }
       });
@@ -218,11 +218,17 @@ export default function FriendsScreen({ navigation }) {
   // Memoize combined contacts list to prevent re-renders
   const contactsData = useMemo(() => {
     // Add stable keys to non-user contacts
-    const inviteContacts = nonUserContacts.slice(0, 10).map((contact, idx) => ({
+    const inviteContacts = nonUserContacts.map((contact, idx) => ({
       ...contact,
       _inviteKey: `invite-${contact.phone?.replace(/\D/g, '').slice(-10) || idx}`,
     }));
-    return [...contactMatches, ...inviteContacts];
+    // Add a separator header between matched and invite sections
+    const sections = [...contactMatches];
+    if (contactMatches.length > 0 && inviteContacts.length > 0) {
+      sections.push({ _sectionHeader: 'Invite Your Contacts', _inviteKey: '_section-header' });
+    }
+    sections.push(...inviteContacts);
+    return sections;
   }, [contactMatches, nonUserContacts]);
 
   const handleAddFriend = async (user) => {
@@ -674,7 +680,9 @@ export default function FriendsScreen({ navigation }) {
             <FlatList
               data={contactsData}
               renderItem={({ item }) =>
-                item.id ? renderContactItem({ item }) : renderInviteItem({ item })
+                item._sectionHeader ? (
+                  <Text style={styles.sectionHeader}>{item._sectionHeader}</Text>
+                ) : item.id ? renderContactItem({ item }) : renderInviteItem({ item })
               }
               keyExtractor={(item) => item.id || item._inviteKey}
               contentContainerStyle={styles.listContent}
@@ -687,15 +695,17 @@ export default function FriendsScreen({ navigation }) {
               }
               ListHeaderComponent={
                 contactMatches.length > 0 ? (
-                  <Text style={styles.sectionHeader}>From Your Contacts</Text>
+                  <Text style={styles.sectionHeader}>On Borrowhood</Text>
+                ) : nonUserContacts.length > 0 ? (
+                  <Text style={styles.sectionHeader}>Invite Your Contacts</Text>
                 ) : null
               }
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="people-outline" size={64} color={COLORS.gray[700]} />
-                  <Text style={styles.emptyTitle}>No matches found</Text>
+                  <Text style={styles.emptyTitle}>No contacts found</Text>
                   <Text style={styles.emptySubtitle}>
-                    None of your contacts are on Borrowhood yet. Invite them!
+                    We couldn't find any contacts with phone numbers. Try searching for friends by name instead.
                   </Text>
                 </View>
               }
