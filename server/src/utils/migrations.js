@@ -22,6 +22,20 @@ export async function runMigrations() {
       logger.info('Migration complete: friendships.status added');
     }
 
+    // Migration: Add referral columns to users
+    const hasReferralCode = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'referral_code'
+    `);
+    if (hasReferralCode.rows.length === 0) {
+      logger.info('Running migration: Add referral columns to users');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES users(id)');
+      await query("UPDATE users SET referral_code = 'BH-' || LEFT(id::TEXT, 8) WHERE referral_code IS NULL");
+      await query('CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)');
+      logger.info('Migration complete: referral columns added');
+    }
+
     // Migration: Make community_id nullable on item_requests (same as listings)
     const reqCommunityNullable = await query(`
       SELECT is_nullable FROM information_schema.columns
