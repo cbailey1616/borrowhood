@@ -110,10 +110,18 @@ export default function FriendsScreen({ navigation, route }) {
         }
       });
 
-      // Find matches on server
+      // Show all phone contacts immediately as invite-able
+      setNonUserContacts(allContacts);
+
+      // Then try to find matches on server
       let matches = [];
-      if (phoneNumbers.length > 0) {
-        matches = await api.matchContacts(phoneNumbers);
+      try {
+        if (phoneNumbers.length > 0) {
+          matches = await api.matchContacts(phoneNumbers);
+        }
+      } catch (err) {
+        console.error('Server contact match failed:', err);
+        // Phone contacts still show even if server match fails
       }
 
       // Add contact name to matches
@@ -124,13 +132,15 @@ export default function FriendsScreen({ navigation, route }) {
 
       setContactMatches(matchesWithNames);
 
-      // Store non-user contacts for invite feature
-      const matchedPhones = new Set(matches.map(m => m.matchedPhone));
-      const nonUsers = allContacts.filter(contact => {
-        const digits = contact.phone.replace(/\D/g, '').slice(-10);
-        return !matchedPhones.has(digits);
-      });
-      setNonUserContacts(nonUsers);
+      // Update non-user contacts by removing matched Borrowhood users
+      if (matches.length > 0) {
+        const matchedPhones = new Set(matches.map(m => m.matchedPhone));
+        const nonUsers = allContacts.filter(contact => {
+          const digits = contact.phone.replace(/\D/g, '').slice(-10);
+          return !matchedPhones.has(digits);
+        });
+        setNonUserContacts(nonUsers);
+      }
 
     } catch (error) {
       console.error('Failed to fetch contacts:', error);
@@ -714,13 +724,22 @@ export default function FriendsScreen({ navigation, route }) {
                   <Text style={styles.sectionHeader}>Invite Your Contacts</Text>
                 ) : null
               }
+              ListFooterComponent={
+                <HapticPressable haptic="light" style={styles.updateAccessButton} onPress={openSettings}>
+                  <Ionicons name="settings-outline" size={18} color={COLORS.primary} />
+                  <Text style={styles.updateAccessText}>Not seeing all your contacts? Update access in Settings</Text>
+                </HapticPressable>
+              }
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="people-outline" size={64} color={COLORS.gray[700]} />
                   <Text style={styles.emptyTitle}>No contacts found</Text>
                   <Text style={styles.emptySubtitle}>
-                    We couldn't find any contacts with phone numbers. Try searching for friends by name instead.
+                    We couldn't find any contacts with phone numbers. You may need to grant full contacts access in Settings.
                   </Text>
+                  <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
+                    <Text style={styles.settingsButtonText}>Open Settings</Text>
+                  </HapticPressable>
                 </View>
               }
             />
@@ -958,6 +977,18 @@ const styles = StyleSheet.create({
   inviteButtonText: {
     ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
+    color: COLORS.primary,
+  },
+  updateAccessButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.md,
+  },
+  updateAccessText: {
+    ...TYPOGRAPHY.caption1,
     color: COLORS.primary,
   },
   settingsButton: {

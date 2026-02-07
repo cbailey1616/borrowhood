@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { CardField, useConfirmSetupIntent, usePlatformPay } from '@stripe/stripe-react-native';
+import { CardField, useConfirmSetupIntent, usePlatformPay, PlatformPayButton, PlatformPay } from '@stripe/stripe-react-native';
 import HapticPressable from '../components/HapticPressable';
 import { Ionicons } from '../components/Icon';
 import { useError } from '../context/ErrorContext';
@@ -82,7 +82,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
         applePay: {
           merchantCountryCode: 'US',
           currencyCode: 'USD',
-          cartItems: [{ paymentType: 'Immediate', label: 'BorrowHood', amount: '0.00' }],
+          cartItems: [{ paymentType: 'Immediate', label: 'BorrowHood - save payment method', amount: '0.00' }],
         },
       });
 
@@ -117,22 +117,18 @@ export default function AddPaymentMethodScreen({ navigation }) {
       <View style={styles.content}>
         {Platform.OS === 'ios' && applePaySupported && (
           <>
-            <HapticPressable
-              haptic="medium"
-              style={styles.applePayButton}
+            <PlatformPayButton
+              type={PlatformPay.ButtonType.SetUp}
+              appearance={PlatformPay.ButtonStyle.Black}
+              borderRadius={RADIUS.md}
               onPress={handleApplePay}
               disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.applePayButtonText}> Pay</Text>
-              )}
-            </HapticPressable>
+              style={styles.applePayButton}
+            />
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or pay with card</Text>
+              <Text style={styles.dividerText}>or add a card</Text>
               <View style={styles.dividerLine} />
             </View>
           </>
@@ -199,17 +195,8 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.xl,
   },
   applePayButton: {
-    backgroundColor: '#000',
-    paddingVertical: 16,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 50,
     marginBottom: SPACING.lg,
-  },
-  applePayButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '500',
   },
   dividerRow: {
     flexDirection: 'row',

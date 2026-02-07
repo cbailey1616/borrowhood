@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Platform } from 'react-native';
-import { useConfirmPayment, usePlatformPay } from '@stripe/stripe-react-native';
+import { useConfirmPayment, usePlatformPay, PlatformPayButton, PlatformPay } from '@stripe/stripe-react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -445,18 +445,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </View>
           </View>
           {Platform.OS === 'ios' && applePaySupported && (
-            <HapticPressable
-              haptic="medium"
-              style={[styles.applePayButton, paymentLoading && { opacity: 0.5 }]}
+            <PlatformPayButton
+              type={PlatformPay.ButtonType.Pay}
+              appearance={PlatformPay.ButtonStyle.Black}
+              borderRadius={RADIUS.md}
               onPress={handleApplePay}
               disabled={paymentLoading}
-            >
-              {paymentLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.applePayButtonText}> Pay</Text>
-              )}
-            </HapticPressable>
+              style={[styles.applePayButton, paymentLoading && { opacity: 0.5 }]}
+            />
           )}
           <HapticPressable
             haptic="medium"
@@ -601,17 +597,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   applePayButton: {
-    backgroundColor: '#000',
-    paddingVertical: 14,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 50,
     marginBottom: SPACING.sm,
-  },
-  applePayButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
