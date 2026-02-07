@@ -290,6 +290,9 @@ const updateRequest = (id, data) =>
 const deleteRequest = (id) =>
   del(`/requests/${id}`);
 
+const renewRequest = (id, expiresIn) =>
+  post(`/requests/${id}/renew`, expiresIn ? { expiresIn } : {});
+
 // ============================================
 // Messages / Chat
 // ============================================
@@ -649,6 +652,7 @@ export default {
   createRequest,
   updateRequest,
   deleteRequest,
+  renewRequest,
   // Messages / Chat
   getConversations,
   getConversation,

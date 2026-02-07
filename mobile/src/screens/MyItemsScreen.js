@@ -185,6 +185,20 @@ export default function MyItemsScreen({ navigation }) {
     </AnimatedCard>
   );
 
+  const handleRenew = async (requestId) => {
+    try {
+      await api.renewRequest(requestId);
+      haptics.success();
+      fetchData();
+    } catch (error) {
+      haptics.error();
+      showError({
+        message: error.message || 'Unable to renew request. Please try again.',
+        type: 'network',
+      });
+    }
+  };
+
   const renderRequestItem = ({ item, index }) => (
     <AnimatedCard index={index}>
       <Swipeable
@@ -200,16 +214,23 @@ export default function MyItemsScreen({ navigation }) {
         >
           <View style={styles.requestHeader}>
             <Text style={styles.requestTitle} numberOfLines={1}>{item.title}</Text>
-            <View style={[
-              styles.requestStatusBadge,
-              { backgroundColor: item.status === 'open' ? COLORS.secondaryMuted : COLORS.surfaceElevated }
-            ]}>
-              <Text style={[
-                styles.requestStatusText,
-                { color: item.status === 'open' ? COLORS.secondary : COLORS.textSecondary }
+            <View style={styles.requestBadges}>
+              {item.isExpired && (
+                <View style={styles.expiredBadge}>
+                  <Text style={styles.expiredBadgeText}>Expired</Text>
+                </View>
+              )}
+              <View style={[
+                styles.requestStatusBadge,
+                { backgroundColor: item.status === 'open' ? COLORS.secondaryMuted : COLORS.surfaceElevated }
               ]}>
-                {item.status === 'open' ? 'Open' : 'Closed'}
-              </Text>
+                <Text style={[
+                  styles.requestStatusText,
+                  { color: item.status === 'open' ? COLORS.secondary : COLORS.textSecondary }
+                ]}>
+                  {item.status === 'open' ? 'Open' : 'Closed'}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -230,9 +251,24 @@ export default function MyItemsScreen({ navigation }) {
             </View>
           )}
 
-          <Text style={styles.requestDate}>
-            Posted {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
+          <View style={styles.requestFooter}>
+            <Text style={styles.requestDate}>
+              Posted {new Date(item.createdAt).toLocaleDateString()}
+            </Text>
+            {item.isExpired && item.status === 'open' && (
+              <HapticPressable
+                style={styles.renewButton}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  handleRenew(item.id);
+                }}
+                haptic="medium"
+              >
+                <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                <Text style={styles.renewButtonText}>Renew</Text>
+              </HapticPressable>
+            )}
+          </View>
         </HapticPressable>
       </Swipeable>
     </AnimatedCard>
@@ -441,6 +477,22 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginRight: SPACING.md,
   },
+  requestBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  expiredBadge: {
+    backgroundColor: COLORS.textMuted + '30',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
+  },
+  expiredBadgeText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
   requestStatusBadge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
@@ -465,9 +517,28 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
+  requestFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   requestDate: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
+  },
+  renewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryMuted,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.sm,
+    gap: SPACING.xs,
+  },
+  renewButtonText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   emptyContainer: {
     flex: 1,

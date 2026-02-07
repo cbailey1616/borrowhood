@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
+  Keyboard,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -20,6 +21,12 @@ import { haptics } from '../utils/haptics';
 
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
+const EXPIRATION_OPTIONS = [
+  { value: '1d', label: '1 Day' },
+  { value: '3d', label: '3 Days' },
+  { value: '1w', label: '1 Week' },
+];
+
 export default function CreateRequestScreen({ navigation }) {
   const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
@@ -29,6 +36,7 @@ export default function CreateRequestScreen({ navigation }) {
     visibility: ['neighborhood'], // Array for multi-select
     neededFrom: '',
     neededUntil: '',
+    expiresIn: '1d',
   });
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,6 +113,7 @@ export default function CreateRequestScreen({ navigation }) {
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
         neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
         communityId: communityId,
+        expiresIn: formData.expiresIn,
       });
 
       showToast('Your request has been posted!', 'success');
@@ -224,7 +233,7 @@ export default function CreateRequestScreen({ navigation }) {
           <HapticPressable
             haptic="light"
             style={styles.dropdownButton}
-            onPress={() => setShowCategorySheet(true)}
+            onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
             {formData.categoryId ? (
               <View style={styles.dropdownSelected}>
@@ -275,6 +284,35 @@ export default function CreateRequestScreen({ navigation }) {
               maxLength={10}
             />
           </View>
+        </View>
+      </View>
+
+      {/* Expires After */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Expires after</Text>
+        <Text style={styles.hint}>Request will be hidden from the feed after this time</Text>
+        <View style={styles.options}>
+          {EXPIRATION_OPTIONS.map((opt) => {
+            const isSelected = formData.expiresIn === opt.value;
+            return (
+              <HapticPressable
+                key={opt.value}
+                style={[styles.option, isSelected && styles.optionActive]}
+                onPress={() => updateField('expiresIn', opt.value)}
+                haptic="light"
+              >
+                <Ionicons
+                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={isSelected ? "#fff" : COLORS.textSecondary}
+                  style={{ marginRight: SPACING.xs + 2 }}
+                />
+                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                  {opt.label}
+                </Text>
+              </HapticPressable>
+            );
+          })}
         </View>
       </View>
 

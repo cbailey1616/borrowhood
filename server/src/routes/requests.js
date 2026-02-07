@@ -26,7 +26,7 @@ router.get('/', authenticate, async (req, res) => {
       return res.json([]);
     }
 
-    let whereConditions = [`r.status = 'open'`];
+    let whereConditions = [`r.status = 'open'`, `(r.expires_at IS NULL OR r.expires_at > NOW())`];
     let params = [];
     let paramIndex = 1;
 
@@ -117,6 +117,8 @@ router.get('/mine', authenticate, async (req, res) => {
       status: r.status,
       category: r.category_name,
       createdAt: r.created_at,
+      expiresAt: r.expires_at,
+      isExpired: r.expires_at ? new Date(r.expires_at) <= new Date() : false,
     })));
   } catch (err) {
     console.error('Get my requests error:', err);
@@ -193,8 +195,12 @@ router.post('/', authenticate,
 
     let {
       title, description, communityId, categoryId,
-      neededFrom, neededUntil, visibility
+      neededFrom, neededUntil, visibility, expiresIn
     } = req.body;
+
+    // Compute expires_at interval
+    const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
+    const expiresInterval = expiresInMap[expiresIn] || '1 day';
 
     // Convert visibility array to single enum value (widest scope)
     if (Array.isArray(visibility)) {
@@ -223,12 +229,12 @@ router.post('/', authenticate,
       const result = await query(
         `INSERT INTO item_requests (
           user_id, community_id, category_id, title, description,
-          needed_from, needed_until, visibility, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open')
+          needed_from, needed_until, visibility, status, expires_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval)
         RETURNING id`,
         [
           req.user.id, communityId, categoryId || null, title, description,
-          neededFrom || null, neededUntil || null, visibility
+          neededFrom || null, neededUntil || null, visibility, expiresInterval
         ]
       );
 
@@ -239,6 +245,46 @@ router.post('/', authenticate,
     }
   }
 );
+
+// ============================================
+// POST /api/requests/:id/renew
+// Renew an expired request
+// ============================================
+router.post('/:id/renew', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT user_id, status FROM item_requests WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (result.rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const status = result.rows[0].status;
+    if (status !== 'open') {
+      return res.status(400).json({ error: 'Only open requests can be renewed' });
+    }
+
+    const { expiresIn } = req.body;
+    const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
+    const interval = expiresInMap[expiresIn] || '1 day';
+
+    await query(
+      `UPDATE item_requests SET expires_at = NOW() + $1::interval WHERE id = $2`,
+      [interval, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Renew request error:', err);
+    res.status(500).json({ error: 'Failed to renew request' });
+  }
+});
 
 // ============================================
 // PATCH /api/requests/:id

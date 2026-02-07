@@ -67,6 +67,18 @@ export async function runMigrations() {
       logger.info('Migration complete: categories seeded');
     }
 
+    // Migration: Add expires_at column to item_requests
+    const hasExpiresAt = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'item_requests' AND column_name = 'expires_at'
+    `);
+    if (hasExpiresAt.rows.length === 0) {
+      logger.info('Running migration: Add expires_at to item_requests');
+      await query('ALTER TABLE item_requests ADD COLUMN expires_at TIMESTAMPTZ');
+      await query(`UPDATE item_requests SET expires_at = created_at + INTERVAL '1 day' WHERE status = 'open'`);
+      logger.info('Migration complete: item_requests.expires_at added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);
