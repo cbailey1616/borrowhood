@@ -446,6 +446,29 @@ router.post('/verify-identity', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/auth/reset-verification
+// Reset verification status so user can re-verify
+// ============================================
+router.post('/reset-verification', authenticate, async (req, res) => {
+  try {
+    await query(
+      `UPDATE users SET
+        is_verified = false,
+        status = 'active',
+        stripe_identity_session_id = NULL,
+        verified_at = NULL
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Reset verification error:', err);
+    res.status(500).json({ error: 'Failed to reset verification' });
+  }
+});
+
+// ============================================
 // POST /api/auth/check-verification
 // Check Stripe Identity verification status
 // ============================================

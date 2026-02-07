@@ -134,14 +134,20 @@ router.post('/subscribe', authenticate, async (req, res) => {
         [customerId, req.user.id]
       );
     } else {
-      // Attach payment method to existing customer
-      await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+      // Attach payment method to existing customer (may already be attached via SetupIntent)
+      try {
+        await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+      } catch (attachErr) {
+        if (!attachErr.message?.includes('already been attached')) {
+          throw attachErr;
+        }
+      }
       await stripe.customers.update(customerId, {
         invoice_settings: { default_payment_method: paymentMethodId },
       });
     }
 
-    // Create subscription
+    // Create subscription — charge immediately using the selected payment method
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{
@@ -152,7 +158,8 @@ router.post('/subscribe', authenticate, async (req, res) => {
           unit_amount: 100, // $1.00
         },
       }],
-      payment_behavior: 'default_incomplete',
+      default_payment_method: paymentMethodId,
+      payment_behavior: 'error_if_incomplete',
       expand: ['latest_invoice.payment_intent'],
     });
 
@@ -170,7 +177,6 @@ router.post('/subscribe', authenticate, async (req, res) => {
     res.json({
       subscriptionId: subscription.id,
       status: subscription.status,
-      clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
     });
   } catch (err) {
     console.error('Subscribe error:', err);

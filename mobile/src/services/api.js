@@ -95,6 +95,9 @@ const startIdentityVerification = () =>
 const checkVerification = () =>
   post('/auth/check-verification');
 
+const resetVerification = () =>
+  post('/auth/reset-verification');
+
 const forgotPassword = (email) =>
   post('/auth/forgot-password', { email });
 
@@ -587,6 +590,7 @@ export default {
   getMe,
   startIdentityVerification,
   checkVerification,
+  resetVerification,
   forgotPassword,
   resetPassword,
   loginWithGoogle,
