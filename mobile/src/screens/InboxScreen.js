@@ -21,13 +21,12 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
-export default function InboxScreen({ navigation, onRead }) {
+export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [activeTab, setActiveTab] = useState(0);
   const [conversations, setConversations] = useState([]);
   const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -43,10 +42,7 @@ export default function InboxScreen({ navigation, onRead }) {
         api.getTransactions(),
       ]);
       setConversations(convData || []);
-      setActivities(actData?.transactions || []);
-
-      const total = (convData || []).reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      setUnreadCount(total);
+      setActivities(actData || []);
     } catch (error) {
       console.error('Failed to fetch inbox data:', error);
     } finally {
@@ -79,6 +75,13 @@ export default function InboxScreen({ navigation, onRead }) {
     if (hours < 24) return `${hours}h`;
     if (days < 7) return `${days}d`;
     return new Date(date).toLocaleDateString();
+  };
+
+  const isActionNeeded = (item) => {
+    if (!item.isBorrower && item.status === 'pending') return true;
+    if (item.isBorrower && item.status === 'approved') return true;
+    if (!item.isBorrower && item.status === 'return_pending') return true;
+    return false;
   };
 
   const renderConversation = ({ item, index }) => (
@@ -169,12 +172,21 @@ export default function InboxScreen({ navigation, onRead }) {
         <View style={styles.cardContent}>
           <Text style={styles.name} numberOfLines={1}>{item.listing?.title}</Text>
           <Text style={styles.lastMessage} numberOfLines={1}>
-            {item.isOwner ? `To: ${item.borrower?.firstName}` : `From: ${item.owner?.firstName}`}
+            {!item.isBorrower ? `To: ${item.borrower?.firstName}` : `From: ${item.lender?.firstName}`}
           </Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-              {getStatusLabel(item.status)}
-            </Text>
+          <View style={styles.badgeRow}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+              <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                {getStatusLabel(item.status)}
+              </Text>
+            </View>
+            {isActionNeeded(item) && (
+              <View style={[styles.statusBadge, { backgroundColor: COLORS.warningMuted }]}>
+                <Text style={[styles.statusText, { color: COLORS.warning }]}>
+                  Action needed
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         <Text style={styles.time}>{getTimeAgo(item.updatedAt)}</Text>
@@ -200,7 +212,10 @@ export default function InboxScreen({ navigation, onRead }) {
     <View style={styles.container}>
       <NativeHeader title="Inbox" scrollY={scrollY}>
         <SegmentedControl
-          segments={[`Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`, 'Activity']}
+          segments={[
+            `Messages${badgeCounts?.messages > 0 ? ` (${badgeCounts.messages})` : ''}`,
+            `Activity${badgeCounts?.actions > 0 ? ` (${badgeCounts.actions})` : ''}`,
+          ]}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
@@ -361,12 +376,16 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+    marginTop: SPACING.xs,
+  },
   statusBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: RADIUS.sm,
-    marginTop: SPACING.xs,
   },
   statusText: {
     ...TYPOGRAPHY.caption1,

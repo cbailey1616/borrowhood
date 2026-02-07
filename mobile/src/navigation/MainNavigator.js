@@ -13,28 +13,27 @@ import ProfileScreen from '../screens/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 export default function MainNavigator() {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [badgeCounts, setBadgeCounts] = useState({ messages: 0, notifications: 0, actions: 0, total: 0 });
 
-  const fetchUnreadCount = useCallback(async () => {
+  const fetchBadgeCount = useCallback(async () => {
     try {
-      const data = await api.getConversations();
-      const total = (data || []).reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      setUnreadCount(total);
+      const data = await api.getBadgeCount();
+      setBadgeCounts(data);
     } catch (error) {
-      console.error('Failed to fetch unread count:', error);
+      console.error('Failed to fetch badge count:', error);
     }
   }, []);
 
   // Fetch on mount and periodically
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    fetchBadgeCount();
+    const interval = setInterval(fetchBadgeCount, 30000);
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchBadgeCount]);
 
   return (
     <Tab.Navigator
-      tabBar={(props) => <BlurTabBar {...props} unreadCount={unreadCount} />}
+      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.total} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -61,11 +60,11 @@ export default function MainNavigator() {
         options={{ title: 'Inbox' }}
         listeners={{
           tabPress: () => {
-            setTimeout(fetchUnreadCount, 1000);
+            setTimeout(fetchBadgeCount, 1000);
           },
         }}
       >
-        {(props) => <InboxScreen {...props} onRead={fetchUnreadCount} />}
+        {(props) => <InboxScreen {...props} badgeCounts={badgeCounts} onRead={fetchBadgeCount} />}
       </Tab.Screen>
       <Tab.Screen
         name="Profile"

@@ -51,6 +51,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
+  const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [removePhotoIndex, setRemovePhotoIndex] = useState(null);
   const [isRelist, setIsRelist] = useState(false);
 
@@ -209,8 +210,10 @@ export default function CreateListingScreen({ navigation, route }) {
     setRemovePhotoIndex(null);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.title.trim()) {
+  const handleSubmit = async (overrideData) => {
+    const data = overrideData || formData;
+
+    if (!data.title.trim()) {
       haptics.warning();
       showError({
         type: 'validation',
@@ -219,7 +222,7 @@ export default function CreateListingScreen({ navigation, route }) {
       });
       return;
     }
-    if (formData.photos.length === 0) {
+    if (data.photos.length === 0) {
       haptics.warning();
       showError({
         type: 'validation',
@@ -229,8 +232,17 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
+    if (!data.categoryId) {
+      showError({
+        type: 'validation',
+        title: 'Category Required',
+        message: 'Please select a category for your item.',
+      });
+      return;
+    }
+
     // Check if neighborhood visibility is selected but user isn't in a community
-    const needsCommunity = formData.visibility.includes('neighborhood');
+    const needsCommunity = data.visibility.includes('neighborhood');
     if (needsCommunity && !communityId) {
       Keyboard.dismiss();
       setShowJoinCommunity(true);
@@ -240,21 +252,21 @@ export default function CreateListingScreen({ navigation, route }) {
     setIsSubmitting(true);
     try {
       // Upload photos to S3 (skip if no photos - S3 not configured for testing)
-      const photoUrls = formData.photos.length > 0
-        ? await api.uploadImages(formData.photos, 'listings')
+      const photoUrls = data.photos.length > 0
+        ? await api.uploadImages(data.photos, 'listings')
         : [];
 
       await api.createListing({
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        condition: formData.condition,
-        categoryId: formData.categoryId || undefined,
-        visibility: formData.visibility, // Send as array
-        isFree: formData.isFree,
-        pricePerDay: formData.isFree ? undefined : parseFloat(formData.pricePerDay) || 0,
-        depositAmount: parseFloat(formData.depositAmount) || 0,
-        minDuration: parseInt(formData.minDuration) || 1,
-        maxDuration: parseInt(formData.maxDuration) || 14,
+        title: data.title.trim(),
+        description: data.description.trim() || undefined,
+        condition: data.condition,
+        categoryId: data.categoryId,
+        visibility: data.visibility, // Send as array
+        isFree: data.isFree,
+        pricePerDay: data.isFree ? undefined : parseFloat(data.pricePerDay) || 0,
+        depositAmount: parseFloat(data.depositAmount) || 0,
+        minDuration: parseInt(data.minDuration) || 1,
+        maxDuration: parseInt(data.maxDuration) || 14,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
         communityId: communityId || undefined, // Always send communityId (required by DB)
       });
@@ -402,34 +414,28 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.label}>Category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-            <View style={styles.categoryRow}>
-              {categories.map((cat) => {
-                const isSelected = formData.categoryId === cat.id;
-                return (
-                  <HapticPressable
-                    key={cat.id}
-                    style={[styles.categoryPill, isSelected && styles.categoryPillActive]}
-                    onPress={() => {
-                      updateField('categoryId', isSelected ? null : cat.id);
-                      haptics.selection();
-                    }}
-                    haptic={null}
-                  >
-                    <Ionicons
-                      name={cat.icon || 'pricetag-outline'}
-                      size={16}
-                      color={isSelected ? '#fff' : COLORS.textSecondary}
-                    />
-                    <Text style={[styles.categoryPillText, isSelected && styles.categoryPillTextActive]}>
-                      {cat.name}
-                    </Text>
-                  </HapticPressable>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <Text style={styles.label}>Category *</Text>
+          <HapticPressable
+            haptic="light"
+            style={styles.dropdownButton}
+            onPress={() => setShowCategorySheet(true)}
+          >
+            {formData.categoryId ? (
+              <View style={styles.dropdownSelected}>
+                <Ionicons
+                  name={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
+                  size={18}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.dropdownSelectedText}>
+                  {categories.find(c => c.id === formData.categoryId)?.name}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.dropdownPlaceholder}>Select a category</Text>
+            )}
+            <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
         </View>
       )}
 
@@ -586,6 +592,21 @@ export default function CreateListingScreen({ navigation, route }) {
       cancelLabel="Cancel"
     />
 
+    {/* Category Picker */}
+    <ActionSheet
+      isVisible={showCategorySheet}
+      onClose={() => setShowCategorySheet(false)}
+      title="Select Category"
+      actions={categories.map(cat => ({
+        label: cat.name,
+        icon: cat.icon || 'pricetag-outline',
+        onPress: () => {
+          updateField('categoryId', cat.id);
+          haptics.selection();
+        },
+      }))}
+    />
+
     {/* Neighborhood Join Overlay */}
     {showJoinCommunity && (
       <View style={styles.overlay}>
@@ -694,14 +715,18 @@ export default function CreateListingScreen({ navigation, route }) {
               style={styles.overlayDismiss}
               onPress={() => {
                 setShowUpgradePrompt(false);
-                // Reset to free options
-                updateField('isFree', true);
-                updateField('pricePerDay', '');
-                updateField('visibility', formData.visibility.filter(v => v !== 'town'));
+                const freeData = {
+                  ...formData,
+                  isFree: true,
+                  pricePerDay: '',
+                  visibility: formData.visibility.filter(v => v !== 'town'),
+                };
+                setFormData(freeData);
+                handleSubmit(freeData);
               }}
               haptic="light"
             >
-              <Text style={styles.overlayDismissText}>Keep Free Settings</Text>
+              <Text style={styles.overlayDismissText}>Post with Free Settings</Text>
             </HapticPressable>
           </View>
         </View>
@@ -824,13 +849,29 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  categoryScroll: {
-    marginHorizontal: -SPACING.xl,
-    paddingHorizontal: SPACING.xl,
-  },
-  categoryRow: {
+  dropdownButton: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md + 2,
+    backgroundColor: COLORS.surface,
+  },
+  dropdownSelected: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: SPACING.sm,
+  },
+  dropdownSelectedText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+  },
+  dropdownPlaceholder: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textMuted,
   },
   categoryPill: {
     flexDirection: 'row',

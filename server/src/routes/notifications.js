@@ -61,6 +61,51 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // ============================================
+// GET /api/notifications/badge-count
+// Get combined unread badge count
+// ============================================
+router.get('/badge-count', authenticate, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const [messagesResult, notificationsResult, actionsResult] = await Promise.all([
+      query(
+        `SELECT COUNT(*) FROM messages m
+         JOIN conversations c ON m.conversation_id = c.id
+         WHERE m.is_read = false AND m.sender_id != $1
+         AND (c.user1_id = $1 OR c.user2_id = $1)`,
+        [userId]
+      ),
+      query(
+        'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+        [userId]
+      ),
+      query(
+        `SELECT COUNT(*) FROM borrow_transactions WHERE (
+         (lender_id = $1 AND status = 'pending')
+         OR (borrower_id = $1 AND status = 'approved')
+         OR (lender_id = $1 AND status = 'return_pending'))`,
+        [userId]
+      ),
+    ]);
+
+    const messages = parseInt(messagesResult.rows[0].count);
+    const notifications = parseInt(notificationsResult.rows[0].count);
+    const actions = parseInt(actionsResult.rows[0].count);
+
+    res.json({
+      messages,
+      notifications,
+      actions,
+      total: messages + notifications + actions,
+    });
+  } catch (err) {
+    console.error('Get badge count error:', err);
+    res.status(500).json({ error: 'Failed to get badge count' });
+  }
+});
+
+// ============================================
 // POST /api/notifications/:id/read
 // Mark notification as read
 // ============================================

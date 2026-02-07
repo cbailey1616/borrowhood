@@ -354,6 +354,7 @@ const styles = StyleSheet.create({
   messagesContent: {
     padding: SPACING.lg,
     flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   dateHeader: {
     alignItems: 'center',

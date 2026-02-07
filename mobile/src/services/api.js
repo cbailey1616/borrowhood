@@ -266,6 +266,9 @@ const updatePushToken = (token) =>
 const updateNotificationPreferences = (preferences) =>
   patch('/notifications/preferences', preferences);
 
+const getBadgeCount = () =>
+  get('/notifications/badge-count');
+
 // ============================================
 // Item Requests (Wanted Posts)
 // ============================================
@@ -638,6 +641,7 @@ export default {
   markAllNotificationsRead,
   updatePushToken,
   updateNotificationPreferences,
+  getBadgeCount,
   // Requests (Wanted Posts)
   getRequests,
   getMyRequests,
