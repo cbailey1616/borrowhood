@@ -182,7 +182,7 @@ router.post('/', authenticate,
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
   body('communityId').optional({ nullable: true }).isUUID(),
-  body('categoryId').optional().isUUID(),
+  body('categoryId').isUUID(),
   body('neededFrom').optional().isISO8601(),
   body('neededUntil').optional().isISO8601(),
   async (req, res) => {

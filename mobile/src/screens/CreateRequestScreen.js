@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  ScrollView,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -14,6 +15,8 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
+import { haptics } from '../utils/haptics';
 
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
@@ -22,15 +25,18 @@ export default function CreateRequestScreen({ navigation }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    categoryId: null,
     visibility: ['neighborhood'], // Array for multi-select
     neededFrom: '',
     neededUntil: '',
   });
+  const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [communityId, setCommunityId] = useState(undefined); // undefined = loading, null = no community
 
   useEffect(() => {
-    const fetchCommunity = async () => {
+    const fetchData = async () => {
       try {
         const communities = await api.getCommunities({ member: true });
         if (communities && communities.length > 0) {
@@ -42,8 +48,15 @@ export default function CreateRequestScreen({ navigation }) {
         console.log('Failed to fetch communities:', err);
         setCommunityId(null);
       }
+
+      try {
+        const cats = await api.getCategories();
+        setCategories(cats || []);
+      } catch (e) {
+        console.log('Failed to fetch categories:', e);
+      }
     };
-    fetchCommunity();
+    fetchData();
   }, []);
 
   const updateField = (field, value) => {
@@ -73,11 +86,21 @@ export default function CreateRequestScreen({ navigation }) {
       return;
     }
 
+    if (!formData.categoryId) {
+      showError({
+        type: 'validation',
+        title: 'Category Required',
+        message: 'Please select a category for your request.',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await api.createRequest({
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
+        categoryId: formData.categoryId,
         visibility: formData.visibility,
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
         neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
@@ -158,6 +181,7 @@ export default function CreateRequestScreen({ navigation }) {
   }
 
   return (
+    <>
     <KeyboardAwareScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -192,6 +216,34 @@ export default function CreateRequestScreen({ navigation }) {
           maxLength={2000}
         />
       </View>
+
+      {/* Category */}
+      {categories.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.label}>Category *</Text>
+          <HapticPressable
+            haptic="light"
+            style={styles.dropdownButton}
+            onPress={() => setShowCategorySheet(true)}
+          >
+            {formData.categoryId ? (
+              <View style={styles.dropdownSelected}>
+                <Ionicons
+                  name={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
+                  size={18}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.dropdownSelectedText}>
+                  {categories.find(c => c.id === formData.categoryId)?.name}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.dropdownPlaceholder}>Select a category</Text>
+            )}
+            <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+        </View>
+      )}
 
       {/* Date Range */}
       <View style={styles.section}>
@@ -287,6 +339,22 @@ export default function CreateRequestScreen({ navigation }) {
         )}
       </HapticPressable>
     </KeyboardAwareScrollView>
+
+    {/* Category Picker */}
+    <ActionSheet
+      isVisible={showCategorySheet}
+      onClose={() => setShowCategorySheet(false)}
+      title="Select Category"
+      actions={categories.map(cat => ({
+        label: cat.name,
+        icon: cat.icon || 'pricetag-outline',
+        onPress: () => {
+          updateField('categoryId', cat.id);
+          haptics.selection();
+        },
+      }))}
+    />
+    </>
   );
 }
 
@@ -418,6 +486,30 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md + 2,
+    backgroundColor: COLORS.surface,
+  },
+  dropdownSelected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  dropdownSelectedText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+  },
+  dropdownPlaceholder: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textMuted,
   },
   options: {
     flexDirection: 'row',
