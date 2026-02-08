@@ -34,7 +34,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>57</string>
+    <string>63</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -53,15 +53,15 @@
     <key>NSContactsUsageDescription</key>
     <string>Borrowhood uses your contacts to help you find friends who are already on the app.</string>
     <key>NSFaceIDUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to use Face ID</string>
+    <string>Allow Borrowhood to use Face ID for secure and quick sign-in.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>Borrowhood uses your location to show items and neighbors near you.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <string>Borrowhood uses your location to show items and neighbors near you, even in the background.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Borrowhood uses your location to find items and neighbors near you.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>Borrowhood needs microphone access for video recordings of items you want to share.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Allow Borrowhood to access your photos to share items with your neighbors.</string>
     <key>NSUserTrackingUsageDescription</key>

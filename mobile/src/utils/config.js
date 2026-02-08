@@ -8,7 +8,8 @@ const DEV_BASE = 'http://192.168.7.53:3001'; // Use Mac's IP for physical device
 export const BASE_URL = PRODUCTION_BASE;
 export const API_URL = `${BASE_URL}/api`;
 
-export const STRIPE_PUBLISHABLE_KEY = 'pk_live_51Svf5n7NWs4o2FyP30LRE99KNdJsu9oOJYXCEqBWheqtCadSsFvE1aFx5mvPOPdqQklxfEa6w5s1j6E2g9JRCtvs00g2dEDSRL';
+// SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
+export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Svf5n7NWs4o2FyPTSeaiUH8jveT8Gt4owTZNpNEQYpmVEMiBJveqg4ALEujT4O1fJvpSDBZRM68M365qutkDVl000ADk6iFVL';
 
 // Category icon fallback map (slug → Ionicons name)
 export const CATEGORY_ICONS = {

@@ -64,7 +64,7 @@ jobs:
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/borrowhood_test
           JWT_SECRET: test-secret-key
-          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_SECRET_KEY: sk_test_placeholder  # SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
         run: npm test
 
   # Lint and type check
