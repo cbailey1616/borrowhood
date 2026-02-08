@@ -114,22 +114,31 @@ export default function SetupPayoutScreen({ navigation, route }) {
       </View>
 
       {isComplete ? (
-        <BlurCard testID="SetupPayout.status.complete" accessibilityLabel="Payout setup complete" style={styles.statusCard}>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>Account Status</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusBadgeText}>Active</Text>
+        <>
+          <BlurCard testID="SetupPayout.status.complete" accessibilityLabel="Payout setup complete" style={styles.statusCard}>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Account Status</Text>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>Active</Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>Charges Enabled</Text>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-          </View>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>Payouts Enabled</Text>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-          </View>
-        </BlurCard>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Charges Enabled</Text>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+            </View>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Payouts Enabled</Text>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+            </View>
+          </BlurCard>
+          <HapticPressable
+            haptic="medium"
+            style={styles.setupButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.setupButtonText}>Done</Text>
+          </HapticPressable>
+        </>
       ) : (
         <BlurCard style={styles.infoCard}>
           <Text style={styles.infoTitle}>What you'll need:</Text>

@@ -25,17 +25,28 @@ export default function PaymentMethodsScreen({ navigation, route }) {
   const [removeSheetVisible, setRemoveSheetVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [connectStatus, setConnectStatus] = useState(null);
 
   useEffect(() => {
     fetchPaymentMethods();
   }, []);
 
-  // Refresh list when returning from AddPaymentMethod
+  // Refresh list and connect status when returning
   useFocusEffect(
     useCallback(() => {
       fetchPaymentMethods();
+      loadConnectStatus();
     }, [])
   );
+
+  const loadConnectStatus = async () => {
+    try {
+      const status = await api.getConnectStatus();
+      setConnectStatus(status);
+    } catch (error) {
+      // Silently fail — payout section will show setup prompt
+    }
+  };
 
   const fetchPaymentMethods = async () => {
     try {
@@ -186,20 +197,34 @@ export default function PaymentMethodsScreen({ navigation, route }) {
 
       {!selectMode && <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payout Account</Text>
-        <BlurCard style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.infoText}>
-            Set up a payout account to receive payments when others borrow your items.
-          </Text>
-        </BlurCard>
-        <HapticPressable
-          haptic="medium"
-          style={styles.addButton}
-          onPress={() => navigation.navigate('SetupPayout')}
-        >
-          <Ionicons name="add" size={20} color={COLORS.primary} />
-          <Text style={styles.addButtonText}>Set Up Payout Account</Text>
-        </HapticPressable>
+        {connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled ? (
+          <BlurCard style={styles.payoutActiveCard}>
+            <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.payoutActiveTitle}>Payouts Enabled</Text>
+              <Text style={styles.payoutActiveSubtext}>
+                You can receive payments when others borrow your items.
+              </Text>
+            </View>
+          </BlurCard>
+        ) : (
+          <>
+            <BlurCard style={styles.infoCard}>
+              <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
+              <Text style={styles.infoText}>
+                Set up a payout account to receive payments when others borrow your items.
+              </Text>
+            </BlurCard>
+            <HapticPressable
+              haptic="medium"
+              style={styles.addButton}
+              onPress={() => navigation.navigate('SetupPayout')}
+            >
+              <Ionicons name="add" size={20} color={COLORS.primary} />
+              <Text style={styles.addButtonText}>Set Up Payout Account</Text>
+            </HapticPressable>
+          </>
+        )}
       </View>}
 
       <ActionSheet
@@ -359,6 +384,21 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
+  },
+  payoutActiveCard: {
+    flexDirection: 'row',
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    alignItems: 'center',
+  },
+  payoutActiveTitle: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
+  },
+  payoutActiveSubtext: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   selectFooter: {
     padding: SPACING.lg,
