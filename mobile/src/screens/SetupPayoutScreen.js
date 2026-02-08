@@ -64,14 +64,6 @@ export default function SetupPayoutScreen({ navigation, route }) {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
   const isComplete = connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled;
   const needsAction = connectStatus?.hasAccount && !isComplete;
 
@@ -87,6 +79,14 @@ export default function SetupPayoutScreen({ navigation, route }) {
       return () => clearTimeout(timer);
     }
   }, [isComplete, source]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
