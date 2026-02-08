@@ -56,7 +56,6 @@ export default function CreateListingScreen({ navigation, route }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showJoinCommunity, setShowJoinCommunity] = useState(false);
   const [showAddFriends, setShowAddFriends] = useState(false);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
@@ -66,9 +65,9 @@ export default function CreateListingScreen({ navigation, route }) {
 
   useEffect(() => {
     navigation.setOptions({
-      gestureEnabled: !showUpgradePrompt && !showJoinCommunity && !showAddFriends,
+      gestureEnabled: !showJoinCommunity && !showAddFriends,
     });
-  }, [showUpgradePrompt, showJoinCommunity, showAddFriends, navigation]);
+  }, [showJoinCommunity, showAddFriends, navigation]);
 
   // Pre-populate from relist data
   useEffect(() => {
@@ -232,7 +231,6 @@ export default function CreateListingScreen({ navigation, route }) {
 
       if (!mountedRef.current) return;
       setIsSubmitting(false);
-      setShowUpgradePrompt(false);
       setShowJoinCommunity(false);
       setShowAddFriends(false);
       Keyboard.dismiss();
@@ -246,7 +244,11 @@ export default function CreateListingScreen({ navigation, route }) {
 
       if (errorCode === 'PLUS_REQUIRED' || errorCode === 'VERIFICATION_REQUIRED' || errorMsg.includes('plus subscription') || errorMsg.includes('town visibility') || errorMsg.includes('verification required')) {
         Keyboard.dismiss();
-        setShowUpgradePrompt(true);
+        const source = formData.visibility.includes('town') ? 'town_browse' : 'rental_listing';
+        const gate = checkPremiumGate(user, source);
+        if (!gate.passed) {
+          navigation.navigate(gate.screen, gate.params);
+        }
       } else if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
         Keyboard.dismiss();
         setShowJoinCommunity(true);
@@ -418,7 +420,7 @@ export default function CreateListingScreen({ navigation, route }) {
                     if (visibility === 'town') {
                       const gate = checkPremiumGate(user, 'town_browse');
                       if (!gate.passed) {
-                        setShowUpgradePrompt(true);
+                        navigation.navigate(gate.screen, gate.params);
                         return;
                       }
                     }
@@ -454,10 +456,10 @@ export default function CreateListingScreen({ navigation, route }) {
           style={styles.toggle}
           onPress={() => {
             if (formData.isFree) {
-              // Turning ON rental — check gate
+              // Turning ON rental — check gate (Plus + verified + payout)
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
-                setShowUpgradePrompt(true);
+                navigation.navigate(gate.screen, gate.params);
                 return;
               }
             }
@@ -654,65 +656,6 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
     )}
 
-    {/* Subscription Upgrade Overlay */}
-    {showUpgradePrompt && (
-      <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <View style={styles.overlayCardInner}>
-            <View style={[styles.overlayIconContainer, styles.upgradeIconContainer]}>
-              <Ionicons name="star" size={32} color={COLORS.primary} />
-            </View>
-            <Text style={styles.overlayTitle}>Upgrade to Plus</Text>
-            <Text style={styles.overlayText}>
-              Get more from Borrowhood with Plus. Share with your whole town and earn money from your items.
-            </Text>
-            <View style={styles.upgradeFeatures}>
-              <View style={styles.upgradeFeature}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
-              </View>
-              <View style={styles.upgradeFeature}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
-              </View>
-              <View style={styles.upgradeFeature}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
-              </View>
-            </View>
-            <HapticPressable
-              style={styles.overlayButton}
-              onPress={() => {
-                setShowUpgradePrompt(false);
-                // Navigate through the proper gate flow (subscription → verification)
-                const gate = checkPremiumGate(user, formData.isFree ? 'town_browse' : 'rental_listing');
-                navigation.goBack();
-                setTimeout(() => navigation.navigate(gate.screen, gate.params), 300);
-              }}
-              haptic="medium"
-            >
-              <Text style={styles.overlayButtonText}>Get Plus - $1/mo</Text>
-            </HapticPressable>
-            <HapticPressable
-              style={styles.overlayDismiss}
-              onPress={() => {
-                setShowUpgradePrompt(false);
-                const freeVisibility = formData.visibility.filter(v => v !== 'town');
-                setFormData(prev => ({
-                  ...prev,
-                  isFree: true,
-                  pricePerDay: '',
-                  visibility: freeVisibility.length > 0 ? freeVisibility : ['close_friends'],
-                }));
-              }}
-              haptic="light"
-            >
-              <Text style={styles.overlayDismissText}>Continue with Free Settings</Text>
-            </HapticPressable>
-          </View>
-        </View>
-      </View>
-    )}
     </View>
   );
 }
@@ -1039,22 +982,6 @@ const styles = StyleSheet.create({
   overlayDismissText: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
-  },
-  upgradeIconContainer: {
-    backgroundColor: COLORS.secondary + '20',
-  },
-  upgradeFeatures: {
-    gap: 10,
-    marginBottom: SPACING.xl,
-  },
-  upgradeFeature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  upgradeFeatureText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.text,
   },
   fieldError: {
     borderColor: COLORS.danger,
