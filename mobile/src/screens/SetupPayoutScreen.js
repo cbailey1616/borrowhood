@@ -5,8 +5,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  Linking,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -52,10 +52,13 @@ export default function SetupPayoutScreen({ navigation, route }) {
     setLoading(true);
     try {
       const { url } = await api.getConnectOnboardingLink();
-      // Open in device browser instead of WebView
-      await Linking.openURL(url);
-      // Reload status when user returns to app
-      setTimeout(() => loadConnectStatus(), 1000);
+      // Open in-app browser for Stripe Connect onboarding
+      await WebBrowser.openBrowserAsync(url, {
+        dismissButtonStyle: 'done',
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      });
+      // Reload status when user returns from browser
+      loadConnectStatus();
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Something went wrong. Please try again.' });

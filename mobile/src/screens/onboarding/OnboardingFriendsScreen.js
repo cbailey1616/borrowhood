@@ -85,13 +85,18 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   const handleSyncContacts = async () => {
     setIsSyncingContacts(true);
     try {
-      const { status } = await Contacts.requestPermissionsAsync();
+      const { status, canAskAgain } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
         setErrorSheet({
           visible: true,
           title: 'Permission Required',
-          message: 'Contact access is needed to find friends. You can enable it in Settings.',
+          message: canAskAgain
+            ? 'Contact access is needed to find friends who are already on BorrowHood.'
+            : 'Contact access was denied. Please enable it in Settings to find friends.',
         });
+        if (!canAskAgain) {
+          Linking.openSettings();
+        }
         return;
       }
 
