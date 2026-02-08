@@ -12,12 +12,11 @@ import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 const COMPARISON_ROWS = [
-  { feature: 'Lend & borrow from friends', free: true, plus: true },
-  { feature: 'Lend & borrow from neighbors', free: true, plus: true },
+  { feature: 'Lend & borrow from friends & neighbors', free: true, plus: true },
   { feature: 'Add friends & message', free: true, plus: true },
-  { feature: 'Lend & borrow from entire town', free: false, plus: true },
-  { feature: 'Charge rental fees & earn', free: false, plus: true },
-  { feature: 'Stripe-verified for trust', free: false, plus: true },
+  { feature: 'Lend & borrow town-wide', free: false, plus: true },
+  { feature: 'Charge rental fees & earn money', free: false, plus: true },
+  { feature: 'Identity-verified for trust', free: false, plus: true },
   { feature: 'Priority in search results', free: false, plus: true },
 ];
 
