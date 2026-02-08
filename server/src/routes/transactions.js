@@ -49,40 +49,47 @@ router.post('/', authenticate,
 
       const item = listing.rows[0];
 
-      // For town-level listings, verify:
-      // 1. User is verified
-      // 2. User has Explorer+ subscription
-      // 3. User's verified city matches lender's city
-      if (item.visibility === 'town') {
+      const isPaidRental = parseFloat(item.price_per_day) > 0;
+
+      // Paid rentals require Plus subscription for both renter and owner
+      if (isPaidRental || item.visibility === 'town') {
         const borrowerInfo = await query(
           'SELECT is_verified, city, subscription_tier, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
         );
         const borrower = borrowerInfo.rows[0];
+        const tier = borrower?.subscription_tier || 'free';
 
-        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
-        if (!borrower?.is_verified && !borrowerGraceActive) {
-          return res.status(403).json({
-            error: 'Identity verification required to borrow from town listings',
-            code: 'VERIFICATION_REQUIRED',
-          });
-        }
-
-        const tier = borrower.subscription_tier || 'free';
+        // Plus required for paid rentals (any visibility) and town-level items
         if (tier !== 'plus') {
           return res.status(403).json({
-            error: 'Plus subscription required to borrow from town listings',
+            error: isPaidRental
+              ? 'Plus subscription required for paid rentals'
+              : 'Plus subscription required to borrow from town listings',
             code: 'PLUS_REQUIRED',
             requiredTier: 'plus',
           });
         }
 
-        // City matching - both must have verified cities that match
-        if (!borrower.city || !item.lender_city || borrower.city !== item.lender_city) {
+        // Verification required for paid rentals and town-level items
+        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
+        if (!borrower?.is_verified && !borrowerGraceActive) {
           return res.status(403).json({
-            error: 'This item is only available to verified users in the same town',
-            code: 'TOWN_MISMATCH',
+            error: isPaidRental
+              ? 'Identity verification required for paid rentals'
+              : 'Identity verification required to borrow from town listings',
+            code: 'VERIFICATION_REQUIRED',
           });
+        }
+
+        // City matching for town-level listings
+        if (item.visibility === 'town') {
+          if (!borrower.city || !item.lender_city || borrower.city !== item.lender_city) {
+            return res.status(403).json({
+              error: 'This item is only available to verified users in the same town',
+              code: 'TOWN_MISMATCH',
+            });
+          }
         }
       }
 

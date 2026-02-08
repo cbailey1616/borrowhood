@@ -38,13 +38,25 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
-  // Check if user can access this listing's visibility level
+  // Check if user can access this listing
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        // Check subscription access for this visibility level
-        const result = await api.checkSubscriptionAccess(listing.visibility);
+        const isPaid = !listing.isFree && parseFloat(listing.pricePerDay) > 0;
 
+        // Paid rentals require Plus for both renter and owner
+        if (isPaid && user?.subscriptionTier !== 'plus') {
+          setAccessCheck({
+            loading: false,
+            canAccess: false,
+            reason: 'subscription',
+            requiredTier: 'plus',
+          });
+          return;
+        }
+
+        // Check subscription access for visibility level (town requires Plus)
+        const result = await api.checkSubscriptionAccess(listing.visibility);
         if (!result.canAccess) {
           setAccessCheck({
             loading: false,
@@ -55,8 +67,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
           return;
         }
 
-        // Check if verification is required (town-level items)
-        if (listing.visibility === 'town' && !user?.isVerified) {
+        // Paid rentals and town-level items require verification
+        if ((isPaid || listing.visibility === 'town') && !user?.isVerified) {
           setAccessCheck({
             loading: false,
             canAccess: false,
@@ -72,7 +84,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       }
     };
     checkAccess();
-  }, [listing.visibility, user?.status]);
+  }, [listing.visibility, listing.isFree, user?.subscriptionTier, user?.isVerified]);
 
   const calculateDays = () => {
     return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
@@ -182,7 +194,9 @@ export default function BorrowRequestScreen({ route, navigation }) {
             </View>
             <Text style={styles.promptTitle}>Upgrade to Plus</Text>
             <Text style={styles.promptText}>
-              This item is shared town-wide. Get Plus to borrow from neighbors across your town.
+              {listing.isFree === false
+                ? 'Paid rentals require a Plus subscription. Upgrade to rent items from your neighbors.'
+                : 'This item is shared town-wide. Get Plus to borrow from neighbors across your town.'}
             </Text>
 
             <View style={styles.promptBenefits}>
