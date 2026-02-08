@@ -117,7 +117,7 @@ app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/privacy.html'));
 });
 
-// Stripe verification return — redirect back to app via deep link
+// Stripe verification return — user taps Done in Safari to return to app
 app.get('/verification-complete', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html><head>
@@ -131,23 +131,19 @@ app.get('/verification-complete', (req, res) => {
   h1{font-size:24px;margin:0 0 8px}
   p{color:#9CA38F;line-height:1.5;margin:0 0 24px}
   .icon{font-size:64px;margin-bottom:16px}
-  a{display:block;background:#4A7C59;color:#fff;padding:16px;border-radius:12px;
-  text-decoration:none;font-weight:600;font-size:17px;margin-bottom:12px}
   .sub{color:#6B7A5E;font-size:13px}
 </style>
 </head><body>
 <div class="card">
   <div class="icon">&#x2705;</div>
   <h1>Verification Submitted</h1>
-  <p>Your identity verification has been submitted. Tap below to return to Borrowhood.</p>
-  <a href="borrowhood://verification-complete" id="open">Open Borrowhood</a>
-  <p class="sub">If the app doesn't open, switch back to it manually.</p>
+  <p>Your identity verification has been submitted. Tap <strong>Done</strong> in the top corner to return to Borrowhood.</p>
+  <p class="sub">Your verification status will update automatically.</p>
 </div>
-<script>setTimeout(function(){window.location.href="borrowhood://verification-complete"},500)</script>
 </body></html>`);
 });
 
-// Stripe Connect return — redirect back to app via deep link
+// Stripe Connect return — user taps Done in Safari to return to app
 app.get('/connect/return', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html><head>
@@ -161,23 +157,19 @@ app.get('/connect/return', (req, res) => {
   h1{font-size:24px;margin:0 0 8px}
   p{color:#9CA38F;line-height:1.5;margin:0 0 24px}
   .icon{font-size:64px;margin-bottom:16px}
-  a{display:block;background:#4A7C59;color:#fff;padding:16px;border-radius:12px;
-  text-decoration:none;font-weight:600;font-size:17px;margin-bottom:12px}
   .sub{color:#6B7A5E;font-size:13px}
 </style>
 </head><body>
 <div class="card">
-  <div class="icon">&#x1F3E6;</div>
+  <div class="icon">&#x2705;</div>
   <h1>Payout Setup Complete</h1>
-  <p>Your payout account has been set up. Tap below to return to Borrowhood.</p>
-  <a href="borrowhood://connect-return" id="open">Open Borrowhood</a>
-  <p class="sub">If the app doesn't open, switch back to it manually.</p>
+  <p>Your payout account has been set up. Tap <strong>Done</strong> in the top corner to return to Borrowhood.</p>
+  <p class="sub">Your payout status will update automatically.</p>
 </div>
-<script>setTimeout(function(){window.location.href="borrowhood://connect-return"},500)</script>
 </body></html>`);
 });
 
-// Stripe Connect refresh — onboarding link expired, redirect back to retry
+// Stripe Connect refresh — onboarding link expired
 app.get('/connect/refresh', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html><head>
@@ -191,19 +183,15 @@ app.get('/connect/refresh', (req, res) => {
   h1{font-size:24px;margin:0 0 8px}
   p{color:#9CA38F;line-height:1.5;margin:0 0 24px}
   .icon{font-size:64px;margin-bottom:16px}
-  a{display:block;background:#4A7C59;color:#fff;padding:16px;border-radius:12px;
-  text-decoration:none;font-weight:600;font-size:17px;margin-bottom:12px}
   .sub{color:#6B7A5E;font-size:13px}
 </style>
 </head><body>
 <div class="card">
   <div class="icon">&#x1F504;</div>
   <h1>Session Expired</h1>
-  <p>Your onboarding session expired. Tap below to return to Borrowhood and try again.</p>
-  <a href="borrowhood://connect-refresh" id="open">Open Borrowhood</a>
-  <p class="sub">If the app doesn't open, switch back to it manually.</p>
+  <p>Your onboarding session expired. Tap <strong>Done</strong> in the top corner to return to Borrowhood and try again.</p>
+  <p class="sub">Your payout status will update automatically.</p>
 </div>
-<script>setTimeout(function(){window.location.href="borrowhood://connect-refresh"},500)</script>
 </body></html>`);
 });
 

@@ -162,19 +162,6 @@ export default function RegisterScreen({ navigation }) {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Referral code (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.referralCode}
-                  onChangeText={(v) => updateField('referralCode', v)}
-                  placeholder="BH-XXXXXXXX"
-                  placeholderTextColor={COLORS.textMuted}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
                 <Text style={styles.label}>Password</Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
@@ -210,6 +197,19 @@ export default function RegisterScreen({ navigation }) {
                   secureTextEntry={!showPassword}
                   testID="Register.input.confirmPassword"
                   accessibilityLabel="Confirm password"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Referral code (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.referralCode}
+                  onChangeText={(v) => updateField('referralCode', v)}
+                  placeholder="BH-XXXXXXXX"
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
                 />
               </View>
 
