@@ -22,7 +22,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   const totalSteps = route?.params?.totalSteps;
   const { refreshUser } = useAuth();
   const hasAutoChained = useRef(false);
-  const { showError, showToast } = useError();
+  const { showError } = useError();
   const [status, setStatus] = useState(null); // none, pending, processing, requires_input, verified
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -84,7 +84,6 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         // Verification submitted — poll for result
         setStatus('processing');
         haptics.success();
-        showToast('Verification submitted! We\'ll notify you when it\'s complete.', 'success');
 
         // Check status after a short delay
         setTimeout(async () => {

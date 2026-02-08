@@ -49,7 +49,6 @@ export default function SetupPayoutScreen({ navigation, route }) {
   };
 
   const handleSetupPayout = async () => {
-    setLoading(true);
     try {
       const { url } = await api.getConnectOnboardingLink();
       // Open in-app browser for Stripe Connect onboarding
@@ -62,8 +61,6 @@ export default function SetupPayoutScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Something went wrong. Please try again.' });
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -60,7 +60,7 @@ export default function SubscriptionScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [showCancelSheet, setShowCancelSheet] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('monthly');
+  const selectedPlan = 'monthly';
 
   const loadData = async () => {
     try {
@@ -457,39 +457,8 @@ export default function SubscriptionScreen({ navigation, route }) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>{headerTitle}</Text>
-        <Text style={styles.price}>
-          {selectedPlan === 'annual' ? '$10/yr' : '$1/mo'}
-        </Text>
+        <Text style={styles.price}>$1/mo</Text>
         <Text style={styles.subtitle}>{headerSubtitle}</Text>
-      </View>
-
-      {/* Plan Selector */}
-      <View style={styles.planSelector}>
-        <HapticPressable
-          style={[styles.planOption, selectedPlan === 'monthly' && styles.planOptionSelected]}
-          onPress={() => setSelectedPlan('monthly')}
-          haptic="light"
-          testID="Subscription.plan.monthly"
-          accessibilityLabel="Monthly plan"
-          accessibilityRole="button"
-        >
-          <Text style={[styles.planOptionLabel, selectedPlan === 'monthly' && styles.planOptionLabelSelected]}>Monthly</Text>
-          <Text style={[styles.planOptionPrice, selectedPlan === 'monthly' && styles.planOptionPriceSelected]}>$1/mo</Text>
-        </HapticPressable>
-        <HapticPressable
-          style={[styles.planOption, selectedPlan === 'annual' && styles.planOptionSelected]}
-          onPress={() => setSelectedPlan('annual')}
-          haptic="light"
-          testID="Subscription.plan.annual"
-          accessibilityLabel="Annual plan"
-          accessibilityRole="button"
-        >
-          <View style={styles.planSaveBadge}>
-            <Text style={styles.planSaveText}>Save 17%</Text>
-          </View>
-          <Text style={[styles.planOptionLabel, selectedPlan === 'annual' && styles.planOptionLabelSelected]}>Annual</Text>
-          <Text style={[styles.planOptionPrice, selectedPlan === 'annual' && styles.planOptionPriceSelected]}>$10/yr</Text>
-        </HapticPressable>
       </View>
 
       {/* Features */}
@@ -528,7 +497,7 @@ export default function SubscriptionScreen({ navigation, route }) {
               accessibilityRole="button"
             >
               <Text style={styles.stepButtonText}>
-                Subscribe — {selectedPlan === 'annual' ? '$10/yr' : '$1/mo'}
+                Subscribe — $1/mo
               </Text>
             </HapticPressable>
           </View>

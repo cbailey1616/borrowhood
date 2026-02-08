@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Linking,
   Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
 
   // Contact matching
   const [contactMatches, setContactMatches] = useState([]);
+  const [phoneContacts, setPhoneContacts] = useState([]);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
 
   const [errorSheet, setErrorSheet] = useState({ visible: false, title: '', message: '' });
@@ -101,12 +103,22 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
       }
 
       const { data } = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.PhoneNumbers],
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.FirstName, Contacts.Fields.LastName],
+        sort: Contacts.SortTypes.FirstName,
       });
 
-      const phoneNumbers = data
-        .flatMap(c => (c.phoneNumbers || []).map(p => p.number))
-        .filter(Boolean);
+      // Build list of contacts with phone numbers
+      const contactsWithPhone = data
+        .filter(c => c.phoneNumbers && c.phoneNumbers.length > 0 && (c.firstName || c.lastName))
+        .map(c => ({
+          id: c.id,
+          name: [c.firstName, c.lastName].filter(Boolean).join(' '),
+          phone: c.phoneNumbers[0].number,
+        }));
+
+      setPhoneContacts(contactsWithPhone);
+
+      const phoneNumbers = contactsWithPhone.map(c => c.phone);
 
       if (phoneNumbers.length === 0) {
         setErrorSheet({
@@ -119,13 +131,6 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
 
       const matches = await api.matchContacts(phoneNumbers);
       setContactMatches(matches);
-      if (matches.length === 0) {
-        setErrorSheet({
-          visible: true,
-          title: 'No Matches',
-          message: 'None of your contacts are on BorrowHood yet. Invite them!',
-        });
-      }
     } catch (error) {
       console.error('Contact sync error:', error);
       setErrorSheet({ visible: true, title: 'Error', message: 'Failed to sync contacts.' });
@@ -138,6 +143,16 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
     try {
       await Share.share({
         message: 'Join me on BorrowHood! Borrow anything from your neighbors. Download it here: https://apps.apple.com/app/borrowhood/id6741188498',
+      });
+    } catch (error) {
+      // User cancelled share
+    }
+  };
+
+  const handleInviteContact = async (contact) => {
+    try {
+      await Share.share({
+        message: `Hey ${contact.name.split(' ')[0]}! Join me on BorrowHood — borrow anything from your neighbors. Download it here: https://apps.apple.com/app/borrowhood/id6741188498`,
       });
     } catch (error) {
       // User cancelled share
@@ -195,9 +210,28 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
     </BlurCard>
   );
 
+  const renderContactRow = (contact) => (
+    <View style={styles.contactRow} key={contact.id}>
+      <View style={styles.contactAvatar}>
+        <Text style={styles.contactInitial}>{contact.name.charAt(0).toUpperCase()}</Text>
+      </View>
+      <View style={styles.friendInfo}>
+        <Text style={styles.friendName}>{contact.name}</Text>
+      </View>
+      <HapticPressable
+        style={styles.inviteButton}
+        onPress={() => handleInviteContact(contact)}
+        haptic="light"
+      >
+        <Text style={styles.inviteButtonText}>Invite</Text>
+      </HapticPressable>
+    </View>
+  );
+
   const showSearch = searchQuery.length >= 2;
   const showSuggested = !showSearch && suggestedUsers.length > 0;
   const showContactMatches = !showSearch && contactMatches.length > 0;
+  const showPhoneContacts = !showSearch && phoneContacts.length > 0 && contactMatches.length === 0;
 
   return (
     <KeyboardAvoidingView
@@ -280,6 +314,8 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               ...contactMatches.map(u => ({ ...u, type: 'user', key: `contact-${u.id}` })),
               ...(showSuggested ? [{ type: 'header', key: 'suggested-header', title: 'Your Neighbors' }] : []),
               ...suggestedUsers.map(u => ({ ...u, type: 'user', key: `suggested-${u.id}` })),
+              ...(showPhoneContacts ? [{ type: 'header', key: 'invite-header', title: 'Invite to BorrowHood' }] : []),
+              ...(!showSearch && contactMatches.length === 0 ? phoneContacts.slice(0, 50).map(c => ({ ...c, type: 'contact', key: `phone-${c.id}` })) : []),
             ]}
             keyExtractor={(item) => item.key || item.id}
             style={styles.list}
@@ -288,6 +324,9 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
                 return (
                   <Text style={styles.sectionHeader}>{item.title}</Text>
                 );
+              }
+              if (item.type === 'contact') {
+                return renderContactRow(item);
               }
               return renderUserRow(item);
             }}
@@ -454,6 +493,34 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     fontWeight: '600',
     color: COLORS.textSecondary,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  contactAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray[700],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactInitial: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.textSecondary,
+  },
+  inviteButton: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary + '20',
+  },
+  inviteButtonText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   emptyPrompt: {
     alignItems: 'center',
