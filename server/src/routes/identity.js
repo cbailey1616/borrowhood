@@ -73,9 +73,16 @@ router.post('/verify', authenticate, async (req, res) => {
       [session.id, req.user.id]
     );
 
+    // Create ephemeral key for the verification session (required by RN SDK)
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { verification_session: session.id },
+      { apiVersion: '2024-06-20' }
+    );
+
     res.json({
       clientSecret: session.client_secret,
       sessionId: session.id,
+      ephemeralKeySecret: ephemeralKey.secret,
     });
   } catch (err) {
     console.error('Create verification session error:', err);
