@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,35 @@ import {
   ScrollView,
   Linking,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { useError } from '../context/ErrorContext';
+import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import GateStepper from '../components/GateStepper';
 
 export default function SetupPayoutScreen({ navigation, route }) {
+  const source = route?.params?.source || 'generic';
+  const totalSteps = route?.params?.totalSteps;
   const { showError } = useError();
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [connectStatus, setConnectStatus] = useState(null);
 
   useEffect(() => {
     loadConnectStatus();
   }, []);
+
+  // Reload status when returning from browser onboarding
+  useFocusEffect(
+    useCallback(() => {
+      loadConnectStatus();
+    }, [])
+  );
 
   const loadConnectStatus = async () => {
     try {
@@ -62,8 +75,26 @@ export default function SetupPayoutScreen({ navigation, route }) {
   const isComplete = connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled;
   const needsAction = connectStatus?.hasAccount && !isComplete;
 
+  // When setup completes and we came from a gate flow, refresh user and go back
+  useEffect(() => {
+    if (isComplete && source !== 'generic') {
+      refreshUser();
+      haptics.success();
+      // Brief delay to show success state then go back
+      const timer = setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, source]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Gate Stepper */}
+      {source === 'rental_listing' && totalSteps && (
+        <GateStepper currentStep={3} totalSteps={3} source={source} />
+      )}
+
       <View style={styles.header}>
         <View style={[styles.iconContainer, isComplete && styles.iconContainerSuccess]}>
           <Ionicons
@@ -83,7 +114,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       </View>
 
       {isComplete ? (
-        <BlurCard style={styles.statusCard}>
+        <BlurCard testID="SetupPayout.status.complete" accessibilityLabel="Payout setup complete" style={styles.statusCard}>
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Account Status</Text>
             <View style={styles.statusBadge}>
@@ -123,6 +154,9 @@ export default function SetupPayoutScreen({ navigation, route }) {
 
       {!isComplete && (
         <HapticPressable
+          testID="SetupPayout.button.setup"
+          accessibilityLabel="Set up payout account"
+          accessibilityRole="button"
           haptic="medium"
           style={styles.setupButton}
           onPress={handleSetupPayout}
