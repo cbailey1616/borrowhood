@@ -72,9 +72,9 @@ export default function SetupPayoutScreen({ navigation, route }) {
     if (isComplete && source !== 'generic') {
       refreshUser();
       haptics.success();
-      // Brief delay to show success state then go back
+      // Brief delay to show success state then pop all gate screens
       const timer = setTimeout(() => {
-        navigation.goBack();
+        navigation.popToTop();
       }, 1500);
       return () => clearTimeout(timer);
     }
