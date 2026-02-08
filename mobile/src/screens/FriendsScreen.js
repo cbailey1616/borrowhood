@@ -63,7 +63,15 @@ export default function FriendsScreen({ navigation, route }) {
   const fetchContactMatches = useCallback(async () => {
     setIsLoadingContacts(true);
     try {
-      const { status } = await Contacts.requestPermissionsAsync();
+      // Check current permission without prompting
+      let { status } = await Contacts.getPermissionsAsync();
+
+      // If undetermined, show the system prompt
+      if (status === 'undetermined') {
+        const result = await Contacts.requestPermissionsAsync();
+        status = result.status;
+      }
+
       setContactsPermission(status);
 
       if (status !== 'granted') {
@@ -159,14 +167,19 @@ export default function FriendsScreen({ navigation, route }) {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchFriends();
       fetchFriendRequests();
-      // Don't refetch contacts on every focus - it causes flashing
+      // Re-check contacts permission when returning from Settings
+      if (activeTab === 'contacts') {
+        setContactsFetched(false);
+        fetchContactMatches();
+      }
     });
     return unsubscribe;
-  }, [navigation, fetchFriends, fetchFriendRequests]);
+  }, [navigation, fetchFriends, fetchFriendRequests, activeTab, fetchContactMatches]);
 
-  // Fetch contacts when switching to contacts tab
+  // Fetch contacts when switching to contacts tab — always re-check permission
   useEffect(() => {
-    if (activeTab === 'contacts' && !isLoadingContacts) {
+    if (activeTab === 'contacts') {
+      setContactsFetched(false);
       fetchContactMatches();
     }
   }, [activeTab]);
