@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,19 +16,28 @@ import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
+import { checkPremiumGate } from '../utils/premiumGate';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateListingScreen({ navigation, route }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showError } = useError();
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // Refresh user when returning from gate flow
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+    }, [])
+  );
   const [communityId, setCommunityId] = useState(null);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
@@ -287,7 +296,7 @@ export default function CreateListingScreen({ navigation, route }) {
             ))}
             {formData.photos.length < 10 && (
               <View style={styles.addPhotoButtons}>
-                <HapticPressable style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage} haptic="light">
+                <HapticPressable testID="CreateListing.button.addPhoto" accessibilityLabel="Add photo from gallery" accessibilityRole="button" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage} haptic="light">
                   <Ionicons name="image" size={28} color={fieldErrors.photos ? COLORS.danger : COLORS.primary} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
                 </HapticPressable>
@@ -305,6 +314,8 @@ export default function CreateListingScreen({ navigation, route }) {
       <View style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
+          testID="CreateListing.input.title"
+          accessibilityLabel="Listing title"
           style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
@@ -318,6 +329,8 @@ export default function CreateListingScreen({ navigation, route }) {
       <View style={styles.section}>
         <Text style={styles.label}>Description</Text>
         <TextInput
+          testID="CreateListing.input.description"
+          accessibilityLabel="Listing description"
           style={[styles.input, styles.textArea]}
           value={formData.description}
           onChangeText={(v) => updateField('description', v)}
@@ -427,8 +440,19 @@ export default function CreateListingScreen({ navigation, route }) {
         <Text style={styles.label}>Pricing</Text>
         <Text style={styles.freeLabel}>Free to borrow</Text>
         <HapticPressable
+          testID="CreateListing.toggle.rentalFee"
+          accessibilityLabel="Charge a rental fee"
+          accessibilityRole="switch"
           style={styles.toggle}
           onPress={() => {
+            if (formData.isFree) {
+              // Turning ON rental — check gate
+              const gate = checkPremiumGate(user, 'rental_listing');
+              if (!gate.passed) {
+                setShowUpgradePrompt(true);
+                return;
+              }
+            }
             updateField('isFree', !formData.isFree);
             haptics.light();
           }}
@@ -444,6 +468,8 @@ export default function CreateListingScreen({ navigation, route }) {
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
+              testID="CreateListing.input.price"
+              accessibilityLabel="Price per day"
               style={styles.priceField}
               value={formData.pricePerDay}
               onChangeText={(v) => updateField('pricePerDay', v)}
@@ -460,6 +486,8 @@ export default function CreateListingScreen({ navigation, route }) {
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
+              testID="CreateListing.input.deposit"
+              accessibilityLabel="Deposit amount"
               style={styles.priceField}
               value={formData.depositAmount}
               onChangeText={(v) => updateField('depositAmount', v)}
@@ -499,6 +527,9 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Submit */}
       <HapticPressable
+        testID="CreateListing.button.submit"
+        accessibilityLabel="List item"
+        accessibilityRole="button"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={() => handleSubmit()}
         disabled={isSubmitting}
@@ -645,7 +676,9 @@ export default function CreateListingScreen({ navigation, route }) {
               style={styles.overlayButton}
               onPress={() => {
                 setShowUpgradePrompt(false);
-                navigation.navigate('Subscription');
+                navigation.goBack();
+                // Small delay so modal dismisses before navigating
+                setTimeout(() => navigation.navigate('Subscription'), 300);
               }}
               haptic="medium"
             >
