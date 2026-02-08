@@ -24,6 +24,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 export default function EditProfileScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const { showError } = useError();
+  const isVerified = user?.isVerified;
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -107,6 +108,16 @@ export default function EditProfileScreen({ navigation }) {
     try {
       let profileData = { ...formData };
 
+      // Don't send verified fields — server will reject them
+      if (isVerified) {
+        delete profileData.firstName;
+        delete profileData.lastName;
+        delete profileData.city;
+        delete profileData.state;
+        delete profileData.latitude;
+        delete profileData.longitude;
+      }
+
       // If city/state are set but lat/lng are missing, geocode the address
       if (profileData.city && profileData.state && (!profileData.latitude || !profileData.longitude)) {
         try {
@@ -169,27 +180,56 @@ export default function EditProfileScreen({ navigation }) {
         </View>
 
         <View style={styles.form}>
+          {isVerified && (
+            <BlurCard style={styles.verifiedBanner}>
+              <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.verifiedBannerTitle}>Identity Verified</Text>
+                <Text style={styles.verifiedBannerText}>
+                  Name and address are locked to match your verified ID.
+                </Text>
+              </View>
+              <HapticPressable
+                haptic="light"
+                onPress={() => {
+                  showError({
+                    type: 'verification',
+                    title: 'Re-verify Identity',
+                    message: 'Changing your verified name or address requires re-verifying your identity. Your verified status will be removed until the new verification is complete.',
+                    primaryAction: 'Re-verify',
+                    secondaryAction: 'Cancel',
+                    onPrimaryPress: () => navigation.navigate('IdentityVerification'),
+                  });
+                }}
+              >
+                <Text style={styles.verifiedChangeLink}>Change</Text>
+              </HapticPressable>
+            </BlurCard>
+          )}
+
           <View style={styles.row}>
             <View style={[styles.inputContainer, { flex: 1 }]}>
               <Text style={styles.label}>First name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.firstName}
                 onChangeText={(v) => updateField('firstName', v)}
                 placeholder="John"
                 placeholderTextColor={COLORS.textMuted}
                 autoCapitalize="words"
+                editable={!isVerified}
               />
             </View>
             <View style={[styles.inputContainer, { flex: 1 }]}>
               <Text style={styles.label}>Last name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.lastName}
                 onChangeText={(v) => updateField('lastName', v)}
                 placeholder="Doe"
                 placeholderTextColor={COLORS.textMuted}
                 autoCapitalize="words"
+                editable={!isVerified}
               />
             </View>
           </View>
@@ -223,45 +263,49 @@ export default function EditProfileScreen({ navigation }) {
           {/* Location Section */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Location</Text>
-            <HapticPressable
-              haptic="light"
-              style={styles.locationButton}
-              onPress={handleGetLocation}
-              disabled={isGettingLocation}
-            >
-              {isGettingLocation ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
-              ) : (
-                <>
-                  <Ionicons name="location" size={16} color={COLORS.primary} />
-                  <Text style={styles.locationButtonText}>Use Current</Text>
-                </>
-              )}
-            </HapticPressable>
+            {!isVerified && (
+              <HapticPressable
+                haptic="light"
+                style={styles.locationButton}
+                onPress={handleGetLocation}
+                disabled={isGettingLocation}
+              >
+                {isGettingLocation ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="location" size={16} color={COLORS.primary} />
+                    <Text style={styles.locationButtonText}>Use Current</Text>
+                  </>
+                )}
+              </HapticPressable>
+            )}
           </View>
 
           <View style={styles.row}>
             <View style={[styles.inputContainer, { flex: 2 }]}>
               <Text style={styles.label}>City</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.city}
                 onChangeText={(v) => updateField('city', v)}
                 placeholder="Upton"
                 placeholderTextColor={COLORS.textMuted}
                 autoCapitalize="words"
+                editable={!isVerified}
               />
             </View>
             <View style={[styles.inputContainer, { flex: 1 }]}>
               <Text style={styles.label}>State</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.state}
                 onChangeText={(v) => updateField('state', v)}
                 placeholder="MA"
                 placeholderTextColor={COLORS.textMuted}
                 autoCapitalize="characters"
                 maxLength={20}
+                editable={!isVerified}
               />
             </View>
           </View>
@@ -366,6 +410,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
+  },
+  inputLocked: {
+    backgroundColor: COLORS.gray[800],
+    opacity: 0.6,
+  },
+  verifiedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.lg,
+    gap: SPACING.md,
+  },
+  verifiedBannerTitle: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  verifiedBannerText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  verifiedChangeLink: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   textArea: {
     height: 100,

@@ -101,7 +101,19 @@ router.patch('/me', authenticate,
 
     console.log('Profile update request for user:', req.user.id, 'data:', Object.keys(req.body));
 
+    // Check if user is verified — block changes to verified fields
+    const userResult = await query('SELECT is_verified FROM users WHERE id = $1', [req.user.id]);
+    const isVerified = userResult.rows[0]?.is_verified;
+
     const { firstName, lastName, phone, bio, city, state, latitude, longitude, profilePhotoUrl } = req.body;
+
+    if (isVerified && (firstName !== undefined || lastName !== undefined)) {
+      return res.status(403).json({ error: 'Name is locked to your verified identity. Re-verify to change it.' });
+    }
+    if (isVerified && (city !== undefined || state !== undefined)) {
+      return res.status(403).json({ error: 'Address is locked to your verified identity. Re-verify to change it.' });
+    }
+
     const updates = [];
     const values = [];
     let paramIndex = 1;
