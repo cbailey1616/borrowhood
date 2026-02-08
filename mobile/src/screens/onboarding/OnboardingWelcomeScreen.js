@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
 import OnboardingProgress from '../../components/OnboardingProgress';
@@ -65,17 +65,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 30,
-    backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xxl,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: Dimensions.get('window').width * 0.65,
+    height: Dimensions.get('window').width * 0.65,
   },
   title: {
     ...TYPOGRAPHY.largeTitle,

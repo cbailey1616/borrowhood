@@ -153,6 +153,7 @@ export default function SubscriptionScreen({ navigation, route }) {
       // For gate flows and onboarding, navigate immediately — don't wait
       // for poll to re-render this screen with the Plus view
       if (source === 'town_browse' || source === 'rental_listing') {
+        await api.getCurrentSubscription(); // Self-heal DB tier
         await refreshUser();
         haptics.success();
         navigation.replace('IdentityVerification', { source, totalSteps });
@@ -160,9 +161,12 @@ export default function SubscriptionScreen({ navigation, route }) {
       }
 
       if (source === 'onboarding') {
+        // Trigger self-healing: /subscriptions/current checks Stripe and
+        // updates DB tier when webhook hasn't fired yet
+        await api.getCurrentSubscription();
         await refreshUser();
         haptics.success();
-        navigation.goBack();
+        navigation.replace('OnboardingVerification', { source: 'onboarding', totalSteps: 2 });
         return;
       }
 
@@ -427,16 +431,20 @@ export default function SubscriptionScreen({ navigation, route }) {
   }
 
   // Context-aware header text
-  const headerTitle = source === 'town_browse'
-    ? 'Explore Your Whole Town'
-    : source === 'rental_listing'
-      ? 'Start Earning From Your Items'
-      : 'BorrowHood Plus';
-  const headerSubtitle = source === 'town_browse'
-    ? 'Plus membership + identity verification required'
-    : source === 'rental_listing'
-      ? 'Plus membership + verification + payout setup required'
-      : 'Unlock your whole town and start earning from your items.';
+  const headerTitle = source === 'onboarding'
+    ? 'BorrowHood Plus'
+    : source === 'town_browse'
+      ? 'Explore Your Whole Town'
+      : source === 'rental_listing'
+        ? 'Start Earning From Your Items'
+        : 'BorrowHood Plus';
+  const headerSubtitle = source === 'onboarding'
+    ? 'Step 1 of 2 — subscribe now, then verify your identity'
+    : source === 'town_browse'
+      ? 'Plus membership + identity verification required'
+      : source === 'rental_listing'
+        ? 'Plus membership + verification + payout setup required'
+        : 'Unlock your whole town and start earning from your items.';
 
   // ── Free user: two-step upgrade flow ──
   return (
@@ -504,7 +512,7 @@ export default function SubscriptionScreen({ navigation, route }) {
             <View style={[styles.stepCircle, styles.stepCircleActive]}>
               <Text style={styles.stepNumber}>1</Text>
             </View>
-            {source === 'generic' && <View style={styles.stepLine} />}
+            {(source === 'generic' || source === 'onboarding') && <View style={styles.stepLine} />}
           </View>
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Subscribe & Pay</Text>
@@ -526,8 +534,8 @@ export default function SubscriptionScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* Step 2: Verify (only shown for generic/profile navigation) */}
-        {source === 'generic' && (
+        {/* Step 2: Verify (shown for generic and onboarding) */}
+        {(source === 'generic' || source === 'onboarding') && (
           <View style={[styles.step, styles.stepDimmed]}>
             <View style={styles.stepIndicator}>
               {isVerified ? (

@@ -55,12 +55,13 @@ router.post('/', authenticate,
       // 3. User's verified city matches lender's city
       if (item.visibility === 'town') {
         const borrowerInfo = await query(
-          'SELECT is_verified, city, subscription_tier FROM users WHERE id = $1',
+          'SELECT is_verified, city, subscription_tier, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
         );
         const borrower = borrowerInfo.rows[0];
 
-        if (!borrower?.is_verified) {
+        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
+        if (!borrower?.is_verified && !borrowerGraceActive) {
           return res.status(403).json({
             error: 'Identity verification required to borrow from town listings',
             code: 'VERIFICATION_REQUIRED',

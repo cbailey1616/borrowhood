@@ -35,7 +35,7 @@ export default function OnboardingPlanScreen({ navigation }) {
             // Auto-advance to verification step
             haptics.success();
             try { await api.updateOnboardingStep(4); } catch (e) {}
-            navigation.navigate('OnboardingVerification', { source: 'onboarding' });
+            navigation.navigate('OnboardingVerification', { source: 'onboarding', totalSteps: 2 });
           }
         } catch (e) {}
       };
@@ -53,7 +53,7 @@ export default function OnboardingPlanScreen({ navigation }) {
 
   const handleGoPlus = () => {
     haptics.medium();
-    navigation.navigate('OnboardingSubscription', { source: 'onboarding' });
+    navigation.navigate('OnboardingSubscription', { source: 'onboarding', totalSteps: 2 });
   };
 
   return (
@@ -71,7 +71,7 @@ export default function OnboardingPlanScreen({ navigation }) {
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
-          Start free and upgrade anytime
+          Start free or go Plus — unlock your whole town
         </Text>
 
         {/* Plan header row */}
@@ -116,6 +116,14 @@ export default function OnboardingPlanScreen({ navigation }) {
             </View>
           ))}
         </BlurCard>
+
+        {/* Plus requirements note */}
+        <View style={styles.plusNote}>
+          <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
+          <Text style={styles.plusNoteText}>
+            Plus requires a $1/mo subscription and a quick identity verification to keep the community safe.
+          </Text>
+        </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
@@ -241,6 +249,19 @@ const styles = StyleSheet.create({
   checkCol: {
     width: 72,
     alignItems: 'center',
+  },
+  plusNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.xs,
+  },
+  plusNoteText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textMuted,
+    flex: 1,
+    lineHeight: 18,
   },
   footer: {
     paddingHorizontal: SPACING.xl,

@@ -381,14 +381,15 @@ router.get('/access-check', authenticate, async (req, res) => {
 
   try {
     const result = await query(
-      `SELECT subscription_tier, is_verified, stripe_connect_account_id FROM users WHERE id = $1`,
+      `SELECT subscription_tier, is_verified, stripe_connect_account_id, verification_grace_until FROM users WHERE id = $1`,
       [req.user.id]
     );
 
     const u = result.rows[0];
     const tier = u?.subscription_tier || 'free';
     const isPlus = tier === 'plus';
-    const isVerified = u?.is_verified || false;
+    const graceActive = u?.verification_grace_until && new Date(u.verification_grace_until) > new Date();
+    const isVerified = u?.is_verified || graceActive || false;
     const hasConnect = !!u?.stripe_connect_account_id;
 
     let hasAccess = false;

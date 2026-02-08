@@ -158,6 +158,17 @@ export async function runMigrations() {
       logger.info('Migration complete: onboarding columns added');
     }
 
+    // Migration: Add verification_grace_until column to users
+    const hasGraceUntil = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'verification_grace_until'
+    `);
+    if (hasGraceUntil.rows.length === 0) {
+      logger.info('Running migration: Add verification_grace_until to users');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_grace_until TIMESTAMPTZ');
+      logger.info('Migration complete: users.verification_grace_until added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

@@ -18,13 +18,14 @@ router.get('/', authenticate, async (req, res) => {
   try {
     // Get user's location, verified city, and subscription tier
     const userResult = await query(
-      'SELECT location, city, state, subscription_tier, is_verified FROM users WHERE id = $1',
+      'SELECT location, city, state, subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
       [req.user.id]
     );
     const userLocation = userResult.rows[0]?.location;
     const userCity = userResult.rows[0]?.city;
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
-    const isVerified = userResult.rows[0]?.is_verified;
+    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
+    const isVerified = userResult.rows[0]?.is_verified || graceActive;
     const canAccessTown = userTier === 'plus' && isVerified && userCity;
 
     const friendsResult = await query(
@@ -338,19 +339,28 @@ router.post('/', authenticate,
         }
       }
 
-      // Check subscription for town visibility
+      // Check subscription + verification for town visibility
       if (visibilityArray.includes('town')) {
         const subCheck = await query(
-          'SELECT subscription_tier FROM users WHERE id = $1',
+          'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
         );
         const tier = subCheck.rows[0]?.subscription_tier || 'free';
+        const graceActive = subCheck.rows[0]?.verification_grace_until && new Date(subCheck.rows[0].verification_grace_until) > new Date();
+        const verified = subCheck.rows[0]?.is_verified || graceActive;
 
         if (tier !== 'plus') {
           return res.status(403).json({
             error: 'Plus subscription required for town-wide visibility',
             code: 'PLUS_REQUIRED',
             requiredTier: 'plus',
+          });
+        }
+
+        if (!verified) {
+          return res.status(403).json({
+            error: 'Identity verification required for town-wide visibility',
+            code: 'VERIFICATION_REQUIRED',
           });
         }
       }

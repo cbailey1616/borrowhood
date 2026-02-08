@@ -244,7 +244,7 @@ export default function CreateListingScreen({ navigation, route }) {
       const errorMsg = error.message?.toLowerCase() || '';
       const errorCode = error.code || '';
 
-      if (errorCode === 'PLUS_REQUIRED' || errorMsg.includes('plus subscription') || errorMsg.includes('town visibility')) {
+      if (errorCode === 'PLUS_REQUIRED' || errorCode === 'VERIFICATION_REQUIRED' || errorMsg.includes('plus subscription') || errorMsg.includes('town visibility') || errorMsg.includes('verification required')) {
         Keyboard.dismiss();
         setShowUpgradePrompt(true);
       } else if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
@@ -414,10 +414,13 @@ export default function CreateListingScreen({ navigation, route }) {
                       haptics.warning();
                     }
                   } else {
-                    // Gate check for town visibility — only requires Plus subscription
-                    if (visibility === 'town' && user?.subscriptionTier !== 'plus') {
-                      setShowUpgradePrompt(true);
-                      return;
+                    // Gate check for town visibility — requires Plus + verification
+                    if (visibility === 'town') {
+                      const gate = checkPremiumGate(user, 'town_browse');
+                      if (!gate.passed) {
+                        setShowUpgradePrompt(true);
+                        return;
+                      }
                     }
                     updateField('visibility', [...current, visibility]);
                     haptics.selection();
@@ -681,9 +684,10 @@ export default function CreateListingScreen({ navigation, route }) {
               style={styles.overlayButton}
               onPress={() => {
                 setShowUpgradePrompt(false);
+                // Navigate through the proper gate flow (subscription → verification)
+                const gate = checkPremiumGate(user, formData.isFree ? 'town_browse' : 'rental_listing');
                 navigation.goBack();
-                // Small delay so modal dismisses before navigating
-                setTimeout(() => navigation.navigate('Subscription'), 300);
+                setTimeout(() => navigation.navigate(gate.screen, gate.params), 300);
               }}
               haptic="medium"
             >

@@ -15,12 +15,13 @@ router.get('/', authenticate, async (req, res) => {
   try {
     // Get user info for visibility filtering
     const userResult = await query(
-      'SELECT city, subscription_tier, is_verified FROM users WHERE id = $1',
+      'SELECT city, subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
       [req.user.id]
     );
     const userCity = userResult.rows[0]?.city;
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
-    const isVerified = userResult.rows[0]?.is_verified;
+    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
+    const isVerified = userResult.rows[0]?.is_verified || graceActive;
     const canAccessTown = userTier === 'plus' && isVerified && userCity;
 
     // Parse visibility filter

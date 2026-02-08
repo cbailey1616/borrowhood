@@ -456,7 +456,9 @@ router.post('/reset-verification', authenticate, async (req, res) => {
         is_verified = false,
         status = 'active',
         stripe_identity_session_id = NULL,
-        verified_at = NULL
+        verified_at = NULL,
+        verification_grace_until = NULL,
+        verification_status = NULL
        WHERE id = $1`,
       [req.user.id]
     );
@@ -594,7 +596,10 @@ router.post('/admin/reset-user', async (req, res) => {
         is_verified = false,
         status = 'pending',
         stripe_identity_verified_at = NULL,
-        stripe_connect_account_id = NULL
+        stripe_connect_account_id = NULL,
+        verification_grace_until = NULL,
+        verification_status = NULL,
+        stripe_identity_session_id = NULL
       WHERE email = $1 RETURNING id, email`,
       [email]
     );
@@ -621,7 +626,8 @@ router.get('/me', authenticate, async (req, res) => {
               status, rating, rating_count,
               total_transactions, stripe_identity_verified_at,
               subscription_tier, stripe_connect_account_id,
-              onboarding_step, onboarding_completed, is_founder
+              onboarding_step, onboarding_completed, is_founder,
+              is_verified, verification_grace_until
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -642,7 +648,7 @@ router.get('/me', authenticate, async (req, res) => {
       city: user.city,
       state: user.state,
       status: user.status,
-      isVerified: user.status === 'verified',
+      isVerified: user.is_verified || (user.verification_grace_until && new Date(user.verification_grace_until) > new Date()) || false,
       rating: parseFloat(user.rating) || 0,
       ratingCount: user.rating_count,
       totalTransactions: user.total_transactions,

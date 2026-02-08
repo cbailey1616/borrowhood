@@ -97,7 +97,7 @@ router.post('/verify', authenticate, async (req, res) => {
 router.get('/status', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT is_verified, verification_status, stripe_identity_session_id, verified_at
+      `SELECT is_verified, verification_status, stripe_identity_session_id, verified_at, verification_grace_until
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -132,10 +132,19 @@ router.get('/status', authenticate, async (req, res) => {
           );
         } else if (stripeStatus === 'processing') {
           verificationStatus = 'processing';
+          // Set 6-hour grace period so user gets verified privileges while Stripe processes
+          if (!user.verification_grace_until || new Date(user.verification_grace_until) < new Date()) {
+            await query(
+              `UPDATE users SET verification_grace_until = NOW() + interval '6 hours', verification_status = 'processing'
+               WHERE id = $1`,
+              [req.user.id]
+            );
+          }
         }
 
+        const graceActive = user.verification_grace_until && new Date(user.verification_grace_until) > new Date();
         return res.json({
-          verified: stripeStatus === 'verified',
+          verified: stripeStatus === 'verified' || (stripeStatus === 'processing' && graceActive),
           status: verificationStatus,
           verifiedAt: user.verified_at,
           lastError: session.last_error?.reason || null,

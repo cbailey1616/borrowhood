@@ -4,8 +4,9 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { useStripeIdentity } from '@stripe/stripe-identity-react-native';
+import { presentIdentityVerificationSheet } from '@stripe/stripe-identity-react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -25,8 +26,6 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   const [status, setStatus] = useState(null); // none, pending, processing, requires_input, verified
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-
-  const { present } = useStripeIdentity();
 
   const loadStatus = useCallback(async () => {
     try {
@@ -61,14 +60,19 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   const handleVerify = async () => {
     setStarting(true);
     try {
-      // Get client secret from server
-      const { clientSecret } = await api.createVerificationSession();
+      // Get session credentials from server
+      const { sessionId, ephemeralKeySecret } = await api.createVerificationSession();
 
       // Launch native Stripe Identity sheet
-      const { status: resultStatus, error } = await present(clientSecret);
+      const brandLogo = Image.resolveAssetSource(require('../../assets/logo.png'));
+      const { status: resultStatus, error } = await presentIdentityVerificationSheet({
+        sessionId,
+        ephemeralKeySecret,
+        brandLogo,
+      });
 
       if (error) {
-        if (error.code === 'Canceled') {
+        if (error.code === 'FlowCanceled') {
           setStarting(false);
           return;
         }
