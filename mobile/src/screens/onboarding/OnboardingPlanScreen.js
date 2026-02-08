@@ -11,18 +11,14 @@ import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
-const FREE_FEATURES = [
-  { icon: 'home-outline', text: 'Browse your neighborhood' },
-  { icon: 'people-outline', text: 'Add friends & neighbors' },
-  { icon: 'pricetag-outline', text: 'List free items to share' },
-  { icon: 'chatbubble-outline', text: 'Message borrowers' },
-];
-
-const PLUS_FEATURES = [
-  { icon: 'earth-outline', text: 'Browse your whole town' },
-  { icon: 'cash-outline', text: 'Charge rental fees & earn' },
-  { icon: 'shield-checkmark-outline', text: 'Verified badge' },
-  { icon: 'star-outline', text: 'Priority in search results' },
+const COMPARISON_ROWS = [
+  { feature: 'Browse your neighborhood', free: true, plus: true },
+  { feature: 'Add friends & message', free: true, plus: true },
+  { feature: 'List free items to share', free: true, plus: true },
+  { feature: 'Browse your whole town', free: false, plus: true },
+  { feature: 'Charge rental fees & earn', free: false, plus: true },
+  { feature: 'Verified badge', free: false, plus: true },
+  { feature: 'Priority in search results', free: false, plus: true },
 ];
 
 export default function OnboardingPlanScreen({ navigation }) {
@@ -78,40 +74,48 @@ export default function OnboardingPlanScreen({ navigation }) {
           Start free and upgrade anytime
         </Text>
 
-        <View style={styles.plansRow}>
-          {/* Free Plan */}
-          <BlurCard style={styles.planCard}>
+        {/* Plan header row */}
+        <View style={styles.planHeaders}>
+          <View style={styles.featureLabelCol} />
+          <View style={styles.planCol}>
             <Text style={styles.planName}>Free</Text>
             <Text style={styles.planPrice}>$0</Text>
             <Text style={styles.planPeriod}>forever</Text>
-            <View style={styles.featuresList}>
-              {FREE_FEATURES.map((f, i) => (
-                <View key={i} style={styles.featureRow}>
-                  <Ionicons name={f.icon} size={18} color={COLORS.primary} />
-                  <Text style={styles.featureText}>{f.text}</Text>
-                </View>
-              ))}
-            </View>
-          </BlurCard>
-
-          {/* Plus Plan */}
-          <BlurCard style={[styles.planCard, styles.plusCard]}>
+          </View>
+          <View style={[styles.planCol, styles.plusCol]}>
             <View style={styles.plusBadge}>
               <Text style={styles.plusBadgeText}>POPULAR</Text>
             </View>
             <Text style={styles.planName}>Plus</Text>
             <Text style={styles.planPrice}>$1</Text>
-            <Text style={styles.planPeriod}>per month</Text>
-            <View style={styles.featuresList}>
-              {PLUS_FEATURES.map((f, i) => (
-                <View key={i} style={styles.featureRow}>
-                  <Ionicons name={f.icon} size={18} color={COLORS.warning} />
-                  <Text style={styles.featureText}>{f.text}</Text>
-                </View>
-              ))}
-            </View>
-          </BlurCard>
+            <Text style={styles.planPeriod}>/month</Text>
+          </View>
         </View>
+
+        {/* Comparison rows */}
+        <BlurCard style={styles.comparisonCard}>
+          {COMPARISON_ROWS.map((row, i) => (
+            <View
+              key={i}
+              style={[
+                styles.comparisonRow,
+                i < COMPARISON_ROWS.length - 1 && styles.comparisonRowBorder,
+              ]}
+            >
+              <Text style={styles.featureLabel}>{row.feature}</Text>
+              <View style={styles.checkCol}>
+                {row.free ? (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                ) : (
+                  <Ionicons name="close-circle" size={20} color={COLORS.gray[700]} />
+                )}
+              </View>
+              <View style={styles.checkCol}>
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.warning} />
+              </View>
+            </View>
+          ))}
+        </BlurCard>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
@@ -170,58 +174,73 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: SPACING.xxl,
   },
-  plansRow: {
+  planHeaders: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    marginBottom: SPACING.lg,
+    alignItems: 'flex-end',
   },
-  planCard: {
+  featureLabelCol: {
     flex: 1,
-    padding: SPACING.lg,
+  },
+  planCol: {
+    width: 72,
     alignItems: 'center',
   },
-  plusCard: {
-    borderWidth: 1,
-    borderColor: COLORS.warning + '40',
+  plusCol: {
+    width: 72,
   },
   plusBadge: {
     backgroundColor: COLORS.warning,
-    paddingHorizontal: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
     paddingVertical: 2,
     borderRadius: RADIUS.xs,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
+    alignSelf: 'center',
   },
   plusBadgeText: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 9,
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   planName: {
-    ...TYPOGRAPHY.h3,
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
+    textAlign: 'center',
   },
   planPrice: {
-    ...TYPOGRAPHY.largeTitle,
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
+    textAlign: 'center',
   },
   planPeriod: {
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.caption2,
     color: COLORS.textMuted,
-    marginBottom: SPACING.lg,
+    textAlign: 'center',
   },
-  featuresList: {
-    gap: SPACING.md,
-    alignSelf: 'stretch',
+  comparisonCard: {
+    padding: 0,
+    overflow: 'hidden',
   },
-  featureRow: {
+  comparisonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
   },
-  featureText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
+  comparisonRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
+  },
+  featureLabel: {
+    ...TYPOGRAPHY.subheadline,
+    color: COLORS.text,
     flex: 1,
+  },
+  checkCol: {
+    width: 72,
+    alignItems: 'center',
   },
   footer: {
     paddingHorizontal: SPACING.xl,
