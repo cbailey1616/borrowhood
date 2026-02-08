@@ -173,12 +173,24 @@ router.post('/subscribe', authenticate, async (req, res) => {
 
     // Create subscription with incomplete status — PaymentSheet will collect payment
     const idempotencyKey = `sub_${req.user.id}_${crypto.randomUUID()}`;
+    let productId = process.env.STRIPE_PRODUCT_PLUS;
+    if (!productId) {
+      // In test mode without a configured product, find or create one
+      const products = await stripe.products.list({ limit: 1, active: true });
+      const existing = products.data.find(p => p.name === 'BorrowHood Plus');
+      if (existing) {
+        productId = existing.id;
+      } else {
+        const product = await stripe.products.create({ name: 'BorrowHood Plus' });
+        productId = product.id;
+      }
+    }
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{
         price_data: {
           currency: 'usd',
-          product: process.env.STRIPE_PRODUCT_PLUS || 'prod_TwAqSD3Joum5jh',
+          product: productId,
           recurring: { interval: planConfig.interval },
           unit_amount: planConfig.amount,
         },
