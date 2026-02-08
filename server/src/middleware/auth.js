@@ -51,6 +51,21 @@ export function requireVerified(req, res, next) {
   next();
 }
 
+// Require active Plus subscription
+export async function requireSubscription(req, res, next) {
+  const result = await query(
+    'SELECT subscription_tier FROM users WHERE id = $1',
+    [req.user.id]
+  );
+  if (result.rows[0]?.subscription_tier !== 'plus') {
+    return res.status(403).json({
+      error: 'Plus subscription required',
+      code: 'SUBSCRIPTION_REQUIRED',
+    });
+  }
+  next();
+}
+
 // Require organizer role for a community
 export async function requireOrganizer(req, res, next) {
   const communityId = req.params.communityId || req.body.communityId;

@@ -9,10 +9,40 @@ const router = Router();
 // Get combined feed of listings and requests
 // ============================================
 router.get('/', authenticate, async (req, res) => {
-  const { page = 1, limit = 20, search, type, categoryId } = req.query;
+  const { page = 1, limit = 20, search, type, categoryId, visibility } = req.query;
   const offset = (page - 1) * limit;
 
   try {
+    // Get user info for visibility filtering
+    const userResult = await query(
+      'SELECT city, subscription_tier, is_verified FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const userCity = userResult.rows[0]?.city;
+    const userTier = userResult.rows[0]?.subscription_tier || 'free';
+    const isVerified = userResult.rows[0]?.is_verified;
+    const canAccessTown = userTier === 'plus' && isVerified && userCity;
+
+    // Parse visibility filter
+    const visibilityFilters = visibility ? visibility.split(',') : [];
+    const wantsTown = visibilityFilters.includes('town');
+
+    // If town visibility requested but user can't access it, return 403
+    if (wantsTown && !canAccessTown) {
+      const code = userTier !== 'plus' ? 'SUBSCRIPTION_REQUIRED' : 'VERIFICATION_REQUIRED';
+      return res.status(403).json({
+        error: code === 'SUBSCRIPTION_REQUIRED' ? 'Plus subscription required' : 'Identity verification required',
+        code,
+      });
+    }
+
+    // Get user's friends for visibility filtering
+    const friendsResult = await query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      [req.user.id]
+    );
+    const friendIds = friendsResult.rows.map(f => f.friend_id);
+
     let listingsResult = { rows: [] };
     let requestsResult = { rows: [] };
 
@@ -37,6 +67,8 @@ router.get('/', authenticate, async (req, res) => {
           u.status,
           u.total_transactions,
           l.owner_id,
+          l.visibility as listing_visibility,
+          u.city as owner_city,
           cat.name as category_name,
           cat.icon as category_icon,
           (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
@@ -55,6 +87,40 @@ router.get('/', authenticate, async (req, res) => {
       if (categoryId) {
         listingQuery += ` AND l.category_id = $${listingParams.length + 1}`;
         listingParams.push(categoryId);
+      }
+
+      // Visibility filtering
+      if (visibilityFilters.length > 0) {
+        const visConds = [];
+        // Always show own listings
+        visConds.push(`l.owner_id = $${listingParams.length + 1}`);
+        listingParams.push(req.user.id);
+
+        if (visibilityFilters.includes('close_friends')) {
+          visConds.push(`(l.visibility = 'close_friends' AND l.owner_id = ANY($${listingParams.length + 1}))`);
+          listingParams.push(friendIds.length > 0 ? friendIds : [null]);
+        }
+        if (visibilityFilters.includes('neighborhood')) {
+          visConds.push(`l.visibility = 'neighborhood'`);
+        }
+        if (wantsTown && canAccessTown) {
+          visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
+          listingParams.push(userCity);
+        }
+        listingQuery += ` AND (${visConds.join(' OR ')})`;
+      } else {
+        // No visibility filter — show everything user has access to
+        const visConds = [];
+        visConds.push(`l.owner_id = $${listingParams.length + 1}`);
+        listingParams.push(req.user.id);
+        visConds.push(`(l.visibility = 'close_friends' AND l.owner_id = ANY($${listingParams.length + 1}))`);
+        listingParams.push(friendIds.length > 0 ? friendIds : [null]);
+        visConds.push(`l.visibility = 'neighborhood'`);
+        if (canAccessTown) {
+          visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
+          listingParams.push(userCity);
+        }
+        listingQuery += ` AND (${visConds.join(' OR ')})`;
       }
 
       listingQuery += ` ORDER BY l.created_at DESC LIMIT $${listingParams.length + 1}`;

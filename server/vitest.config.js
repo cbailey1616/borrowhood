@@ -5,9 +5,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.js'],
-    testTimeout: 10000,
-    hookTimeout: 10000,
-    setupFiles: [],
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    setupFiles: ['tests/helpers/setup.js'],
     forceExit: true,
     coverage: {
       provider: 'v8',

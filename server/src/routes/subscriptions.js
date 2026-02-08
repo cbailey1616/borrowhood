@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
-import Stripe from 'stripe';
+import { stripe, createEphemeralKey } from '../services/stripe.js';
 
 const router = Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Tier structure:
 // - free: Friends + Neighborhood, free listings only
@@ -12,7 +12,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const TIER_PRICES = {
   free: 0,
-  plus: 100, // $1.00
+  plus: 100, // $1.00/mo
+};
+
+const PLUS_PLANS = {
+  monthly: { interval: 'month', amount: 100, display: '$1/mo' },
+  annual: { interval: 'year', amount: 1000, display: '$10/yr' },
 };
 
 const TIER_INFO = {
@@ -49,6 +54,14 @@ router.get('/tiers', authenticate, async (req, res) => {
       name: info.name,
       description: info.description,
       features: info.features,
+      ...(tier === 'plus' ? {
+        plans: Object.entries(PLUS_PLANS).map(([key, plan]) => ({
+          key,
+          interval: plan.interval,
+          amountCents: plan.amount,
+          display: plan.display,
+        })),
+      } : {}),
     }));
 
     res.json(tiers);
@@ -60,12 +73,12 @@ router.get('/tiers', authenticate, async (req, res) => {
 
 // ============================================
 // GET /api/subscriptions/current
-// Get user's current subscription
+// Get user's current subscription (with live Stripe status)
 // ============================================
 router.get('/current', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT subscription_tier, subscription_started_at, subscription_expires_at
+      `SELECT subscription_tier, subscription_started_at, subscription_expires_at, stripe_subscription_id
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -79,6 +92,22 @@ router.get('/current', authenticate, async (req, res) => {
     const info = TIER_INFO[tier] || TIER_INFO.free;
     const isPlus = tier === 'plus';
 
+    // Fetch live status from Stripe if subscription exists
+    let status = isPlus ? 'active' : null;
+    let nextBillingDate = null;
+    let cancelAtPeriodEnd = false;
+
+    if (user.stripe_subscription_id) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(user.stripe_subscription_id);
+        status = sub.status; // active, past_due, canceled, etc.
+        cancelAtPeriodEnd = sub.cancel_at_period_end;
+        nextBillingDate = new Date(sub.current_period_end * 1000).toISOString();
+      } catch (stripeErr) {
+        console.error('Failed to fetch Stripe subscription:', stripeErr.message);
+      }
+    }
+
     res.json({
       tier,
       name: info.name,
@@ -89,6 +118,9 @@ router.get('/current', authenticate, async (req, res) => {
       isActive: !user.subscription_expires_at || new Date(user.subscription_expires_at) > new Date(),
       canAccessTown: isPlus,
       canCharge: isPlus,
+      status,
+      nextBillingDate,
+      cancelAtPeriodEnd,
     });
   } catch (err) {
     console.error('Get current subscription error:', err);
@@ -98,14 +130,20 @@ router.get('/current', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/subscriptions/subscribe
-// Subscribe to Plus tier
+// Create subscription and return PaymentSheet credentials
 // ============================================
 router.post('/subscribe', authenticate, async (req, res) => {
-  const { paymentMethodId } = req.body;
+  const { plan = 'monthly' } = req.body;
+
+  // Validate plan
+  const planConfig = PLUS_PLANS[plan];
+  if (!planConfig) {
+    return res.status(400).json({ error: 'Invalid plan. Must be "monthly" or "annual".' });
+  }
 
   try {
     const user = await query(
-      `SELECT email, stripe_customer_id, subscription_tier, is_verified FROM users WHERE id = $1`,
+      `SELECT email, stripe_customer_id, subscription_tier FROM users WHERE id = $1`,
       [req.user.id]
     );
 
@@ -123,8 +161,6 @@ router.post('/subscribe', authenticate, async (req, res) => {
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.rows[0].email,
-        payment_method: paymentMethodId,
-        invoice_settings: { default_payment_method: paymentMethodId },
         metadata: { userId: req.user.id },
       });
       customerId = customer.id;
@@ -133,54 +169,47 @@ router.post('/subscribe', authenticate, async (req, res) => {
         `UPDATE users SET stripe_customer_id = $1 WHERE id = $2`,
         [customerId, req.user.id]
       );
-    } else {
-      // Attach payment method to existing customer (may already be attached via SetupIntent)
-      try {
-        await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
-      } catch (attachErr) {
-        if (!attachErr.message?.includes('already been attached')) {
-          throw attachErr;
-        }
-      }
-      await stripe.customers.update(customerId, {
-        invoice_settings: { default_payment_method: paymentMethodId },
-      });
     }
 
-    // Create subscription — charge immediately using the selected payment method
+    // Create subscription with incomplete status — PaymentSheet will collect payment
+    const idempotencyKey = `sub_${req.user.id}_${crypto.randomUUID()}`;
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{
         price_data: {
           currency: 'usd',
-          product: 'prod_TwAqSD3Joum5jh',
-          recurring: { interval: 'month' },
-          unit_amount: 100, // $1.00
+          product: process.env.STRIPE_PRODUCT_PLUS || 'prod_TwAqSD3Joum5jh',
+          recurring: { interval: planConfig.interval },
+          unit_amount: planConfig.amount,
         },
       }],
-      default_payment_method: paymentMethodId,
-      payment_behavior: 'error_if_incomplete',
+      payment_behavior: 'default_incomplete',
+      payment_settings: {
+        save_default_payment_method: 'on_subscription',
+      },
+      metadata: { userId: req.user.id, plan },
       expand: ['latest_invoice.payment_intent'],
+    }, {
+      idempotencyKey,
     });
 
-    // Update user's subscription
+    // Save subscription ID now (tier update happens via invoice.paid webhook)
     await query(
-      `UPDATE users SET
-        subscription_tier = 'plus',
-        subscription_started_at = NOW(),
-        subscription_expires_at = NULL,
-        stripe_subscription_id = $1
-       WHERE id = $2`,
+      `UPDATE users SET stripe_subscription_id = $1 WHERE id = $2`,
       [subscription.id, req.user.id]
     );
 
+    // Generate ephemeral key for PaymentSheet
+    const ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
+
     res.json({
-      subscriptionId: subscription.id,
-      status: subscription.status,
+      clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customerId,
     });
   } catch (err) {
     console.error('Subscribe error:', err);
-    res.status(500).json({ error: 'Failed to subscribe' });
+    res.status(500).json({ error: 'Failed to create subscription' });
   }
 });
 
@@ -223,6 +252,89 @@ router.post('/cancel', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/subscriptions/reactivate
+// Reactivate a cancelled subscription before period ends
+// ============================================
+router.post('/reactivate', authenticate, async (req, res) => {
+  try {
+    const user = await query(
+      `SELECT stripe_subscription_id FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    if (!user.rows[0]?.stripe_subscription_id) {
+      return res.status(400).json({ error: 'No subscription to reactivate' });
+    }
+
+    // Remove cancel_at_period_end
+    const subscription = await stripe.subscriptions.update(
+      user.rows[0].stripe_subscription_id,
+      { cancel_at_period_end: false }
+    );
+
+    // Clear expiration date
+    await query(
+      `UPDATE users SET subscription_expires_at = NULL WHERE id = $1`,
+      [req.user.id]
+    );
+
+    res.json({
+      message: 'Subscription reactivated',
+      status: subscription.status,
+    });
+  } catch (err) {
+    console.error('Reactivate subscription error:', err);
+    res.status(500).json({ error: 'Failed to reactivate subscription' });
+  }
+});
+
+// ============================================
+// POST /api/subscriptions/retry-payment
+// Retry payment for past_due subscription via PaymentSheet
+// ============================================
+router.post('/retry-payment', authenticate, async (req, res) => {
+  try {
+    const user = await query(
+      `SELECT stripe_customer_id, stripe_subscription_id FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+
+    if (!user.rows[0]?.stripe_subscription_id) {
+      return res.status(400).json({ error: 'No subscription found' });
+    }
+
+    const customerId = user.rows[0].stripe_customer_id;
+
+    // Get the subscription's latest invoice
+    const subscription = await stripe.subscriptions.retrieve(
+      user.rows[0].stripe_subscription_id,
+      { expand: ['latest_invoice.payment_intent'] }
+    );
+
+    if (subscription.status !== 'past_due') {
+      return res.status(400).json({ error: 'Subscription is not past due' });
+    }
+
+    const paymentIntent = subscription.latest_invoice?.payment_intent;
+    if (!paymentIntent?.client_secret) {
+      return res.status(400).json({ error: 'No pending payment found' });
+    }
+
+    // Generate ephemeral key for PaymentSheet
+    const ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customerId,
+    });
+  } catch (err) {
+    console.error('Retry payment error:', err);
+    res.status(500).json({ error: 'Failed to retry payment' });
+  }
+});
+
+// ============================================
 // GET /api/subscriptions/access-check
 // Check if user can access a feature
 // ============================================
@@ -231,12 +343,15 @@ router.get('/access-check', authenticate, async (req, res) => {
 
   try {
     const result = await query(
-      `SELECT subscription_tier FROM users WHERE id = $1`,
+      `SELECT subscription_tier, is_verified, stripe_connect_account_id FROM users WHERE id = $1`,
       [req.user.id]
     );
 
-    const tier = result.rows[0]?.subscription_tier || 'free';
+    const u = result.rows[0];
+    const tier = u?.subscription_tier || 'free';
     const isPlus = tier === 'plus';
+    const isVerified = u?.is_verified || false;
+    const hasConnect = !!u?.stripe_connect_account_id;
 
     let hasAccess = false;
 
@@ -249,9 +364,24 @@ router.get('/access-check', authenticate, async (req, res) => {
         hasAccess = true;
     }
 
+    // Determine next missing requirement
+    const nextStep = !isPlus
+      ? 'subscription'
+      : !isVerified
+        ? 'verification'
+        : (feature === 'rentals' && !hasConnect)
+          ? 'connect'
+          : null;
+
     res.json({
       tier,
       feature,
+      canAccess: hasAccess && isVerified,
+      isSubscribed: isPlus,
+      isVerified,
+      hasConnect,
+      nextStep,
+      // Keep legacy fields for backwards compat
       hasAccess,
       upgradeRequired: !hasAccess,
       requiredTier: 'plus',

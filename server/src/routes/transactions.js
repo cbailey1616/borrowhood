@@ -290,6 +290,7 @@ router.get('/:id', authenticate, async (req, res) => {
       conditionNotes: t.condition_notes,
       borrowerMessage: t.borrower_message,
       lenderResponse: t.lender_response,
+      paymentStatus: t.payment_status || null,
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,

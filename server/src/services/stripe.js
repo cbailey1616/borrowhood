@@ -1,5 +1,7 @@
 import Stripe from 'stripe';
+import crypto from 'crypto';
 
+// SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ============================================
@@ -55,6 +57,7 @@ export async function createConnectAccount(email, metadata = {}) {
     type: 'express',
     email,
     capabilities: {
+      card_payments: { requested: true },
       transfers: { requested: true },
     },
     metadata,
@@ -84,6 +87,7 @@ export async function createPaymentIntent({
   metadata = {},
   captureMethod = 'manual', // manual for authorization hold
 }) {
+  const idempotencyKey = `pi_${customerId}_${crypto.randomUUID()}`;
   return stripe.paymentIntents.create({
     amount,
     currency: 'usd',
@@ -93,6 +97,8 @@ export async function createPaymentIntent({
       enabled: true,
     },
     metadata,
+  }, {
+    idempotencyKey,
   });
 }
 
@@ -169,6 +175,17 @@ export async function listPaymentMethods(customerId) {
 
 export async function detachPaymentMethod(paymentMethodId) {
   return stripe.paymentMethods.detach(paymentMethodId);
+}
+
+// ============================================
+// Ephemeral Keys (for PaymentSheet)
+// ============================================
+
+export async function createEphemeralKey(customerId, apiVersion) {
+  return stripe.ephemeralKeys.create(
+    { customer: customerId },
+    { apiVersion }
+  );
 }
 
 // ============================================
