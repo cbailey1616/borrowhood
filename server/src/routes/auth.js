@@ -134,7 +134,7 @@ router.post('/login',
       );
 
       if (result.rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: 'No account found with that email. Check your email or create a new account.' });
       }
 
       const user = result.rows[0];
@@ -146,7 +146,7 @@ router.post('/login',
       const validPassword = await bcrypt.compare(password, user.password_hash);
 
       if (!validPassword) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: 'Incorrect password. Please try again or reset your password.' });
       }
 
       if (user.status === 'suspended') {
