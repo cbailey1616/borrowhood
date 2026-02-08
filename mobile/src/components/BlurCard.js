@@ -10,10 +10,12 @@ export default function BlurCard({
   children,
   fallbackColor = COLORS.surface,
   innerColor,
+  testID,
+  accessibilityLabel,
 }) {
   if (Platform.OS === 'android') {
     return (
-      <View style={[styles.card, { backgroundColor: fallbackColor }, style]}>
+      <View style={[styles.card, { backgroundColor: fallbackColor }, style]} testID={testID} accessibilityLabel={accessibilityLabel}>
         {children}
       </View>
     );
@@ -24,6 +26,8 @@ export default function BlurCard({
       intensity={intensity}
       tint={tint}
       style={[styles.card, style]}
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
     >
       <View style={[styles.inner, { backgroundColor: innerColor || COLORS.materials.thin }]}>
         {children}

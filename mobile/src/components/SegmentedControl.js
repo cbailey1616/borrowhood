@@ -14,6 +14,7 @@ export default function SegmentedControl({
   selectedIndex,
   onIndexChange,
   style,
+  testID,
 }) {
   const containerWidth = useSharedValue(0);
   const segmentCount = segments.length;
@@ -51,7 +52,7 @@ export default function SegmentedControl({
   );
 
   return (
-    <View style={[styles.container, style]} onLayout={onLayout}>
+    <View style={[styles.container, style]} onLayout={onLayout} testID={testID}>
       <Animated.View style={[styles.indicator, indicatorStyle]} />
       {segments.map((segment, index) => (
         <HapticPressable
@@ -60,6 +61,9 @@ export default function SegmentedControl({
           style={styles.segment}
           haptic={null}
           scaleDown={1}
+          testID={testID ? `${testID}.${index}` : undefined}
+          accessibilityLabel={segment}
+          accessibilityRole="tab"
         >
           <Text
             style={[

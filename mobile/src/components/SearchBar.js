@@ -13,13 +13,15 @@ export default function SearchBar({
   onSubmitEditing,
   autoFocus = false,
   style,
+  testID,
+  accessibilityLabel,
 }) {
   const handleClear = useCallback(() => {
     onChangeText?.('');
   }, [onChangeText]);
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} testID={testID} accessibilityLabel={accessibilityLabel || placeholder} accessibilityRole="search">
       <Ionicons
         name="search"
         size={17}

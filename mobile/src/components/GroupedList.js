@@ -39,6 +39,9 @@ export function GroupedListItem({
   rightElement,
   isFirst,
   isLast,
+  testID,
+  accessibilityLabel,
+  accessibilityRole,
 }) {
   const textColor = destructive ? COLORS.danger : COLORS.text;
   const hasSwitch = switchValue !== undefined;
@@ -102,7 +105,7 @@ export function GroupedListItem({
 
   if (onPress && !hasSwitch) {
     return (
-      <HapticPressable onPress={onPress} haptic="light">
+      <HapticPressable onPress={onPress} haptic="light" testID={testID} accessibilityLabel={accessibilityLabel || title} accessibilityRole={accessibilityRole || 'button'}>
         {content}
       </HapticPressable>
     );
