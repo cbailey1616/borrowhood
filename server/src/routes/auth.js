@@ -599,6 +599,11 @@ router.post('/admin/reset-user', async (req, res) => {
       [email]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    // Also clear community memberships
+    const userId = result.rows[0].id;
+    await query('DELETE FROM community_memberships WHERE user_id = $1', [userId]);
+
     res.json({ success: true, user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
