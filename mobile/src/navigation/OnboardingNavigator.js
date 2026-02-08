@@ -9,6 +9,7 @@ import OnboardingFriendsScreen from '../screens/onboarding/OnboardingFriendsScre
 import OnboardingPlanScreen from '../screens/onboarding/OnboardingPlanScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
+import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -55,6 +56,18 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
         name="OnboardingComplete"
         component={OnboardingCompleteScreen}
         options={{ animation: 'fade_from_bottom' }}
+      />
+      <Stack.Screen
+        name="OnboardingVerification"
+        component={IdentityVerificationScreen}
+        options={{
+          headerShown: true,
+          headerStyle: { backgroundColor: COLORS.background },
+          headerShadowVisible: false,
+          headerTintColor: COLORS.text,
+          title: 'Verify Identity',
+          animation: 'slide_from_right',
+        }}
       />
       <Stack.Screen
         name="OnboardingSubscription"

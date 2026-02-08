@@ -32,10 +32,10 @@ export default function OnboardingPlanScreen({ navigation }) {
         try {
           const updated = await refreshUser();
           if (updated?.subscriptionTier === 'plus') {
-            // Auto-advance if they just subscribed
+            // Auto-advance to verification step
             haptics.success();
             try { await api.updateOnboardingStep(4); } catch (e) {}
-            navigation.navigate('OnboardingComplete');
+            navigation.navigate('OnboardingVerification', { source: 'onboarding' });
           }
         } catch (e) {}
       };

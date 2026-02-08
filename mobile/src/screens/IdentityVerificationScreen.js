@@ -37,7 +37,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         // Auto-chain if source is provided and we haven't already
         if (source !== 'generic' && !hasAutoChained.current) {
           hasAutoChained.current = true;
-          if (source === 'rental_listing') {
+          if (source === 'onboarding') {
+            navigation.navigate('OnboardingComplete');
+          } else if (source === 'rental_listing') {
             navigation.replace('SetupPayout', { source, totalSteps });
           } else if (source === 'town_browse') {
             navigation.popToTop();
@@ -107,7 +109,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   // Already verified
   if (status === 'verified') {
     const handleVerifiedDone = () => {
-      if (source === 'rental_listing') {
+      if (source === 'onboarding') {
+        navigation.navigate('OnboardingComplete');
+      } else if (source === 'rental_listing') {
         navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
         navigation.popToTop();
@@ -242,7 +246,13 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
         <HapticPressable
           style={styles.tertiaryButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (source === 'onboarding') {
+              navigation.navigate('OnboardingComplete');
+            } else {
+              navigation.goBack();
+            }
+          }}
           haptic="light"
           testID="Identity.button.skipForNow"
           accessibilityLabel="Skip for now"

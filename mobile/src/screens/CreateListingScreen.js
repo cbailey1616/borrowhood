@@ -414,13 +414,10 @@ export default function CreateListingScreen({ navigation, route }) {
                       haptics.warning();
                     }
                   } else {
-                    // Gate check for town visibility
-                    if (visibility === 'town') {
-                      const gate = checkPremiumGate(user, 'town_browse');
-                      if (!gate.passed) {
-                        setShowUpgradePrompt(true);
-                        return;
-                      }
+                    // Gate check for town visibility — only requires Plus subscription
+                    if (visibility === 'town' && user?.subscriptionTier !== 'plus') {
+                      setShowUpgradePrompt(true);
+                      return;
                     }
                     updateField('visibility', [...current, visibility]);
                     haptics.selection();

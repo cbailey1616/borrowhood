@@ -154,7 +154,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
       );
       haptics.light();
     } catch (error) {
-      setErrorSheet({ visible: true, title: 'Error', message: 'Failed to leave neighborhood.' });
+      setErrorSheet({ visible: true, title: 'Error', message: error.message || 'Failed to leave neighborhood.' });
     } finally {
       setIsLoading(false);
     }
@@ -182,7 +182,17 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
         createData.radius = neighborhoodRadius;
       }
       const result = await api.createCommunity(createData);
-      setJoinedCommunity({ id: result.id, name: neighborhoodName.trim() });
+      const newCommunity = {
+        id: result.id,
+        name: neighborhoodName.trim(),
+        description: neighborhoodDesc.trim() || '',
+        memberCount: 1,
+        listingCount: 0,
+        distanceMiles: 0,
+        isMember: true,
+      };
+      setJoinedCommunity(newCommunity);
+      setNeighborhoods(prev => [newCommunity, ...prev]);
       haptics.success();
       await refreshUser(); // Picks up isFounder
     } catch (error) {
