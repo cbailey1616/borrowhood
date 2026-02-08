@@ -60,6 +60,11 @@ export async function createConnectAccount(email, metadata = {}) {
       card_payments: { requested: true },
       transfers: { requested: true },
     },
+    business_type: 'individual',
+    business_profile: {
+      url: 'https://borrowhood.com',
+      product_description: 'Renting personal items to neighbors via Borrowhood',
+    },
     metadata,
   });
 }
