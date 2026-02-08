@@ -560,14 +560,78 @@ const getSubscriptionTiers = () =>
 const getCurrentSubscription = () =>
   get('/subscriptions/current');
 
-const subscribe = (paymentMethodId) =>
-  post('/subscriptions/subscribe', { paymentMethodId });
+const createSubscription = (plan = 'monthly') =>
+  post('/subscriptions/subscribe', { plan });
 
 const cancelSubscription = () =>
   post('/subscriptions/cancel');
 
+const reactivateSubscription = () =>
+  post('/subscriptions/reactivate');
+
+const retrySubscriptionPayment = () =>
+  post('/subscriptions/retry-payment');
+
 const checkSubscriptionAccess = (visibility) =>
   get('/subscriptions/access-check', { visibility });
+
+// Payments
+const createPaymentIntent = (amount, description, metadata) =>
+  post('/payments/create-payment-intent', { amount, description, metadata });
+
+const refundPayment = (paymentIntentId, amount) =>
+  post('/payments/refund', { paymentIntentId, ...(amount ? { amount } : {}) });
+
+// Identity Verification
+const createVerificationSession = () =>
+  post('/identity/verify');
+
+const getVerificationStatus = () =>
+  get('/identity/status');
+
+// Rentals
+const createRentalRequest = (data) =>
+  post('/rentals/request', data);
+
+const approveRental = (id, response) =>
+  post(`/rentals/${id}/approve`, { response });
+
+const declineRental = (id, reason) =>
+  post(`/rentals/${id}/decline`, { reason });
+
+const confirmRentalPayment = (id) =>
+  post(`/rentals/${id}/confirm-payment`);
+
+const confirmRentalPickup = (id, condition) =>
+  post(`/rentals/${id}/pickup`, { condition });
+
+const confirmRentalReturn = (id, condition, notes) =>
+  post(`/rentals/${id}/return`, { condition, notes });
+
+const submitDamageClaim = (id, { amountCents, notes, evidenceUrls }) =>
+  post(`/rentals/${id}/damage-claim`, { amountCents, notes, evidenceUrls });
+
+const createLateFee = (id) =>
+  post(`/rentals/${id}/late-fee`);
+
+const getRentalPaymentStatus = (id) =>
+  get(`/rentals/${id}/payment-status`);
+
+const getConnectBalance = () =>
+  get('/users/me/connect-balance');
+
+// Onboarding
+const updateOnboardingStep = (step) =>
+  patch('/onboarding/step', { step });
+
+const completeOnboarding = () =>
+  post('/onboarding/complete');
+
+const getNearbyNeighborhoods = (lat, lng, radius = 5) =>
+  get('/communities/nearby', { lat, lng, radius });
+
+const getSuggestedUsers = (neighborhoodId) =>
+  get('/users/suggested', neighborhoodId ? { neighborhood: neighborhoodId } : {});
 
 // Saved listings
 const getSavedListings = () => get('/saved');
@@ -720,9 +784,28 @@ export default {
   // Subscriptions
   getSubscriptionTiers,
   getCurrentSubscription,
-  subscribe,
+  createSubscription,
   cancelSubscription,
+  reactivateSubscription,
+  retrySubscriptionPayment,
   checkSubscriptionAccess,
+  // Payments
+  createPaymentIntent,
+  refundPayment,
+  // Identity Verification
+  createVerificationSession,
+  getVerificationStatus,
+  // Rentals
+  createRentalRequest,
+  approveRental,
+  declineRental,
+  confirmRentalPayment,
+  confirmRentalPickup,
+  confirmRentalReturn,
+  submitDamageClaim,
+  createLateFee,
+  getRentalPaymentStatus,
+  getConnectBalance,
   // Saved listings
   getSavedListings,
   saveListing,
@@ -732,4 +815,9 @@ export default {
   getReferralCode,
   getReferralStatus,
   claimReferralReward,
+  // Onboarding
+  updateOnboardingStep,
+  completeOnboarding,
+  getNearbyNeighborhoods,
+  getSuggestedUsers,
 };

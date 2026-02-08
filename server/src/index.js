@@ -9,6 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import rateLimit from 'express-rate-limit';
 import { logger } from './utils/logger.js';
 import { runMigrations } from './utils/migrations.js';
+import { validateStripeEnvironment } from './utils/stripeGuard.js';
+
+// Validate Stripe keys match the environment
+validateStripeEnvironment();
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -36,6 +40,10 @@ import paymentMethodRoutes from './routes/paymentMethods.js';
 import savedRoutes from './routes/saved.js';
 import categoryRoutes from './routes/categories.js';
 import referralRoutes from './routes/referrals.js';
+import identityRoutes from './routes/identity.js';
+import paymentRoutes from './routes/payments.js';
+import rentalRoutes from './routes/rentals.js';
+import onboardingRoutes from './routes/onboarding.js';
 
 const app = express();
 
@@ -70,11 +78,26 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Stricter rate limit for Stripe/payment endpoints
+const stripeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Strict — payment creation is expensive
+  message: { error: 'Too many payment requests. Please wait before trying again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Apply general rate limiting to all requests
 app.use(limiter);
 
 // Apply stricter rate limiting to auth routes
 app.use('/api/auth', authLimiter);
+
+// Apply strict rate limiting to Stripe-related endpoints
+app.use('/api/payments', stripeLimiter);
+app.use('/api/subscriptions', stripeLimiter);
+app.use('/api/identity', stripeLimiter);
+app.use('/api/rentals', stripeLimiter);
 
 // Stripe webhooks need raw body (before JSON parsing)
 app.use('/webhooks/stripe', express.raw({ type: 'application/json' }));
@@ -158,6 +181,10 @@ app.use('/api/saved', savedRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/listings', discussionRoutes);
 app.use('/api/referrals', referralRoutes);
+app.use('/api/identity', identityRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/rentals', rentalRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // Health check

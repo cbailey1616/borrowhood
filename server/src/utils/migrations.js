@@ -74,8 +74,21 @@ export async function runMigrations() {
     `);
     if (hasIsVerified.rows.length === 0) {
       logger.info('Running migration: Add is_verified to users');
-      await query('ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT false');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false');
       logger.info('Migration complete: users.is_verified added');
+    }
+
+    // Migration: Add identity verification columns to users
+    const hasVerificationStatus = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'verification_status'
+    `);
+    if (hasVerificationStatus.rows.length === 0) {
+      logger.info('Running migration: Add identity verification columns to users');
+      await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status VARCHAR(20)");
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_identity_session_id VARCHAR(255)');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ');
+      logger.info('Migration complete: identity verification columns added');
     }
 
     // Migration: Add expires_at column to item_requests
@@ -110,6 +123,39 @@ export async function runMigrations() {
       logger.info('Running migration: Add request_id to notifications');
       await query('ALTER TABLE notifications ADD COLUMN request_id UUID REFERENCES item_requests(id) ON DELETE SET NULL');
       logger.info('Migration complete: notifications.request_id added');
+    }
+
+    // Migration: Add rental payment columns to borrow_transactions
+    const hasPaymentStatus = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'borrow_transactions' AND column_name = 'payment_status'
+    `);
+    if (hasPaymentStatus.rows.length === 0) {
+      logger.info('Running migration: Add rental payment columns');
+      await query("ALTER TABLE borrow_transactions ADD COLUMN payment_status VARCHAR(30) DEFAULT 'none'");
+      await query('ALTER TABLE borrow_transactions ADD COLUMN stripe_late_fee_payment_intent_id VARCHAR(255)');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN late_fee_amount_cents INT DEFAULT 0');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN damage_claim_amount_cents INT DEFAULT 0');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN damage_claim_notes TEXT');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN damage_evidence_urls TEXT[]');
+      await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS late_fee_per_day DECIMAL(10,2) DEFAULT 0');
+      await query(`CREATE INDEX IF NOT EXISTS idx_transactions_overdue
+        ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
+      logger.info('Migration complete: rental payment columns added');
+    }
+
+    // Migration: Add onboarding tracking columns to users
+    const hasOnboardingStep = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'onboarding_step'
+    `);
+    if (hasOnboardingStep.rows.length === 0) {
+      logger.info('Running migration: Add onboarding columns to users');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_step INT DEFAULT NULL');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT false');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_founder BOOLEAN DEFAULT false');
+      await query('UPDATE users SET onboarding_completed = true WHERE city IS NOT NULL');
+      logger.info('Migration complete: onboarding columns added');
     }
 
     logger.info('Migrations check complete');

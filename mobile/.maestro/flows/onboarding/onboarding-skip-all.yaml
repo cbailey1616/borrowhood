@@ -1,0 +1,31 @@
+appId: com.borrowhood.app
+---
+# Onboarding flow: Skip all optional steps
+# Welcome -> Neighborhood (skip) -> Friends (skip) -> Plan (free) -> Complete
+
+- assertVisible: "Welcome to BorrowHood"
+- tapOn:
+    id: "Onboarding.Welcome.getStarted"
+
+# Neighborhood screen - skip
+- assertVisible: "Join a Neighborhood"
+- tapOn:
+    id: "Onboarding.Neighborhood.continue"
+
+# Friends screen - skip
+- assertVisible: "Find Friends"
+- tapOn:
+    id: "Onboarding.Friends.continue"
+
+# Plan screen - start free
+- assertVisible: "Choose Your Plan"
+- tapOn:
+    id: "Onboarding.Plan.startFree"
+
+# Complete screen
+- assertVisible: "You're All Set!"
+- tapOn:
+    id: "Onboarding.Complete.startExploring"
+
+# Should land on main feed
+- assertVisible: "Feed"

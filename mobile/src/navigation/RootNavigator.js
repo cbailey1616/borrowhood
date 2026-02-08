@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
@@ -6,7 +5,7 @@ import { COLORS } from '../utils/config';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import OnboardingScreen from '../screens/OnboardingScreen';
+import OnboardingNavigator from './OnboardingNavigator';
 
 // Detail screens accessible from anywhere
 import ListingDetailScreen from '../screens/ListingDetailScreen';
@@ -38,6 +37,10 @@ import InviteMembersScreen from '../screens/InviteMembersScreen';
 import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
 import ReferralScreen from '../screens/ReferralScreen';
 import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
+import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
+import PaymentFlowScreen from '../screens/PaymentFlowScreen';
+import RentalCheckoutScreen from '../screens/RentalCheckoutScreen';
+import DamageClaimScreen from '../screens/DamageClaimScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,11 +61,10 @@ const sharedScreenOptions = {
 };
 
 export default function RootNavigator() {
-  const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const { isLoading, isAuthenticated, user } = useAuth();
 
-  // Check if user needs onboarding (no city set)
-  const needsOnboarding = isAuthenticated && user && !user.city && !onboardingComplete;
+  // Check if user needs onboarding
+  const needsOnboarding = isAuthenticated && user && !user.onboardingCompleted;
 
   if (isLoading) {
     return (
@@ -75,12 +77,7 @@ export default function RootNavigator() {
   // Show onboarding for new users
   if (needsOnboarding) {
     return (
-      <OnboardingScreen
-        onComplete={() => {
-          refreshUser();
-          setOnboardingComplete(true);
-        }}
-      />
+      <OnboardingNavigator initialStep={user?.onboardingStep || 1} />
     );
   }
 
@@ -235,6 +232,26 @@ export default function RootNavigator() {
             name="VerifyIdentity"
             component={VerifyIdentityScreen}
             options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="IdentityVerification"
+            component={IdentityVerificationScreen}
+            options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="PaymentFlow"
+            component={PaymentFlowScreen}
+            options={{ ...sharedScreenOptions, title: 'Payment', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="RentalCheckout"
+            component={RentalCheckoutScreen}
+            options={{ ...sharedScreenOptions, title: 'Rental Checkout', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="DamageClaim"
+            component={DamageClaimScreen}
+            options={{ ...sharedScreenOptions, title: 'Damage Claim', presentation: 'modal' }}
           />
         </>
       )}

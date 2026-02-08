@@ -493,6 +493,7 @@ router.post('/check-verification', authenticate, async (req, res) => {
 
     // Check Stripe for completed verification sessions
     const { default: Stripe } = await import('stripe');
+    // SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const sessions = await stripe.identity.verificationSessions.list({
       limit: 10,
@@ -540,7 +541,7 @@ router.post('/admin/reset-onboarding', async (req, res) => {
   }
   try {
     const result = await query(
-      "UPDATE users SET city = NULL, state = NULL WHERE email = $1 RETURNING id, email",
+      "UPDATE users SET city = NULL, state = NULL, onboarding_step = NULL, onboarding_completed = false, is_founder = false WHERE email = $1 RETURNING id, email",
       [email]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -578,7 +579,9 @@ router.get('/me', authenticate, async (req, res) => {
       `SELECT id, email, first_name, last_name, phone, profile_photo_url, bio,
               city, state,
               status, rating, rating_count,
-              total_transactions, stripe_identity_verified_at
+              total_transactions, stripe_identity_verified_at,
+              subscription_tier, stripe_connect_account_id,
+              onboarding_step, onboarding_completed, is_founder
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -603,6 +606,11 @@ router.get('/me', authenticate, async (req, res) => {
       rating: parseFloat(user.rating) || 0,
       ratingCount: user.rating_count,
       totalTransactions: user.total_transactions,
+      subscriptionTier: user.subscription_tier || 'free',
+      hasConnectAccount: !!user.stripe_connect_account_id,
+      onboardingStep: user.onboarding_step,
+      onboardingCompleted: user.onboarding_completed || false,
+      isFounder: user.is_founder || false,
     });
   } catch (err) {
     console.error('Get user error:', err);

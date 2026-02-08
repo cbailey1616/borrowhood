@@ -3,6 +3,7 @@ import { query } from '../utils/db.js';
 import { authenticate, requireVerified } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
+  stripe,
   createConnectAccount,
   createConnectAccountLink,
   getConnectAccount,
@@ -281,6 +282,63 @@ router.post('/me/friend-requests/:requestId/decline', authenticate, async (req, 
   } catch (err) {
     console.error('Decline friend request error:', err);
     res.status(500).json({ error: 'Failed to decline friend request' });
+  }
+});
+
+// ============================================
+// GET /api/users/suggested
+// Get suggested users from the same neighborhood
+// ============================================
+router.get('/suggested', authenticate, async (req, res) => {
+  const { neighborhood } = req.query;
+
+  try {
+    let result;
+
+    if (neighborhood) {
+      // Get users in the specified community
+      result = await query(
+        `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url, u.city, u.state
+         FROM community_memberships m
+         JOIN users u ON m.user_id = u.id
+         WHERE m.community_id = $1 AND u.id != $2
+         ORDER BY m.joined_at DESC
+         LIMIT 20`,
+        [neighborhood, req.user.id]
+      );
+    } else {
+      // Get users in any community the current user is in
+      result = await query(
+        `SELECT DISTINCT u.id, u.first_name, u.last_name, u.profile_photo_url, u.city, u.state
+         FROM community_memberships m
+         JOIN community_memberships m2 ON m.community_id = m2.community_id
+         JOIN users u ON m2.user_id = u.id
+         WHERE m.user_id = $1 AND u.id != $1
+         ORDER BY u.first_name, u.last_name
+         LIMIT 20`,
+        [req.user.id]
+      );
+    }
+
+    // Check which are already friends
+    const friendResult = await query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      [req.user.id]
+    );
+    const friendIds = new Set(friendResult.rows.map(r => r.friend_id));
+
+    res.json(result.rows.map(u => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      profilePhotoUrl: u.profile_photo_url,
+      city: u.city,
+      state: u.state,
+      isFriend: friendIds.has(u.id),
+    })));
+  } catch (err) {
+    console.error('Get suggested users error:', err);
+    res.status(500).json({ error: 'Failed to get suggested users' });
   }
 });
 
@@ -651,5 +709,44 @@ router.post('/me/connect-onboarding', authenticate, requireVerified,
     }
   }
 );
+
+// ============================================
+// GET /api/users/me/connect-balance
+// Get Connect account balance (pending + available)
+// ============================================
+router.get('/me/connect-balance', authenticate, async (req, res) => {
+  try {
+    const user = await query(
+      'SELECT stripe_connect_account_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    const connectId = user.rows[0]?.stripe_connect_account_id;
+    if (!connectId) {
+      return res.json({ pending: 0, available: 0, currency: 'usd' });
+    }
+
+    const balance = await stripe.balance.retrieve({
+      stripeAccount: connectId,
+    });
+
+    const available = balance.available
+      .filter(b => b.currency === 'usd')
+      .reduce((sum, b) => sum + b.amount, 0);
+
+    const pending = balance.pending
+      .filter(b => b.currency === 'usd')
+      .reduce((sum, b) => sum + b.amount, 0);
+
+    res.json({
+      available: available / 100,
+      pending: pending / 100,
+      currency: 'usd',
+    });
+  } catch (err) {
+    console.error('Get Connect balance error:', err);
+    res.status(500).json({ error: 'Failed to get balance' });
+  }
+});
 
 export default router;

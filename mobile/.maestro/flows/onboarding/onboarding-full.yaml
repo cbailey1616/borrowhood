@@ -1,0 +1,48 @@
+appId: com.borrowhood.app
+---
+# Onboarding flow: Full path with interactions
+# Welcome -> Location -> Join Neighborhood -> Add Friend -> Free Plan -> Complete
+
+- assertVisible: "Welcome to BorrowHood"
+- tapOn:
+    id: "Onboarding.Welcome.getStarted"
+
+# Neighborhood screen - use location
+- assertVisible: "Join a Neighborhood"
+- tapOn:
+    id: "Onboarding.Neighborhood.useLocation"
+- waitForAnimationToEnd
+
+# If location permission dialog appears, allow it
+- tapOn: "Allow While Using App"
+  optional: true
+
+# Wait for neighborhoods to load
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 10000
+
+- tapOn:
+    id: "Onboarding.Neighborhood.continue"
+
+# Friends screen - search for a user
+- assertVisible: "Find Friends"
+- tapOn:
+    id: "Onboarding.Friends.searchBar"
+- inputText: "Test"
+- waitForAnimationToEnd
+- tapOn:
+    id: "Onboarding.Friends.continue"
+
+# Plan screen
+- assertVisible: "Choose Your Plan"
+- tapOn:
+    id: "Onboarding.Plan.startFree"
+
+# Complete screen
+- assertVisible: "You're All Set!"
+- tapOn:
+    id: "Onboarding.Complete.startExploring"
+
+# Should land on main feed
+- assertVisible: "Feed"

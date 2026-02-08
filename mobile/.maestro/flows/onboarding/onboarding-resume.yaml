@@ -1,0 +1,23 @@
+appId: com.borrowhood.app
+---
+# Onboarding resume test: Start flow, kill app, verify resume at correct step
+
+# Start the onboarding
+- assertVisible: "Welcome to BorrowHood"
+- tapOn:
+    id: "Onboarding.Welcome.getStarted"
+
+# Get to neighborhood screen
+- assertVisible: "Join a Neighborhood"
+- tapOn:
+    id: "Onboarding.Neighborhood.continue"
+
+# Get to friends screen
+- assertVisible: "Find Friends"
+
+# Kill and relaunch the app
+- stopApp
+- launchApp
+
+# Should resume at the Friends screen (step 3), not start over
+- assertVisible: "Find Friends"

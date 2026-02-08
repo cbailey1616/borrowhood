@@ -102,6 +102,120 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // ============================================
+// GET /api/communities/nearby
+// Find neighborhoods near coordinates (PostGIS)
+// ============================================
+router.get('/nearby', authenticate, async (req, res) => {
+  const { lat, lng, radius = 5 } = req.query;
+
+  if (!lat || !lng) {
+    return res.status(400).json({ error: 'lat and lng are required' });
+  }
+
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lng);
+  const radiusMiles = Math.min(parseFloat(radius), 25);
+
+  try {
+    // Check if PostGIS center column exists and has data
+    const hasCenter = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'communities' AND column_name = 'center'
+    `);
+
+    let result;
+
+    if (hasCenter.rows.length > 0) {
+      // Use PostGIS ST_DWithin for distance-based search
+      result = await query(
+        `SELECT c.*,
+                ST_Distance(c.center::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) / 1609.34 as distance_miles,
+                (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $4) as is_member
+         FROM communities c
+         WHERE c.is_active = true
+           AND c.center IS NOT NULL
+           AND ST_DWithin(c.center::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3 * 1609.34)
+         ORDER BY distance_miles
+         LIMIT 50`,
+        [latitude, longitude, radiusMiles, req.user.id]
+      );
+    } else {
+      // Fallback: match by city name from reverse geocoded location
+      // User's city should already be set by the mobile app
+      const userResult = await query('SELECT city, state FROM users WHERE id = $1', [req.user.id]);
+      const userCity = userResult.rows[0]?.city;
+
+      if (!userCity) {
+        return res.json([]);
+      }
+
+      result = await query(
+        `SELECT c.*,
+                0 as distance_miles,
+                (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
+         FROM communities c
+         WHERE c.is_active = true AND LOWER(c.city) = LOWER($1)
+         ORDER BY c.name
+         LIMIT 50`,
+        [userCity, req.user.id]
+      );
+    }
+
+    res.json(result.rows.map(c => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      city: c.city,
+      state: c.state,
+      distanceMiles: parseFloat(c.distance_miles) || 0,
+      memberCount: parseInt(c.member_count),
+      listingCount: parseInt(c.listing_count),
+      isMember: c.is_member,
+    })));
+  } catch (err) {
+    console.error('Get nearby communities error:', err);
+    // If PostGIS functions fail, fall back to city-based matching
+    try {
+      const userResult = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
+      const userCity = userResult.rows[0]?.city;
+      if (!userCity) return res.json([]);
+
+      const fallback = await query(
+        `SELECT c.*,
+                (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
+         FROM communities c
+         WHERE c.is_active = true AND LOWER(c.city) = LOWER($1)
+         ORDER BY c.name LIMIT 50`,
+        [userCity, req.user.id]
+      );
+
+      res.json(fallback.rows.map(c => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        city: c.city,
+        state: c.state,
+        distanceMiles: 0,
+        memberCount: parseInt(c.member_count),
+        listingCount: parseInt(c.listing_count),
+        isMember: c.is_member,
+      })));
+    } catch (fallbackErr) {
+      console.error('Nearby fallback error:', fallbackErr);
+      res.status(500).json({ error: 'Failed to get nearby communities' });
+    }
+  }
+});
+
+// ============================================
 // GET /api/communities/:id
 // Get community details
 // ============================================
@@ -275,13 +389,16 @@ router.get('/:id/members', authenticate, async (req, res) => {
 router.post('/', authenticate,
   body('name').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 1000 }),
+  body('latitude').optional().isFloat({ min: -90, max: 90 }),
+  body('longitude').optional().isFloat({ min: -180, max: 180 }),
+  body('radius').optional().isFloat({ min: 0.25, max: 2 }),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, description } = req.body;
+    const { name, description, latitude, longitude, radius } = req.body;
 
     try {
       // Get creator's location from profile
@@ -298,17 +415,69 @@ router.post('/', authenticate,
         });
       }
 
+      // If coordinates provided, check for overlapping neighborhoods
+      if (latitude && longitude) {
+        try {
+          const hasCenter = await query(`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'communities' AND column_name = 'center'
+          `);
+
+          if (hasCenter.rows.length > 0) {
+            const overlapRadius = (radius || 1) * 1609.34; // Convert miles to meters
+            const overlapping = await query(
+              `SELECT name FROM communities
+               WHERE is_active = true
+                 AND center IS NOT NULL
+                 AND ST_DWithin(center::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
+               LIMIT 5`,
+              [latitude, longitude, overlapRadius]
+            );
+
+            if (overlapping.rows.length > 0) {
+              return res.status(409).json({
+                error: 'A neighborhood already exists in this area',
+                code: 'OVERLAP',
+                overlapping: overlapping.rows.map(r => r.name),
+              });
+            }
+          }
+        } catch (gisErr) {
+          // PostGIS may not be available; skip overlap check
+          console.warn('PostGIS overlap check skipped:', gisErr.message);
+        }
+      }
+
       // Create slug from name
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
 
-      // Create community at creator's location
-      const result = await query(
-        `INSERT INTO communities (name, slug, city, state, description)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id`,
-        [name, uniqueSlug, user.city, user.state, description]
-      );
+      // Build INSERT dynamically based on whether we have coords
+      let insertQuery, insertParams;
+      if (latitude && longitude) {
+        // Check if center column exists before trying to set it
+        const hasCenter = await query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_name = 'communities' AND column_name = 'center'
+        `);
+
+        if (hasCenter.rows.length > 0) {
+          insertQuery = `INSERT INTO communities (name, slug, city, state, description, center, radius_miles, community_type)
+            VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($7, $6), 4326), $8, 'neighborhood')
+            RETURNING id`;
+          insertParams = [name, uniqueSlug, user.city, user.state, description, latitude, longitude, radius || 1];
+        } else {
+          insertQuery = `INSERT INTO communities (name, slug, city, state, description)
+            VALUES ($1, $2, $3, $4, $5) RETURNING id`;
+          insertParams = [name, uniqueSlug, user.city, user.state, description];
+        }
+      } else {
+        insertQuery = `INSERT INTO communities (name, slug, city, state, description)
+          VALUES ($1, $2, $3, $4, $5) RETURNING id`;
+        insertParams = [name, uniqueSlug, user.city, user.state, description];
+      }
+
+      const result = await query(insertQuery, insertParams);
 
       // Add creator as organizer (moderator)
       await query(
@@ -317,7 +486,13 @@ router.post('/', authenticate,
         [req.user.id, result.rows[0].id]
       );
 
-      res.status(201).json({ id: result.rows[0].id, slug: uniqueSlug });
+      // Mark creator as founder
+      await query(
+        'UPDATE users SET is_founder = true WHERE id = $1',
+        [req.user.id]
+      );
+
+      res.status(201).json({ id: result.rows[0].id, slug: uniqueSlug, isFounder: true });
     } catch (err) {
       console.error('Create community error:', err);
       res.status(500).json({ error: 'Failed to create community' });
