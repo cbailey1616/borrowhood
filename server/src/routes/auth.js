@@ -570,6 +570,41 @@ router.post('/admin/reset-verifications', async (req, res) => {
   }
 });
 
+// POST /api/auth/admin/reset-user
+// Full reset: clear Stripe, subscription, onboarding, verification for a user
+// ============================================
+router.post('/admin/reset-user', async (req, res) => {
+  const { email, secret } = req.body;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const result = await query(
+      `UPDATE users SET
+        stripe_customer_id = NULL,
+        stripe_subscription_id = NULL,
+        subscription_tier = 'free',
+        city = NULL,
+        state = NULL,
+        latitude = NULL,
+        longitude = NULL,
+        onboarding_step = NULL,
+        onboarding_completed = false,
+        is_founder = false,
+        is_verified = false,
+        status = 'active',
+        stripe_identity_verified_at = NULL,
+        stripe_connect_account_id = NULL
+      WHERE email = $1 RETURNING id, email`,
+      [email]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/auth/me
 // Get current user
 // ============================================
