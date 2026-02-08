@@ -126,6 +126,9 @@ async function handleIdentityVerified(session) {
   const dob = verifiedData.dob;
   const address = verifiedData.address;
 
+  // Build date_of_birth from Stripe's dob object
+  const dobDate = dob ? `${dob.year}-${String(dob.month).padStart(2, '0')}-${String(dob.day).padStart(2, '0')}` : null;
+
   // Update user as verified
   await query(
     `UPDATE users SET
@@ -139,7 +142,8 @@ async function handleIdentityVerified(session) {
       address_line1 = COALESCE($4, address_line1),
       city = COALESCE($5, city),
       state = COALESCE($6, state),
-      zip_code = COALESCE($7, zip_code)
+      zip_code = COALESCE($7, zip_code),
+      date_of_birth = COALESCE($9, date_of_birth)
      WHERE stripe_customer_id = $8`,
     [
       session.id,
@@ -150,6 +154,7 @@ async function handleIdentityVerified(session) {
       address?.state,
       address?.postal_code,
       customerId,
+      dobDate,
     ]
   );
 

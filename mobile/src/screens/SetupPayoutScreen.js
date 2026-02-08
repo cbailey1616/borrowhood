@@ -65,11 +65,12 @@ export default function SetupPayoutScreen({ navigation, route }) {
   };
 
   const isComplete = connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled;
-  const needsAction = connectStatus?.hasAccount && !isComplete;
+  const isPending = connectStatus?.detailsSubmitted && !isComplete;
+  const needsAction = connectStatus?.hasAccount && !isComplete && !isPending;
 
   // When setup completes and we came from a gate flow, refresh user and go back
   useEffect(() => {
-    if (isComplete && source !== 'generic') {
+    if ((isComplete || isPending) && source !== 'generic') {
       refreshUser();
       haptics.success();
       // Brief delay to show success state then pop all gate screens
@@ -78,7 +79,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [isComplete, source]);
+  }, [isComplete, isPending, source]);
 
   if (loading) {
     return (
@@ -96,45 +97,51 @@ export default function SetupPayoutScreen({ navigation, route }) {
       )}
 
       <View style={styles.header}>
-        <View style={[styles.iconContainer, isComplete && styles.iconContainerSuccess]}>
+        <View style={[styles.iconContainer, (isComplete || isPending) && styles.iconContainerSuccess]}>
           <Ionicons
-            name={isComplete ? 'checkmark-circle' : 'wallet-outline'}
+            name={isComplete ? 'checkmark-circle' : isPending ? 'time-outline' : 'wallet-outline'}
             size={48}
-            color={isComplete ? COLORS.primary : COLORS.textSecondary}
+            color={isComplete ? COLORS.primary : isPending ? COLORS.primary : COLORS.textSecondary}
           />
         </View>
         <Text style={styles.title}>
-          {isComplete ? 'Payouts Enabled' : 'Setup Payouts'}
+          {isComplete ? 'Payouts Enabled' : isPending ? 'Verification in Progress' : 'Setup Payouts'}
         </Text>
         <Text style={styles.subtitle}>
           {isComplete
             ? 'You can now receive payments when people borrow your items.'
+            : isPending
+            ? 'Your payout account details have been submitted. Stripe is verifying your information — this usually takes a few minutes.'
             : 'Connect your bank account to receive payments when people borrow your items.'}
         </Text>
       </View>
 
-      {isComplete ? (
+      {isComplete || isPending ? (
         <>
-          <BlurCard testID="SetupPayout.status.complete" accessibilityLabel="Payout setup complete" style={styles.statusCard}>
+          <BlurCard testID="SetupPayout.status.complete" accessibilityLabel="Payout setup status" style={styles.statusCard}>
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Account Status</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>Active</Text>
+              <View style={[styles.statusBadge, !isComplete && styles.statusBadgePending]}>
+                <Text style={styles.statusBadgeText}>{isComplete ? 'Active' : 'Pending'}</Text>
               </View>
             </View>
             <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Charges Enabled</Text>
+              <Text style={styles.statusLabel}>Details Submitted</Text>
               <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
             </View>
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Payouts Enabled</Text>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              {isComplete ? (
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              ) : (
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              )}
             </View>
           </BlurCard>
           <HapticPressable
             haptic="medium"
             style={styles.setupButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => source !== 'generic' ? navigation.popToTop() : navigation.goBack()}
           >
             <Text style={styles.setupButtonText}>Done</Text>
           </HapticPressable>
@@ -161,7 +168,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
         </BlurCard>
       )}
 
-      {!isComplete && (
+      {!isComplete && !isPending && (
         <HapticPressable
           testID="SetupPayout.button.setup"
           accessibilityLabel="Set up payout account"
@@ -265,6 +272,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.md,
+  },
+  statusBadgePending: {
+    backgroundColor: COLORS.warning,
   },
   statusBadgeText: {
     ...TYPOGRAPHY.caption1,

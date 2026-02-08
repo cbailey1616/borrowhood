@@ -207,6 +207,16 @@ export default function PaymentMethodsScreen({ navigation, route }) {
               </Text>
             </View>
           </BlurCard>
+        ) : connectStatus?.detailsSubmitted ? (
+          <BlurCard style={styles.payoutActiveCard}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.payoutActiveTitle}>Verification in Progress</Text>
+              <Text style={styles.payoutActiveSubtext}>
+                Stripe is verifying your payout account. This usually takes a few minutes.
+              </Text>
+            </View>
+          </BlurCard>
         ) : (
           <>
             <BlurCard style={styles.infoCard}>

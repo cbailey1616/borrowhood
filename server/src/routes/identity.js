@@ -118,11 +118,23 @@ router.get('/status', authenticate, async (req, res) => {
         let verificationStatus = user.verification_status;
         if (stripeStatus === 'verified') {
           verificationStatus = 'verified';
-          // Update DB if webhook hasn't fired yet
+          // Update DB if webhook hasn't fired yet — also store verified data
+          const verifiedData = session.verified_outputs || {};
+          const dob = verifiedData.dob;
+          const dobDate = dob ? `${dob.year}-${String(dob.month).padStart(2, '0')}-${String(dob.day).padStart(2, '0')}` : null;
+          const addr = verifiedData.address;
           await query(
-            `UPDATE users SET status = 'verified', is_verified = true, verification_status = 'verified', verified_at = NOW()
+            `UPDATE users SET
+              status = 'verified', is_verified = true, verification_status = 'verified', verified_at = NOW(),
+              first_name = COALESCE($2, first_name),
+              last_name = COALESCE($3, last_name),
+              address_line1 = COALESCE($4, address_line1),
+              city = COALESCE($5, city),
+              state = COALESCE($6, state),
+              zip_code = COALESCE($7, zip_code),
+              date_of_birth = COALESCE($8, date_of_birth)
              WHERE id = $1 AND is_verified = false`,
-            [req.user.id]
+            [req.user.id, verifiedData.first_name, verifiedData.last_name, addr?.line1, addr?.city, addr?.state, addr?.postal_code, dobDate]
           );
         } else if (stripeStatus === 'requires_input') {
           verificationStatus = 'requires_input';

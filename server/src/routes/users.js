@@ -623,19 +623,39 @@ router.post('/me/connect-account', authenticate, requireVerified, async (req, re
       return res.status(400).json({ error: 'Connect account already exists' });
     }
 
-    // Get user email
+    // Get user details for pre-filling Connect onboarding
     const userResult = await query(
-      'SELECT email, first_name, last_name FROM users WHERE id = $1',
+      'SELECT email, first_name, last_name, phone, date_of_birth, address_line1, city, state, zip_code FROM users WHERE id = $1',
       [req.user.id]
     );
 
     const user = userResult.rows[0];
 
-    // Create Stripe Connect account
+    // Build individual object with verified data
+    const individual = {};
+    if (user.first_name) individual.first_name = user.first_name;
+    if (user.last_name) individual.last_name = user.last_name;
+    if (user.email) individual.email = user.email;
+    if (user.phone) individual.phone = user.phone;
+    if (user.date_of_birth) {
+      const d = new Date(user.date_of_birth);
+      individual.dob = { day: d.getUTCDate(), month: d.getUTCMonth() + 1, year: d.getUTCFullYear() };
+    }
+    if (user.address_line1) {
+      individual.address = {
+        line1: user.address_line1,
+        city: user.city || undefined,
+        state: user.state || undefined,
+        postal_code: user.zip_code || undefined,
+        country: 'US',
+      };
+    }
+
+    // Create Stripe Connect account with pre-filled data
     const account = await createConnectAccount(user.email, {
       userId: req.user.id,
       userName: `${user.first_name} ${user.last_name}`,
-    });
+    }, individual);
 
     // Save account ID to user
     await query(
@@ -672,16 +692,36 @@ router.post('/me/connect-onboarding', authenticate, requireVerified,
       // Create account if it doesn't exist
       if (!accountId) {
         const userResult = await query(
-          'SELECT email, first_name, last_name FROM users WHERE id = $1',
+          'SELECT email, first_name, last_name, phone, date_of_birth, address_line1, city, state, zip_code FROM users WHERE id = $1',
           [req.user.id]
         );
 
         const user = userResult.rows[0];
 
+        // Build individual object with verified data
+        const individual = {};
+        if (user.first_name) individual.first_name = user.first_name;
+        if (user.last_name) individual.last_name = user.last_name;
+        if (user.email) individual.email = user.email;
+        if (user.phone) individual.phone = user.phone;
+        if (user.date_of_birth) {
+          const d = new Date(user.date_of_birth);
+          individual.dob = { day: d.getUTCDate(), month: d.getUTCMonth() + 1, year: d.getUTCFullYear() };
+        }
+        if (user.address_line1) {
+          individual.address = {
+            line1: user.address_line1,
+            city: user.city || undefined,
+            state: user.state || undefined,
+            postal_code: user.zip_code || undefined,
+            country: 'US',
+          };
+        }
+
         const account = await createConnectAccount(user.email, {
           userId: req.user.id,
           userName: `${user.first_name} ${user.last_name}`,
-        });
+        }, individual);
 
         await query(
           'UPDATE users SET stripe_connect_account_id = $1 WHERE id = $2',

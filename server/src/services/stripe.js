@@ -52,8 +52,8 @@ export async function getIdentityVerificationSession(sessionId) {
 // Connect Account Management (for organizers receiving fees)
 // ============================================
 
-export async function createConnectAccount(email, metadata = {}) {
-  return stripe.accounts.create({
+export async function createConnectAccount(email, metadata = {}, individual = {}) {
+  const params = {
     type: 'express',
     email,
     capabilities: {
@@ -66,7 +66,14 @@ export async function createConnectAccount(email, metadata = {}) {
       product_description: 'Renting personal items to neighbors via Borrowhood',
     },
     metadata,
-  });
+  };
+
+  // Pre-fill individual details from identity verification
+  if (Object.keys(individual).length > 0) {
+    params.individual = individual;
+  }
+
+  return stripe.accounts.create(params);
 }
 
 export async function createConnectAccountLink(accountId, refreshUrl, returnUrl) {

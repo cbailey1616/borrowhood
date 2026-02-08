@@ -169,6 +169,17 @@ export async function runMigrations() {
       logger.info('Migration complete: users.verification_grace_until added');
     }
 
+    // Migration: Add date_of_birth column to users (for pre-filling Connect onboarding)
+    const hasDob = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'date_of_birth'
+    `);
+    if (hasDob.rows.length === 0) {
+      logger.info('Running migration: Add date_of_birth to users');
+      await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE');
+      logger.info('Migration complete: users.date_of_birth added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);
