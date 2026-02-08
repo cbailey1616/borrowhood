@@ -167,10 +167,10 @@ export const TYPOGRAPHY = {
 // Animation presets
 export const ANIMATION = {
   spring: {
-    default: { damping: 20, stiffness: 300, mass: 0.8 },
-    gentle: { damping: 20, stiffness: 120, mass: 0.8 },
-    bouncy: { damping: 12, stiffness: 200, mass: 0.6 },
-    stiff: { damping: 26, stiffness: 400, mass: 0.8 },
+    default: { damping: 28, stiffness: 300, mass: 0.8 },
+    gentle: { damping: 24, stiffness: 120, mass: 0.8 },
+    bouncy: { damping: 22, stiffness: 200, mass: 0.7 },
+    stiff: { damping: 30, stiffness: 400, mass: 0.8 },
   },
   timing: {
     fast: 150,

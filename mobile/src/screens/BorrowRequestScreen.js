@@ -56,7 +56,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         }
 
         // Check if verification is required (town-level items)
-        if (listing.visibility === 'town' && user?.status !== 'verified') {
+        if (listing.visibility === 'town' && !user?.isVerified) {
           setAccessCheck({
             loading: false,
             canAccess: false,
@@ -267,7 +267,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <HapticPressable
               haptic="medium"
               style={styles.promptButton}
-              onPress={() => navigation.navigate('VerifyIdentity')}
+              onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse', totalSteps: 2 })}
             >
               <Text style={styles.promptButtonText}>Verify Now</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />

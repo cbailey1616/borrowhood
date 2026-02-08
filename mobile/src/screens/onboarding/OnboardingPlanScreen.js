@@ -12,12 +12,12 @@ import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 const COMPARISON_ROWS = [
-  { feature: 'Browse your neighborhood', free: true, plus: true },
+  { feature: 'Lend & borrow from friends', free: true, plus: true },
+  { feature: 'Lend & borrow from neighbors', free: true, plus: true },
   { feature: 'Add friends & message', free: true, plus: true },
-  { feature: 'List free items to share', free: true, plus: true },
-  { feature: 'Browse your whole town', free: false, plus: true },
+  { feature: 'Lend & borrow from entire town', free: false, plus: true },
   { feature: 'Charge rental fees & earn', free: false, plus: true },
-  { feature: 'Verified badge', free: false, plus: true },
+  { feature: 'Stripe-verified for trust', free: false, plus: true },
   { feature: 'Priority in search results', free: false, plus: true },
 ];
 
@@ -71,7 +71,7 @@ export default function OnboardingPlanScreen({ navigation }) {
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
-          Start free or go Plus — unlock your whole town
+          Free lets you lend and borrow from friends and neighbors. Plus opens up your entire town with verified trust.
         </Text>
 
         {/* Plan header row */}
@@ -121,7 +121,7 @@ export default function OnboardingPlanScreen({ navigation }) {
         <View style={styles.plusNote}>
           <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
           <Text style={styles.plusNoteText}>
-            Plus requires a $1/mo subscription and a quick identity verification to keep the community safe.
+            Plus includes identity verification through Stripe so every lender and borrower is trustworthy.
           </Text>
         </View>
       </ScrollView>
