@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { Platform } from 'react-native';
-import { useConfirmPayment, usePlatformPay, PlatformPayButton, PlatformPay } from '@stripe/stripe-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -24,25 +23,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
-  const { confirmPayment } = useConfirmPayment();
-  const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [applePaySupported, setApplePaySupported] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [paymentLoading, setPaymentLoading] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingFormVisible, setRatingFormVisible] = useState(false);
 
-  useEffect(() => {
-    fetchTransaction();
-    if (Platform.OS === 'ios') {
-      isPlatformPaySupported().then(setApplePaySupported);
-    }
-  }, [id]);
+  useFocusEffect(useCallback(() => { fetchTransaction(); }, [id]));
 
   const fetchTransaction = async () => {
     try {
@@ -58,7 +48,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const handleApprove = async () => {
     setActionLoading(true);
     try {
-      await api.approveTransaction(id);
+      await api.approveRental(id);
       fetchTransaction();
       haptics.success();
       showToast('Request approved! Borrower has been notified.', 'success');
@@ -70,28 +60,24 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleDecline = () => {
-    Alert.prompt(
-      'Decline Request',
-      'Optionally provide a reason:',
-      async (reason) => {
-        setActionLoading(true);
-        try {
-          await api.declineTransaction(id, reason);
-          navigation.goBack();
-        } catch (error) {
-          showError({ message: error.message || 'Unable to decline request.' });
-        } finally {
-          setActionLoading(false);
-        }
-      }
-    );
-  };
-
-  const handleConfirmPickup = async () => {
+  const handleDecline = async () => {
     setActionLoading(true);
     try {
-      await api.confirmPickup(id);
+      await api.declineRental(id);
+      haptics.success();
+      navigation.goBack();
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Unable to decline request.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmPickup = async (condition) => {
+    setActionLoading(true);
+    try {
+      await api.confirmRentalPickup(id, condition);
       fetchTransaction();
       haptics.success();
       showToast('Pickup confirmed!', 'success');
@@ -106,16 +92,18 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const handleConfirmReturn = async (condition) => {
     setActionLoading(true);
     try {
-      const result = await api.confirmReturn(id, condition);
-      fetchTransaction();
-      if (result.disputed) {
-        showError({
-          type: 'generic',
-          title: 'Dispute Opened',
-          message: 'A dispute has been opened due to the condition change. We\'ll help you resolve this.',
-          primaryAction: 'View Details',
+      const result = await api.confirmRentalReturn(id, condition);
+      if (result.conditionDegraded) {
+        haptics.warning();
+        navigation.navigate('DamageClaim', {
+          transactionId: id,
+          depositAmount: transaction.depositAmount,
+          listingTitle: transaction.listing.title,
+          conditionAtPickup: transaction.conditionAtPickup,
+          conditionAtReturn: condition,
         });
       } else {
+        fetchTransaction();
         haptics.success();
         showToast('Return confirmed!', 'success');
       }
@@ -144,79 +132,58 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
-  const handlePayNow = async () => {
-    setPaymentLoading(true);
+  const handlePayment = async () => {
+    setActionLoading(true);
     try {
-      // Ask server for PaymentIntent status
-      const result = await api.confirmPayment(id);
+      const result = await api.confirmRentalPayment(id);
 
       if (result.requiresPayment && result.clientSecret) {
-        // Confirm payment via Stripe SDK
-        const { error } = await confirmPayment(result.clientSecret, {
-          paymentMethodType: 'Card',
+        navigation.navigate('RentalCheckout', {
+          transactionId: id,
+          rentalFee: transaction.rentalFee,
+          depositAmount: transaction.depositAmount,
+          totalAmount: transaction.rentalFee + transaction.depositAmount,
+          platformFee: transaction.platformFee,
+          lenderPayout: transaction.lenderPayout,
+          rentalDays: transaction.rentalDays,
+          listingTitle: transaction.listing.title,
+          clientSecret: result.clientSecret,
+          ephemeralKey: result.ephemeralKey,
+          customerId: result.customerId,
         });
-
-        if (error) {
-          haptics.error();
-          showError({ message: error.message || 'Payment failed.' });
-          return;
-        }
-
-        // Finalize on backend
-        await api.confirmPayment(id);
+      } else {
+        haptics.success();
+        showToast('Payment authorized!', 'success');
+        fetchTransaction();
       }
-
-      haptics.success();
-      showToast('Payment successful!', 'success');
-      fetchTransaction();
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Payment failed. Please try again.' });
     } finally {
-      setPaymentLoading(false);
+      setActionLoading(false);
     }
   };
 
-  const handleApplePay = async () => {
-    setPaymentLoading(true);
+  const handleChargeLateFee = async () => {
+    setActionLoading(true);
     try {
-      const result = await api.confirmPayment(id);
-
-      if (result.requiresPayment && result.clientSecret) {
-        const total = (transaction.rentalFee + transaction.depositAmount).toFixed(2);
-
-        const { error } = await confirmPlatformPayPayment(result.clientSecret, {
-          applePay: {
-            merchantCountryCode: 'US',
-            currencyCode: 'USD',
-            cartItems: [
-              { paymentType: 'Immediate', label: 'Rental fee', amount: transaction.rentalFee.toFixed(2) },
-              { paymentType: 'Immediate', label: 'Refundable deposit', amount: transaction.depositAmount.toFixed(2) },
-              { paymentType: 'Immediate', label: 'BorrowHood', amount: total },
-            ],
-          },
-        });
-
-        if (error) {
-          if (error.code !== 'Canceled') {
-            haptics.error();
-            showError({ message: error.message || 'Apple Pay failed.' });
-          }
-          return;
-        }
-
-        // Finalize on backend
-        await api.confirmPayment(id);
-      }
-
-      haptics.success();
-      showToast('Payment successful!', 'success');
-      fetchTransaction();
+      const result = await api.createLateFee(id);
+      navigation.navigate('RentalCheckout', {
+        transactionId: id,
+        rentalFee: result.lateFeeCents / 100,
+        depositAmount: 0,
+        totalAmount: result.lateFeeCents / 100,
+        rentalDays: result.daysOverdue,
+        listingTitle: transaction.listing.title,
+        clientSecret: result.clientSecret,
+        ephemeralKey: result.ephemeralKey,
+        customerId: result.customerId,
+      });
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Payment failed. Please try again.' });
+      showError({ message: error.message || 'Unable to charge late fee.' });
     } finally {
-      setPaymentLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -397,12 +364,23 @@ export default function TransactionDetailScreen({ route, navigation }) {
             ) : null}
           </View>
         )}
+
+        {/* Overdue Banner */}
+        {transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (
+          <View style={styles.overdueBanner}>
+            <Ionicons name="warning" size={20} color={COLORS.warning} />
+            <Text style={styles.overdueText}>This rental is overdue</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Actions */}
       {transaction.isLender && transaction.status === 'pending' && (
         <View style={styles.footer}>
           <HapticPressable
+            testID="Transaction.button.decline"
+            accessibilityLabel="Decline request"
+            accessibilityRole="button"
             haptic="light"
             style={styles.declineButton}
             onPress={handleDecline}
@@ -411,6 +389,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Text style={styles.declineButtonText}>Decline</Text>
           </HapticPressable>
           <HapticPressable
+            testID="Transaction.button.approve"
+            accessibilityLabel="Approve request"
+            accessibilityRole="button"
             haptic="medium"
             style={styles.approveButton}
             onPress={handleApprove}
@@ -425,45 +406,19 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Borrower: Pay Now for approved transactions */}
+      {/* Borrower: Authorize Payment for approved transactions */}
       {transaction.isBorrower && transaction.status === 'approved' && (
-        <View style={styles.paymentFooter}>
-          <View style={styles.paymentSummary}>
-            <View style={styles.paymentRow}>
-              <Text style={styles.paymentLabel}>Rental fee</Text>
-              <Text style={styles.paymentValue}>${transaction.rentalFee.toFixed(2)}</Text>
-            </View>
-            <View style={styles.paymentRow}>
-              <Text style={styles.paymentLabel}>Refundable deposit</Text>
-              <Text style={styles.paymentValue}>${transaction.depositAmount.toFixed(2)}</Text>
-            </View>
-            <View style={[styles.paymentRow, styles.paymentTotalRow]}>
-              <Text style={styles.paymentTotalLabel}>Total</Text>
-              <Text style={styles.paymentTotalValue}>
-                ${(transaction.rentalFee + transaction.depositAmount).toFixed(2)}
-              </Text>
-            </View>
-          </View>
-          {Platform.OS === 'ios' && applePaySupported && (
-            <PlatformPayButton
-              type={PlatformPay.ButtonType.Pay}
-              appearance={PlatformPay.ButtonStyle.Black}
-              borderRadius={RADIUS.md}
-              onPress={handleApplePay}
-              disabled={paymentLoading}
-              style={[styles.applePayButton, paymentLoading && { opacity: 0.5 }]}
-            />
-          )}
+        <View style={styles.footer}>
           <HapticPressable
             haptic="medium"
-            style={[styles.approveButton, paymentLoading && { opacity: 0.5 }]}
-            onPress={handlePayNow}
-            disabled={paymentLoading}
+            style={[styles.approveButton, actionLoading && { opacity: 0.5 }]}
+            onPress={handlePayment}
+            disabled={actionLoading}
           >
-            {paymentLoading ? (
+            {actionLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.approveButtonText}>Pay with Card</Text>
+              <Text style={styles.approveButtonText}>Authorize Payment</Text>
             )}
           </HapticPressable>
         </View>
@@ -472,6 +427,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
       {transaction.isLender && transaction.status === 'paid' && (
         <View style={styles.footer}>
           <HapticPressable
+            testID="Transaction.button.confirmPickup"
+            accessibilityLabel="Confirm pickup"
+            accessibilityRole="button"
             haptic="medium"
             style={styles.approveButton}
             onPress={() => setPickupSheetVisible(true)}
@@ -484,7 +442,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
       {transaction.isLender && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
+          {new Date() > new Date(transaction.endDate) && (
+            <HapticPressable
+              haptic="medium"
+              style={styles.declineButton}
+              onPress={handleChargeLateFee}
+              disabled={actionLoading}
+            >
+              <Text style={styles.declineButtonText}>Charge Late Fee</Text>
+            </HapticPressable>
+          )}
           <HapticPressable
+            testID="Transaction.button.confirmReturn"
+            accessibilityLabel="Confirm return"
+            accessibilityRole="button"
             haptic="medium"
             style={styles.approveButton}
             onPress={() => setReturnSheetVisible(true)}
@@ -568,13 +539,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
         isVisible={pickupSheetVisible}
         onClose={() => setPickupSheetVisible(false)}
         title="Confirm Pickup"
-        message="Confirm that the item has been picked up?"
-        actions={[
-          {
-            label: 'Confirm Pickup',
-            onPress: handleConfirmPickup,
-          },
-        ]}
+        message="What condition is the item in?"
+        actions={['like_new', 'good', 'fair', 'worn'].map(condition => ({
+          label: CONDITION_LABELS[condition],
+          onPress: () => handleConfirmPickup(condition),
+        }))}
       />
 
       <ActionSheet
@@ -596,9 +565,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  applePayButton: {
-    height: 50,
-    marginBottom: SPACING.sm,
+  overdueBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.warning + '15',
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
+  },
+  overdueText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '600',
+    color: COLORS.warning,
   },
   loadingContainer: {
     flex: 1,
@@ -824,45 +802,5 @@ const styles = StyleSheet.create({
   ratingActions: {
     flexDirection: 'row',
     gap: SPACING.md,
-  },
-  paymentFooter: {
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
-    gap: SPACING.md,
-  },
-  paymentSummary: {
-    gap: SPACING.xs,
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  paymentLabel: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-  },
-  paymentValue: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.text,
-  },
-  paymentTotalRow: {
-    marginTop: SPACING.xs,
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
-  },
-  paymentTotalLabel: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  paymentTotalValue: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
   },
 });
