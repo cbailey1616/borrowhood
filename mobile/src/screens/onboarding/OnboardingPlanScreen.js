@@ -53,7 +53,7 @@ export default function OnboardingPlanScreen({ navigation }) {
 
   const handleGoPlus = () => {
     haptics.medium();
-    navigation.navigate('OnboardingSubscription');
+    navigation.navigate('OnboardingSubscription', { source: 'onboarding' });
   };
 
   return (

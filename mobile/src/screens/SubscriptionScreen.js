@@ -150,21 +150,30 @@ export default function SubscriptionScreen({ navigation, route }) {
         return;
       }
 
-      // Poll for webhook to activate subscription
+      // For gate flows and onboarding, navigate immediately — don't wait
+      // for poll to re-render this screen with the Plus view
+      if (source === 'town_browse' || source === 'rental_listing') {
+        await refreshUser();
+        haptics.success();
+        navigation.replace('IdentityVerification', { source, totalSteps });
+        return;
+      }
+
+      if (source === 'onboarding') {
+        await refreshUser();
+        haptics.success();
+        navigation.goBack();
+        return;
+      }
+
+      // Generic: poll and update this screen
       const activated = await pollForActivation();
       if (activated) {
         haptics.success();
       } else {
-        // Webhook may be slow — reload to show whatever state we have
         await loadData();
         await refreshUser();
         haptics.success();
-      }
-
-      // Auto-chain to next gate step if navigated from a feature gate
-      if (source === 'town_browse' || source === 'rental_listing') {
-        navigation.replace('IdentityVerification', { source, totalSteps });
-        return;
       }
     } catch (err) {
       haptics.error();

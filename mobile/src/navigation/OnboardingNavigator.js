@@ -1,4 +1,6 @@
+import { Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import HapticPressable from '../components/HapticPressable';
 import { COLORS } from '../utils/config';
 
 import OnboardingWelcomeScreen from '../screens/onboarding/OnboardingWelcomeScreen';
@@ -57,14 +59,20 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
       <Stack.Screen
         name="OnboardingSubscription"
         component={SubscriptionScreen}
-        options={{
+        options={({ navigation: nav }) => ({
           presentation: 'modal',
+          gestureEnabled: true,
           headerShown: true,
           headerStyle: { backgroundColor: COLORS.surface },
           headerShadowVisible: false,
           headerTintColor: COLORS.text,
           title: 'BorrowHood Plus',
-        }}
+          headerLeft: () => (
+            <HapticPressable onPress={() => nav.goBack()} haptic="light">
+              <Text style={{ color: COLORS.primary, fontSize: 17 }}>Close</Text>
+            </HapticPressable>
+          ),
+        })}
       />
     </Stack.Navigator>
   );

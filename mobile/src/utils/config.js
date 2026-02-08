@@ -4,8 +4,8 @@
 const PRODUCTION_BASE = 'https://borrowhood-production.up.railway.app';
 const DEV_BASE = 'http://192.168.7.53:3001'; // Use Mac's IP for physical device testing
 
-// Using production API for testing - switch to DEV_BASE for local server
-export const BASE_URL = PRODUCTION_BASE;
+// Switch to PRODUCTION_BASE for App Store release
+export const BASE_URL = __DEV__ ? DEV_BASE : PRODUCTION_BASE;
 export const API_URL = `${BASE_URL}/api`;
 
 // SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE

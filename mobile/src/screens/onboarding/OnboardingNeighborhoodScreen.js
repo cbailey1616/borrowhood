@@ -144,6 +144,22 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     }
   };
 
+  const handleLeaveNeighborhood = async (community) => {
+    setIsLoading(true);
+    try {
+      await api.leaveCommunity(community.id);
+      if (joinedCommunity?.id === community.id) setJoinedCommunity(null);
+      setNeighborhoods(prev =>
+        prev.map(n => n.id === community.id ? { ...n, isMember: false } : n)
+      );
+      haptics.light();
+    } catch (error) {
+      setErrorSheet({ visible: true, title: 'Error', message: 'Failed to leave neighborhood.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCreateNeighborhood = () => {
     setNeighborhoodName('');
     setNeighborhoodDesc('');
@@ -311,10 +327,15 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
                         </Text>
                       </View>
                       {item.isMember ? (
-                        <View style={styles.joinedBadge}>
+                        <HapticPressable
+                          style={styles.joinedBadge}
+                          onPress={() => handleLeaveNeighborhood(item)}
+                          disabled={isLoading}
+                          haptic="light"
+                        >
                           <Ionicons name="checkmark" size={16} color={COLORS.primary} />
                           <Text style={styles.joinedText}>Joined</Text>
-                        </View>
+                        </HapticPressable>
                       ) : (
                         <HapticPressable
                           style={styles.joinButton}
