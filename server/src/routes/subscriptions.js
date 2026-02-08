@@ -157,6 +157,20 @@ router.post('/subscribe', authenticate, async (req, res) => {
 
     let customerId = user.rows[0].stripe_customer_id;
 
+    // Verify existing customer is accessible (handles live/test mode mismatch)
+    if (customerId) {
+      try {
+        await stripe.customers.retrieve(customerId);
+      } catch (e) {
+        // Customer from a different Stripe mode — clear and recreate
+        customerId = null;
+        await query(
+          `UPDATE users SET stripe_customer_id = NULL, stripe_subscription_id = NULL WHERE id = $1`,
+          [req.user.id]
+        );
+      }
+    }
+
     // Create Stripe customer if doesn't exist
     if (!customerId) {
       const customer = await stripe.customers.create({
