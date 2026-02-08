@@ -120,7 +120,7 @@ router.get('/status', authenticate, async (req, res) => {
           verificationStatus = 'verified';
           // Update DB if webhook hasn't fired yet
           await query(
-            `UPDATE users SET is_verified = true, verification_status = 'verified', verified_at = NOW()
+            `UPDATE users SET status = 'verified', is_verified = true, verification_status = 'verified', verified_at = NOW()
              WHERE id = $1 AND is_verified = false`,
             [req.user.id]
           );

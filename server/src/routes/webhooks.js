@@ -129,6 +129,7 @@ async function handleIdentityVerified(session) {
   // Update user as verified
   await query(
     `UPDATE users SET
+      status = 'verified',
       is_verified = true,
       verification_status = 'verified',
       stripe_identity_session_id = $1,
