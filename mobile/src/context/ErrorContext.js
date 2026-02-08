@@ -153,7 +153,14 @@ export function ErrorProvider({ children, navigationRef }) {
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
-    if (error) setShowModal(true);
+    if (error) {
+      setShowModal(true);
+    } else if (showModal) {
+      // Error was cleared — allow fade-out animation then force unmount Modal
+      // (onDismiss is unreliable on iOS and can leave an invisible Modal blocking touches)
+      const timer = setTimeout(() => setShowModal(false), 350);
+      return () => clearTimeout(timer);
+    }
   }, [error]);
 
   const showError = useCallback(({
@@ -273,7 +280,7 @@ export function ErrorProvider({ children, navigationRef }) {
         transparent
         animationType="fade"
         onRequestClose={dismissError}
-        onDismiss={() => setShowModal(false)}
+        onDismiss={() => { /* handled by useEffect timeout fallback */ }}
       >
         <View style={styles.overlay}>
           {Platform.OS === 'ios' ? (
