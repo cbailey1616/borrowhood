@@ -1,0 +1,31 @@
+appId: com.borrowhood.app
+---
+# Flow: Free user triggers the town gate upgrade overlay
+# Verifies visibility filter gates "My Town" behind Plus subscription
+
+- runFlow: flows/auth/login-free.yaml
+
+# Tap visibility chip to open visibility ActionSheet
+- tapOn:
+    id: "Feed.chip.visibility"
+- waitForAnimationToEnd
+
+# Tap "My Town" option (starred as Plus feature)
+- tapOn: "My Town ★"
+- waitForAnimationToEnd
+
+# Assert upgrade overlay appears
+- assertVisible:
+    id: "Feed.overlay.upgrade"
+
+# Assert "Unlock with Plus" button is visible
+- assertVisible:
+    id: "Feed.overlay.upgrade.button"
+
+- takeScreenshot: "Feed-town-gate-upgrade-overlay"
+
+# Dismiss by tapping "Not Now"
+- tapOn: "Not Now"
+- waitForAnimationToEnd
+
+- takeScreenshot: "Feed-town-gate-dismissed"

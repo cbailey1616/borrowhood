@@ -1,0 +1,63 @@
+appId: com.borrowhood.app
+---
+# Gate Journey: Abandon and Resume
+# Validates that abandoning a gate flow (going back) and retrying resumes
+# at the correct step. Free user starts the town gate, abandons, then retries.
+
+- runFlow: flows/auth/login-free.yaml
+
+# --- First attempt: trigger the gate ---
+
+# Tap visibility chip to open visibility ActionSheet
+- tapOn:
+    id: "Feed.chip.visibility"
+- waitForAnimationToEnd
+
+# Tap "My Town" option
+- tapOn: "My Town ★"
+- waitForAnimationToEnd
+
+# Assert upgrade overlay appears
+- assertVisible:
+    id: "Feed.overlay.upgrade"
+
+# Tap the upgrade CTA
+- tapOn:
+    id: "Feed.overlay.upgrade.button"
+- waitForAnimationToEnd
+
+# Assert SubscriptionScreen loads
+- assertVisible: "Explore Your Whole Town"
+
+# --- Abandon: go back without completing ---
+- back
+- waitForAnimationToEnd
+
+# Assert we returned to the feed
+- assertVisible: "Feed"
+
+# --- Second attempt: retry the same gate ---
+
+# Tap visibility chip again
+- tapOn:
+    id: "Feed.chip.visibility"
+- waitForAnimationToEnd
+
+# Tap "My Town" again
+- tapOn: "My Town ★"
+- waitForAnimationToEnd
+
+# Assert upgrade overlay appears again
+- assertVisible:
+    id: "Feed.overlay.upgrade"
+
+# Tap the upgrade CTA again
+- tapOn:
+    id: "Feed.overlay.upgrade.button"
+- waitForAnimationToEnd
+
+# Assert SubscriptionScreen loads again at step 1 (subscription not completed)
+- assertVisible: "Explore Your Whole Town"
+- assertVisible: "Step 1"
+
+- takeScreenshot: "gate-journey-abandon-resume-step1-retry"

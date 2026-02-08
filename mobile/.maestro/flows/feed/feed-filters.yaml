@@ -1,0 +1,36 @@
+appId: com.borrowhood.app
+---
+# Flow: Verified user applies feed filters via chips
+# Verifies type, visibility, and category filter ActionSheets
+
+- runFlow: flows/auth/login-verified.yaml
+
+# Tap type chip to open ActionSheet
+- tapOn:
+    id: "Feed.chip.allTypes"
+- waitForAnimationToEnd
+
+# Tap "Items" to filter by items only
+- tapOn: "Items"
+- waitForAnimationToEnd
+
+- takeScreenshot: "Feed-filtered-by-items"
+
+# Tap visibility chip to open visibility ActionSheet
+- tapOn:
+    id: "Feed.chip.visibility"
+- waitForAnimationToEnd
+
+- takeScreenshot: "Feed-visibility-options"
+
+# Dismiss the visibility filter
+- back
+- waitForAnimationToEnd
+
+# Tap category chip if visible
+- tapOn:
+    id: "Feed.chip.category"
+    optional: true
+- waitForAnimationToEnd
+
+- takeScreenshot: "Feed-category-filter"

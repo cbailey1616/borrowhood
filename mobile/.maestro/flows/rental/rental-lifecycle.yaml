@@ -1,0 +1,34 @@
+appId: com.borrowhood.app
+---
+# Flow: Rental Lifecycle - verify approve/decline buttons on pending request
+# Opens a pending borrow request as the item owner
+# Note: Does not approve to keep test data clean
+
+- runFlow: ../auth/login-verified.yaml
+
+# Navigate to Inbox tab
+- tapOn: "Inbox"
+
+# Tap Activity segment
+- tapOn:
+    id: "Inbox.segment"
+- tapOn: "Activity"
+
+# Scroll to find a pending request
+- scroll
+
+# Tap the pending request
+- tapOn: "Pending"
+
+# Assert Approve button is visible
+- assertVisible:
+    id: "Transaction.button.approve"
+
+# Assert Decline button is visible
+- assertVisible:
+    id: "Transaction.button.decline"
+
+- takeScreenshot: rental-lifecycle-pending-actions
+
+# Note: We do not tap Approve or Decline to keep test data clean.
+# This flow verifies the transaction detail UI renders both action buttons.

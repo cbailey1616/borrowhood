@@ -1,0 +1,9 @@
+appId: com.borrowhood.app
+tags:
+  - all
+env:
+  API_BASE: "http://localhost:3001"
+  TEST_EMAIL_FREE: "maestro-free@borrowhood.test"
+  TEST_EMAIL_PLUS: "maestro-plus@borrowhood.test"
+  TEST_EMAIL_VERIFIED: "maestro-verified@borrowhood.test"
+  TEST_PASSWORD: "MaestroTest123!"

@@ -1,0 +1,58 @@
+appId: com.borrowhood.app
+---
+# Full login test: validates error states and successful authentication
+
+# --- Test 1: Empty form submission ---
+- launchApp:
+    clearState: true
+
+- takeScreenshot: "login-01-welcome-screen"
+
+- tapOn:
+    id: "Welcome.button.signIn"
+
+- assertVisible: "Missing Information"
+
+- takeScreenshot: "login-02-empty-form-error"
+
+# --- Test 2: Wrong credentials ---
+- launchApp:
+    clearState: true
+
+- tapOn:
+    id: "Welcome.input.email"
+- inputText: "wrong-user@borrowhood.test"
+
+- tapOn:
+    id: "Welcome.input.password"
+- inputText: "WrongPassword999!"
+
+- tapOn:
+    id: "Welcome.button.signIn"
+
+- assertVisible:
+    text: ".*[Ii]nvalid.*|.*[Ee]rror.*|.*[Ii]ncorrect.*"
+    regex: true
+
+- takeScreenshot: "login-03-wrong-credentials-error"
+
+# --- Test 3: Successful login with free user ---
+- launchApp:
+    clearState: true
+
+- tapOn:
+    id: "Welcome.input.email"
+- inputText: "maestro-free@borrowhood.test"
+
+- tapOn:
+    id: "Welcome.input.password"
+- inputText: "MaestroTest123!"
+
+- takeScreenshot: "login-04-form-filled"
+
+- tapOn:
+    id: "Welcome.button.signIn"
+
+- assertVisible: "Feed"
+
+- takeScreenshot: "login-05-successful-login"

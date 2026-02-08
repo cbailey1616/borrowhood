@@ -1,0 +1,34 @@
+appId: com.borrowhood.app
+---
+# Flow: Rental Checkout - verify price breakdown and authorize button
+# Navigates to an approved transaction to check checkout UI elements
+# Note: Does not complete Stripe payment - UI verification only
+
+- runFlow: ../auth/login-verified.yaml
+
+# Navigate to Inbox tab
+- tapOn: "Inbox"
+
+# Tap Activity segment
+- tapOn:
+    id: "Inbox.segment"
+- tapOn: "Activity"
+
+# Scroll to find an approved transaction
+- scroll
+
+# Tap the first transaction in the list
+- tapOn: "Approved"
+
+# Assert price breakdown card is visible
+- assertVisible:
+    id: "RentalCheckout.card.priceBreakdown"
+
+# Assert authorize payment button is visible
+- assertVisible:
+    id: "RentalCheckout.button.authorize"
+
+- takeScreenshot: rental-checkout-ui
+
+# Note: We verify the checkout UI loads correctly but do not
+# complete Stripe payment to avoid side effects.

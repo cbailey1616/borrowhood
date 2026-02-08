@@ -1,0 +1,40 @@
+appId: com.borrowhood.app
+---
+# Flow: Plus user cancels subscription then reactivates it
+# Verifies cancel ActionSheet, cancelling banner, reactivation, and active status
+
+- runFlow: flows/auth/login-plus.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Subscription menu item
+- tapOn:
+    id: "Profile.menu.subscription"
+- waitForAnimationToEnd
+
+# Tap Cancel button
+- tapOn:
+    id: "Subscription.button.cancel"
+- waitForAnimationToEnd
+
+# ActionSheet appears — tap the destructive "Cancel Subscription" option
+- tapOn: "Cancel Subscription"
+- waitForAnimationToEnd
+
+# Assert cancelling banner is visible
+- assertVisible:
+    id: "Subscription.banner.cancelling"
+
+- takeScreenshot: "Subscription-cancelling-banner"
+
+# Tap Reactivate button
+- tapOn:
+    id: "Subscription.button.reactivate"
+- waitForAnimationToEnd
+
+# Assert Active status returns
+- assertVisible: "Active"
+
+- takeScreenshot: "Subscription-reactivated"

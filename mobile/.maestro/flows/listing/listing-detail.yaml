@@ -1,0 +1,29 @@
+appId: com.borrowhood.app
+---
+# Flow: Listing Detail - view, save, and verify borrow button
+# Opens the first listing in the feed and interacts with detail screen
+
+- runFlow: ../auth/login-verified.yaml
+
+# Tap the first listing card in the feed
+- tapOn:
+    index: 0
+    id: "FeedCard"
+
+# Assert listing detail screen loads
+- assertVisible:
+    id: "ListingDetail.title"
+
+- takeScreenshot: listing-detail-loaded
+
+# Tap save/heart button
+- tapOn:
+    id: "ListingDetail.button.save"
+
+- takeScreenshot: listing-detail-saved
+
+# Assert borrow button is visible (listing is not owned by this user)
+- assertVisible:
+    id: "ListingDetail.button.borrow"
+
+- takeScreenshot: listing-detail-borrow-visible

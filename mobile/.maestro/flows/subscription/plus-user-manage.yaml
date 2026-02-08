@@ -1,0 +1,27 @@
+appId: com.borrowhood.app
+---
+# Flow: Plus user views their active subscription
+# Verifies active status, plan info, and cancel button visibility
+
+- runFlow: flows/auth/login-plus.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Subscription menu item
+- tapOn:
+    id: "Profile.menu.subscription"
+- waitForAnimationToEnd
+
+# Assert Plus plan confirmation text
+- assertVisible: "You're on Plus!"
+
+# Assert active status row
+- assertVisible: "Active"
+
+# Assert Cancel button is visible
+- assertVisible:
+    id: "Subscription.button.cancel"
+
+- takeScreenshot: "Plus-user-manage-subscription"

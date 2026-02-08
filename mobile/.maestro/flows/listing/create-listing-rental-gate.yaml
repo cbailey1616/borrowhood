@@ -1,0 +1,25 @@
+appId: com.borrowhood.app
+---
+# Flow: Rental Fee Gate - subscription wall for free users
+# Free users cannot charge a rental fee; toggling it should show the subscription gate
+
+- runFlow: ../auth/login-free.yaml
+
+# Navigate to create listing
+- tapOn:
+    id: "Feed.button.create"
+
+# ActionSheet appears - tap "List an Item"
+- tapOn: "List an Item"
+
+# --- Toggle rental fee as free user ---
+- tapOn:
+    id: "CreateListing.toggle.rentalFee"
+
+# Assert subscription gate screen appears
+- assertVisible: "Upgrade"
+
+- takeScreenshot: rental-fee-gate-free-user
+
+# Note: Free users are gated from charging rental fees.
+# This verifies the subscription gate renders correctly.

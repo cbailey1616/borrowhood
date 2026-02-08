@@ -38,6 +38,10 @@ temp/
 # Local database
 .pg-data/
 
+# Maestro test artifacts
+.maestro/screenshots/
+.maestro/scripts/.test-credentials.json
+
 # Mobile specific
 *.jks
 *.p8

@@ -1,0 +1,45 @@
+appId: com.borrowhood.app
+---
+# Registration test: fills form with unique email and verifies navigation
+
+- launchApp:
+    clearState: true
+
+- tapOn:
+    id: "Welcome.link.createAccount"
+
+- takeScreenshot: "register-01-register-screen"
+
+# Fill registration form
+- tapOn:
+    id: "Register.input.firstName"
+- inputText: "Maestro"
+
+- tapOn:
+    id: "Register.input.lastName"
+- inputText: "Tester"
+
+- tapOn:
+    id: "Register.input.email"
+- inputText: "maestro-test-${maestro.copiedText_randomNumber}@borrowhood.test"
+
+- tapOn:
+    id: "Register.input.password"
+- inputText: "MaestroTest123!"
+
+- tapOn:
+    id: "Register.input.confirmPassword"
+- inputText: "MaestroTest123!"
+
+- takeScreenshot: "register-02-form-filled"
+
+# Submit registration
+- tapOn:
+    id: "Register.button.createAccount"
+
+# Verify navigation to verification screen
+- assertVisible:
+    text: ".*[Vv]erif.*"
+    regex: true
+
+- takeScreenshot: "register-03-verification-screen"

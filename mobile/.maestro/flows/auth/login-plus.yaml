@@ -1,0 +1,20 @@
+appId: com.borrowhood.app
+---
+# Sub-flow: Login as Plus user
+# Usage: runFlow: flows/auth/login-plus.yaml
+
+- launchApp:
+    clearState: true
+
+- tapOn:
+    id: "Welcome.input.email"
+- inputText: "maestro-plus@borrowhood.test"
+
+- tapOn:
+    id: "Welcome.input.password"
+- inputText: "MaestroTest123!"
+
+- tapOn:
+    id: "Welcome.button.signIn"
+
+- assertVisible: "Feed"

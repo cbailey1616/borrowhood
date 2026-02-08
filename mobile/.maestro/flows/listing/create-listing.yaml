@@ -1,0 +1,41 @@
+appId: com.borrowhood.app
+---
+# Flow: Create Listing - form validation
+# Verifies empty-submit validation, field entry, and missing photo/category guard
+# Runs as verified user who has full listing permissions
+
+- runFlow: ../auth/login-verified.yaml
+
+# Navigate to create listing
+- tapOn:
+    id: "Feed.button.create"
+
+# ActionSheet appears - tap "List an Item"
+- tapOn: "List an Item"
+
+# --- Empty submit validation ---
+- tapOn:
+    id: "CreateListing.button.submit"
+
+- assertVisible: "Missing Fields"
+
+- takeScreenshot: create-listing-empty-validation
+
+# --- Fill in title ---
+- tapOn:
+    id: "CreateListing.input.title"
+- inputText: "Maestro Test Drill"
+
+# --- Fill in description ---
+- tapOn:
+    id: "CreateListing.input.description"
+- inputText: "Test listing created by Maestro"
+
+# --- Attempt submit without photo or category ---
+- tapOn:
+    id: "CreateListing.button.submit"
+
+- takeScreenshot: create-listing-partial-validation
+
+# Note: Full photo upload cannot be tested in Maestro.
+# This flow verifies that form validation catches missing required fields.

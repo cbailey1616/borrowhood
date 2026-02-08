@@ -1,0 +1,33 @@
+appId: com.borrowhood.app
+---
+# Flow: Profile Screen - verify profile elements and sign-out ActionSheet
+# Checks name display, subscription menu, and sign-out confirmation sheet
+
+- runFlow: ../auth/login-verified.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+
+# Assert user name is visible
+- assertVisible:
+    id: "Profile.header.name"
+
+# Assert subscription menu item is visible
+- assertVisible:
+    id: "Profile.menu.subscription"
+
+- takeScreenshot: profile-screen-loaded
+
+# Tap sign out
+- tapOn:
+    id: "Profile.menu.signOut"
+
+# Assert ActionSheet with Sign Out option appears
+- assertVisible: "Sign Out"
+
+- takeScreenshot: profile-sign-out-action-sheet
+
+# Dismiss the ActionSheet - tap Keep/Cancel to stay signed in
+- tapOn: "Keep"
+
+- takeScreenshot: profile-after-dismiss

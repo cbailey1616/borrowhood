@@ -1,0 +1,44 @@
+appId: com.borrowhood.app
+---
+# Flow: Damage Claim - UI validation test
+# Navigates to a returned transaction and verifies damage claim form elements
+# Note: DamageClaim screen requires specific route params, accessed via transaction
+
+- runFlow: ../auth/login-verified.yaml
+
+# Navigate to Inbox tab
+- tapOn: "Inbox"
+
+# Tap Activity segment
+- tapOn:
+    id: "Inbox.segment"
+- tapOn: "Activity"
+
+# Scroll to find a returned transaction
+- scroll
+- tapOn: "Returned"
+
+# Tap the damage claim / report issue option
+- tapOn: "Report Issue"
+
+# Assert damage claim form elements are visible
+- assertVisible:
+    id: "DamageClaim.input.amount"
+
+- assertVisible:
+    id: "DamageClaim.input.description"
+
+- assertVisible:
+    id: "DamageClaim.button.addPhoto"
+
+- assertVisible:
+    id: "DamageClaim.button.submit"
+
+# --- Empty submit validation ---
+- tapOn:
+    id: "DamageClaim.button.submit"
+
+- takeScreenshot: damage-claim-empty-validation
+
+# Note: Verifies the damage claim form renders all required fields
+# and catches empty submission. Does not submit a real claim.

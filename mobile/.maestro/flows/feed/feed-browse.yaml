@@ -1,0 +1,25 @@
+appId: com.borrowhood.app
+---
+# Flow: Verified user browses the feed
+# Verifies feed loads, search bar visible, scroll and pull-to-refresh work
+
+- runFlow: flows/auth/login-verified.yaml
+
+# Assert Feed tab is active
+- assertVisible: "Feed"
+
+# Assert search bar is visible
+- assertVisible:
+    id: "Feed.searchBar"
+
+# Scroll down to verify items load
+- scroll
+
+# Pull to refresh (swipe down gesture from near top)
+- swipe:
+    direction: DOWN
+    duration: 500
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "Feed-browse-after-refresh"

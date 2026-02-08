@@ -1,0 +1,30 @@
+appId: com.borrowhood.app
+---
+# Gate Journey: Free user -> CreateListing -> Rental Fee Toggle -> SubscriptionScreen (step 1/3)
+# Validates that a free user toggling rental fee on CreateListing triggers the
+# subscription gate with the rental-owner-specific title and stepper at step 1.
+
+- runFlow: flows/auth/login-free.yaml
+
+# Navigate to CreateListing screen
+- tapOn:
+    id: "Feed.button.create"
+- waitForAnimationToEnd
+
+# ActionSheet appears - select "List an Item"
+- tapOn: "List an Item"
+- waitForAnimationToEnd
+
+# Tap rental fee toggle (gated behind Plus + Identity + Payout)
+- tapOn:
+    id: "CreateListing.toggle.rentalFee"
+- waitForAnimationToEnd
+
+# Assert navigation to SubscriptionScreen with rental-owner gate title
+- assertVisible: "Start Earning From Your Items"
+
+- takeScreenshot: "gate-journey-free-to-rental-owner-subscription-step1"
+
+# Go back to CreateListing
+- back
+- waitForAnimationToEnd

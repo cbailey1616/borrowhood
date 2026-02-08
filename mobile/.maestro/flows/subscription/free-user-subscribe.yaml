@@ -1,0 +1,51 @@
+appId: com.borrowhood.app
+---
+# Flow: Free user navigates to subscription and attempts to subscribe
+# Verifies plan selector, plan toggling, and PaymentSheet launch
+
+- runFlow: flows/auth/login-free.yaml
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Subscription menu item
+- tapOn:
+    id: "Profile.menu.subscription"
+- waitForAnimationToEnd
+
+# Assert plan selector is visible (Monthly and Annual)
+- assertVisible:
+    id: "Subscription.plan.monthly"
+- assertVisible:
+    id: "Subscription.plan.annual"
+
+# Tap Annual plan and verify it is selected
+- tapOn:
+    id: "Subscription.plan.annual"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "Subscription.plan.annual"
+
+# Tap Monthly plan and verify it is selected
+- tapOn:
+    id: "Subscription.plan.monthly"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "Subscription.plan.monthly"
+
+# Tap Subscribe button to launch PaymentSheet
+- tapOn:
+    id: "Subscription.button.subscribe"
+
+# Wait briefly for PaymentSheet to appear
+- waitForAnimationToEnd
+
+- takeScreenshot: "PaymentSheet-launched"
+
+# Dismiss PaymentSheet by pressing back
+- back
+
+- waitForAnimationToEnd
+
+- takeScreenshot: "PaymentSheet-dismissed"

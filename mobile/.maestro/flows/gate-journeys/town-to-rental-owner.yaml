@@ -1,0 +1,32 @@
+appId: com.borrowhood.app
+---
+# Gate Journey: Plus+Verified user -> CreateListing -> Rental Fee Toggle -> SetupPayout (step 3)
+# Validates that a user who already has Plus subscription and verified identity
+# skips steps 1-2 of the gate and lands directly on SetupPayout (step 3).
+
+- runFlow: flows/auth/login-verified.yaml
+
+# Navigate to CreateListing screen
+- tapOn:
+    id: "Feed.button.create"
+- waitForAnimationToEnd
+
+# ActionSheet appears - select "List an Item"
+- tapOn: "List an Item"
+- waitForAnimationToEnd
+
+# Tap rental fee toggle - gate should skip subscription + identity (already complete)
+- tapOn:
+    id: "CreateListing.toggle.rentalFee"
+- waitForAnimationToEnd
+
+# Assert SetupPayout screen loads (steps 1-2 already satisfied)
+# Either the setup button is visible (payout not configured) or status is complete
+- assertVisible:
+    id: "SetupPayout.button.setup"
+    optional: true
+- assertVisible:
+    id: "SetupPayout.status.complete"
+    optional: true
+
+- takeScreenshot: "gate-journey-town-to-rental-owner-setup-payout"

@@ -1,0 +1,49 @@
+appId: com.borrowhood.app
+---
+# Gate Journey: Subscription Lapse (Past-Due User)
+# Validates that a past-due user sees the warning banner and has features blocked.
+#
+# DEPENDENCY: This test requires the Plus test user to be seeded with a past_due
+# subscription status. The seed script (e.g., scripts/seed-test-users.js) must
+# set maestro-plus@borrowhood.test as past_due before running this flow.
+# Without this seed state, the past-due assertions will not pass.
+
+- runFlow: flows/auth/login-plus.yaml
+
+# --- Navigate to Profile -> Subscription ---
+
+# Tap Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap Subscription menu item
+- tapOn: "Subscription"
+- waitForAnimationToEnd
+
+# Assert past-due warning banner is visible
+- assertVisible:
+    id: "Subscription.banner.pastDue"
+
+# Assert "Update Payment" button is visible for past-due users
+- assertVisible: "Update Payment"
+
+- takeScreenshot: "gate-journey-subscription-lapse-past-due-banner"
+
+# --- Go back to feed and verify gated features are blocked ---
+
+# Navigate back to feed
+- back
+- waitForAnimationToEnd
+- tapOn: "Feed"
+- waitForAnimationToEnd
+
+# Tap visibility chip to open visibility ActionSheet
+- tapOn:
+    id: "Feed.chip.visibility"
+- waitForAnimationToEnd
+
+# Tap "My Town" - may be blocked due to lapsed subscription
+- tapOn: "My Town ★"
+- waitForAnimationToEnd
+
+- takeScreenshot: "gate-journey-subscription-lapse-town-blocked"
