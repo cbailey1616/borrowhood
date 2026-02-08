@@ -28,14 +28,13 @@ export function validateStripeEnvironment() {
     }
   }
 
-  // Block test keys in production
+  // Warn about test keys in production (don't block — alpha testing uses test keys)
   if (nodeEnv === 'production') {
     if (isTestSecret || isTestPublishable) {
-      console.error(
-        '\n🚨 FATAL: Test Stripe keys detected in production!\n' +
-        '   Switch to sk_live_/pk_live_ keys for production.\n'
+      console.warn(
+        '\n⚠️  WARNING: Test Stripe keys detected in production.\n' +
+        '   Switch to sk_live_/pk_live_ keys before App Store release.\n'
       );
-      process.exit(1);
     }
   }
 
