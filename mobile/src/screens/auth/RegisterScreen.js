@@ -114,6 +114,8 @@ export default function RegisterScreen({ navigation }) {
                     placeholder="John"
                     placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="words"
+                    testID="Register.input.firstName"
+                    accessibilityLabel="First name"
                   />
                 </View>
                 <View style={[styles.inputContainer, { flex: 1 }]}>
@@ -125,6 +127,8 @@ export default function RegisterScreen({ navigation }) {
                     placeholder="Doe"
                     placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="words"
+                    testID="Register.input.lastName"
+                    accessibilityLabel="Last name"
                   />
                 </View>
               </View>
@@ -140,6 +144,8 @@ export default function RegisterScreen({ navigation }) {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  testID="Register.input.email"
+                  accessibilityLabel="Email address"
                 />
               </View>
 
@@ -178,6 +184,8 @@ export default function RegisterScreen({ navigation }) {
                     placeholder="At least 8 characters"
                     placeholderTextColor={COLORS.textMuted}
                     secureTextEntry={!showPassword}
+                    testID="Register.input.password"
+                    accessibilityLabel="Password"
                   />
                   <HapticPressable
                     onPress={() => setShowPassword(!showPassword)}
@@ -200,6 +208,8 @@ export default function RegisterScreen({ navigation }) {
                   placeholder="Re-enter your password"
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
+                  testID="Register.input.confirmPassword"
+                  accessibilityLabel="Confirm password"
                 />
               </View>
 
@@ -208,6 +218,9 @@ export default function RegisterScreen({ navigation }) {
                 onPress={handleRegister}
                 disabled={isLoading}
                 haptic="medium"
+                testID="Register.button.createAccount"
+                accessibilityLabel="Create account"
+                accessibilityRole="button"
               >
                 {isLoading ? (
                   <ActivityIndicator color={COLORS.background} />

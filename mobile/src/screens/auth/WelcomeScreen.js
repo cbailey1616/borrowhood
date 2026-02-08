@@ -142,6 +142,9 @@ export default function WelcomeScreen({ navigation }) {
                 onPress={handleBiometricLogin}
                 disabled={isLoading}
                 haptic="medium"
+                testID="Welcome.button.biometric"
+                accessibilityLabel="Sign in with biometrics"
+                accessibilityRole="button"
               >
                 <Ionicons name={biometricIcon} size={32} color={COLORS.primary} />
                 <Text style={styles.biometricButtonText}>
@@ -163,6 +166,8 @@ export default function WelcomeScreen({ navigation }) {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    testID="Welcome.input.email"
+                    accessibilityLabel="Email address"
                   />
                 </View>
 
@@ -176,6 +181,8 @@ export default function WelcomeScreen({ navigation }) {
                       placeholder="Enter your password"
                       placeholderTextColor={COLORS.textMuted}
                       secureTextEntry={!showPassword}
+                      testID="Welcome.input.password"
+                      accessibilityLabel="Password"
                     />
                     <HapticPressable
                       onPress={() => setShowPassword(!showPassword)}
@@ -194,6 +201,9 @@ export default function WelcomeScreen({ navigation }) {
                   onPress={handleLogin}
                   disabled={isLoading}
                   haptic="medium"
+                  testID="Welcome.button.signIn"
+                  accessibilityLabel="Sign in"
+                  accessibilityRole="button"
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
@@ -206,7 +216,7 @@ export default function WelcomeScreen({ navigation }) {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
-              <HapticPressable onPress={() => navigation.navigate('Register')} haptic="light">
+              <HapticPressable onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link">
                 <Text style={styles.footerLink}>Create one</Text>
               </HapticPressable>
             </View>

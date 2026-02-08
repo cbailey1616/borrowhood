@@ -178,9 +178,9 @@ export default function ListingDetailScreen({ route, navigation }) {
         {/* Content */}
         <View style={styles.content}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>{listing.title}</Text>
+            <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
             <View style={styles.actionButtons}>
-              <HapticPressable onPress={toggleSave} haptic={null}>
+              <HapticPressable testID="ListingDetail.button.save" accessibilityLabel="Save listing" accessibilityRole="button" onPress={toggleSave} haptic={null}>
                 <Animated.View style={heartAnimStyle}>
                   <Ionicons
                     name={isSaved ? 'heart' : 'heart-outline'}
@@ -222,7 +222,7 @@ export default function ListingDetailScreen({ route, navigation }) {
           </View>
 
           {/* Pricing */}
-          <BlurCard style={styles.pricingCard}>
+          <BlurCard style={styles.pricingCard} testID="ListingDetail.price" accessibilityLabel="Pricing details">
             {listing.isFree ? (
               <Text style={styles.freeLabel}>Free to borrow</Text>
             ) : (
@@ -380,6 +380,9 @@ export default function ListingDetailScreen({ route, navigation }) {
                 </HapticPressable>
                 {listing.isAvailable && (
                   <HapticPressable
+                    testID="ListingDetail.button.borrow"
+                    accessibilityLabel="Request to borrow"
+                    accessibilityRole="button"
                     style={styles.borrowButton}
                     onPress={() => navigation.navigate('BorrowRequest', { listing })}
                     haptic="medium"
@@ -409,6 +412,9 @@ export default function ListingDetailScreen({ route, navigation }) {
               </HapticPressable>
               {listing.isAvailable && (
                 <HapticPressable
+                  testID="ListingDetail.button.borrow"
+                  accessibilityLabel="Request to borrow"
+                  accessibilityRole="button"
                   style={styles.borrowButton}
                   onPress={() => navigation.navigate('BorrowRequest', { listing })}
                   haptic="medium"

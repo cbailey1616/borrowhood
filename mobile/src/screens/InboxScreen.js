@@ -212,6 +212,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     <View style={styles.container}>
       <NativeHeader title="Inbox" scrollY={scrollY}>
         <SegmentedControl
+          testID="Inbox.segment"
           segments={[
             `Messages${badgeCounts?.messages > 0 ? ` (${badgeCounts.messages})` : ''}`,
             `Activity${badgeCounts?.actions > 0 ? ` (${badgeCounts.actions})` : ''}`,

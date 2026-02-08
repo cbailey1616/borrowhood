@@ -285,6 +285,7 @@ export default function MyItemsScreen({ navigation }) {
     <View style={styles.container}>
       <NativeHeader title="My Items" scrollY={scrollY}>
         <SegmentedControl
+          testID="MyItems.segment"
           segments={['My Items', 'My Requests']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
