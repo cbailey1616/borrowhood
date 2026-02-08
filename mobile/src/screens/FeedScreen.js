@@ -18,6 +18,8 @@ import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonCard } from '../components/SkeletonLoader';
+import { useAuth } from '../context/AuthContext';
+import { checkPremiumGate } from '../utils/premiumGate';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 
@@ -37,6 +39,7 @@ const VISIBILITY_OPTIONS = [
 ];
 
 export default function FeedScreen({ navigation }) {
+  const { user, refreshUser } = useAuth();
   const [feed, setFeed] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -110,6 +113,7 @@ export default function FeedScreen({ navigation }) {
       if (!isInitialLoad) {
         setIsRefreshing(true);
         fetchFeed(1, false);
+        refreshUser();
       }
     });
     return unsubscribe;
@@ -151,17 +155,11 @@ export default function FeedScreen({ navigation }) {
     return date.toLocaleDateString();
   };
 
-  const handleTownToggle = async () => {
-    try {
-      const result = await api.checkSubscriptionAccess('town');
-      if (!result.canAccess) {
-        setActiveDropdown(null);
-        // Delay so the ActionSheet portal closes before the overlay renders
-        setTimeout(() => setShowUpgradePrompt(true), 350);
-        return;
-      }
-    } catch {
+  const handleTownToggle = () => {
+    const gate = checkPremiumGate(user, 'town_browse');
+    if (!gate.passed) {
       setActiveDropdown(null);
+      // Delay so the ActionSheet portal closes before the overlay renders
       setTimeout(() => setShowUpgradePrompt(true), 350);
       return;
     }
@@ -429,7 +427,7 @@ export default function FeedScreen({ navigation }) {
         title="Feed"
         scrollY={scrollY}
         rightElement={
-          <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light">
+          <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create new listing" accessibilityRole="button">
             <Ionicons name="add-circle" size={28} color={COLORS.primary} />
           </HapticPressable>
         }
@@ -441,6 +439,8 @@ export default function FeedScreen({ navigation }) {
           onChangeText={setSearch}
           placeholder="Search..."
           onSubmitEditing={handleSearch}
+          testID="Feed.searchBar"
+          accessibilityLabel="Search items"
         />
 
         <View style={styles.filterChipsRow}>
@@ -448,6 +448,9 @@ export default function FeedScreen({ navigation }) {
             style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
             onPress={() => setActiveDropdown('type')}
             haptic="light"
+            testID="Feed.chip.allTypes"
+            accessibilityLabel="Filter by type"
+            accessibilityRole="button"
           >
             <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
               {typeChipLabel}
@@ -459,6 +462,9 @@ export default function FeedScreen({ navigation }) {
             style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
             onPress={() => setActiveDropdown('visibility')}
             haptic="light"
+            testID="Feed.chip.visibility"
+            accessibilityLabel="Filter by visibility"
+            accessibilityRole="button"
           >
             <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
               {visibilityChipLabel}
@@ -471,6 +477,9 @@ export default function FeedScreen({ navigation }) {
               style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
               onPress={() => setActiveDropdown('category')}
               haptic="light"
+              testID="Feed.chip.category"
+              accessibilityLabel="Filter by category"
+              accessibilityRole="button"
             >
               <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
                 {categoryChipLabel}
@@ -604,40 +613,69 @@ export default function FeedScreen({ navigation }) {
       />
 
       {showUpgradePrompt && (
-        <View style={styles.overlay}>
+        <View style={styles.overlay} testID="Feed.overlay.upgrade" accessibilityLabel="Upgrade to Plus overlay">
           <View style={styles.overlayCard}>
             <View style={styles.overlayCardInner}>
-              <View style={styles.overlayIconContainer}>
-                <Ionicons name="star" size={32} color={COLORS.primary} />
-              </View>
-              <Text style={styles.overlayTitle}>Upgrade to Plus</Text>
-              <Text style={styles.overlayText}>
-                Get more from Borrowhood with Plus. Browse items from your whole town and discover what's available nearby.
-              </Text>
-              <View style={styles.upgradeFeatures}>
-                <View style={styles.upgradeFeature}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                  <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
-                </View>
-                <View style={styles.upgradeFeature}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                  <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
-                </View>
-                <View style={styles.upgradeFeature}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                  <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
-                </View>
-              </View>
-              <HapticPressable
-                style={styles.overlayButton}
-                onPress={() => {
-                  setShowUpgradePrompt(false);
-                  navigation.navigate('Subscription');
-                }}
-                haptic="medium"
-              >
-                <Text style={styles.overlayButtonText}>Get Plus - $1/mo</Text>
-              </HapticPressable>
+              {user?.subscriptionTier === 'plus' && !user?.isVerified ? (
+                <>
+                  {/* Subscribed but not verified */}
+                  <View style={styles.overlayIconContainer}>
+                    <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.overlayTitle}>One More Step</Text>
+                  <Text style={styles.overlayText}>
+                    Verify your identity to browse town-wide. This keeps our community safe.
+                  </Text>
+                  <HapticPressable
+                    style={styles.overlayButton}
+                    onPress={() => {
+                      setShowUpgradePrompt(false);
+                      navigation.navigate('IdentityVerification', { source: 'town_browse', totalSteps: 2 });
+                    }}
+                    haptic="medium"
+                  >
+                    <Text style={styles.overlayButtonText}>Verify Now</Text>
+                  </HapticPressable>
+                </>
+              ) : (
+                <>
+                  {/* Not subscribed */}
+                  <View style={styles.overlayIconContainer}>
+                    <Ionicons name="star" size={32} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
+                  <Text style={styles.overlayText}>
+                    Plus members can browse items from everyone in {user?.city || 'your town'}.
+                  </Text>
+                  <View style={styles.upgradeFeatures}>
+                    <View style={styles.upgradeFeature}>
+                      <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                      <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
+                    </View>
+                    <View style={styles.upgradeFeature}>
+                      <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                      <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
+                    </View>
+                    <View style={styles.upgradeFeature}>
+                      <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                      <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
+                    </View>
+                  </View>
+                  <HapticPressable
+                    style={styles.overlayButton}
+                    onPress={() => {
+                      setShowUpgradePrompt(false);
+                      navigation.navigate('Subscription', { source: 'town_browse', totalSteps: 2 });
+                    }}
+                    haptic="medium"
+                    testID="Feed.overlay.upgrade.button"
+                    accessibilityLabel="Unlock with Plus"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.overlayButtonText}>Unlock with Plus — $1/mo</Text>
+                  </HapticPressable>
+                </>
+              )}
               <HapticPressable
                 style={styles.overlayDismiss}
                 onPress={() => setShowUpgradePrompt(false)}
