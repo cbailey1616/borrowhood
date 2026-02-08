@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -16,6 +17,7 @@ import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
+import GateStepper from '../components/GateStepper';
 
 const PLUS_FEATURES = [
   'Borrow from anyone in your town',
@@ -24,13 +26,41 @@ const PLUS_FEATURES = [
   'Support local sharing infrastructure',
 ];
 
-export default function SubscriptionScreen({ navigation }) {
+const PAYMENT_SHEET_APPEARANCE = {
+  colors: {
+    primary: COLORS.primary,
+    background: COLORS.surface,
+    componentBackground: COLORS.gray[800],
+    componentBorder: '#2A3A2D',
+    componentDivider: '#2A3A2D',
+    primaryText: COLORS.text,
+    secondaryText: COLORS.textSecondary,
+    componentText: COLORS.text,
+    placeholderText: COLORS.textMuted,
+    icon: COLORS.textSecondary,
+    error: COLORS.danger,
+  },
+  shapes: {
+    borderRadius: 12,
+    borderWidth: 0.5,
+  },
+};
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export default function SubscriptionScreen({ navigation, route }) {
+  const source = route?.params?.source || 'generic';
+  const totalSteps = route?.params?.totalSteps;
   const { user, refreshUser } = useAuth();
   const { showError } = useError();
+  const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const [currentSub, setCurrentSub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [showCancelSheet, setShowCancelSheet] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('monthly');
 
   const loadData = async () => {
     try {
@@ -54,7 +84,6 @@ export default function SubscriptionScreen({ navigation }) {
     loadData();
   }, []);
 
-  // Refresh data when screen comes back into focus (e.g. after verification)
   useFocusEffect(
     useCallback(() => {
       refreshUser();
@@ -62,17 +91,130 @@ export default function SubscriptionScreen({ navigation }) {
     }, [])
   );
 
-  const handleSubscribe = async (paymentMethodId) => {
+  // Poll for subscription activation after PaymentSheet success
+  const pollForActivation = async () => {
+    for (let i = 0; i < 5; i++) {
+      await sleep(1000);
+      try {
+        const sub = await api.getCurrentSubscription();
+        if (sub.tier === 'plus') {
+          setCurrentSub(sub);
+          await refreshUser();
+          return true;
+        }
+      } catch (e) {
+        // Keep polling
+      }
+    }
+    return false;
+  };
+
+  const openPaymentSheet = async (credentials) => {
+    const { error: initError } = await initPaymentSheet({
+      paymentIntentClientSecret: credentials.clientSecret,
+      customerEphemeralKeySecret: credentials.ephemeralKey,
+      customerId: credentials.customerId,
+      merchantDisplayName: 'BorrowHood',
+      applePay: {
+        merchantCountryCode: 'US',
+      },
+      appearance: PAYMENT_SHEET_APPEARANCE,
+    });
+
+    if (initError) {
+      throw new Error(initError.message);
+    }
+
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code === 'Canceled') {
+        return false; // User cancelled, not an error
+      }
+      throw new Error(presentError.message);
+    }
+
+    return true;
+  };
+
+  const handleSubscribe = async () => {
     setSubscribing(true);
     try {
-      await api.subscribe(paymentMethodId);
+      // Get PaymentSheet credentials from server
+      const credentials = await api.createSubscription(selectedPlan);
+
+      // Present PaymentSheet
+      const completed = await openPaymentSheet(credentials);
+      if (!completed) {
+        setSubscribing(false);
+        return;
+      }
+
+      // Poll for webhook to activate subscription
+      const activated = await pollForActivation();
+      if (activated) {
+        haptics.success();
+      } else {
+        // Webhook may be slow — reload to show whatever state we have
+        await loadData();
+        await refreshUser();
+        haptics.success();
+      }
+
+      // Auto-chain to next gate step if navigated from a feature gate
+      if (source === 'town_browse' || source === 'rental_listing') {
+        navigation.replace('IdentityVerification', { source, totalSteps });
+        return;
+      }
+    } catch (err) {
+      haptics.error();
+      showError({
+        message: err.message || 'Unable to complete subscription. Please try again.',
+        type: 'network',
+      });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handleRetryPayment = async () => {
+    setSubscribing(true);
+    try {
+      const credentials = await api.retrySubscriptionPayment();
+      const completed = await openPaymentSheet(credentials);
+      if (!completed) {
+        setSubscribing(false);
+        return;
+      }
+
+      const activated = await pollForActivation();
+      if (activated) {
+        haptics.success();
+      } else {
+        await loadData();
+        haptics.success();
+      }
+    } catch (err) {
+      haptics.error();
+      showError({
+        message: err.message || 'Unable to update payment. Please try again.',
+        type: 'network',
+      });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setSubscribing(true);
+    try {
+      await api.reactivateSubscription();
       await loadData();
-      await refreshUser();
       haptics.success();
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Unable to complete subscription. Please check your payment method and try again.',
+        message: err.message || 'Unable to reactivate subscription. Please try again.',
         type: 'network',
       });
     } finally {
@@ -112,7 +254,23 @@ export default function SubscriptionScreen({ navigation }) {
 
   const isPlus = currentSub?.tier === 'plus';
   const isVerified = user?.isVerified;
-  const isPaid = isPlus; // subscription active means they've paid
+  const status = currentSub?.status;
+  const cancelAtPeriodEnd = currentSub?.cancelAtPeriodEnd;
+
+  // Status dot color
+  const getStatusColor = () => {
+    if (status === 'active' && !cancelAtPeriodEnd) return COLORS.success;
+    if (status === 'past_due') return COLORS.warning;
+    if (status === 'canceled' || cancelAtPeriodEnd) return COLORS.danger;
+    return COLORS.success;
+  };
+
+  const getStatusLabel = () => {
+    if (status === 'past_due') return 'Past Due';
+    if (cancelAtPeriodEnd) return 'Cancelling';
+    if (status === 'active') return 'Active';
+    return 'Active';
+  };
 
   // ── Plus user view ──
   if (isPlus) {
@@ -128,10 +286,21 @@ export default function SubscriptionScreen({ navigation }) {
           </Text>
         </View>
 
-        {currentSub?.expiresAt && (
-          <View style={styles.expiryBanner}>
-            <Ionicons name="time-outline" size={18} color={COLORS.warning} />
-            <Text style={styles.expiryText}>
+        {/* Past Due Banner */}
+        {status === 'past_due' && (
+          <View style={[styles.statusBanner, { backgroundColor: COLORS.warningMuted }]} testID="Subscription.banner.pastDue" accessibilityLabel="Payment past due warning" accessibilityRole="alert">
+            <Ionicons name="warning-outline" size={18} color={COLORS.warning} />
+            <Text style={[styles.statusBannerText, { color: COLORS.warning }]}>
+              Your payment failed. Update your payment method to keep Plus.
+            </Text>
+          </View>
+        )}
+
+        {/* Cancelling Banner */}
+        {cancelAtPeriodEnd && currentSub?.expiresAt && (
+          <View style={[styles.statusBanner, { backgroundColor: COLORS.dangerMuted }]} testID="Subscription.banner.cancelling" accessibilityLabel="Subscription cancelling notice" accessibilityRole="alert">
+            <Ionicons name="time-outline" size={18} color={COLORS.danger} />
+            <Text style={[styles.statusBannerText, { color: COLORS.danger }]}>
               Your subscription ends on {new Date(currentSub.expiresAt).toLocaleDateString()}
             </Text>
           </View>
@@ -145,9 +314,28 @@ export default function SubscriptionScreen({ navigation }) {
             </View>
             <View style={styles.planDivider} />
             <View style={styles.planRow}>
+              <Text style={styles.planLabel}>Status</Text>
+              <View style={styles.statusRow}>
+                <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+                <Text style={styles.planValue}>{getStatusLabel()}</Text>
+              </View>
+            </View>
+            <View style={styles.planDivider} />
+            <View style={styles.planRow}>
               <Text style={styles.planLabel}>Price</Text>
               <Text style={styles.planValue}>$1/mo</Text>
             </View>
+            {currentSub?.nextBillingDate && !cancelAtPeriodEnd && (
+              <>
+                <View style={styles.planDivider} />
+                <View style={styles.planRow}>
+                  <Text style={styles.planLabel}>Next billing</Text>
+                  <Text style={styles.planValue}>
+                    {new Date(currentSub.nextBillingDate).toLocaleDateString()}
+                  </Text>
+                </View>
+              </>
+            )}
             {currentSub?.startedAt && (
               <>
                 <View style={styles.planDivider} />
@@ -162,8 +350,35 @@ export default function SubscriptionScreen({ navigation }) {
           </View>
         </BlurCard>
 
-        {!currentSub?.expiresAt && (
-          <HapticPressable style={styles.cancelButton} onPress={handleCancel} haptic="medium">
+        {/* Action buttons based on status */}
+        {cancelAtPeriodEnd && (
+          <HapticPressable
+            style={styles.actionButton}
+            onPress={handleReactivate}
+            haptic="medium"
+            testID="Subscription.button.reactivate"
+            accessibilityLabel="Reactivate subscription"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionButtonText}>Reactivate Subscription</Text>
+          </HapticPressable>
+        )}
+
+        {status === 'past_due' && (
+          <HapticPressable
+            style={styles.actionButton}
+            onPress={handleRetryPayment}
+            haptic="medium"
+            testID="Subscription.button.updatePayment"
+            accessibilityLabel="Update payment method"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionButtonText}>Update Payment</Text>
+          </HapticPressable>
+        )}
+
+        {!cancelAtPeriodEnd && status !== 'past_due' && (
+          <HapticPressable style={styles.cancelButton} onPress={handleCancel} haptic="medium" testID="Subscription.button.cancel" accessibilityLabel="Cancel subscription" accessibilityRole="button">
             <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
           </HapticPressable>
         )}
@@ -191,20 +406,73 @@ export default function SubscriptionScreen({ navigation }) {
           ]}
           cancelLabel="Keep Subscription"
         />
+
+        {subscribing && (
+          <View style={styles.overlay}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.overlayText}>Processing...</Text>
+          </View>
+        )}
       </ScrollView>
     );
   }
 
+  // Context-aware header text
+  const headerTitle = source === 'town_browse'
+    ? 'Explore Your Whole Town'
+    : source === 'rental_listing'
+      ? 'Start Earning From Your Items'
+      : 'BorrowHood Plus';
+  const headerSubtitle = source === 'town_browse'
+    ? 'Plus membership + identity verification required'
+    : source === 'rental_listing'
+      ? 'Plus membership + verification + payout setup required'
+      : 'Unlock your whole town and start earning from your items.';
+
   // ── Free user: two-step upgrade flow ──
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Gate Stepper */}
+      {source !== 'generic' && totalSteps && (
+        <GateStepper currentStep={1} totalSteps={totalSteps} source={source} />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>BorrowHood Plus</Text>
-        <Text style={styles.price}>$1/mo</Text>
-        <Text style={styles.subtitle}>
-          Unlock your whole town and start earning from your items.
+        <Text style={styles.title}>{headerTitle}</Text>
+        <Text style={styles.price}>
+          {selectedPlan === 'annual' ? '$10/yr' : '$1/mo'}
         </Text>
+        <Text style={styles.subtitle}>{headerSubtitle}</Text>
+      </View>
+
+      {/* Plan Selector */}
+      <View style={styles.planSelector}>
+        <HapticPressable
+          style={[styles.planOption, selectedPlan === 'monthly' && styles.planOptionSelected]}
+          onPress={() => setSelectedPlan('monthly')}
+          haptic="light"
+          testID="Subscription.plan.monthly"
+          accessibilityLabel="Monthly plan"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.planOptionLabel, selectedPlan === 'monthly' && styles.planOptionLabelSelected]}>Monthly</Text>
+          <Text style={[styles.planOptionPrice, selectedPlan === 'monthly' && styles.planOptionPriceSelected]}>$1/mo</Text>
+        </HapticPressable>
+        <HapticPressable
+          style={[styles.planOption, selectedPlan === 'annual' && styles.planOptionSelected]}
+          onPress={() => setSelectedPlan('annual')}
+          haptic="light"
+          testID="Subscription.plan.annual"
+          accessibilityLabel="Annual plan"
+          accessibilityRole="button"
+        >
+          <View style={styles.planSaveBadge}>
+            <Text style={styles.planSaveText}>Save 17%</Text>
+          </View>
+          <Text style={[styles.planOptionLabel, selectedPlan === 'annual' && styles.planOptionLabelSelected]}>Annual</Text>
+          <Text style={[styles.planOptionPrice, selectedPlan === 'annual' && styles.planOptionPriceSelected]}>$10/yr</Text>
+        </HapticPressable>
       </View>
 
       {/* Features */}
@@ -224,91 +492,70 @@ export default function SubscriptionScreen({ navigation }) {
         {/* Step 1: Pay */}
         <View style={styles.step}>
           <View style={styles.stepIndicator}>
-            {isPaid ? (
-              <View style={[styles.stepCircle, styles.stepCircleComplete]}>
-                <Ionicons name="checkmark" size={18} color="#fff" />
-              </View>
-            ) : (
-              <View style={[styles.stepCircle, styles.stepCircleActive]}>
-                <Text style={styles.stepNumber}>1</Text>
-              </View>
-            )}
-            <View style={[styles.stepLine, isPaid && styles.stepLineComplete]} />
+            <View style={[styles.stepCircle, styles.stepCircleActive]}>
+              <Text style={styles.stepNumber}>1</Text>
+            </View>
+            {source === 'generic' && <View style={styles.stepLine} />}
           </View>
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Subscribe & Pay</Text>
             <Text style={styles.stepDescription}>
-              Add a payment method and start your $1/mo subscription.
+              Pay with card or Apple Pay to start your subscription.
             </Text>
-            {isPaid ? (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.verifiedText}>Subscribed</Text>
-              </View>
-            ) : (
-              <HapticPressable
-                style={[styles.stepButton, styles.stepButtonPrimary]}
-                onPress={() => {
-                  navigation.navigate('PaymentMethods', {
-                    onSelectMethod: (paymentMethodId) => handleSubscribe(paymentMethodId),
-                    selectMode: true,
-                  });
-                }}
-                haptic="medium"
-              >
-                <Text style={styles.stepButtonText}>Subscribe — $1/mo</Text>
-              </HapticPressable>
-            )}
+            <HapticPressable
+              style={[styles.stepButton, styles.stepButtonPrimary]}
+              onPress={handleSubscribe}
+              haptic="medium"
+              testID="Subscription.button.subscribe"
+              accessibilityLabel="Subscribe to Plus"
+              accessibilityRole="button"
+            >
+              <Text style={styles.stepButtonText}>
+                Subscribe — {selectedPlan === 'annual' ? '$10/yr' : '$1/mo'}
+              </Text>
+            </HapticPressable>
           </View>
         </View>
 
-        {/* Step 2: Verify */}
-        <View style={[styles.step, !isPaid && styles.stepDimmed]}>
-          <View style={styles.stepIndicator}>
-            {isVerified ? (
-              <View style={[styles.stepCircle, styles.stepCircleComplete]}>
-                <Ionicons name="checkmark" size={18} color="#fff" />
-              </View>
-            ) : (
-              <View style={[
-                styles.stepCircle,
-                isPaid ? styles.stepCircleActive : styles.stepCircleInactive,
-              ]}>
-                <Text style={[
-                  styles.stepNumber,
-                  !isPaid && styles.stepNumberInactive,
-                ]}>2</Text>
-              </View>
-            )}
+        {/* Step 2: Verify (only shown for generic/profile navigation) */}
+        {source === 'generic' && (
+          <View style={[styles.step, styles.stepDimmed]}>
+            <View style={styles.stepIndicator}>
+              {isVerified ? (
+                <View style={[styles.stepCircle, styles.stepCircleComplete]}>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                </View>
+              ) : (
+                <View style={[styles.stepCircle, styles.stepCircleInactive]}>
+                  <Text style={[styles.stepNumber, styles.stepNumberInactive]}>2</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={[styles.stepTitle, styles.stepTitleDimmed]}>
+                Verify Your Identity
+              </Text>
+              <Text style={[styles.stepDescription, styles.stepDescriptionDimmed]}>
+                Quick identity check to keep the community safe.{'\n'}We'll notify you once verification is complete — it usually only takes a few minutes.
+              </Text>
+              {isVerified ? (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+                  <Text style={styles.verifiedText}>Verified</Text>
+                </View>
+              ) : (
+                <HapticPressable
+                  style={[styles.stepButton, styles.stepButtonDisabled]}
+                  disabled
+                  haptic="medium"
+                >
+                  <Text style={styles.stepButtonText}>Verify Now</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                </HapticPressable>
+              )}
+            </View>
           </View>
-          <View style={styles.stepContent}>
-            <Text style={[styles.stepTitle, !isPaid && styles.stepTitleDimmed]}>
-              Verify Your Identity
-            </Text>
-            <Text style={[styles.stepDescription, !isPaid && styles.stepDescriptionDimmed]}>
-              Quick identity check to keep the community safe.{'\n'}We'll notify you once verification is complete — it usually only takes a few minutes.
-            </Text>
-            {isVerified ? (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
-                <Text style={styles.verifiedText}>Verified</Text>
-              </View>
-            ) : (
-              <HapticPressable
-                style={[styles.stepButton, !isPaid && styles.stepButtonDisabled]}
-                onPress={() => {
-                  if (!isPaid) return;
-                  navigation.navigate('VerifyIdentity', { fromSubscription: true });
-                }}
-                disabled={!isPaid}
-                haptic="medium"
-              >
-                <Text style={styles.stepButtonText}>Verify Now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#fff" />
-              </HapticPressable>
-            )}
-          </View>
-        </View>
+        )}
       </View>
 
       {/* Footer */}
@@ -377,21 +624,71 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Expiry banner
-  expiryBanner: {
+  // Plan selector
+  planSelector: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  planOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.separator,
+    backgroundColor: COLORS.surface,
+  },
+  planOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '15',
+  },
+  planOptionLabel: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+  },
+  planOptionLabelSelected: {
+    color: COLORS.text,
+  },
+  planOptionPrice: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textMuted,
+  },
+  planOptionPriceSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  planSaveBadge: {
+    position: 'absolute',
+    top: -10,
+    right: -4,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: RADIUS.xs,
+  },
+  planSaveText: {
+    ...TYPOGRAPHY.caption2,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 10,
+  },
+
+  // Status banners
+  statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.warning + '20',
     padding: SPACING.md,
     marginHorizontal: SPACING.lg,
     borderRadius: RADIUS.sm,
     marginBottom: SPACING.lg,
   },
-  expiryText: {
+  statusBannerText: {
     ...TYPOGRAPHY.footnote,
     fontSize: 14,
-    color: COLORS.warning,
     flex: 1,
   },
 
@@ -542,6 +839,32 @@ const styles = StyleSheet.create({
   planDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: COLORS.separator,
+  },
+
+  // Status indicator
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // Action button (reactivate / retry)
+  actionButton: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+    paddingVertical: SPACING.md + 2,
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+  },
+  actionButtonText: {
+    ...TYPOGRAPHY.button,
+    color: '#fff',
   },
 
   // Cancel

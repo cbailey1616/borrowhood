@@ -39,7 +39,6 @@ export default function ProfileScreen({ navigation }) {
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
   const [biometricSheet, setBiometricSheet] = useState(null);
   const [showLogoutSheet, setShowLogoutSheet] = useState(false);
-  const [showReverifySheet, setShowReverifySheet] = useState(false);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -116,18 +115,6 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const handleReverify = async () => {
-    try {
-      await api.resetVerification();
-      await refreshUser();
-      navigation.navigate('VerifyIdentity');
-    } catch (err) {
-      showError({
-        message: err.message || 'Unable to reset verification. Please try again.',
-      });
-    }
-  };
-
   const handleLogout = () => {
     haptics.warning();
     setShowLogoutSheet(true);
@@ -165,7 +152,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </HapticPressable>
             <View style={styles.headerInfo}>
-              <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+              <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.firstName} {user?.lastName}</Text>
               <Text style={styles.email}>{user?.email}</Text>
               {user?.isVerified && (
                 <UserBadges
@@ -209,6 +196,9 @@ export default function ProfileScreen({ navigation }) {
             icon="star-outline"
             title="Subscription"
             onPress={() => navigation.navigate('Subscription')}
+            testID="Profile.menu.subscription"
+            accessibilityLabel="Subscription settings"
+            accessibilityRole="button"
           />
           <GroupedListItem
             icon="mail-outline"
@@ -234,14 +224,6 @@ export default function ProfileScreen({ navigation }) {
             icon="gift-outline"
             title="Invite Friends"
             onPress={() => navigation.navigate('Referral')}
-          />
-          <GroupedListItem
-            icon="shield-checkmark-outline"
-            title="Re-verify Identity"
-            onPress={() => {
-              haptics.warning();
-              setShowReverifySheet(true);
-            }}
           />
         </GroupedListSection>
 
@@ -294,6 +276,9 @@ export default function ProfileScreen({ navigation }) {
             title="Sign Out"
             onPress={handleLogout}
             destructive
+            testID="Profile.menu.signOut"
+            accessibilityLabel="Sign out"
+            accessibilityRole="button"
           />
         </GroupedListSection>
 
@@ -339,17 +324,6 @@ export default function ProfileScreen({ navigation }) {
               refreshBiometrics();
             },
           },
-        ]}
-      />
-
-      {/* Re-verify Sheet */}
-      <ActionSheet
-        isVisible={showReverifySheet}
-        onClose={() => setShowReverifySheet(false)}
-        title="Re-verify Identity?"
-        message="This will reset your verified status and open Stripe to verify again. Your verified badge will return once the new verification is complete."
-        actions={[
-          { label: 'Re-verify', onPress: handleReverify },
         ]}
       />
 
