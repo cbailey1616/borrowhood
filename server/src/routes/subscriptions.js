@@ -88,9 +88,8 @@ router.get('/current', authenticate, async (req, res) => {
     }
 
     const user = result.rows[0];
-    const tier = user.subscription_tier || 'free';
-    const info = TIER_INFO[tier] || TIER_INFO.free;
-    const isPlus = tier === 'plus';
+    let tier = user.subscription_tier || 'free';
+    let isPlus = tier === 'plus';
 
     // Fetch live status from Stripe if subscription exists
     let status = isPlus ? 'active' : null;
@@ -103,10 +102,23 @@ router.get('/current', authenticate, async (req, res) => {
         status = sub.status; // active, past_due, canceled, etc.
         cancelAtPeriodEnd = sub.cancel_at_period_end;
         nextBillingDate = new Date(sub.current_period_end * 1000).toISOString();
+
+        // Self-heal: if Stripe says active but DB still says free, upgrade now
+        // (handles cases where webhook was missed)
+        if (sub.status === 'active' && tier === 'free') {
+          await query(
+            `UPDATE users SET subscription_tier = 'plus', subscription_started_at = NOW() WHERE id = $1`,
+            [req.user.id]
+          );
+          tier = 'plus';
+        }
       } catch (stripeErr) {
         console.error('Failed to fetch Stripe subscription:', stripeErr.message);
       }
     }
+
+    isPlus = tier === 'plus';
+    const info = TIER_INFO[tier] || TIER_INFO.free;
 
     res.json({
       tier,
