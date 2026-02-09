@@ -112,12 +112,14 @@ export default function FeedScreen({ navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!isInitialLoad) {
-        // Delay work until modal dismiss animation completes
+        // Delay feed fetch until modal dismiss animation completes
         // to avoid blocking the JS thread during transitions
         InteractionManager.runAfterInteractions(() => {
           setIsRefreshing(true);
           fetchFeed(1, false);
-          refreshUser();
+          // Note: refreshUser() removed from here — it triggers a global re-render
+          // of every screen via AuthContext, which freezes the UI during transitions.
+          // User data is refreshed on pull-to-refresh instead.
         });
       }
     });
@@ -127,6 +129,7 @@ export default function FeedScreen({ navigation }) {
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchFeed(1, false);
+    refreshUser(); // Refresh user data on manual pull-to-refresh
   };
 
   const onEndReached = () => {

@@ -32,10 +32,20 @@ export default function CreateListingScreen({ navigation, route }) {
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  // Refresh user when returning from gate flow
+  // Refresh user + communities when returning from gate flow or JoinCommunity
   useFocusEffect(
     useCallback(() => {
       refreshUser();
+      // Re-fetch communities in case user just joined one
+      const fetchCommunity = async () => {
+        try {
+          const communities = await api.getCommunities({ member: true });
+          if (communities && communities.length > 0) {
+            setCommunityId(communities[0].id);
+          }
+        } catch (e) {}
+      };
+      fetchCommunity();
     }, [])
   );
   const [communityId, setCommunityId] = useState(null);
@@ -232,8 +242,8 @@ export default function CreateListingScreen({ navigation, route }) {
       if (!mountedRef.current) return;
       Keyboard.dismiss();
       haptics.success();
-      // Navigate back first — skip state cleanup since the screen is being dismissed.
-      // Avoids triggering re-renders during the modal dismiss animation.
+      // Prevent finally block from setting state during dismiss animation
+      mountedRef.current = false;
       navigation.goBack();
     } catch (error) {
       if (!mountedRef.current) return;
@@ -608,11 +618,18 @@ export default function CreateListingScreen({ navigation, route }) {
               style={styles.overlayButton}
               onPress={() => {
                 setShowJoinCommunity(false);
-                navigation.navigate('JoinCommunity');
+                if (!user?.city) {
+                  // User needs to set location first
+                  navigation.navigate('EditProfile');
+                } else {
+                  navigation.navigate('JoinCommunity');
+                }
               }}
               haptic="medium"
             >
-              <Text style={styles.overlayButtonText}>Find Neighborhood</Text>
+              <Text style={styles.overlayButtonText}>
+                {!user?.city ? 'Set Your Location' : 'Find Neighborhood'}
+              </Text>
             </HapticPressable>
             <HapticPressable
               style={styles.overlayDismiss}

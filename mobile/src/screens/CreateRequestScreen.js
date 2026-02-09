@@ -145,7 +145,10 @@ export default function CreateRequestScreen({ navigation }) {
         message: error.message || 'Unable to post your request. Please try again.',
       });
     } finally {
-      setIsSubmitting(false);
+      // Only update state if screen is still focused (not dismissed via goBack)
+      if (navigation.isFocused()) {
+        setIsSubmitting(false);
+      }
     }
   };
 

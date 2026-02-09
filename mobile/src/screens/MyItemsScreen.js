@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Image,
   Animated as RNAnimated,
+  InteractionManager,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
@@ -64,7 +65,10 @@ export default function MyItemsScreen({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchData();
+      // Delay fetch until modal dismiss animation completes
+      InteractionManager.runAfterInteractions(() => {
+        fetchData();
+      });
     });
     return unsubscribe;
   }, [navigation, fetchData]);

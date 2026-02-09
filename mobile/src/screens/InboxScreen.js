@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
@@ -53,8 +54,10 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-      if (onRead) onRead();
+      InteractionManager.runAfterInteractions(() => {
+        fetchData();
+        if (onRead) onRead();
+      });
     }, [fetchData, onRead])
   );
 

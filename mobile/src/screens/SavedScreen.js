@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   Image,
+  InteractionManager,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -79,7 +80,9 @@ export default function SavedScreen({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchSaved();
+      InteractionManager.runAfterInteractions(() => {
+        fetchSaved();
+      });
     });
     return unsubscribe;
   }, [navigation, fetchSaved]);
