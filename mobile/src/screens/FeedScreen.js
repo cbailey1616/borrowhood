@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -111,13 +112,17 @@ export default function FeedScreen({ navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!isInitialLoad) {
-        setIsRefreshing(true);
-        fetchFeed(1, false);
-        refreshUser();
+        // Delay work until modal dismiss animation completes
+        // to avoid blocking the JS thread during transitions
+        InteractionManager.runAfterInteractions(() => {
+          setIsRefreshing(true);
+          fetchFeed(1, false);
+          refreshUser();
+        });
       }
     });
     return unsubscribe;
-  }, [navigation, isInitialLoad]);
+  }, [navigation, isInitialLoad, fetchFeed]);
 
   const onRefresh = () => {
     setIsRefreshing(true);

@@ -44,6 +44,13 @@ router.get('/', authenticate, async (req, res) => {
     );
     const friendIds = friendsResult.rows.map(f => f.friend_id);
 
+    // Get user's communities for neighborhood visibility filtering
+    const communityResult = await query(
+      'SELECT community_id FROM community_memberships WHERE user_id = $1',
+      [req.user.id]
+    );
+    const communityIds = communityResult.rows.map(c => c.community_id);
+
     let listingsResult = { rows: [] };
     let requestsResult = { rows: [] };
 
@@ -102,7 +109,8 @@ router.get('/', authenticate, async (req, res) => {
           listingParams.push(friendIds.length > 0 ? friendIds : [null]);
         }
         if (visibilityFilters.includes('neighborhood')) {
-          visConds.push(`l.visibility = 'neighborhood'`);
+          visConds.push(`(l.visibility = 'neighborhood' AND l.community_id = ANY($${listingParams.length + 1}))`);
+          listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         }
         if (wantsTown && canAccessTown) {
           visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
@@ -116,7 +124,8 @@ router.get('/', authenticate, async (req, res) => {
         listingParams.push(req.user.id);
         visConds.push(`(l.visibility = 'close_friends' AND l.owner_id = ANY($${listingParams.length + 1}))`);
         listingParams.push(friendIds.length > 0 ? friendIds : [null]);
-        visConds.push(`l.visibility = 'neighborhood'`);
+        visConds.push(`(l.visibility = 'neighborhood' AND l.community_id = ANY($${listingParams.length + 1}))`);
+        listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         if (canAccessTown) {
           visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
           listingParams.push(userCity);

@@ -230,11 +230,10 @@ export default function CreateListingScreen({ navigation, route }) {
       });
 
       if (!mountedRef.current) return;
-      setIsSubmitting(false);
-      setShowJoinCommunity(false);
-      setShowAddFriends(false);
       Keyboard.dismiss();
       haptics.success();
+      // Navigate back first — skip state cleanup since the screen is being dismissed.
+      // Avoids triggering re-renders during the modal dismiss animation.
       navigation.goBack();
     } catch (error) {
       if (!mountedRef.current) return;
