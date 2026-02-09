@@ -1,0 +1,12 @@
+appId: com.borrowhood.mobile
+name: "Read All Notifications"
+---
+- launchApp
+- tapOn: "Inbox"
+- tapOn:
+    id: "Inbox.button.notifications"
+- assertVisible: "Notifications"
+- tapOn:
+    index: 0
+- back
+- tapOn: "Mark All Read"

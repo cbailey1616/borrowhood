@@ -31,14 +31,14 @@ describe('Onboarding API', () => {
     // Create test users with city/state for community creation
     const userResult = await query(
       `INSERT INTO users (email, password_hash, first_name, last_name, status, city, state, onboarding_completed)
-       VALUES ('onboard-test@test.com', 'hash', 'Onboard', 'Tester', 'active', 'TestCity', 'MA', false)
+       VALUES ('onboard-test@test.com', 'hash', 'Onboard', 'Tester', 'pending', 'TestCity', 'MA', false)
        RETURNING id`
     );
     testUserId = userResult.rows[0].id;
 
     const otherResult = await query(
       `INSERT INTO users (email, password_hash, first_name, last_name, status, city, state, onboarding_completed)
-       VALUES ('onboard-other@test.com', 'hash', 'Other', 'User', 'active', 'TestCity', 'MA', false)
+       VALUES ('onboard-other@test.com', 'hash', 'Other', 'User', 'pending', 'TestCity', 'MA', false)
        RETURNING id`
     );
     testOtherUserId = otherResult.rows[0].id;
@@ -176,7 +176,7 @@ describe('Onboarding API', () => {
       // Create user with no city
       const noCityResult = await query(
         `INSERT INTO users (email, password_hash, first_name, last_name, status)
-         VALUES ('nocity-onboard@test.com', 'hash', 'No', 'City', 'active')
+         VALUES ('nocity-onboard@test.com', 'hash', 'No', 'City', 'pending')
          RETURNING id`
       );
       const noCityToken = jwt.sign(
@@ -297,7 +297,7 @@ describe('Onboarding API', () => {
       // Create isolated user
       const isoResult = await query(
         `INSERT INTO users (email, password_hash, first_name, last_name, status)
-         VALUES ('isolated-onboard@test.com', 'hash', 'Iso', 'User', 'active')
+         VALUES ('isolated-onboard@test.com', 'hash', 'Iso', 'User', 'pending')
          RETURNING id`
       );
       const isoToken = jwt.sign(

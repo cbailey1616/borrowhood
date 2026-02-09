@@ -35,8 +35,8 @@ describe('Transactions API', () => {
 
     // Create test users
     const borrowerResult = await query(
-      `INSERT INTO users (email, password_hash, first_name, last_name, status)
-       VALUES ('borrower-txn@test.com', 'hash', 'Test', 'Borrower', 'verified')
+      `INSERT INTO users (email, password_hash, first_name, last_name, status, subscription_tier, is_verified)
+       VALUES ('borrower-txn@test.com', 'hash', 'Test', 'Borrower', 'verified', 'plus', true)
        RETURNING id`
     );
     testUserId = borrowerResult.rows[0].id;

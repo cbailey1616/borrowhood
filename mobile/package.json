@@ -11,7 +11,26 @@
     "test:ui:cleanup": "node .maestro/scripts/cleanup-maestro-data.js",
     "test:ui": "sh .maestro/scripts/seed-and-run.sh",
     "test:ui:ios": "maestro test .maestro/flows/ --platform ios",
-    "test:ui:screenshots": "maestro test .maestro/flows/ --format junit --output .maestro/screenshots/"
+    "test:ui:screenshots": "maestro test .maestro/flows/ --format junit --output .maestro/screenshots/",
+    "test:smoke": "jest --testPathPattern=smoke --runInBand",
+    "test:components": "jest --testPathPattern=unit/components --runInBand",
+    "test:contexts": "jest --testPathPattern=unit/contexts --runInBand",
+    "test:hooks": "jest --testPathPattern=unit/hooks --runInBand",
+    "test:screens:auth": "jest --testPathPattern=screens/auth --runInBand",
+    "test:screens:onboarding": "jest --testPathPattern=screens/onboarding --runInBand",
+    "test:screens:main": "jest --testPathPattern='screens/(Feed|Saved|MyItems|Inbox|Profile)Screen' --runInBand",
+    "test:screens:listings": "jest --testPathPattern='screens/(Browse|ListingDetail|CreateListing|EditListing|ListingDiscussion|WantedPosts)' --runInBand",
+    "test:screens:transactions": "jest --testPathPattern='screens/(BorrowRequest|CreateRequest|EditRequest|RequestDetail|RentalCheckout|TransactionDetail|DamageClaim)' --runInBand",
+    "test:screens:social": "jest --testPathPattern='screens/(Friends|Chat|Conversations|UserProfile|InviteMembers)' --runInBand",
+    "test:screens:community": "jest --testPathPattern='screens/(MyCommunity|JoinCommunity|CommunitySetting|CommunityLibrary)' --runInBand",
+    "test:screens:account": "jest --testPathPattern='screens/(EditProfile|Subscription|PaymentMethods|AddPaymentMethod|SetupPayout|NotificationSettings)' --runInBand",
+    "test:screens:features": "jest --testPathPattern='screens/(Notifications|Activity|Referral|Disputes|DisputeDetail|IdentityVerification)' --runInBand",
+    "test:screens:extras": "jest --testPathPattern='screens/(Sustainability|Badges|Bundles|LendingCircles)' --runInBand",
+    "test:integration": "jest --testPathPattern=integration --runInBand",
+    "test:unit": "jest --testPathPattern=unit --runInBand",
+    "test:screens": "jest --testPathPattern=screens --runInBand",
+    "test:full": "jest --runInBand --timeout=30000",
+    "test:all": "npm run test:smoke && jest --runInBand --timeout=30000"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -57,7 +76,13 @@
     "worklets": "^0.0.1-alpha"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.0"
+    "@babel/core": "^7.24.0",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.2.0",
+    "jest-expo": "^54.0.17",
+    "react-test-renderer": "^19.1.0"
   },
   "private": true
 }

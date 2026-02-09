@@ -1,0 +1,19 @@
+appId: com.borrowhood.mobile
+name: "Add and Remove Friend"
+---
+- launchApp
+- tapOn: "Profile"
+- tapOn: "Friends"
+- tapOn: "Search"
+- tapOn:
+    id: "Friends.search.input"
+- inputText: "Alice"
+- tapOn: "Add Friend"
+- assertVisible: "Friend Request Sent"
+- back
+- tapOn: "Friends"
+- assertVisible: "Alice"
+- longPressOn: "Alice"
+- tapOn: "Remove Friend"
+- tapOn: "Remove"
+- assertNotVisible: "Alice"

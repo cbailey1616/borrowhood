@@ -9,6 +9,12 @@ export default defineConfig({
     hookTimeout: 30000,
     setupFiles: ['tests/helpers/setup.js'],
     forceExit: true,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

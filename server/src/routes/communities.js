@@ -226,7 +226,7 @@ router.get('/:id', authenticate, async (req, res) => {
               (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
               (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count
        FROM communities c
-       WHERE c.id = $1 OR c.slug = $1`,
+       WHERE c.id::text = $1 OR c.slug = $1`,
       [req.params.id]
     );
 

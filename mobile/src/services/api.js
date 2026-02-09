@@ -573,7 +573,7 @@ const retrySubscriptionPayment = () =>
   post('/subscriptions/retry-payment');
 
 const checkSubscriptionAccess = (visibility) =>
-  get('/subscriptions/access-check', { visibility });
+  get('/subscriptions/access-check', { feature: visibility });
 
 // Payments
 const createPaymentIntent = (amount, description, metadata) =>

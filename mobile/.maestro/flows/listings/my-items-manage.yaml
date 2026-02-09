@@ -1,0 +1,31 @@
+appId: com.borrowhood.mobile
+name: "Manage My Items"
+---
+- launchApp
+- tapOn: "My Items"
+- tapOn:
+    id: "Feed.button.create"
+- tapOn: "List an Item"
+- tapOn:
+    id: "CreateListing.button.addPhoto"
+- tapOn: "Choose from Library"
+- tapOn:
+    index: 0
+- tapOn:
+    id: "CreateListing.input.title"
+- inputText: "Maestro Test Item"
+- tapOn:
+    id: "CreateListing.input.description"
+- inputText: "Item created by Maestro E2E test"
+- tapOn: "Tools & Hardware"
+- tapOn: "Good"
+- tapOn:
+    id: "CreateListing.button.submit"
+- assertVisible: "Maestro Test Item"
+- tapOn: "Maestro Test Item"
+- tapOn: "Edit"
+- clearInput:
+    id: "CreateListing.input.title"
+- inputText: "Updated Maestro Item"
+- tapOn: "Save"
+- assertVisible: "Updated Maestro Item"

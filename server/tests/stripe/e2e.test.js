@@ -264,14 +264,12 @@ describe('E2E Flows', () => {
     let lender, borrower, listingId, transactionId, paymentIntentId;
 
     beforeAll(async () => {
-      // Set up lender with Connect
+      // Set up lender (no Connect — transfer_data skipped, tested separately in Flow 2/5/6)
       lender = await createFullUser({
         subscriptionTier: 'plus',
         isVerified: true,
         status: 'verified',
       });
-      const connect = await createTestConnectAccount(lender.userId, lender.email);
-      lender.connectAccountId = connect.id;
 
       // Set up borrower
       borrower = await createFullUser({ subscriptionTier: 'free' });
@@ -326,7 +324,7 @@ describe('E2E Flows', () => {
     });
 
     it('Step 3: Borrower confirms payment → authorization hold', async () => {
-      // Simulate PaymentSheet completion by confirming the PI
+      // Simulate PaymentSheet completion by confirming the PI on Stripe
       const pmList = await stripe.paymentMethods.list({
         customer: borrower.customerId,
         type: 'card',
@@ -335,12 +333,7 @@ describe('E2E Flows', () => {
         payment_method: pmList.data[0].id,
       });
 
-      // Update DB status
-      await query(
-        "UPDATE borrow_transactions SET status = 'paid', payment_status = 'authorized' WHERE id = $1",
-        [transactionId]
-      );
-
+      // Let the endpoint detect the PI status and update DB accordingly
       const res = await request(app)
         .post(`/api/rentals/${transactionId}/confirm-payment`)
         .set('Authorization', `Bearer ${borrower.token}`);
@@ -400,8 +393,6 @@ describe('E2E Flows', () => {
         isVerified: true,
         status: 'verified',
       });
-      const connect = await createTestConnectAccount(lender.userId, lender.email);
-      lender.connectAccountId = connect.id;
 
       borrower = await createFullUser();
 
@@ -430,7 +421,7 @@ describe('E2E Flows', () => {
         .post(`/api/rentals/${transactionId}/approve`)
         .set('Authorization', `Bearer ${lender.token}`);
 
-      // Pay (simulate)
+      // Pay (simulate PaymentSheet completion)
       const pmList = await stripe.paymentMethods.list({
         customer: borrower.customerId,
         type: 'card',
@@ -438,10 +429,11 @@ describe('E2E Flows', () => {
       await stripe.paymentIntents.confirm(approveRes.body.paymentIntentId, {
         payment_method: pmList.data[0].id,
       });
-      await query(
-        "UPDATE borrow_transactions SET status = 'paid', payment_status = 'authorized' WHERE id = $1",
-        [transactionId]
-      );
+
+      // Confirm payment via endpoint (updates DB status)
+      await request(app)
+        .post(`/api/rentals/${transactionId}/confirm-payment`)
+        .set('Authorization', `Bearer ${borrower.token}`);
 
       // Pickup
       await request(app)

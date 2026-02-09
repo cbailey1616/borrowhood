@@ -1,0 +1,18 @@
+appId: com.borrowhood.mobile
+name: "Open a Dispute"
+---
+- launchApp
+- tapOn: "Inbox"
+- tapOn: "Activity"
+- tapOn:
+    index: 0
+- tapOn: "Report Issue"
+- assertVisible: "Open Dispute"
+- tapOn:
+    id: "Dispute.input.reason"
+- inputText: "Item was returned damaged"
+- tapOn:
+    id: "Dispute.input.description"
+- inputText: "The camera lens has scratches that were not there before"
+- tapOn: "Submit"
+- assertVisible: "Dispute Submitted"

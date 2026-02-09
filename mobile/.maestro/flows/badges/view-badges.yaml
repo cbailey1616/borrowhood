@@ -1,0 +1,10 @@
+appId: com.borrowhood.mobile
+name: "View Badges and Leaderboard"
+---
+- launchApp
+- tapOn: "Profile"
+- tapOn: "Badges"
+- assertVisible: "My Badges"
+- tapOn: "Leaderboard"
+- assertVisible: "Leaderboard"
+- back

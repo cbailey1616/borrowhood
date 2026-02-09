@@ -11,7 +11,13 @@ import {
   createTestListing,
   createTestConnectAccount,
   cleanupTestUser,
+  createTestCategory,
 } from './stripe.js';
+import {
+  createTestCommunity,
+  addCommunityMember,
+  createFriendship,
+} from './fixtures.js';
 
 // Track all created user IDs for cleanup
 const createdUserIds = [];
@@ -86,6 +92,22 @@ export async function seedTestData() {
     visibility: 'town',
   });
 
+  // 5. Create a test community and add all users
+  const communityId = await createTestCommunity({
+    name: 'Test Neighborhood',
+    city: 'TestCity',
+    state: 'TS',
+  });
+  await addCommunityMember(verifiedPlusUser.userId, communityId, 'organizer');
+  await addCommunityMember(freeUser.userId, communityId, 'member');
+  await addCommunityMember(plusUser.userId, communityId, 'member');
+
+  // 6. Create a test category
+  const categoryId = await createTestCategory('Tools', 'tools');
+
+  // 7. Create friendship between free and verified-plus users
+  await createFriendship(freeUser.userId, verifiedPlusUser.userId);
+
   return {
     freeUser: { ...freeUser, customerId: freeCustomer.id },
     plusUser: { ...plusUser, customerId: plusCustomer.id },
@@ -99,6 +121,8 @@ export async function seedTestData() {
       rental: rentalListingId,
       town: townListingId,
     },
+    communityId,
+    categoryId,
   };
 }
 
@@ -106,6 +130,22 @@ export async function seedTestData() {
  * Remove all test data created by seedTestData.
  */
 export async function resetTestData() {
+  // Clean up community memberships and communities
+  try {
+    await query(`DELETE FROM community_memberships WHERE user_id = ANY($1)`, [createdUserIds]);
+    await query(`DELETE FROM communities WHERE city = 'TestCity' AND state = 'TS'`);
+  } catch (e) { /* best effort */ }
+
+  // Clean up friendships
+  try {
+    await query(`DELETE FROM friendships WHERE user_id = ANY($1) OR friend_id = ANY($1)`, [createdUserIds]);
+  } catch (e) { /* best effort */ }
+
+  // Clean up categories
+  try {
+    await query(`DELETE FROM categories WHERE slug = 'tools'`);
+  } catch (e) { /* best effort */ }
+
   for (const userId of createdUserIds) {
     try {
       await cleanupTestUser(userId);

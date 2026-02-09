@@ -1,0 +1,9 @@
+appId: com.borrowhood.mobile
+name: "View and Copy Referral Code"
+---
+- launchApp
+- tapOn: "Profile"
+- tapOn: "Refer a Friend"
+- assertVisible: "BH-"
+- tapOn: "Copy Code"
+- assertVisible: "Copied"

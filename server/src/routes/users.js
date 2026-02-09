@@ -12,75 +12,6 @@ import {
 const router = Router();
 
 // ============================================
-// GET /api/users/:id
-// Get user profile
-// ============================================
-router.get('/:id', authenticate, async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT id, first_name, last_name, profile_photo_url, bio,
-              city, state, status, rating, rating_count, total_transactions,
-              created_at
-       FROM users WHERE id = $1`,
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const user = result.rows[0];
-    res.json({
-      id: user.id,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      profilePhotoUrl: user.profile_photo_url,
-      bio: user.bio,
-      city: user.city,
-      state: user.state,
-      isVerified: user.status === 'verified',
-      rating: parseFloat(user.rating) || 0,
-      ratingCount: user.rating_count,
-      totalTransactions: user.total_transactions,
-      memberSince: user.created_at,
-    });
-  } catch (err) {
-    console.error('Get user error:', err);
-    res.status(500).json({ error: 'Failed to get user' });
-  }
-});
-
-// ============================================
-// GET /api/users/:id/listings
-// Get user's active listings
-// ============================================
-router.get('/:id/listings', authenticate, async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT l.id, l.title, l.condition, l.is_free, l.price_per_day,
-              (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
-       FROM listings l
-       WHERE l.owner_id = $1 AND l.status = 'active'
-       ORDER BY l.created_at DESC
-       LIMIT 20`,
-      [req.params.id]
-    );
-
-    res.json(result.rows.map(l => ({
-      id: l.id,
-      title: l.title,
-      condition: l.condition,
-      isFree: l.is_free,
-      pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
-      photoUrl: l.photo_url,
-    })));
-  } catch (err) {
-    console.error('Get user listings error:', err);
-    res.status(500).json({ error: 'Failed to get listings' });
-  }
-});
-
-// ============================================
 // PATCH /api/users/me
 // Update current user profile
 // ============================================
@@ -546,40 +477,6 @@ router.delete('/me/friends/:friendId', authenticate, async (req, res) => {
 });
 
 // ============================================
-// GET /api/users/:id/ratings
-// Get user ratings
-// ============================================
-router.get('/:id/ratings', authenticate, async (req, res) => {
-  try {
-    const result = await query(
-      `SELECT r.rating, r.comment, r.created_at,
-              u.id as rater_id, u.first_name, u.last_name, u.profile_photo_url
-       FROM ratings r
-       JOIN users u ON r.rater_id = u.id
-       WHERE r.ratee_id = $1
-       ORDER BY r.created_at DESC
-       LIMIT 50`,
-      [req.params.id]
-    );
-
-    res.json(result.rows.map(r => ({
-      rating: r.rating,
-      comment: r.comment,
-      createdAt: r.created_at,
-      rater: {
-        id: r.rater_id,
-        firstName: r.first_name,
-        lastName: r.last_name,
-        profilePhotoUrl: r.profile_photo_url,
-      },
-    })));
-  } catch (err) {
-    console.error('Get ratings error:', err);
-    res.status(500).json({ error: 'Failed to get ratings' });
-  }
-});
-
-// ============================================
 // GET /api/users/me/connect-status
 // Get Stripe Connect account status
 // ============================================
@@ -798,6 +695,110 @@ router.get('/me/connect-balance', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Get Connect balance error:', err);
     res.status(500).json({ error: 'Failed to get balance' });
+  }
+});
+
+// ============================================
+// GET /api/users/:id/ratings
+// Get user ratings
+// ============================================
+router.get('/:id/ratings', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT r.rating, r.comment, r.created_at,
+              u.id as rater_id, u.first_name, u.last_name, u.profile_photo_url
+       FROM ratings r
+       JOIN users u ON r.rater_id = u.id
+       WHERE r.ratee_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT 50`,
+      [req.params.id]
+    );
+
+    res.json(result.rows.map(r => ({
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.created_at,
+      rater: {
+        id: r.rater_id,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        profilePhotoUrl: r.profile_photo_url,
+      },
+    })));
+  } catch (err) {
+    console.error('Get ratings error:', err);
+    res.status(500).json({ error: 'Failed to get ratings' });
+  }
+});
+
+// ============================================
+// GET /api/users/:id
+// Get user profile
+// NOTE: Must be after all specific routes (/search, /suggested, /me/*, etc.)
+// ============================================
+router.get('/:id', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, first_name, last_name, profile_photo_url, bio,
+              city, state, status, rating, rating_count, total_transactions,
+              created_at
+       FROM users WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    res.json({
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      profilePhotoUrl: user.profile_photo_url,
+      bio: user.bio,
+      city: user.city,
+      state: user.state,
+      isVerified: user.status === 'verified',
+      rating: parseFloat(user.rating) || 0,
+      ratingCount: user.rating_count,
+      totalTransactions: user.total_transactions,
+      memberSince: user.created_at,
+    });
+  } catch (err) {
+    console.error('Get user error:', err);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// ============================================
+// GET /api/users/:id/listings
+// Get user's active listings
+// ============================================
+router.get('/:id/listings', authenticate, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT l.id, l.title, l.condition, l.is_free, l.price_per_day,
+              (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
+       FROM listings l
+       WHERE l.owner_id = $1 AND l.status = 'active'
+       ORDER BY l.created_at DESC
+       LIMIT 20`,
+      [req.params.id]
+    );
+
+    res.json(result.rows.map(l => ({
+      id: l.id,
+      title: l.title,
+      condition: l.condition,
+      isFree: l.is_free,
+      pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
+      photoUrl: l.photo_url,
+    })));
+  } catch (err) {
+    console.error('Get user listings error:', err);
+    res.status(500).json({ error: 'Failed to get listings' });
   }
 });
 

@@ -412,10 +412,11 @@ router.get('/access-check', authenticate, async (req, res) => {
           ? 'connect'
           : null;
 
+    const requiresVerification = feature === 'town' || feature === 'rentals';
     res.json({
       tier,
       feature,
-      canAccess: hasAccess && isVerified,
+      canAccess: requiresVerification ? hasAccess && isVerified : hasAccess,
       isSubscribed: isPlus,
       isVerified,
       hasConnect,

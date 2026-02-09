@@ -194,7 +194,8 @@ export async function createTestConnectAccount(userId, email) {
       dob: { day: 1, month: 1, year: 1990 },
       address: { line1: '123 Test St', city: 'San Francisco', state: 'CA', postal_code: '94103', country: 'US' },
       ssn_last_4: '0000',
-      phone: '0000000000',
+      id_number: '000000000',
+      phone: '+15555550100',
       email,
     },
     business_profile: {
@@ -339,6 +340,69 @@ export async function createTestApp(...routeConfigs) {
   }
 
   return app;
+}
+
+/**
+ * Create a test category in the database.
+ */
+export async function createTestCategory(name = 'Test Category', slug = null) {
+  const categorySlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
+  const result = await query(
+    `INSERT INTO categories (name, slug)
+     VALUES ($1, $2)
+     ON CONFLICT (slug) DO UPDATE SET name = $1
+     RETURNING id`,
+    [name, categorySlug]
+  );
+  return result.rows[0].id;
+}
+
+/**
+ * Clean up a list of test resources by type.
+ * @param {Array<{type: string, id: string}>} resources
+ */
+export async function cleanupTestResources(resources) {
+  for (const { type, id } of resources) {
+    try {
+      switch (type) {
+        case 'community':
+          await query('DELETE FROM community_memberships WHERE community_id = $1', [id]);
+          await query('DELETE FROM communities WHERE id = $1', [id]);
+          break;
+        case 'category':
+          await query('DELETE FROM categories WHERE id = $1', [id]);
+          break;
+        case 'listing':
+          await query('DELETE FROM listing_photos WHERE listing_id = $1', [id]);
+          await query('DELETE FROM saved_listings WHERE listing_id = $1', [id]);
+          await query('DELETE FROM listing_discussions WHERE listing_id = $1', [id]);
+          await query('DELETE FROM listings WHERE id = $1', [id]);
+          break;
+        case 'conversation':
+          await query('DELETE FROM messages WHERE conversation_id = $1', [id]);
+          await query('DELETE FROM conversations WHERE id = $1', [id]);
+          break;
+        case 'transaction':
+          await query('DELETE FROM disputes WHERE transaction_id = $1', [id]);
+          await query('DELETE FROM borrow_transactions WHERE id = $1', [id]);
+          break;
+        case 'notification':
+          await query('DELETE FROM notifications WHERE id = $1', [id]);
+          break;
+        case 'friendship':
+          // id is { userId, friendId }
+          await query(
+            `DELETE FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
+            [id.userId, id.friendId]
+          );
+          break;
+        default:
+          break;
+      }
+    } catch (e) {
+      // Best effort cleanup
+    }
+  }
 }
 
 export { stripe };

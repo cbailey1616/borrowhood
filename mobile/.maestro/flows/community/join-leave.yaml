@@ -1,0 +1,16 @@
+appId: com.borrowhood.mobile
+name: "Join and Leave Community"
+---
+- launchApp
+- tapOn: "Profile"
+- tapOn: "My Neighborhood"
+- tapOn: "Join a Neighborhood"
+- assertVisible: "Neighborhoods Near You"
+- tapOn:
+    index: 0
+- tapOn: "Join"
+- assertVisible: "Joined"
+- back
+- tapOn: "Settings"
+- tapOn: "Leave Neighborhood"
+- tapOn: "Leave"

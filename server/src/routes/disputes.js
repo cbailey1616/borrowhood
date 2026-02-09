@@ -111,8 +111,13 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT d.*,
-              t.*, l.title as listing_title,
+      `SELECT d.id as dispute_id, d.transaction_id, d.opened_by_id, d.status as dispute_status,
+              d.reason, d.evidence_urls, d.resolution_notes,
+              d.deposit_to_lender, d.deposit_to_borrower, d.organizer_fee,
+              d.resolved_by_id, d.resolved_at, d.created_at as dispute_created_at,
+              t.listing_id, t.condition_at_pickup, t.condition_at_return, t.condition_notes,
+              t.rental_fee, t.deposit_amount,
+              l.title as listing_title,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as listing_photos,
               b.id as borrower_id, b.first_name as borrower_first_name, b.last_name as borrower_last_name,
               b.profile_photo_url as borrower_photo,
@@ -149,9 +154,9 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     res.json({
-      id: d.id,
+      id: d.dispute_id,
       transactionId: d.transaction_id,
-      status: d.status,
+      status: d.dispute_status,
       reason: d.reason,
       evidenceUrls: d.evidence_urls || [],
       listing: {
@@ -179,7 +184,7 @@ router.get('/:id', authenticate, async (req, res) => {
         profilePhotoUrl: d.lender_photo,
       },
       resolution: d.resolved_at ? {
-        status: d.status,
+        status: d.dispute_status,
         notes: d.resolution_notes,
         depositToLender: parseFloat(d.deposit_to_lender),
         depositToBorrower: parseFloat(d.deposit_to_borrower),
@@ -188,7 +193,7 @@ router.get('/:id', authenticate, async (req, res) => {
         resolvedAt: d.resolved_at,
       } : null,
       isOrganizer: isOrganizer.rows.length > 0,
-      createdAt: d.created_at,
+      createdAt: d.dispute_created_at,
     });
   } catch (err) {
     console.error('Get dispute error:', err);

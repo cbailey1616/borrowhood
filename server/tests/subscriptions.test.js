@@ -123,25 +123,38 @@ describe('Subscriptions API', () => {
   });
 
   describe('POST /api/subscriptions/subscribe', () => {
-    it('should require verification for plus tier', async () => {
+    it('should create subscription for authenticated user', async () => {
       const response = await request(app)
         .post('/api/subscriptions/subscribe')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ paymentMethodId: 'pm_test' });
+        .send({ plan: 'monthly' });
 
-      // User is not identity-verified (is_verified is not set), so should get 403
-      expect([403, 500]).toContain(response.status);
+      // Subscribe endpoint returns PaymentSheet credentials
+      expect(response.status).toBe(200);
+      expect(response.body.clientSecret).toBeDefined();
+      expect(response.body.customerId).toBeDefined();
     });
   });
 
   describe('POST /api/subscriptions/cancel', () => {
     it('should reject cancel without active subscription', async () => {
+      // Create a fresh user with no subscription
+      const freshResult = await query(
+        `INSERT INTO users (email, password_hash, first_name, last_name, status, subscription_tier)
+         VALUES ('sub-cancel-test@test.com', 'hash', 'Cancel', 'User', 'verified', 'free')
+         RETURNING id`
+      );
+      const freshToken = jwt.sign({ userId: freshResult.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
       const response = await request(app)
         .post('/api/subscriptions/cancel')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Authorization', `Bearer ${freshToken}`);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('No active subscription');
+
+      // Cleanup
+      await query('DELETE FROM users WHERE id = $1', [freshResult.rows[0].id]);
     });
   });
 });

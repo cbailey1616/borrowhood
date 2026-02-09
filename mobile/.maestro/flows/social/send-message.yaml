@@ -1,0 +1,14 @@
+appId: com.borrowhood.mobile
+name: "Send a Message"
+---
+- launchApp
+- tapOn: "Inbox"
+- tapOn: "Messages"
+- tapOn:
+    index: 0
+- tapOn:
+    id: "Chat.input.message"
+- inputText: "Hey, is your drill still available?"
+- tapOn:
+    id: "Chat.button.send"
+- assertVisible: "Hey, is your drill still available?"

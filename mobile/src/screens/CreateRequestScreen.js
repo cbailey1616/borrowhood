@@ -16,11 +16,10 @@ import api from '../services/api';
 import { useError } from '../context/ErrorContext';
 import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
-const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
+const ALL_VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 const EXPIRATION_OPTIONS = [
   { value: '1d', label: '1 Day' },
@@ -37,7 +36,7 @@ export default function CreateRequestScreen({ navigation }) {
     title: '',
     description: '',
     categoryId: null,
-    visibility: ['neighborhood'], // Array for multi-select
+    visibility: ['close_friends'],
     neededFrom: '',
     neededUntil: '',
     expiresIn: '1d',
@@ -150,64 +149,16 @@ export default function CreateRequestScreen({ navigation }) {
     }
   };
 
+  // Only show 'neighborhood' visibility if user is in a community
+  const availableVisibilities = communityId
+    ? ALL_VISIBILITIES
+    : ALL_VISIBILITIES.filter(v => v !== 'neighborhood');
+
   // Loading state while checking community
   if (communityId === undefined) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  // Show prompt to join neighborhood if user isn't in one
-  if (communityId === null) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.promptContent}>
-          <BlurCard style={styles.promptCard}>
-            <View style={styles.promptCardContent}>
-              <View style={styles.promptIconContainer}>
-                <Ionicons name="home" size={32} color={COLORS.primary} />
-              </View>
-              <Text style={styles.promptTitle}>Join Your Neighborhood</Text>
-              <Text style={styles.promptText}>
-                Connect with your neighbors to request items you need. Join or create your neighborhood to get started.
-              </Text>
-
-              <View style={styles.promptBenefits}>
-                <View style={styles.promptBenefit}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                  <Text style={styles.promptBenefitText}>Request items from neighbors</Text>
-                </View>
-                <View style={styles.promptBenefit}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                  <Text style={styles.promptBenefitText}>Get notified when items are available</Text>
-                </View>
-                <View style={styles.promptBenefit}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                  <Text style={styles.promptBenefitText}>Share your own items</Text>
-                </View>
-              </View>
-
-              <HapticPressable
-                style={styles.promptButton}
-                onPress={() => navigation.navigate('JoinCommunity')}
-                haptic="medium"
-              >
-                <Text style={styles.promptButtonText}>Find Your Neighborhood</Text>
-                <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
-              </HapticPressable>
-            </View>
-          </BlurCard>
-
-          <HapticPressable
-            style={styles.promptSecondaryButton}
-            onPress={() => navigation.goBack()}
-            haptic="light"
-          >
-            <Text style={styles.promptSecondaryText}>Maybe Later</Text>
-          </HapticPressable>
-        </View>
       </View>
     );
   }
@@ -221,6 +172,21 @@ export default function CreateRequestScreen({ navigation }) {
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
     >
+      {/* Neighborhood hint when user has no community */}
+      {communityId === null && (
+        <HapticPressable
+          style={styles.communityHint}
+          onPress={() => navigation.navigate('JoinCommunity')}
+          haptic="light"
+        >
+          <Ionicons name="home-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.communityHintText}>
+            Join a neighborhood to reach more people nearby
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+        </HapticPressable>
+      )}
+
       {/* Type Toggle */}
       <View style={styles.section}>
         <Text style={styles.label}>Type</Text>
@@ -419,7 +385,7 @@ export default function CreateRequestScreen({ navigation }) {
         <Text style={styles.label}>Who can see this? *</Text>
         <Text style={styles.hint}>Select all that apply</Text>
         <View style={styles.options}>
-          {VISIBILITIES.map((visibility) => {
+          {availableVisibilities.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
             return (
               <HapticPressable
@@ -508,76 +474,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  promptContent: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: SPACING.xl - 4,
-  },
-  promptCard: {
-    borderWidth: 1,
-    borderColor: COLORS.separator,
-  },
-  promptCardContent: {
-    padding: SPACING.xl,
-  },
-  promptIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary + '20',
+  communityHint: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
-  promptTitle: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-    textAlign: 'center',
-  },
-  promptText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: SPACING.xl - 4,
-  },
-  promptBenefits: {
-    gap: SPACING.md,
+    backgroundColor: COLORS.primary + '15',
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.sm,
     marginBottom: SPACING.xl,
   },
-  promptBenefit: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md - 2,
-  },
-  promptBenefitText: {
+  communityHintText: {
     ...TYPOGRAPHY.footnote,
+    flex: 1,
     fontSize: 14,
     color: COLORS.text,
-  },
-  promptButton: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md + 2,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-  },
-  promptButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: COLORS.background,
-  },
-  promptSecondaryButton: {
-    alignItems: 'center',
-    paddingVertical: SPACING.lg,
-    marginTop: SPACING.md,
-  },
-  promptSecondaryText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
   },
   content: {
     padding: SPACING.xl - 4,
