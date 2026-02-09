@@ -240,6 +240,45 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Temporary admin: nuke account by email (remove after use)
+app.delete('/api/admin/nuke-account/:email', async (req, res) => {
+  const { query: dbQuery } = await import('./utils/db.js');
+  const email = decodeURIComponent(req.params.email);
+  const secret = req.headers['x-admin-secret'];
+  if (secret !== 'borrowhood-nuke-2026') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const userResult = await dbQuery('SELECT id FROM users WHERE email = $1', [email]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const uid = userResult.rows[0].id;
+    const tables = [
+      ['messages', 'conversation_id IN (SELECT conversation_id FROM conversation_participants WHERE user_id = $1)'],
+      ['conversation_participants', 'user_id = $1'],
+      ['notifications', 'user_id = $1'],
+      ['disputes', 'lender_id = $1 OR borrower_id = $1'],
+      ['borrow_transactions', 'borrower_id = $1 OR lender_id = $1'],
+      ['saved_listings', 'user_id = $1'],
+      ['listing_discussions', 'user_id = $1'],
+      ['listing_photos', 'listing_id IN (SELECT id FROM listings WHERE owner_id = $1)'],
+      ['listing_availability', 'listing_id IN (SELECT id FROM listings WHERE owner_id = $1)'],
+      ['listings', 'owner_id = $1'],
+      ['item_requests', 'user_id = $1'],
+      ['user_badges', 'user_id = $1'],
+      ['friendships', 'user_id = $1 OR friend_id = $1'],
+      ['community_memberships', 'user_id = $1'],
+      ['subscription_history', 'user_id = $1'],
+      ['users', 'id = $1'],
+    ];
+    const results = [];
+    for (const [table, where] of tables) {
+      try {
+        const r = await dbQuery(`DELETE FROM ${table} WHERE ${where}`, [uid]);
+        if (r.rowCount > 0) results.push(`${table}: ${r.rowCount}`);
+      } catch (e) { results.push(`${table}: skip (${e.message.substring(0, 40)})`); }
+    }
+    res.json({ deleted: true, email, results });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Error handling
 app.use((err, req, res, next) => {
   logger.error('Unhandled error:', err);
