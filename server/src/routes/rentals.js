@@ -276,8 +276,15 @@ router.post('/:id/approve', authenticate,
         totalAmount: totalAmountCents,
       });
     } catch (err) {
-      logger.error('Approve rental error:', err);
-      res.status(500).json({ error: 'Failed to approve rental' });
+      logger.error('Approve rental error:', {
+        message: err.message,
+        type: err.type,
+        code: err.code,
+        statusCode: err.statusCode,
+        transactionId: req.params.id,
+      });
+      const detail = err.message || 'Unknown error';
+      res.status(500).json({ error: `Failed to approve rental: ${detail}` });
     }
   }
 );
