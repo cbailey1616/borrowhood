@@ -333,11 +333,36 @@ router.post('/:id/approve', authenticate,
       }
 
       const t = txn.rows[0];
-      const totalCharge = parseFloat(t.rental_fee) + parseFloat(t.deposit_amount);
+      const totalChargeCents = Math.round(
+        (parseFloat(t.rental_fee) + parseFloat(t.deposit_amount)) * 100
+      );
+
+      // Free listing with no deposit — skip Stripe, approve and mark as paid
+      if (totalChargeCents < 50) {
+        await query(
+          `UPDATE borrow_transactions
+           SET status = 'paid', lender_response = $1, payment_status = 'none'
+           WHERE id = $2`,
+          [response, req.params.id]
+        );
+
+        // Mark listing as unavailable
+        await query(
+          'UPDATE listings SET is_available = false WHERE id = $1',
+          [t.listing_id]
+        );
+
+        await sendNotification(t.borrower_id, 'request_approved', {
+          transactionId: t.id,
+          listingId: t.listing_id,
+        });
+
+        return res.json({ success: true, freeRental: true });
+      }
 
       // Create payment intent (authorize, don't capture yet)
       const paymentIntent = await createPaymentIntent({
-        amount: Math.round(totalCharge * 100), // Stripe uses cents
+        amount: totalChargeCents,
         customerId: t.stripe_customer_id,
         metadata: { transactionId: t.id },
       });
@@ -488,8 +513,10 @@ router.post('/:id/pickup', authenticate,
           [condition || t.condition_at_pickup, req.params.id]
         );
 
-        // Capture payment now that pickup is confirmed
-        await capturePaymentIntent(t.stripe_payment_intent_id);
+        // Capture payment now that pickup is confirmed (skip for free rentals)
+        if (t.stripe_payment_intent_id) {
+          await capturePaymentIntent(t.stripe_payment_intent_id);
+        }
 
         // Notify borrower
         await sendNotification(t.borrower_id, 'pickup_confirmed', {

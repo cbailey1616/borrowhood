@@ -176,6 +176,33 @@ router.post('/:id/approve', authenticate,
         (parseFloat(t.rental_fee) + parseFloat(t.deposit_amount)) * 100
       );
 
+      // Free listing with no deposit — skip Stripe, approve and mark as paid
+      if (totalAmountCents < 50) {
+        await query(
+          `UPDATE borrow_transactions
+           SET status = 'paid', lender_response = $1, payment_status = 'none'
+           WHERE id = $2`,
+          [response, t.id]
+        );
+
+        // Mark listing as unavailable
+        await query(
+          'UPDATE listings SET is_available = false WHERE id = $1',
+          [t.listing_id]
+        );
+
+        await sendNotification(t.borrower_id, 'request_approved', {
+          transactionId: t.id,
+          listingId: t.listing_id,
+        });
+
+        return res.json({
+          success: true,
+          freeRental: true,
+          totalAmount: 0,
+        });
+      }
+
       let customerId = t.stripe_customer_id;
 
       // Create Stripe customer if borrower doesn't have one
@@ -392,19 +419,17 @@ router.post('/:id/pickup', authenticate,
         return res.status(403).json({ error: 'Only the lender can confirm pickup' });
       }
 
-      const rentalFeeCents = Math.round(parseFloat(t.rental_fee) * 100);
-
-      // Partial capture: only capture the rental fee, keep deposit as hold
-      // Note: Stripe will release the uncaptured portion (deposit) after capture
-      // So we capture the full amount and handle deposit refund at return
-      await capturePaymentIntent(t.stripe_payment_intent_id);
+      // Capture payment if a PaymentIntent exists (skip for free rentals)
+      if (t.stripe_payment_intent_id) {
+        await capturePaymentIntent(t.stripe_payment_intent_id);
+      }
 
       await query(
         `UPDATE borrow_transactions
          SET status = 'picked_up', actual_pickup_at = NOW(),
-             condition_at_pickup = $1, payment_status = 'captured'
-         WHERE id = $2`,
-        [condition || 'good', t.id]
+             condition_at_pickup = $1, payment_status = $2
+         WHERE id = $3`,
+        [condition || 'good', t.stripe_payment_intent_id ? 'captured' : 'none', t.id]
       );
 
       await sendNotification(t.borrower_id, 'pickup_confirmed', {

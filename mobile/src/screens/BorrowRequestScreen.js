@@ -142,7 +142,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       });
 
       haptics.success();
-      navigation.navigate('Activity');
+      navigation.goBack();
     } catch (error) {
       haptics.error();
       const msg = error.message?.toLowerCase() || '';
@@ -157,7 +157,9 @@ export default function BorrowRequestScreen({ route, navigation }) {
         });
       }
     } finally {
-      setIsSubmitting(false);
+      if (navigation.isFocused()) {
+        setIsSubmitting(false);
+      }
     }
   };
 
