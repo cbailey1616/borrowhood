@@ -225,6 +225,17 @@ router.post('/:id/approve', authenticate,
       );
       const lenderConnectId = lender.rows[0]?.stripe_connect_account_id;
 
+      // Verify Connect account has transfers capability before using it
+      let useConnectTransfer = false;
+      if (lenderConnectId) {
+        try {
+          const account = await stripe.accounts.retrieve(lenderConnectId);
+          useConnectTransfer = account.capabilities?.transfers === 'active';
+        } catch (e) {
+          logger.warn('Could not verify Connect account:', e.message);
+        }
+      }
+
       // Create PaymentIntent with manual capture (authorization hold)
       const piParams = {
         amount: totalAmountCents,
@@ -240,8 +251,8 @@ router.post('/:id/approve', authenticate,
         },
       };
 
-      // If lender has Connect, set application_fee for platform cut
-      if (lenderConnectId) {
+      // If lender has a fully onboarded Connect account, set up direct transfer
+      if (useConnectTransfer) {
         piParams.transfer_data = {
           destination: lenderConnectId,
         };

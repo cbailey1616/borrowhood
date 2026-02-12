@@ -31,6 +31,8 @@ const NOTIFICATION_ICONS = {
   item_match: 'sparkles',
   new_request: 'search',
   new_message: 'chatbubble',
+  friend_request: 'person-add',
+  friend_accepted: 'people',
   default: 'notifications',
 };
 
@@ -105,6 +107,8 @@ export default function NotificationsScreen({ navigation }) {
       navigation.navigate('Chat', { conversationId: notification.conversationId });
     } else if (notification.type === 'new_request' && notification.requestId) {
       navigation.navigate('RequestDetail', { id: notification.requestId });
+    } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
+      navigation.navigate('Friends');
     } else if (notification.transactionId) {
       navigation.navigate('TransactionDetail', { id: notification.transactionId });
     } else if (notification.listingId) {

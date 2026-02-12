@@ -127,6 +127,20 @@ const NOTIFICATION_TEMPLATES = {
       : 'Someone asked a question about your listing',
   },
 
+  // Friends
+  friend_request: {
+    title: 'Friend Request',
+    body: (data) => data.fromName
+      ? `${data.fromName} sent you a friend request`
+      : 'You have a new friend request',
+  },
+  friend_accepted: {
+    title: 'Friend Request Accepted',
+    body: (data) => data.friendName
+      ? `${data.friendName} accepted your friend request`
+      : 'Your friend request was accepted!',
+  },
+
   // Referrals
   referral_joined: {
     title: 'Friend Joined!',

@@ -8,6 +8,7 @@ import {
   createConnectAccountLink,
   getConnectAccount,
 } from '../services/stripe.js';
+import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
 
@@ -196,6 +197,20 @@ router.post('/me/friend-requests/:requestId/accept', authenticate, async (req, r
        ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'`,
       [req.user.id, requesterId]
     );
+
+    // Notify the requester that their request was accepted
+    const accepter = await query(
+      'SELECT first_name, last_name FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const friendName = accepter.rows[0]
+      ? `${accepter.rows[0].first_name} ${accepter.rows[0].last_name}`
+      : null;
+
+    await sendNotification(requesterId, 'friend_accepted', {
+      friendName,
+      fromUserId: req.user.id,
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -426,6 +441,21 @@ router.post('/me/friends', authenticate,
            ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted'`,
           [req.user.id, friendId]
         );
+
+        // Notify both users they're now friends
+        const currentUser = await query(
+          'SELECT first_name, last_name FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const currentName = currentUser.rows[0]
+          ? `${currentUser.rows[0].first_name} ${currentUser.rows[0].last_name}`
+          : null;
+
+        await sendNotification(friendId, 'friend_accepted', {
+          friendName: currentName,
+          fromUserId: req.user.id,
+        });
+
         return res.status(201).json({ success: true, status: 'accepted' });
       }
 
@@ -447,6 +477,20 @@ router.post('/me/friends', authenticate,
          ON CONFLICT (user_id, friend_id) DO NOTHING`,
         [req.user.id, friendId]
       );
+
+      // Get requester name for notification
+      const requester = await query(
+        'SELECT first_name, last_name FROM users WHERE id = $1',
+        [req.user.id]
+      );
+      const fromName = requester.rows[0]
+        ? `${requester.rows[0].first_name} ${requester.rows[0].last_name}`
+        : null;
+
+      await sendNotification(friendId, 'friend_request', {
+        fromName,
+        fromUserId: req.user.id,
+      });
 
       res.status(201).json({ success: true, status: 'pending' });
     } catch (err) {

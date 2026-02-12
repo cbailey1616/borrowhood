@@ -150,6 +150,11 @@ function handleNotificationResponse(data) {
       }
       break;
 
+    case 'friend_request':
+    case 'friend_accepted':
+      navigationRef.navigate('Friends');
+      break;
+
     default:
       navigationRef.navigate('Notifications');
       break;
