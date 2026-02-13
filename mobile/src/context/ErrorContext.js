@@ -127,7 +127,7 @@ function detectErrorType(message) {
 function Toast({ toast, onRemove }) {
   return (
     <Animated.View
-      entering={SlideInUp.springify().damping(20).stiffness(180)}
+      entering={SlideInUp.duration(300)}
       exiting={FadeOutUp.duration(200)}
       style={[
         styles.toast,

@@ -257,7 +257,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Earnings"
             component={EarningsScreen}
-            options={{ ...sharedScreenOptions, headerShown: false }}
+            options={{ ...sharedScreenOptions, title: 'Earnings' }}
           />
         </>
       )}

@@ -9,11 +9,9 @@ import {
   InteractionManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import BlurCard from '../components/BlurCard';
 import HapticPressable from '../components/HapticPressable';
-import NativeHeader from '../components/NativeHeader';
 import AnimatedCard from '../components/AnimatedCard';
 import { SkeletonCard, SkeletonListItem } from '../components/SkeletonLoader';
 import api from '../services/api';
@@ -21,22 +19,11 @@ import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-
 export default function EarningsScreen({ navigation }) {
   const [earnings, setEarnings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { showError } = useError();
-
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  const nav = navigation.getParent() || navigation;
 
   const fetchEarnings = useCallback(async (isRefresh = false) => {
     try {
@@ -87,7 +74,6 @@ export default function EarningsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <NativeHeader title="Earnings" scrollY={scrollY} />
         <View style={styles.skeletonContent}>
           <SkeletonCard />
           <View style={styles.statsRow}>
@@ -107,11 +93,8 @@ export default function EarningsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Earnings" scrollY={scrollY} />
-      <AnimatedScrollView
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -140,7 +123,7 @@ export default function EarningsScreen({ navigation }) {
           {!hasConnectAccount && (
             <HapticPressable
               style={styles.setupButton}
-              onPress={() => nav.navigate('SetupPayout')}
+              onPress={() => navigation.navigate('SetupPayout')}
               haptic="medium"
             >
               <Ionicons name="wallet-outline" size={18} color="#fff" />
@@ -185,7 +168,7 @@ export default function EarningsScreen({ navigation }) {
               <AnimatedCard key={txn.id} index={index}>
                 <HapticPressable
                   style={styles.earningCard}
-                  onPress={() => nav.navigate('TransactionDetail', { id: txn.id })}
+                  onPress={() => navigation.navigate('TransactionDetail', { id: txn.id })}
                   haptic="light"
                 >
                   {txn.listing.photo ? (
@@ -260,7 +243,7 @@ export default function EarningsScreen({ navigation }) {
             </View>
           )}
         </View>
-      </AnimatedScrollView>
+      </ScrollView>
     </View>
   );
 }

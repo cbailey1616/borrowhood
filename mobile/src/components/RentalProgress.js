@@ -3,11 +3,11 @@ import { Ionicons } from './Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
+  { key: 'requested', icon: 'paper-plane', label: 'Sent' },
   { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
   { key: 'pickup', icon: 'cube', label: 'Picked Up' },
   { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
-  { key: 'complete', icon: 'trophy', label: 'Complete' },
+  { key: 'complete', icon: 'trophy', label: 'Done' },
 ];
 
 function getActiveStep(status) {
@@ -64,74 +64,70 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
 
   return (
     <View style={styles.container}>
-      {/* Step indicators */}
-      <View style={styles.stepsRow}>
+      {/* Circles row - all circles and connectors in a single flat row */}
+      <View style={styles.circlesRow}>
         {STEPS.map((step, index) => {
           const isComplete = index < activeStep;
           const isActive = index === activeStep;
           const isFuture = index > activeStep;
 
           return (
-            <View key={step.key} style={styles.stepItem}>
-              {/* Step circle + connector row */}
-              <View style={styles.circleRow}>
-                {/* Left connector */}
-                {index > 0 && (
-                  <View
-                    style={[
-                      styles.connector,
-                      (isComplete || isActive) && !isCancelled && styles.connectorComplete,
-                    ]}
-                  />
-                )}
-
-                {/* Step circle */}
+            <View key={step.key} style={styles.circleGroup}>
+              {/* Connector before circle */}
+              {index > 0 && (
                 <View
                   style={[
-                    styles.stepCircle,
-                    isComplete && styles.stepCircleComplete,
-                    isActive && !isCancelled && styles.stepCircleActive,
-                    isCancelled && isActive && styles.stepCircleCancelled,
-                    isFuture && styles.stepCircleFuture,
+                    styles.connector,
+                    (isComplete || isActive) && !isCancelled && styles.connectorComplete,
                   ]}
-                >
-                  {isComplete ? (
-                    <Ionicons name="checkmark" size={14} color="#fff" />
-                  ) : isCancelled && isActive ? (
-                    <Ionicons name="close" size={14} color="#fff" />
-                  ) : (
-                    <Ionicons
-                      name={step.icon}
-                      size={14}
-                      color={isActive ? '#fff' : COLORS.gray[500]}
-                    />
-                  )}
-                </View>
-
-                {/* Right connector */}
-                {index < STEPS.length - 1 && (
-                  <View
-                    style={[
-                      styles.connector,
-                      isComplete && !isCancelled && styles.connectorComplete,
-                    ]}
+                />
+              )}
+              {/* Circle */}
+              <View
+                style={[
+                  styles.circle,
+                  isComplete && styles.circleComplete,
+                  isActive && !isCancelled && styles.circleActive,
+                  isCancelled && isActive && styles.circleCancelled,
+                  isFuture && styles.circleFuture,
+                ]}
+              >
+                {isComplete ? (
+                  <Ionicons name="checkmark" size={12} color="#fff" />
+                ) : isCancelled && isActive ? (
+                  <Ionicons name="close" size={12} color="#fff" />
+                ) : (
+                  <Ionicons
+                    name={step.icon}
+                    size={12}
+                    color={isActive ? '#fff' : COLORS.gray[500]}
                   />
                 )}
               </View>
-
-              {/* Label */}
-              <Text
-                style={[
-                  styles.stepLabel,
-                  isComplete && styles.stepLabelComplete,
-                  isActive && !isCancelled && styles.stepLabelActive,
-                  isCancelled && isActive && styles.stepLabelCancelled,
-                ]}
-                numberOfLines={1}
-              >
-                {step.label}
-              </Text>
             </View>
+          );
+        })}
+      </View>
+
+      {/* Labels row - evenly spaced beneath circles */}
+      <View style={styles.labelsRow}>
+        {STEPS.map((step, index) => {
+          const isComplete = index < activeStep;
+          const isActive = index === activeStep;
+
+          return (
+            <Text
+              key={step.key}
+              style={[
+                styles.label,
+                isComplete && styles.labelComplete,
+                isActive && !isCancelled && styles.labelActive,
+                isCancelled && isActive && styles.labelCancelled,
+              ]}
+              numberOfLines={1}
+            >
+              {step.label}
+            </Text>
           );
         })}
       </View>
@@ -151,23 +147,21 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
   );
 }
 
+const CIRCLE_SIZE = 24;
+
 const styles = StyleSheet.create({
   container: {
     paddingVertical: SPACING.md,
   },
-  stepsRow: {
+  circlesRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
   },
-  stepItem: {
+  circleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    alignItems: 'center',
-  },
-  circleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    justifyContent: 'center',
   },
   connector: {
     flex: 1,
@@ -177,51 +171,56 @@ const styles = StyleSheet.create({
   connectorComplete: {
     backgroundColor: COLORS.primary,
   },
-  stepCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  circle: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.gray[700],
   },
-  stepCircleComplete: {
+  circleComplete: {
     backgroundColor: COLORS.primary,
   },
-  stepCircleActive: {
+  circleActive: {
     backgroundColor: COLORS.primary,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 4,
   },
-  stepCircleCancelled: {
+  circleCancelled: {
     backgroundColor: COLORS.danger,
     shadowColor: COLORS.danger,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 4,
   },
-  stepCircleFuture: {
+  circleFuture: {
     backgroundColor: COLORS.gray[800],
   },
-  stepLabel: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.gray[500],
+  labelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 0,
     marginTop: SPACING.xs,
-    textAlign: 'center',
-    fontSize: 11,
   },
-  stepLabelComplete: {
+  label: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 10,
+    color: COLORS.gray[500],
+  },
+  labelComplete: {
     color: COLORS.primary,
   },
-  stepLabelActive: {
+  labelActive: {
     color: COLORS.primary,
     fontWeight: '700',
   },
-  stepLabelCancelled: {
+  labelCancelled: {
     color: COLORS.danger,
     fontWeight: '700',
   },
