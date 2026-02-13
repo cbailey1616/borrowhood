@@ -156,7 +156,7 @@ function handleNotificationResponse(data) {
       break;
 
     default:
-      navigationRef.navigate('Notifications');
+      navigationRef.navigate('Main', { screen: 'Activity' });
       break;
   }
 }

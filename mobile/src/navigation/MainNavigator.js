@@ -56,8 +56,8 @@ export default function MainNavigator() {
         options={{ title: 'My Items' }}
       />
       <Tab.Screen
-        name="Inbox"
-        options={{ title: 'Inbox' }}
+        name="Activity"
+        options={{ title: 'Activity' }}
         listeners={{
           tabPress: () => {
             setTimeout(fetchBadgeCount, 1000);

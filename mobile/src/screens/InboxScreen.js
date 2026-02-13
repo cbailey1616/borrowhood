@@ -102,6 +102,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     return new Date(date).toLocaleDateString();
   };
 
+  // Navigate to parent stack for detail screens
+  const nav = navigation.getParent() || navigation;
+
   const handleNotificationPress = async (item) => {
     haptics.light();
 
@@ -115,17 +118,17 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     }
 
     if (item.type === 'new_message' && item.conversationId) {
-      navigation.navigate('Chat', { conversationId: item.conversationId });
+      nav.navigate('Chat', { conversationId: item.conversationId });
     } else if (item.type === 'friend_request' || item.type === 'friend_accepted') {
-      navigation.navigate('Friends');
+      nav.navigate('Friends');
     } else if (item.type === 'new_request' && item.requestId) {
-      navigation.navigate('RequestDetail', { id: item.requestId });
+      nav.navigate('RequestDetail', { id: item.requestId });
     } else if (item.transactionId) {
-      navigation.navigate('TransactionDetail', { id: item.transactionId });
+      nav.navigate('TransactionDetail', { id: item.transactionId });
     } else if (item.listingId) {
-      navigation.navigate('ListingDetail', { id: item.listingId });
+      nav.navigate('ListingDetail', { id: item.listingId });
     } else if (item.type === 'item_match' && item.requestId) {
-      navigation.navigate('RequestDetail', { id: item.requestId });
+      nav.navigate('RequestDetail', { id: item.requestId });
     }
   };
 
@@ -168,7 +171,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     <AnimatedCard index={index}>
       <HapticPressable
         style={styles.card}
-        onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
+        onPress={() => nav.navigate('Chat', { conversationId: item.id })}
         haptic="light"
       >
         <View style={styles.avatarContainer}>
@@ -212,7 +215,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <NativeHeader title="Inbox" scrollY={scrollY} />
+        <NativeHeader title="Activity" scrollY={scrollY} />
         <View style={styles.skeletonContainer}>
           <SkeletonListItem />
           <SkeletonListItem />
@@ -225,7 +228,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Inbox" scrollY={scrollY}>
+      <NativeHeader title="Activity" scrollY={scrollY}>
         <SegmentedControl
           testID="Inbox.segment"
           segments={[

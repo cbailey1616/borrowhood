@@ -44,6 +44,8 @@ router.get('/', authenticate, async (req, res) => {
         body: n.body,
         transactionId: n.transaction_id,
         listingId: n.listing_id,
+        requestId: n.request_id,
+        conversationId: n.conversation_id,
         fromUser: n.from_first_name ? {
           firstName: n.from_first_name,
           lastName: n.from_last_name,

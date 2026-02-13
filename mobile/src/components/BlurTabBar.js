@@ -17,7 +17,7 @@ const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
   Saved: { active: 'heart', inactive: 'heart-outline' },
   MyItems: { active: 'cube', inactive: 'cube-outline' },
-  Inbox: { active: 'mail', inactive: 'mail-outline' },
+  Activity: { active: 'notifications', inactive: 'notifications-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
 };
 
@@ -25,7 +25,7 @@ const TAB_LABELS = {
   Feed: 'Feed',
   Saved: 'Saved',
   MyItems: 'My Items',
-  Inbox: 'Inbox',
+  Activity: 'Activity',
   Profile: 'Profile',
 };
 
@@ -117,7 +117,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
             isFocused={isFocused}
             onPress={onPress}
             onLongPress={onLongPress}
-            badge={route.name === 'Inbox' ? unreadCount : 0}
+            badge={route.name === 'Activity' ? unreadCount : 0}
           />
         );
       })}
