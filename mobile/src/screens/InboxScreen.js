@@ -6,7 +6,6 @@ import {
   FlatList,
   RefreshControl,
   Image,
-  ActivityIndicator,
   InteractionManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,15 +16,38 @@ import AnimatedCard from '../components/AnimatedCard';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonListItem } from '../components/SkeletonLoader';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
+const NOTIFICATION_ICONS = {
+  borrow_request: 'hand-left',
+  request_approved: 'checkmark-circle',
+  request_declined: 'close-circle',
+  payment_confirmed: 'card',
+  pickup_confirmed: 'cube',
+  return_confirmed: 'checkbox',
+  return_reminder: 'alarm',
+  dispute_opened: 'warning',
+  dispute_resolved: 'checkmark-done',
+  new_rating: 'star',
+  rating_received: 'star',
+  join_approved: 'people',
+  item_match: 'sparkles',
+  new_request: 'search',
+  new_message: 'chatbubble',
+  friend_request: 'person-add',
+  friend_accepted: 'people',
+  referral_joined: 'gift',
+  referral_reward: 'trophy',
+};
+
 export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
-  const [activities, setActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -38,12 +60,12 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [convData, actData] = await Promise.all([
+      const [notifData, convData] = await Promise.all([
+        api.getNotifications(),
         api.getConversations(),
-        api.getTransactions(),
       ]);
+      setNotifications(notifData?.notifications || []);
       setConversations(convData || []);
-      setActivities(actData || []);
     } catch (error) {
       console.error('Failed to fetch inbox data:', error);
     } finally {
@@ -80,12 +102,67 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     return new Date(date).toLocaleDateString();
   };
 
-  const isActionNeeded = (item) => {
-    if (!item.isBorrower && item.status === 'pending') return true;
-    if (item.isBorrower && item.status === 'approved') return true;
-    if (!item.isBorrower && item.status === 'return_pending') return true;
-    return false;
+  const handleNotificationPress = async (item) => {
+    haptics.light();
+
+    if (!item.isRead) {
+      try {
+        await api.markNotificationRead(item.id);
+        setNotifications(prev =>
+          prev.map(n => n.id === item.id ? { ...n, isRead: true } : n)
+        );
+      } catch (e) {}
+    }
+
+    if (item.type === 'new_message' && item.conversationId) {
+      navigation.navigate('Chat', { conversationId: item.conversationId });
+    } else if (item.type === 'friend_request' || item.type === 'friend_accepted') {
+      navigation.navigate('Friends');
+    } else if (item.type === 'new_request' && item.requestId) {
+      navigation.navigate('RequestDetail', { id: item.requestId });
+    } else if (item.transactionId) {
+      navigation.navigate('TransactionDetail', { id: item.transactionId });
+    } else if (item.listingId) {
+      navigation.navigate('ListingDetail', { id: item.listingId });
+    } else if (item.type === 'item_match' && item.requestId) {
+      navigation.navigate('RequestDetail', { id: item.requestId });
+    }
   };
+
+  const renderNotification = ({ item, index }) => (
+    <AnimatedCard index={index}>
+      <HapticPressable
+        style={[styles.card, !item.isRead && styles.cardUnread]}
+        onPress={() => handleNotificationPress(item)}
+        haptic={null}
+      >
+        <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
+          {item.fromUser?.profilePhotoUrl ? (
+            <Image
+              source={{ uri: item.fromUser.profilePhotoUrl }}
+              style={styles.notifAvatar}
+            />
+          ) : (
+            <Ionicons
+              name={NOTIFICATION_ICONS[item.type] || 'notifications'}
+              size={20}
+              color={!item.isRead ? COLORS.primary : COLORS.gray[400]}
+            />
+          )}
+        </View>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.name, !item.isRead && styles.nameUnread]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
+          </View>
+          <Text style={styles.lastMessage} numberOfLines={2}>{item.body}</Text>
+        </View>
+        {!item.isRead && <View style={styles.unreadDot} />}
+      </HapticPressable>
+    </AnimatedCard>
+  );
 
   const renderConversation = ({ item, index }) => (
     <AnimatedCard index={index}>
@@ -132,71 +209,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     </AnimatedCard>
   );
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return COLORS.warning;
-      case 'approved':
-      case 'paid':
-      case 'picked_up': return COLORS.primary;
-      case 'completed':
-      case 'returned': return COLORS.success;
-      case 'cancelled':
-      case 'disputed': return COLORS.danger;
-      default: return COLORS.textMuted;
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    const labels = {
-      pending: 'Pending',
-      approved: 'Approved',
-      paid: 'Paid',
-      picked_up: 'Borrowed',
-      return_pending: 'Returning',
-      returned: 'Returned',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
-      disputed: 'Disputed',
-    };
-    return labels[status] || status;
-  };
-
-  const renderActivity = ({ item, index }) => (
-    <AnimatedCard index={index}>
-      <HapticPressable
-        style={styles.card}
-        onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
-        haptic="light"
-      >
-        <Image
-          source={{ uri: item.listing?.photoUrl || 'https://via.placeholder.com/50' }}
-          style={styles.itemImage}
-        />
-        <View style={styles.cardContent}>
-          <Text style={styles.name} numberOfLines={1}>{item.listing?.title}</Text>
-          <Text style={styles.lastMessage} numberOfLines={1}>
-            {!item.isBorrower ? `To: ${item.borrower?.firstName}` : `From: ${item.lender?.firstName}`}
-          </Text>
-          <View style={styles.badgeRow}>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-              <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                {getStatusLabel(item.status)}
-              </Text>
-            </View>
-            {isActionNeeded(item) && (
-              <View style={[styles.statusBadge, { backgroundColor: COLORS.warningMuted }]}>
-                <Text style={[styles.statusText, { color: COLORS.warning }]}>
-                  Action needed
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <Text style={styles.time}>{getTimeAgo(item.updatedAt)}</Text>
-      </HapticPressable>
-    </AnimatedCard>
-  );
-
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -217,8 +229,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
+            `Activity${badgeCounts?.notifications > 0 ? ` (${badgeCounts.notifications})` : ''}`,
             `Messages${badgeCounts?.messages > 0 ? ` (${badgeCounts.messages})` : ''}`,
-            `Activity${badgeCounts?.actions > 0 ? ` (${badgeCounts.actions})` : ''}`,
           ]}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
@@ -227,6 +239,31 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       </NativeHeader>
 
       {activeTab === 0 ? (
+        <AnimatedFlatList
+          data={notifications}
+          renderItem={renderNotification}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="notifications-outline" size={56} color={COLORS.gray[600]} />
+              <Text style={styles.emptyTitle}>No activity yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Friend requests, borrow updates, and notifications will appear here
+              </Text>
+            </View>
+          }
+        />
+      ) : (
         <AnimatedFlatList
           data={conversations}
           renderItem={renderConversation}
@@ -247,31 +284,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
               <Text style={styles.emptyTitle}>No messages yet</Text>
               <Text style={styles.emptySubtitle}>
                 Start a conversation by messaging someone about their item
-              </Text>
-            </View>
-          }
-        />
-      ) : (
-        <AnimatedFlatList
-          data={activities}
-          renderItem={renderActivity}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.primary}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="swap-horizontal-outline" size={56} color={COLORS.gray[600]} />
-              <Text style={styles.emptyTitle}>No activity yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Your borrow requests and transactions will appear here
               </Text>
             </View>
           }
@@ -306,6 +318,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     gap: SPACING.md,
   },
+  cardUnread: {
+    backgroundColor: COLORS.primary + '08',
+  },
   avatarContainer: {
     position: 'relative',
   },
@@ -315,11 +330,21 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: COLORS.gray[700],
   },
-  itemImage: {
-    width: 52,
-    height: 52,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.gray[700],
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainerUnread: {
+    backgroundColor: COLORS.primary + '20',
+  },
+  notifAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   unreadBadge: {
     position: 'absolute',
@@ -339,6 +364,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '700',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
   },
   cardContent: {
     flex: 1,
@@ -379,21 +410,6 @@ const styles = StyleSheet.create({
   lastMessageUnread: {
     color: COLORS.text,
     fontWeight: '500',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: SPACING.xs,
-    marginTop: SPACING.xs,
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: RADIUS.sm,
-  },
-  statusText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
