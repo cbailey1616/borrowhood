@@ -44,6 +44,7 @@ import identityRoutes from './routes/identity.js';
 import paymentRoutes from './routes/payments.js';
 import rentalRoutes from './routes/rentals.js';
 import onboardingRoutes from './routes/onboarding.js';
+import earningsRoutes from './routes/earnings.js';
 import { startScheduler } from './services/scheduler.js';
 
 const app = express();
@@ -234,6 +235,7 @@ app.use('/api/identity', identityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/earnings', earningsRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // Health check

@@ -211,6 +211,11 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('Friends')}
           />
           <GroupedListItem
+            icon="cash-outline"
+            title="Earnings"
+            onPress={() => navigation.navigate('Earnings')}
+          />
+          <GroupedListItem
             icon="card-outline"
             title="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}

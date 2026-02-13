@@ -41,6 +41,7 @@ import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 import PaymentFlowScreen from '../screens/PaymentFlowScreen';
 import RentalCheckoutScreen from '../screens/RentalCheckoutScreen';
 import DamageClaimScreen from '../screens/DamageClaimScreen';
+import EarningsScreen from '../screens/EarningsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -252,6 +253,11 @@ export default function RootNavigator() {
             name="DamageClaim"
             component={DamageClaimScreen}
             options={{ ...sharedScreenOptions, title: 'Damage Claim', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="Earnings"
+            component={EarningsScreen}
+            options={{ ...sharedScreenOptions, headerShown: false }}
           />
         </>
       )}

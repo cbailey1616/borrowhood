@@ -626,6 +626,9 @@ const getRentalPaymentStatus = (id) =>
 const getConnectBalance = () =>
   get('/users/me/connect-balance');
 
+const getEarnings = () =>
+  get('/earnings');
+
 // Onboarding
 const updateOnboardingStep = (step) =>
   patch('/onboarding/step', { step });
@@ -814,6 +817,7 @@ export default {
   createLateFee,
   getRentalPaymentStatus,
   getConnectBalance,
+  getEarnings,
   // Saved listings
   getSavedListings,
   saveListing,
