@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.borrowhood.app",
-      "buildNumber": "85",
+      "buildNumber": "86",
       "infoPlist": {
         "NSCameraUsageDescription": "Borrowhood needs camera access to take photos of items you want to share with your neighbors.",
         "NSPhotoLibraryUsageDescription": "Borrowhood needs photo library access to select photos of items you want to share.",
@@ -51,7 +51,7 @@
         "backgroundColor": "#4A7C59"
       },
       "package": "com.borrowhood.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
