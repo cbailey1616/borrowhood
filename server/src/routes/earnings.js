@@ -91,7 +91,7 @@ router.get('/', authenticate, async (req, res) => {
            COUNT(*) as total_rentals
          FROM borrow_transactions
          WHERE lender_id = $1
-           AND status IN ('completed', 'returned')`,
+           AND status IN ('completed', 'returned', 'return_pending')`,
         [req.user.id]
       );
 
@@ -137,7 +137,7 @@ router.get('/', authenticate, async (req, res) => {
          JOIN listings l ON t.listing_id = l.id
          JOIN users b ON t.borrower_id = b.id
          WHERE t.lender_id = $1
-           AND t.status IN ('completed', 'returned')
+           AND t.status IN ('completed', 'returned', 'return_pending')
          ORDER BY t.created_at DESC
          LIMIT 20`,
         [req.user.id]

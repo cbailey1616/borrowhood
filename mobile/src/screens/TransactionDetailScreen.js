@@ -7,6 +7,8 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
@@ -208,7 +210,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={100}
+    >
       <ScrollView>
         {/* Item Info */}
         <HapticPressable
@@ -574,7 +580,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         ]}
         cancelLabel="Keep Request"
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -639,7 +645,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statusCard: {
-    alignItems: 'center',
     padding: SPACING.lg,
     backgroundColor: COLORS.surface,
     marginTop: 1,
