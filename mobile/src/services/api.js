@@ -233,6 +233,9 @@ const confirmPickup = (id, condition) =>
 const confirmReturn = (id, condition, notes) =>
   post(`/transactions/${id}/return`, { condition, notes });
 
+const cancelTransaction = (id) =>
+  post(`/transactions/${id}/cancel`);
+
 const rateTransaction = (id, rating, comment) =>
   post(`/transactions/${id}/rate`, { rating, comment });
 
@@ -608,6 +611,9 @@ const confirmRentalPickup = (id, condition) =>
 const confirmRentalReturn = (id, condition, notes) =>
   post(`/rentals/${id}/return`, { condition, notes });
 
+const cancelRental = (id) =>
+  post(`/rentals/${id}/cancel`);
+
 const submitDamageClaim = (id, { amountCents, notes, evidenceUrls }) =>
   post(`/rentals/${id}/damage-claim`, { amountCents, notes, evidenceUrls });
 
@@ -700,6 +706,7 @@ export default {
   confirmPayment,
   confirmPickup,
   confirmReturn,
+  cancelTransaction,
   rateTransaction,
   // Disputes
   getDisputes,
@@ -802,6 +809,7 @@ export default {
   confirmRentalPayment,
   confirmRentalPickup,
   confirmRentalReturn,
+  cancelRental,
   submitDamageClaim,
   createLateFee,
   getRentalPaymentStatus,

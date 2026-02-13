@@ -31,6 +31,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [selectedRating, setSelectedRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingFormVisible, setRatingFormVisible] = useState(false);
+  const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
 
   useFocusEffect(useCallback(() => { fetchTransaction(); }, [id]));
 
@@ -51,7 +52,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       await api.approveRental(id);
       fetchTransaction();
       haptics.success();
-      showToast('Request approved! Borrower has been notified.', 'success');
+      showToast('Request approved! Payment has been captured.', 'success');
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Unable to approve request.' });
@@ -132,33 +133,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
-  const handlePayment = async () => {
+  const handleCancel = async () => {
     setActionLoading(true);
     try {
-      const result = await api.confirmRentalPayment(id);
-
-      if (result.requiresPayment && result.clientSecret) {
-        navigation.navigate('RentalCheckout', {
-          transactionId: id,
-          rentalFee: transaction.rentalFee,
-          depositAmount: transaction.depositAmount,
-          totalAmount: transaction.rentalFee + transaction.depositAmount,
-          platformFee: transaction.platformFee,
-          lenderPayout: transaction.lenderPayout,
-          rentalDays: transaction.rentalDays,
-          listingTitle: transaction.listing.title,
-          clientSecret: result.clientSecret,
-          ephemeralKey: result.ephemeralKey,
-          customerId: result.customerId,
-        });
-      } else {
-        haptics.success();
-        showToast('Payment authorized!', 'success');
-        fetchTransaction();
-      }
+      await api.cancelRental(id);
+      haptics.success();
+      showToast('Request cancelled. Any payment hold has been released.', 'success');
+      navigation.goBack();
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Payment failed. Please try again.' });
+      showError({ message: error.message || 'Unable to cancel request.' });
     } finally {
       setActionLoading(false);
     }
@@ -406,19 +390,22 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Borrower: Authorize Payment for approved transactions */}
-      {transaction.isBorrower && transaction.status === 'approved' && (
+      {/* Borrower: Cancel request before pickup */}
+      {transaction.isBorrower && ['pending', 'paid'].includes(transaction.status) && (
         <View style={styles.footer}>
           <HapticPressable
-            haptic="medium"
-            style={[styles.approveButton, actionLoading && { opacity: 0.5 }]}
-            onPress={handlePayment}
+            testID="Transaction.button.cancel"
+            accessibilityLabel="Cancel request"
+            accessibilityRole="button"
+            haptic="light"
+            style={styles.declineButton}
+            onPress={() => setCancelSheetVisible(true)}
             disabled={actionLoading}
           >
             {actionLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={COLORS.text} size="small" />
             ) : (
-              <Text style={styles.approveButtonText}>Authorize Payment</Text>
+              <Text style={styles.declineButtonText}>Cancel Request</Text>
             )}
           </HapticPressable>
         </View>
@@ -555,6 +542,21 @@ export default function TransactionDetailScreen({ route, navigation }) {
           label: CONDITION_LABELS[condition],
           onPress: () => handleConfirmReturn(condition),
         }))}
+      />
+
+      <ActionSheet
+        isVisible={cancelSheetVisible}
+        onClose={() => setCancelSheetVisible(false)}
+        title="Cancel Request"
+        message="Are you sure? Any payment hold will be released immediately."
+        actions={[
+          {
+            label: 'Cancel Request',
+            onPress: handleCancel,
+            destructive: true,
+          },
+        ]}
+        cancelLabel="Keep Request"
       />
     </View>
   );

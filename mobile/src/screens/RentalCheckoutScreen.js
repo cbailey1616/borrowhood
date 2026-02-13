@@ -135,18 +135,18 @@ export default function RentalCheckoutScreen({ navigation, route }) {
           <View style={styles.successCircle}>
             <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
           </View>
-          <Text style={styles.title}>Payment Authorized</Text>
+          <Text style={styles.title}>Request Sent!</Text>
           <Text style={styles.subtitle}>
             Your card has been authorized for {formatCurrency(totalAmount)}.
-            The rental fee will only be charged at pickup. The deposit hold will be
-            released when the item is returned in good condition.
+            The lender will review your request. If they decline or you cancel,
+            the hold is released immediately.
           </Text>
           <HapticPressable
             testID="RentalCheckout.success.done"
             accessibilityLabel="Done"
             accessibilityRole="button"
             style={styles.primaryButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.popToTop()}
             haptic="light"
           >
             <Text style={styles.primaryButtonText}>Done</Text>
@@ -189,7 +189,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
             <View style={styles.infoRow}>
               <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
               <Text style={styles.infoText}>
-                Only the rental fee is charged at pickup. The deposit is held and released on clean return.
+                Payment is captured when the lender approves. If declined or cancelled, the hold is released immediately.
               </Text>
             </View>
             {lateFeePerDay > 0 && (

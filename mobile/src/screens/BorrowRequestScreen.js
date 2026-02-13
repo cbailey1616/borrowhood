@@ -134,15 +134,31 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
     setIsSubmitting(true);
     try {
-      await api.createTransaction({
+      const result = await api.createTransaction({
         listingId: listing.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         message: message.trim() || undefined,
       });
 
-      haptics.success();
-      navigation.goBack();
+      if (result.clientSecret) {
+        // Paid rental — navigate to checkout to authorize payment
+        navigation.replace('RentalCheckout', {
+          transactionId: result.id,
+          rentalFee,
+          depositAmount: listing.depositAmount,
+          totalAmount: total,
+          rentalDays: days,
+          listingTitle: listing.title,
+          clientSecret: result.clientSecret,
+          ephemeralKey: result.ephemeralKey,
+          customerId: result.customerId,
+        });
+      } else {
+        // Free rental — request sent, go back
+        haptics.success();
+        navigation.goBack();
+      }
     } catch (error) {
       haptics.error();
       const msg = error.message?.toLowerCase() || '';
@@ -150,6 +166,13 @@ export default function BorrowRequestScreen({ route, navigation }) {
         showError({
           type: 'verification',
           message: 'You need to verify your identity before borrowing from town listings.',
+        });
+      } else if (msg.includes('payment method')) {
+        showError({
+          title: 'Payment Method Required',
+          message: 'Please add a payment method before requesting a paid rental.',
+          primaryLabel: 'Add Card',
+          onPrimaryPress: () => navigation.navigate('AddPaymentMethod'),
         });
       } else {
         showError({
@@ -404,7 +427,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <Text style={styles.priceValue}>${listing.depositAmount.toFixed(2)}</Text>
           </View>
           <View style={[styles.priceRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total due at approval</Text>
+            <Text style={styles.totalLabel}>Total authorization hold</Text>
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
         </BlurCard>
@@ -424,7 +447,9 @@ export default function BorrowRequestScreen({ route, navigation }) {
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>Send Request</Text>
+          <Text style={styles.submitButtonText}>
+            {total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
+          </Text>
         )}
       </HapticPressable>
 

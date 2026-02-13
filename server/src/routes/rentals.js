@@ -10,6 +10,7 @@ import {
   cancelPaymentIntent,
   createTransfer,
   createEphemeralKey,
+  refundPayment,
 } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
 import logger from '../utils/logger.js';
@@ -160,10 +161,8 @@ router.post('/:id/approve', authenticate,
 
     try {
       const txn = await query(
-        `SELECT t.*, u.stripe_customer_id, u.email as borrower_email
-         FROM borrow_transactions t
-         JOIN users u ON t.borrower_id = u.id
-         WHERE t.id = $1 AND t.lender_id = $2 AND t.status = 'pending'`,
+        `SELECT * FROM borrow_transactions
+         WHERE id = $1 AND lender_id = $2 AND status = 'pending'`,
         [req.params.id, req.user.id]
       );
 
@@ -172,12 +171,9 @@ router.post('/:id/approve', authenticate,
       }
 
       const t = txn.rows[0];
-      const totalAmountCents = Math.round(
-        (parseFloat(t.rental_fee) + parseFloat(t.deposit_amount)) * 100
-      );
 
-      // Free listing with no deposit — skip Stripe, approve and mark as paid
-      if (totalAmountCents < 50) {
+      // Free rental — no payment to capture
+      if (!t.stripe_payment_intent_id) {
         await query(
           `UPDATE borrow_transactions
            SET status = 'paid', lender_response = $1, payment_status = 'none'
@@ -185,7 +181,6 @@ router.post('/:id/approve', authenticate,
           [response, t.id]
         );
 
-        // Mark listing as unavailable
         await query(
           'UPDATE listings SET is_available = false WHERE id = $1',
           [t.listing_id]
@@ -196,96 +191,30 @@ router.post('/:id/approve', authenticate,
           listingId: t.listing_id,
         });
 
-        return res.json({
-          success: true,
-          freeRental: true,
-          totalAmount: 0,
-        });
+        return res.json({ success: true, freeRental: true });
       }
 
-      let customerId = t.stripe_customer_id;
+      // Paid rental — capture the existing authorization hold
+      await capturePaymentIntent(t.stripe_payment_intent_id);
 
-      // Create Stripe customer if borrower doesn't have one
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: t.borrower_email,
-          metadata: { userId: t.borrower_id },
-        });
-        customerId = customer.id;
-        await query(
-          'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
-          [customerId, t.borrower_id]
-        );
-      }
-
-      // Get lender's Connect account for application_fee
-      const lender = await query(
-        'SELECT stripe_connect_account_id FROM users WHERE id = $1',
-        [req.user.id]
-      );
-      const lenderConnectId = lender.rows[0]?.stripe_connect_account_id;
-
-      // Verify Connect account has transfers capability before using it
-      let useConnectTransfer = false;
-      if (lenderConnectId) {
-        try {
-          const account = await stripe.accounts.retrieve(lenderConnectId);
-          useConnectTransfer = account.capabilities?.transfers === 'active';
-        } catch (e) {
-          logger.warn('Could not verify Connect account:', e.message);
-        }
-      }
-
-      // Create PaymentIntent with manual capture (authorization hold)
-      const piParams = {
-        amount: totalAmountCents,
-        currency: 'usd',
-        customer: customerId,
-        capture_method: 'manual',
-        automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
-        metadata: {
-          transactionId: t.id,
-          type: 'rental',
-          rentalFeeCents: Math.round(parseFloat(t.rental_fee) * 100).toString(),
-          depositCents: Math.round(parseFloat(t.deposit_amount) * 100).toString(),
-        },
-      };
-
-      // If lender has a fully onboarded Connect account, set up direct transfer
-      if (useConnectTransfer) {
-        piParams.transfer_data = {
-          destination: lenderConnectId,
-        };
-        piParams.application_fee_amount = Math.round(parseFloat(t.platform_fee) * 100);
-      }
-
-      const paymentIntent = await stripe.paymentIntents.create(piParams);
-
-      // Generate ephemeral key for PaymentSheet
-      const ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
-
-      // Update transaction
       await query(
         `UPDATE borrow_transactions
-         SET status = 'approved', lender_response = $1,
-             stripe_payment_intent_id = $2, payment_status = 'pending'
-         WHERE id = $3`,
-        [response, paymentIntent.id, t.id]
+         SET status = 'paid', lender_response = $1, payment_status = 'captured'
+         WHERE id = $2`,
+        [response, t.id]
       );
 
-      // Notify borrower to complete payment
+      await query(
+        'UPDATE listings SET is_available = false WHERE id = $1',
+        [t.listing_id]
+      );
+
       await sendNotification(t.borrower_id, 'request_approved', {
         transactionId: t.id,
         listingId: t.listing_id,
       });
 
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        ephemeralKey: ephemeralKey.secret,
-        customerId,
-        paymentIntentId: paymentIntent.id,
-        totalAmount: totalAmountCents,
-      });
+      res.json({ success: true });
     } catch (err) {
       logger.error('Approve rental error:', {
         message: err.message,
@@ -349,46 +278,38 @@ router.post('/:id/decline', authenticate,
 // ============================================
 // POST /api/rentals/:id/confirm-payment
 // Borrower confirms PaymentSheet completed — verifies authorization hold
+// Now called at request time (upfront payment), keeps status pending for lender review
 // ============================================
 router.post('/:id/confirm-payment', authenticate, async (req, res) => {
   try {
     const txn = await query(
       `SELECT * FROM borrow_transactions
-       WHERE id = $1 AND borrower_id = $2 AND status = 'approved'`,
+       WHERE id = $1 AND borrower_id = $2 AND status = 'pending'`,
       [req.params.id, req.user.id]
     );
 
     if (txn.rows.length === 0) {
-      return res.status(404).json({ error: 'Transaction not found' });
+      return res.status(404).json({ error: 'Transaction not found or not pending' });
     }
 
     const t = txn.rows[0];
 
     if (!t.stripe_payment_intent_id) {
-      return res.status(400).json({ error: 'No payment intent for this transaction' });
+      return res.json({ success: true }); // Free rental
     }
 
-    // Check PI status
     const pi = await getPaymentIntent(t.stripe_payment_intent_id);
 
     if (pi.status === 'requires_capture') {
-      // Authorization hold is in place — mark as paid
+      // Hold is in place — mark payment as authorized, keep status pending for lender review
       await query(
-        `UPDATE borrow_transactions
-         SET status = 'paid', payment_status = 'authorized'
-         WHERE id = $1`,
+        `UPDATE borrow_transactions SET payment_status = 'authorized' WHERE id = $1`,
         [t.id]
       );
+      return res.json({ success: true, status: 'authorized' });
+    }
 
-      // Mark listing as unavailable
-      await query(
-        'UPDATE listings SET is_available = false WHERE id = $1',
-        [t.listing_id]
-      );
-
-      res.json({ success: true, status: 'authorized' });
-    } else if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
-      // Payment not yet completed — return PaymentSheet credentials for retry
+    if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
       const borrower = await query(
         'SELECT stripe_customer_id FROM users WHERE id = $1',
         [t.borrower_id]
@@ -396,15 +317,20 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
       const customerId = borrower.rows[0].stripe_customer_id;
       const ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
 
-      res.json({
+      return res.json({
         requiresPayment: true,
         clientSecret: pi.client_secret,
         ephemeralKey: ephemeralKey.secret,
         customerId,
       });
-    } else {
-      res.json({ success: true, status: pi.status });
     }
+
+    await query(
+      `UPDATE borrow_transactions SET payment_status = $1 WHERE id = $2`,
+      [pi.status, t.id]
+    );
+
+    res.json({ success: true, status: pi.status });
   } catch (err) {
     logger.error('Confirm rental payment error:', err);
     res.status(500).json({ error: 'Failed to confirm payment' });
@@ -412,9 +338,63 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/rentals/:id/cancel
+// Borrower cancels request — immediate refund
+// ============================================
+router.post('/:id/cancel', authenticate, async (req, res) => {
+  try {
+    const txn = await query(
+      `SELECT * FROM borrow_transactions
+       WHERE id = $1 AND borrower_id = $2 AND status IN ('pending', 'paid')`,
+      [req.params.id, req.user.id]
+    );
+
+    if (txn.rows.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found or cannot be cancelled' });
+    }
+
+    const t = txn.rows[0];
+
+    if (t.stripe_payment_intent_id) {
+      const pi = await getPaymentIntent(t.stripe_payment_intent_id);
+
+      if (pi.status === 'requires_capture') {
+        // Hold not yet captured — cancel it (releases hold instantly)
+        await cancelPaymentIntent(t.stripe_payment_intent_id);
+      } else if (pi.status === 'succeeded') {
+        // Payment was captured — issue full refund
+        await refundPayment(t.stripe_payment_intent_id);
+      }
+    }
+
+    await query(
+      `UPDATE borrow_transactions
+       SET status = 'cancelled', payment_status = 'refunded'
+       WHERE id = $1`,
+      [t.id]
+    );
+
+    // Make listing available again
+    await query(
+      'UPDATE listings SET is_available = true WHERE id = $1',
+      [t.listing_id]
+    );
+
+    await sendNotification(t.lender_id, 'request_declined', {
+      transactionId: t.id,
+      listingId: t.listing_id,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Cancel rental error:', err);
+    res.status(500).json({ error: `Failed to cancel request: ${err.message}` });
+  }
+});
+
+// ============================================
 // POST /api/rentals/:id/pickup
-// Lender confirms pickup — partial capture of rental fee only
-// Deposit remains as uncaptured authorization hold
+// Lender confirms pickup
 // ============================================
 router.post('/:id/pickup', authenticate,
   body('condition').optional().isIn(['like_new', 'good', 'fair', 'worn']),
@@ -437,17 +417,14 @@ router.post('/:id/pickup', authenticate,
         return res.status(403).json({ error: 'Only the lender can confirm pickup' });
       }
 
-      // Capture payment if a PaymentIntent exists (skip for free rentals)
-      if (t.stripe_payment_intent_id) {
-        await capturePaymentIntent(t.stripe_payment_intent_id);
-      }
+      // Payment is already captured at approve time — no capture needed here
 
       await query(
         `UPDATE borrow_transactions
          SET status = 'picked_up', actual_pickup_at = NOW(),
-             condition_at_pickup = $1, payment_status = $2
-         WHERE id = $3`,
-        [condition || 'good', t.stripe_payment_intent_id ? 'captured' : 'none', t.id]
+             condition_at_pickup = $1
+         WHERE id = $2`,
+        [condition || 'good', t.id]
       );
 
       await sendNotification(t.borrower_id, 'pickup_confirmed', {
