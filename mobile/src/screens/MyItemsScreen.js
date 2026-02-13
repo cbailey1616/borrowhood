@@ -19,15 +19,26 @@ import NativeHeader from '../components/NativeHeader';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, CONDITION_LABELS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+
+const STATUS_COLORS = {
+  pending: COLORS.warning,
+  approved: COLORS.primary,
+  paid: COLORS.primary,
+  picked_up: COLORS.secondary,
+  return_pending: COLORS.warning,
+  returned: COLORS.secondary,
+  disputed: COLORS.danger,
+};
 
 export default function MyItemsScreen({ navigation }) {
   const { showError } = useError();
   const [activeTab, setActiveTab] = useState(0);
   const [listings, setListings] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [rentals, setRentals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const swipeableRefs = useRef({});
@@ -39,13 +50,15 @@ export default function MyItemsScreen({ navigation }) {
     },
   });
 
-  const isItems = activeTab === 0;
-
   const fetchData = useCallback(async () => {
     try {
-      if (isItems) {
+      if (activeTab === 0) {
         const data = await api.getMyListings();
         setListings(data);
+      } else if (activeTab === 1) {
+        const data = await api.getTransactions();
+        // Filter to active only (not completed/cancelled)
+        setRentals(data.filter(t => !['completed', 'cancelled'].includes(t.status)));
       } else {
         const data = await api.getMyRequests();
         setRequests(data);
@@ -56,7 +69,7 @@ export default function MyItemsScreen({ navigation }) {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [isItems]);
+  }, [activeTab]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -283,14 +296,90 @@ export default function MyItemsScreen({ navigation }) {
     </AnimatedCard>
   );
 
-  const data = isItems ? listings : requests;
+  const getTimeAgo = (date) => {
+    if (!date) return '';
+    const now = new Date();
+    const diff = now - new Date(date);
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days}d ago`;
+    return new Date(date).toLocaleDateString();
+  };
+
+  const renderRentalItem = ({ item, index }) => {
+    const otherParty = item.isBorrower ? item.lender : item.borrower;
+    const statusColor = STATUS_COLORS[item.status] || COLORS.textSecondary;
+
+    return (
+      <AnimatedCard index={index}>
+        <HapticPressable
+          style={styles.rentalCard}
+          onPress={() => navigation.getParent()?.navigate('TransactionDetail', { id: item.id })
+            || navigation.navigate('TransactionDetail', { id: item.id })}
+          haptic="light"
+        >
+          <View style={styles.rentalTop}>
+            {item.listing.photoUrl ? (
+              <Image source={{ uri: item.listing.photoUrl }} style={styles.rentalImage} />
+            ) : (
+              <View style={[styles.rentalImage, styles.imagePlaceholder]}>
+                <Ionicons name="image-outline" size={22} color={COLORS.gray[500]} />
+              </View>
+            )}
+            <View style={styles.rentalInfo}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.listing.title}</Text>
+              <View style={styles.rentalPartyRow}>
+                <Ionicons
+                  name={item.isBorrower ? 'arrow-down-circle' : 'arrow-up-circle'}
+                  size={14}
+                  color={item.isBorrower ? COLORS.primary : COLORS.secondary}
+                />
+                <Text style={styles.rentalPartyText}>
+                  {item.isBorrower ? 'Borrowing from' : 'Lending to'}{' '}
+                  {otherParty.firstName} {otherParty.lastName?.[0]}.
+                </Text>
+              </View>
+              <View style={styles.rentalDateRow}>
+                <Ionicons name="calendar-outline" size={12} color={COLORS.textMuted} />
+                <Text style={styles.rentalDateText}>
+                  {new Date(item.startDate).toLocaleDateString()} — {new Date(item.endDate).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </View>
+          <View style={styles.rentalBottom}>
+            <View style={[styles.rentalStatusBadge, { backgroundColor: statusColor + '20' }]}>
+              <View style={[styles.rentalStatusDot, { backgroundColor: statusColor }]} />
+              <Text style={[styles.rentalStatusText, { color: statusColor }]}>
+                {TRANSACTION_STATUS_LABELS[item.status] || item.status}
+              </Text>
+            </View>
+            {item.rentalFee > 0 && (
+              <Text style={styles.rentalFeeText}>${item.rentalFee.toFixed(2)}</Text>
+            )}
+          </View>
+        </HapticPressable>
+      </AnimatedCard>
+    );
+  };
+
+  const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
+  const emptyIcon = activeTab === 0 ? 'construct-outline' : activeTab === 1 ? 'swap-horizontal-outline' : 'search-outline';
+  const emptyTitle = activeTab === 0 ? 'No items yet' : activeTab === 1 ? 'No active rentals' : 'No requests yet';
+  const emptySubtitle = activeTab === 0
+    ? 'List your first item to start lending!'
+    : activeTab === 1
+    ? 'Your active borrows and lends will show up here'
+    : 'Post a request when you need to borrow something';
 
   return (
     <View style={styles.container}>
       <NativeHeader title="My Items" scrollY={scrollY}>
         <SegmentedControl
           testID="MyItems.segment"
-          segments={['My Items', 'My Requests']}
+          segments={['Items', 'Active', 'Requests']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
@@ -299,7 +388,7 @@ export default function MyItemsScreen({ navigation }) {
 
       <AnimatedFlatList
         data={data}
-        renderItem={isItems ? renderListingItem : renderRequestItem}
+        renderItem={activeTab === 0 ? renderListingItem : activeTab === 1 ? renderRentalItem : renderRequestItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         onScroll={scrollHandler}
@@ -315,41 +404,37 @@ export default function MyItemsScreen({ navigation }) {
           !isLoading && (
             <View style={styles.emptyContainer}>
               <Ionicons
-                name={isItems ? 'construct-outline' : 'search-outline'}
+                name={emptyIcon}
                 size={64}
                 color={COLORS.gray[700]}
               />
-              <Text style={styles.emptyTitle}>
-                {isItems ? 'No items yet' : 'No requests yet'}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {isItems
-                  ? 'List your first tool to start lending!'
-                  : 'Post a request when you need to borrow something'}
-              </Text>
-              <HapticPressable
-                style={styles.addButton}
-                onPress={() => navigation.navigate(isItems ? 'CreateListing' : 'CreateRequest')}
-                haptic="medium"
-              >
-                <Ionicons name="add" size={20} color="#fff" />
-                <Text style={styles.addButtonText}>
-                  {isItems ? 'List an Item' : 'Post a Request'}
-                </Text>
-              </HapticPressable>
+              <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+              <Text style={styles.emptySubtitle}>{emptySubtitle}</Text>
+              {activeTab !== 1 && (
+                <HapticPressable
+                  style={styles.addButton}
+                  onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
+                  haptic="medium"
+                >
+                  <Ionicons name="add" size={20} color="#fff" />
+                  <Text style={styles.addButtonText}>
+                    {activeTab === 0 ? 'List an Item' : 'Post a Request'}
+                  </Text>
+                </HapticPressable>
+              )}
             </View>
           )
         }
         ListHeaderComponent={
-          data.length > 0 && (
+          data.length > 0 && activeTab !== 1 && (
             <HapticPressable
               style={styles.headerButton}
-              onPress={() => navigation.navigate(isItems ? 'CreateListing' : 'CreateRequest')}
+              onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
               haptic="light"
             >
               <Ionicons name="add-circle" size={24} color={COLORS.primary} />
               <Text style={styles.headerButtonText}>
-                {isItems ? 'List a new item' : 'Post a new request'}
+                {activeTab === 0 ? 'List a new item' : 'Post a new request'}
               </Text>
             </HapticPressable>
           )
@@ -579,6 +664,79 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#fff',
     ...TYPOGRAPHY.headline,
+  },
+  rentalCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.md,
+    overflow: 'hidden',
+  },
+  rentalTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    gap: SPACING.md,
+  },
+  rentalImage: {
+    width: 56,
+    height: 56,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.gray[700],
+  },
+  rentalInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  rentalPartyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  rentalPartyText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+  },
+  rentalDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  rentalDateText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+  },
+  rentalBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+    paddingTop: SPACING.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+    marginHorizontal: SPACING.md,
+  },
+  rentalStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.xs,
+    gap: SPACING.xs,
+  },
+  rentalStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  rentalStatusText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+  },
+  rentalFeeText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.text,
   },
   deleteAction: {
     backgroundColor: COLORS.danger,
