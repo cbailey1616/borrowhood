@@ -32,9 +32,14 @@ const NOTIFICATION_TEMPLATES = {
   },
   pickup_confirmed: {
     title: 'Item Picked Up',
-    body: (data) => data.itemTitle
-      ? `${data.itemTitle} has been picked up`
-      : 'Your item has been picked up',
+    body: (data) => {
+      const returnBy = data.returnDate
+        ? `. Please return by ${new Date(data.returnDate).toLocaleDateString()}`
+        : '';
+      return data.itemTitle
+        ? `You've picked up ${data.itemTitle}${returnBy}`
+        : `You've picked up the item${returnBy}`;
+    },
   },
   return_confirmed: {
     title: 'Item Returned',
@@ -44,9 +49,12 @@ const NOTIFICATION_TEMPLATES = {
   },
   return_reminder: {
     title: 'Return Reminder',
-    body: (data) => data.itemTitle
-      ? `${data.itemTitle} is due back ${data.dueDate || 'soon'}`
-      : `Your borrowed item is due back ${data.dueDate || 'soon'}`,
+    body: (data) => {
+      const when = data.dueDate === 'today' ? 'today' : `on ${data.dueDate || 'soon'}`;
+      return data.itemTitle
+        ? `${data.itemTitle} is due back ${when}`
+        : `Your borrowed item is due back ${when}`;
+    },
   },
 
   // Disputes

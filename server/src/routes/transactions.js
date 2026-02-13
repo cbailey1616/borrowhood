@@ -593,7 +593,10 @@ router.post('/:id/pickup', authenticate,
 
     try {
       const txn = await query(
-        'SELECT * FROM borrow_transactions WHERE id = $1 AND status = $2',
+        `SELECT bt.*, l.title as item_title
+         FROM borrow_transactions bt
+         JOIN listings l ON bt.listing_id = l.id
+         WHERE bt.id = $1 AND bt.status = $2`,
         [req.params.id, 'paid']
       );
 
@@ -619,6 +622,8 @@ router.post('/:id/pickup', authenticate,
         );
 
         await sendNotification(t.borrower_id, 'pickup_confirmed', {
+          itemTitle: t.item_title,
+          returnDate: t.requested_end_date,
           transactionId: t.id,
         });
       }
@@ -698,38 +703,39 @@ router.post('/:id/return', authenticate,
             [condition, req.params.id]
           );
 
-          // Get lender's Stripe Connect account
-          const lenderResult = await client.query(
-            'SELECT stripe_connect_account_id FROM users WHERE id = $1',
-            [t.lender_id]
-          );
-
-          const lenderConnectId = lenderResult.rows[0]?.stripe_connect_account_id;
-
           // Transfer rental fee to lender if they have a Connect account
-          if (lenderConnectId) {
-            const transfer = await createTransfer({
-              amount: Math.round(parseFloat(t.lender_payout) * 100), // Convert to cents
-              destinationAccountId: lenderConnectId,
-              metadata: {
-                transactionId: t.id,
-                type: 'rental_payout',
-              },
-            });
-
-            // Record the transfer ID
-            await client.query(
-              'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
-              [transfer.id, t.id]
+          try {
+            const lenderResult = await client.query(
+              'SELECT stripe_connect_account_id FROM users WHERE id = $1',
+              [t.lender_id]
             );
+            const lenderConnectId = lenderResult.rows[0]?.stripe_connect_account_id;
+
+            if (lenderConnectId) {
+              const transfer = await createTransfer({
+                amount: Math.round(parseFloat(t.lender_payout) * 100),
+                destinationAccountId: lenderConnectId,
+                metadata: { transactionId: t.id, type: 'rental_payout' },
+              });
+              await client.query(
+                'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
+                [transfer.id, t.id]
+              );
+            }
+          } catch (transferErr) {
+            console.warn('Payout transfer failed (non-fatal):', transferErr.message);
           }
 
           // Refund deposit to borrower
-          if (parseFloat(t.deposit_amount) > 0 && t.stripe_payment_intent_id) {
-            await refundPayment(
-              t.stripe_payment_intent_id,
-              Math.round(parseFloat(t.deposit_amount) * 100) // Convert to cents
-            );
+          try {
+            if (parseFloat(t.deposit_amount) > 0 && t.stripe_payment_intent_id) {
+              await refundPayment(
+                t.stripe_payment_intent_id,
+                Math.round(parseFloat(t.deposit_amount) * 100)
+              );
+            }
+          } catch (refundErr) {
+            console.warn('Deposit refund failed (non-fatal):', refundErr.message);
           }
 
           // Mark listing available again and update stats

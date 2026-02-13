@@ -72,61 +72,59 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
           const isFuture = index > activeStep;
 
           return (
-            <View key={step.key} style={styles.stepWrapper}>
-              {/* Connector line (before step, except first) */}
-              {index > 0 && (
+            <View key={step.key} style={styles.stepItem}>
+              {/* Step circle + connector row */}
+              <View style={styles.circleRow}>
+                {/* Left connector */}
+                {index > 0 && (
+                  <View
+                    style={[
+                      styles.connector,
+                      (isComplete || isActive) && !isCancelled && styles.connectorComplete,
+                    ]}
+                  />
+                )}
+
+                {/* Step circle */}
                 <View
                   style={[
-                    styles.connector,
-                    styles.connectorLeft,
-                    isComplete && styles.connectorComplete,
-                    isActive && styles.connectorComplete,
-                    isCancelled && styles.connectorCancelled,
+                    styles.stepCircle,
+                    isComplete && styles.stepCircleComplete,
+                    isActive && !isCancelled && styles.stepCircleActive,
+                    isCancelled && isActive && styles.stepCircleCancelled,
+                    isFuture && styles.stepCircleFuture,
                   ]}
-                />
-              )}
+                >
+                  {isComplete ? (
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                  ) : isCancelled && isActive ? (
+                    <Ionicons name="close" size={14} color="#fff" />
+                  ) : (
+                    <Ionicons
+                      name={step.icon}
+                      size={14}
+                      color={isActive ? '#fff' : COLORS.gray[500]}
+                    />
+                  )}
+                </View>
 
-              {/* Step circle */}
-              <View
-                style={[
-                  styles.stepCircle,
-                  isComplete && styles.stepCircleComplete,
-                  isActive && styles.stepCircleActive,
-                  isCancelled && isActive && styles.stepCircleCancelled,
-                  isFuture && styles.stepCircleFuture,
-                ]}
-              >
-                {isComplete ? (
-                  <Ionicons name="checkmark" size={14} color="#fff" />
-                ) : isCancelled && isActive ? (
-                  <Ionicons name="close" size={14} color="#fff" />
-                ) : (
-                  <Ionicons
-                    name={step.icon}
-                    size={14}
-                    color={isActive ? '#fff' : COLORS.gray[500]}
+                {/* Right connector */}
+                {index < STEPS.length - 1 && (
+                  <View
+                    style={[
+                      styles.connector,
+                      isComplete && !isCancelled && styles.connectorComplete,
+                    ]}
                   />
                 )}
               </View>
-
-              {/* Connector line (after step, except last) */}
-              {index < STEPS.length - 1 && (
-                <View
-                  style={[
-                    styles.connector,
-                    styles.connectorRight,
-                    isComplete && styles.connectorComplete,
-                    isCancelled && styles.connectorCancelled,
-                  ]}
-                />
-              )}
 
               {/* Label */}
               <Text
                 style={[
                   styles.stepLabel,
                   isComplete && styles.stepLabelComplete,
-                  isActive && styles.stepLabelActive,
+                  isActive && !isCancelled && styles.stepLabelActive,
                   isCancelled && isActive && styles.stepLabelCancelled,
                 ]}
                 numberOfLines={1}
@@ -155,49 +153,37 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
   },
   stepsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'center',
   },
-  stepWrapper: {
+  stepItem: {
     flex: 1,
     alignItems: 'center',
-    position: 'relative',
+  },
+  circleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    justifyContent: 'center',
   },
   connector: {
-    position: 'absolute',
-    top: 14,
+    flex: 1,
     height: 2,
     backgroundColor: COLORS.gray[700],
-  },
-  connectorLeft: {
-    left: 0,
-    right: '50%',
-    marginRight: 14,
-  },
-  connectorRight: {
-    left: '50%',
-    right: 0,
-    marginLeft: 14,
   },
   connectorComplete: {
     backgroundColor: COLORS.primary,
   },
-  connectorCancelled: {
-    backgroundColor: COLORS.gray[700],
-  },
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.gray[700],
-    zIndex: 1,
   },
   stepCircleComplete: {
     backgroundColor: COLORS.primary,
@@ -213,6 +199,10 @@ const styles = StyleSheet.create({
   stepCircleCancelled: {
     backgroundColor: COLORS.danger,
     shadowColor: COLORS.danger,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   stepCircleFuture: {
     backgroundColor: COLORS.gray[800],
@@ -222,17 +212,18 @@ const styles = StyleSheet.create({
     color: COLORS.gray[500],
     marginTop: SPACING.xs,
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 11,
   },
   stepLabelComplete: {
     color: COLORS.primary,
   },
   stepLabelActive: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   stepLabelCancelled: {
     color: COLORS.danger,
+    fontWeight: '700',
   },
   descriptionCard: {
     flexDirection: 'row',

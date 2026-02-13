@@ -44,6 +44,7 @@ import identityRoutes from './routes/identity.js';
 import paymentRoutes from './routes/payments.js';
 import rentalRoutes from './routes/rentals.js';
 import onboardingRoutes from './routes/onboarding.js';
+import { startScheduler } from './services/scheduler.js';
 
 const app = express();
 
@@ -260,5 +261,6 @@ const PORT = process.env.PORT || 3000;
 runMigrations().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Borrowhood server running on port ${PORT}`);
+    startScheduler();
   });
 });

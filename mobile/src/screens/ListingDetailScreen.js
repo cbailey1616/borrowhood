@@ -21,6 +21,7 @@ import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
+import RentalProgress from '../components/RentalProgress';
 import { SkeletonCard } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -260,6 +261,26 @@ export default function ListingDetailScreen({ route, navigation }) {
             </View>
           </BlurCard>
 
+          {/* Active Transaction Status */}
+          {listing.activeTransaction && (
+            <HapticPressable
+              onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
+              haptic="light"
+            >
+              <BlurCard style={styles.transactionCard}>
+                <RentalProgress
+                  status={listing.activeTransaction.status}
+                  paymentStatus={listing.activeTransaction.paymentStatus}
+                  isBorrower={listing.activeTransaction.isBorrower}
+                />
+                <View style={styles.viewTransactionRow}>
+                  <Text style={styles.viewTransactionText}>View Details</Text>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                </View>
+              </BlurCard>
+            </HapticPressable>
+          )}
+
           {/* Description */}
           {listing.description && (
             <View style={styles.section}>
@@ -394,7 +415,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 >
                   <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
                 </HapticPressable>
-                {listing.isAvailable && (
+                {listing.isAvailable && !listing.activeTransaction && (
                   <HapticPressable
                     testID="ListingDetail.button.borrow"
                     accessibilityLabel="Request to borrow"
@@ -404,6 +425,15 @@ export default function ListingDetailScreen({ route, navigation }) {
                     haptic="medium"
                   >
                     <Text style={styles.borrowButtonText}>Request to Borrow</Text>
+                  </HapticPressable>
+                )}
+                {listing.activeTransaction && (
+                  <HapticPressable
+                    style={styles.borrowButton}
+                    onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
+                    haptic="medium"
+                  >
+                    <Text style={styles.borrowButtonText}>View Request</Text>
                   </HapticPressable>
                 )}
               </View>
@@ -426,7 +456,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               >
                 <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
               </HapticPressable>
-              {listing.isAvailable && (
+              {listing.isAvailable && !listing.activeTransaction && (
                 <HapticPressable
                   testID="ListingDetail.button.borrow"
                   accessibilityLabel="Request to borrow"
@@ -436,6 +466,15 @@ export default function ListingDetailScreen({ route, navigation }) {
                   haptic="medium"
                 >
                   <Text style={styles.borrowButtonText}>Request to Borrow</Text>
+                </HapticPressable>
+              )}
+              {listing.activeTransaction && (
+                <HapticPressable
+                  style={styles.borrowButton}
+                  onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
+                  haptic="medium"
+                >
+                  <Text style={styles.borrowButtonText}>View Request</Text>
                 </HapticPressable>
               )}
             </View>
@@ -621,6 +660,25 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  transactionCard: {
+    padding: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  viewTransactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  viewTransactionText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   section: {
     marginBottom: SPACING.xl,

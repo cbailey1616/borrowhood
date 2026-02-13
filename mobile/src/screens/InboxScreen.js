@@ -129,6 +129,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       nav.navigate('ListingDetail', { id: item.listingId });
     } else if (item.type === 'item_match' && item.requestId) {
       nav.navigate('RequestDetail', { id: item.requestId });
+    } else if (['borrow_request', 'request_approved', 'request_declined', 'pickup_confirmed',
+      'return_confirmed', 'payment_confirmed', 'dispute_opened', 'dispute_resolved'].includes(item.type)) {
+      navigation.navigate('MyItems');
     }
   };
 

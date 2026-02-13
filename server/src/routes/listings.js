@@ -223,6 +223,21 @@ router.get('/:id', authenticate, async (req, res) => {
       [l.id]
     );
 
+    // Check if the current user has an active transaction for this listing
+    const activeTransaction = await query(
+      `SELECT id, status, payment_status, borrower_id, lender_id,
+              requested_start_date, requested_end_date
+       FROM borrow_transactions
+       WHERE listing_id = $1
+         AND (borrower_id = $2 OR lender_id = $2)
+         AND status NOT IN ('completed', 'cancelled')
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [l.id, req.user.id]
+    );
+
+    const txn = activeTransaction.rows[0] || null;
+
     res.json({
       id: l.id,
       title: l.title,
@@ -251,6 +266,14 @@ router.get('/:id', authenticate, async (req, res) => {
         isVerified: l.owner_status === 'verified',
       },
       isOwner: l.owner_id === req.user.id,
+      activeTransaction: txn ? {
+        id: txn.id,
+        status: txn.status,
+        paymentStatus: txn.payment_status,
+        isBorrower: txn.borrower_id === req.user.id,
+        startDate: txn.requested_start_date,
+        endDate: txn.requested_end_date,
+      } : null,
       createdAt: l.created_at,
     });
   } catch (err) {

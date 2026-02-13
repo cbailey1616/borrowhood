@@ -538,11 +538,26 @@ export default function TransactionDetailScreen({ route, navigation }) {
         isVisible={returnSheetVisible}
         onClose={() => setReturnSheetVisible(false)}
         title="Confirm Return"
-        message="What condition is the item in?"
-        actions={['like_new', 'good', 'fair', 'worn'].map(condition => ({
-          label: CONDITION_LABELS[condition],
-          onPress: () => handleConfirmReturn(condition),
-        }))}
+        message="Is the item in the same condition as when it was picked up?"
+        actions={[
+          {
+            label: 'Yes, looks good',
+            onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
+          },
+          {
+            label: 'No, there\'s an issue',
+            onPress: () => {
+              setReturnSheetVisible(false);
+              navigation.navigate('DamageClaim', {
+                transactionId: id,
+                depositAmount: transaction?.depositAmount,
+                listingTitle: transaction?.listing?.title,
+                conditionAtPickup: transaction?.conditionAtPickup,
+              });
+            },
+            destructive: true,
+          },
+        ]}
       />
 
       <ActionSheet
