@@ -62,54 +62,59 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
   const isCancelled = status === 'cancelled' || status === 'disputed';
   const description = getStepDescription(status, isBorrower, paymentStatus);
 
+  // Build flat list: [circle, connector, circle, connector, ...]
+  const elements = [];
+  STEPS.forEach((step, index) => {
+    const isComplete = index < activeStep;
+    const isActive = index === activeStep;
+    const isFuture = index > activeStep;
+
+    // Add connector before circle (except first)
+    if (index > 0) {
+      const connectorDone = (isComplete || isActive) && !isCancelled;
+      elements.push(
+        <View
+          key={`c-${index}`}
+          style={[styles.connector, connectorDone && styles.connectorComplete]}
+        />
+      );
+    }
+
+    // Add circle
+    elements.push(
+      <View
+        key={step.key}
+        style={[
+          styles.circle,
+          isComplete && styles.circleComplete,
+          isActive && !isCancelled && styles.circleActive,
+          isCancelled && isActive && styles.circleCancelled,
+          isFuture && styles.circleFuture,
+        ]}
+      >
+        {isComplete ? (
+          <Ionicons name="checkmark" size={12} color="#fff" />
+        ) : isCancelled && isActive ? (
+          <Ionicons name="close" size={12} color="#fff" />
+        ) : (
+          <Ionicons
+            name={step.icon}
+            size={12}
+            color={isActive ? '#fff' : COLORS.gray[500]}
+          />
+        )}
+      </View>
+    );
+  });
+
   return (
     <View style={styles.container}>
-      {/* Circles row - all circles and connectors in a single flat row */}
-      <View style={styles.circlesRow}>
-        {STEPS.map((step, index) => {
-          const isComplete = index < activeStep;
-          const isActive = index === activeStep;
-          const isFuture = index > activeStep;
-
-          return (
-            <View key={step.key} style={styles.circleGroup}>
-              {/* Connector before circle */}
-              {index > 0 && (
-                <View
-                  style={[
-                    styles.connector,
-                    (isComplete || isActive) && !isCancelled && styles.connectorComplete,
-                  ]}
-                />
-              )}
-              {/* Circle */}
-              <View
-                style={[
-                  styles.circle,
-                  isComplete && styles.circleComplete,
-                  isActive && !isCancelled && styles.circleActive,
-                  isCancelled && isActive && styles.circleCancelled,
-                  isFuture && styles.circleFuture,
-                ]}
-              >
-                {isComplete ? (
-                  <Ionicons name="checkmark" size={12} color="#fff" />
-                ) : isCancelled && isActive ? (
-                  <Ionicons name="close" size={12} color="#fff" />
-                ) : (
-                  <Ionicons
-                    name={step.icon}
-                    size={12}
-                    color={isActive ? '#fff' : COLORS.gray[500]}
-                  />
-                )}
-              </View>
-            </View>
-          );
-        })}
+      {/* Circles + connectors in a single flat row */}
+      <View style={styles.track}>
+        {elements}
       </View>
 
-      {/* Labels row - evenly spaced beneath circles */}
+      {/* Labels row */}
       <View style={styles.labelsRow}>
         {STEPS.map((step, index) => {
           const isComplete = index < activeStep;
@@ -147,21 +152,16 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
   );
 }
 
-const CIRCLE_SIZE = 24;
+const CIRCLE_SIZE = 26;
 
 const styles = StyleSheet.create({
   container: {
     paddingVertical: SPACING.md,
   },
-  circlesRow: {
+  track: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-  },
-  circleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+    marginHorizontal: SPACING.md,
   },
   connector: {
     flex: 1,
@@ -203,9 +203,8 @@ const styles = StyleSheet.create({
   },
   labelsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 0,
     marginTop: SPACING.xs,
+    marginHorizontal: SPACING.md,
   },
   label: {
     flex: 1,
