@@ -40,9 +40,9 @@ export const VISIBILITY_LABELS = {
 };
 
 export const TRANSACTION_STATUS_LABELS = {
-  pending: 'Pending Approval',
-  approved: 'Approved - Payment Required',
-  paid: 'Paid - Ready for Pickup',
+  pending: 'Awaiting Approval',
+  approved: 'Approved',
+  paid: 'Ready for Pickup',
   picked_up: 'Currently Borrowed',
   return_pending: 'Return Pending',
   returned: 'Returned',

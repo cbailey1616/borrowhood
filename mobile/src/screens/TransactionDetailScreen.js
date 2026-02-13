@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
+import RentalProgress from '../components/RentalProgress';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, TRANSACTION_STATUS_LABELS, CONDITION_LABELS } from '../utils/config';
 
 export default function TransactionDetailScreen({ route, navigation }) {
@@ -234,13 +235,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
         </HapticPressable>
 
-        {/* Status */}
+        {/* Progress Tracker */}
         <View style={styles.statusCard}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(transaction.status) + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(transaction.status) }]}>
-              {TRANSACTION_STATUS_LABELS[transaction.status]}
-            </Text>
-          </View>
+          <RentalProgress
+            status={transaction.status}
+            isBorrower={transaction.isBorrower}
+            paymentStatus={transaction.paymentStatus}
+          />
         </View>
 
         {/* Other Person */}
