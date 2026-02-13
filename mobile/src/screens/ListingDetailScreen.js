@@ -20,8 +20,10 @@ import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 import { SkeletonCard } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
@@ -31,12 +33,14 @@ const { width } = Dimensions.get('window');
 export default function ListingDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const { user } = useAuth();
+  const { showToast, showError } = useError();
   const [listing, setListing] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [discussions, setDiscussions] = useState([]);
   const [discussionCount, setDiscussionCount] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
 
   const heartScale = useSharedValue(1);
   const heartAnimStyle = useAnimatedStyle(() => ({
@@ -110,6 +114,18 @@ export default function ListingDetailScreen({ route, navigation }) {
       setDiscussionCount(data.total || 0);
     } catch (error) {
       console.error('Failed to fetch discussions:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.deleteListing(id);
+      haptics.success();
+      showToast('Listing deleted', 'success');
+      navigation.goBack();
+    } catch (error) {
+      haptics.error();
+      showError({ message: error.message || 'Failed to delete listing.' });
     }
   };
 
@@ -431,25 +447,11 @@ export default function ListingDetailScreen({ route, navigation }) {
         <View style={styles.footerWrap}>
           <View style={[styles.footer, styles.footerAndroid]}>
             <HapticPressable
-              style={styles.relistButton}
-              onPress={() => navigation.navigate('CreateListing', {
-                relistFrom: {
-                  title: listing.title,
-                  description: listing.description,
-                  condition: listing.condition,
-                  categoryId: listing.categoryId,
-                  visibility: listing.visibility,
-                  isFree: listing.isFree,
-                  pricePerDay: listing.pricePerDay,
-                  depositAmount: listing.depositAmount,
-                  minDuration: listing.minDuration,
-                  maxDuration: listing.maxDuration,
-                },
-              })}
+              style={styles.deleteButton}
+              onPress={() => setDeleteSheetVisible(true)}
               haptic="light"
             >
-              <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.relistButtonText}>Relist</Text>
+              <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
             </HapticPressable>
             <HapticPressable
               style={[styles.borrowButton, styles.editButton]}
@@ -457,11 +459,26 @@ export default function ListingDetailScreen({ route, navigation }) {
               haptic="light"
             >
               <Ionicons name="create-outline" size={20} color="#fff" />
-              <Text style={styles.borrowButtonText}>Edit Listing</Text>
+              <Text style={styles.borrowButtonText}>Edit</Text>
             </HapticPressable>
           </View>
         </View>
       )}
+
+      <ActionSheet
+        isVisible={deleteSheetVisible}
+        onClose={() => setDeleteSheetVisible(false)}
+        title="Delete Listing"
+        message={`Are you sure you want to delete "${listing?.title}"? This cannot be undone.`}
+        actions={[
+          {
+            label: 'Delete Listing',
+            onPress: handleDelete,
+            destructive: true,
+          },
+        ]}
+        cancelLabel="Cancel"
+      />
     </View>
   );
 }
@@ -708,6 +725,15 @@ const styles = StyleSheet.create({
   relistButtonText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.headline,
+  },
+  deleteButton: {
+    width: 52,
+    height: 52,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   editButton: {
     backgroundColor: COLORS.gray[700],
