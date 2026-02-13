@@ -743,6 +743,139 @@ router.get('/me/connect-balance', authenticate, async (req, res) => {
 });
 
 // ============================================
+// POST /api/users/me/connect-test-verify (TEST MODE ONLY)
+// Force-verify Connect account in Stripe test mode
+// ============================================
+router.post('/me/connect-test-verify', authenticate, async (req, res) => {
+  try {
+    // Only allow in test mode
+    if (!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) {
+      return res.status(403).json({ error: 'Only available in test mode' });
+    }
+
+    const result = await query(
+      'SELECT stripe_connect_account_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    const connectId = result.rows[0]?.stripe_connect_account_id;
+    if (!connectId) {
+      return res.status(400).json({ error: 'No Connect account found. Set up payouts first.' });
+    }
+
+    // Update account with test data to pass verification
+    await stripe.accounts.update(connectId, {
+      tos_acceptance: {
+        date: Math.floor(Date.now() / 1000),
+        ip: req.ip || '127.0.0.1',
+      },
+      individual: {
+        first_name: 'Test',
+        last_name: 'User',
+        dob: { day: 1, month: 1, year: 1990 },
+        ssn_last_4: '0000',
+        address: {
+          line1: '123 Main St',
+          city: 'San Francisco',
+          state: 'CA',
+          postal_code: '94111',
+          country: 'US',
+        },
+      },
+      external_account: {
+        object: 'bank_account',
+        country: 'US',
+        currency: 'usd',
+        routing_number: '110000000',
+        account_number: '000123456789',
+      },
+    });
+
+    // Re-fetch to confirm status
+    const account = await stripe.accounts.retrieve(connectId);
+
+    res.json({
+      chargesEnabled: account.charges_enabled,
+      payoutsEnabled: account.payouts_enabled,
+      detailsSubmitted: account.details_submitted,
+    });
+  } catch (err) {
+    console.error('Test verify Connect error:', err);
+    res.status(500).json({ error: err.message || 'Failed to verify Connect account' });
+  }
+});
+
+// ============================================
+// POST /api/users/me/retry-transfers
+// Retry failed transfers for completed/returned rentals
+// ============================================
+router.post('/me/retry-transfers', authenticate, async (req, res) => {
+  try {
+    const userResult = await query(
+      'SELECT stripe_connect_account_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    const connectId = userResult.rows[0]?.stripe_connect_account_id;
+    if (!connectId) {
+      return res.status(400).json({ error: 'No Connect account. Set up payouts first.' });
+    }
+
+    // Verify Connect account is active
+    const account = await stripe.accounts.retrieve(connectId);
+    if (!account.charges_enabled || !account.payouts_enabled) {
+      return res.status(400).json({ error: 'Connect account is not fully verified yet.' });
+    }
+
+    // Find completed/returned transactions where lender wasn't paid
+    const txns = await query(
+      `SELECT id, lender_payout, payment_intent_id
+       FROM borrow_transactions
+       WHERE lender_id = $1
+         AND status IN ('completed', 'returned', 'return_pending')
+         AND lender_payout > 0
+         AND (stripe_transfer_id IS NULL OR stripe_transfer_id = '')`,
+      [req.user.id]
+    );
+
+    let transferred = 0;
+    let failed = 0;
+
+    for (const txn of txns.rows) {
+      try {
+        const amountCents = Math.round(parseFloat(txn.lender_payout) * 100);
+        const transfer = await stripe.transfers.create({
+          amount: amountCents,
+          currency: 'usd',
+          destination: connectId,
+          transfer_group: txn.id,
+          metadata: { transactionId: txn.id },
+        });
+
+        await query(
+          'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
+          [transfer.id, txn.id]
+        );
+
+        transferred++;
+      } catch (err) {
+        console.error(`Transfer failed for txn ${txn.id}:`, err.message);
+        failed++;
+      }
+    }
+
+    res.json({
+      found: txns.rows.length,
+      transferred,
+      failed,
+    });
+  } catch (err) {
+    console.error('Retry transfers error:', err);
+    res.status(500).json({ error: 'Failed to retry transfers' });
+  }
+});
+
+// ============================================
 // GET /api/users/:id/ratings
 // Get user ratings
 // ============================================

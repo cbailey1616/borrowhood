@@ -626,6 +626,12 @@ const getRentalPaymentStatus = (id) =>
 const getConnectBalance = () =>
   get('/users/me/connect-balance');
 
+const testVerifyConnect = () =>
+  post('/users/me/connect-test-verify');
+
+const retryTransfers = () =>
+  post('/users/me/retry-transfers');
+
 const getEarnings = () =>
   get('/earnings');
 
@@ -818,6 +824,8 @@ export default {
   getRentalPaymentStatus,
   getConnectBalance,
   getEarnings,
+  testVerifyConnect,
+  retryTransfers,
   // Saved listings
   getSavedListings,
   saveListing,

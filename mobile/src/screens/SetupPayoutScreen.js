@@ -191,6 +191,61 @@ export default function SetupPayoutScreen({ navigation, route }) {
         </HapticPressable>
       )}
 
+      {/* Test Mode: Force verify + retry transfers */}
+      {isPending && (
+        <HapticPressable
+          haptic="medium"
+          style={[styles.setupButton, { backgroundColor: COLORS.warning }]}
+          onPress={async () => {
+            try {
+              const result = await api.testVerifyConnect();
+              if (result.payoutsEnabled) {
+                haptics.success();
+                showError({ type: 'success', title: 'Verified!', message: 'Connect account is now active. Retrying transfers...' });
+                // Retry any failed transfers
+                const retryResult = await api.retryTransfers();
+                if (retryResult.transferred > 0) {
+                  showError({ type: 'success', title: 'Transfers Complete', message: `${retryResult.transferred} payout(s) transferred to your account.` });
+                }
+                loadConnectStatus();
+              } else {
+                showError({ message: 'Verification submitted but not yet active. Try again in a moment.' });
+              }
+            } catch (err) {
+              showError({ message: err.message || 'Failed to verify account.' });
+            }
+          }}
+        >
+          <Ionicons name="bug-outline" size={20} color="#fff" />
+          <Text style={styles.setupButtonText}>Test: Force Verify</Text>
+        </HapticPressable>
+      )}
+
+      {isComplete && (
+        <HapticPressable
+          haptic="medium"
+          style={[styles.setupButton, { backgroundColor: COLORS.secondary }]}
+          onPress={async () => {
+            try {
+              const result = await api.retryTransfers();
+              if (result.transferred > 0) {
+                haptics.success();
+                showError({ type: 'success', title: 'Transfers Complete', message: `${result.transferred} payout(s) transferred to your account.` });
+              } else if (result.found === 0) {
+                showError({ type: 'success', title: 'All Caught Up', message: 'No pending transfers to retry.' });
+              } else {
+                showError({ message: `${result.failed} transfer(s) failed. Try again later.` });
+              }
+            } catch (err) {
+              showError({ message: err.message || 'Failed to retry transfers.' });
+            }
+          }}
+        >
+          <Ionicons name="refresh-outline" size={20} color="#fff" />
+          <Text style={styles.setupButtonText}>Retry Pending Transfers</Text>
+        </HapticPressable>
+      )}
+
       {needsAction && connectStatus?.requirements?.currently_due?.length > 0 && (
         <View style={styles.warningCard}>
           <Ionicons name="alert-circle-outline" size={20} color={COLORS.warning} />
