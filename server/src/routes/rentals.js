@@ -127,6 +127,8 @@ router.post('/request', authenticate,
 
       // Notify lender of new request
       await sendNotification(item.owner_id, 'borrow_request', {
+        borrowerName: req.user.first_name,
+        itemTitle: item.title,
         transactionId,
         listingId,
         fromUserId: req.user.id,

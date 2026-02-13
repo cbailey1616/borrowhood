@@ -182,10 +182,10 @@ export async function sendNotification(userId, type, data, options = {}) {
         type,
         title,
         body,
-        options.fromUserId || null,
-        options.transactionId || null,
-        options.listingId || null,
-        options.requestId || null,
+        options.fromUserId || data.fromUserId || null,
+        options.transactionId || data.transactionId || null,
+        options.listingId || data.listingId || null,
+        options.requestId || data.requestId || null,
       ]
     );
 
