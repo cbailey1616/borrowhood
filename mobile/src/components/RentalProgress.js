@@ -1,13 +1,19 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING } from '../utils/config';
 
-const STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Sent' },
+const BORROWER_STEPS = [
+  { key: 'requested', icon: 'paper-plane', label: 'Request' },
+  { key: 'approved', icon: 'checkmark-circle', label: 'Accepted' },
+  { key: 'pickup', icon: 'cube', label: 'Pickup' },
+  { key: 'returned', icon: 'arrow-undo', label: 'Return' },
+];
+
+const LENDER_STEPS = [
+  { key: 'requested', icon: 'paper-plane', label: 'Request' },
   { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
   { key: 'pickup', icon: 'cube', label: 'Picked Up' },
   { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
-  { key: 'complete', icon: 'trophy', label: 'Done' },
 ];
 
 function getActiveStep(status) {
@@ -17,59 +23,23 @@ function getActiveStep(status) {
     case 'paid': return 1;
     case 'picked_up': return 2;
     case 'returned':
-    case 'return_pending': return 3;
-    case 'completed': return 4;
-    default: return -1; // cancelled/disputed
-  }
-}
-
-function getStepDescription(status, isBorrower, paymentStatus) {
-  switch (status) {
-    case 'pending':
-      if (isBorrower) {
-        return paymentStatus === 'authorized'
-          ? 'Your payment is on hold. Waiting for the lender to accept your request.'
-          : 'Your request has been sent to the lender.';
-      }
-      return paymentStatus === 'authorized'
-        ? "The borrower's payment is on hold. Approve to collect payment."
-        : 'You have a new borrow request to review.';
-    case 'approved':
-    case 'paid':
-      if (isBorrower) return 'Your request was approved! Arrange a time to pick up the item.';
-      return 'You approved the request. The borrower will pick up the item soon.';
-    case 'picked_up':
-      if (isBorrower) return 'You have the item. Return it before the end date.';
-      return 'Your item is with the borrower. They need to return it by the end date.';
-    case 'returned':
     case 'return_pending':
-      if (isBorrower) return 'The item has been returned. Waiting for rating.';
-      return 'Your item has been returned. Leave a rating to complete the transaction.';
-    case 'completed':
-      return 'Transaction complete! Both parties have rated.';
-    case 'cancelled':
-      if (isBorrower) return 'You cancelled this request. Any payment hold was released.';
-      return 'This request was declined or cancelled.';
-    case 'disputed':
-      return 'There is an open dispute on this transaction.';
-    default:
-      return '';
+    case 'completed': return 3;
+    default: return -1;
   }
 }
 
-export default function RentalProgress({ status, isBorrower, paymentStatus }) {
+export default function RentalProgress({ status, isBorrower }) {
   const activeStep = getActiveStep(status);
   const isCancelled = status === 'cancelled' || status === 'disputed';
-  const description = getStepDescription(status, isBorrower, paymentStatus);
+  const steps = isBorrower ? BORROWER_STEPS : LENDER_STEPS;
 
-  // Build flat list: [circle, connector, circle, connector, ...]
   const elements = [];
-  STEPS.forEach((step, index) => {
+  steps.forEach((step, index) => {
     const isComplete = index < activeStep;
     const isActive = index === activeStep;
     const isFuture = index > activeStep;
 
-    // Add connector before circle (except first)
     if (index > 0) {
       const connectorDone = (isComplete || isActive) && !isCancelled;
       elements.push(
@@ -80,7 +50,6 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
       );
     }
 
-    // Add circle
     elements.push(
       <View
         key={step.key}
@@ -109,14 +78,9 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
 
   return (
     <View style={styles.container}>
-      {/* Circles + connectors in a single flat row */}
-      <View style={styles.track}>
-        {elements}
-      </View>
-
-      {/* Labels row */}
+      <View style={styles.track}>{elements}</View>
       <View style={styles.labelsRow}>
-        {STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const isComplete = index < activeStep;
           const isActive = index === activeStep;
 
@@ -136,18 +100,6 @@ export default function RentalProgress({ status, isBorrower, paymentStatus }) {
           );
         })}
       </View>
-
-      {/* Description */}
-      {description ? (
-        <View style={styles.descriptionCard}>
-          <Ionicons
-            name={isCancelled ? 'alert-circle' : 'information-circle'}
-            size={18}
-            color={isCancelled ? COLORS.danger : COLORS.primary}
-          />
-          <Text style={styles.descriptionText}>{description}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -156,7 +108,7 @@ const CIRCLE_SIZE = 26;
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
   track: {
     flexDirection: 'row',
@@ -222,20 +174,5 @@ const styles = StyleSheet.create({
   labelCancelled: {
     color: COLORS.danger,
     fontWeight: '700',
-  },
-  descriptionCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginTop: SPACING.lg,
-  },
-  descriptionText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    flex: 1,
-    lineHeight: 18,
   },
 });
