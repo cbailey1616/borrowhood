@@ -351,7 +351,7 @@ router.post('/:id/cancel', authenticate, async (req, res) => {
   try {
     const txn = await query(
       `SELECT * FROM borrow_transactions
-       WHERE id = $1 AND borrower_id = $2 AND status IN ('pending', 'paid')`,
+       WHERE id = $1 AND (borrower_id = $2 OR lender_id = $2) AND status IN ('pending', 'approved', 'paid')`,
       [req.params.id, req.user.id]
     );
 
@@ -412,7 +412,7 @@ router.post('/:id/pickup', authenticate,
         `SELECT bt.*, l.title as item_title
          FROM borrow_transactions bt
          JOIN listings l ON bt.listing_id = l.id
-         WHERE bt.id = $1 AND bt.status = 'paid'`,
+         WHERE bt.id = $1 AND bt.status IN ('paid', 'approved')`,
         [req.params.id]
       );
 

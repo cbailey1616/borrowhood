@@ -414,7 +414,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       )}
 
       {/* Borrower: Cancel request before pickup */}
-      {transaction.isBorrower && ['pending', 'paid'].includes(transaction.status) && (
+      {transaction.isBorrower && ['pending', 'approved', 'paid'].includes(transaction.status) && (
         <View style={styles.footer}>
           <HapticPressable
             testID="Transaction.button.cancel"
@@ -434,8 +434,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {transaction.isLender && transaction.status === 'paid' && (
+      {transaction.isLender && ['paid', 'approved'].includes(transaction.status) && (
         <View style={styles.footer}>
+          <HapticPressable
+            haptic="light"
+            style={styles.declineButton}
+            onPress={() => setCancelSheetVisible(true)}
+            disabled={actionLoading}
+          >
+            <Text style={styles.declineButtonText}>Cancel</Text>
+          </HapticPressable>
           <HapticPressable
             testID="Transaction.button.confirmPickup"
             accessibilityLabel="Confirm pickup"
