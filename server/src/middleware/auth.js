@@ -54,10 +54,13 @@ export function requireVerified(req, res, next) {
 // Require active Plus subscription
 export async function requireSubscription(req, res, next) {
   const result = await query(
-    'SELECT subscription_tier FROM users WHERE id = $1',
+    'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
     [req.user.id]
   );
-  if (result.rows[0]?.subscription_tier !== 'plus') {
+  const u = result.rows[0];
+  const graceActive = u?.verification_grace_until && new Date(u.verification_grace_until) > new Date();
+  const isVerified = u?.is_verified || graceActive;
+  if (u?.subscription_tier !== 'plus' && !isVerified) {
     return res.status(403).json({
       error: 'Plus subscription required',
       code: 'SUBSCRIPTION_REQUIRED',

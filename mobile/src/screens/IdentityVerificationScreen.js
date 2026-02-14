@@ -81,14 +81,17 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
       // Check result
       if (resultStatus === 'FlowCompleted') {
-        // Verification submitted — poll for result
-        setStatus('processing');
         haptics.success();
+        setStatus('submitted');
 
-        // Check status after a short delay
-        setTimeout(async () => {
-          await loadStatus();
-        }, 3000);
+        // Trigger grace period on server + refresh auth context
+        try {
+          await api.getVerificationStatus();
+          await refreshUser();
+        } catch (e) {
+          // Grace will be set on next status check — non-blocking
+          console.warn('Post-submit status check failed:', e);
+        }
       }
     } catch (err) {
       haptics.error();
@@ -152,31 +155,43 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     );
   }
 
-  // Processing
-  if (status === 'processing') {
+  // Submitted — treat as verified (grace period active behind the scenes)
+  if (status === 'submitted' || status === 'processing') {
+    const handleContinue = () => {
+      if (source === 'onboarding') {
+        navigation.navigate('OnboardingComplete');
+      } else if (source === 'rental_listing') {
+        navigation.replace('SetupPayout', { source, totalSteps });
+      } else if (source === 'town_browse') {
+        navigation.popToTop();
+      } else {
+        navigation.goBack();
+      }
+    };
+
     return (
       <View style={styles.container}>
+        {source !== 'generic' && totalSteps && (
+          <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
+        )}
         <View style={styles.content}>
-          <View style={styles.iconContainer} testID="Identity.status.processing" accessibilityLabel="Verification in progress">
-            <ActivityIndicator size="large" color={COLORS.primary} />
+          <View style={styles.iconContainer} testID="Identity.status.submitted" accessibilityLabel="Identity verified" accessibilityRole="image">
+            <View style={styles.successCircle}>
+              <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+            </View>
           </View>
-          <Text style={styles.title}>Verification In Progress</Text>
+          <Text style={styles.title}>Identity Verified</Text>
           <Text style={styles.subtitle}>
-            Your identity verification is being processed. This usually takes a few minutes. We'll notify you when it's complete.
+            Your identity has been verified. You can now borrow and lend items across your entire town.
           </Text>
           <HapticPressable
-            style={styles.secondaryButton}
-            onPress={loadStatus}
+            style={styles.primaryButton}
+            onPress={handleContinue}
             haptic="light"
           >
-            <Text style={styles.secondaryButtonText}>Check Status</Text>
-          </HapticPressable>
-          <HapticPressable
-            style={styles.tertiaryButton}
-            onPress={() => navigation.goBack()}
-            haptic="light"
-          >
-            <Text style={styles.tertiaryButtonText}>Go Back</Text>
+            <Text style={styles.primaryButtonText}>
+              {source === 'rental_listing' ? 'Continue' : 'Start Exploring'}
+            </Text>
           </HapticPressable>
         </View>
       </View>

@@ -61,8 +61,12 @@ router.post('/', authenticate,
         const borrower = borrowerInfo.rows[0];
         const tier = borrower?.subscription_tier || 'free';
 
-        // Plus required for paid rentals (any visibility) and town-level items
-        if (tier !== 'plus') {
+        // Verification required for paid rentals and town-level items
+        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
+        const borrowerVerified = borrower?.is_verified || borrowerGraceActive;
+        const borrowerPlusOrVerified = tier === 'plus' || borrowerVerified;
+
+        if (!borrowerPlusOrVerified) {
           return res.status(403).json({
             error: isPaidRental
               ? 'Plus subscription required for paid rentals'
@@ -72,9 +76,7 @@ router.post('/', authenticate,
           });
         }
 
-        // Verification required for paid rentals and town-level items
-        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
-        if (!borrower?.is_verified && !borrowerGraceActive) {
+        if (!borrowerVerified) {
           return res.status(403).json({
             error: isPaidRental
               ? 'Identity verification required for paid rentals'

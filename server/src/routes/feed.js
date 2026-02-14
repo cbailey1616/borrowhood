@@ -22,8 +22,9 @@ router.get('/', authenticate, async (req, res) => {
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = userTier === 'plus' && isVerified && userCity;
-    const canBrowseTown = userTier === 'plus' && userCity; // Plus + has city, regardless of verification
+    const isPlusOrVerified = userTier === 'plus' || isVerified;
+    const canAccessTown = isVerified && userCity;
+    const canBrowseTown = isPlusOrVerified && userCity; // Paid or verified + has city
 
     // Parse visibility filter
     const visibilityFilters = visibility ? visibility.split(',') : [];

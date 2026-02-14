@@ -151,6 +151,8 @@ router.get('/status', authenticate, async (req, res) => {
                WHERE id = $1`,
               [req.user.id]
             );
+            // Grace was just set — mark active so the response reflects it immediately
+            user.verification_grace_until = new Date(Date.now() + 6 * 60 * 60 * 1000);
           }
         }
 

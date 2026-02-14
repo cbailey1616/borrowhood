@@ -198,8 +198,9 @@ async function handleIdentityRequiresInput(session) {
   );
 
   if (user.rows.length > 0) {
+    // Clear grace period so user is prompted to re-verify
     await query(
-      `UPDATE users SET verification_status = 'requires_input' WHERE id = $1`,
+      `UPDATE users SET verification_status = 'requires_input', verification_grace_until = NULL WHERE id = $1`,
       [user.rows[0].id]
     );
 

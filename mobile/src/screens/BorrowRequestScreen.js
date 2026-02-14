@@ -45,7 +45,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         const isPaid = !listing.isFree && parseFloat(listing.pricePerDay) > 0;
 
         // Paid rentals require Plus for both renter and owner
-        if (isPaid && user?.subscriptionTier !== 'plus') {
+        if (isPaid && user?.subscriptionTier !== 'plus' && !user?.isVerified) {
           setAccessCheck({
             loading: false,
             canAccess: false,

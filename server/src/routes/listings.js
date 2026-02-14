@@ -26,8 +26,9 @@ router.get('/', authenticate, async (req, res) => {
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = userTier === 'plus' && isVerified && userCity;
-    const canBrowseTown = userTier === 'plus' && userCity; // Plus + has city, regardless of verification
+    const isPlusOrVerified = userTier === 'plus' || isVerified;
+    const canAccessTown = isVerified && userCity;
+    const canBrowseTown = isPlusOrVerified && userCity; // Paid or verified + has city
 
     const friendsResult = await query(
       'SELECT friend_id FROM friendships WHERE user_id = $1',
@@ -584,7 +585,7 @@ router.patch('/:id', authenticate,
             [req.user.id]
           );
           const u = subCheck.rows[0];
-          if (u?.subscription_tier !== 'plus') {
+          if (u?.subscription_tier !== 'plus' && !u?.is_verified) {
             return res.status(403).json({ error: 'Verification required for town visibility', code: 'PLUS_REQUIRED' });
           }
           if (!u?.is_verified) {

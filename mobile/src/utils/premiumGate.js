@@ -10,7 +10,9 @@ export function checkPremiumGate(user, source) {
   const hasConnect = user?.hasConnectAccount;
   const totalSteps = source === 'rental_listing' ? 3 : 2;
 
-  if (!isPlus) {
+  // If verified, they've completed the full flow (payment + identity)
+  // so skip the subscription check entirely
+  if (!isPlus && !isVerified) {
     return {
       passed: false,
       screen: 'Subscription',

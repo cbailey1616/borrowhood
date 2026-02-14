@@ -163,7 +163,7 @@ export default function FeedScreen({ navigation }) {
   };
 
   const handleTownToggle = () => {
-    if (user?.subscriptionTier !== 'plus') {
+    if (user?.subscriptionTier !== 'plus' && !user?.isVerified) {
       setActiveDropdown(null);
       // Delay so the ActionSheet portal closes before the overlay renders
       setTimeout(() => setShowUpgradePrompt(true), 350);

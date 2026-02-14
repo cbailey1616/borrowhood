@@ -214,17 +214,19 @@ router.get('/access-check', authenticate, async (req, res) => {
 
     let hasAccess = false;
 
+    const isPlusOrVerified = isPlus || isVerified;
+
     switch (feature) {
       case 'town':
       case 'rentals':
-        hasAccess = isPlus;
+        hasAccess = isPlusOrVerified;
         break;
       default:
         hasAccess = true;
     }
 
     // Determine next missing requirement
-    const nextStep = !isPlus
+    const nextStep = !isPlusOrVerified
       ? 'verification'
       : !isVerified
         ? 'identity'
@@ -259,12 +261,13 @@ router.get('/access-check', authenticate, async (req, res) => {
 router.get('/can-charge', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT subscription_tier FROM users WHERE id = $1`,
+      `SELECT subscription_tier, is_verified FROM users WHERE id = $1`,
       [req.user.id]
     );
 
     const tier = result.rows[0]?.subscription_tier || 'free';
-    const canCharge = tier === 'plus';
+    const isVerified = result.rows[0]?.is_verified || false;
+    const canCharge = tier === 'plus' || isVerified;
 
     res.json({ canCharge, tier });
   } catch (err) {
