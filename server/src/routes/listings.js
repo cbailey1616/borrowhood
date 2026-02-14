@@ -230,7 +230,7 @@ router.get('/:id', authenticate, async (req, res) => {
        FROM borrow_transactions
        WHERE listing_id = $1
          AND (borrower_id = $2 OR lender_id = $2)
-         AND status NOT IN ('completed', 'cancelled')
+         AND status IN ('pending', 'approved', 'paid', 'picked_up', 'return_pending')
        ORDER BY created_at DESC
        LIMIT 1`,
       [l.id, req.user.id]
