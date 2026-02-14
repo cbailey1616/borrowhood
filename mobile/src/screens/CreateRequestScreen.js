@@ -141,17 +141,14 @@ export default function CreateRequestScreen({ navigation }) {
       await api.createRequest(requestData);
 
       haptics.success();
+      showToast('Your request has been posted!', 'success');
       navigation.goBack();
-      setTimeout(() => showToast('Your request has been posted!', 'success'), 500);
     } catch (error) {
       showError({
         message: error.message || 'Couldn\'t post your request right now. Please check your connection and try again.',
       });
     } finally {
-      // Only update state if screen is still focused (not dismissed via goBack)
-      if (navigation.isFocused()) {
-        setIsSubmitting(false);
-      }
+      setIsSubmitting(false);
     }
   };
 
@@ -408,7 +405,7 @@ export default function CreateRequestScreen({ navigation }) {
                     if (visibility === 'town') {
                       const gate = checkPremiumGate(user, 'town_browse');
                       if (!gate.passed) {
-                        navigation.navigate(gate.screen, gate.params);
+                        navigation.push(gate.screen, gate.params);
                         return;
                       }
                     }
