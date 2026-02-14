@@ -338,17 +338,15 @@ export default function FeedScreen({ navigation }) {
 
   const renderRequestItem = (item, index) => (
     <AnimatedCard index={index}>
-      <BlurCard
-        style={[styles.card, styles.requestCard]}
-        innerColor="rgba(45, 35, 15, 0.5)"
-        fallbackColor={COLORS.secondary + '18'}
+      <HapticPressable
+        style={styles.requestCard}
+        onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+        haptic="light"
+        scaleDown={0.98}
       >
-        <HapticPressable
-          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-          haptic="light"
-          scaleDown={0.98}
-        >
-          <View style={styles.cardHeader}>
+        <View style={styles.requestAccent} />
+        <View style={styles.requestContent}>
+          <View style={styles.requestHeader}>
             <HapticPressable
               style={styles.userInfo}
               onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
@@ -389,45 +387,43 @@ export default function FeedScreen({ navigation }) {
             </View>
           </View>
 
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            {item.description && (
-              <Text style={styles.description} numberOfLines={3}>{item.description}</Text>
-            )}
-            {(item.neededFrom || item.neededUntil) && (
-              <View style={styles.dateRow}>
-                <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.dateText}>
-                  {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
-                  {item.neededFrom && item.neededUntil && ' - '}
-                  {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
-                </Text>
-              </View>
-            )}
-          </View>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          {item.description && (
+            <Text style={styles.description} numberOfLines={3}>{item.description}</Text>
+          )}
+          {(item.neededFrom || item.neededUntil) && (
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+              <Text style={styles.dateText}>
+                {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
+                {item.neededFrom && item.neededUntil && ' - '}
+                {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
 
-          <View style={[styles.cardActions, styles.requestActions]}>
+          <View style={styles.requestFooter}>
             <HapticPressable
-              style={styles.actionButton}
+              style={styles.requestActionButton}
               onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
               haptic="light"
               scaleDown={1}
             >
-              <Ionicons name="hand-right-outline" size={18} color={COLORS.secondary} />
-              <Text style={[styles.actionText, { color: COLORS.secondary }]}>I Have This</Text>
+              <Ionicons name="hand-right-outline" size={16} color={COLORS.secondary} />
+              <Text style={styles.requestActionText}>I Have This</Text>
             </HapticPressable>
             <HapticPressable
-              style={styles.actionButton}
+              style={styles.requestMessageButton}
               onPress={() => navigation.navigate('Chat', { recipientId: item.user.id })}
               haptic="light"
               scaleDown={1}
             >
-              <Ionicons name="chatbubble-outline" size={18} color={COLORS.textSecondary} />
-              <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Message</Text>
+              <Ionicons name="chatbubble-outline" size={16} color={COLORS.textSecondary} />
+              <Text style={[styles.requestActionText, { color: COLORS.textSecondary }]}>Message</Text>
             </HapticPressable>
           </View>
-        </HapticPressable>
-      </BlurCard>
+        </View>
+      </HapticPressable>
     </AnimatedCard>
   );
 
@@ -875,9 +871,58 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
   },
   requestCard: {
-    backgroundColor: COLORS.secondary + '12',
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.secondary + '25',
+    borderColor: COLORS.warning + '30',
+  },
+  requestAccent: {
+    width: 4,
+    backgroundColor: COLORS.warning,
+  },
+  requestContent: {
+    flex: 1,
+    padding: SPACING.lg,
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  requestFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.lg,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  requestActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: COLORS.secondary + '15',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+  },
+  requestMessageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  requestActionText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.secondary,
   },
   requestBadge: {
     backgroundColor: COLORS.secondaryMuted,
@@ -948,9 +993,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surfaceElevated,
     paddingVertical: SPACING.xs,
-  },
-  requestActions: {
-    backgroundColor: COLORS.secondary + '10',
   },
   actionButton: {
     flex: 1,

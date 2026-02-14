@@ -265,8 +265,7 @@ export default function CreateListingScreen({ navigation, route }) {
         const source = formData.visibility.includes('town') ? 'town_browse' : 'rental_listing';
         const gate = checkPremiumGate(user, source);
         if (!gate.passed) {
-          navigation.goBack();
-          setTimeout(() => navigation.navigate(gate.screen, gate.params), 350);
+          navigation.navigate(gate.screen, gate.params);
         }
       } else if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
         Keyboard.dismiss();
@@ -441,9 +440,7 @@ export default function CreateListingScreen({ navigation, route }) {
                     if (visibility === 'town') {
                       const gate = checkPremiumGate(user, 'town_browse');
                       if (!gate.passed) {
-                        // Dismiss modal first, then navigate to gate screen
-                        navigation.goBack();
-                        setTimeout(() => navigation.navigate(gate.screen, gate.params), 350);
+                        navigation.navigate(gate.screen, gate.params);
                         return;
                       }
                     }
@@ -482,9 +479,7 @@ export default function CreateListingScreen({ navigation, route }) {
               // Turning ON rental — check gate (Plus + verified + payout)
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
-                // Dismiss modal first, then navigate to gate screen
-                navigation.goBack();
-                setTimeout(() => navigation.navigate(gate.screen, gate.params), 350);
+                navigation.navigate(gate.screen, gate.params);
                 return;
               }
             }

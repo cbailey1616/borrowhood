@@ -17,16 +17,23 @@ import { useError } from '../context/ErrorContext';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import GateStepper from '../components/GateStepper';
+import { checkPremiumGate } from '../utils/premiumGate';
 
 export default function SetupPayoutScreen({ navigation, route }) {
   const source = route?.params?.source || 'generic';
   const totalSteps = route?.params?.totalSteps;
   const { showError } = useError();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [connectStatus, setConnectStatus] = useState(null);
 
   useEffect(() => {
+    // Redirect if user hasn't completed prior gate steps
+    const gate = checkPremiumGate(user, 'rental_listing');
+    if (!gate.passed && gate.screen !== 'SetupPayout') {
+      navigation.replace(gate.screen, gate.params);
+      return;
+    }
     loadConnectStatus();
   }, []);
 

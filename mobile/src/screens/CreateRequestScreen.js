@@ -13,11 +13,13 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
+import { checkPremiumGate } from '../utils/premiumGate';
 
 const ALL_VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
@@ -30,6 +32,7 @@ const EXPIRATION_OPTIONS = [
 ];
 
 export default function CreateRequestScreen({ navigation }) {
+  const { user } = useAuth();
   const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
     type: 'item',
@@ -402,6 +405,13 @@ export default function CreateRequestScreen({ navigation }) {
                       updateField('visibility', current.filter(v => v !== visibility));
                     }
                   } else {
+                    if (visibility === 'town') {
+                      const gate = checkPremiumGate(user, 'town_browse');
+                      if (!gate.passed) {
+                        navigation.navigate(gate.screen, gate.params);
+                        return;
+                      }
+                    }
                     updateField('visibility', [...current, visibility]);
                   }
                 }}

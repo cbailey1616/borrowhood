@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import BlurCard from './BlurCard';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
@@ -30,7 +30,7 @@ export default function EmojiReactionPicker({ onSelect, onMore, style }) {
   }, [onMore]);
 
   return (
-    <Animated.View entering={ZoomIn.springify().damping(15)} style={[styles.container, style]}>
+    <Animated.View entering={FadeIn.duration(150)} style={[styles.container, style]}>
       <BlurCard style={styles.card} intensity={80}>
         <View style={styles.bar}>
           {EMOJI_OPTIONS.map((item, index) => (
