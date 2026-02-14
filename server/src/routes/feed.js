@@ -236,9 +236,15 @@ router.get('/', authenticate, async (req, res) => {
       },
     }));
 
-    // Combine and sort
+    // Combine and sort — give requests a gentle boost so they surface higher
+    // without dominating the feed (treated as if posted 6 hours more recently)
+    const REQUEST_BOOST_MS = 6 * 60 * 60 * 1000;
     const feed = [...listings, ...requests]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime() + (a.type === 'request' ? REQUEST_BOOST_MS : 0);
+        const bTime = new Date(b.createdAt).getTime() + (b.type === 'request' ? REQUEST_BOOST_MS : 0);
+        return bTime - aTime;
+      })
       .slice(offset, offset + parseInt(limit));
 
     res.json({

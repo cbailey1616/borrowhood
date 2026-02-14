@@ -147,32 +147,24 @@ export default function SubscriptionScreen({ navigation, route }) {
         return;
       }
 
-      // For gate flows and onboarding, navigate immediately
+      // Poll for webhook to update subscription_tier in DB
+      await pollForActivation();
+
       if (source === 'town_browse' || source === 'rental_listing') {
-        await api.getCurrentSubscription();
-        await refreshUser();
         haptics.success();
         navigation.replace('IdentityVerification', { source, totalSteps });
         return;
       }
 
       if (source === 'onboarding') {
-        await api.getCurrentSubscription();
-        await refreshUser();
         haptics.success();
         navigation.replace('OnboardingVerification', { source: 'onboarding', totalSteps: 2 });
         return;
       }
 
-      // Generic: poll and update this screen
-      const activated = await pollForActivation();
-      if (activated) {
-        haptics.success();
-      } else {
-        await loadData();
-        await refreshUser();
-        haptics.success();
-      }
+      // Generic: update this screen
+      await loadData();
+      haptics.success();
     } catch (err) {
       haptics.error();
       showError({

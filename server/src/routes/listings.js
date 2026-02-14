@@ -414,33 +414,22 @@ router.post('/', authenticate,
 
     const {
       title, description, condition, communityId, categoryId,
-      isFree, pricePerDay, depositAmount, minDuration, maxDuration,
+      isFree: _isFree, pricePerDay: _pricePerDay, depositAmount, minDuration, maxDuration,
       visibility, photos, requestMatchId
     } = req.body;
+    let isFree = _isFree;
+    let pricePerDay = _pricePerDay;
 
     // Normalize visibility to array
     let visibilityArray = Array.isArray(visibility) ? [...visibility] : [visibility];
 
     try {
-      // Check subscription for paid rentals
-      if (!isFree && pricePerDay > 0) {
-        const subCheck = await query(
-          'SELECT subscription_tier FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const tier = subCheck.rows[0]?.subscription_tier || 'free';
+      // Check subscription/verification for paid rentals and town visibility
+      let pricingDowngraded = false;
+      const needsPaidCheck = !isFree && pricePerDay > 0;
+      const needsTownCheck = visibilityArray.includes('town');
 
-        if (tier !== 'plus') {
-          return res.status(403).json({
-            error: 'Verification required to charge for rentals',
-            code: 'PLUS_REQUIRED',
-            requiredTier: 'plus',
-          });
-        }
-      }
-
-      // Check subscription + verification for town visibility
-      if (visibilityArray.includes('town')) {
+      if (needsPaidCheck || needsTownCheck) {
         const subCheck = await query(
           'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
@@ -449,19 +438,18 @@ router.post('/', authenticate,
         const graceActive = subCheck.rows[0]?.verification_grace_until && new Date(subCheck.rows[0].verification_grace_until) > new Date();
         const verified = subCheck.rows[0]?.is_verified || graceActive;
 
-        if (tier !== 'plus') {
-          return res.status(403).json({
-            error: 'Verification required for town-wide visibility',
-            code: 'PLUS_REQUIRED',
-            requiredTier: 'plus',
-          });
+        // Silently downgrade paid rental to free if not plus
+        if (needsPaidCheck && tier !== 'plus') {
+          isFree = true;
+          pricePerDay = null;
+          pricingDowngraded = true;
         }
 
-        if (!verified) {
-          return res.status(403).json({
-            error: 'Identity verification required for town-wide visibility',
-            code: 'VERIFICATION_REQUIRED',
-          });
+        // Silently drop town if not plus/verified
+        if (needsTownCheck && (tier !== 'plus' || !verified)) {
+          const idx = visibilityArray.indexOf('town');
+          visibilityArray.splice(idx, 1);
+          if (visibilityArray.length === 0) visibilityArray.push('close_friends');
         }
       }
       // If neighborhood selected but no community, silently drop it from visibility
@@ -547,7 +535,10 @@ router.post('/', authenticate,
         }
       }
 
-      res.status(201).json({ id: listingId });
+      res.status(201).json({
+        id: listingId,
+        ...(pricingDowngraded && { pricingDowngraded: true }),
+      });
     } catch (err) {
       console.error('Create listing error:', err);
       res.status(500).json({ error: 'Failed to create listing' });
@@ -583,23 +574,23 @@ router.patch('/:id', authenticate,
       const validStatuses = ['active', 'paused'];
       const validVisibilities = ['close_friends', 'neighborhood', 'town'];
 
-      // Validate visibility changes require proper tier/verification
-      const visibilityValue = req.body.visibility;
-      if (visibilityValue) {
-        const visArray = Array.isArray(visibilityValue) ? visibilityValue : [visibilityValue];
+      // Silently drop town from visibility if user isn't plus/verified
+      if (req.body.visibility) {
+        let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
         if (visArray.includes('town')) {
           const subCheck = await query(
-            'SELECT subscription_tier, is_verified FROM users WHERE id = $1',
+            'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
             [req.user.id]
           );
           const u = subCheck.rows[0];
-          if (u?.subscription_tier !== 'plus' && !u?.is_verified) {
-            return res.status(403).json({ error: 'Verification required for town visibility', code: 'PLUS_REQUIRED' });
-          }
-          if (!u?.is_verified) {
-            return res.status(403).json({ error: 'Verification required for town visibility', code: 'VERIFICATION_REQUIRED' });
+          const graceActive = u?.verification_grace_until && new Date(u.verification_grace_until) > new Date();
+          const verified = u?.is_verified || graceActive;
+          if (u?.subscription_tier !== 'plus' || !verified) {
+            visArray = visArray.filter(v => v !== 'town');
+            if (visArray.length === 0) visArray.push('close_friends');
           }
         }
+        req.body.visibility = visArray;
       }
 
       // Validate status

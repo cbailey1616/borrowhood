@@ -28,7 +28,7 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateListingScreen({ navigation, route }) {
   const { user, refreshUser } = useAuth();
-  const { showError } = useError();
+  const { showError, showToast } = useError();
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -244,7 +244,7 @@ export default function CreateListingScreen({ navigation, route }) {
         ? await api.uploadImages(data.photos, 'listings')
         : [];
 
-      await api.createListing({
+      const result = await api.createListing({
         title: data.title.trim(),
         description: data.description.trim() || undefined,
         condition: data.condition,
@@ -263,31 +263,19 @@ export default function CreateListingScreen({ navigation, route }) {
       if (!mountedRef.current) return;
       Keyboard.dismiss();
       haptics.success();
+
+      if (result?.pricingDowngraded) {
+        showToast('Your item was listed for free. Upgrade to Plus to charge rental fees.', 'success');
+      }
+
       // Prevent finally block from setting state during dismiss animation
       mountedRef.current = false;
       navigation.goBack();
     } catch (error) {
       if (!mountedRef.current) return;
-      // Handle subscription and membership errors with themed UI
       const errorMsg = error.message?.toLowerCase() || '';
-      const errorCode = error.code || '';
 
-      if (errorCode === 'PLUS_REQUIRED' || errorCode === 'VERIFICATION_REQUIRED' || errorMsg.includes('verification required') || errorMsg.includes('town visibility')) {
-        Keyboard.dismiss();
-        // Refresh user in case local state is stale, then check gate
-        await refreshUser();
-        const source = formData.visibility.includes('town') ? 'town_browse' : 'rental_listing';
-        const gate = checkPremiumGate(user, source);
-        if (!gate.passed) {
-          navigation.push(gate.screen, gate.params);
-        } else {
-          // Server rejected but local gate passed — force navigate to subscription
-          navigation.push('Subscription', { source });
-        }
-      } else if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
-        Keyboard.dismiss();
-        setShowJoinCommunity(true);
-      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+      if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
         haptics.error();
         showError({
           type: 'network',

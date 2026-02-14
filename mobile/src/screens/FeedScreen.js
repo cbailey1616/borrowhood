@@ -270,7 +270,7 @@ export default function FeedScreen({ navigation }) {
             )}
             <View style={styles.typeBadge}>
               <Ionicons name="cube-outline" size={12} color={COLORS.primary} />
-              <Text style={styles.typeBadgeText}>New Item</Text>
+              <Text style={styles.typeBadgeText}>Item Available</Text>
             </View>
           </View>
 

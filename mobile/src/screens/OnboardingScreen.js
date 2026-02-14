@@ -55,23 +55,35 @@ export default function OnboardingScreen({ onComplete }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setLocationErrorSheet({ visible: true, title: 'Permission Denied', message: 'Please enter your location manually.' });
+        setLocationErrorSheet({ visible: true, title: 'Permission Denied', message: 'Please enable location access in Settings, or enter your location manually below.' });
         setIsGettingLocation(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
+      ]);
+
       const [address] = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
 
-      if (address) {
-        setCity(address.city || address.subregion || '');
-        setState(address.region || '');
+      const detectedCity = address?.city || address?.subregion || '';
+      const detectedState = address?.region || '';
+
+      if (detectedCity && detectedState) {
+        setCity(detectedCity);
+        setState(detectedState);
+      } else {
+        setLocationErrorSheet({ visible: true, title: 'Location Found', message: 'We got your coordinates but couldn\'t determine your city. Please enter it manually below.' });
       }
     } catch (error) {
-      setLocationErrorSheet({ visible: true, title: 'Error', message: 'Could not get your location. Please enter manually.' });
+      const msg = error.message === 'timeout'
+        ? 'Location is taking too long. Please enter your city and state manually below.'
+        : 'Could not get your location. Please enter it manually below.';
+      setLocationErrorSheet({ visible: true, title: 'Location Unavailable', message: msg });
     } finally {
       setIsGettingLocation(false);
     }
