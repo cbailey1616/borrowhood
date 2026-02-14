@@ -762,4 +762,31 @@ router.post('/reset-password',
   }
 );
 
+// ============================================
+// POST /api/auth/admin/debug-transactions
+// Debug: list recent transactions
+// ============================================
+router.post('/admin/debug-transactions', async (req, res) => {
+  const { secret } = req.body;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    const result = await query(
+      `SELECT bt.id, bt.status, bt.payment_status, bt.borrower_id, bt.lender_id,
+              bt.created_at, l.title,
+              b.first_name as borrower_name, lnd.first_name as lender_name
+       FROM borrow_transactions bt
+       JOIN listings l ON bt.listing_id = l.id
+       JOIN users b ON bt.borrower_id = b.id
+       JOIN users lnd ON bt.lender_id = lnd.id
+       ORDER BY bt.created_at DESC
+       LIMIT 15`
+    );
+    res.json({ transactions: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
