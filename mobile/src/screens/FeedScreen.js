@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   InteractionManager,
+  Platform,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -906,16 +907,18 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   requestWantedBadge: {
-    backgroundColor: COLORS.secondary + '20',
-    paddingHorizontal: SPACING.sm,
+    backgroundColor: '#8B000015',
+    paddingHorizontal: SPACING.sm + 2,
     paddingVertical: 3,
-    borderRadius: RADIUS.full,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#C0392B',
   },
   requestWantedText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '700',
-    color: COLORS.secondary,
-    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontWeight: '900',
+    color: '#C0392B',
+    letterSpacing: 2,
     fontSize: 10,
   },
   requestTitle: {

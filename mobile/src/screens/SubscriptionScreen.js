@@ -391,6 +391,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   contentContainer: {
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.xxl,
   },
   loadingContainer: {

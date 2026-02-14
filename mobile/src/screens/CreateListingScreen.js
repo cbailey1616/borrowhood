@@ -59,9 +59,7 @@ export default function CreateListingScreen({ navigation, route }) {
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: isVerifiedOrPlus
-      ? ['close_friends', 'neighborhood', 'town']
-      : ['close_friends', 'neighborhood'],
+    visibility: ['close_friends'], // Expanded after community data loads
     isFree: true,
     pricePerDay: '',
     depositAmount: '',
@@ -125,8 +123,23 @@ export default function CreateListingScreen({ navigation, route }) {
       try {
         // Fetch communities
         const communities = await api.getCommunities({ member: true });
-        if (communities && communities.length > 0) {
+        const hasCommunity = communities && communities.length > 0;
+        if (hasCommunity) {
           setCommunityId(communities[0].id);
+        }
+
+        // Expand default visibility based on what the user can actually use
+        if (!route?.params?.relistFrom) {
+          const expanded = ['close_friends'];
+          if (hasCommunity) expanded.push('neighborhood');
+          if (isVerifiedOrPlus) expanded.push('town');
+          setFormData(prev => {
+            // Only expand if still at initial default
+            if (prev.visibility.length === 1 && prev.visibility[0] === 'close_friends') {
+              return { ...prev, visibility: expanded };
+            }
+            return prev;
+          });
         }
 
         // Fetch categories
