@@ -404,6 +404,7 @@ router.post('/', authenticate,
   body('maxDuration').optional().isInt({ min: 1, max: 365 }),
   body('visibility').isArray({ min: 1 }),
   body('visibility.*').isIn(['close_friends', 'neighborhood', 'town']),
+  body('requestMatchId').optional().isUUID(),
   body('photos').isArray({ min: 1, max: 10 }),
   async (req, res) => {
     const errors = validationResult(req);
@@ -414,7 +415,7 @@ router.post('/', authenticate,
     const {
       title, description, condition, communityId, categoryId,
       isFree, pricePerDay, depositAmount, minDuration, maxDuration,
-      visibility, photos
+      visibility, photos, requestMatchId
     } = req.body;
 
     // Normalize visibility to array
@@ -512,31 +513,48 @@ router.post('/', authenticate,
         }
       }
 
-      // Find matching open requests and notify their owners
-      try {
-        // Only match requests if we have a communityId
-        const matchingRequests = communityId ? await query(
-          `SELECT r.id, r.user_id, r.title as request_title
-           FROM item_requests r
-           WHERE r.status = 'open'
-             AND r.community_id = $1
-             AND r.user_id != $2
-             AND to_tsvector('english', r.title || ' ' || COALESCE(r.description, '')) @@ plainto_tsquery($3)`,
-          [communityId, req.user.id, title]
-        ) : { rows: [] };
-
-        // Send notifications to request owners
-        for (const match of matchingRequests.rows) {
-          await sendNotification(
-            match.user_id,
-            'item_match',
-            { itemTitle: title, requestTitle: match.request_title },
-            { listingId, fromUserId: req.user.id }
+      // Direct request match notification (from "I Have This" flow)
+      if (requestMatchId) {
+        try {
+          const matchedRequest = await query(
+            'SELECT user_id, title FROM item_requests WHERE id = $1 AND status = $2',
+            [requestMatchId, 'open']
           );
+          if (matchedRequest.rows.length > 0 && matchedRequest.rows[0].user_id !== req.user.id) {
+            await sendNotification(
+              matchedRequest.rows[0].user_id,
+              'item_match',
+              { itemTitle: title, requestTitle: matchedRequest.rows[0].title },
+              { listingId, requestId: requestMatchId, fromUserId: req.user.id }
+            );
+          }
+        } catch (matchErr) {
+          console.error('Error sending request match notification:', matchErr);
         }
-      } catch (matchErr) {
-        // Log but don't fail the listing creation
-        console.error('Error finding matching requests:', matchErr);
+      } else {
+        // Fuzzy text match — find matching open requests and notify their owners
+        try {
+          const matchingRequests = communityId ? await query(
+            `SELECT r.id, r.user_id, r.title as request_title
+             FROM item_requests r
+             WHERE r.status = 'open'
+               AND r.community_id = $1
+               AND r.user_id != $2
+               AND to_tsvector('english', r.title || ' ' || COALESCE(r.description, '')) @@ plainto_tsquery($3)`,
+            [communityId, req.user.id, title]
+          ) : { rows: [] };
+
+          for (const match of matchingRequests.rows) {
+            await sendNotification(
+              match.user_id,
+              'item_match',
+              { itemTitle: title, requestTitle: match.request_title },
+              { listingId, fromUserId: req.user.id }
+            );
+          }
+        } catch (matchErr) {
+          console.error('Error finding matching requests:', matchErr);
+        }
       }
 
       res.status(201).json({ id: listingId });

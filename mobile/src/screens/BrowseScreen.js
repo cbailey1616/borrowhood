@@ -14,6 +14,7 @@ import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
+import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
 const TABS = [
@@ -35,6 +36,7 @@ export default function BrowseScreen({ navigation }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [distanceFilter, setDistanceFilter] = useState('all');
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -206,7 +208,7 @@ export default function BrowseScreen({ navigation }) {
             style={styles.haveThisButton}
             onPress={() => {
               haptics.medium();
-              navigation.navigate('CreateListing', { requestMatch: item });
+              setSelectedRequest(item);
             }}
             haptic={null}
           >
@@ -346,6 +348,32 @@ export default function BrowseScreen({ navigation }) {
           }
         />
       )}
+
+      <ActionSheet
+        isVisible={!!selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        title="I Have This"
+        actions={[
+          {
+            label: 'Message Them',
+            icon: <Ionicons name="chatbubble-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              const req = selectedRequest;
+              setSelectedRequest(null);
+              navigation.navigate('Chat', { recipientId: req.requester.id });
+            },
+          },
+          {
+            label: 'Post My Item',
+            icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              const req = selectedRequest;
+              setSelectedRequest(null);
+              navigation.navigate('CreateListing', { requestMatch: req });
+            },
+          },
+        ]}
+      />
     </View>
   );
 }

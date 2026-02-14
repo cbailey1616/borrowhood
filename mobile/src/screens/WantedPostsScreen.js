@@ -13,12 +13,14 @@ import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 
 export default function WantedPostsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -104,7 +106,7 @@ export default function WantedPostsScreen({ navigation }) {
 
           <HapticPressable
             style={styles.haveThisButton}
-            onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
+            onPress={() => setSelectedRequest(item)}
             haptic="medium"
           >
             <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
@@ -160,6 +162,32 @@ export default function WantedPostsScreen({ navigation }) {
             </View>
           )
         }
+      />
+
+      <ActionSheet
+        isVisible={!!selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        title="I Have This"
+        actions={[
+          {
+            label: 'Message Them',
+            icon: <Ionicons name="chatbubble-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              const req = selectedRequest;
+              setSelectedRequest(null);
+              navigation.navigate('Chat', { recipientId: req.requester.id });
+            },
+          },
+          {
+            label: 'Post My Item',
+            icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              const req = selectedRequest;
+              setSelectedRequest(null);
+              navigation.navigate('CreateListing', { requestMatch: req });
+            },
+          },
+        ]}
       />
     </View>
   );

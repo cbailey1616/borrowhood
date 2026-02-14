@@ -50,12 +50,18 @@ export default function CreateListingScreen({ navigation, route }) {
   );
   const [communityId, setCommunityId] = useState(null);
   const [categories, setCategories] = useState([]);
+  const isVerifiedOrPlus = user?.isVerified || user?.subscriptionTier === 'plus';
+  const requestMatch = route?.params?.requestMatch;
+  const requestMatchId = requestMatch?.id || null;
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: ['close_friends'], // Array for multi-select, default to friends
+    visibility: isVerifiedOrPlus
+      ? ['close_friends', 'neighborhood', 'town']
+      : ['close_friends', 'neighborhood'],
     isFree: true,
     pricePerDay: '',
     depositAmount: '',
@@ -100,6 +106,18 @@ export default function CreateListingScreen({ navigation, route }) {
       }));
     }
   }, [route?.params?.relistFrom]);
+
+  // Pre-populate from request match ("I Have This" flow)
+  useEffect(() => {
+    if (requestMatch) {
+      setFormData(prev => ({
+        ...prev,
+        title: requestMatch.title || '',
+        description: requestMatch.title ? `Re: ${requestMatch.title}` : '',
+        categoryId: requestMatch.categoryId || null,
+      }));
+    }
+  }, [requestMatch]);
 
   // Fetch user's community and friends on mount
   useEffect(() => {
@@ -246,6 +264,7 @@ export default function CreateListingScreen({ navigation, route }) {
         maxDuration: parseInt(data.maxDuration) || 14,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
         communityId: communityId || undefined, // Always send communityId (required by DB)
+        requestMatchId: requestMatchId || undefined,
       });
 
       if (!mountedRef.current) return;
@@ -296,6 +315,16 @@ export default function CreateListingScreen({ navigation, route }) {
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
     >
+      {/* Request Match Banner */}
+      {requestMatch && (
+        <View style={styles.requestMatchBanner}>
+          <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+          <Text style={styles.requestMatchText} numberOfLines={2}>
+            Posting for {requestMatch.requesterName ? `${requestMatch.requesterName}'s` : 'a'} request: {requestMatch.title}
+          </Text>
+        </View>
+      )}
+
       {/* Photos */}
       <View style={styles.section}>
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
@@ -697,6 +726,20 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: SPACING.xl,
+  },
+  requestMatchBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary + '15',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.xl,
+  },
+  requestMatchText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
+    flex: 1,
   },
   section: {
     marginBottom: SPACING.xl,

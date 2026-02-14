@@ -184,8 +184,8 @@ const getMyListings = () =>
 const getListing = (id) =>
   get(`/listings/${id}`);
 
-const createListing = (data) =>
-  post('/listings', data);
+const createListing = ({ requestMatchId, ...data }) =>
+  post('/listings', { ...data, ...(requestMatchId && { requestMatchId }) });
 
 const updateListing = (id, data) =>
   patch(`/listings/${id}`, data);

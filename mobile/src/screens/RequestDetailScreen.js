@@ -22,6 +22,7 @@ export default function RequestDetailScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [showHaveThisSheet, setShowHaveThisSheet] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -179,7 +180,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         <View style={styles.footer}>
           <HapticPressable
             style={styles.haveThisButton}
-            onPress={() => navigation.navigate('CreateListing', { requestMatch: request })}
+            onPress={() => setShowHaveThisSheet(true)}
             haptic="medium"
           >
             <Ionicons name="hand-right-outline" size={20} color="#fff" />
@@ -215,6 +216,30 @@ export default function RequestDetailScreen({ route, navigation }) {
           </HapticPressable>
         </View>
       )}
+
+      <ActionSheet
+        isVisible={showHaveThisSheet}
+        onClose={() => setShowHaveThisSheet(false)}
+        title="I Have This"
+        actions={[
+          {
+            label: 'Message Them',
+            icon: <Ionicons name="chatbubble-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              setShowHaveThisSheet(false);
+              navigation.navigate('Chat', { recipientId: request.requester.id });
+            },
+          },
+          {
+            label: 'Post My Item',
+            icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              setShowHaveThisSheet(false);
+              navigation.navigate('CreateListing', { requestMatch: request });
+            },
+          },
+        ]}
+      />
 
       <ActionSheet
         isVisible={showDeleteSheet}

@@ -54,6 +54,7 @@ export default function FeedScreen({ navigation }) {
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -385,7 +386,7 @@ export default function FeedScreen({ navigation }) {
         ) : null}
 
         <HapticPressable
-          onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
+          onPress={() => setSelectedRequest(item)}
           haptic="medium"
           style={styles.requestCTA}
         >
@@ -604,6 +605,32 @@ export default function FeedScreen({ navigation }) {
               toggleFilter(cat.id, allCatIds, setCategoryFilters);
             },
           })),
+        ]}
+      />
+
+      <ActionSheet
+        isVisible={!!selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        title="I Have This"
+        actions={[
+          {
+            label: 'Message Them',
+            icon: <Ionicons name="chatbubble-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              const req = selectedRequest;
+              setSelectedRequest(null);
+              navigation.navigate('Chat', { recipientId: req.user.id });
+            },
+          },
+          {
+            label: 'Post My Item',
+            icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
+            onPress: () => {
+              const req = selectedRequest;
+              setSelectedRequest(null);
+              navigation.navigate('CreateListing', { requestMatch: req });
+            },
+          },
         ]}
       />
 
