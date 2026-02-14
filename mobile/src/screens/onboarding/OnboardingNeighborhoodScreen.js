@@ -74,12 +74,16 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 
           // Auto-save location and fetch neighborhoods
           if (detectedCity && detectedState) {
-            await api.updateProfile({
-              city: detectedCity,
-              state: detectedState,
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-            });
+            try {
+              await api.updateProfile({
+                city: detectedCity,
+                state: detectedState,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              });
+            } catch (profileErr) {
+              // Ignore — user may already be verified with a locked location
+            }
             await refreshUser();
             setLocationSaved(true);
             fetchNeighborhoods(coords);
@@ -100,7 +104,11 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     }
     setIsLoading(true);
     try {
-      await api.updateProfile({ city: city.trim(), state: state.trim() });
+      try {
+        await api.updateProfile({ city: city.trim(), state: state.trim() });
+      } catch (profileErr) {
+        // Ignore — user may already be verified with a locked location
+      }
       await refreshUser();
       setLocationSaved(true);
       fetchNeighborhoods(null);

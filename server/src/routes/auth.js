@@ -128,7 +128,8 @@ router.post('/login',
 
     try {
       const result = await query(
-        `SELECT id, email, password_hash, first_name, last_name, status, city, state
+        `SELECT id, email, password_hash, first_name, last_name, status, city, state,
+                onboarding_completed, onboarding_step
          FROM users WHERE email = $1`,
         [email]
       );
@@ -164,6 +165,8 @@ router.post('/login',
           status: user.status,
           city: user.city,
           state: user.state,
+          onboardingCompleted: user.onboarding_completed || false,
+          onboardingStep: user.onboarding_step,
         },
         ...tokens,
       });
@@ -195,7 +198,7 @@ router.post('/google', async (req, res) => {
 
     // Try to find existing user by google_id or email
     let result = await query(
-      'SELECT id, email, first_name, last_name, status, google_id FROM users WHERE google_id = $1',
+      'SELECT id, email, first_name, last_name, status, google_id, onboarding_completed, onboarding_step FROM users WHERE google_id = $1',
       [googleId]
     );
 
@@ -208,7 +211,7 @@ router.post('/google', async (req, res) => {
     } else {
       // Check by email
       result = await query(
-        'SELECT id, email, first_name, last_name, status, google_id FROM users WHERE email = $1',
+        'SELECT id, email, first_name, last_name, status, google_id, onboarding_completed, onboarding_step FROM users WHERE email = $1',
         [email]
       );
 
@@ -259,6 +262,8 @@ router.post('/google', async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         status: user.status,
+        onboardingCompleted: user.onboarding_completed || false,
+        onboardingStep: user.onboarding_step,
       },
       ...tokens,
     });
@@ -300,7 +305,7 @@ router.post('/apple', async (req, res) => {
 
     // Try to find existing user by apple_id or email
     let result = await query(
-      'SELECT id, email, first_name, last_name, status, apple_id FROM users WHERE apple_id = $1',
+      'SELECT id, email, first_name, last_name, status, apple_id, onboarding_completed, onboarding_step FROM users WHERE apple_id = $1',
       [appleId]
     );
 
@@ -313,7 +318,7 @@ router.post('/apple', async (req, res) => {
     } else if (email) {
       // Check by email
       result = await query(
-        'SELECT id, email, first_name, last_name, status, apple_id FROM users WHERE email = $1',
+        'SELECT id, email, first_name, last_name, status, apple_id, onboarding_completed, onboarding_step FROM users WHERE email = $1',
         [email]
       );
 
@@ -386,6 +391,8 @@ router.post('/apple', async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         status: user.status,
+        onboardingCompleted: user.onboarding_completed || false,
+        onboardingStep: user.onboarding_step,
       },
       ...tokens,
     });

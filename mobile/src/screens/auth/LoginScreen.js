@@ -40,9 +40,10 @@ export default function LoginScreen({ navigation }) {
       haptics.success();
     } catch (error) {
       showError({
-        type: 'auth',
-        title: 'Couldn\'t Sign In',
-        message: error.message || 'That didn\'t work. Please double-check your email and password and try again.',
+        type: 'validation',
+        title: 'Hmm, that didn\'t work',
+        message: error.message || 'Please double-check your email and password and try again.',
+        primaryAction: 'Try Again',
       });
     } finally {
       setIsLoading(false);
