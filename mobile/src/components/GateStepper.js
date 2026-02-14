@@ -3,8 +3,8 @@ import { Ionicons } from './Icon';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 const STEP_LABELS = {
-  1: 'Plus Membership',
-  2: 'Identity Verification',
+  1: 'Verify & Pay',
+  2: 'Identity Check',
   3: 'Payout Setup',
 };
 

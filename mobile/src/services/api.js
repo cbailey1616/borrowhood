@@ -33,8 +33,9 @@ const request = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       const error = new Error(data.error || 'An error occurred');
-      error.code = data.code; // Preserve error code from server
-      error.requiredTier = data.requiredTier; // Preserve tier info if present
+      error.status = response.status;
+      error.code = data.code;
+      error.requiredTier = data.requiredTier;
       throw error;
     }
 
@@ -43,6 +44,7 @@ const request = async (endpoint, options = {}) => {
     console.log('API Error:', error.message, error.code); // Debug logging
     // Re-throw with preserved properties
     const apiError = new Error(error.message || 'Network error');
+    apiError.status = error.status;
     apiError.code = error.code;
     apiError.requiredTier = error.requiredTier;
     throw apiError;
@@ -314,6 +316,15 @@ const sendMessage = (data) =>
 const markConversationRead = (id) =>
   post(`/messages/conversations/${id}/read`);
 
+const deleteMessage = (id) =>
+  del(`/messages/${id}`);
+
+const reactToMessage = (id, emoji) =>
+  post(`/messages/${id}/react`, { emoji });
+
+const removeReaction = (id) =>
+  del(`/messages/${id}/react`);
+
 // ============================================
 // Payment Methods
 // ============================================
@@ -563,17 +574,8 @@ const getSubscriptionTiers = () =>
 const getCurrentSubscription = () =>
   get('/subscriptions/current');
 
-const createSubscription = (plan = 'monthly') =>
-  post('/subscriptions/subscribe', { plan });
-
-const cancelSubscription = () =>
-  post('/subscriptions/cancel');
-
-const reactivateSubscription = () =>
-  post('/subscriptions/reactivate');
-
-const retrySubscriptionPayment = () =>
-  post('/subscriptions/retry-payment');
+const createVerificationPayment = () =>
+  post('/subscriptions/verify-payment');
 
 const checkSubscriptionAccess = (visibility) =>
   get('/subscriptions/access-check', { feature: visibility });
@@ -742,6 +744,9 @@ export default {
   getConversation,
   sendMessage,
   markConversationRead,
+  deleteMessage,
+  reactToMessage,
+  removeReaction,
   // Payment Methods
   getPaymentMethods,
   addPaymentMethod,
@@ -800,10 +805,7 @@ export default {
   // Subscriptions
   getSubscriptionTiers,
   getCurrentSubscription,
-  createSubscription,
-  cancelSubscription,
-  reactivateSubscription,
-  retrySubscriptionPayment,
+  createVerificationPayment,
   checkSubscriptionAccess,
   // Payments
   createPaymentIntent,

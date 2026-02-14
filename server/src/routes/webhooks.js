@@ -216,6 +216,12 @@ async function handleIdentityRequiresInput(session) {
 // ============================================
 
 async function handlePaymentSucceeded(paymentIntent) {
+  // Handle verification fee payment
+  if (paymentIntent.metadata?.type === 'verification_fee') {
+    await handleVerificationPaymentSucceeded(paymentIntent);
+    return;
+  }
+
   const transactionId = paymentIntent.metadata?.transaction_id;
   if (!transactionId) {
     logger.warn('Payment succeeded without transaction_id in metadata');
@@ -360,7 +366,63 @@ async function handleChargeRefunded(charge) {
 }
 
 // ============================================
-// Subscription Handlers
+// Verification Payment Handler
+// ============================================
+
+async function handleVerificationPaymentSucceeded(paymentIntent) {
+  const userId = paymentIntent.metadata?.userId;
+  if (!userId) {
+    // Fall back to looking up by payment intent ID
+    const result = await query(
+      'SELECT id FROM users WHERE stripe_verification_payment_intent_id = $1',
+      [paymentIntent.id]
+    );
+    if (result.rows.length === 0) {
+      logger.warn(`Verification payment succeeded but no user found for PI ${paymentIntent.id}`);
+      return;
+    }
+    const foundUserId = result.rows[0].id;
+
+    await query(
+      `UPDATE users SET
+        subscription_tier = 'plus',
+        subscription_started_at = NOW(),
+        subscription_expires_at = NULL
+       WHERE id = $1`,
+      [foundUserId]
+    );
+
+    await query(
+      `INSERT INTO subscription_history (user_id, tier, action, amount_cents, stripe_payment_id)
+       VALUES ($1, 'plus', 'verify_payment', $2, $3)`,
+      [foundUserId, paymentIntent.amount, paymentIntent.id]
+    );
+
+    logger.info(`Verification payment activated plus for user ${foundUserId}`);
+    return;
+  }
+
+  // Set plus tier — permanent, no expiry
+  await query(
+    `UPDATE users SET
+      subscription_tier = 'plus',
+      subscription_started_at = NOW(),
+      subscription_expires_at = NULL
+     WHERE id = $1`,
+    [userId]
+  );
+
+  await query(
+    `INSERT INTO subscription_history (user_id, tier, action, amount_cents, stripe_payment_id)
+     VALUES ($1, 'plus', 'verify_payment', $2, $3)`,
+    [userId, paymentIntent.amount, paymentIntent.id]
+  );
+
+  logger.info(`Verification payment activated plus for user ${userId}`);
+}
+
+// ============================================
+// Subscription Handlers (legacy — for existing subscribers)
 // ============================================
 
 async function handleInvoicePaid(invoice) {
@@ -459,15 +521,27 @@ async function handleSubscriptionUpdated(subscription) {
 
 async function handleSubscriptionDeleted(subscription) {
   const result = await query(
-    'SELECT id FROM users WHERE stripe_subscription_id = $1',
+    'SELECT id, stripe_verification_payment_intent_id FROM users WHERE stripe_subscription_id = $1',
     [subscription.id]
   );
 
   if (result.rows.length === 0) return;
 
   const userId = result.rows[0].id;
+  const hasVerificationPayment = !!result.rows[0].stripe_verification_payment_intent_id;
 
-  // Reset to free tier
+  // If user paid the one-time verification fee, they're grandfathered — keep plus
+  if (hasVerificationPayment) {
+    // Just clear the old subscription ID, keep plus tier
+    await query(
+      `UPDATE users SET stripe_subscription_id = NULL, subscription_expires_at = NULL WHERE id = $1`,
+      [userId]
+    );
+    logger.info(`Legacy subscription deleted for user ${userId}, keeping plus (has verification payment)`);
+    return;
+  }
+
+  // Legacy subscriber with no verification payment — downgrade to free
   await query(
     `UPDATE users SET
       subscription_tier = 'free',

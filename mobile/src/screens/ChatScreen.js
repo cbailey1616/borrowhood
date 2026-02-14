@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -19,9 +21,13 @@ import Animated, {
   FadeInUp,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
+import EmojiReactionPicker from '../components/EmojiReactionPicker';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -64,7 +70,14 @@ export default function ChatScreen({ route, navigation }) {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [emojiPickerMessage, setEmojiPickerMessage] = useState(null);
+  const [emojiPickerPos, setEmojiPickerPos] = useState(null);
   const flatListRef = useRef(null);
+  const messageRefs = useRef({});
 
   useEffect(() => {
     if (conversationId) {
@@ -139,6 +152,7 @@ export default function ChatScreen({ route, navigation }) {
         senderId: user.id,
         content: messageContent,
         isOwnMessage: true,
+        isRead: false,
         createdAt: result.createdAt,
       };
       setMessages(prev => [...prev, newMsg]);
@@ -172,6 +186,211 @@ export default function ChatScreen({ route, navigation }) {
     return d.toLocaleDateString();
   };
 
+  const handleMessageLongPress = useCallback((message) => {
+    if (message.isDeleted) return;
+    const ref = messageRefs.current[message.id];
+    if (ref) {
+      ref.measureInWindow((x, y, width, height) => {
+        setEmojiPickerPos({
+          top: y - 52,
+          isOwnMessage: message.isOwnMessage,
+        });
+        setEmojiPickerMessage(message);
+      });
+    } else {
+      setEmojiPickerMessage(message);
+    }
+  }, []);
+
+  const handleDeleteMessage = useCallback(async (messageId) => {
+    try {
+      await api.deleteMessage(messageId);
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, isDeleted: true, content: null } : m
+      ));
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      haptics.error();
+    }
+  }, []);
+
+  const handleCopyMessage = useCallback(async (content) => {
+    await Clipboard.setStringAsync(content);
+    haptics.light();
+  }, []);
+
+  const handlePickImage = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: true,
+    });
+
+    if (result.canceled) return;
+
+    const uri = result.assets[0].uri;
+    const recipient = recipientId || conversation?.otherUser?.id;
+    if (!recipient) return;
+
+    setIsUploading(true);
+    try {
+      const imageUrl = await api.uploadImage(uri, 'messages');
+      const apiResult = await api.sendMessage({
+        recipientId: recipient,
+        imageUrl,
+        listingId: listingId || conversation?.listing?.id,
+      });
+
+      const newMsg = {
+        id: apiResult.id,
+        senderId: user.id,
+        content: null,
+        imageUrl,
+        isOwnMessage: true,
+        isRead: false,
+        createdAt: apiResult.createdAt,
+      };
+      setMessages(prev => [...prev, newMsg]);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (error) {
+      console.error('Failed to send image:', error);
+      haptics.error();
+    } finally {
+      setIsUploading(false);
+    }
+  }, [recipientId, conversation, listingId, user.id]);
+
+  const handleEmojiSelect = useCallback(async (emoji) => {
+    const message = emojiPickerMessage;
+    if (!message) return;
+    setEmojiPickerMessage(null);
+    setEmojiPickerPos(null);
+
+    // Check if user already has this emoji on this message
+    const existingReaction = (message.reactions || []).find(
+      r => r.userId === user.id && r.emoji === emoji
+    );
+
+    try {
+      if (existingReaction) {
+        await api.removeReaction(message.id);
+        setMessages(prev => prev.map(m =>
+          m.id === message.id
+            ? { ...m, reactions: (m.reactions || []).filter(r => r.userId !== user.id) }
+            : m
+        ));
+      } else {
+        await api.reactToMessage(message.id, emoji);
+        setMessages(prev => prev.map(m => {
+          if (m.id !== message.id) return m;
+          const reactions = (m.reactions || []).filter(r => r.userId !== user.id);
+          return { ...m, reactions: [...reactions, { userId: user.id, emoji }] };
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to react:', error);
+      haptics.error();
+    }
+  }, [emojiPickerMessage, user.id]);
+
+  const handleToggleReaction = useCallback(async (message, emoji) => {
+    const existingReaction = (message.reactions || []).find(
+      r => r.userId === user.id && r.emoji === emoji
+    );
+
+    try {
+      if (existingReaction) {
+        await api.removeReaction(message.id);
+        setMessages(prev => prev.map(m =>
+          m.id === message.id
+            ? { ...m, reactions: (m.reactions || []).filter(r => r.userId !== user.id) }
+            : m
+        ));
+      } else {
+        await api.reactToMessage(message.id, emoji);
+        setMessages(prev => prev.map(m => {
+          if (m.id !== message.id) return m;
+          const reactions = (m.reactions || []).filter(r => r.userId !== user.id);
+          return { ...m, reactions: [...reactions, { userId: user.id, emoji }] };
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to toggle reaction:', error);
+      haptics.error();
+    }
+  }, [user.id]);
+
+  const handleEmojiMore = useCallback(() => {
+    const message = emojiPickerMessage;
+    setEmojiPickerMessage(null);
+    setEmojiPickerPos(null);
+    if (message) {
+      setSelectedMessage(message);
+      setActionSheetVisible(true);
+    }
+  }, [emojiPickerMessage]);
+
+  const getMessageActions = useCallback((message) => {
+    const actions = [];
+    if (message.content && !message.isDeleted) {
+      actions.push({
+        label: 'Copy Text',
+        icon: <Ionicons name="copy-outline" size={20} color={COLORS.text} />,
+        onPress: () => handleCopyMessage(message.content),
+      });
+    }
+    if (message.isOwnMessage && !message.isDeleted) {
+      actions.push({
+        label: 'Delete Message',
+        icon: <Ionicons name="trash-outline" size={20} color={COLORS.danger} />,
+        destructive: true,
+        onPress: () => handleDeleteMessage(message.id),
+      });
+    }
+    if (!message.isOwnMessage) {
+      actions.push({
+        label: 'Report',
+        icon: <Ionicons name="flag-outline" size={20} color={COLORS.danger} />,
+        destructive: true,
+        onPress: () => {},
+      });
+    }
+    return actions;
+  }, [handleCopyMessage, handleDeleteMessage]);
+
+  const renderReactionPills = (item) => {
+    const reactions = item.reactions || [];
+    if (reactions.length === 0) return null;
+
+    // Group reactions by emoji
+    const grouped = {};
+    for (const r of reactions) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = [];
+      grouped[r.emoji].push(r.userId);
+    }
+
+    return (
+      <View style={[styles.reactionPillsRow, item.isOwnMessage ? styles.ownReactionPills : styles.otherReactionPills]}>
+        {Object.entries(grouped).map(([emoji, userIds]) => {
+          const isOwn = userIds.includes(user.id);
+          return (
+            <HapticPressable
+              key={emoji}
+              onPress={() => handleToggleReaction(item, emoji)}
+              haptic="light"
+              style={[styles.reactionPill, isOwn && styles.reactionPillOwn]}
+            >
+              <Text style={styles.reactionEmoji}>{emoji}</Text>
+              {userIds.length > 1 && (
+                <Text style={styles.reactionCount}>{userIds.length}</Text>
+              )}
+            </HapticPressable>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderMessage = ({ item, index }) => {
     const showDate = index === 0 ||
       formatDate(messages[index - 1].createdAt) !== formatDate(item.createdAt);
@@ -186,39 +405,78 @@ export default function ChatScreen({ route, navigation }) {
             </View>
           </View>
         )}
-        <Animated.View
-          entering={FadeInUp.delay(50).duration(200)}
-          style={[
-            styles.messageRow,
-            item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
-          ]}
-        >
-          {!item.isOwnMessage && (
-            <Image
-              source={{ uri: otherUser?.profilePhotoUrl || 'https://via.placeholder.com/32' }}
-              style={styles.messageAvatar}
-            />
-          )}
-          {item.isOwnMessage ? (
-            <View style={[styles.messageBubble, styles.ownMessage]}>
-              <Text style={[styles.messageText, styles.ownMessageText]}>
-                {item.content}
-              </Text>
-              <Text style={[styles.messageTime, styles.ownMessageTime]}>
-                {formatTime(item.createdAt)}
-              </Text>
-            </View>
-          ) : (
-            <BlurCard style={[styles.messageBubble, styles.otherMessage]} intensity={40}>
-              <Text style={[styles.messageText, styles.otherMessageText]}>
-                {item.content}
-              </Text>
-              <Text style={[styles.messageTime, styles.otherMessageTime]}>
-                {formatTime(item.createdAt)}
-              </Text>
-            </BlurCard>
-          )}
-        </Animated.View>
+        <View style={styles.messageContainer}>
+          <Animated.View
+            ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
+            entering={FadeInUp.delay(50).duration(200)}
+            style={[
+              styles.messageRow,
+              item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
+            ]}
+          >
+            {!item.isOwnMessage && (
+              <Image
+                source={{ uri: otherUser?.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+                style={styles.messageAvatar}
+              />
+            )}
+            {item.isDeleted ? (
+              <View style={[styles.messageBubble, styles.deletedMessage]}>
+                <Text style={styles.deletedMessageText}>This message was deleted</Text>
+              </View>
+            ) : item.isOwnMessage ? (
+              <HapticPressable
+                onLongPress={() => handleMessageLongPress(item)}
+                haptic="medium"
+                style={[styles.messageBubble, styles.ownMessage, item.imageUrl && styles.imageBubble]}
+              >
+                {item.imageUrl && (
+                  <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
+                    <Image source={{ uri: item.imageUrl }} style={styles.messageImage} />
+                  </HapticPressable>
+                )}
+                {item.content ? (
+                  <Text style={[styles.messageText, styles.ownMessageText]}>
+                    {item.content}
+                  </Text>
+                ) : null}
+                <View style={styles.ownMessageMeta}>
+                  <Text style={[styles.messageTime, styles.ownMessageTime]}>
+                    {formatTime(item.createdAt)}
+                  </Text>
+                  <Ionicons
+                    name={item.isRead ? 'checkmark-done' : 'checkmark'}
+                    size={14}
+                    color={item.isRead ? '#fff' : 'rgba(255,255,255,0.6)'}
+                    style={styles.readReceipt}
+                  />
+                </View>
+              </HapticPressable>
+            ) : (
+              <HapticPressable
+                onLongPress={() => handleMessageLongPress(item)}
+                haptic="medium"
+              >
+                <BlurCard style={[styles.messageBubble, styles.otherMessage, item.imageUrl && styles.imageBubble]} intensity={40}>
+                  {item.imageUrl && (
+                    <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
+                      <Image source={{ uri: item.imageUrl }} style={styles.messageImage} />
+                    </HapticPressable>
+                  )}
+                  {item.content ? (
+                    <Text style={[styles.messageText, styles.otherMessageText]}>
+                      {item.content}
+                    </Text>
+                  ) : null}
+                  <Text style={[styles.messageTime, styles.otherMessageTime]}>
+                    {formatTime(item.createdAt)}
+                  </Text>
+                </BlurCard>
+              </HapticPressable>
+            )}
+          </Animated.View>
+          {renderReactionPills(item)}
+        </View>
       </View>
     );
   };
@@ -267,6 +525,7 @@ export default function ChatScreen({ route, navigation }) {
         contentContainerStyle={styles.messagesContent}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={() => { setEmojiPickerMessage(null); setEmojiPickerPos(null); }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         ListEmptyComponent={
           <View style={styles.emptyMessages}>
@@ -282,6 +541,13 @@ export default function ChatScreen({ route, navigation }) {
       {Platform.OS === 'ios' ? (
         <BlurView intensity={80} tint="dark" style={styles.inputBlur}>
           <View style={styles.inputInner}>
+            <HapticPressable onPress={handlePickImage} haptic="light" disabled={isUploading}>
+              <Ionicons
+                name={isUploading ? 'hourglass-outline' : 'image-outline'}
+                size={24}
+                color={isUploading ? COLORS.textMuted : COLORS.primary}
+              />
+            </HapticPressable>
             <TextInput
               style={styles.input}
               value={newMessage}
@@ -299,6 +565,13 @@ export default function ChatScreen({ route, navigation }) {
         </BlurView>
       ) : (
         <View style={styles.inputContainer}>
+          <HapticPressable onPress={handlePickImage} haptic="light" disabled={isUploading}>
+            <Ionicons
+              name={isUploading ? 'hourglass-outline' : 'image-outline'}
+              size={24}
+              color={isUploading ? COLORS.textMuted : COLORS.primary}
+            />
+          </HapticPressable>
           <TextInput
             style={styles.input}
             value={newMessage}
@@ -314,6 +587,47 @@ export default function ChatScreen({ route, navigation }) {
           />
         </View>
       )}
+      {/* Emoji Reaction Picker Overlay */}
+      {emojiPickerMessage && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEmojiPickerMessage(null)} />
+          <EmojiReactionPicker
+            onSelect={handleEmojiSelect}
+            onMore={handleEmojiMore}
+            style={[
+              styles.emojiPickerOverlay,
+              emojiPickerPos && { top: emojiPickerPos.top },
+              emojiPickerPos?.isOwnMessage ? styles.emojiPickerRight : styles.emojiPickerLeft,
+            ]}
+          />
+        </View>
+      )}
+
+      {/* Fullscreen Image Modal */}
+      <Modal
+        visible={!!fullscreenImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullscreenImage(null)}
+      >
+        <Pressable style={styles.fullscreenOverlay} onPress={() => setFullscreenImage(null)}>
+          <Image source={{ uri: fullscreenImage }} style={styles.fullscreenImage} resizeMode="contain" />
+          <View style={styles.fullscreenClose}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Message Actions */}
+      <ActionSheet
+        isVisible={actionSheetVisible}
+        onClose={() => {
+          setActionSheetVisible(false);
+          setSelectedMessage(null);
+        }}
+        title="Message"
+        actions={selectedMessage ? getMessageActions(selectedMessage) : []}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -411,6 +725,42 @@ const styles = StyleSheet.create({
   otherMessage: {
     borderBottomLeftRadius: SPACING.xs,
   },
+  deletedMessage: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+  },
+  deletedMessageText: {
+    ...TYPOGRAPHY.subheadline,
+    fontStyle: 'italic',
+    color: COLORS.textMuted,
+  },
+  imageBubble: {
+    paddingHorizontal: SPACING.xs,
+    paddingTop: SPACING.xs,
+  },
+  messageImage: {
+    width: 220,
+    height: 220,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.xs,
+  },
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '80%',
+  },
+  fullscreenClose: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+  },
   messageText: {
     ...TYPOGRAPHY.subheadline,
     lineHeight: 21,
@@ -426,9 +776,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: SPACING.xs,
   },
+  ownMessageMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: SPACING.xs,
+  },
   ownMessageTime: {
     color: 'rgba(255,255,255,0.6)',
-    textAlign: 'right',
+  },
+  readReceipt: {
+    marginLeft: 2,
   },
   otherMessageTime: {
     color: COLORS.textMuted,
@@ -487,5 +846,53 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: COLORS.gray[700],
+  },
+  messageContainer: {
+  },
+  emojiPickerOverlay: {
+    position: 'absolute',
+    zIndex: 200,
+  },
+  emojiPickerRight: {
+    right: SPACING.lg,
+  },
+  emojiPickerLeft: {
+    left: 36 + SPACING.lg,
+  },
+  reactionPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: -4,
+    marginBottom: SPACING.xs,
+  },
+  ownReactionPills: {
+    justifyContent: 'flex-end',
+    paddingRight: SPACING.sm,
+  },
+  otherReactionPills: {
+    justifyContent: 'flex-start',
+    paddingLeft: 36 + SPACING.sm,
+  },
+  reactionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceElevated,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
+    gap: 3,
+  },
+  reactionPillOwn: {
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionCount: {
+    ...TYPOGRAPHY.caption1,
+    fontSize: 11,
+    color: COLORS.textSecondary,
   },
 });

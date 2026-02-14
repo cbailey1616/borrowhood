@@ -29,7 +29,7 @@ export function AuthProvider({ children, navigationRef }) {
     } catch (error) {
       console.log('Auth check failed:', error);
       // Only logout on auth errors (401), not network failures
-      if (error?.response?.status === 401) {
+      if (error?.status === 401) {
         await logout();
       }
     } finally {

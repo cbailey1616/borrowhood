@@ -225,71 +225,80 @@ export default function MyItemsScreen({ navigation }) {
         }}
       >
         <HapticPressable
-          style={styles.requestCard}
+          style={[styles.requestCard, item.isExpired && styles.requestCardExpired]}
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"
         >
-          <View style={styles.requestHeader}>
-            <Text style={styles.requestTitle} numberOfLines={1}>{item.title}</Text>
-            <View style={styles.requestBadges}>
-              {item.type === 'service' && (
-                <View style={styles.serviceBadge}>
-                  <Text style={styles.serviceBadgeText}>Service</Text>
-                </View>
-              )}
-              {item.isExpired && (
-                <View style={styles.expiredBadge}>
-                  <Text style={styles.expiredBadgeText}>Expired</Text>
-                </View>
-              )}
-              <View style={[
-                styles.requestStatusBadge,
-                { backgroundColor: item.status === 'open' ? COLORS.secondaryMuted : COLORS.surfaceElevated }
-              ]}>
-                <Text style={[
-                  styles.requestStatusText,
-                  { color: item.status === 'open' ? COLORS.secondary : COLORS.textSecondary }
+          <View style={[styles.requestAccent, item.isExpired ? styles.requestAccentExpired : item.status === 'open' ? styles.requestAccentOpen : styles.requestAccentClosed]} />
+          <View style={styles.requestContent}>
+            <View style={styles.requestHeader}>
+              <View style={styles.requestTitleRow}>
+                <Ionicons
+                  name={item.isExpired ? 'alert-circle' : item.status === 'open' ? 'time-outline' : 'checkmark-circle'}
+                  size={18}
+                  color={item.isExpired ? COLORS.danger : item.status === 'open' ? COLORS.warning : COLORS.textMuted}
+                />
+                <Text style={styles.requestTitle} numberOfLines={1}>{item.title}</Text>
+              </View>
+              <View style={styles.requestBadges}>
+                {item.type === 'service' && (
+                  <View style={styles.serviceBadge}>
+                    <Text style={styles.serviceBadgeText}>Service</Text>
+                  </View>
+                )}
+                <View style={[
+                  styles.requestStatusBadge,
+                  item.isExpired ? { backgroundColor: COLORS.dangerMuted }
+                    : item.status === 'open' ? { backgroundColor: COLORS.warningMuted }
+                    : { backgroundColor: COLORS.surfaceElevated }
                 ]}>
-                  {item.status === 'open' ? 'Open' : 'Closed'}
-                </Text>
+                  <Text style={[
+                    styles.requestStatusText,
+                    item.isExpired ? { color: COLORS.danger }
+                      : item.status === 'open' ? { color: COLORS.warning }
+                      : { color: COLORS.textMuted }
+                  ]}>
+                    {item.isExpired ? 'Expired' : item.status === 'open' ? 'Active' : 'Closed'}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {item.description && (
-            <Text style={styles.requestDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
-          )}
-
-          {(item.neededFrom || item.neededUntil) && (
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.dateText}>
-                {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
-                {item.neededFrom && item.neededUntil && ' - '}
-                {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+            {item.description && (
+              <Text style={styles.requestDescription} numberOfLines={2}>
+                {item.description}
               </Text>
-            </View>
-          )}
-
-          <View style={styles.requestFooter}>
-            <Text style={styles.requestDate}>
-              Posted {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
-            {item.isExpired && item.status === 'open' && (
-              <HapticPressable
-                style={styles.renewButton}
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  handleRenew(item.id);
-                }}
-                haptic="medium"
-              >
-                <Ionicons name="refresh" size={14} color={COLORS.primary} />
-                <Text style={styles.renewButtonText}>Renew</Text>
-              </HapticPressable>
             )}
+
+            {(item.neededFrom || item.neededUntil) && (
+              <View style={styles.dateRow}>
+                <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.dateText}>
+                  {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
+                  {item.neededFrom && item.neededUntil && ' - '}
+                  {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.requestFooter}>
+              <Text style={styles.requestDate}>
+                Posted {new Date(item.createdAt).toLocaleDateString()}
+              </Text>
+              {item.isExpired && item.status === 'open' && (
+                <HapticPressable
+                  style={styles.renewButton}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    handleRenew(item.id);
+                  }}
+                  haptic="medium"
+                >
+                  <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                  <Text style={styles.renewButtonText}>Renew</Text>
+                </HapticPressable>
+              )}
+            </View>
           </View>
         </HapticPressable>
       </Swipeable>
@@ -544,8 +553,31 @@ const styles = StyleSheet.create({
   requestCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
     marginBottom: SPACING.md,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.warning + '30',
+  },
+  requestCardExpired: {
+    borderColor: COLORS.danger + '30',
+    opacity: 0.85,
+  },
+  requestAccent: {
+    width: 4,
+  },
+  requestAccentOpen: {
+    backgroundColor: COLORS.warning,
+  },
+  requestAccentExpired: {
+    backgroundColor: COLORS.danger,
+  },
+  requestAccentClosed: {
+    backgroundColor: COLORS.textMuted,
+  },
+  requestContent: {
+    flex: 1,
+    padding: SPACING.lg,
   },
   requestHeader: {
     flexDirection: 'row',
@@ -553,11 +585,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.sm,
   },
+  requestTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginRight: SPACING.md,
+  },
   requestTitle: {
     flex: 1,
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    marginRight: SPACING.md,
   },
   requestBadges: {
     flexDirection: 'row',
@@ -575,25 +613,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.primary,
   },
-  expiredBadge: {
-    backgroundColor: COLORS.textMuted + '30',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.xs,
-  },
-  expiredBadgeText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
   requestStatusBadge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
   },
   requestStatusText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '600',
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '700',
   },
   requestDescription: {
     ...TYPOGRAPHY.body,

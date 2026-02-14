@@ -38,13 +38,15 @@ router.get('/conversations', authenticate, async (req, res) => {
          m.content as last_message,
          m.created_at as last_message_at,
          m.sender_id as last_message_sender,
+         m.deleted_at as last_message_deleted_at,
+         m.image_url as last_message_image_url,
          (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id AND sender_id != $1 AND is_read = false) as unread_count
        FROM conversations c
        JOIN users u1 ON c.user1_id = u1.id
        JOIN users u2 ON c.user2_id = u2.id
        LEFT JOIN listings l ON c.listing_id = l.id
        LEFT JOIN LATERAL (
-         SELECT content, created_at, sender_id
+         SELECT content, created_at, sender_id, deleted_at, image_url
          FROM messages
          WHERE conversation_id = c.id
          ORDER BY created_at DESC
@@ -68,7 +70,7 @@ router.get('/conversations', authenticate, async (req, res) => {
         lastName: c.other_last_name,
         profilePhotoUrl: c.other_photo_url,
       },
-      lastMessage: c.last_message,
+      lastMessage: c.last_message_deleted_at ? 'This message was deleted' : c.last_message_image_url && !c.last_message ? 'Sent a photo' : c.last_message,
       lastMessageAt: c.last_message_at,
       lastMessageSenderId: c.last_message_sender,
       unreadCount: parseInt(c.unread_count) || 0,
@@ -134,13 +136,27 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
 
     // Get messages
     const messages = await query(
-      `SELECT m.id, m.sender_id, m.content, m.is_read, m.created_at
+      `SELECT m.id, m.sender_id, m.content, m.is_read, m.created_at, m.deleted_at, m.image_url
        FROM messages m
        WHERE m.conversation_id = $1
        ORDER BY m.created_at DESC
        LIMIT $2 OFFSET $3`,
       [req.params.id, limit, offset]
     );
+
+    // Batch-load reactions for returned messages
+    const messageIds = messages.rows.map(m => m.id);
+    let reactionsMap = {};
+    if (messageIds.length > 0) {
+      const reactions = await query(
+        `SELECT message_id, user_id, emoji FROM message_reactions WHERE message_id = ANY($1)`,
+        [messageIds]
+      );
+      for (const r of reactions.rows) {
+        if (!reactionsMap[r.message_id]) reactionsMap[r.message_id] = [];
+        reactionsMap[r.message_id].push({ userId: r.user_id, emoji: r.emoji });
+      }
+    }
 
     res.json({
       conversation: {
@@ -156,10 +172,13 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
       messages: messages.rows.map(m => ({
         id: m.id,
         senderId: m.sender_id,
-        content: m.content,
+        content: m.deleted_at ? null : m.content,
+        imageUrl: m.deleted_at ? null : m.image_url,
         isRead: m.is_read,
+        isDeleted: !!m.deleted_at,
         createdAt: m.created_at,
         isOwnMessage: m.sender_id === req.user.id,
+        reactions: reactionsMap[m.id] || [],
       })).reverse(), // Return oldest first
     });
   } catch (err) {
@@ -174,7 +193,8 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
 // ============================================
 router.post('/', authenticate,
   body('recipientId').isUUID(),
-  body('content').trim().isLength({ min: 1, max: 2000 }),
+  body('content').optional().trim().isLength({ min: 1, max: 2000 }),
+  body('imageUrl').optional().isString(),
   body('listingId').optional().isUUID(),
   async (req, res) => {
     const errors = validationResult(req);
@@ -182,7 +202,11 @@ router.post('/', authenticate,
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { recipientId, content, listingId } = req.body;
+    const { recipientId, content, imageUrl, listingId } = req.body;
+
+    if (!content && !imageUrl) {
+      return res.status(400).json({ error: 'Message must have content or an image' });
+    }
 
     if (recipientId === req.user.id) {
       return res.status(400).json({ error: 'Cannot message yourself' });
@@ -213,8 +237,8 @@ router.post('/', authenticate,
 
       // Insert message
       const messageResult = await query(
-        'INSERT INTO messages (conversation_id, sender_id, content) VALUES ($1, $2, $3) RETURNING id, created_at',
-        [conversationId, req.user.id, content]
+        'INSERT INTO messages (conversation_id, sender_id, content, image_url) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
+        [conversationId, req.user.id, content || null, imageUrl || null]
       );
 
       // Get sender name for notification
@@ -224,12 +248,13 @@ router.post('/', authenticate,
       );
 
       // Send notification to recipient
+      const preview = imageUrl && !content ? 'Sent a photo' : (content || '').substring(0, 50) + ((content || '').length > 50 ? '...' : '');
       await sendNotification(
         recipientId,
         'new_message',
         {
           senderName: sender.rows[0]?.first_name || 'Someone',
-          messagePreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+          messagePreview: preview,
           conversationId,
         },
         { fromUserId: req.user.id }
@@ -238,7 +263,8 @@ router.post('/', authenticate,
       res.status(201).json({
         id: messageResult.rows[0].id,
         conversationId,
-        content,
+        content: content || null,
+        imageUrl: imageUrl || null,
         createdAt: messageResult.rows[0].created_at,
       });
     } catch (err) {
@@ -247,6 +273,37 @@ router.post('/', authenticate,
     }
   }
 );
+
+// ============================================
+// DELETE /api/messages/:id
+// Soft delete a message (owner only)
+// ============================================
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const msg = await query(
+      'SELECT id, sender_id FROM messages WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (msg.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    if (msg.rows[0].sender_id !== req.user.id) {
+      return res.status(403).json({ error: 'Can only delete your own messages' });
+    }
+
+    await query(
+      'UPDATE messages SET deleted_at = NOW() WHERE id = $1',
+      [req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete message error:', err);
+    res.status(500).json({ error: 'Failed to delete message' });
+  }
+});
 
 // ============================================
 // POST /api/messages/conversations/:id/read
@@ -273,6 +330,68 @@ router.post('/conversations/:id/read', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Mark read error:', err);
     res.status(500).json({ error: 'Failed to mark as read' });
+  }
+});
+
+// ============================================
+// POST /api/messages/:id/react
+// Add or update emoji reaction on a message
+// ============================================
+const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎'];
+
+router.post('/:id/react', authenticate,
+  body('emoji').isString().isIn(ALLOWED_EMOJIS).withMessage('Invalid emoji'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      // Verify message exists and user has access
+      const msg = await query(
+        `SELECT m.id FROM messages m
+         JOIN conversations c ON m.conversation_id = c.id
+         WHERE m.id = $1 AND (c.user1_id = $2 OR c.user2_id = $2)`,
+        [req.params.id, req.user.id]
+      );
+
+      if (msg.rows.length === 0) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+
+      // Upsert reaction (one per user per message)
+      await query(
+        `INSERT INTO message_reactions (message_id, user_id, emoji)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (message_id, user_id)
+         DO UPDATE SET emoji = $3`,
+        [req.params.id, req.user.id, req.body.emoji]
+      );
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('React to message error:', err);
+      res.status(500).json({ error: 'Failed to react to message' });
+    }
+  }
+);
+
+// ============================================
+// DELETE /api/messages/:id/react
+// Remove own reaction from a message
+// ============================================
+router.delete('/:id/react', authenticate, async (req, res) => {
+  try {
+    await query(
+      'DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Remove reaction error:', err);
+    res.status(500).json({ error: 'Failed to remove reaction' });
   }
 });
 

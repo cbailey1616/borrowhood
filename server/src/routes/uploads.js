@@ -40,7 +40,7 @@ if (!AWS_CONFIGURED && !fs.existsSync(LOCAL_UPLOADS_DIR)) {
 router.post('/presigned-url', authenticate,
   body('contentType').isIn(ALLOWED_TYPES).withMessage('Invalid content type'),
   body('fileSize').isInt({ min: 1, max: MAX_FILE_SIZE }).withMessage(`File size must be under ${MAX_FILE_SIZE / 1024 / 1024}MB`),
-  body('category').isIn(['listings', 'profiles', 'disputes']).withMessage('Invalid category'),
+  body('category').isIn(['listings', 'profiles', 'disputes', 'messages']).withMessage('Invalid category'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -109,7 +109,7 @@ router.post('/presigned-urls', authenticate,
   body('files').isArray({ min: 1, max: 10 }).withMessage('Must provide 1-10 files'),
   body('files.*.contentType').isIn(ALLOWED_TYPES).withMessage('Invalid content type'),
   body('files.*.fileSize').isInt({ min: 1, max: MAX_FILE_SIZE }).withMessage(`File size must be under ${MAX_FILE_SIZE / 1024 / 1024}MB`),
-  body('category').isIn(['listings', 'profiles', 'disputes']).withMessage('Invalid category'),
+  body('category').isIn(['listings', 'profiles', 'disputes', 'messages']).withMessage('Invalid category'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

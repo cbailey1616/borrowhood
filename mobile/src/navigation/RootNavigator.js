@@ -182,7 +182,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="NotificationSettings"
             component={NotificationSettingsScreen}
-            options={{ ...sharedScreenOptions, title: 'Notification Settings', presentation: 'formSheet' }}
+            options={{ ...sharedScreenOptions, title: 'Notification Settings', presentation: 'modal' }}
           />
           <Stack.Screen
             name="Disputes"
@@ -192,7 +192,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="SetupPayout"
             component={SetupPayoutScreen}
-            options={{ ...sharedScreenOptions, title: 'Payout Settings', presentation: 'formSheet' }}
+            options={{ ...sharedScreenOptions, title: 'Payout Settings', presentation: 'modal' }}
           />
           <Stack.Screen
             name="ListingDiscussion"
@@ -232,12 +232,12 @@ export default function RootNavigator() {
           <Stack.Screen
             name="VerifyIdentity"
             component={VerifyIdentityScreen}
-            options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
+            options={{ ...sharedScreenOptions, title: 'Verify Identity' }}
           />
           <Stack.Screen
             name="IdentityVerification"
             component={IdentityVerificationScreen}
-            options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
+            options={{ ...sharedScreenOptions, title: 'Verify Identity' }}
           />
           <Stack.Screen
             name="PaymentFlow"

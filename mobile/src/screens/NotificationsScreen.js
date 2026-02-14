@@ -103,8 +103,13 @@ export default function NotificationsScreen({ navigation }) {
     haptics.light();
 
     // Navigate based on notification type
-    if (notification.type === 'new_message' && notification.conversationId) {
-      navigation.navigate('Chat', { conversationId: notification.conversationId });
+    if (notification.type === 'new_message') {
+      if (notification.conversationId) {
+        navigation.navigate('Chat', { conversationId: notification.conversationId });
+      } else {
+        navigation.navigate('Conversations');
+      }
+      return;
     } else if (notification.type === 'new_request' && notification.requestId) {
       navigation.navigate('RequestDetail', { id: notification.requestId });
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {

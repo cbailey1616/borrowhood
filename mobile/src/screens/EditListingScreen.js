@@ -166,12 +166,12 @@ export default function EditListingScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';
-      if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('plus subscription')) {
+      if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('verification required')) {
         showError({
           type: 'subscription',
-          title: 'Unlock with Plus',
-          message: 'Plus lets you list to the whole town and charge rental fees — just $1/month.',
-          primaryAction: 'Get Plus',
+          title: 'Verification Required',
+          message: 'Verify your identity to list to the whole town and charge rental fees — just $1.99 one-time.',
+          primaryAction: 'Verify Now',
           onPrimaryAction: () => navigation.navigate('Subscription'),
         });
       } else {

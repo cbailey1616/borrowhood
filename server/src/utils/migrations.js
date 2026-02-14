@@ -207,6 +207,70 @@ export async function runMigrations() {
       logger.info('Migration complete: processed_webhook_events table created');
     }
 
+    // Migration: Add deleted_at to messages for soft delete
+    const hasDeletedAt = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'messages' AND column_name = 'deleted_at'
+    `);
+    if (hasDeletedAt.rows.length === 0) {
+      logger.info('Running migration: Add deleted_at to messages');
+      await query('ALTER TABLE messages ADD COLUMN deleted_at TIMESTAMPTZ');
+      logger.info('Migration complete: messages.deleted_at added');
+    }
+
+    // Migration: Add image_url to messages and make content nullable
+    const hasImageUrl = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'messages' AND column_name = 'image_url'
+    `);
+    if (hasImageUrl.rows.length === 0) {
+      logger.info('Running migration: Add image_url to messages');
+      await query('ALTER TABLE messages ADD COLUMN image_url TEXT');
+      await query('ALTER TABLE messages ALTER COLUMN content DROP NOT NULL');
+      logger.info('Migration complete: messages.image_url added, content now nullable');
+    }
+
+    // Migration: Create message_reactions table
+    const hasReactionsTable = await query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_name = 'message_reactions'
+    `);
+    if (hasReactionsTable.rows.length === 0) {
+      logger.info('Running migration: Create message_reactions table');
+      await query(`CREATE TABLE message_reactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        emoji VARCHAR(10) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(message_id, user_id)
+      )`);
+      await query('CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id)');
+      logger.info('Migration complete: message_reactions table created');
+    }
+
+    // Migration: Add borrower_service_fee column to borrow_transactions
+    const hasBorrowerServiceFee = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'borrow_transactions' AND column_name = 'borrower_service_fee'
+    `);
+    if (hasBorrowerServiceFee.rows.length === 0) {
+      logger.info('Running migration: Add borrower_service_fee to borrow_transactions');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN borrower_service_fee DECIMAL(10,2) DEFAULT 0');
+      logger.info('Migration complete: borrow_transactions.borrower_service_fee added');
+    }
+
+    // Migration: Add stripe_verification_payment_intent_id column to users
+    const hasVerificationPI = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'stripe_verification_payment_intent_id'
+    `);
+    if (hasVerificationPI.rows.length === 0) {
+      logger.info('Running migration: Add stripe_verification_payment_intent_id to users');
+      await query('ALTER TABLE users ADD COLUMN stripe_verification_payment_intent_id VARCHAR(255)');
+      logger.info('Migration complete: users.stripe_verification_payment_intent_id added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

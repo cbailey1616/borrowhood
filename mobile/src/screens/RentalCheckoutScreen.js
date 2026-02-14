@@ -40,6 +40,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
     transactionId,
     rentalFee,
     depositAmount,
+    borrowerServiceFee,
     totalAmount,
     platformFee,
     lenderPayout,
@@ -175,6 +176,15 @@ export default function RentalCheckoutScreen({ navigation, route }) {
               <Text style={styles.summaryLabel}>Rental ({rentalDays} days)</Text>
               <Text style={styles.summaryValue}>{formatCurrency(rentalFee)}</Text>
             </View>
+            {borrowerServiceFee > 0 && (
+              <>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Service Fee (3%)</Text>
+                  <Text style={styles.summaryValue}>{formatCurrency(borrowerServiceFee)}</Text>
+                </View>
+              </>
+            )}
             <View style={styles.summaryDivider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Security Deposit</Text>

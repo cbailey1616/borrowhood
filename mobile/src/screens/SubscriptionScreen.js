@@ -14,15 +14,14 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import ActionSheet from '../components/ActionSheet';
 import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 import GateStepper from '../components/GateStepper';
 
-const PLUS_FEATURES = [
+const VERIFIED_FEATURES = [
   'Borrow from anyone in your town',
   'Charge rental fees for your items',
-  'Priority placement in search results',
+  'Identity verified badge',
   'Support local sharing infrastructure',
 ];
 
@@ -58,9 +57,7 @@ export default function SubscriptionScreen({ navigation, route }) {
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const [currentSub, setCurrentSub] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [subscribing, setSubscribing] = useState(false);
-  const [showCancelSheet, setShowCancelSheet] = useState(false);
-  const selectedPlan = 'monthly';
+  const [paying, setPaying] = useState(false);
 
   const loadData = async () => {
     try {
@@ -91,7 +88,7 @@ export default function SubscriptionScreen({ navigation, route }) {
     }, [])
   );
 
-  // Poll for subscription activation after PaymentSheet success
+  // Poll for activation after PaymentSheet success
   const pollForActivation = async () => {
     for (let i = 0; i < 5; i++) {
       await sleep(1000);
@@ -137,23 +134,22 @@ export default function SubscriptionScreen({ navigation, route }) {
     return true;
   };
 
-  const handleSubscribe = async () => {
-    setSubscribing(true);
+  const handleVerify = async () => {
+    setPaying(true);
     try {
       // Get PaymentSheet credentials from server
-      const credentials = await api.createSubscription(selectedPlan);
+      const credentials = await api.createVerificationPayment();
 
       // Present PaymentSheet
       const completed = await openPaymentSheet(credentials);
       if (!completed) {
-        setSubscribing(false);
+        setPaying(false);
         return;
       }
 
-      // For gate flows and onboarding, navigate immediately — don't wait
-      // for poll to re-render this screen with the Plus view
+      // For gate flows and onboarding, navigate immediately
       if (source === 'town_browse' || source === 'rental_listing') {
-        await api.getCurrentSubscription(); // Self-heal DB tier
+        await api.getCurrentSubscription();
         await refreshUser();
         haptics.success();
         navigation.replace('IdentityVerification', { source, totalSteps });
@@ -161,8 +157,6 @@ export default function SubscriptionScreen({ navigation, route }) {
       }
 
       if (source === 'onboarding') {
-        // Trigger self-healing: /subscriptions/current checks Stripe and
-        // updates DB tier when webhook hasn't fired yet
         await api.getCurrentSubscription();
         await refreshUser();
         haptics.success();
@@ -182,78 +176,11 @@ export default function SubscriptionScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Your subscription couldn\'t be processed. Please check your payment method and try again.',
+        message: err.message || 'Your payment couldn\'t be processed. Please check your payment method and try again.',
         type: 'network',
       });
     } finally {
-      setSubscribing(false);
-    }
-  };
-
-  const handleRetryPayment = async () => {
-    setSubscribing(true);
-    try {
-      const credentials = await api.retrySubscriptionPayment();
-      const completed = await openPaymentSheet(credentials);
-      if (!completed) {
-        setSubscribing(false);
-        return;
-      }
-
-      const activated = await pollForActivation();
-      if (activated) {
-        haptics.success();
-      } else {
-        await loadData();
-        haptics.success();
-      }
-    } catch (err) {
-      haptics.error();
-      showError({
-        message: err.message || 'Your payment couldn\'t be updated. Please check your card details and try again.',
-        type: 'network',
-      });
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
-  const handleReactivate = async () => {
-    setSubscribing(true);
-    try {
-      await api.reactivateSubscription();
-      await loadData();
-      haptics.success();
-    } catch (err) {
-      haptics.error();
-      showError({
-        message: err.message || 'Couldn\'t reactivate your subscription right now. Please try again in a moment.',
-        type: 'network',
-      });
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (currentSub?.tier === 'free') return;
-    setShowCancelSheet(true);
-  };
-
-  const performCancel = async () => {
-    setSubscribing(true);
-    try {
-      await api.cancelSubscription();
-      await loadData();
-      haptics.success();
-    } catch (err) {
-      haptics.error();
-      showError({
-        message: err.message || 'Couldn\'t process the cancellation right now. Please try again or reach out to support.',
-        type: 'network',
-      });
-    } finally {
-      setSubscribing(false);
+      setPaying(false);
     }
   };
 
@@ -267,93 +194,40 @@ export default function SubscriptionScreen({ navigation, route }) {
 
   const isPlus = currentSub?.tier === 'plus';
   const isVerified = user?.isVerified;
-  const status = currentSub?.status;
-  const cancelAtPeriodEnd = currentSub?.cancelAtPeriodEnd;
 
-  // Status dot color
-  const getStatusColor = () => {
-    if (status === 'active' && !cancelAtPeriodEnd) return COLORS.success;
-    if (status === 'past_due') return COLORS.warning;
-    if (status === 'canceled' || cancelAtPeriodEnd) return COLORS.danger;
-    return COLORS.success;
-  };
-
-  const getStatusLabel = () => {
-    if (status === 'past_due') return 'Past Due';
-    if (cancelAtPeriodEnd) return 'Cancelling';
-    if (status === 'active') return 'Active';
-    return 'Active';
-  };
-
-  // ── Plus user view ──
+  // ── Verified user view ──
   if (isPlus) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
-          <View style={styles.plusBadge}>
-            <Ionicons name="star" size={28} color={COLORS.primary} />
+          <View style={styles.verifiedBadgeCircle}>
+            <Ionicons name="shield-checkmark" size={28} color={COLORS.primary} />
           </View>
-          <Text style={styles.title}>You're on Plus!</Text>
+          <Text style={styles.title}>You're Verified</Text>
           <Text style={styles.subtitle}>
             You have full access to all BorrowHood features.
           </Text>
         </View>
 
-        {/* Past Due Banner */}
-        {status === 'past_due' && (
-          <View style={[styles.statusBanner, { backgroundColor: COLORS.warningMuted }]} testID="Subscription.banner.pastDue" accessibilityLabel="Payment past due warning" accessibilityRole="alert">
-            <Ionicons name="warning-outline" size={18} color={COLORS.warning} />
-            <Text style={[styles.statusBannerText, { color: COLORS.warning }]}>
-              Your payment failed. Update your payment method to keep Plus.
-            </Text>
-          </View>
-        )}
-
-        {/* Cancelling Banner */}
-        {cancelAtPeriodEnd && currentSub?.expiresAt && (
-          <View style={[styles.statusBanner, { backgroundColor: COLORS.dangerMuted }]} testID="Subscription.banner.cancelling" accessibilityLabel="Subscription cancelling notice" accessibilityRole="alert">
-            <Ionicons name="time-outline" size={18} color={COLORS.danger} />
-            <Text style={[styles.statusBannerText, { color: COLORS.danger }]}>
-              Your subscription ends on {new Date(currentSub.expiresAt).toLocaleDateString()}
-            </Text>
-          </View>
-        )}
-
         <BlurCard style={styles.planCard}>
           <View style={styles.planCardContent}>
             <View style={styles.planRow}>
-              <Text style={styles.planLabel}>Plan</Text>
-              <Text style={styles.planValue}>BorrowHood Plus</Text>
-            </View>
-            <View style={styles.planDivider} />
-            <View style={styles.planRow}>
               <Text style={styles.planLabel}>Status</Text>
               <View style={styles.statusRow}>
-                <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-                <Text style={styles.planValue}>{getStatusLabel()}</Text>
+                <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
+                <Text style={styles.planValue}>Verified</Text>
               </View>
             </View>
             <View style={styles.planDivider} />
             <View style={styles.planRow}>
-              <Text style={styles.planLabel}>Price</Text>
-              <Text style={styles.planValue}>$1/mo</Text>
+              <Text style={styles.planLabel}>Access</Text>
+              <Text style={styles.planValue}>Permanent</Text>
             </View>
-            {currentSub?.nextBillingDate && !cancelAtPeriodEnd && (
-              <>
-                <View style={styles.planDivider} />
-                <View style={styles.planRow}>
-                  <Text style={styles.planLabel}>Next billing</Text>
-                  <Text style={styles.planValue}>
-                    {new Date(currentSub.nextBillingDate).toLocaleDateString()}
-                  </Text>
-                </View>
-              </>
-            )}
             {currentSub?.startedAt && (
               <>
                 <View style={styles.planDivider} />
                 <View style={styles.planRow}>
-                  <Text style={styles.planLabel}>Member since</Text>
+                  <Text style={styles.planLabel}>Verified since</Text>
                   <Text style={styles.planValue}>
                     {new Date(currentSub.startedAt).toLocaleDateString()}
                   </Text>
@@ -363,90 +237,35 @@ export default function SubscriptionScreen({ navigation, route }) {
           </View>
         </BlurCard>
 
-        {/* Action buttons based on status */}
-        {cancelAtPeriodEnd && (
-          <HapticPressable
-            style={styles.actionButton}
-            onPress={handleReactivate}
-            haptic="medium"
-            testID="Subscription.button.reactivate"
-            accessibilityLabel="Reactivate subscription"
-            accessibilityRole="button"
-          >
-            <Text style={styles.actionButtonText}>Reactivate Subscription</Text>
-          </HapticPressable>
-        )}
-
-        {status === 'past_due' && (
-          <HapticPressable
-            style={styles.actionButton}
-            onPress={handleRetryPayment}
-            haptic="medium"
-            testID="Subscription.button.updatePayment"
-            accessibilityLabel="Update payment method"
-            accessibilityRole="button"
-          >
-            <Text style={styles.actionButtonText}>Update Payment</Text>
-          </HapticPressable>
-        )}
-
-        {!cancelAtPeriodEnd && status !== 'past_due' && (
-          <HapticPressable style={styles.cancelButton} onPress={handleCancel} haptic="medium" testID="Subscription.button.cancel" accessibilityLabel="Cancel subscription" accessibilityRole="button">
-            <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
-          </HapticPressable>
-        )}
-
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Subscriptions are billed monthly. Cancel anytime.
+            Your verification is permanent. No recurring charges.
           </Text>
           <Text style={styles.footerText}>
             Need help? Contact support@borrowhood.com
           </Text>
         </View>
-
-        <ActionSheet
-          isVisible={showCancelSheet}
-          onClose={() => setShowCancelSheet(false)}
-          title="Cancel Subscription"
-          message="Your subscription will remain active until the end of the billing period. After that, you'll be downgraded to the Free tier."
-          actions={[
-            {
-              label: 'Cancel Subscription',
-              destructive: true,
-              onPress: performCancel,
-            },
-          ]}
-          cancelLabel="Keep Subscription"
-        />
-
-        {subscribing && (
-          <View style={styles.overlay}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.overlayText}>Processing...</Text>
-          </View>
-        )}
       </ScrollView>
     );
   }
 
   // Context-aware header text
   const headerTitle = source === 'onboarding'
-    ? 'BorrowHood Plus'
+    ? 'Verify & Unlock'
     : source === 'town_browse'
       ? 'Explore Your Whole Town'
       : source === 'rental_listing'
         ? 'Start Earning From Your Items'
-        : 'BorrowHood Plus';
+        : 'Verify & Unlock';
   const headerSubtitle = source === 'onboarding'
-    ? 'Step 1 of 2 — subscribe now, then verify your identity'
+    ? 'Step 1 of 2 — pay once, then verify your identity'
     : source === 'town_browse'
-      ? 'Plus membership + identity verification required'
+      ? 'We verify everyone at this level so you can lend with confidence'
       : source === 'rental_listing'
-        ? 'Plus membership + verification + payout setup required'
-        : 'Unlock your whole town and start earning from your items.';
+        ? 'Verification + identity check + payout setup required'
+        : 'Pay $1.99 to verify your identity and unlock town-level borrowing.';
 
-  // ── Free user: two-step upgrade flow ──
+  // ── Free user: verification flow ──
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* Gate Stepper */}
@@ -457,14 +276,15 @@ export default function SubscriptionScreen({ navigation, route }) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>{headerTitle}</Text>
-        <Text style={styles.price}>$1/mo</Text>
+        <Text style={styles.price}>$1.99</Text>
+        <Text style={styles.priceNote}>one-time</Text>
         <Text style={styles.subtitle}>{headerSubtitle}</Text>
       </View>
 
       {/* Features */}
       <BlurCard style={styles.featuresCard}>
         <View style={styles.featuresCardContent}>
-          {PLUS_FEATURES.map((feature, idx) => (
+          {VERIFIED_FEATURES.map((feature, idx) => (
             <View key={idx} style={styles.featureRow}>
               <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
               <Text style={styles.featureText}>{feature}</Text>
@@ -484,27 +304,27 @@ export default function SubscriptionScreen({ navigation, route }) {
             {(source === 'generic' || source === 'onboarding') && <View style={styles.stepLine} />}
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Subscribe & Pay</Text>
+            <Text style={styles.stepTitle}>Verify & Pay</Text>
             <Text style={styles.stepDescription}>
-              Pay with card or Apple Pay to start your subscription.
+              Pay once with card or Apple Pay. No recurring charges.
             </Text>
             <HapticPressable
-              style={[styles.stepButton, styles.stepButtonPrimary, subscribing && { opacity: 0.5 }]}
-              onPress={handleSubscribe}
-              disabled={subscribing}
+              style={[styles.stepButton, styles.stepButtonPrimary, paying && { opacity: 0.5 }]}
+              onPress={handleVerify}
+              disabled={paying}
               haptic="medium"
               testID="Subscription.button.subscribe"
-              accessibilityLabel="Subscribe to Plus"
+              accessibilityLabel="Verify for $1.99"
               accessibilityRole="button"
             >
               <Text style={styles.stepButtonText}>
-                {subscribing ? 'Processing...' : 'Subscribe — $1/mo'}
+                {paying ? 'Processing...' : 'Verify for $1.99'}
               </Text>
             </HapticPressable>
           </View>
         </View>
 
-        {/* Step 2: Verify (shown for generic and onboarding) */}
+        {/* Step 2: Identity check (shown for generic and onboarding) */}
         {(source === 'generic' || source === 'onboarding') && (
           <View style={[styles.step, styles.stepDimmed]}>
             <View style={styles.stepIndicator}>
@@ -520,7 +340,7 @@ export default function SubscriptionScreen({ navigation, route }) {
             </View>
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, styles.stepTitleDimmed]}>
-                Verify Your Identity
+                Identity Check
               </Text>
               <Text style={[styles.stepDescription, styles.stepDescriptionDimmed]}>
                 Quick identity check to keep the community safe.{'\n'}We'll notify you once verification is complete — it usually only takes a few minutes.
@@ -548,14 +368,14 @@ export default function SubscriptionScreen({ navigation, route }) {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Subscriptions are billed monthly. Cancel anytime.
+          One-time payment. No recurring charges.
         </Text>
         <Text style={styles.footerText}>
           Need help? Contact support@borrowhood.com
         </Text>
       </View>
 
-      {subscribing && (
+      {paying && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.overlayText}>Processing...</Text>
@@ -585,7 +405,7 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     alignItems: 'center',
   },
-  plusBadge: {
+  verifiedBadgeCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -603,80 +423,17 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: COLORS.primary,
+    marginBottom: 2,
+  },
+  priceNote: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },
   subtitle: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-  },
-
-  // Plan selector
-  planSelector: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.xl,
-  },
-  planOption: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.separator,
-    backgroundColor: COLORS.surface,
-  },
-  planOptionSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '15',
-  },
-  planOptionLabel: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-  },
-  planOptionLabelSelected: {
-    color: COLORS.text,
-  },
-  planOptionPrice: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textMuted,
-  },
-  planOptionPriceSelected: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  planSaveBadge: {
-    position: 'absolute',
-    top: -10,
-    right: -4,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-  },
-  planSaveText: {
-    ...TYPOGRAPHY.caption2,
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 10,
-  },
-
-  // Status banners
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    padding: SPACING.md,
-    marginHorizontal: SPACING.lg,
-    borderRadius: RADIUS.sm,
-    marginBottom: SPACING.lg,
-  },
-  statusBannerText: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
-    flex: 1,
   },
 
   // Features card
@@ -744,9 +501,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray[700],
     marginVertical: SPACING.xs,
   },
-  stepLineComplete: {
-    backgroundColor: COLORS.primary,
-  },
   stepContent: {
     flex: 1,
     paddingBottom: SPACING.xl,
@@ -801,7 +555,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // Plus plan card
+  // Plan card (verified view)
   planCard: {
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
@@ -838,33 +592,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-
-  // Action button (reactivate / retry)
-  actionButton: {
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.sm,
-    paddingVertical: SPACING.md + 2,
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-  },
-  actionButtonText: {
-    ...TYPOGRAPHY.button,
-    color: '#fff',
-  },
-
-  // Cancel
-  cancelButton: {
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.sm,
-    paddingVertical: SPACING.md + 2,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: COLORS.danger,
   },
 
   // Footer

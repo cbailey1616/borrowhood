@@ -106,12 +106,12 @@ router.post('/claim', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Reward already claimed' });
     }
 
-    // Grant free Plus for 1 year
+    // Grant permanent verified status
     await query(
       `UPDATE users SET
         subscription_tier = 'plus',
         subscription_started_at = NOW(),
-        subscription_expires_at = NOW() + INTERVAL '1 year',
+        subscription_expires_at = NULL,
         stripe_subscription_id = NULL
        WHERE id = $1`,
       [req.user.id]
@@ -122,8 +122,7 @@ router.post('/claim', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Congratulations! You now have free Plus for 1 year!',
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      message: 'Congratulations! You now have free verified status!',
     });
   } catch (err) {
     console.error('Claim referral reward error:', err);

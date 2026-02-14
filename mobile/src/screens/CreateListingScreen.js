@@ -260,7 +260,7 @@ export default function CreateListingScreen({ navigation, route }) {
       const errorMsg = error.message?.toLowerCase() || '';
       const errorCode = error.code || '';
 
-      if (errorCode === 'PLUS_REQUIRED' || errorCode === 'VERIFICATION_REQUIRED' || errorMsg.includes('plus subscription') || errorMsg.includes('town visibility') || errorMsg.includes('verification required')) {
+      if (errorCode === 'PLUS_REQUIRED' || errorCode === 'VERIFICATION_REQUIRED' || errorMsg.includes('verification required') || errorMsg.includes('town visibility')) {
         Keyboard.dismiss();
         const source = formData.visibility.includes('town') ? 'town_browse' : 'rental_listing';
         const gate = checkPremiumGate(user, source);

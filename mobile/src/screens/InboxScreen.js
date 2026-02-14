@@ -117,8 +117,14 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       } catch (e) {}
     }
 
-    if (item.type === 'new_message' && item.conversationId) {
-      nav.navigate('Chat', { conversationId: item.conversationId });
+    if (item.type === 'new_message') {
+      if (item.conversationId) {
+        nav.navigate('Chat', { conversationId: item.conversationId });
+      } else {
+        // Fallback for notifications without conversationId - switch to Messages tab
+        setActiveTab(1);
+      }
+      return;
     } else if (item.type === 'friend_request' || item.type === 'friend_accepted') {
       nav.navigate('Friends');
     } else if (item.type === 'new_request' && item.requestId) {

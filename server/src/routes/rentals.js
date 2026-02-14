@@ -17,7 +17,8 @@ import logger from '../utils/logger.js';
 
 const router = Router();
 
-const PLATFORM_FEE_PERCENT = 0.02; // 2%
+const LENDER_FEE_PERCENT = 0.03;  // 3% from lender
+const BORROWER_FEE_PERCENT = 0.03; // 3% from borrower
 
 // ============================================
 // POST /api/rentals/request
@@ -85,9 +86,11 @@ router.post('/request', authenticate,
       const dailyRate = parseFloat(item.price_per_day) || 0;
       const rentalFee = dailyRate * rentalDays;
       const depositAmount = parseFloat(item.deposit_amount) || 0;
-      const totalAmountCents = Math.round((rentalFee + depositAmount) * 100);
-      const platformFee = rentalFee * PLATFORM_FEE_PERCENT;
-      const lenderPayout = rentalFee - platformFee;
+      const lenderFee = rentalFee * LENDER_FEE_PERCENT;
+      const borrowerServiceFee = rentalFee * BORROWER_FEE_PERCENT;
+      const lenderPayout = rentalFee - lenderFee;
+      const totalAmountCents = Math.round((rentalFee + borrowerServiceFee + depositAmount) * 100);
+      const platformFee = lenderFee; // Keep platformFee for DB compat
       const lateFeePerDay = parseFloat(item.late_fee_per_day) || 0;
 
       if (totalAmountCents < 50) {
@@ -121,14 +124,14 @@ router.post('/request', authenticate,
           listing_id, borrower_id, lender_id,
           requested_start_date, requested_end_date,
           rental_days, daily_rate, rental_fee, deposit_amount,
-          platform_fee, lender_payout, borrower_message, payment_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'none')
+          platform_fee, borrower_service_fee, lender_payout, borrower_message, payment_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'none')
         RETURNING id`,
         [
           listingId, req.user.id, item.owner_id,
           startDate, endDate,
           rentalDays, dailyRate, rentalFee, depositAmount,
-          platformFee, lenderPayout, message,
+          platformFee, borrowerServiceFee, lenderPayout, message,
         ]
       );
 
@@ -147,7 +150,8 @@ router.post('/request', authenticate,
         transactionId,
         rentalFee,
         depositAmount,
-        totalAmount: rentalFee + depositAmount,
+        borrowerServiceFee,
+        totalAmount: rentalFee + borrowerServiceFee + depositAmount,
         platformFee,
         lenderPayout,
         lateFeePerDay,

@@ -84,8 +84,8 @@ export default function OnboardingPlanScreen({ navigation }) {
               <Text style={styles.plusBadgeText}>POPULAR</Text>
             </View>
             <Text style={styles.planName}>Plus</Text>
-            <Text style={styles.planPrice}>$1</Text>
-            <Text style={styles.planPeriod}>/month</Text>
+            <Text style={styles.planPrice}>$1.99</Text>
+            <Text style={styles.planPeriod}>one-time</Text>
           </View>
         </View>
 
@@ -131,7 +131,7 @@ export default function OnboardingPlanScreen({ navigation }) {
           testID="Onboarding.Plan.goPlus"
         >
           <Ionicons name="star" size={18} color="#fff" />
-          <Text style={styles.plusButtonText}>Go Plus — $1/mo</Text>
+          <Text style={styles.plusButtonText}>Verify & Unlock — $1.99</Text>
         </HapticPressable>
         <HapticPressable
           style={styles.freeButton}
