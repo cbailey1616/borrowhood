@@ -59,7 +59,9 @@ export default function CreateListingScreen({ navigation, route }) {
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: ['close_friends'], // Expanded after community data loads
+    visibility: isVerifiedOrPlus
+      ? ['close_friends', 'neighborhood', 'town']
+      : ['close_friends', 'neighborhood'],
     isFree: true,
     pricePerDay: '',
     depositAmount: '',
@@ -126,20 +128,6 @@ export default function CreateListingScreen({ navigation, route }) {
         const hasCommunity = communities && communities.length > 0;
         if (hasCommunity) {
           setCommunityId(communities[0].id);
-        }
-
-        // Expand default visibility based on what the user can actually use
-        if (!route?.params?.relistFrom) {
-          const expanded = ['close_friends'];
-          if (hasCommunity) expanded.push('neighborhood');
-          if (isVerifiedOrPlus) expanded.push('town');
-          setFormData(prev => {
-            // Only expand if still at initial default
-            if (prev.visibility.length === 1 && prev.visibility[0] === 'close_friends') {
-              return { ...prev, visibility: expanded };
-            }
-            return prev;
-          });
         }
 
         // Fetch categories
@@ -246,14 +234,6 @@ export default function CreateListingScreen({ navigation, route }) {
         title: 'Almost There',
         message: 'A few fields still need your attention — they\'re highlighted above.',
       });
-      return;
-    }
-
-    // Check if neighborhood visibility is selected but user isn't in a community
-    const needsCommunity = data.visibility.includes('neighborhood');
-    if (needsCommunity && !communityId) {
-      Keyboard.dismiss();
-      setShowJoinCommunity(true);
       return;
     }
 

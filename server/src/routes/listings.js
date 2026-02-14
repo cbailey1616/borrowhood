@@ -419,7 +419,7 @@ router.post('/', authenticate,
     } = req.body;
 
     // Normalize visibility to array
-    const visibilityArray = Array.isArray(visibility) ? visibility : [visibility];
+    let visibilityArray = Array.isArray(visibility) ? [...visibility] : [visibility];
 
     try {
       // Check subscription for paid rentals
@@ -464,21 +464,11 @@ router.post('/', authenticate,
           });
         }
       }
-      // Community is required if neighborhood is in visibility
-      if (visibilityArray.includes('neighborhood')) {
-        if (!communityId) {
-          return res.status(400).json({ error: 'Neighborhood is required when sharing with My Neighborhood' });
-        }
-
-        // Verify user is member of community
-        const memberCheck = await query(
-          'SELECT 1 FROM community_memberships WHERE user_id = $1 AND community_id = $2',
-          [req.user.id, communityId]
-        );
-
-        if (memberCheck.rows.length === 0) {
-          return res.status(403).json({ error: 'Must be neighborhood member to share with My Neighborhood' });
-        }
+      // If neighborhood selected but no community, silently drop it from visibility
+      if (visibilityArray.includes('neighborhood') && !communityId) {
+        const idx = visibilityArray.indexOf('neighborhood');
+        visibilityArray.splice(idx, 1);
+        if (visibilityArray.length === 0) visibilityArray.push('close_friends');
       }
 
       // Store visibility as comma-separated for compatibility, or use first value
