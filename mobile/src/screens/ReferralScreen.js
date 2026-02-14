@@ -35,7 +35,7 @@ export default function ReferralScreen() {
       setReferralCode(codeRes.referralCode);
       setStatus(statusRes);
     } catch (error) {
-      showError({ message: 'Failed to load referral info' });
+      showError({ message: 'Couldn\'t load your referral info. Please check your connection and try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +70,7 @@ export default function ReferralScreen() {
       showToast('Free Plus activated for 1 year!');
       fetchData();
     } catch (error) {
-      showError({ message: error.message || 'Failed to claim reward' });
+      showError({ message: error.message || 'Couldn\'t claim your reward right now. Please try again in a moment.' });
     } finally {
       setIsClaiming(false);
     }

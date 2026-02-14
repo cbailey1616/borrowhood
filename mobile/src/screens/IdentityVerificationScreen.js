@@ -93,7 +93,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Unable to start verification. Please try again.',
+        message: err.message || 'Couldn\'t start verification right now. Please check your connection and try again.',
         type: 'network',
       });
     } finally {

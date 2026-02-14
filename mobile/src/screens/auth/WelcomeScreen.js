@@ -71,14 +71,14 @@ export default function WelcomeScreen({ navigation }) {
         } else {
           showError({
             type: 'auth',
-            message: 'No stored credentials found. Please sign in with your password.',
+            message: 'Your saved login has expired. Please sign in with your email and password.',
           });
         }
       }
     } catch (error) {
       showError({
         type: 'auth',
-        message: error.message || 'Unable to sign in. Please check your credentials.',
+        message: error.message || 'Couldn\'t sign you in. Please try entering your email and password.',
       });
     } finally {
       setIsLoading(false);
@@ -110,7 +110,7 @@ export default function WelcomeScreen({ navigation }) {
     } catch (error) {
       showError({
         type: 'auth',
-        message: error.message || 'Unable to sign in. Please check your email and password.',
+        message: error.message || 'That didn\'t work. Please double-check your email and password and try again.',
       });
     } finally {
       setIsLoading(false);

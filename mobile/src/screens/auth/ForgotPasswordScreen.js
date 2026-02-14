@@ -41,7 +41,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     } catch (error) {
       showError({
         type: 'network',
-        message: error.message || 'Failed to send reset code. Please try again.',
+        message: error.message || 'Couldn\'t send the reset code. Please check your connection and try again.',
       });
     } finally {
       setIsLoading(false);
@@ -60,7 +60,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (!newPassword || newPassword.length < 8) {
       showError({
         type: 'validation',
-        message: 'Password must be at least 8 characters.',
+        message: 'Your new password needs to be at least 8 characters.',
       });
       return;
     }
@@ -68,7 +68,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (newPassword !== confirmPassword) {
       showError({
         type: 'validation',
-        message: 'Passwords do not match.',
+        message: 'Your passwords don\'t match. Please re-enter them.',
       });
       return;
     }
@@ -79,14 +79,14 @@ export default function ForgotPasswordScreen({ navigation }) {
       haptics.success();
       showError({
         type: 'success',
-        title: 'Password Reset',
-        message: 'Your password has been reset. You can now sign in.',
+        title: 'You\'re all set!',
+        message: 'Your password has been reset. Go ahead and sign in with your new password.',
       });
       navigation.navigate('Login');
     } catch (error) {
       showError({
         type: 'auth',
-        message: error.message || 'Invalid or expired code. Please try again.',
+        message: error.message || 'That code doesn\'t look right. Please check your email and try again, or request a new code.',
       });
     } finally {
       setIsLoading(false);

@@ -108,8 +108,8 @@ export default function CreateRequestScreen({ navigation }) {
       haptics.warning();
       showError({
         type: 'validation',
-        title: 'Missing Fields',
-        message: 'Please fill in the highlighted fields.',
+        title: 'Almost There',
+        message: 'A few fields still need your attention — they\'re highlighted above.',
       });
       return;
     }
@@ -142,7 +142,7 @@ export default function CreateRequestScreen({ navigation }) {
       setTimeout(() => showToast('Your request has been posted!', 'success'), 500);
     } catch (error) {
       showError({
-        message: error.message || 'Unable to post your request. Please try again.',
+        message: error.message || 'Couldn\'t post your request right now. Please check your connection and try again.',
       });
     } finally {
       // Only update state if screen is still focused (not dismissed via goBack)

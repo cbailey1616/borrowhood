@@ -67,7 +67,7 @@ export default function JoinCommunityScreen({ navigation }) {
     } catch (error) {
       haptics.error();
       showError({
-        message: error.message || 'Unable to join this neighborhood. Please check your connection and try again.',
+        message: error.message || 'Couldn\'t join this neighborhood right now. Please check your connection and try again.',
         type: 'network',
       });
     } finally {
@@ -78,7 +78,7 @@ export default function JoinCommunityScreen({ navigation }) {
   const handleCreate = async () => {
     if (!newName.trim()) {
       showError({
-        message: 'Please enter a name for your neighborhood to continue.',
+        message: 'Give your neighborhood a name so others can find it.',
         type: 'validation',
       });
       return;
@@ -101,13 +101,13 @@ export default function JoinCommunityScreen({ navigation }) {
       if (errorCode === 'LOCATION_REQUIRED') {
         setShowCreateModal(false);
         showError({
-          message: 'Please set your location in your profile first.',
+          message: 'We need your location to set up the neighborhood. Let\'s update your profile first.',
           type: 'validation',
         });
         navigation.navigate('EditProfile');
       } else {
         showError({
-          message: error.message || 'Unable to create neighborhood. Please check your connection and try again.',
+          message: error.message || 'Couldn\'t create the neighborhood right now. Please check your connection and try again.',
           type: 'network',
         });
       }

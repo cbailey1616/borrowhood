@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
@@ -29,14 +30,19 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [transaction, setTransaction] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingFormVisible, setRatingFormVisible] = useState(false);
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const pollRef = useRef(null);
 
-  useFocusEffect(useCallback(() => { fetchTransaction(); }, [id]));
+  useFocusEffect(useCallback(() => {
+    fetchTransaction();
+    pollRef.current = setInterval(fetchTransaction, 10000);
+    return () => clearInterval(pollRef.current);
+  }, [id]));
 
   const fetchTransaction = async () => {
     try {
@@ -46,7 +52,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
       console.error('Failed to fetch transaction:', error);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchTransaction();
   };
 
   const handleApprove = async () => {
@@ -55,10 +67,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
       await api.approveRental(id);
       fetchTransaction();
       haptics.success();
-      showToast('Request approved! Payment has been captured.', 'success');
+      showToast('Request approved! The borrower has been notified.', 'success');
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to approve request.' });
+      showError({ message: error.message || 'Something went wrong approving this request. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -72,22 +84,22 @@ export default function TransactionDetailScreen({ route, navigation }) {
       navigation.goBack();
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to decline request.' });
+      showError({ message: error.message || 'Something went wrong declining this request. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleConfirmPickup = async (condition) => {
+  const handleConfirmPickup = async () => {
     setActionLoading(true);
     try {
-      await api.confirmRentalPickup(id, condition);
+      await api.confirmRentalPickup(id);
       fetchTransaction();
       haptics.success();
       showToast('Pickup confirmed!', 'success');
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to confirm pickup.' });
+      showError({ message: error.message || 'Couldn\'t confirm the pickup right now. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -113,7 +125,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       }
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to confirm return.' });
+      showError({ message: error.message || 'Couldn\'t confirm the return right now. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -125,12 +137,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
     try {
       await api.rateTransaction(id, selectedRating, ratingComment || undefined);
       haptics.success();
-      showToast('Rating submitted!', 'success');
+      showToast('Thanks for the rating!', 'success');
       setRatingFormVisible(false);
       fetchTransaction();
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to submit rating.' });
+      showError({ message: error.message || 'Couldn\'t submit your rating right now. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -145,7 +157,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       navigation.goBack();
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to cancel request.' });
+      showError({ message: error.message || 'Couldn\'t cancel right now. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -168,7 +180,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       });
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Unable to charge late fee.' });
+      showError({ message: error.message || 'Couldn\'t process the late fee right now. Please check your connection and try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -215,7 +227,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+        }
+      >
         {/* Item Info */}
         <HapticPressable
           haptic="light"
@@ -426,7 +442,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             accessibilityRole="button"
             haptic="medium"
             style={styles.approveButton}
-            onPress={() => setPickupSheetVisible(true)}
+            onPress={handleConfirmPickup}
             disabled={actionLoading}
           >
             <Text style={styles.approveButtonText}>Confirm Pickup</Text>
@@ -528,17 +544,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         </View>
       )}
-
-      <ActionSheet
-        isVisible={pickupSheetVisible}
-        onClose={() => setPickupSheetVisible(false)}
-        title="Confirm Pickup"
-        message="What condition is the item in?"
-        actions={['like_new', 'good', 'fair', 'worn'].map(condition => ({
-          label: CONDITION_LABELS[condition],
-          onPress: () => handleConfirmPickup(condition),
-        }))}
-      />
 
       <ActionSheet
         isVisible={returnSheetVisible}

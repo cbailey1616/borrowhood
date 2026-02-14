@@ -72,7 +72,7 @@ export default function SubscriptionScreen({ navigation, route }) {
     } catch (err) {
       console.error('Load subscription data error:', err);
       showError({
-        message: err.message || 'Unable to load subscription information. Please check your connection and try again.',
+        message: err.message || 'Couldn\'t load subscription info. Please check your connection and try again.',
         type: 'network',
       });
     } finally {
@@ -182,7 +182,7 @@ export default function SubscriptionScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Unable to complete subscription. Please try again.',
+        message: err.message || 'Your subscription couldn\'t be processed. Please check your payment method and try again.',
         type: 'network',
       });
     } finally {
@@ -210,7 +210,7 @@ export default function SubscriptionScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Unable to update payment. Please try again.',
+        message: err.message || 'Your payment couldn\'t be updated. Please check your card details and try again.',
         type: 'network',
       });
     } finally {
@@ -227,7 +227,7 @@ export default function SubscriptionScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Unable to reactivate subscription. Please try again.',
+        message: err.message || 'Couldn\'t reactivate your subscription right now. Please try again in a moment.',
         type: 'network',
       });
     } finally {
@@ -249,7 +249,7 @@ export default function SubscriptionScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Unable to cancel subscription. Please try again or contact support.',
+        message: err.message || 'Couldn\'t process the cancellation right now. Please try again or reach out to support.',
         type: 'network',
       });
     } finally {

@@ -126,7 +126,7 @@ export default function ListingDetailScreen({ route, navigation }) {
       navigation.goBack();
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Failed to delete listing.' });
+      showError({ message: error.message || 'Couldn\'t delete this listing right now. Please check your connection and try again.' });
     }
   };
 
@@ -274,7 +274,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   isBorrower={listing.activeTransaction.isBorrower}
                 />
                 <View style={styles.viewTransactionRow}>
-                  <Text style={styles.viewTransactionText}>View Details</Text>
+                  <Text style={styles.viewTransactionText}>Go to Transaction</Text>
                   <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                 </View>
               </BlurCard>

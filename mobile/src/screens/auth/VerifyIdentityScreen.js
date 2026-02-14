@@ -57,8 +57,8 @@ export default function VerifyIdentityScreen({ navigation, route }) {
     } catch (error) {
       showError({
         type: 'verification',
-        title: 'Verification Error',
-        message: error.message || 'Unable to start verification. Please try again.',
+        title: 'Couldn\'t Start Verification',
+        message: error.message || 'Something went wrong. Please check your connection and try again.',
       });
     } finally {
       setIsLoading(false);
@@ -76,21 +76,21 @@ export default function VerifyIdentityScreen({ navigation, route }) {
         navigation.goBack();
       } else if (result.status === 'processing') {
         showError({
-          title: 'Verification Processing',
-          message: 'Your verification is still being processed. This usually takes a few minutes. Please check back later.',
+          title: 'Still Processing',
+          message: 'Your verification is being reviewed — this usually takes just a few minutes. We\'ll let you know when it\'s done.',
           primaryAction: 'OK',
         });
       } else {
         showError({
-          title: 'Not Yet Verified',
-          message: 'We haven\'t received your verification yet. Please tap "Verify with ID" to start the process.',
+          title: 'Not Started Yet',
+          message: 'Looks like verification hasn\'t been completed. Tap "Verify with ID" to get started — it only takes a minute.',
           primaryAction: 'OK',
         });
       }
     } catch (error) {
       showError({
         type: 'network',
-        message: error.message || 'Unable to check verification status. Please try again.',
+        message: error.message || 'Couldn\'t check your verification status. Please check your connection and try again.',
       });
     } finally {
       setIsLoading(false);

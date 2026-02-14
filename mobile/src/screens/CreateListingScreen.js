@@ -158,8 +158,8 @@ export default function CreateListingScreen({ navigation, route }) {
       haptics.error();
       showError({
         type: 'validation',
-        title: 'Permission Needed',
-        message: 'Camera permission is required to take photos',
+        title: 'Camera Access Needed',
+        message: 'BorrowHood needs camera access to take photos of your item. You can enable it in your device Settings.',
       });
       return;
     }
@@ -203,8 +203,8 @@ export default function CreateListingScreen({ navigation, route }) {
       haptics.warning();
       showError({
         type: 'validation',
-        title: 'Missing Fields',
-        message: 'Please fill in the highlighted fields.',
+        title: 'Almost There',
+        message: 'A few fields still need your attention — they\'re highlighted above.',
       });
       return;
     }
@@ -266,12 +266,12 @@ export default function CreateListingScreen({ navigation, route }) {
         haptics.error();
         showError({
           type: 'network',
-          message: 'Unable to upload your listing. Please check your connection and try again.',
+          message: 'Your listing couldn\'t be uploaded. Please check your connection and try again — your progress is saved.',
         });
       } else {
         haptics.error();
         showError({
-          message: error.message || 'Unable to create listing. Please try again.',
+          message: error.message || 'Something went wrong creating your listing. Please try again.',
         });
       }
     } finally {

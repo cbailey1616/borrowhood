@@ -41,7 +41,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
       const data = await api.addPaymentMethod();
       setClientSecret(data.clientSecret);
     } catch (error) {
-      showError({ message: 'Unable to initialize card setup. Please try again.' });
+      showError({ message: 'Couldn\'t set up card entry right now. Please check your connection and try again.' });
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
 
       if (error) {
         haptics.error();
-        showError({ message: error.message || 'Failed to save card.' });
+        showError({ message: error.message || 'Couldn\'t save your card. Please double-check the details and try again.' });
       } else {
         haptics.success();
         showToast('Card saved successfully!', 'success');
@@ -67,7 +67,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
       }
     } catch (error) {
       haptics.error();
-      showError({ message: 'Failed to save card. Please try again.' });
+      showError({ message: 'Something went wrong saving your card. Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -89,7 +89,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
       if (error) {
         if (error.code !== 'Canceled') {
           haptics.error();
-          showError({ message: error.message || 'Apple Pay failed.' });
+          showError({ message: error.message || 'Apple Pay couldn\'t be set up. Please try again.' });
         }
       } else {
         haptics.success();
@@ -98,7 +98,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
       }
     } catch (error) {
       haptics.error();
-      showError({ message: 'Apple Pay setup failed. Please try again.' });
+      showError({ message: 'Something went wrong with Apple Pay. Please try again.' });
     } finally {
       setSaving(false);
     }

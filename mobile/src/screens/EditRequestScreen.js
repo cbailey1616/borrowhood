@@ -87,8 +87,8 @@ export default function EditRequestScreen({ navigation, route }) {
       haptics.warning();
       showError({
         type: 'validation',
-        title: 'Missing Fields',
-        message: 'Please fill in the highlighted fields.',
+        title: 'Almost There',
+        message: 'A few fields still need your attention — they\'re highlighted above.',
       });
       return;
     }
@@ -112,7 +112,7 @@ export default function EditRequestScreen({ navigation, route }) {
       setTimeout(() => showToast('Request updated!', 'success'), 500);
     } catch (error) {
       showError({
-        message: error.message || 'Unable to update your request. Please try again.',
+        message: error.message || 'Couldn\'t save your changes right now. Please check your connection and try again.',
       });
     } finally {
       setIsSubmitting(false);

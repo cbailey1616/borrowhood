@@ -106,7 +106,7 @@ export default function MyItemsScreen({ navigation }) {
       haptics.error();
       swipeableRefs.current[item.id]?.close();
       showError({
-        message: error.message || 'Unable to delete. Please check your connection and try again.',
+        message: error.message || 'Couldn\'t delete this item right now. Please check your connection and try again.',
         type: 'network',
       });
     }
@@ -207,7 +207,7 @@ export default function MyItemsScreen({ navigation }) {
     } catch (error) {
       haptics.error();
       showError({
-        message: error.message || 'Unable to renew request. Please try again.',
+        message: error.message || 'Couldn\'t renew your request right now. Please check your connection and try again.',
         type: 'network',
       });
     }

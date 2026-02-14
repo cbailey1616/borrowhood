@@ -230,6 +230,7 @@ router.post('/', authenticate,
         {
           senderName: sender.rows[0]?.first_name || 'Someone',
           messagePreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+          conversationId,
         },
         { fromUserId: req.user.id }
       );

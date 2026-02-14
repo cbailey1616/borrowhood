@@ -99,7 +99,7 @@ export default function PaymentFlowScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Payment failed. Please try again.',
+        message: err.message || 'Your payment didn\'t go through. Please check your card details and try again.',
         type: 'network',
       });
     } finally {

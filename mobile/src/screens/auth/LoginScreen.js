@@ -41,8 +41,8 @@ export default function LoginScreen({ navigation }) {
     } catch (error) {
       showError({
         type: 'auth',
-        title: 'Login Failed',
-        message: error.message || 'Unable to sign in. Please check your credentials and try again.',
+        title: 'Couldn\'t Sign In',
+        message: error.message || 'That didn\'t work. Please double-check your email and password and try again.',
       });
     } finally {
       setIsLoading(false);

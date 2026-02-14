@@ -86,7 +86,7 @@ export default function DamageClaimScreen({ navigation, route }) {
     } catch (err) {
       haptics.error();
       showError({
-        message: err.message || 'Failed to submit damage claim.',
+        message: err.message || 'Couldn\'t submit your claim right now. Please check your connection and try again.',
         type: 'network',
       });
     } finally {

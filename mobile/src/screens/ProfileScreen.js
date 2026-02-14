@@ -74,8 +74,8 @@ export default function ProfileScreen({ navigation }) {
     if (status !== 'granted') {
       showError({
         type: 'generic',
-        title: 'Camera Access',
-        message: 'Camera permission is needed to take photos.',
+        title: 'Camera Access Needed',
+        message: 'BorrowHood needs camera access to take a profile photo. You can enable it in your device Settings.',
       });
       return;
     }
@@ -100,7 +100,7 @@ export default function ProfileScreen({ navigation }) {
       showToast('Photo updated!', 'success');
     } catch (err) {
       showError({
-        message: err.message || 'Unable to upload photo. Please try again.',
+        message: err.message || 'Couldn\'t upload your photo. Please check your connection and try again.',
       });
     } finally {
       setUploadingPhoto(false);

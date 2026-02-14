@@ -73,7 +73,7 @@ export default function RegisterScreen({ navigation }) {
       navigation.navigate('VerifyIdentity');
     } catch (error) {
       showError({
-        message: error.message || 'Unable to create account. Please try again.',
+        message: error.message || 'Couldn\'t create your account right now. Please check your connection and try again.',
       });
     } finally {
       setIsLoading(false);

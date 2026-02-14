@@ -32,7 +32,7 @@ export default function EarningsScreen({ navigation }) {
       setEarnings(data);
     } catch (error) {
       console.error('Error fetching earnings:', error);
-      showError({ message: error.message || 'Failed to load earnings' });
+      showError({ message: error.message || 'Couldn\'t load your earnings. Please check your connection and pull down to refresh.' });
     } finally {
       setLoading(false);
       setRefreshing(false);

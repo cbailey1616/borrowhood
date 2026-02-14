@@ -163,8 +163,10 @@ router.post('/:id/approve', authenticate,
 
     try {
       const txn = await query(
-        `SELECT * FROM borrow_transactions
-         WHERE id = $1 AND lender_id = $2 AND status = 'pending'`,
+        `SELECT bt.*, l.title as item_title
+         FROM borrow_transactions bt
+         JOIN listings l ON bt.listing_id = l.id
+         WHERE bt.id = $1 AND bt.lender_id = $2 AND bt.status = 'pending'`,
         [req.params.id, req.user.id]
       );
 
@@ -191,6 +193,7 @@ router.post('/:id/approve', authenticate,
         await sendNotification(t.borrower_id, 'request_approved', {
           transactionId: t.id,
           listingId: t.listing_id,
+          itemTitle: t.item_title,
         });
 
         return res.json({ success: true, freeRental: true });
@@ -214,6 +217,7 @@ router.post('/:id/approve', authenticate,
       await sendNotification(t.borrower_id, 'request_approved', {
         transactionId: t.id,
         listingId: t.listing_id,
+        itemTitle: t.item_title,
       });
 
       res.json({ success: true });

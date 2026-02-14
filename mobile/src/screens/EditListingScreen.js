@@ -84,7 +84,7 @@ export default function EditListingScreen({ navigation, route }) {
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      showError({ type: 'permission', title: 'Camera Access', message: 'Camera permission is required to take photos.' });
+      showError({ type: 'permission', title: 'Camera Access Needed', message: 'BorrowHood needs camera access to take photos. You can enable it in your device Settings.' });
       return;
     }
 
@@ -169,14 +169,14 @@ export default function EditListingScreen({ navigation, route }) {
       if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('plus subscription')) {
         showError({
           type: 'subscription',
-          title: 'Plus Required',
-          message: 'Upgrade to Plus to borrow from anyone in town and charge rental fees. Only $1/month.',
+          title: 'Unlock with Plus',
+          message: 'Plus lets you list to the whole town and charge rental fees — just $1/month.',
           primaryAction: 'Get Plus',
           onPrimaryAction: () => navigation.navigate('Subscription'),
         });
       } else {
         showError({
-          message: error.message || 'Unable to update listing. Please try again.',
+          message: error.message || 'Couldn\'t save your changes right now. Please check your connection and try again.',
         });
       }
     } finally {

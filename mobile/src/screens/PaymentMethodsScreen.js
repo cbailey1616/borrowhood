@@ -73,7 +73,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       showError({
-        message: 'Unable to remove card. Please try again.',
+        message: 'Couldn\'t remove this card right now. Please check your connection and try again.',
         type: 'network',
       });
     }
@@ -89,7 +89,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       showError({
-        message: 'Unable to set default card. Please try again.',
+        message: 'Couldn\'t update your default card right now. Please check your connection and try again.',
         type: 'network',
       });
     }

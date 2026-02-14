@@ -42,7 +42,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       const status = await api.getConnectStatus();
       setConnectStatus(status);
     } catch (error) {
-      showError({ message: 'Failed to load payout status' });
+      showError({ message: 'Couldn\'t load your payout info. Please check your connection and try again.' });
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       loadConnectStatus();
     } catch (error) {
       haptics.error();
-      showError({ message: error.message || 'Something went wrong. Please try again.' });
+      showError({ message: error.message || 'Couldn\'t start payout setup. Please check your connection and try again.' });
     }
   };
 
@@ -209,10 +209,10 @@ export default function SetupPayoutScreen({ navigation, route }) {
                 }
                 loadConnectStatus();
               } else {
-                showError({ message: 'Verification submitted but not yet active. Try again in a moment.' });
+                showError({ message: 'Your verification is still processing. Give it a moment and try again.' });
               }
             } catch (err) {
-              showError({ message: err.message || 'Failed to verify account.' });
+              showError({ message: err.message || 'Couldn\'t verify your account right now. Please try again in a moment.' });
             }
           }}
         >
@@ -234,10 +234,10 @@ export default function SetupPayoutScreen({ navigation, route }) {
               } else if (result.found === 0) {
                 showError({ type: 'success', title: 'All Caught Up', message: 'No pending transfers to retry.' });
               } else {
-                showError({ message: `${result.failed} transfer(s) failed. Try again later.` });
+                showError({ message: `${result.failed} transfer(s) couldn't be completed. Please try again later.` });
               }
             } catch (err) {
-              showError({ message: err.message || 'Failed to retry transfers.' });
+              showError({ message: err.message || 'Couldn\'t process transfers right now. Please try again later.' });
             }
           }}
         >

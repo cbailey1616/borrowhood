@@ -7,110 +7,110 @@ const NOTIFICATION_TEMPLATES = {
   borrow_request: {
     title: 'New Borrow Request',
     body: (data) => data.borrowerName
-      ? `${data.borrowerName} wants to borrow your ${data.itemTitle || 'item'}`
-      : `Someone wants to borrow your item`,
+      ? `${data.borrowerName} wants to borrow your ${data.itemTitle || 'item'}. Tap to review their request.`
+      : 'You have a new borrow request. Tap to review and respond.',
   },
   request_approved: {
-    title: 'Request Approved',
+    title: 'You\'re all set!',
     body: (data) => data.itemTitle
-      ? `Your request to borrow ${data.itemTitle} has been approved!`
-      : 'Your borrow request has been approved!',
+      ? `Great news — your request to borrow ${data.itemTitle} was approved! Tap to coordinate pickup.`
+      : 'Great news — your borrow request was approved! Tap to coordinate pickup.',
   },
   request_declined: {
-    title: 'Request Declined',
+    title: 'Request Update',
     body: (data) => data.itemTitle
-      ? `Your request to borrow ${data.itemTitle} was declined`
-      : 'Your borrow request was declined',
+      ? `${data.itemTitle} isn't available right now. Tap to browse similar items nearby.`
+      : 'This item isn\'t available right now. Tap to browse similar items nearby.',
   },
 
   // Transaction flow
   payment_confirmed: {
-    title: 'Payment Received',
+    title: 'Payment Confirmed',
     body: (data) => data.itemTitle
-      ? `Payment confirmed for ${data.itemTitle}. Ready for pickup!`
-      : 'Payment confirmed. Ready for pickup!',
+      ? `You're all set! ${data.itemTitle} is ready for pickup. Tap to see details.`
+      : 'You\'re all set! Your item is ready for pickup. Tap to see details.',
   },
   pickup_confirmed: {
-    title: 'Item Picked Up',
+    title: 'Enjoy your borrow!',
     body: (data) => {
       const returnBy = data.returnDate
-        ? `. Please return by ${new Date(data.returnDate).toLocaleDateString()}`
+        ? ` Remember to return it by ${new Date(data.returnDate).toLocaleDateString()}.`
         : '';
       return data.itemTitle
-        ? `You've picked up ${data.itemTitle}${returnBy}`
-        : `You've picked up the item${returnBy}`;
+        ? `${data.itemTitle} is now in your hands.${returnBy} Tap to view your rental.`
+        : `Your item is now in your hands.${returnBy} Tap to view your rental.`;
     },
   },
   return_confirmed: {
-    title: 'Item Returned',
+    title: 'Return Complete',
     body: (data) => data.itemTitle
-      ? `${data.itemTitle} has been returned`
-      : 'Your item has been returned',
+      ? `${data.itemTitle} has been returned. Tap to leave a rating for your neighbor.`
+      : 'Your item has been returned. Tap to leave a rating for your neighbor.',
   },
   return_reminder: {
-    title: 'Return Reminder',
+    title: 'Friendly Reminder',
     body: (data) => {
       const when = data.dueDate === 'today' ? 'today' : `on ${data.dueDate || 'soon'}`;
       return data.itemTitle
-        ? `${data.itemTitle} is due back ${when}`
-        : `Your borrowed item is due back ${when}`;
+        ? `${data.itemTitle} is due back ${when}. Tap to coordinate the return.`
+        : `Your borrowed item is due back ${when}. Tap to coordinate the return.`;
     },
   },
 
   // Disputes
   dispute_opened: {
-    title: 'Dispute Opened',
+    title: 'Action Needed',
     body: (data) => data.itemTitle
-      ? `A dispute has been opened for ${data.itemTitle}`
-      : 'A dispute has been opened for your transaction',
+      ? `A concern was raised about ${data.itemTitle}. Tap to review and respond.`
+      : 'A concern was raised about your transaction. Tap to review and respond.',
   },
   dispute_resolved: {
-    title: 'Dispute Resolved',
+    title: 'Issue Resolved',
     body: (data) => data.itemTitle
-      ? `The dispute for ${data.itemTitle} has been resolved`
-      : 'Your dispute has been resolved',
+      ? `The issue with ${data.itemTitle} has been resolved. Tap to see the outcome.`
+      : 'Your dispute has been resolved. Tap to see the outcome.',
   },
 
   // Ratings
   new_rating: {
     title: 'New Rating',
     body: (data) => data.raterName
-      ? `${data.raterName} left you a ${data.rating}-star rating`
-      : `You received a ${data.rating || 5}-star rating`,
+      ? `${data.raterName} left you a ${data.rating}-star rating. Tap to see what they said.`
+      : `You received a ${data.rating || 5}-star rating. Tap to view it.`,
   },
   rating_received: {
     title: 'New Rating',
-    body: (data) => `You received a ${data.rating || 5}-star rating`,
+    body: (data) => `You received a ${data.rating || 5}-star rating. Tap to view it.`,
   },
 
   // Community
   join_request: {
-    title: 'Join Request',
+    title: 'New Neighbor',
     body: (data) => data.userName
-      ? `${data.userName} wants to join ${data.communityName || 'your community'}`
-      : 'Someone wants to join your community',
+      ? `${data.userName} wants to join ${data.communityName || 'your community'}. Tap to review.`
+      : 'Someone wants to join your community. Tap to review their request.',
   },
   join_approved: {
-    title: 'Welcome!',
+    title: 'Welcome to the neighborhood!',
     body: (data) => data.communityName
-      ? `You've been approved to join ${data.communityName}`
-      : 'Your membership has been approved!',
+      ? `You've been approved to join ${data.communityName}. Tap to start browsing items nearby.`
+      : 'You\'re in! Tap to start browsing items from your neighbors.',
   },
 
   // Item requests (wanted items)
   item_match: {
-    title: 'Item Match',
+    title: 'We found a match!',
     body: (data) => data.itemTitle
-      ? `Someone has ${data.itemTitle} that matches what you're looking for!`
-      : 'An item matching your request is available!',
+      ? `A neighbor has ${data.itemTitle} — just what you were looking for! Tap to check it out.`
+      : 'An item matching your request is available nearby! Tap to check it out.',
   },
 
   // New request posted
   new_request: {
-    title: 'New Request',
+    title: 'Neighbor Needs Help',
     body: (data) => data.firstName
-      ? `${data.firstName} is looking for: ${data.title || 'something'}`
-      : 'Someone posted a new request nearby',
+      ? `${data.firstName} is looking for: ${data.title || 'something'}. Got one? Tap to help out.`
+      : 'A neighbor posted a new request nearby. Tap to see if you can help.',
   },
 
   // Messages
@@ -118,47 +118,47 @@ const NOTIFICATION_TEMPLATES = {
     title: 'New Message',
     body: (data) => data.senderName
       ? `${data.senderName}: ${data.messagePreview || 'Sent you a message'}`
-      : 'You have a new message',
+      : 'You have a new message. Tap to read it.',
   },
 
   // Discussions
   discussion_reply: {
-    title: 'Reply to Your Question',
+    title: 'New Reply',
     body: (data) => data.posterName
-      ? `${data.posterName} replied to your question on ${data.itemTitle || 'a listing'}`
-      : 'Someone replied to your question',
+      ? `${data.posterName} replied to your question on ${data.itemTitle || 'a listing'}. Tap to see their answer.`
+      : 'Someone replied to your question. Tap to see their answer.',
   },
   listing_comment: {
-    title: 'New Question on Your Listing',
+    title: 'New Question',
     body: (data) => data.posterName
-      ? `${data.posterName} asked a question about ${data.itemTitle || 'your listing'}`
-      : 'Someone asked a question about your listing',
+      ? `${data.posterName} asked a question about ${data.itemTitle || 'your listing'}. Tap to respond.`
+      : 'Someone asked about your listing. Tap to respond.',
   },
 
   // Friends
   friend_request: {
-    title: 'Friend Request',
+    title: 'New Friend Request',
     body: (data) => data.fromName
-      ? `${data.fromName} sent you a friend request`
-      : 'You have a new friend request',
+      ? `${data.fromName} wants to connect with you on BorrowHood. Tap to respond.`
+      : 'You have a new friend request. Tap to respond.',
   },
   friend_accepted: {
-    title: 'Friend Request Accepted',
+    title: 'You\'re connected!',
     body: (data) => data.friendName
-      ? `${data.friendName} accepted your friend request`
-      : 'Your friend request was accepted!',
+      ? `${data.friendName} accepted your friend request. You can now see each other's items.`
+      : 'Your friend request was accepted! You can now see each other\'s items.',
   },
 
   // Referrals
   referral_joined: {
-    title: 'Friend Joined!',
+    title: 'Your friend joined!',
     body: (data) => data.friendName
-      ? `${data.friendName} joined BorrowHood using your referral code!`
-      : 'Someone joined using your referral code!',
+      ? `${data.friendName} just joined BorrowHood thanks to you! Keep sharing to unlock free Plus.`
+      : 'Someone just joined using your referral code! Keep sharing to unlock free Plus.',
   },
   referral_reward: {
-    title: 'Free Plus Unlocked!',
-    body: () => 'Congratulations! You\'ve earned free Plus for a year by inviting 3 friends!',
+    title: 'You earned free Plus!',
+    body: () => 'Amazing — you\'ve unlocked free Plus for a year by inviting 3 friends! Enjoy the perks.',
   },
 };
 
@@ -182,8 +182,8 @@ export async function sendNotification(userId, type, data, options = {}) {
 
     // Create notification record
     const result = await query(
-      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
         userId,
@@ -194,6 +194,7 @@ export async function sendNotification(userId, type, data, options = {}) {
         options.transactionId || data.transactionId || null,
         options.listingId || data.listingId || null,
         options.requestId || data.requestId || null,
+        options.conversationId || data.conversationId || null,
       ]
     );
 

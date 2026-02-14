@@ -126,8 +126,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
     if (days < listing.minDuration || days > listing.maxDuration) {
       showError({
         type: 'validation',
-        title: 'Invalid Duration',
-        message: `This item can be borrowed for ${listing.minDuration}-${listing.maxDuration} days. Please adjust your dates.`,
+        title: 'Adjust Your Dates',
+        message: `This item can be borrowed for ${listing.minDuration}–${listing.maxDuration} days. Try picking a shorter or longer window.`,
       });
       return;
     }
@@ -165,18 +165,21 @@ export default function BorrowRequestScreen({ route, navigation }) {
       if (msg.includes('verification')) {
         showError({
           type: 'verification',
-          message: 'You need to verify your identity before borrowing from town listings.',
+          title: 'Verify Your Identity',
+          message: 'Town listings require identity verification for everyone\'s safety. It only takes a minute.',
+          primaryLabel: 'Verify Now',
+          onPrimaryPress: () => navigation.navigate('IdentityVerification'),
         });
       } else if (msg.includes('payment method')) {
         showError({
-          title: 'Payment Method Required',
-          message: 'Please add a payment method before requesting a paid rental.',
+          title: 'Add a Payment Method',
+          message: 'You\'ll need a card on file to request paid rentals. Your card won\'t be charged until the lender approves.',
           primaryLabel: 'Add Card',
           onPrimaryPress: () => navigation.navigate('AddPaymentMethod'),
         });
       } else {
         showError({
-          message: error.message || 'Unable to send request. Please try again.',
+          message: error.message || 'Couldn\'t send your request right now. Please check your connection and try again.',
         });
       }
     } finally {

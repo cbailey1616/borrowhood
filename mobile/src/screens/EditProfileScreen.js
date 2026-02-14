@@ -63,7 +63,7 @@ export default function EditProfileScreen({ navigation }) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         showError({
-          message: 'Location permission is required. Please enable it in your device Settings to use this feature.',
+          message: 'BorrowHood needs location access to find your neighborhood. You can enable it in your device Settings.',
           type: 'validation',
         });
         return;
@@ -87,7 +87,7 @@ export default function EditProfileScreen({ navigation }) {
     } catch (error) {
       console.error('Location error:', error);
       showError({
-        message: 'Could not get your location. Please check your connection or enter it manually.',
+        message: 'Couldn\'t get your location right now. You can try again or type in your city and state instead.',
         type: 'network',
       });
     } finally {
@@ -98,7 +98,7 @@ export default function EditProfileScreen({ navigation }) {
   const handleSave = async () => {
     if (!formData.firstName || !formData.lastName) {
       showError({
-        message: 'Please enter your first and last name to continue.',
+        message: 'Your name helps neighbors know who they\'re borrowing from. Please fill in your first and last name.',
         type: 'validation',
       });
       return;
@@ -150,7 +150,7 @@ export default function EditProfileScreen({ navigation }) {
     } catch (error) {
       haptics.error();
       showError({
-        message: error.message || 'Unable to update your profile. Please try again.',
+        message: error.message || 'Couldn\'t save your profile changes. Please check your connection and try again.',
         type: 'network',
       });
     } finally {
@@ -194,8 +194,8 @@ export default function EditProfileScreen({ navigation }) {
                 onPress={() => {
                   showError({
                     type: 'verification',
-                    title: 'Re-verify Identity',
-                    message: 'Changing your verified name or address requires re-verifying your identity. Your verified status will be removed until the new verification is complete.',
+                    title: 'Quick Re-verification Needed',
+                    message: 'Since your identity is verified, changing your name or address requires a quick re-verification. It only takes a minute.',
                     primaryAction: 'Re-verify',
                     secondaryAction: 'Cancel',
                     onPrimaryPress: () => navigation.navigate('IdentityVerification'),
