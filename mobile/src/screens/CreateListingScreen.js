@@ -294,10 +294,15 @@ export default function CreateListingScreen({ navigation, route }) {
 
       if (errorCode === 'PLUS_REQUIRED' || errorCode === 'VERIFICATION_REQUIRED' || errorMsg.includes('verification required') || errorMsg.includes('town visibility')) {
         Keyboard.dismiss();
+        // Refresh user in case local state is stale, then check gate
+        await refreshUser();
         const source = formData.visibility.includes('town') ? 'town_browse' : 'rental_listing';
         const gate = checkPremiumGate(user, source);
         if (!gate.passed) {
           navigation.push(gate.screen, gate.params);
+        } else {
+          // Server rejected but local gate passed — force navigate to subscription
+          navigation.push('Subscription', { source });
         }
       } else if (errorMsg.includes('neighborhood') || errorMsg.includes('community')) {
         Keyboard.dismiss();
