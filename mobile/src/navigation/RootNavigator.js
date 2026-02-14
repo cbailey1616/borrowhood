@@ -202,7 +202,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Subscription"
             component={SubscriptionScreen}
-            options={{ ...sharedScreenOptions, title: 'Subscription' }}
+            options={{ ...sharedScreenOptions, title: 'Subscription', presentation: 'modal' }}
           />
           <Stack.Screen
             name="Bundles"
@@ -237,7 +237,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="IdentityVerification"
             component={IdentityVerificationScreen}
-            options={{ ...sharedScreenOptions, title: 'Verify Identity' }}
+            options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
           />
           <Stack.Screen
             name="PaymentFlow"

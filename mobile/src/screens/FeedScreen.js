@@ -339,90 +339,59 @@ export default function FeedScreen({ navigation }) {
   const renderRequestItem = (item, index) => (
     <AnimatedCard index={index}>
       <HapticPressable
-        style={styles.requestCard}
         onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
         haptic="light"
         scaleDown={0.98}
+        style={styles.requestCard}
       >
-        <View style={styles.requestAccent} />
-        <View style={styles.requestContent}>
-          <View style={styles.requestHeader}>
-            <HapticPressable
-              style={styles.userInfo}
-              onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-              haptic="light"
-              scaleDown={1}
-            >
-              {item.user.profilePhotoUrl ? (
-                <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Ionicons name="person" size={20} color={COLORS.gray[400]} />
-                </View>
-              )}
-              <View style={styles.userMeta}>
-                <View style={styles.userNameRow}>
-                  <Text style={styles.userName}>
-                    {item.user.firstName} {item.user.lastName}
-                  </Text>
-                  <UserBadges
-                    isVerified={item.user.isVerified}
-                    totalTransactions={item.user.totalTransactions || 0}
-                    size="small"
-                    compact
-                  />
-                </View>
-                <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
+        <View style={styles.requestHeader}>
+          <HapticPressable
+            style={styles.requestUserRow}
+            onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+            haptic="light"
+            scaleDown={1}
+          >
+            {item.user.profilePhotoUrl ? (
+              <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
+            ) : (
+              <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]}>
+                <Ionicons name="person" size={16} color={COLORS.gray[400]} />
               </View>
-            </HapticPressable>
-            <View style={[styles.typeBadge, styles.requestBadge]}>
-              <Ionicons
-                name={item.type === 'service' ? 'construct-outline' : 'cube-outline'}
-                size={12}
-                color={COLORS.secondary}
-              />
-              <Text style={[styles.typeBadgeText, { color: COLORS.secondary }]}>
-                {item.type === 'service' ? 'Service' : 'Item'}
-              </Text>
+            )}
+            <View>
+              <Text style={styles.requestUserName}>{item.user.firstName} {item.user.lastName}</Text>
+              <Text style={styles.requestTime}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
-          </View>
-
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          {item.description && (
-            <Text style={styles.description} numberOfLines={3}>{item.description}</Text>
-          )}
-          {(item.neededFrom || item.neededUntil) && (
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.dateText}>
-                {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
-                {item.neededFrom && item.neededUntil && ' - '}
-                {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.requestFooter}>
-            <HapticPressable
-              style={styles.requestActionButton}
-              onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
-              haptic="light"
-              scaleDown={1}
-            >
-              <Ionicons name="hand-right-outline" size={16} color={COLORS.secondary} />
-              <Text style={styles.requestActionText}>I Have This</Text>
-            </HapticPressable>
-            <HapticPressable
-              style={styles.requestMessageButton}
-              onPress={() => navigation.navigate('Chat', { recipientId: item.user.id })}
-              haptic="light"
-              scaleDown={1}
-            >
-              <Ionicons name="chatbubble-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={[styles.requestActionText, { color: COLORS.textSecondary }]}>Message</Text>
-            </HapticPressable>
+          </HapticPressable>
+          <View style={styles.requestWantedBadge}>
+            <Text style={styles.requestWantedText}>WANTED</Text>
           </View>
         </View>
+
+        <Text style={styles.requestTitle}>{item.title}</Text>
+        {item.description ? (
+          <Text style={styles.requestSnippet} numberOfLines={3}>{item.description}</Text>
+        ) : null}
+
+        {(item.neededFrom || item.neededUntil) ? (
+          <View style={styles.requestDateRow}>
+            <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
+            <Text style={styles.requestDateText}>
+              {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
+              {item.neededFrom && item.neededUntil ? ' - ' : ''}
+              {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+            </Text>
+          </View>
+        ) : null}
+
+        <HapticPressable
+          onPress={() => navigation.navigate('CreateListing', { requestMatch: item })}
+          haptic="medium"
+          style={styles.requestCTA}
+        >
+          <Ionicons name="hand-right-outline" size={18} color="#fff" />
+          <Text style={styles.requestCTAText}>I Have This</Text>
+        </HapticPressable>
       </HapticPressable>
     </AnimatedCard>
   );
@@ -871,58 +840,93 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
   },
   requestCard: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.warning + '30',
-  },
-  requestAccent: {
-    width: 4,
-    backgroundColor: COLORS.warning,
-  },
-  requestContent: {
-    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
     padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
   },
   requestHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: SPACING.md,
   },
-  requestFooter: {
+  requestUserRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-    marginTop: SPACING.lg,
-    paddingTop: SPACING.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
+    gap: SPACING.sm,
   },
-  requestActionButton: {
-    flexDirection: 'row',
+  requestAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.gray[700],
+  },
+  requestAvatarPlaceholder: {
     alignItems: 'center',
-    gap: SPACING.xs,
-    backgroundColor: COLORS.secondary + '15',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    justifyContent: 'center',
+  },
+  requestUserName: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  requestTime: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+  },
+  requestWantedBadge: {
+    backgroundColor: COLORS.secondary + '20',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
     borderRadius: RADIUS.full,
   },
-  requestMessageButton: {
+  requestWantedText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '700',
+    color: COLORS.secondary,
+    letterSpacing: 0.5,
+    fontSize: 10,
+  },
+  requestTitle: {
+    ...TYPOGRAPHY.h3,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  requestSnippet: {
+    ...TYPOGRAPHY.subheadline,
+    color: COLORS.textSecondary,
+    lineHeight: 21,
+    marginBottom: SPACING.xs,
+  },
+  requestDateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    marginTop: SPACING.xs,
   },
-  requestActionText: {
+  requestDateText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
-    color: COLORS.secondary,
+    color: COLORS.textMuted,
+  },
+  requestCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.secondary,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.lg,
+  },
+  requestCTAText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '700',
+    color: '#fff',
   },
   requestBadge: {
     backgroundColor: COLORS.secondaryMuted,
