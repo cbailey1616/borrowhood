@@ -27,6 +27,7 @@ router.get('/', authenticate, async (req, res) => {
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
     const canAccessTown = userTier === 'plus' && isVerified && userCity;
+    const canBrowseTown = userTier === 'plus' && userCity; // Plus + has city, regardless of verification
 
     const friendsResult = await query(
       'SELECT friend_id FROM friendships WHERE user_id = $1',
@@ -85,6 +86,16 @@ router.get('/', authenticate, async (req, res) => {
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 3;
+    } else if (canBrowseTown) {
+      // Plus but unverified — include town listings for window shopping (will be masked)
+      whereConditions.push(`(
+        l.owner_id = $${paramIndex} OR
+        (l.visibility = 'town' AND owner.city = $${paramIndex + 1} AND owner.city IS NOT NULL) OR
+        l.visibility = 'neighborhood' OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
+      )`);
+      params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
+      paramIndex += 3;
     } else {
       // User can't access town listings - only show friends and neighborhood
       whereConditions.push(`(
@@ -123,33 +134,51 @@ router.get('/', authenticate, async (req, res) => {
       params
     );
 
-    res.json(result.rows.map(l => ({
-      id: l.id,
-      title: l.title,
-      description: l.description,
-      condition: l.condition,
-      isFree: l.is_free,
-      pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
-      depositAmount: parseFloat(l.deposit_amount),
-      minDuration: l.min_duration,
-      maxDuration: l.max_duration,
-      visibility: l.visibility,
-      photoUrl: l.photo_url,
-      category: l.category_name,
-      distanceMiles: l.distance_miles ? parseFloat(l.distance_miles).toFixed(1) : null,
-      owner: {
-        id: l.owner_id,
-        firstName: l.first_name,
-        lastName: l.last_name,
-        profilePhotoUrl: l.profile_photo_url,
-        rating: parseFloat(l.rating) || 0,
-        ratingCount: l.rating_count,
-        city: l.owner_city,
-        totalTransactions: l.total_transactions || 0,
-        isVerified: l.owner_status === 'verified',
-      },
-      createdAt: l.created_at,
-    })));
+    const needsMasking = canBrowseTown && !canAccessTown;
+
+    res.json(result.rows.map(l => {
+      const isTownListing = l.visibility === 'town' && l.owner_id !== req.user.id;
+      const ownerMasked = needsMasking && isTownListing;
+
+      return {
+        id: l.id,
+        title: l.title,
+        description: l.description,
+        condition: l.condition,
+        isFree: l.is_free,
+        pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
+        depositAmount: parseFloat(l.deposit_amount),
+        minDuration: l.min_duration,
+        maxDuration: l.max_duration,
+        visibility: l.visibility,
+        photoUrl: l.photo_url,
+        category: l.category_name,
+        distanceMiles: l.distance_miles ? parseFloat(l.distance_miles).toFixed(1) : null,
+        owner: ownerMasked ? {
+          id: null,
+          firstName: 'Verified',
+          lastName: 'Lender',
+          profilePhotoUrl: null,
+          rating: 0,
+          ratingCount: 0,
+          city: null,
+          totalTransactions: 0,
+          isVerified: true,
+        } : {
+          id: l.owner_id,
+          firstName: l.first_name,
+          lastName: l.last_name,
+          profilePhotoUrl: l.profile_photo_url,
+          rating: parseFloat(l.rating) || 0,
+          ratingCount: l.rating_count,
+          city: l.owner_city,
+          totalTransactions: l.total_transactions || 0,
+          isVerified: l.owner_status === 'verified',
+        },
+        createdAt: l.created_at,
+        ...(ownerMasked && { ownerMasked: true }),
+      };
+    }));
   } catch (err) {
     console.error('Get listings error:', err);
     res.status(500).json({ error: 'Failed to get listings' });
@@ -217,6 +246,29 @@ router.get('/:id', authenticate, async (req, res) => {
 
     const l = result.rows[0];
 
+    // Town listing visibility check for non-owner viewers
+    let ownerMasked = false;
+    if (l.visibility === 'town' && l.owner_id !== req.user.id) {
+      const viewerResult = await query(
+        'SELECT subscription_tier, is_verified, city, verification_grace_until FROM users WHERE id = $1',
+        [req.user.id]
+      );
+      const viewer = viewerResult.rows[0];
+      const viewerTier = viewer?.subscription_tier || 'free';
+      const viewerCity = viewer?.city;
+      const viewerGraceActive = viewer?.verification_grace_until && new Date(viewer.verification_grace_until) > new Date();
+      const viewerVerified = viewer?.is_verified || viewerGraceActive;
+
+      if (viewerTier !== 'plus' || !viewerCity) {
+        // Non-Plus user — should not be able to access
+        return res.status(404).json({ error: 'Listing not found' });
+      }
+      if (!viewerVerified) {
+        // Plus but unverified — mask owner info
+        ownerMasked = true;
+      }
+    }
+
     // Visibility check: close_friends listings only visible to owner and friends
     if (l.visibility === 'close_friends' && l.owner_id !== req.user.id) {
       const friendship = await query(
@@ -268,7 +320,16 @@ router.get('/:id', authenticate, async (req, res) => {
       category: l.category_name,
       categoryId: l.category_id,
       timesBorrowed: l.times_borrowed,
-      owner: {
+      owner: ownerMasked ? {
+        id: null,
+        firstName: 'Verified',
+        lastName: 'Lender',
+        profilePhotoUrl: null,
+        rating: 0,
+        ratingCount: 0,
+        totalTransactions: 0,
+        isVerified: true,
+      } : {
         id: l.owner_id,
         firstName: l.first_name,
         lastName: l.last_name,
@@ -278,6 +339,7 @@ router.get('/:id', authenticate, async (req, res) => {
         totalTransactions: l.total_transactions || 0,
         isVerified: l.owner_status === 'verified',
       },
+      ownerMasked,
       isOwner: l.owner_id === req.user.id,
       activeTransaction: txn ? {
         id: txn.id,
@@ -368,7 +430,7 @@ router.post('/', authenticate,
 
         if (tier !== 'plus') {
           return res.status(403).json({
-            error: 'Plus subscription required to charge for rentals',
+            error: 'Verification required to charge for rentals',
             code: 'PLUS_REQUIRED',
             requiredTier: 'plus',
           });
@@ -387,7 +449,7 @@ router.post('/', authenticate,
 
         if (tier !== 'plus') {
           return res.status(403).json({
-            error: 'Plus subscription required for town-wide visibility',
+            error: 'Verification required for town-wide visibility',
             code: 'PLUS_REQUIRED',
             requiredTier: 'plus',
           });
@@ -523,7 +585,7 @@ router.patch('/:id', authenticate,
           );
           const u = subCheck.rows[0];
           if (u?.subscription_tier !== 'plus') {
-            return res.status(403).json({ error: 'Plus subscription required for town visibility', code: 'PLUS_REQUIRED' });
+            return res.status(403).json({ error: 'Verification required for town visibility', code: 'PLUS_REQUIRED' });
           }
           if (!u?.is_verified) {
             return res.status(403).json({ error: 'Verification required for town visibility', code: 'VERIFICATION_REQUIRED' });

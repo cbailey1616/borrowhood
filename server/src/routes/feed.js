@@ -23,17 +23,17 @@ router.get('/', authenticate, async (req, res) => {
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
     const canAccessTown = userTier === 'plus' && isVerified && userCity;
+    const canBrowseTown = userTier === 'plus' && userCity; // Plus + has city, regardless of verification
 
     // Parse visibility filter
     const visibilityFilters = visibility ? visibility.split(',') : [];
     const wantsTown = visibilityFilters.includes('town');
 
-    // If town visibility requested but user can't access it, return 403
-    if (wantsTown && !canAccessTown) {
-      const code = userTier !== 'plus' ? 'SUBSCRIPTION_REQUIRED' : 'VERIFICATION_REQUIRED';
+    // If town visibility requested but user can't browse it, return 403
+    if (wantsTown && !canBrowseTown) {
       return res.status(403).json({
-        error: code === 'SUBSCRIPTION_REQUIRED' ? 'Plus subscription required' : 'Identity verification required',
-        code,
+        error: 'Plus subscription required',
+        code: 'SUBSCRIPTION_REQUIRED',
       });
     }
 
@@ -112,7 +112,7 @@ router.get('/', authenticate, async (req, res) => {
           visConds.push(`(l.visibility = 'neighborhood' AND l.community_id = ANY($${listingParams.length + 1}))`);
           listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         }
-        if (wantsTown && canAccessTown) {
+        if (wantsTown && canBrowseTown) {
           visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
@@ -171,33 +171,53 @@ router.get('/', authenticate, async (req, res) => {
       requestsResult = await query(requestQuery, requestParams);
     }
 
+    // Determine if we need to mask owner info on town listings
+    const needsMasking = canBrowseTown && !canAccessTown;
+
+    const maskedUser = {
+      id: null,
+      firstName: 'Verified',
+      lastName: 'Lender',
+      profilePhotoUrl: null,
+      rating: 0,
+      ratingCount: 0,
+      isVerified: true,
+      totalTransactions: 0,
+    };
+
     // Combine and sort by created_at
-    const listings = listingsResult.rows.map(l => ({
-      id: l.id,
-      type: 'listing',
-      title: l.title,
-      description: l.description,
-      condition: l.condition,
-      isFree: l.is_free,
-      pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
-      photoUrl: l.photo_url,
-      category: l.category_name || null,
-      categoryIcon: l.category_icon || null,
-      createdAt: l.created_at,
-      user: {
-        id: l.user_id,
-        firstName: l.first_name,
-        lastName: l.last_name,
-        profilePhotoUrl: l.profile_photo_url,
-        rating: parseFloat(l.rating) || 0,
-        ratingCount: l.rating_count,
-        isVerified: l.status === 'verified',
-        totalTransactions: l.total_transactions,
-      },
-      owner: {
-        id: l.owner_id,
-      },
-    }));
+    const listings = listingsResult.rows.map(l => {
+      const isTownListing = l.listing_visibility === 'town' && l.owner_id !== req.user.id;
+      const ownerMasked = needsMasking && isTownListing;
+
+      return {
+        id: l.id,
+        type: 'listing',
+        title: l.title,
+        description: l.description,
+        condition: l.condition,
+        isFree: l.is_free,
+        pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
+        photoUrl: l.photo_url,
+        category: l.category_name || null,
+        categoryIcon: l.category_icon || null,
+        createdAt: l.created_at,
+        user: ownerMasked ? maskedUser : {
+          id: l.user_id,
+          firstName: l.first_name,
+          lastName: l.last_name,
+          profilePhotoUrl: l.profile_photo_url,
+          rating: parseFloat(l.rating) || 0,
+          ratingCount: l.rating_count,
+          isVerified: l.status === 'verified',
+          totalTransactions: l.total_transactions,
+        },
+        owner: {
+          id: ownerMasked ? null : l.owner_id,
+        },
+        ...(ownerMasked && { ownerMasked: true }),
+      };
+    });
 
     const requests = requestsResult.rows.map(r => ({
       id: r.id,

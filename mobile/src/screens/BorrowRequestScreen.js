@@ -211,7 +211,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             />
             <View style={styles.promptItemInfo}>
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
-              <Text style={styles.promptItemOwner}>from {listing.owner.firstName}</Text>
+              <Text style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
             </View>
           </BlurCard>
 
@@ -220,11 +220,11 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <View style={styles.promptIconContainer}>
               <Ionicons name="star" size={32} color={COLORS.primary} />
             </View>
-            <Text style={styles.promptTitle}>Upgrade to Plus</Text>
+            <Text style={styles.promptTitle}>Verify to Unlock</Text>
             <Text style={styles.promptText}>
               {listing.isFree === false
-                ? 'Paid rentals require a Plus subscription. Upgrade to rent items from your neighbors.'
-                : 'This item is shared town-wide. Get Plus to borrow from neighbors across your town.'}
+                ? 'Paid rentals require verification. Verify to rent items from your neighbors.'
+                : 'This item is shared town-wide. Verify to borrow from neighbors across your town.'}
             </Text>
 
             <View style={styles.promptBenefits}>
@@ -247,7 +247,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
               style={styles.promptButton}
               onPress={() => navigation.navigate('Subscription')}
             >
-              <Text style={styles.promptButtonText}>Get Plus - $1/mo</Text>
+              <Text style={styles.promptButtonText}>Verify & Unlock — $1.99</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </HapticPressable>
           </BlurCard>
@@ -277,7 +277,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             />
             <View style={styles.promptItemInfo}>
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
-              <Text style={styles.promptItemOwner}>from {listing.owner.firstName}</Text>
+              <Text style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
             </View>
           </BlurCard>
 
@@ -339,7 +339,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <View style={styles.itemInfo}>
           <Text style={styles.itemTitle}>{listing.title}</Text>
           <Text style={styles.itemOwner}>
-            from {listing.owner.firstName} {listing.owner.lastName[0]}.
+            {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName} ${listing.owner.lastName[0]}.`}
           </Text>
         </View>
       </BlurCard>

@@ -20,7 +20,6 @@ import ActionSheet from '../components/ActionSheet';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonCard } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
-import { checkPremiumGate } from '../utils/premiumGate';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 
@@ -164,8 +163,7 @@ export default function FeedScreen({ navigation }) {
   };
 
   const handleTownToggle = () => {
-    const gate = checkPremiumGate(user, 'town_browse');
-    if (!gate.passed) {
+    if (user?.subscriptionTier !== 'plus') {
       setActiveDropdown(null);
       // Delay so the ActionSheet portal closes before the overlay renders
       setTimeout(() => setShowUpgradePrompt(true), 350);
@@ -228,34 +226,46 @@ export default function FeedScreen({ navigation }) {
           scaleDown={0.98}
         >
           <View style={styles.cardHeader}>
-            <HapticPressable
-              style={styles.userInfo}
-              onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-              haptic="light"
-              scaleDown={1}
-            >
-              {item.user.profilePhotoUrl ? (
-                <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Ionicons name="person" size={20} color={COLORS.gray[400]} />
+            {item.ownerMasked ? (
+              <View style={styles.userInfo}>
+                <View style={[styles.avatar, styles.maskedAvatar]}>
+                  <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
                 </View>
-              )}
-              <View style={styles.userMeta}>
-                <View style={styles.userNameRow}>
-                  <Text style={styles.userName}>
-                    {item.user.firstName} {item.user.lastName}
-                  </Text>
-                  <UserBadges
-                    isVerified={item.user.isVerified}
-                    totalTransactions={item.user.totalTransactions || 0}
-                    size="small"
-                    compact
-                  />
+                <View style={styles.userMeta}>
+                  <Text style={styles.userName}>Verified Lender</Text>
+                  <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
                 </View>
-                <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
               </View>
-            </HapticPressable>
+            ) : (
+              <HapticPressable
+                style={styles.userInfo}
+                onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+                haptic="light"
+                scaleDown={1}
+              >
+                {item.user.profilePhotoUrl ? (
+                  <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Ionicons name="person" size={20} color={COLORS.gray[400]} />
+                  </View>
+                )}
+                <View style={styles.userMeta}>
+                  <View style={styles.userNameRow}>
+                    <Text style={styles.userName}>
+                      {item.user.firstName} {item.user.lastName}
+                    </Text>
+                    <UserBadges
+                      isVerified={item.user.isVerified}
+                      totalTransactions={item.user.totalTransactions || 0}
+                      size="small"
+                      compact
+                    />
+                  </View>
+                  <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
+                </View>
+              </HapticPressable>
+            )}
             <View style={styles.typeBadge}>
               <Ionicons name="cube-outline" size={12} color={COLORS.primary} />
               <Text style={styles.typeBadgeText}>New Item</Text>
@@ -299,15 +309,27 @@ export default function FeedScreen({ navigation }) {
               <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Discuss</Text>
             </HapticPressable>
             <View style={styles.actionDivider} />
-            <HapticPressable
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Chat', { recipientId: item.user.id, listingId: item.id, listing: item })}
-              haptic="light"
-              scaleDown={1}
-            >
-              <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.actionText}>Message</Text>
-            </HapticPressable>
+            {item.ownerMasked ? (
+              <HapticPressable
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
+                haptic="light"
+                scaleDown={1}
+              >
+                <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.actionText}>Verify to Message</Text>
+              </HapticPressable>
+            ) : (
+              <HapticPressable
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('Chat', { recipientId: item.user.id, listingId: item.id, listing: item })}
+                haptic="light"
+                scaleDown={1}
+              >
+                <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.actionText}>Message</Text>
+              </HapticPressable>
+            )}
           </View>
         </HapticPressable>
       </BlurCard>
@@ -624,66 +646,40 @@ export default function FeedScreen({ navigation }) {
         <View style={styles.overlay} testID="Feed.overlay.upgrade" accessibilityLabel="Upgrade to Plus overlay">
           <View style={styles.overlayCard}>
             <View style={styles.overlayCardInner}>
-              {user?.subscriptionTier === 'plus' && !user?.isVerified ? (
-                <>
-                  {/* Subscribed but not verified */}
-                  <View style={styles.overlayIconContainer}>
-                    <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
-                  </View>
-                  <Text style={styles.overlayTitle}>One More Step</Text>
-                  <Text style={styles.overlayText}>
-                    Verify your identity to browse town-wide. This keeps our community safe.
-                  </Text>
-                  <HapticPressable
-                    style={styles.overlayButton}
-                    onPress={() => {
-                      setShowUpgradePrompt(false);
-                      navigation.navigate('IdentityVerification', { source: 'town_browse', totalSteps: 2 });
-                    }}
-                    haptic="medium"
-                  >
-                    <Text style={styles.overlayButtonText}>Verify Now</Text>
-                  </HapticPressable>
-                </>
-              ) : (
-                <>
-                  {/* Not subscribed */}
-                  <View style={styles.overlayIconContainer}>
-                    <Ionicons name="star" size={32} color={COLORS.primary} />
-                  </View>
-                  <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
-                  <Text style={styles.overlayText}>
-                    Plus members can browse items from everyone in {user?.city || 'your town'}.
-                  </Text>
-                  <View style={styles.upgradeFeatures}>
-                    <View style={styles.upgradeFeature}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                      <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
-                    </View>
-                    <View style={styles.upgradeFeature}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                      <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
-                    </View>
-                    <View style={styles.upgradeFeature}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                      <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
-                    </View>
-                  </View>
-                  <HapticPressable
-                    style={styles.overlayButton}
-                    onPress={() => {
-                      setShowUpgradePrompt(false);
-                      navigation.navigate('Subscription', { source: 'town_browse', totalSteps: 2 });
-                    }}
-                    haptic="medium"
-                    testID="Feed.overlay.upgrade.button"
-                    accessibilityLabel="Unlock with Plus"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.overlayButtonText}>Unlock with Plus — $1/mo</Text>
-                  </HapticPressable>
-                </>
-              )}
+              <View style={styles.overlayIconContainer}>
+                <Ionicons name="star" size={32} color={COLORS.primary} />
+              </View>
+              <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
+              <Text style={styles.overlayText}>
+                Verified members can browse items from everyone in {user?.city || 'your town'}.
+              </Text>
+              <View style={styles.upgradeFeatures}>
+                <View style={styles.upgradeFeature}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                  <Text style={styles.upgradeFeatureText}>Everything in Free</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                  <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
+                </View>
+                <View style={styles.upgradeFeature}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+                  <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
+                </View>
+              </View>
+              <HapticPressable
+                style={styles.overlayButton}
+                onPress={() => {
+                  setShowUpgradePrompt(false);
+                  navigation.navigate('Subscription', { source: 'town_browse', totalSteps: 2 });
+                }}
+                haptic="medium"
+                testID="Feed.overlay.upgrade.button"
+                accessibilityLabel="Verify and unlock"
+                accessibilityRole="button"
+              >
+                <Text style={styles.overlayButtonText}>Verify & Unlock — $1.99</Text>
+              </HapticPressable>
               <HapticPressable
                 style={styles.overlayDismiss}
                 onPress={() => setShowUpgradePrompt(false)}
@@ -844,6 +840,11 @@ const styles = StyleSheet.create({
   avatarPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  maskedAvatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary + '20',
   },
   userMeta: {
     marginLeft: SPACING.md,

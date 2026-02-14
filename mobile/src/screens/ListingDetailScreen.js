@@ -212,7 +212,7 @@ export default function ListingDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {(listing.distanceMiles || listing.owner?.city) && (
+          {(listing.distanceMiles || (!listing.ownerMasked && listing.owner?.city)) && (
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
               <Text style={styles.locationText}>
@@ -354,47 +354,76 @@ export default function ListingDetailScreen({ route, navigation }) {
           </View>
 
           {/* Owner */}
-          <HapticPressable
-            onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
-            haptic="light"
-          >
+          {listing.ownerMasked ? (
             <BlurCard style={styles.ownerCard}>
-              {listing.owner.profilePhotoUrl ? (
-                <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
-              ) : (
-                <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
-                  <Ionicons name="person" size={24} color={COLORS.gray[400]} />
-                </View>
-              )}
+              <View style={[styles.ownerAvatar, styles.maskedOwnerAvatar]}>
+                <Ionicons name="shield-checkmark" size={24} color={COLORS.primary} />
+              </View>
               <View style={styles.ownerInfo}>
-                <Text style={styles.ownerName}>
-                  {listing.owner.firstName} {listing.owner.lastName}
-                </Text>
-                <UserBadges
-                  isVerified={listing.owner.isVerified}
-                  totalTransactions={listing.owner.totalTransactions || 0}
-                  size="small"
-                />
-                {listing.owner.rating > 0 && (
-                  <View style={styles.ownerRating}>
-                    <Ionicons name="star" size={14} color={COLORS.warning} />
-                    <Text style={styles.ownerRatingText}>
-                      {listing.owner.rating.toFixed(1)} ({listing.owner.ratingCount} reviews)
-                    </Text>
-                  </View>
-                )}
-                <Text style={styles.ownerTransactions}>
-                  {listing.owner.totalTransactions} transactions
+                <Text style={styles.ownerName}>Verified Lender</Text>
+                <Text style={styles.ownerMaskedHint}>
+                  Verify your identity to see who's lending this item
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
             </BlurCard>
-          </HapticPressable>
+          ) : (
+            <HapticPressable
+              onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
+              haptic="light"
+            >
+              <BlurCard style={styles.ownerCard}>
+                {listing.owner.profilePhotoUrl ? (
+                  <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+                ) : (
+                  <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
+                    <Ionicons name="person" size={24} color={COLORS.gray[400]} />
+                  </View>
+                )}
+                <View style={styles.ownerInfo}>
+                  <Text style={styles.ownerName}>
+                    {listing.owner.firstName} {listing.owner.lastName}
+                  </Text>
+                  <UserBadges
+                    isVerified={listing.owner.isVerified}
+                    totalTransactions={listing.owner.totalTransactions || 0}
+                    size="small"
+                  />
+                  {listing.owner.rating > 0 && (
+                    <View style={styles.ownerRating}>
+                      <Ionicons name="star" size={14} color={COLORS.warning} />
+                      <Text style={styles.ownerRatingText}>
+                        {listing.owner.rating.toFixed(1)} ({listing.owner.ratingCount} reviews)
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.ownerTransactions}>
+                    {listing.owner.totalTransactions} transactions
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
+              </BlurCard>
+            </HapticPressable>
+          )}
         </View>
       </ScrollView>
 
       {/* Footer Action Bar */}
-      {!listing.isOwner && (
+      {!listing.isOwner && listing.ownerMasked && (
+        <View style={styles.footerWrap}>
+          <View style={[styles.footer, styles.footerAndroid]}>
+            <HapticPressable
+              style={styles.verifyButton}
+              onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
+              haptic="medium"
+            >
+              <Ionicons name="shield-checkmark-outline" size={20} color="#fff" />
+              <Text style={styles.borrowButtonText}>Verify to Borrow</Text>
+            </HapticPressable>
+          </View>
+        </View>
+      )}
+
+      {!listing.isOwner && !listing.ownerMasked && (
         <View style={styles.footerWrap}>
           {Platform.OS === 'ios' ? (
             <BlurView intensity={80} tint="dark" style={styles.footerBlur}>
@@ -704,9 +733,19 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: COLORS.gray[700],
   },
+  maskedOwnerAvatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary + '20',
+  },
   avatarPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ownerMaskedHint: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textMuted,
+    marginTop: 2,
   },
   ownerInfo: {
     flex: 1,
@@ -760,6 +799,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   borrowButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.md,
+    gap: SPACING.sm,
+  },
+  verifyButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',

@@ -112,21 +112,32 @@ export default function BrowseScreen({ navigation }) {
           )}
 
           <View style={styles.cardOwner}>
-            {item.owner.profilePhotoUrl ? (
-              <Image source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+            {item.ownerMasked ? (
+              <>
+                <View style={[styles.ownerAvatar, styles.maskedOwnerAvatar]}>
+                  <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
+                </View>
+                <Text style={styles.ownerName} numberOfLines={1}>Verified Lender</Text>
+              </>
             ) : (
-              <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
-                <Ionicons name="person" size={12} color={COLORS.gray[400]} />
-              </View>
-            )}
-            <Text style={styles.ownerName} numberOfLines={1}>
-              {item.owner.firstName} {item.owner.lastName[0]}.
-            </Text>
-            {item.owner.rating > 0 && (
-              <View style={styles.rating}>
-                <Text style={styles.star}>★</Text>
-                <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
-              </View>
+              <>
+                {item.owner.profilePhotoUrl ? (
+                  <Image source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+                ) : (
+                  <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
+                    <Ionicons name="person" size={12} color={COLORS.gray[400]} />
+                  </View>
+                )}
+                <Text style={styles.ownerName} numberOfLines={1}>
+                  {item.owner.firstName} {item.owner.lastName[0]}.
+                </Text>
+                {item.owner.rating > 0 && (
+                  <View style={styles.rating}>
+                    <Text style={styles.star}>★</Text>
+                    <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -500,6 +511,11 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: COLORS.gray[700],
+  },
+  maskedOwnerAvatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary + '20',
   },
   ownerName: {
     flex: 1,
