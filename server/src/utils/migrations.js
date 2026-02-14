@@ -180,6 +180,33 @@ export async function runMigrations() {
       logger.info('Migration complete: users.date_of_birth added');
     }
 
+    // Migration: Add conversation_id column to notifications (for message tap navigation)
+    const hasConversationId = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'notifications' AND column_name = 'conversation_id'
+    `);
+    if (hasConversationId.rows.length === 0) {
+      logger.info('Running migration: Add conversation_id to notifications');
+      await query('ALTER TABLE notifications ADD COLUMN conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL');
+      logger.info('Migration complete: notifications.conversation_id added');
+    }
+
+    // Migration: Create processed_webhook_events table for idempotency
+    const hasWebhookTable = await query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_name = 'processed_webhook_events'
+    `);
+    if (hasWebhookTable.rows.length === 0) {
+      logger.info('Running migration: Create processed_webhook_events table');
+      await query(`CREATE TABLE processed_webhook_events (
+        event_id VARCHAR(255) PRIMARY KEY,
+        processed_at TIMESTAMPTZ DEFAULT NOW()
+      )`);
+      // Auto-clean old events after 7 days
+      await query(`CREATE INDEX IF NOT EXISTS idx_webhook_events_processed_at ON processed_webhook_events(processed_at)`);
+      logger.info('Migration complete: processed_webhook_events table created');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

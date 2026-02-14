@@ -207,7 +207,7 @@ router.get('/:id', authenticate, async (req, res) => {
        FROM listings l
        JOIN users u ON l.owner_id = u.id
        LEFT JOIN categories c ON l.category_id = c.id
-       WHERE l.id = $1`,
+       WHERE l.id = $1 AND l.status != 'deleted'`,
       [req.params.id]
     );
 
@@ -216,6 +216,19 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const l = result.rows[0];
+
+    // Visibility check: close_friends listings only visible to owner and friends
+    if (l.visibility === 'close_friends' && l.owner_id !== req.user.id) {
+      const friendship = await query(
+        `SELECT 1 FROM friendships
+         WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
+         AND status = 'accepted'`,
+        [req.user.id, l.owner_id]
+      );
+      if (friendship.rows.length === 0) {
+        return res.status(404).json({ error: 'Listing not found' });
+      }
+    }
 
     // Get photos
     const photos = await query(
@@ -496,6 +509,37 @@ router.patch('/:id', authenticate,
         'title', 'description', 'condition', 'category_id', 'is_free', 'price_per_day',
         'deposit_amount', 'min_duration', 'max_duration', 'visibility', 'status'
       ];
+      const validStatuses = ['active', 'paused'];
+      const validVisibilities = ['close_friends', 'neighborhood', 'town'];
+
+      // Validate visibility changes require proper tier/verification
+      const visibilityValue = req.body.visibility;
+      if (visibilityValue) {
+        const visArray = Array.isArray(visibilityValue) ? visibilityValue : [visibilityValue];
+        if (visArray.includes('town')) {
+          const subCheck = await query(
+            'SELECT subscription_tier, is_verified FROM users WHERE id = $1',
+            [req.user.id]
+          );
+          const u = subCheck.rows[0];
+          if (u?.subscription_tier !== 'plus') {
+            return res.status(403).json({ error: 'Plus subscription required for town visibility', code: 'PLUS_REQUIRED' });
+          }
+          if (!u?.is_verified) {
+            return res.status(403).json({ error: 'Verification required for town visibility', code: 'VERIFICATION_REQUIRED' });
+          }
+        }
+      }
+
+      // Validate status
+      if (req.body.status && !validStatuses.includes(req.body.status)) {
+        return res.status(400).json({ error: 'Invalid status value' });
+      }
+
+      // Validate price is not negative
+      if (req.body.pricePerDay !== undefined && parseFloat(req.body.pricePerDay) < 0) {
+        return res.status(400).json({ error: 'Price cannot be negative' });
+      }
 
       const updates = [];
       const values = [];
@@ -511,6 +555,7 @@ router.patch('/:id', authenticate,
             value = value.includes('town') ? 'town'
               : value.includes('neighborhood') ? 'neighborhood'
               : 'close_friends';
+            if (!validVisibilities.includes(value)) continue;
           }
 
           updates.push(`${field} = $${paramIndex++}`);

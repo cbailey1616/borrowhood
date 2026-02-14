@@ -61,6 +61,15 @@ router.post('/request', authenticate,
         return res.status(400).json({ error: 'Item not available' });
       }
 
+      // Atomically mark item unavailable to prevent race conditions
+      const lockResult = await query(
+        `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
+        [item.id]
+      );
+      if (lockResult.rows.length === 0) {
+        return res.status(400).json({ error: 'Item was just borrowed by someone else' });
+      }
+
       // Calculate rental days
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -545,6 +554,9 @@ router.post('/:id/return', authenticate,
           }
         } catch (transferErr) {
           logger.warn('Payout transfer failed (non-fatal):', transferErr.message);
+          sendNotification(t.lender_id, 'payment_failed', {
+            body: `We couldn't process your payout for "${t.listing_title || 'a rental'}". Please check your payout settings or contact support.`,
+          }).catch(() => {});
         }
 
         // Refund deposit to borrower
@@ -558,6 +570,9 @@ router.post('/:id/return', authenticate,
           }
         } catch (refundErr) {
           logger.warn('Deposit refund failed (non-fatal):', refundErr.message);
+          sendNotification(t.borrower_id, 'payment_failed', {
+            body: `We couldn't refund your deposit for "${t.listing_title || 'a rental'}". Please contact support for assistance.`,
+          }).catch(() => {});
         }
 
         // Mark listing available again and update stats

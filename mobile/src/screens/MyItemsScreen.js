@@ -367,19 +367,19 @@ export default function MyItemsScreen({ navigation }) {
 
   const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
   const emptyIcon = activeTab === 0 ? 'construct-outline' : activeTab === 1 ? 'swap-horizontal-outline' : 'search-outline';
-  const emptyTitle = activeTab === 0 ? 'No items yet' : activeTab === 1 ? 'No active rentals' : 'No requests yet';
+  const emptyTitle = activeTab === 0 ? 'No listings yet' : activeTab === 1 ? 'No rentals yet' : 'No wanted posts yet';
   const emptySubtitle = activeTab === 0
     ? 'List your first item to start lending!'
     : activeTab === 1
-    ? 'Your active borrows and lends will show up here'
-    : 'Post a request when you need to borrow something';
+    ? 'Your borrows and lends will show up here'
+    : 'Post what you need and neighbors can offer to help';
 
   return (
     <View style={styles.container}>
       <NativeHeader title="My Items" scrollY={scrollY}>
         <SegmentedControl
           testID="MyItems.segment"
-          segments={['Items', 'Active', 'Requests']}
+          segments={['Listings', 'Rentals', 'Wanted']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
@@ -418,7 +418,7 @@ export default function MyItemsScreen({ navigation }) {
                 >
                   <Ionicons name="add" size={20} color="#fff" />
                   <Text style={styles.addButtonText}>
-                    {activeTab === 0 ? 'List an Item' : 'Post a Request'}
+                    {activeTab === 0 ? 'List an Item' : 'Post a Wanted'}
                   </Text>
                 </HapticPressable>
               )}
@@ -434,7 +434,7 @@ export default function MyItemsScreen({ navigation }) {
             >
               <Ionicons name="add-circle" size={24} color={COLORS.primary} />
               <Text style={styles.headerButtonText}>
-                {activeTab === 0 ? 'List a new item' : 'Post a new request'}
+                {activeTab === 0 ? 'List a new item' : 'Post a new wanted'}
               </Text>
             </HapticPressable>
           )

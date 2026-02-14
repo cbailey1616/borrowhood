@@ -88,9 +88,13 @@ router.post('/register',
 
       // Notify referrer that someone joined with their code
       if (referrerId) {
-        await sendNotification(referrerId, 'referral_joined', {
-          friendName: `${firstName} ${lastName}`,
-        }, { fromUserId: user.id });
+        try {
+          await sendNotification(referrerId, 'referral_joined', {
+            friendName: `${firstName} ${lastName}`,
+          }, { fromUserId: user.id });
+        } catch (notifErr) {
+          console.warn('Failed to send referral notification:', notifErr.message);
+        }
       }
 
       const tokens = generateTokens(user.id);
@@ -545,7 +549,7 @@ router.post('/check-verification', authenticate, async (req, res) => {
 // ============================================
 router.post('/admin/reset-onboarding', async (req, res) => {
   const { email, secret } = req.body;
-  if (secret !== process.env.ADMIN_SECRET) {
+  if (!process.env.ADMIN_SECRET || !secret || secret !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
@@ -566,7 +570,7 @@ router.post('/admin/reset-onboarding', async (req, res) => {
 // ============================================
 router.post('/admin/reset-verifications', async (req, res) => {
   const { secret } = req.body;
-  if (secret !== process.env.ADMIN_SECRET) {
+  if (!process.env.ADMIN_SECRET || !secret || secret !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
@@ -584,7 +588,7 @@ router.post('/admin/reset-verifications', async (req, res) => {
 // ============================================
 router.post('/admin/reset-user', async (req, res) => {
   const { email, secret } = req.body;
-  if (secret !== process.env.ADMIN_SECRET) {
+  if (!process.env.ADMIN_SECRET || !secret || secret !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
@@ -775,7 +779,7 @@ router.post('/reset-password',
 // ============================================
 router.post('/admin/debug-transactions', async (req, res) => {
   const { secret } = req.body;
-  if (secret !== process.env.ADMIN_SECRET) {
+  if (!process.env.ADMIN_SECRET || !secret || secret !== process.env.ADMIN_SECRET) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {

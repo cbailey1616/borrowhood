@@ -112,6 +112,15 @@ router.get('/current', authenticate, async (req, res) => {
           );
           tier = 'plus';
         }
+
+        // Self-heal downgrade: if Stripe says canceled/unpaid but DB still says plus
+        if (['canceled', 'unpaid', 'incomplete_expired'].includes(sub.status) && tier === 'plus') {
+          await query(
+            `UPDATE users SET subscription_tier = 'free', stripe_subscription_id = NULL, subscription_expires_at = NULL WHERE id = $1`,
+            [req.user.id]
+          );
+          tier = 'free';
+        }
       } catch (stripeErr) {
         console.error('Failed to fetch Stripe subscription:', stripeErr.message);
       }
@@ -165,6 +174,23 @@ router.post('/subscribe', authenticate, async (req, res) => {
 
     if (user.rows[0].subscription_tier === 'plus') {
       return res.status(400).json({ error: 'Already subscribed to Plus' });
+    }
+
+    // Check for existing active/incomplete Stripe subscriptions to prevent duplicates
+    if (user.rows[0].stripe_customer_id) {
+      try {
+        const existingSubs = await stripe.subscriptions.list({
+          customer: user.rows[0].stripe_customer_id,
+          status: 'all',
+          limit: 5,
+        });
+        const activeSub = existingSubs.data.find(s => ['active', 'trialing', 'incomplete'].includes(s.status));
+        if (activeSub) {
+          return res.status(400).json({ error: 'Already subscribed to Plus' });
+        }
+      } catch (e) {
+        // If customer lookup fails, proceed with creation
+      }
     }
 
     let customerId = user.rows[0].stripe_customer_id;

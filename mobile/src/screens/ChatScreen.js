@@ -69,6 +69,15 @@ export default function ChatScreen({ route, navigation }) {
   useEffect(() => {
     if (conversationId) {
       fetchMessages();
+      // Poll for new messages every 5 seconds
+      const interval = setInterval(() => {
+        if (conversationId) {
+          api.getConversation(conversationId).then(data => {
+            setMessages(data.messages);
+          }).catch(() => {});
+        }
+      }, 5000);
+      return () => clearInterval(interval);
     } else {
       // New conversation - set up initial state
       setIsLoading(false);
@@ -85,7 +94,7 @@ export default function ChatScreen({ route, navigation }) {
     // Update header with other user's name
     if (conversation?.otherUser) {
       navigation.setOptions({
-        title: `${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`,
+        title: `${conversation.otherUser.firstName || ''} ${conversation.otherUser.lastName || ''}`.trim() || 'Chat',
       });
     }
   }, [conversation, navigation]);

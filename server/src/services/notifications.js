@@ -71,6 +71,12 @@ const NOTIFICATION_TEMPLATES = {
       : 'Your dispute has been resolved. Tap to see the outcome.',
   },
 
+  // Payment issues
+  payment_failed: {
+    title: 'Payment Issue',
+    body: (data) => data.body || 'There was an issue processing a payment. Please check your account or contact support.',
+  },
+
   // Ratings
   new_rating: {
     title: 'New Rating',
@@ -147,6 +153,12 @@ const NOTIFICATION_TEMPLATES = {
     body: (data) => data.friendName
       ? `${data.friendName} accepted your friend request. You can now see each other's items.`
       : 'Your friend request was accepted! You can now see each other\'s items.',
+  },
+
+  // Subscription
+  subscription_expired: {
+    title: 'Listings Updated',
+    body: (data) => data.body || 'Your town-level listings have been moved to neighborhood visibility.',
   },
 
   // Referrals
@@ -257,6 +269,11 @@ async function sendPushNotification(pushToken, { title, body, data }) {
 
     if (result.data?.status === 'error') {
       logger.warn('Push notification error:', result.data.message);
+      // Clear invalid push tokens so we stop failing silently
+      if (result.data.details?.error === 'DeviceNotRegistered') {
+        await query('UPDATE users SET push_token = NULL WHERE push_token = $1', [pushToken]);
+        logger.info(`Cleared invalid push token: ${pushToken.substring(0, 20)}...`);
+      }
     }
 
     return result;

@@ -489,15 +489,16 @@ export default function SubscriptionScreen({ navigation, route }) {
               Pay with card or Apple Pay to start your subscription.
             </Text>
             <HapticPressable
-              style={[styles.stepButton, styles.stepButtonPrimary]}
+              style={[styles.stepButton, styles.stepButtonPrimary, subscribing && { opacity: 0.5 }]}
               onPress={handleSubscribe}
+              disabled={subscribing}
               haptic="medium"
               testID="Subscription.button.subscribe"
               accessibilityLabel="Subscribe to Plus"
               accessibilityRole="button"
             >
               <Text style={styles.stepButtonText}>
-                Subscribe — $1/mo
+                {subscribing ? 'Processing...' : 'Subscribe — $1/mo'}
               </Text>
             </HapticPressable>
           </View>

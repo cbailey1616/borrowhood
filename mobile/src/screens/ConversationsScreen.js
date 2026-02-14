@@ -75,7 +75,7 @@ export default function ConversationsScreen({ navigation, onRead }) {
     >
       <View style={styles.avatarContainer}>
         <Image
-          source={{ uri: item.otherUser.profilePhotoUrl || 'https://via.placeholder.com/50' }}
+          source={{ uri: item.otherUser?.profilePhotoUrl || 'https://via.placeholder.com/50' }}
           style={styles.avatar}
         />
         {item.unreadCount > 0 && (
@@ -90,7 +90,7 @@ export default function ConversationsScreen({ navigation, onRead }) {
       <View style={styles.content}>
         <View style={styles.headerRow}>
           <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]}>
-            {item.otherUser.firstName} {item.otherUser.lastName}
+            {item.otherUser?.firstName || 'Unknown'} {item.otherUser?.lastName || ''}
           </Text>
           <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
         </View>

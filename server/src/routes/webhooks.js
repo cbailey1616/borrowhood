@@ -26,6 +26,21 @@ router.post('/stripe', async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // Deduplicate: skip if we've already processed this event
+  try {
+    const existing = await query(
+      'INSERT INTO processed_webhook_events (event_id) VALUES ($1) ON CONFLICT (event_id) DO NOTHING RETURNING event_id',
+      [event.id]
+    );
+    if (existing.rows.length === 0) {
+      logger.info(`Skipping duplicate webhook event: ${event.id}`);
+      return res.json({ received: true, duplicate: true });
+    }
+  } catch (dedupErr) {
+    // If dedup table doesn't exist yet, proceed anyway
+    logger.warn('Webhook dedup check failed:', dedupErr.message);
+  }
+
   // Handle the event
   try {
     switch (event.type) {
@@ -322,6 +337,12 @@ async function handleChargeRefunded(charge) {
   if (transaction.rows.length > 0) {
     const t = transaction.rows[0];
 
+    // Update payment status
+    await query(
+      `UPDATE borrow_transactions SET payment_status = 'refunded' WHERE id = $1`,
+      [t.id]
+    );
+
     // Log for audit
     await query(
       `INSERT INTO audit_log (user_id, action, entity_type, entity_id, details)
@@ -334,7 +355,7 @@ async function handleChargeRefunded(charge) {
       ]
     );
 
-    logger.info(`Refund processed for transaction ${t.id}`);
+    logger.info(`Refund processed for transaction ${t.id}, payment_status set to refunded`);
   }
 }
 
@@ -455,6 +476,30 @@ async function handleSubscriptionDeleted(subscription) {
      WHERE id = $1`,
     [userId]
   );
+
+  // Downgrade town-level listings:
+  // - If listing has a community_id, move to neighborhood visibility
+  // - If no community_id, move to close_friends (no neighborhood to fall back to)
+  const townListings = await query(
+    `UPDATE listings SET visibility = CASE
+       WHEN community_id IS NOT NULL THEN 'neighborhood'
+       ELSE 'close_friends'
+     END
+     WHERE owner_id = $1 AND visibility = 'town' AND status = 'active'
+     RETURNING id, title`,
+    [userId]
+  );
+
+  if (townListings.rows.length > 0) {
+    const count = townListings.rows.length;
+    logger.info(`Downgraded ${count} town-level listing(s) for user ${userId}`);
+
+    await sendNotification(userId, 'subscription_expired', {
+      body: count === 1
+        ? `Your listing "${townListings.rows[0].title}" was moved from Town visibility since your Plus subscription ended. Resubscribe to restore town-wide reach.`
+        : `${count} of your listings were moved from Town visibility since your Plus subscription ended. Resubscribe to restore town-wide reach.`,
+    });
+  }
 
   // Log to subscription_history
   await query(

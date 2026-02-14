@@ -102,6 +102,15 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Item not available' });
       }
 
+      // Atomically mark item unavailable to prevent race conditions
+      const lockResult = await query(
+        `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
+        [item.id]
+      );
+      if (lockResult.rows.length === 0) {
+        return res.status(400).json({ error: 'Item was just borrowed by someone else' });
+      }
+
       // Calculate rental days
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -203,6 +212,8 @@ router.get('/', authenticate, async (req, res) => {
 
   try {
     let whereClause = '';
+    const params = [req.user.id];
+
     if (role === 'borrower') {
       whereClause = 't.borrower_id = $1';
     } else if (role === 'lender') {
@@ -212,7 +223,8 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     if (status) {
-      whereClause += ` AND t.status = '${status}'`;
+      params.push(status);
+      whereClause += ` AND t.status = $${params.length}`;
     }
 
     const result = await query(
@@ -229,7 +241,7 @@ router.get('/', authenticate, async (req, res) => {
        JOIN users lnd ON t.lender_id = lnd.id
        WHERE ${whereClause}
        ORDER BY t.created_at DESC`,
-      [req.user.id]
+      params
     );
 
     res.json(result.rows.map(t => ({
@@ -724,6 +736,9 @@ router.post('/:id/return', authenticate,
             }
           } catch (transferErr) {
             console.warn('Payout transfer failed (non-fatal):', transferErr.message);
+            sendNotification(t.lender_id, 'payment_failed', {
+              body: `We couldn't process your payout for "${t.listing_title || 'a rental'}". Please check your payout settings or contact support.`,
+            }).catch(() => {});
           }
 
           // Refund deposit to borrower
@@ -736,6 +751,9 @@ router.post('/:id/return', authenticate,
             }
           } catch (refundErr) {
             console.warn('Deposit refund failed (non-fatal):', refundErr.message);
+            sendNotification(t.borrower_id, 'payment_failed', {
+              body: `We couldn't refund your deposit for "${t.listing_title || 'a rental'}". Please contact support for assistance.`,
+            }).catch(() => {});
           }
 
           // Mark listing available again and update stats

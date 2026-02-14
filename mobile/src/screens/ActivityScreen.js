@@ -88,16 +88,16 @@ export default function ActivityScreen({ navigation }) {
           haptic="light"
         >
           <Image
-            source={{ uri: item.listing.photoUrl || 'https://via.placeholder.com/80' }}
+            source={{ uri: item.listing?.photoUrl || 'https://via.placeholder.com/80' }}
             style={styles.cardImage}
           />
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle} numberOfLines={1}>{item.listing.title}</Text>
+            <Text style={styles.cardTitle} numberOfLines={1}>{item.listing?.title || 'Item'}</Text>
 
             <View style={styles.personRow}>
               <Text style={styles.roleLabel}>{roleLabel}</Text>
               <Text style={styles.personName}>
-                {otherPerson.firstName} {otherPerson.lastName[0]}.
+                {otherPerson?.firstName || 'Unknown'} {otherPerson?.lastName?.[0] ? `${otherPerson.lastName[0]}.` : ''}
               </Text>
             </View>
 
@@ -114,11 +114,11 @@ export default function ActivityScreen({ navigation }) {
                 { backgroundColor: getStatusColor(item.status) + '20' }
               ]}>
                 <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                  {TRANSACTION_STATUS_LABELS[item.status]}
+                  {TRANSACTION_STATUS_LABELS[item.status] || item.status}
                 </Text>
               </View>
               <Text style={styles.amount}>
-                ${(item.rentalFee + item.depositAmount).toFixed(2)}
+                ${((item.rentalFee || 0) + (item.depositAmount || 0)).toFixed(2)}
               </Text>
             </View>
           </View>

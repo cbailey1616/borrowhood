@@ -117,6 +117,15 @@ export default function CreateListingScreen({ navigation, route }) {
           setCategories(cats || []);
         } catch (e) {
           console.log('Failed to fetch categories:', e);
+          // Retry once after a short delay
+          setTimeout(async () => {
+            try {
+              const cats = await api.getCategories();
+              setCategories(cats || []);
+            } catch (e2) {
+              console.log('Category retry also failed:', e2);
+            }
+          }, 2000);
         }
 
         // Fetch friends count
@@ -377,9 +386,9 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
 
       {/* Category */}
-      {categories.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
+      <View style={styles.section}>
+        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
+        {categories.length > 0 ? (
           <HapticPressable
             haptic="light"
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
@@ -401,8 +410,10 @@ export default function CreateListingScreen({ navigation, route }) {
             )}
             <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
           </HapticPressable>
-        </View>
-      )}
+        ) : (
+          <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>Loading categories...</Text>
+        )}
+      </View>
 
       {/* Visibility */}
       <View style={styles.section}>

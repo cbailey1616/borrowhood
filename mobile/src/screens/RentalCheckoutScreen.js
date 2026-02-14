@@ -108,11 +108,15 @@ export default function RentalCheckoutScreen({ navigation, route }) {
         throw new Error(presentError.message);
       }
 
-      // Confirm the payment on our server
-      await api.confirmRentalPayment(transactionId);
-
-      // Poll for authorization confirmation
-      await pollForAuthorization();
+      // Payment succeeded — confirm on our server
+      try {
+        await api.confirmRentalPayment(transactionId);
+        await pollForAuthorization();
+      } catch (confirmErr) {
+        // Payment went through but server confirmation failed — still show success
+        // The server will reconcile via webhook
+        console.warn('Server confirmation failed after successful payment:', confirmErr);
+      }
 
       setCompleted(true);
       haptics.success();

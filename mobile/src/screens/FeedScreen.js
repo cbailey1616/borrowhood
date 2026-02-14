@@ -583,7 +583,7 @@ export default function FeedScreen({ navigation }) {
             onPress: () => setVisibilityFilters([]),
           },
           ...VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
-            label: opt.key === 'town' ? `${opt.label} ★` : opt.label,
+            label: opt.label,
             icon: visibilityFilters.includes(opt.key)
               ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
               : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,

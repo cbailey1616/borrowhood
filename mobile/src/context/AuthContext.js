@@ -28,7 +28,10 @@ export function AuthProvider({ children, navigationRef }) {
       }
     } catch (error) {
       console.log('Auth check failed:', error);
-      await logout();
+      // Only logout on auth errors (401), not network failures
+      if (error?.response?.status === 401) {
+        await logout();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -41,6 +44,8 @@ export function AuthProvider({ children, navigationRef }) {
     api.setAuthToken(response.accessToken);
     setUser(response.user);
     setIsAuthenticated(true);
+    // Fetch full user profile in background (login response has limited fields)
+    api.getMe().then(full => setUser(full)).catch(() => {});
     return response.user;
   };
 
@@ -61,6 +66,7 @@ export function AuthProvider({ children, navigationRef }) {
     api.setAuthToken(response.accessToken);
     setUser(response.user);
     setIsAuthenticated(true);
+    api.getMe().then(full => setUser(full)).catch(() => {});
     return response.user;
   };
 
@@ -71,6 +77,7 @@ export function AuthProvider({ children, navigationRef }) {
     api.setAuthToken(response.accessToken);
     setUser(response.user);
     setIsAuthenticated(true);
+    api.getMe().then(full => setUser(full)).catch(() => {});
     return response.user;
   };
 
