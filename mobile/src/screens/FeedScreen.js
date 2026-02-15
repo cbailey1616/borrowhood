@@ -23,6 +23,7 @@ import { SkeletonCard } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
+import { checkPremiumGate } from '../utils/premiumGate';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
@@ -300,28 +301,36 @@ export default function FeedScreen({ navigation }) {
             )}
           </View>
 
-          <View style={styles.cardActions}>
+          {item.ownerMasked ? (
             <HapticPressable
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('ListingDiscussion', { listingId: item.id, listing: item })}
+              style={styles.verifyUnlockBanner}
+              onPress={() => {
+                const gate = checkPremiumGate(user, 'town_browse');
+                if (!gate.passed) {
+                  navigation.navigate(gate.screen, gate.params);
+                } else {
+                  navigation.navigate('IdentityVerification', { source: 'town_browse' });
+                }
+              }}
               haptic="light"
               scaleDown={1}
             >
-              <Ionicons name="chatbubbles-outline" size={18} color={COLORS.textSecondary} />
-              <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Discuss</Text>
+              <Ionicons name="lock-closed" size={14} color={COLORS.warning} />
+              <Text style={styles.verifyUnlockText}>Verify to unlock town access</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
             </HapticPressable>
-            <View style={styles.actionDivider} />
-            {item.ownerMasked ? (
+          ) : (
+            <View style={styles.cardActions}>
               <HapticPressable
                 style={styles.actionButton}
-                onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
+                onPress={() => navigation.navigate('ListingDiscussion', { listingId: item.id, listing: item })}
                 haptic="light"
                 scaleDown={1}
               >
-                <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
-                <Text style={styles.actionText}>Verify to Message</Text>
+                <Ionicons name="chatbubbles-outline" size={18} color={COLORS.textSecondary} />
+                <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Discuss</Text>
               </HapticPressable>
-            ) : (
+              <View style={styles.actionDivider} />
               <HapticPressable
                 style={styles.actionButton}
                 onPress={() => navigation.navigate('Chat', { recipientId: item.user.id, listingId: item.id, listing: item })}
@@ -331,8 +340,8 @@ export default function FeedScreen({ navigation }) {
                 <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
                 <Text style={styles.actionText}>Message</Text>
               </HapticPressable>
-            )}
-          </View>
+            </View>
+          )}
         </HapticPressable>
       </BlurCard>
     </AnimatedCard>
@@ -1045,6 +1054,20 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  verifyUnlockBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+    gap: SPACING.sm,
+  },
+  verifyUnlockText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    flex: 1,
   },
   loadingMore: {
     paddingVertical: SPACING.xl,
