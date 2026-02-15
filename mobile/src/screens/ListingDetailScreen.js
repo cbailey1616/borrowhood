@@ -26,6 +26,7 @@ import { SkeletonCard } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
+import { checkPremiumGate } from '../utils/premiumGate';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
@@ -412,12 +413,20 @@ export default function ListingDetailScreen({ route, navigation }) {
         <View style={styles.footerWrap}>
           <View style={[styles.footer, styles.footerAndroid]}>
             <HapticPressable
-              style={styles.verifyButton}
-              onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
+              style={styles.verifyBanner}
+              onPress={() => {
+                const gate = checkPremiumGate(user, 'town_browse');
+                if (!gate.passed) {
+                  navigation.navigate(gate.screen, gate.params);
+                } else {
+                  navigation.navigate('IdentityVerification', { source: 'town_browse' });
+                }
+              }}
               haptic="medium"
             >
-              <Ionicons name="shield-checkmark-outline" size={20} color="#fff" />
-              <Text style={styles.borrowButtonText}>Verify to Borrow</Text>
+              <Ionicons name="lock-closed" size={18} color={COLORS.warning} />
+              <Text style={styles.verifyBannerText}>Verify your identity to unlock town access</Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
             </HapticPressable>
           </View>
         </View>
@@ -817,6 +826,23 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.md,
     gap: SPACING.sm,
+  },
+  verifyBanner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingVertical: SPACING.md + 2,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.warning + '40',
+    gap: SPACING.sm,
+  },
+  verifyBannerText: {
+    ...TYPOGRAPHY.subheadline,
+    color: COLORS.text,
+    flex: 1,
   },
   relistButton: {
     flexDirection: 'row',
