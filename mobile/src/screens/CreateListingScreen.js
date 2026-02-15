@@ -264,13 +264,14 @@ export default function CreateListingScreen({ navigation, route }) {
       Keyboard.dismiss();
       haptics.success();
 
-      if (result?.pricingDowngraded) {
-        showToast('Your item was listed for free. Upgrade to Plus to charge rental fees.', 'success');
-      }
-
       // Prevent finally block from setting state during dismiss animation
       mountedRef.current = false;
       navigation.goBack();
+
+      // Show toast after navigating back so it appears on the previous screen
+      if (result?.pricingDowngraded) {
+        setTimeout(() => showToast('Your item was listed for free. Upgrade to Plus to charge rental fees.', 'success'), 500);
+      }
     } catch (error) {
       if (!mountedRef.current) return;
       const errorMsg = error.message?.toLowerCase() || '';
