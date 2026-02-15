@@ -260,12 +260,12 @@ router.get('/:id', authenticate, async (req, res) => {
       const viewerGraceActive = viewer?.verification_grace_until && new Date(viewer.verification_grace_until) > new Date();
       const viewerVerified = viewer?.is_verified || viewerGraceActive;
 
-      if (viewerTier !== 'plus' || !viewerCity) {
-        // Non-Plus user — should not be able to access
+      if (!viewerCity) {
+        // No city set — can't determine if same town
         return res.status(404).json({ error: 'Listing not found' });
       }
       if (!viewerVerified) {
-        // Plus but unverified — mask owner info
+        // Unverified — mask owner info
         ownerMasked = true;
       }
     }
