@@ -154,7 +154,7 @@ export default function NotificationsScreen({ navigation }) {
           <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
             {item.title}
           </Text>
-          <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
+          <Text style={[styles.body, !item.isRead && styles.bodyUnread]} numberOfLines={2}>{item.body}</Text>
           <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
@@ -278,13 +278,17 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   titleUnread: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.text,
   },
   body: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+  },
+  bodyUnread: {
+    fontWeight: '600',
+    color: COLORS.text,
   },
   time: {
     ...TYPOGRAPHY.caption1,

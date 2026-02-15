@@ -269,9 +269,11 @@ export default function FeedScreen({ navigation }) {
                 </View>
               </HapticPressable>
             )}
-            <View style={styles.typeBadge}>
-              <Ionicons name="cube-outline" size={12} color={COLORS.primary} />
-              <Text style={styles.typeBadgeText}>Item Available</Text>
+            <View style={[styles.typeBadge, !item.isAvailable && styles.borrowedBadge]}>
+              <Ionicons name={item.isAvailable !== false ? "cube-outline" : "time-outline"} size={12} color={item.isAvailable !== false ? COLORS.primary : COLORS.warning} />
+              <Text style={[styles.typeBadgeText, !item.isAvailable && styles.borrowedBadgeText]}>
+                {item.isAvailable !== false ? 'Item Available' : 'Currently Borrowed'}
+              </Text>
             </View>
           </View>
 
@@ -973,6 +975,12 @@ const styles = StyleSheet.create({
   typeBadgeText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primary,
+  },
+  borrowedBadge: {
+    backgroundColor: COLORS.warning + '20',
+  },
+  borrowedBadgeText: {
+    color: COLORS.warning,
   },
   listingImage: {
     width: '100%',

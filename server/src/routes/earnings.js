@@ -83,22 +83,36 @@ router.get('/', authenticate, async (req, res) => {
       }
     }
 
-    // Fetch database stats for completed/returned transactions
+    // Statuses where payment has been captured (money earned)
+    const earnedStatuses = ['paid', 'picked_up', 'return_pending', 'returned', 'completed'];
+
+    // Fetch database stats for transactions where payment was captured
     try {
       const statsResult = await query(
         `SELECT
-           COALESCE(SUM(lender_payout), 0) as total_earned,
+           COALESCE(SUM(lender_payout), 0)::numeric as total_earned,
            COUNT(*) as total_rentals
          FROM borrow_transactions
          WHERE lender_id = $1
-           AND status IN ('completed', 'returned', 'return_pending')`,
-        [req.user.id]
+           AND status = ANY($2)`,
+        [req.user.id, earnedStatuses]
       );
 
       const totalEarned = parseFloat(statsResult.rows[0]?.total_earned) || 0;
       const totalRentals = parseInt(statsResult.rows[0]?.total_rentals) || 0;
 
-      // Fetch active rentals count
+      response.stats = {
+        totalEarned,
+        totalRentals,
+        activeRentals: 0,
+        averagePerRental: totalRentals > 0 ? totalEarned / totalRentals : 0,
+      };
+    } catch (err) {
+      console.error('Get earnings stats error:', err.message);
+    }
+
+    // Fetch active rentals count separately so it can't break stats
+    try {
       const activeResult = await query(
         `SELECT COUNT(*) as active_rentals
          FROM borrow_transactions
@@ -107,16 +121,9 @@ router.get('/', authenticate, async (req, res) => {
         [req.user.id]
       );
 
-      const activeRentals = parseInt(activeResult.rows[0]?.active_rentals) || 0;
-
-      response.stats = {
-        totalEarned,
-        totalRentals,
-        activeRentals,
-        averagePerRental: totalRentals > 0 ? totalEarned / totalRentals : 0,
-      };
+      response.stats.activeRentals = parseInt(activeResult.rows[0]?.active_rentals) || 0;
     } catch (err) {
-      console.error('Get earnings stats error:', err.message);
+      console.error('Get active rentals error:', err.message);
     }
 
     // Fetch recent transactions
@@ -137,10 +144,10 @@ router.get('/', authenticate, async (req, res) => {
          JOIN listings l ON t.listing_id = l.id
          JOIN users b ON t.borrower_id = b.id
          WHERE t.lender_id = $1
-           AND t.status IN ('completed', 'returned', 'return_pending')
+           AND t.status = ANY($2)
          ORDER BY t.created_at DESC
          LIMIT 20`,
-        [req.user.id]
+        [req.user.id, earnedStatuses]
       );
 
       response.recentTransactions = transactionsResult.rows.map(t => ({

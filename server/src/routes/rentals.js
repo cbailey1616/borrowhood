@@ -212,7 +212,14 @@ router.post('/:id/approve', authenticate,
         return res.json({ success: true, freeRental: true });
       }
 
-      // Paid rental — capture the existing authorization hold
+      // Paid rental — verify payment was authorized before capturing
+      const pi = await getPaymentIntent(t.stripe_payment_intent_id);
+      if (pi.status !== 'requires_capture') {
+        return res.status(400).json({
+          error: 'The borrower hasn\'t completed their payment yet. They need to finish checkout before you can approve.',
+        });
+      }
+
       await capturePaymentIntent(t.stripe_payment_intent_id);
 
       await query(

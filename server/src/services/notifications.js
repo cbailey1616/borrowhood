@@ -81,12 +81,12 @@ const NOTIFICATION_TEMPLATES = {
   new_rating: {
     title: 'New Rating',
     body: (data) => data.raterName
-      ? `${data.raterName} left you a ${data.rating}-star rating. Tap to see what they said.`
-      : `You received a ${data.rating || 5}-star rating. Tap to view it.`,
+      ? `${data.raterName} left you a rating. Tap to see what they said.`
+      : 'You received a new rating. Tap to view it.',
   },
   rating_received: {
     title: 'New Rating',
-    body: (data) => `You received a ${data.rating || 5}-star rating. Tap to view it.`,
+    body: (data) => 'You received a new rating. Tap to view it.',
   },
 
   // Community
