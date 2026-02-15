@@ -23,20 +23,11 @@ router.get('/', authenticate, async (req, res) => {
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
     const isPlusOrVerified = userTier === 'plus' || isVerified;
-    const canAccessTown = isVerified && userCity;
-    const canBrowseTown = isPlusOrVerified && userCity; // Paid or verified + has city
+    const canSeeTownUnmasked = isVerified && userCity;
+    const canSeeTown = !!userCity; // Anyone with a city can browse town (owner info masked if not verified)
 
     // Parse visibility filter
     const visibilityFilters = visibility ? visibility.split(',') : [];
-    const wantsTown = visibilityFilters.includes('town');
-
-    // If town visibility requested but user can't browse it, return 403
-    if (wantsTown && !canBrowseTown) {
-      return res.status(403).json({
-        error: 'Plus subscription required',
-        code: 'SUBSCRIPTION_REQUIRED',
-      });
-    }
 
     // Get user's friends for visibility filtering
     const friendsResult = await query(
@@ -113,7 +104,7 @@ router.get('/', authenticate, async (req, res) => {
           visConds.push(`(l.visibility = 'neighborhood' AND l.community_id = ANY($${listingParams.length + 1}))`);
           listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         }
-        if (wantsTown && canBrowseTown) {
+        if (visibilityFilters.includes('town') && canSeeTown) {
           visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
@@ -127,7 +118,7 @@ router.get('/', authenticate, async (req, res) => {
         listingParams.push(friendIds.length > 0 ? friendIds : [null]);
         visConds.push(`(l.visibility = 'neighborhood' AND l.community_id = ANY($${listingParams.length + 1}))`);
         listingParams.push(communityIds.length > 0 ? communityIds : [null]);
-        if (canAccessTown) {
+        if (canSeeTown) {
           visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
@@ -173,7 +164,7 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     // Determine if we need to mask owner info on town listings
-    const needsMasking = canBrowseTown && !canAccessTown;
+    const needsMasking = canSeeTown && !canSeeTownUnmasked;
 
     const maskedUser = {
       id: null,
