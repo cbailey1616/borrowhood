@@ -25,7 +25,6 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import EmojiReactionPicker from '../components/EmojiReactionPicker';
 import { useAuth } from '../context/AuthContext';
@@ -456,8 +455,8 @@ export default function ChatScreen({ route, navigation }) {
               <HapticPressable
                 onLongPress={() => handleMessageLongPress(item)}
                 haptic="medium"
+                style={[styles.messageBubble, styles.otherMessage, item.imageUrl && styles.imageBubble]}
               >
-                <BlurCard style={[styles.messageBubble, styles.otherMessage, item.imageUrl && styles.imageBubble]} intensity={40}>
                   {item.imageUrl && (
                     <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
                       <Image source={{ uri: item.imageUrl }} style={styles.messageImage} />
@@ -471,7 +470,6 @@ export default function ChatScreen({ route, navigation }) {
                   <Text style={[styles.messageTime, styles.otherMessageTime]}>
                     {formatTime(item.createdAt)}
                   </Text>
-                </BlurCard>
               </HapticPressable>
             )}
           </Animated.View>
@@ -723,6 +721,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: SPACING.xs,
   },
   otherMessage: {
+    backgroundColor: COLORS.surface,
     borderBottomLeftRadius: SPACING.xs,
   },
   deletedMessage: {
