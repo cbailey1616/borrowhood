@@ -142,6 +142,7 @@ router.get('/', authenticate, async (req, res) => {
           r.description,
           r.needed_from,
           r.needed_until,
+          r.expires_at,
           r.created_at,
           u.id as user_id,
           u.first_name,
@@ -220,6 +221,7 @@ router.get('/', authenticate, async (req, res) => {
       description: r.description,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
+      isExpired: r.expires_at ? new Date(r.expires_at) < new Date() : false,
       createdAt: r.created_at,
       user: {
         id: r.user_id,

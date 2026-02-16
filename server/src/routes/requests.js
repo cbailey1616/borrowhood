@@ -378,14 +378,14 @@ router.post('/:id/renew', authenticate, async (req, res) => {
 
     if (expiresIn === 'never') {
       await query(
-        `UPDATE item_requests SET expires_at = NULL WHERE id = $1`,
+        `UPDATE item_requests SET expires_at = NULL, created_at = NOW() WHERE id = $1`,
         [req.params.id]
       );
     } else {
       const expiresInMap = { '1d': '1 day', '3d': '3 days', '1w': '7 days' };
       const interval = expiresInMap[expiresIn] || '1 day';
       await query(
-        `UPDATE item_requests SET expires_at = NOW() + $1::interval WHERE id = $2`,
+        `UPDATE item_requests SET expires_at = NOW() + $1::interval, created_at = NOW() WHERE id = $2`,
         [interval, req.params.id]
       );
     }

@@ -21,6 +21,7 @@ import ActionSheet from '../components/ActionSheet';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonCard } from '../components/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
+import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 import { checkPremiumGate } from '../utils/premiumGate';
@@ -164,6 +165,16 @@ export default function FeedScreen({ navigation }) {
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
   };
+
+  const handleRenewRequest = useCallback(async (requestId) => {
+    try {
+      await api.renewRequest(requestId);
+      haptics.success();
+      fetchFeed(1, false);
+    } catch (error) {
+      haptics.error();
+    }
+  }, [fetchFeed]);
 
   const handleTownToggle = () => {
     if (user?.subscriptionTier !== 'plus' && !user?.isVerified) {
@@ -332,16 +343,20 @@ export default function FeedScreen({ navigation }) {
                 <Ionicons name="chatbubbles-outline" size={18} color={COLORS.textSecondary} />
                 <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Discuss</Text>
               </HapticPressable>
-              <View style={styles.actionDivider} />
-              <HapticPressable
-                style={styles.actionButton}
-                onPress={() => navigation.navigate('Chat', { recipientId: item.user.id, listingId: item.id, listing: item })}
-                haptic="light"
-                scaleDown={1}
-              >
-                <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
-                <Text style={styles.actionText}>Message</Text>
-              </HapticPressable>
+              {item.owner?.id !== user?.id && (
+                <>
+                  <View style={styles.actionDivider} />
+                  <HapticPressable
+                    style={styles.actionButton}
+                    onPress={() => navigation.navigate('Chat', { recipientId: item.user.id, listingId: item.id, listing: item })}
+                    haptic="light"
+                    scaleDown={1}
+                  >
+                    <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
+                    <Text style={styles.actionText}>Message</Text>
+                  </HapticPressable>
+                </>
+              )}
             </View>
           )}
         </HapticPressable>
@@ -376,8 +391,10 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.requestTime}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
           </HapticPressable>
-          <View style={styles.requestWantedBadge}>
-            <Text style={styles.requestWantedText}>WANTED</Text>
+          <View style={[styles.requestWantedBadge, item.isExpired && styles.requestExpiredBadge]}>
+            <Text style={[styles.requestWantedText, item.isExpired && styles.requestExpiredText]}>
+              {item.isExpired ? 'EXPIRED' : 'WANTED'}
+            </Text>
           </View>
         </View>
 
@@ -397,14 +414,30 @@ export default function FeedScreen({ navigation }) {
           </View>
         ) : null}
 
-        <HapticPressable
-          onPress={() => setSelectedRequest(item)}
-          haptic="medium"
-          style={styles.requestCTA}
-        >
-          <Ionicons name="hand-right-outline" size={18} color="#fff" />
-          <Text style={styles.requestCTAText}>I Have This</Text>
-        </HapticPressable>
+        {item.user.id === user?.id ? (
+          item.isExpired ? (
+            <HapticPressable
+              onPress={(e) => {
+                e.stopPropagation?.();
+                handleRenewRequest(item.id);
+              }}
+              haptic="medium"
+              style={styles.renewCTA}
+            >
+              <Ionicons name="refresh" size={18} color={COLORS.primary} />
+              <Text style={styles.renewCTAText}>Renew Request</Text>
+            </HapticPressable>
+          ) : null
+        ) : (
+          <HapticPressable
+            onPress={() => setSelectedRequest(item)}
+            haptic="medium"
+            style={styles.requestCTA}
+          >
+            <Ionicons name="hand-right-outline" size={18} color="#fff" />
+            <Text style={styles.requestCTAText}>I Have This</Text>
+          </HapticPressable>
+        )}
       </HapticPressable>
     </AnimatedCard>
   );
@@ -932,6 +965,13 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontSize: 10,
   },
+  requestExpiredBadge: {
+    backgroundColor: COLORS.textMuted + '15',
+    borderColor: COLORS.textMuted,
+  },
+  requestExpiredText: {
+    color: COLORS.textMuted,
+  },
   requestTitle: {
     ...TYPOGRAPHY.h3,
     fontWeight: '700',
@@ -968,6 +1008,23 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subheadline,
     fontWeight: '700',
     color: '#fff',
+  },
+  renewCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary + '15',
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '40',
+  },
+  renewCTAText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   requestBadge: {
     backgroundColor: COLORS.secondaryMuted,
