@@ -30,9 +30,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const { user, refreshUser } = useAuth();
   const { showError, showToast } = useError();
   const scrollRef = useRef(null);
-  const photosRef = useRef(null);
-  const titleRef = useRef(null);
-  const categoryRef = useRef(null);
+  const fieldPositions = useRef({});
 
   // Refresh user + communities when returning from gate flow or JoinCommunity
   useFocusEffect(
@@ -233,13 +231,11 @@ export default function CreateListingScreen({ navigation, route }) {
       haptics.warning();
 
       // Scroll to the first field with an error
-      const firstErrorRef = errors.photos ? photosRef : errors.title ? titleRef : categoryRef;
-      if (firstErrorRef.current && scrollRef.current) {
-        firstErrorRef.current.measureLayout(
-          scrollRef.current.getScrollResponder(),
-          (_x, y) => { scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true); },
-          () => {},
-        );
+      const y = errors.photos ? fieldPositions.current.photos
+        : errors.title ? fieldPositions.current.title
+        : fieldPositions.current.categoryId;
+      if (y != null && scrollRef.current) {
+        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true);
       }
 
       // Build a specific message listing what's missing
@@ -327,7 +323,7 @@ export default function CreateListingScreen({ navigation, route }) {
       )}
 
       {/* Photos */}
-      <View ref={photosRef} style={styles.section}>
+      <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
@@ -361,7 +357,7 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
 
       {/* Title */}
-      <View ref={titleRef} style={styles.section}>
+      <View onLayout={(e) => { fieldPositions.current.title = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
           testID="CreateListing.input.title"
@@ -415,7 +411,7 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
 
       {/* Category */}
-      <View ref={categoryRef} style={styles.section}>
+      <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
         {categories.length > 0 ? (
           <HapticPressable

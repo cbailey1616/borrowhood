@@ -25,8 +25,7 @@ export default function EditListingScreen({ navigation, route }) {
   const { listing } = route.params;
   const { showError, showToast } = useError();
   const scrollRef = useRef(null);
-  const photosRef = useRef(null);
-  const titleRef = useRef(null);
+  const fieldPositions = useRef({});
 
   const [categories, setCategories] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false });
@@ -130,13 +129,9 @@ export default function EditListingScreen({ navigation, route }) {
       haptics.warning();
 
       // Scroll to the first field with an error
-      const firstErrorRef = errors.photos ? photosRef : titleRef;
-      if (firstErrorRef.current && scrollRef.current) {
-        firstErrorRef.current.measureLayout(
-          scrollRef.current.getScrollResponder(),
-          (_x, y) => { scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true); },
-          () => {},
-        );
+      const y = errors.photos ? fieldPositions.current.photos : fieldPositions.current.title;
+      if (y != null && scrollRef.current) {
+        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true);
       }
 
       const missing = [];
@@ -219,7 +214,7 @@ export default function EditListingScreen({ navigation, route }) {
       keyboardShouldPersistTaps="handled"
     >
       {/* Photos */}
-      <View ref={photosRef} style={styles.section}>
+      <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
@@ -267,7 +262,7 @@ export default function EditListingScreen({ navigation, route }) {
       </View>
 
       {/* Title */}
-      <View ref={titleRef} style={styles.section}>
+      <View onLayout={(e) => { fieldPositions.current.title = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
           style={[styles.input, fieldErrors.title && styles.fieldError]}

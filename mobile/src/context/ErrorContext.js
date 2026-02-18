@@ -163,6 +163,17 @@ export function ErrorProvider({ children, navigationRef }) {
     }
   }, [error]);
 
+  // Auto-dismiss error modal on navigation change (e.g. swipe back)
+  // so it never blocks touches on the underlying screen
+  useEffect(() => {
+    const nav = navigationRef?.current;
+    if (!nav) return;
+    const unsubscribe = nav.addListener('state', () => {
+      setError(null);
+    });
+    return unsubscribe;
+  }, [navigationRef]);
+
   const showError = useCallback(({
     type,
     title,
