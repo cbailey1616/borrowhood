@@ -29,8 +29,10 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 export default function CreateListingScreen({ navigation, route }) {
   const { user, refreshUser } = useAuth();
   const { showError, showToast } = useError();
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  const scrollRef = useRef(null);
+  const photosRef = useRef(null);
+  const titleRef = useRef(null);
+  const categoryRef = useRef(null);
 
   // Refresh user + communities when returning from gate flow or JoinCommunity
   useFocusEffect(
@@ -229,10 +231,26 @@ export default function CreateListingScreen({ navigation, route }) {
     if (errors.title || errors.photos || errors.categoryId) {
       setFieldErrors(errors);
       haptics.warning();
+
+      // Scroll to the first field with an error
+      const firstErrorRef = errors.photos ? photosRef : errors.title ? titleRef : categoryRef;
+      if (firstErrorRef.current && scrollRef.current) {
+        firstErrorRef.current.measureLayout(
+          scrollRef.current.getScrollResponder(),
+          (_x, y) => { scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true); },
+          () => {},
+        );
+      }
+
+      // Build a specific message listing what's missing
+      const missing = [];
+      if (errors.photos) missing.push('photos');
+      if (errors.title) missing.push('a title');
+      if (errors.categoryId) missing.push('a category');
       showError({
         type: 'validation',
         title: 'Almost There',
-        message: 'A few fields still need your attention — they\'re highlighted above.',
+        message: `Please add ${missing.join(' and ')} before listing your item.`,
       });
       return;
     }
@@ -260,12 +278,8 @@ export default function CreateListingScreen({ navigation, route }) {
         requestMatchId: requestMatchId || undefined,
       });
 
-      if (!mountedRef.current) return;
       Keyboard.dismiss();
       haptics.success();
-
-      // Prevent finally block from setting state during dismiss animation
-      mountedRef.current = false;
       navigation.goBack();
 
       // Show toast after navigating back so it appears on the previous screen
@@ -273,7 +287,6 @@ export default function CreateListingScreen({ navigation, route }) {
         setTimeout(() => showToast('Your item was listed for free. Upgrade to Plus to charge rental fees.', 'success'), 500);
       }
     } catch (error) {
-      if (!mountedRef.current) return;
       const errorMsg = error.message?.toLowerCase() || '';
 
       if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
@@ -289,13 +302,14 @@ export default function CreateListingScreen({ navigation, route }) {
         });
       }
     } finally {
-      if (mountedRef.current) setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <View style={styles.container}>
     <KeyboardAwareScrollView
+      ref={scrollRef}
       style={styles.scrollContainer}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -313,7 +327,7 @@ export default function CreateListingScreen({ navigation, route }) {
       )}
 
       {/* Photos */}
-      <View style={styles.section}>
+      <View ref={photosRef} style={styles.section}>
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
@@ -347,7 +361,7 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
 
       {/* Title */}
-      <View style={styles.section}>
+      <View ref={titleRef} style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
           testID="CreateListing.input.title"
@@ -401,7 +415,7 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
 
       {/* Category */}
-      <View style={styles.section}>
+      <View ref={categoryRef} style={styles.section}>
         <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
         {categories.length > 0 ? (
           <HapticPressable

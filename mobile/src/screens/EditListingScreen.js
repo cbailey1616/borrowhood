@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,8 +24,12 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 export default function EditListingScreen({ navigation, route }) {
   const { listing } = route.params;
   const { showError, showToast } = useError();
+  const scrollRef = useRef(null);
+  const photosRef = useRef(null);
+  const titleRef = useRef(null);
 
   const [categories, setCategories] = useState([]);
+  const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false });
 
   const [formData, setFormData] = useState({
     title: listing.title || '',
@@ -64,6 +68,9 @@ export default function EditListingScreen({ navigation, route }) {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (field in fieldErrors) {
+      setFieldErrors(prev => ({ ...prev, [field]: false }));
+    }
   };
 
   const handlePickImage = async () => {
@@ -78,6 +85,7 @@ export default function EditListingScreen({ navigation, route }) {
     if (!result.canceled) {
       const uris = result.assets.map(a => a.uri);
       setNewPhotos(prev => [...prev, ...uris].slice(0, 10 - (formData.photos.length - removedPhotos.length)));
+      setFieldErrors(prev => ({ ...prev, photos: false }));
     }
   };
 
@@ -96,6 +104,7 @@ export default function EditListingScreen({ navigation, route }) {
       const totalPhotos = formData.photos.length - removedPhotos.length + newPhotos.length;
       if (totalPhotos < 10) {
         setNewPhotos(prev => [...prev, result.assets[0].uri]);
+        setFieldErrors(prev => ({ ...prev, photos: false }));
       }
     }
   };
@@ -109,21 +118,34 @@ export default function EditListingScreen({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim()) {
-      showError({
-        type: 'validation',
-        title: 'Missing Title',
-        message: 'Give your item a title so neighbors know what you\'re sharing.',
-      });
-      return;
-    }
-
     const totalPhotos = formData.photos.length - removedPhotos.length + newPhotos.length;
-    if (totalPhotos === 0) {
+
+    const errors = {
+      title: !formData.title.trim(),
+      photos: totalPhotos === 0,
+    };
+
+    if (errors.title || errors.photos) {
+      setFieldErrors(errors);
+      haptics.warning();
+
+      // Scroll to the first field with an error
+      const firstErrorRef = errors.photos ? photosRef : titleRef;
+      if (firstErrorRef.current && scrollRef.current) {
+        firstErrorRef.current.measureLayout(
+          scrollRef.current.getScrollResponder(),
+          (_x, y) => { scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true); },
+          () => {},
+        );
+      }
+
+      const missing = [];
+      if (errors.photos) missing.push('photos');
+      if (errors.title) missing.push('a title');
       showError({
         type: 'validation',
-        title: 'Add a Photo',
-        message: 'Items with photos get 5x more interest. Add at least one photo of your item.',
+        title: 'Almost There',
+        message: `Please add ${missing.join(' and ')} before saving.`,
       });
       return;
     }
@@ -189,6 +211,7 @@ export default function EditListingScreen({ navigation, route }) {
 
   return (
     <KeyboardAwareScrollView
+      ref={scrollRef}
       style={styles.container}
       contentContainerStyle={styles.content}
       enableOnAndroid={true}
@@ -196,8 +219,8 @@ export default function EditListingScreen({ navigation, route }) {
       keyboardShouldPersistTaps="handled"
     >
       {/* Photos */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Photos *</Text>
+      <View ref={photosRef} style={styles.section}>
+        <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
@@ -229,12 +252,12 @@ export default function EditListingScreen({ navigation, route }) {
             ))}
             {totalPhotos < 10 && (
               <View style={styles.addPhotoButtons}>
-                <HapticPressable haptic="light" style={styles.addPhotoButton} onPress={handlePickImage}>
-                  <Ionicons name="images-outline" size={24} color={COLORS.gray[400]} />
+                <HapticPressable haptic="light" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage}>
+                  <Ionicons name="images-outline" size={24} color={fieldErrors.photos ? COLORS.danger : COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
                 </HapticPressable>
-                <HapticPressable haptic="light" style={styles.addPhotoButton} onPress={handleTakePhoto}>
-                  <Ionicons name="camera-outline" size={24} color={COLORS.gray[400]} />
+                <HapticPressable haptic="light" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto}>
+                  <Ionicons name="camera-outline" size={24} color={fieldErrors.photos ? COLORS.danger : COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Camera</Text>
                 </HapticPressable>
               </View>
@@ -244,10 +267,10 @@ export default function EditListingScreen({ navigation, route }) {
       </View>
 
       {/* Title */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Title *</Text>
+      <View ref={titleRef} style={styles.section}>
+        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
           placeholder="e.g., DeWalt Cordless Drill"
@@ -785,5 +808,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
     color: '#fff',
     fontSize: 16,
+  },
+  fieldError: {
+    borderColor: COLORS.danger,
+    borderWidth: 1.5,
+  },
+  fieldErrorLabel: {
+    color: COLORS.danger,
   },
 });
