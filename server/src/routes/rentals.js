@@ -497,9 +497,11 @@ router.post('/:id/return', authenticate,
       }
 
       const t = txn.rows[0];
+      const isLender = t.lender_id === req.user.id;
+      const isBorrower = t.borrower_id === req.user.id;
 
-      if (t.lender_id !== req.user.id) {
-        return res.status(403).json({ error: 'Only the lender can confirm return' });
+      if (!isLender && !isBorrower) {
+        return res.status(403).json({ error: 'Only the lender or borrower can confirm return' });
       }
 
       if (t.status !== 'picked_up' && t.status !== 'return_pending') {
@@ -597,7 +599,9 @@ router.post('/:id/return', authenticate,
         );
       });
 
-      await sendNotification(t.borrower_id, 'return_confirmed', {
+      // Notify the other party
+      const notifyUserId = isLender ? t.borrower_id : t.lender_id;
+      await sendNotification(notifyUserId, 'return_confirmed', {
         transactionId: t.id,
       });
 
