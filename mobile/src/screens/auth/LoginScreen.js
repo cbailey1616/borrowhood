@@ -10,44 +10,34 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
-import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
-import { useError } from '../../context/ErrorContext';
 import { haptics } from '../../utils/haptics';
+import { Ionicons } from '../../components/Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
-  const { showError } = useError();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showError({
-        type: 'validation',
-        title: 'Missing Information',
-        message: 'Please enter your email and password to sign in.',
-      });
+      haptics.warning();
+      setLoginError('Please enter your email and password.');
       return;
     }
 
+    setLoginError(null);
     setIsLoading(true);
     try {
       await login(email, password);
       haptics.success();
     } catch (error) {
       haptics.error();
-      showError({
-        type: 'validation',
-        title: 'Hmm, that didn\'t work',
-        message: 'Please double-check your email and password, or reset your password below.',
-        primaryAction: 'Try Again',
-        secondaryAction: 'Reset Password',
-        onSecondaryPress: () => navigation.navigate('ForgotPassword'),
-      });
+      setLoginError('Incorrect email or password. Please try again or reset your password below.');
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +67,7 @@ export default function LoginScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(t) => { setEmail(t); setLoginError(null); }}
                 placeholder="you@example.com"
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="email-address"
@@ -92,7 +82,7 @@ export default function LoginScreen({ navigation }) {
                 <TextInput
                   style={styles.passwordInput}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(t) => { setPassword(t); setLoginError(null); }}
                   placeholder="Enter your password"
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
@@ -130,6 +120,21 @@ export default function LoginScreen({ navigation }) {
             </HapticPressable>
           </View>
         </View>
+
+        {loginError && (
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+            <View style={styles.errorContent}>
+              <Text style={styles.errorText}>{loginError}</Text>
+              <HapticPressable
+                onPress={() => navigation.navigate('ForgotPassword')}
+                haptic="light"
+              >
+                <Text style={styles.errorLink}>Reset Password</Text>
+              </HapticPressable>
+            </View>
+          </View>
+        )}
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
@@ -249,6 +254,31 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: COLORS.background,
     ...TYPOGRAPHY.headline,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.danger + '10',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.danger + '25',
+    padding: SPACING.lg,
+    marginTop: SPACING.lg,
+  },
+  errorContent: {
+    flex: 1,
+    gap: SPACING.sm,
+  },
+  errorText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
+    lineHeight: 20,
+  },
+  errorLink: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
