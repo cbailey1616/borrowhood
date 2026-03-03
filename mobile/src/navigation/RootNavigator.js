@@ -51,13 +51,13 @@ const Stack = createNativeStackNavigator();
 const sharedScreenOptions = {
   headerShown: true,
   headerStyle: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.background,
   },
   headerShadowVisible: false,
-  headerTintColor: COLORS.text,
+  headerTintColor: COLORS.primary,
   headerTitleStyle: {
     fontWeight: '600',
-    color: COLORS.text,
+    color: COLORS.primary,
     fontSize: 17,
   },
   contentStyle: { backgroundColor: COLORS.background },

@@ -897,11 +897,13 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.sm,
     gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: RADIUS.full,
+    borderRadius: 16,
     backgroundColor: COLORS.gray[700],
   },
   avatarPlaceholder: {

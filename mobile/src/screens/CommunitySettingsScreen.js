@@ -262,6 +262,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     marginBottom: SPACING.sm,
     gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   actionButtonText: {
     ...TYPOGRAPHY.body,

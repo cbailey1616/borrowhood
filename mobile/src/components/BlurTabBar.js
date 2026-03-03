@@ -58,11 +58,11 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       style={styles.tabButton}
       scaleDown={1}
     >
-      <Animated.View style={[styles.iconContainer, animatedStyle]}>
+      <Animated.View style={[styles.iconContainer, isFocused && styles.iconContainerActive, animatedStyle]}>
         <Ionicons
           name={iconName}
           size={24}
-          color={isFocused ? COLORS.primary : COLORS.textMuted}
+          color={isFocused ? COLORS.primary : COLORS.textSecondary}
         />
         {badge > 0 && (
           <View style={styles.badge}>
@@ -73,7 +73,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       <Text
         style={[
           styles.label,
-          { color: isFocused ? COLORS.primary : COLORS.textMuted },
+          { color: isFocused ? COLORS.primary : COLORS.textSecondary },
         ]}
       >
         {label}
@@ -128,7 +128,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
     return (
       <View style={styles.container}>
         <View style={styles.separator} />
-        <BlurView intensity={80} tint="dark" style={styles.blur}>
+        <BlurView intensity={80} tint="default" style={styles.blur}>
           <View style={styles.blurOverlay}>{content}</View>
         </BlurView>
       </View>
@@ -151,14 +151,14 @@ const styles = StyleSheet.create({
     right: 0,
   },
   separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: COLORS.separator,
+    height: 1.5,
+    backgroundColor: COLORS.borderBrown,
   },
   blur: {
     overflow: 'hidden',
   },
   blurOverlay: {
-    backgroundColor: COLORS.materials.thin,
+    backgroundColor: COLORS.materials.thick,
   },
   androidFallback: {
     backgroundColor: COLORS.surface,
@@ -178,8 +178,12 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  iconContainerActive: {
+    backgroundColor: COLORS.primaryMuted,
   },
   label: {
     fontSize: 11,

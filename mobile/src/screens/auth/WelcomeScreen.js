@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
   logo: {
     width: 403,
     height: 144,
+    tintColor: COLORS.primary,
   },
   biometricButton: {
     alignItems: 'center',

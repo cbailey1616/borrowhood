@@ -410,7 +410,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       {/* Pricing */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Summary</Text>
-        <BlurCard style={styles.pricingCard}>
+        <View style={styles.pricingCard}>
           {!listing.isFree && days > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>
@@ -433,7 +433,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <Text style={styles.totalLabel}>Total authorization hold</Text>
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
-        </BlurCard>
+        </View>
         <Text style={styles.depositNote}>
           <Ionicons name="information-circle-outline" size={14} color={COLORS.gray[400]} />
           {' '}Deposit is refunded when you return the item in good condition
@@ -655,6 +655,11 @@ const styles = StyleSheet.create({
   },
   pricingCard: {
     padding: SPACING.lg,
+    backgroundColor: COLORS.greenBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+    borderRadius: RADIUS.xl,
+    overflow: 'hidden',
   },
   priceRow: {
     flexDirection: 'row',
@@ -664,30 +669,30 @@ const styles = StyleSheet.create({
   priceLabel: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: COLORS.greenTextMuted,
   },
   priceValue: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
-    color: COLORS.text,
+    color: COLORS.greenText,
   },
   totalRow: {
     marginTop: SPACING.sm,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
+    borderTopColor: COLORS.greenSeparator,
     marginBottom: 0,
   },
   totalLabel: {
     ...TYPOGRAPHY.headline,
     fontSize: 16,
-    color: COLORS.text,
+    color: COLORS.greenText,
   },
   totalValue: {
     ...TYPOGRAPHY.h3,
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.greenText,
   },
   depositNote: {
     ...TYPOGRAPHY.caption1,

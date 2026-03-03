@@ -542,8 +542,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.lg,
-    marginTop: 1,
+    marginTop: SPACING.md,
     gap: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   itemImage: {
     width: 52,
@@ -639,7 +642,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     backgroundColor: COLORS.gray?.[700] || '#333',
   },
   personName: {

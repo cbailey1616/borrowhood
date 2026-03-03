@@ -267,10 +267,13 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-outline" size={56} color={COLORS.gray[600]} />
-              <Text style={styles.emptyTitle}>No activity yet</Text>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="notifications-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 22 }} />
+                <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 18, opacity: 0.6 }} />
+              </View>
+              <Text style={styles.emptyTitle}>All caught up!</Text>
               <Text style={styles.emptySubtitle}>
-                Friend requests, borrow updates, and notifications will appear here
+                You'll see rental requests and updates here
               </Text>
             </View>
           }
@@ -292,7 +295,10 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={56} color={COLORS.gray[600]} />
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="chatbubbles-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 20 }} />
+                <Ionicons name="pencil-outline" size={20} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 20, opacity: 0.6 }} />
+              </View>
               <Text style={styles.emptyTitle}>No messages yet</Text>
               <Text style={styles.emptySubtitle}>
                 Start a conversation by messaging someone about their item
@@ -329,6 +335,8 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.sm,
     gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   cardUnread: {
     backgroundColor: COLORS.primary + '08',
@@ -339,13 +347,13 @@ const styles = StyleSheet.create({
   avatar: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: 16,
     backgroundColor: COLORS.gray[700],
   },
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: COLORS.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
@@ -356,7 +364,7 @@ const styles = StyleSheet.create({
   notifAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
   },
   unreadBadge: {
     position: 'absolute',
@@ -428,6 +436,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: COLORS.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,

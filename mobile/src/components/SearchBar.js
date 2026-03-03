@@ -59,6 +59,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     height: 36,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderLight,
   },
   icon: {
     marginRight: SPACING.sm,

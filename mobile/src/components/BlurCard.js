@@ -5,10 +5,10 @@ import { COLORS, RADIUS } from '../utils/config';
 
 export default function BlurCard({
   intensity = 40,
-  tint = 'dark',
+  tint = 'default',
   style,
   children,
-  fallbackColor = COLORS.surface,
+  fallbackColor = COLORS.background,
   innerColor,
   testID,
   accessibilityLabel,
@@ -29,7 +29,7 @@ export default function BlurCard({
       testID={testID}
       accessibilityLabel={accessibilityLabel}
     >
-      <View style={[styles.inner, { backgroundColor: innerColor || COLORS.materials.thin }]}>
+      <View style={[styles.inner, { backgroundColor: innerColor || COLORS.materials.thick }]}>
         {children}
       </View>
     </BlurView>
@@ -40,6 +40,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   inner: {
   },

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, Platform, StyleSheet } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { haptics } from '../utils/haptics';
@@ -16,6 +17,7 @@ export default function ActionSheet({
   multiSelect = false,
 }) {
   const bottomSheetRef = useRef(null);
+  const insets = useSafeAreaInsets();
   const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
@@ -74,23 +76,15 @@ export default function ActionSheet({
     []
   );
 
-  const snapPoints = useMemo(() => {
-    // Calculate based on content: header + actions + cancel + padding
-    const headerHeight = title ? 60 : 0;
-    const messageHeight = message ? 30 : 0;
-    const actionsHeight = actions.length * 56;
-    const cancelHeight = 56;
-    const paddingHeight = 40;
-    return [headerHeight + messageHeight + actionsHeight + cancelHeight + paddingHeight];
-  }, [title, message, actions.length]);
-
   if (!rendered) return null;
+
+  const bottomPad = (insets.bottom || 34) + 80;
 
   return (
     <BottomSheet
       ref={bottomSheetRef}
       index={0}
-      snapPoints={snapPoints}
+      enableDynamicSizing
       onChange={handleSheetChange}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
@@ -98,7 +92,7 @@ export default function ActionSheet({
       handleIndicatorStyle={styles.handle}
       style={styles.sheet}
     >
-      <BottomSheetView style={styles.content}>
+      <BottomSheetView style={[styles.content, { paddingBottom: bottomPad }]}>
         {title ? (
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
@@ -155,7 +149,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xxl,
+    paddingBottom: SPACING.lg,
   },
   header: {
     alignItems: 'center',

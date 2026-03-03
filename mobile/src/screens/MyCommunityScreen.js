@@ -372,11 +372,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.xl,
     backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   communityImage: {
     width: 80,
     height: 80,
-    borderRadius: RADIUS.full,
+    borderRadius: 20,
     backgroundColor: COLORS.gray[700],
   },
   placeholderImage: {
@@ -456,7 +459,7 @@ const styles = StyleSheet.create({
   memberAvatar: {
     width: 60,
     height: 60,
-    borderRadius: RADIUS.full,
+    borderRadius: 18,
     backgroundColor: COLORS.gray[700],
   },
   modBadge: {
@@ -486,6 +489,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     marginBottom: SPACING.sm,
     gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   actionButtonText: {
     ...TYPOGRAPHY.body,

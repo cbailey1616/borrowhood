@@ -375,10 +375,9 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
-  const emptyIcon = activeTab === 0 ? 'construct-outline' : activeTab === 1 ? 'swap-horizontal-outline' : 'search-outline';
-  const emptyTitle = activeTab === 0 ? 'No listings yet' : activeTab === 1 ? 'No rentals yet' : 'No wanted posts yet';
+  const emptyTitle = activeTab === 0 ? 'No items listed' : activeTab === 1 ? 'No rentals yet' : 'No wanted posts yet';
   const emptySubtitle = activeTab === 0
-    ? 'List your first item to start lending!'
+    ? 'Share your tools with the neighborhood'
     : activeTab === 1
     ? 'Your borrows and lends will show up here'
     : 'Post what you need and neighbors can offer to help';
@@ -412,11 +411,24 @@ export default function MyItemsScreen({ navigation }) {
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
-              <Ionicons
-                name={emptyIcon}
-                size={64}
-                color={COLORS.gray[700]}
-              />
+              <View style={styles.emptyIconWrap}>
+                {activeTab === 0 ? (
+                  <>
+                    <Ionicons name="cube-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 16, left: 18 }} />
+                    <Ionicons name="add-circle-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 18, opacity: 0.7 }} />
+                  </>
+                ) : activeTab === 1 ? (
+                  <>
+                    <Ionicons name="swap-horizontal-outline" size={30} color={COLORS.primary} style={{ position: 'absolute', top: 16 }} />
+                    <Ionicons name="time-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, opacity: 0.6 }} />
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="search-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 16, left: 20 }} />
+                    <Ionicons name="megaphone-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, right: 18, opacity: 0.7 }} />
+                  </>
+                )}
+              </View>
               <Text style={styles.emptyTitle}>{emptyTitle}</Text>
               <Text style={styles.emptySubtitle}>{emptySubtitle}</Text>
               {activeTab !== 1 && (
@@ -489,6 +501,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   cardImage: {
     width: 100,
@@ -617,6 +631,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   requestStatusText: {
     ...TYPOGRAPHY.caption1,
@@ -666,6 +682,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 64,
   },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: COLORS.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyTitle: {
     ...TYPOGRAPHY.h3,
     color: COLORS.text,
@@ -697,6 +721,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   rentalTop: {
     flexDirection: 'row',

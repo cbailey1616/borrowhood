@@ -50,7 +50,7 @@ describe('FeedScreen', () => {
   it('empty feed shows empty state', async () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
-    await findByText('No activity yet');
+    await findByText('Your hood is quiet');
   });
 
   it('search bar renders', async () => {
@@ -61,9 +61,9 @@ describe('FeedScreen', () => {
 
   it('create button renders', async () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
-    const { findByTestId } = render(<FeedScreen navigation={mockNavigation} />);
-    const createBtn = await findByTestId('Feed.button.create');
-    expect(createBtn).toBeTruthy();
+    const { findAllByTestId } = render(<FeedScreen navigation={mockNavigation} />);
+    const createBtns = await findAllByTestId('Feed.button.create');
+    expect(createBtns.length).toBeGreaterThan(0);
   });
 
   it('tap listing navigates to ListingDetail', async () => {

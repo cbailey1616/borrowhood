@@ -663,6 +663,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: SPACING.lg,
     gap: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   listingImage: {
     width: 60,
@@ -686,7 +689,10 @@ const styles = StyleSheet.create({
   statusCard: {
     padding: SPACING.lg,
     backgroundColor: COLORS.surface,
-    marginTop: 1,
+    marginTop: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   statusBadge: {
     paddingHorizontal: SPACING.lg,
@@ -704,11 +710,14 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     marginTop: SPACING.md,
     gap: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   personAvatar: {
     width: 48,
     height: 48,
-    borderRadius: RADIUS.full,
+    borderRadius: 14,
     backgroundColor: COLORS.gray[200],
   },
   personInfo: {
@@ -727,6 +736,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: SPACING.lg,
     marginTop: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   sectionTitle: {
     ...TYPOGRAPHY.bodySmall,

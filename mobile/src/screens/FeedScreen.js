@@ -14,12 +14,12 @@ import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import SearchBar from '../components/SearchBar';
 import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonCard } from '../components/SkeletonLoader';
+import ShimmerImage from '../components/ShimmerImage';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -45,6 +45,7 @@ const VISIBILITY_OPTIONS = [
 export default function FeedScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const [feed, setFeed] = useState([]);
+  const [community, setCommunity] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -105,6 +106,14 @@ export default function FeedScreen({ navigation }) {
       }
     };
     loadCategories();
+    // Fetch community info for banner
+    const loadCommunity = async () => {
+      try {
+        const communities = await api.getCommunities({ member: 'true' });
+        if (communities?.length > 0) setCommunity(communities[0]);
+      } catch (e) {}
+    };
+    loadCommunity();
   }, []);
 
   useEffect(() => {
@@ -235,7 +244,7 @@ export default function FeedScreen({ navigation }) {
 
   const renderListingItem = (item, index) => (
     <AnimatedCard index={index}>
-      <BlurCard style={styles.card}>
+      <View style={styles.card}>
         <HapticPressable
           onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
           haptic="light"
@@ -269,7 +278,7 @@ export default function FeedScreen({ navigation }) {
                 <View style={styles.userMeta}>
                   <View style={styles.userNameRow}>
                     <Text style={styles.userName}>
-                      {item.user.firstName} {item.user.lastName}
+                      {item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}
                     </Text>
                     <UserBadges
                       isVerified={item.user.isVerified}
@@ -285,24 +294,25 @@ export default function FeedScreen({ navigation }) {
             <View style={[styles.typeBadge, !item.isAvailable && styles.borrowedBadge]}>
               <Ionicons name={item.isAvailable !== false ? "cube-outline" : "time-outline"} size={12} color={item.isAvailable !== false ? COLORS.primary : COLORS.warning} />
               <Text style={[styles.typeBadgeText, !item.isAvailable && styles.borrowedBadgeText]}>
-                {item.isAvailable !== false ? 'Item Available' : 'Currently Borrowed'}
+                {item.isAvailable !== false ? 'Available' : 'Borrowed'}
               </Text>
             </View>
           </View>
 
           {item.photoUrl && (
-            <Image source={{ uri: item.photoUrl }} style={styles.listingImage} />
+            <ShimmerImage
+              source={{ uri: item.photoUrl }}
+              style={styles.listingImage}
+              sharedTransitionTag={`listing-photo-${item.id}`}
+            />
           )}
 
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle}>{item.title}</Text>
             <View style={styles.listingMeta}>
-              <View style={styles.conditionBadge}>
-                <Text style={styles.conditionText}>{CONDITION_LABELS[item.condition]}</Text>
-              </View>
-              {item.category && (
+              {item.condition && (
                 <View style={styles.conditionBadge}>
-                  <Text style={styles.conditionText}>{item.category}</Text>
+                  <Text style={styles.conditionText}>{CONDITION_LABELS[item.condition]}</Text>
                 </View>
               )}
               {item.isFree ? (
@@ -311,9 +321,6 @@ export default function FeedScreen({ navigation }) {
                 <Text style={styles.priceLabel}>${item.pricePerDay}/day</Text>
               )}
             </View>
-            {item.description && (
-              <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
-            )}
           </View>
 
           {/* TODO: Restore ownerMasked banner when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
@@ -343,8 +350,8 @@ export default function FeedScreen({ navigation }) {
                 haptic="light"
                 scaleDown={1}
               >
-                <Ionicons name="chatbubbles-outline" size={18} color={COLORS.textSecondary} />
-                <Text style={[styles.actionText, { color: COLORS.textSecondary }]}>Discuss</Text>
+                <Ionicons name="chatbubbles-outline" size={18} color={COLORS.greenTextMuted} />
+                <Text style={styles.actionText}>Discuss</Text>
               </HapticPressable>
               {item.owner?.id !== user?.id && (
                 <>
@@ -355,7 +362,7 @@ export default function FeedScreen({ navigation }) {
                     haptic="light"
                     scaleDown={1}
                   >
-                    <Ionicons name="mail-outline" size={18} color={COLORS.primary} />
+                    <Ionicons name="mail-outline" size={18} color={COLORS.greenText} />
                     <Text style={styles.actionText}>Message</Text>
                   </HapticPressable>
                 </>
@@ -363,7 +370,7 @@ export default function FeedScreen({ navigation }) {
             </View>
           )}
         </HapticPressable>
-      </BlurCard>
+      </View>
     </AnimatedCard>
   );
 
@@ -390,7 +397,7 @@ export default function FeedScreen({ navigation }) {
               </View>
             )}
             <View>
-              <Text style={styles.requestUserName}>{item.user.firstName} {item.user.lastName}</Text>
+              <Text style={styles.requestUserName}>{item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}</Text>
               <Text style={styles.requestTime}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
           </HapticPressable>
@@ -472,67 +479,10 @@ export default function FeedScreen({ navigation }) {
         scrollY={scrollY}
         rightElement={
           <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create new listing" accessibilityRole="button">
-            <Ionicons name="add-circle" size={28} color={COLORS.primary} />
+            <Ionicons name="add-circle-outline" size={28} color={COLORS.primary} />
           </HapticPressable>
         }
       />
-
-      <View style={styles.filtersSection}>
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search..."
-          onSubmitEditing={handleSearch}
-          testID="Feed.searchBar"
-          accessibilityLabel="Search items"
-        />
-
-        <View style={styles.filterChipsRow}>
-          <HapticPressable
-            style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
-            onPress={() => setActiveDropdown('type')}
-            haptic="light"
-            testID="Feed.chip.allTypes"
-            accessibilityLabel="Filter by type"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
-              {typeChipLabel}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-          </HapticPressable>
-
-          <HapticPressable
-            style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
-            onPress={() => setActiveDropdown('visibility')}
-            haptic="light"
-            testID="Feed.chip.visibility"
-            accessibilityLabel="Filter by visibility"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
-              {visibilityChipLabel}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-          </HapticPressable>
-
-          {categories.length > 0 && (
-            <HapticPressable
-              style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
-              onPress={() => setActiveDropdown('category')}
-              haptic="light"
-              testID="Feed.chip.category"
-              accessibilityLabel="Filter by category"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
-                {categoryChipLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-            </HapticPressable>
-          )}
-        </View>
-      </View>
 
       <AnimatedFlatList
         data={feed}
@@ -541,6 +491,97 @@ export default function FeedScreen({ navigation }) {
         contentContainerStyle={styles.listContent}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        ListHeaderComponent={
+          <>
+            <View style={styles.filtersSection}>
+              <SearchBar
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search..."
+                onSubmitEditing={handleSearch}
+                testID="Feed.searchBar"
+                accessibilityLabel="Search items"
+              />
+
+              <View style={styles.filterChipsRow}>
+                <View>
+                  <HapticPressable
+                    style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
+                    onPress={() => setActiveDropdown('type')}
+                    haptic="light"
+                    testID="Feed.chip.allTypes"
+                    accessibilityLabel="Filter by type"
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
+                      {typeChipLabel}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+                  </HapticPressable>
+                  {activeFilters.length > 0 && <View style={styles.filterDot} />}
+                </View>
+
+                <View>
+                  <HapticPressable
+                    style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
+                    onPress={() => setActiveDropdown('visibility')}
+                    haptic="light"
+                    testID="Feed.chip.visibility"
+                    accessibilityLabel="Filter by visibility"
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
+                      {visibilityChipLabel}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+                  </HapticPressable>
+                  {visibilityFilters.length > 0 && <View style={styles.filterDot} />}
+                </View>
+
+                {categories.length > 0 && (
+                  <View>
+                    <HapticPressable
+                      style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
+                      onPress={() => setActiveDropdown('category')}
+                      haptic="light"
+                      testID="Feed.chip.category"
+                      accessibilityLabel="Filter by category"
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
+                        {categoryChipLabel}
+                      </Text>
+                      <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+                    </HapticPressable>
+                    {categoryFilters.length > 0 && <View style={styles.filterDot} />}
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {community && (
+              <HapticPressable
+                style={styles.communityBanner}
+                onPress={() => navigation.navigate('MyCommunity')}
+                haptic="light"
+                scaleDown={0.98}
+              >
+                <View style={styles.communityBannerInner}>
+                  <View style={styles.communityIconWrap}>
+                    <Ionicons name="home" size={22} color={COLORS.greenText} />
+                  </View>
+                  <View style={styles.communityBannerContent}>
+                    <Text style={styles.communityBannerTitle}>{community.name} is growing!</Text>
+                    <Text style={styles.communityBannerStats}>
+                      {community.memberCount || 0} neighbors · {community.listingCount || 0} tools shared
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.greenTextMuted} />
+                </View>
+              </HapticPressable>
+            )}
+          </>
+        }
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -559,10 +600,14 @@ export default function FeedScreen({ navigation }) {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="construct-outline" size={64} color={COLORS.gray[700]} />
-            <Text style={styles.emptyTitle}>No activity yet</Text>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons name="cube-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 16 }} />
+              <Ionicons name="arrow-forward-outline" size={20} color={COLORS.primary} style={{ position: 'absolute', bottom: 18, right: 14, opacity: 0.6 }} />
+              <Ionicons name="person-outline" size={24} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, left: 20, opacity: 0.8 }} />
+            </View>
+            <Text style={styles.emptyTitle}>Your hood is quiet</Text>
             <Text style={styles.emptySubtitle}>
-              Be the first to list an item or post a request!
+              Be the first to list a tool or post a request in your neighborhood!
             </Text>
             <HapticPressable
               style={styles.emptyButton}
@@ -585,7 +630,11 @@ export default function FeedScreen({ navigation }) {
       <ActionSheet
         isVisible={activeDropdown === 'type'}
         onClose={() => setActiveDropdown(null)}
-        title="Type"
+        title={
+          activeFilters.length > 0
+            ? <>{'Type  '}<Text onPress={() => { setActiveFilters([]); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
+            : 'Type'
+        }
         multiSelect
         actions={[
           {
@@ -608,7 +657,11 @@ export default function FeedScreen({ navigation }) {
       <ActionSheet
         isVisible={activeDropdown === 'visibility'}
         onClose={() => setActiveDropdown(null)}
-        title="Visibility"
+        title={
+          visibilityFilters.length > 0
+            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
+            : 'Visibility'
+        }
         multiSelect
         actions={[
           {
@@ -633,7 +686,11 @@ export default function FeedScreen({ navigation }) {
       <ActionSheet
         isVisible={activeDropdown === 'category'}
         onClose={() => setActiveDropdown(null)}
-        title="Category"
+        title={
+          categoryFilters.length > 0
+            ? <>{'Category  '}<Text onPress={() => { setCategoryFilters([]); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
+            : 'Category'
+        }
         multiSelect
         actions={[
           {
@@ -745,7 +802,6 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   filtersSection: {
-    paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.md,
     gap: SPACING.md,
   },
@@ -761,6 +817,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   dropdownChipActive: {
     backgroundColor: COLORS.primary,
@@ -774,9 +832,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  filterDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.danger,
+    borderWidth: 1.5,
+    borderColor: COLORS.background,
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(44, 24, 16, 0.85)',
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,
@@ -848,6 +917,39 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.text,
   },
+  communityBanner: {
+    backgroundColor: COLORS.greenBg,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+  },
+  communityBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.lg,
+    gap: SPACING.md,
+  },
+  communityIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.greenSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  communityBannerContent: {
+    flex: 1,
+  },
+  communityBannerTitle: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.greenText,
+  },
+  communityBannerStats: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.greenTextMuted,
+    marginTop: 2,
+  },
   listContent: {
     padding: SPACING.lg,
     paddingBottom: 100,
@@ -864,6 +966,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: SPACING.lg,
     paddingBottom: SPACING.md,
+    backgroundColor: COLORS.greenBg,
   },
   userInfo: {
     flexDirection: 'row',
@@ -873,10 +976,10 @@ const styles = StyleSheet.create({
   avatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.gray[700],
+    borderRadius: 14,
+    backgroundColor: COLORS.greenSurface,
     borderWidth: 2,
-    borderColor: COLORS.surfaceElevated,
+    borderColor: COLORS.greenBorder,
   },
   avatarPlaceholder: {
     alignItems: 'center',
@@ -899,30 +1002,31 @@ const styles = StyleSheet.create({
   userName: {
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
-    color: COLORS.text,
+    color: COLORS.greenText,
   },
   timeAgo: {
     ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
+    color: COLORS.greenTextMuted,
     marginTop: 2,
   },
   typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: COLORS.primaryMuted,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    backgroundColor: 'transparent',
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.xs + 1,
     borderRadius: RADIUS.full,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
   },
   requestCard: {
-    marginHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#F5E6D0',
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.separator,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   requestHeader: {
     flexDirection: 'row',
@@ -938,7 +1042,7 @@ const styles = StyleSheet.create({
   requestAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 12,
     backgroundColor: COLORS.gray[700],
   },
   requestAvatarPlaceholder: {
@@ -1003,10 +1107,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.greenBg,
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.md,
     marginTop: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
   },
   requestCTAText: {
     ...TYPOGRAPHY.subheadline,
@@ -1035,10 +1141,11 @@ const styles = StyleSheet.create({
   },
   typeBadgeText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.primary,
+    color: COLORS.greenText,
   },
   borrowedBadge: {
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: 'transparent',
+    borderColor: COLORS.warning + '80',
   },
   borrowedBadgeText: {
     color: COLORS.warning,
@@ -1050,11 +1157,14 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     padding: SPACING.lg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.greenSeparator,
+    backgroundColor: COLORS.greenBg,
   },
   cardTitle: {
     ...TYPOGRAPHY.h3,
     fontWeight: '700',
-    color: COLORS.text,
+    color: COLORS.greenText,
     marginBottom: SPACING.sm,
     letterSpacing: -0.3,
   },
@@ -1065,30 +1175,27 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   conditionBadge: {
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.greenSurface,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.greenBorder,
   },
   conditionText: {
     ...TYPOGRAPHY.caption1,
     fontWeight: '500',
-    color: COLORS.textSecondary,
+    color: COLORS.greenTextMuted,
   },
   freeLabel: {
     ...TYPOGRAPHY.body,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.greenText,
   },
   priceLabel: {
     ...TYPOGRAPHY.body,
     fontWeight: '700',
-    color: COLORS.primary,
-  },
-  description: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    lineHeight: 21,
+    color: COLORS.greenText,
   },
   dateRow: {
     flexDirection: 'row',
@@ -1103,8 +1210,10 @@ const styles = StyleSheet.create({
   cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.greenSurface,
     paddingVertical: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.greenSeparator,
   },
   actionButton: {
     flex: 1,
@@ -1115,14 +1224,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   actionDivider: {
-    width: StyleSheet.hairlineWidth,
+    width: 1,
     height: 20,
-    backgroundColor: COLORS.separator,
+    backgroundColor: COLORS.greenSeparator,
   },
   actionText: {
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: COLORS.greenText,
   },
   verifyUnlockBanner: {
     flexDirection: 'row',
@@ -1145,6 +1254,14 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 80,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: COLORS.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     ...TYPOGRAPHY.h2,

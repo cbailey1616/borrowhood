@@ -7,7 +7,6 @@ import {
   Image,
   Dimensions,
   Share,
-  Platform,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -15,7 +14,6 @@ import Animated, {
   withSpring,
   withSequence,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -23,6 +21,7 @@ import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import RentalProgress from '../components/RentalProgress';
 import { SkeletonCard } from '../components/SkeletonLoader';
+import ShimmerImage from '../components/ShimmerImage';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
@@ -167,10 +166,11 @@ export default function ListingDetailScreen({ route, navigation }) {
         >
           {listing.photos.length > 0 ? (
             listing.photos.map((photo, index) => (
-              <Image
+              <ShimmerImage
                 key={index}
                 source={{ uri: photo }}
                 style={styles.photo}
+                sharedTransitionTag={index === 0 ? `listing-photo-${id}` : undefined}
               />
             ))
           ) : (
@@ -199,17 +199,17 @@ export default function ListingDetailScreen({ route, navigation }) {
           <View style={styles.titleRow}>
             <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
             <View style={styles.actionButtons}>
-              <HapticPressable testID="ListingDetail.button.save" accessibilityLabel="Save listing" accessibilityRole="button" onPress={toggleSave} haptic={null}>
+              <HapticPressable testID="ListingDetail.button.save" accessibilityLabel="Save listing" accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
                 <Animated.View style={heartAnimStyle}>
                   <Ionicons
                     name={isSaved ? 'heart' : 'heart-outline'}
-                    size={28}
+                    size={22}
                     color={isSaved ? COLORS.danger : COLORS.textSecondary}
                   />
                 </Animated.View>
               </HapticPressable>
-              <HapticPressable onPress={handleShare} haptic="light" style={styles.shareButton}>
-                <Ionicons name="share-outline" size={24} color={COLORS.textSecondary} />
+              <HapticPressable onPress={handleShare} haptic="light" style={styles.actionBtn}>
+                <Ionicons name="arrow-redo-outline" size={20} color={COLORS.textSecondary} />
               </HapticPressable>
             </View>
           </View>
@@ -241,7 +241,7 @@ export default function ListingDetailScreen({ route, navigation }) {
           </View>
 
           {/* Pricing */}
-          <BlurCard style={styles.pricingCard} testID="ListingDetail.price" accessibilityLabel="Pricing details">
+          <View style={styles.pricingCard} testID="ListingDetail.price" accessibilityLabel="Pricing details">
             {listing.isFree ? (
               <Text style={styles.freeLabel}>Free to borrow</Text>
             ) : (
@@ -256,12 +256,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 <Text style={styles.priceValue}>${listing.depositAmount}</Text>
               </View>
             )}
-            <View style={styles.durationRow}>
-              <Text style={styles.durationText}>
-                {listing.minDuration}-{listing.maxDuration} days
-              </Text>
-            </View>
-          </BlurCard>
+          </View>
 
           {/* Active Transaction Status */}
           {listing.activeTransaction && (
@@ -285,7 +280,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
           {/* Description */}
           {listing.description && (
-            <View style={styles.section}>
+            <View style={styles.descriptionSection}>
               <Text style={styles.sectionTitle}>Description</Text>
               <Text style={styles.description}>{listing.description}</Text>
             </View>
@@ -436,95 +431,51 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {!listing.isOwner && !listing.ownerMasked && (
         <View style={styles.footerWrap}>
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={80} tint="dark" style={styles.footerBlur}>
-              <View style={[styles.footer, { backgroundColor: COLORS.materials.thick }]}>
-                <HapticPressable
-                  style={styles.messageButton}
-                  onPress={() => navigation.navigate('Chat', {
-                    recipientId: listing.owner.id,
-                    listingId: listing.id,
-                    listing: {
-                      id: listing.id,
-                      title: listing.title,
-                      photoUrl: listing.photos?.[0],
-                      owner: listing.owner,
-                    }
-                  })}
-                  haptic="light"
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-                </HapticPressable>
-                {listing.isAvailable && !listing.activeTransaction && (
-                  <HapticPressable
-                    testID="ListingDetail.button.borrow"
-                    accessibilityLabel="Request to borrow"
-                    accessibilityRole="button"
-                    style={styles.borrowButton}
-                    onPress={() => navigation.navigate('BorrowRequest', { listing })}
-                    haptic="medium"
-                  >
-                    <Text style={styles.borrowButtonText}>Request to Borrow</Text>
-                  </HapticPressable>
-                )}
-                {listing.activeTransaction && (
-                  <HapticPressable
-                    style={styles.borrowButton}
-                    onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
-                    haptic="medium"
-                  >
-                    <Text style={styles.borrowButtonText}>View Request</Text>
-                  </HapticPressable>
-                )}
-              </View>
-            </BlurView>
-          ) : (
-            <View style={[styles.footer, styles.footerAndroid]}>
+          <View style={styles.footerGreen}>
+            <HapticPressable
+              style={styles.messageButton}
+              onPress={() => navigation.navigate('Chat', {
+                recipientId: listing.owner.id,
+                listingId: listing.id,
+                listing: {
+                  id: listing.id,
+                  title: listing.title,
+                  photoUrl: listing.photos?.[0],
+                  owner: listing.owner,
+                }
+              })}
+              haptic="light"
+            >
+              <Ionicons name="chatbubble" size={20} color={COLORS.greenText} />
+            </HapticPressable>
+            {listing.isAvailable && !listing.activeTransaction && (
               <HapticPressable
-                style={styles.messageButton}
-                onPress={() => navigation.navigate('Chat', {
-                  recipientId: listing.owner.id,
-                  listingId: listing.id,
-                  listing: {
-                    id: listing.id,
-                    title: listing.title,
-                    photoUrl: listing.photos?.[0],
-                    owner: listing.owner,
-                  }
-                })}
-                haptic="light"
+                testID="ListingDetail.button.borrow"
+                accessibilityLabel="Request to borrow"
+                accessibilityRole="button"
+                style={styles.borrowButton}
+                onPress={() => navigation.navigate('BorrowRequest', { listing })}
+                haptic="medium"
               >
-                <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.borrowButtonText}>Request to Borrow</Text>
               </HapticPressable>
-              {listing.isAvailable && !listing.activeTransaction && (
-                <HapticPressable
-                  testID="ListingDetail.button.borrow"
-                  accessibilityLabel="Request to borrow"
-                  accessibilityRole="button"
-                  style={styles.borrowButton}
-                  onPress={() => navigation.navigate('BorrowRequest', { listing })}
-                  haptic="medium"
-                >
-                  <Text style={styles.borrowButtonText}>Request to Borrow</Text>
-                </HapticPressable>
-              )}
-              {listing.activeTransaction && (
-                <HapticPressable
-                  style={styles.borrowButton}
-                  onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
-                  haptic="medium"
-                >
-                  <Text style={styles.borrowButtonText}>View Request</Text>
-                </HapticPressable>
-              )}
-            </View>
-          )}
+            )}
+            {listing.activeTransaction && (
+              <HapticPressable
+                style={styles.borrowButton}
+                onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
+                haptic="medium"
+              >
+                <Text style={styles.borrowButtonText}>View Request</Text>
+              </HapticPressable>
+            )}
+          </View>
         </View>
       )}
 
       {listing.isOwner && (
         <View style={styles.footerWrap}>
-          <View style={[styles.footer, styles.footerAndroid]}>
+          <View style={styles.footerGreen}>
             <HapticPressable
               style={styles.deleteButton}
               onPress={() => setDeleteSheetVisible(true)}
@@ -589,6 +540,8 @@ const styles = StyleSheet.create({
     width: width,
     height: 300,
     backgroundColor: COLORS.separator,
+    borderBottomWidth: 1.5,
+    borderBottomColor: COLORS.borderBrown,
   },
   noPhoto: {
     justifyContent: 'center',
@@ -632,8 +585,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
   },
-  shareButton: {
-    padding: 4,
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   locationRow: {
     flexDirection: 'row',
@@ -654,14 +613,16 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: 'transparent',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
     gap: 4,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderLight,
   },
   badgeSecondary: {
-    backgroundColor: COLORS.secondaryMuted,
+    borderColor: COLORS.borderGreenStrong,
   },
   badgeText: {
     ...TYPOGRAPHY.caption1,
@@ -669,37 +630,32 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   pricingCard: {
-    padding: SPACING.lg,
+    backgroundColor: COLORS.greenBg,
+    padding: SPACING.xl,
     marginBottom: SPACING.xl,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+    borderRadius: RADIUS.xl,
+    overflow: 'hidden',
   },
   freeLabel: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.secondary,
+    color: COLORS.greenText,
     textAlign: 'center',
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   priceLabel: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
+    ...TYPOGRAPHY.body,
+    color: COLORS.greenTextMuted,
   },
   priceValue: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.text,
-  },
-  durationRow: {
-    marginTop: SPACING.sm,
-    paddingTop: SPACING.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
-  },
-  durationText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+    ...TYPOGRAPHY.h2,
+    color: COLORS.greenText,
   },
   transactionCard: {
     padding: SPACING.lg,
@@ -723,6 +679,12 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: SPACING.xl,
   },
+  descriptionSection: {
+    marginBottom: SPACING.xl,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+    paddingLeft: SPACING.lg,
+  },
   sectionTitle: {
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
@@ -741,7 +703,7 @@ const styles = StyleSheet.create({
   ownerAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     backgroundColor: COLORS.gray[700],
   },
   maskedOwnerAvatar: {
@@ -786,8 +748,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  footerBlur: {
-    overflow: 'hidden',
+  footerGreen: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.greenBg,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    gap: SPACING.md,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: COLORS.greenBorder,
   },
   footer: {
     flexDirection: 'row',
@@ -804,8 +776,8 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -814,7 +786,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.secondary,
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.md,
     gap: SPACING.sm,
@@ -865,13 +837,13 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.danger,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   editButton: {
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.greenSurface,
   },
   borrowButtonText: {
     color: '#fff',
@@ -897,11 +869,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   discussionAvatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     backgroundColor: COLORS.gray[700],
   },
   discussionContent: {

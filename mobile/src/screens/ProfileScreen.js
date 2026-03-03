@@ -12,7 +12,6 @@ import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { GroupedListSection, GroupedListItem } from '../components/GroupedList';
 import NativeHeader from '../components/NativeHeader';
 import ActionSheet from '../components/ActionSheet';
@@ -132,7 +131,7 @@ export default function ProfileScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <BlurCard style={styles.header}>
+        <View style={styles.header}>
           <View style={styles.headerInner}>
             <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null}>
               <View style={styles.avatarContainer}>
@@ -163,10 +162,10 @@ export default function ProfileScreen({ navigation }) {
               )}
             </View>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Stats */}
-        <BlurCard style={styles.stats}>
+        <View style={styles.stats}>
           <View style={styles.statsInner}>
             <View style={styles.stat}>
               <Text style={styles.statValue}>{user?.totalTransactions || 0}</Text>
@@ -183,7 +182,7 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.statLabel}>Rating ({user?.ratingCount || 0})</Text>
             </View>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Account Section */}
         <GroupedListSection header="Account">
@@ -358,6 +357,11 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: SPACING.md,
+    backgroundColor: COLORS.greenBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
   },
   headerInner: {
     flexDirection: 'row',
@@ -367,17 +371,19 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
+    borderRadius: 28,
+    overflow: 'hidden',
   },
   avatar: {
     width: 88,
     height: 88,
-    borderRadius: 44,
+    borderRadius: 28,
     backgroundColor: COLORS.gray[700],
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -392,22 +398,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.surface,
+    borderColor: COLORS.greenBg,
   },
   headerInfo: {
     flex: 1,
   },
   name: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.text,
+    color: COLORS.greenText,
   },
   email: {
     ...TYPOGRAPHY.subheadline,
-    color: COLORS.textSecondary,
+    color: COLORS.greenTextMuted,
     marginTop: SPACING.xs,
   },
   stats: {
     marginBottom: SPACING.xl,
+    backgroundColor: COLORS.greenBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
   },
   statsInner: {
     flexDirection: 'row',
@@ -419,7 +430,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: COLORS.separator,
+    backgroundColor: COLORS.greenSeparator,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -432,11 +443,11 @@ const styles = StyleSheet.create({
   },
   statValue: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.text,
+    color: COLORS.greenText,
   },
   statLabel: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    color: COLORS.greenTextMuted,
     marginTop: SPACING.xs,
   },
   version: {

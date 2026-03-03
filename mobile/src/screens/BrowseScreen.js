@@ -476,8 +476,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.separator,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   cardImage: {
     width: '100%',
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   ownerAvatar: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 6,
     backgroundColor: COLORS.gray[700],
   },
   maskedOwnerAvatar: {
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   requesterAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: COLORS.gray[700],
   },
   requesterInfo: {

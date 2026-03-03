@@ -159,9 +159,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.separator,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+    borderRadius: RADIUS.lg,
     gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   avatarContainer: {
     position: 'relative',
@@ -169,7 +172,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: RADIUS.full,
+    borderRadius: 16,
     backgroundColor: COLORS.gray[700],
   },
   unreadBadge: {

@@ -170,7 +170,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
           <Text style={styles.listingTitle}>{listingTitle}</Text>
         )}
 
-        <BlurCard testID="RentalCheckout.card.priceBreakdown" accessibilityLabel="Price breakdown" style={styles.summaryCard}>
+        <View testID="RentalCheckout.card.priceBreakdown" accessibilityLabel="Price breakdown" style={styles.summaryCard}>
           <View style={styles.summaryContent}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Rental ({rentalDays} days)</Text>
@@ -196,7 +196,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
               <Text style={styles.summaryAmount}>{formatCurrency(totalAmount)}</Text>
             </View>
           </View>
-        </BlurCard>
+        </View>
 
         <BlurCard style={styles.infoCard}>
           <View style={styles.infoContent}>
@@ -300,6 +300,11 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     marginBottom: SPACING.lg,
+    backgroundColor: COLORS.greenBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
   },
   summaryContent: {
     padding: SPACING.lg,
@@ -312,24 +317,24 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
+    color: COLORS.greenTextMuted,
   },
   summaryAmountLabel: {
     ...TYPOGRAPHY.body,
-    color: COLORS.text,
+    color: COLORS.greenText,
     fontWeight: '600',
   },
   summaryValue: {
     ...TYPOGRAPHY.body,
-    color: COLORS.text,
+    color: COLORS.greenText,
   },
   summaryAmount: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.primary,
+    color: COLORS.greenText,
   },
   summaryDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: COLORS.separator,
+    backgroundColor: COLORS.greenSeparator,
   },
   infoCard: {
     marginBottom: SPACING.xl,

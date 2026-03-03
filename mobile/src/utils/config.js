@@ -5,7 +5,8 @@ const PRODUCTION_BASE = 'https://borrowhood-production.up.railway.app';
 const DEV_BASE = 'http://192.168.7.53:3001'; // Use Mac's IP for physical device testing
 
 // Switch to PRODUCTION_BASE for App Store release
-export const BASE_URL = __DEV__ ? DEV_BASE : PRODUCTION_BASE;
+// TODO: revert to DEV_BASE for local development
+export const BASE_URL = PRODUCTION_BASE;
 export const API_URL = `${BASE_URL}/api`;
 
 // SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
@@ -56,55 +57,63 @@ export const TRANSACTION_STATUS_LABELS = {
 };
 
 export const COLORS = {
-  // Forest green theme (matching logo)
-  primary: '#4A7C59',
-  primaryDark: '#3D6B4F',
-  primaryLight: '#5A8F6A',
-  primaryMuted: 'rgba(74, 124, 89, 0.15)',
-  secondary: '#6B8F71',
-  secondaryMuted: 'rgba(107, 143, 113, 0.15)',
-  accent: '#4A7C59',
-  warning: '#D4A04A',
-  warningMuted: 'rgba(212, 160, 74, 0.15)',
-  danger: '#C45C4A',
-  dangerMuted: 'rgba(196, 92, 74, 0.15)',
-  success: '#4A7C59',
+  // Parchment & Ink theme with forest green accents
+  primary: '#2D5A27',
+  primaryDark: '#1E4A1A',
+  primaryLight: '#4A7C44',
+  primaryMuted: 'rgba(45, 90, 39, 0.12)',
+  secondary: '#4A7C44',
+  secondaryMuted: 'rgba(74, 124, 68, 0.12)',
+  accent: '#8B4513',
+  accentMuted: 'rgba(139, 69, 19, 0.08)',
+  warning: '#B8860B',
+  warningMuted: 'rgba(184, 134, 11, 0.12)',
+  danger: '#A03030',
+  dangerMuted: 'rgba(160, 48, 48, 0.12)',
+  success: '#2D5A27',
   // Backgrounds
-  background: '#0A1A0E',
-  surface: '#121F16',
-  surfaceElevated: '#1A2B1E',
-  card: '#1E2E22',
-  cardHover: '#243526',
+  background: '#F5ECD7',
+  surface: '#F0E6CE',
+  surfaceElevated: '#EDE3CC',
+  card: '#FFF8E7',
+  cardHover: '#FFF3D9',
   // Text colors
-  text: '#FFFFFF',
-  textSecondary: '#B5C4B8',
-  textMuted: '#7A8D7D',
-  // Gray scale (with green tint)
+  text: '#2C1810',
+  textSecondary: '#6B5744',
+  textMuted: '#9C8B78',
+  // Green accent block colors (for pricing cards, CTAs, profile hero, banners)
+  greenBg: '#0F2415',
+  greenSurface: '#162E1C',
+  greenText: '#E0E5E1',
+  greenTextMuted: '#8A9A8D',
+  greenBorder: 'rgba(74, 124, 89, 0.35)',
+  greenSeparator: 'rgba(122, 141, 125, 0.25)',
+  // Border system — key to preventing "everything blurs together"
+  border: '#C4AD82',
+  borderLight: '#D4C5A9',
+  borderGreen: 'rgba(45, 90, 39, 0.25)',
+  borderGreenStrong: 'rgba(45, 90, 39, 0.4)',
+  borderBrown: 'rgba(139, 69, 19, 0.2)',
+  borderBrownStrong: 'rgba(139, 69, 19, 0.35)',
+  // Gray scale (warm parchment tones)
   gray: {
-    50: '#F2F5F3',
-    100: '#E0E5E1',
-    200: '#C5CFC7',
-    300: '#A8B5AA',
-    400: '#8A9A8D',
-    500: '#6B7D6E',
-    600: '#4F5D51',
-    700: '#3A4A3D',
-    800: '#252F27',
-    900: '#1A2A1D',
+    50: '#FDFAF2', 100: '#F5ECD7', 200: '#E8DCBF', 300: '#D4C5A9',
+    400: '#B8A88E', 500: '#9C8B78', 600: '#7A6B5A', 700: '#5C4E3E',
+    800: '#3E3428', 900: '#2C1810',
   },
   // Overlay
-  overlay: 'rgba(0, 0, 0, 0.7)',
-  overlayLight: 'rgba(0, 0, 0, 0.4)',
+  overlay: 'rgba(44, 24, 16, 0.7)',
+  overlayLight: 'rgba(44, 24, 16, 0.4)',
   // Materials — translucency levels for blur card backgrounds
   materials: {
-    ultraThin: 'rgba(18, 31, 22, 0.3)',
-    thin: 'rgba(18, 31, 22, 0.45)',
-    regular: 'rgba(18, 31, 22, 0.6)',
-    thick: 'rgba(18, 31, 22, 0.75)',
-    ultraThick: 'rgba(18, 31, 22, 0.88)',
+    ultraThin: 'rgba(245, 236, 215, 0.35)',
+    thin: 'rgba(245, 236, 215, 0.50)',
+    regular: 'rgba(245, 236, 215, 0.65)',
+    thick: 'rgba(245, 236, 215, 0.80)',
+    ultraThick: 'rgba(245, 236, 215, 0.90)',
   },
   // iOS-style thin divider
-  separator: 'rgba(122, 141, 125, 0.2)',
+  separator: 'rgba(139, 69, 19, 0.15)',
 };
 
 // Design tokens for consistency
@@ -129,23 +138,23 @@ export const RADIUS = {
 
 export const SHADOWS = {
   sm: {
-    shadowColor: '#000',
+    shadowColor: '#2C1810',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.08,
     shadowRadius: 2,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: '#2C1810',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#000',
+    shadowColor: '#2C1810',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 8,
   },
@@ -153,14 +162,14 @@ export const SHADOWS = {
 
 export const TYPOGRAPHY = {
   // DM Sans type scale (400=Regular, 500=Medium, 600=SemiBold, 700=Bold)
-  largeTitle: { fontSize: 34, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0.37 },
+  largeTitle: { fontSize: 34, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -1 },
   headline: { fontSize: 17, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', lineHeight: 22 },
   subheadline: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 20 },
   footnote: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
   caption1: { fontSize: 12, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 16 },
   // Existing aliases (kept for migration)
-  h1: { fontSize: 28, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.3 },
+  h1: { fontSize: 28, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.8 },
+  h2: { fontSize: 22, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.6 },
   h3: { fontSize: 18, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
   body: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
   bodySmall: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },

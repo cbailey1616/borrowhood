@@ -215,8 +215,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.separator,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   cardImage: {
     width: 80,

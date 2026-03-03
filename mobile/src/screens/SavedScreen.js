@@ -180,11 +180,12 @@ export default function SavedScreen({ navigation }) {
           !isLoading && (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconWrap}>
-                <Ionicons name="heart-outline" size={40} color={COLORS.primary} />
+                <Ionicons name="bookmark-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 16, right: 22 }} />
+                <Ionicons name="heart-outline" size={32} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, left: 18, opacity: 0.7 }} />
               </View>
-              <Text style={styles.emptyTitle}>No saved items</Text>
+              <Text style={styles.emptyTitle}>Nothing saved yet</Text>
               <Text style={styles.emptySubtitle}>
-                Tap the heart on items you like to save them here for later
+                Tap the heart on any listing to save it here
               </Text>
               <HapticPressable
                 style={styles.browseButton}
@@ -219,6 +220,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   // Image
   imageWrap: {
@@ -300,7 +303,7 @@ const styles = StyleSheet.create({
   ownerAvatar: {
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: 6,
     backgroundColor: COLORS.gray[700],
   },
   ownerAvatarPlaceholder: {
@@ -320,10 +323,10 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary + '15',
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: COLORS.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
