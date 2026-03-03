@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
-import BlurCard from '../../components/BlurCard';
 import SearchBar from '../../components/SearchBar';
 import OnboardingProgress from '../../components/OnboardingProgress';
 import ActionSheet from '../../components/ActionSheet';
@@ -185,7 +184,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
     addedFriends.includes(userId);
 
   const renderUserRow = (item) => (
-    <BlurCard style={styles.friendCard} key={item.id}>
+    <View style={[styles.friendCard, styles.cardBox]} key={item.id}>
       <View style={styles.friendRow}>
         <Image
           source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/44' }}
@@ -211,7 +210,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
           </HapticPressable>
         )}
       </View>
-    </BlurCard>
+    </View>
   );
 
   const renderContactRow = (contact) => (
@@ -451,6 +450,12 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   friendCard: {
     marginBottom: SPACING.sm,

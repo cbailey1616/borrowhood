@@ -15,9 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import ActionSheet from '../components/ActionSheet';
 import BlurCard from '../components/BlurCard';
-import { haptics } from '../utils/haptics';
 
 export default function MyCommunityScreen({ navigation }) {
   const { user } = useAuth();
@@ -26,7 +24,6 @@ export default function MyCommunityScreen({ navigation }) {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showLeaveSheet, setShowLeaveSheet] = useState(false);
 
   const fetchCommunities = useCallback(async () => {
     try {
@@ -75,20 +72,6 @@ export default function MyCommunityScreen({ navigation }) {
     fetchCommunities();
   };
 
-  const handleLeaveCommunity = () => {
-    setShowLeaveSheet(true);
-  };
-
-  const performLeaveCommunity = async () => {
-    try {
-      await api.leaveCommunity(selectedCommunity.id);
-      haptics.success();
-      // Refresh the list after leaving
-      fetchCommunities();
-    } catch (error) {
-      haptics.error();
-    }
-  };
 
   if (isLoading) {
     return (
@@ -261,29 +244,7 @@ export default function MyCommunityScreen({ navigation }) {
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
 
-        <HapticPressable
-          style={[styles.actionButton, styles.dangerButton]}
-          onPress={handleLeaveCommunity}
-          haptic="medium"
-        >
-          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-          <Text style={[styles.actionButtonText, styles.dangerText]}>Leave Neighborhood</Text>
-        </HapticPressable>
       </View>
-
-      <ActionSheet
-        isVisible={showLeaveSheet}
-        onClose={() => setShowLeaveSheet(false)}
-        title="Leave Neighborhood"
-        message={`Are you sure you want to leave ${selectedCommunity?.name}? You'll lose access to neighborhood items and members.`}
-        actions={[
-          {
-            label: 'Leave',
-            destructive: true,
-            onPress: performLeaveCommunity,
-          },
-        ]}
-      />
     </ScrollView>
   );
 }
@@ -496,11 +457,5 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     flex: 1,
     color: COLORS.text,
-  },
-  dangerButton: {
-    marginTop: SPACING.sm,
-  },
-  dangerText: {
-    color: COLORS.danger,
   },
 });

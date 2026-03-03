@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   greenWrapper: {
     backgroundColor: COLORS.greenBg,
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.sm,
+    paddingBottom: SPACING.lg,
   },
   titleRow: {
     flexDirection: 'row',

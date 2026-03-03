@@ -39,10 +39,11 @@ export default function LoginScreen({ navigation }) {
       await login(email, password);
       haptics.success();
     } catch (error) {
+      haptics.error();
       showError({
         type: 'validation',
         title: 'Hmm, that didn\'t work',
-        message: error.message || 'Please double-check your email and password and try again.',
+        message: 'Please double-check your email and password, or reset your password below.',
         primaryAction: 'Try Again',
         secondaryAction: 'Reset Password',
         onSecondaryPress: () => navigation.navigate('ForgotPassword'),

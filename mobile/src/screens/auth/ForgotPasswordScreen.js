@@ -38,10 +38,12 @@ function getPasswordStrength(password) {
   return { label: 'Strong', color: COLORS.primary, width: 1 };
 }
 
-export default function ForgotPasswordScreen({ navigation }) {
+export default function ForgotPasswordScreen({ navigation, route }) {
+  const prefillEmail = route?.params?.email;
+  const isChangeMode = route?.params?.changeMode;
   const { showError } = useError();
   const [step, setStep] = useState('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail || '');
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -50,6 +52,13 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const digitRefs = useRef([]);
+
+  // Auto-send code when opened with pre-filled email (change password mode)
+  useEffect(() => {
+    if (prefillEmail && step === 'email') {
+      handleSendCode();
+    }
+  }, []);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -181,12 +190,21 @@ export default function ForgotPasswordScreen({ navigation }) {
     try {
       await api.resetPassword(resetToken, newPassword);
       haptics.success();
-      showError({
-        type: 'success',
-        title: "You're all set!",
-        message: 'Your password has been reset. Go ahead and sign in with your new password.',
-      });
-      navigation.navigate('Login');
+      if (isChangeMode) {
+        showError({
+          type: 'success',
+          title: "Password Updated",
+          message: 'Your password has been changed successfully.',
+        });
+        navigation.goBack();
+      } else {
+        showError({
+          type: 'success',
+          title: "You're all set!",
+          message: 'Your password has been reset. Go ahead and sign in with your new password.',
+        });
+        navigation.navigate('Login');
+      }
     } catch (error) {
       haptics.error();
       showError({
@@ -202,7 +220,11 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (step === 'email') {
       navigation.goBack();
     } else if (step === 'code') {
-      animateStep('email');
+      if (isChangeMode) {
+        navigation.goBack();
+      } else {
+        animateStep('email');
+      }
     } else {
       animateStep('code');
       setDigits(['', '', '', '', '', '']);
@@ -233,12 +255,12 @@ export default function ForgotPasswordScreen({ navigation }) {
         </View>
 
         <Text style={styles.title}>
-          {step === 'email' && 'Reset password'}
+          {step === 'email' && (isChangeMode ? 'Change password' : 'Reset password')}
           {step === 'code' && 'Enter your code'}
           {step === 'password' && 'Set new password'}
         </Text>
         <Text style={styles.subtitle}>
-          {step === 'email' && "Enter your email and we'll send you a 6-digit reset code."}
+          {step === 'email' && (isChangeMode ? "We'll send a verification code to your email." : "Enter your email and we'll send you a 6-digit reset code.")}
           {step === 'code' && `We sent a code to ${email}. It expires in 1 hour.`}
           {step === 'password' && 'Choose a strong password for your account.'}
         </Text>

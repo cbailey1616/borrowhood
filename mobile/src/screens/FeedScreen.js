@@ -46,7 +46,6 @@ const VISIBILITY_OPTIONS = [
 export default function FeedScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const [feed, setFeed] = useState([]);
-  const [community, setCommunity] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -58,6 +57,7 @@ export default function FeedScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [showActionSheet, setShowActionSheet] = useState(false);
+  const [hasNeighborhood, setHasNeighborhood] = useState(true); // assume yes until checked
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -107,14 +107,7 @@ export default function FeedScreen({ navigation }) {
       }
     };
     loadCategories();
-    // Fetch community info for banner
-    const loadCommunity = async () => {
-      try {
-        const communities = await api.getCommunities({ member: 'true' });
-        if (communities?.length > 0) setCommunity(communities[0]);
-      } catch (e) {}
-    };
-    loadCommunity();
+    checkNeighborhood();
   }, []);
 
   useEffect(() => {
@@ -131,19 +124,28 @@ export default function FeedScreen({ navigation }) {
         InteractionManager.runAfterInteractions(() => {
           setIsRefreshing(true);
           fetchFeed(1, false);
-          // Note: refreshUser() removed from here — it triggers a global re-render
-          // of every screen via AuthContext, which freezes the UI during transitions.
-          // User data is refreshed on pull-to-refresh instead.
+          checkNeighborhood();
         });
       }
     });
     return unsubscribe;
   }, [navigation, isInitialLoad, fetchFeed]);
 
+  const checkNeighborhood = useCallback(async () => {
+    try {
+      const communities = await api.getCommunities({ member: 'true' });
+      const list = communities?.communities || communities || [];
+      setHasNeighborhood(Array.isArray(list) && list.length > 0);
+    } catch (e) {
+      // Keep current state on error
+    }
+  }, []);
+
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchFeed(1, false);
     refreshUser(); // Refresh user data on manual pull-to-refresh
+    checkNeighborhood();
   };
 
   const onEndReached = () => {
@@ -562,31 +564,6 @@ export default function FeedScreen({ navigation }) {
         contentContainerStyle={styles.listContent}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        ListHeaderComponent={
-          <>
-            {community && (
-              <HapticPressable
-                style={styles.communityBanner}
-                onPress={() => navigation.navigate('MyCommunity')}
-                haptic="light"
-                scaleDown={0.98}
-              >
-                <View style={styles.communityBannerInner}>
-                  <View style={styles.communityIconWrap}>
-                    <Ionicons name="home" size={22} color={COLORS.greenText} />
-                  </View>
-                  <View style={styles.communityBannerContent}>
-                    <Text style={styles.communityBannerTitle}>{community.name} is growing!</Text>
-                    <Text style={styles.communityBannerStats}>
-                      {community.memberCount || 0} neighbors · {community.listingCount || 0} tools shared
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={COLORS.greenTextMuted} />
-                </View>
-              </HapticPressable>
-            )}
-          </>
-        }
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -596,6 +573,25 @@ export default function FeedScreen({ navigation }) {
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
+        ListHeaderComponent={
+          !hasNeighborhood ? (
+            <HapticPressable
+              style={styles.joinBanner}
+              onPress={() => navigation.navigate('JoinCommunity')}
+              haptic="light"
+              scaleDown={0.98}
+            >
+              <View style={styles.joinBannerIcon}>
+                <Ionicons name="location" size={20} color={COLORS.primary} />
+              </View>
+              <View style={styles.joinBannerContent}>
+                <Text style={styles.joinBannerTitle}>Join a nearby neighborhood</Text>
+                <Text style={styles.joinBannerSubtitle}>See items and requests from your neighbors</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </HapticPressable>
+          ) : null
+        }
         ListFooterComponent={
           isLoadingMore && (
             <View style={styles.loadingMore}>
@@ -945,37 +941,36 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.text,
   },
-  communityBanner: {
-    backgroundColor: COLORS.greenBg,
-    borderRadius: RADIUS.lg,
-    marginBottom: SPACING.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
-  },
-  communityBannerInner: {
+  joinBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
     padding: SPACING.lg,
+    marginBottom: SPACING.lg,
     gap: SPACING.md,
   },
-  communityIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.greenSurface,
+  joinBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  communityBannerContent: {
+  joinBannerContent: {
     flex: 1,
   },
-  communityBannerTitle: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.greenText,
+  joinBannerTitle: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.text,
   },
-  communityBannerStats: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.greenTextMuted,
+  joinBannerSubtitle: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   listContent: {

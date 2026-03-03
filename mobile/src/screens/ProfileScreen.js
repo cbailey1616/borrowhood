@@ -275,6 +275,11 @@ export default function ProfileScreen({ navigation }) {
             />
           )}
           <GroupedListItem
+            icon="lock-closed-outline"
+            title="Change Password"
+            onPress={() => navigation.navigate('ChangePassword', { email: user?.email, changeMode: true })}
+          />
+          <GroupedListItem
             icon="notifications-outline"
             title="Notifications"
             onPress={() => navigation.navigate('NotificationSettings')}

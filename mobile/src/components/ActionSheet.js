@@ -78,7 +78,7 @@ export default function ActionSheet({
 
   if (!rendered) return null;
 
-  const bottomPad = (insets.bottom || 34) + 80;
+  const bottomPad = (insets.bottom || 34) + SPACING.sm;
   const maxSheetHeight = (insets.top > 0 ? insets.top : 54) + 80; // leave room at top
 
   return (
@@ -107,7 +107,10 @@ export default function ActionSheet({
               key={index}
               onPress={() => handleAction(action)}
               haptic={null}
-              style={styles.actionButton}
+              style={[
+                styles.actionButton,
+                action.destructive && styles.destructiveButton,
+              ]}
             >
               {action.icon ? (
                 <View style={styles.actionIcon}>{action.icon}</View>
@@ -187,8 +190,16 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
+  destructiveButton: {
+    justifyContent: 'center',
+    backgroundColor: COLORS.danger + '12',
+    borderRadius: RADIUS.md,
+    borderBottomWidth: 0,
+    marginTop: SPACING.xs,
+  },
   destructiveText: {
     color: COLORS.danger,
+    fontWeight: '600',
   },
   cancelButton: {
     alignItems: 'center',

@@ -44,6 +44,7 @@ import DamageClaimScreen from '../screens/DamageClaimScreen';
 import ReportIssueScreen from '../screens/ReportIssueScreen';
 import RespondToDisputeScreen from '../screens/RespondToDisputeScreen';
 import EarningsScreen from '../screens/EarningsScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -270,6 +271,11 @@ export default function RootNavigator() {
             name="Earnings"
             component={EarningsScreen}
             options={{ ...sharedScreenOptions, title: 'Earnings' }}
+          />
+          <Stack.Screen
+            name="ChangePassword"
+            component={ForgotPasswordScreen}
+            options={{ ...sharedScreenOptions, title: 'Change Password', presentation: 'modal' }}
           />
         </>
       )}

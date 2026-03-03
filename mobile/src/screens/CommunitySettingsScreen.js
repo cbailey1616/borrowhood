@@ -12,7 +12,6 @@ import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
 export default function CommunitySettingsScreen({ route, navigation }) {
@@ -38,10 +37,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
     }
   };
 
-  const handleLeaveCommunity = () => {
-    setShowLeaveSheet(true);
-  };
-
   const performLeaveCommunity = async () => {
     try {
       await api.leaveCommunity(id);
@@ -65,21 +60,19 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       {/* Neighborhood Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Neighborhood</Text>
-        <BlurCard>
-          <View style={styles.infoCardContent}>
-            <Text style={styles.communityName}>{community?.name || 'My Neighborhood'}</Text>
-            {community?.description && (
-              <Text style={styles.communityDescription}>{community.description}</Text>
-            )}
-          </View>
-        </BlurCard>
+        <View style={[styles.cardBox, styles.infoCardContent]}>
+          <Text style={styles.communityName}>{community?.name || 'My Neighborhood'}</Text>
+          {community?.description && (
+            <Text style={styles.communityDescription}>{community.description}</Text>
+          )}
+        </View>
       </View>
 
       {/* Notification Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notifications</Text>
 
-        <BlurCard style={styles.settingCard}>
+        <View style={[styles.cardBox, styles.settingCard]}>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>New Items</Text>
@@ -95,9 +88,9 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               ios_backgroundColor={COLORS.primaryMuted}
             />
           </View>
-        </BlurCard>
+        </View>
 
-        <BlurCard style={styles.settingCard}>
+        <View style={[styles.cardBox, styles.settingCard]}>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Messages</Text>
@@ -112,14 +105,14 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               ios_backgroundColor={COLORS.primaryMuted}
             />
           </View>
-        </BlurCard>
+        </View>
       </View>
 
       {/* Privacy */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Privacy</Text>
 
-        <BlurCard style={styles.settingCard}>
+        <View style={[styles.cardBox, styles.settingCard]}>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Show in Member Directory</Text>
@@ -135,7 +128,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               ios_backgroundColor={COLORS.primaryMuted}
             />
           </View>
-        </BlurCard>
+        </View>
       </View>
 
       {/* Actions */}
@@ -163,17 +156,15 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         </HapticPressable>
       </View>
 
-      {/* Danger Zone */}
+      {/* Leave */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: COLORS.danger }]}>Danger Zone</Text>
-
         <HapticPressable
-          style={[styles.actionButton, styles.dangerButton]}
-          onPress={handleLeaveCommunity}
+          style={[styles.actionButton, styles.leaveButton]}
+          onPress={() => setShowLeaveSheet(true)}
           haptic="medium"
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-          <Text style={[styles.actionButtonText, styles.dangerText]}>Leave Neighborhood</Text>
+          <Text style={[styles.actionButtonText, styles.leaveText]}>Leave Neighborhood</Text>
         </HapticPressable>
       </View>
 
@@ -273,11 +264,18 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.text,
   },
-  dangerButton: {
-    backgroundColor: COLORS.dangerMuted,
+  leaveButton: {
+    backgroundColor: COLORS.danger + '10',
+    borderColor: COLORS.danger + '30',
   },
-  dangerText: {
+  leaveText: {
     color: COLORS.danger,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   bottomPadding: {
     height: 40,

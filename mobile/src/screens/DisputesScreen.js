@@ -13,7 +13,6 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import SegmentedControl from '../components/SegmentedControl';
 
 const STATUS_SEGMENTS = [
@@ -129,7 +128,7 @@ export default function DisputesScreen({ navigation }) {
         onPress={() => navigation.navigate('DisputeDetail', { id: item.id })}
         haptic="light"
       >
-        <BlurCard style={styles.card}>
+        <View style={[styles.card, styles.cardBox]}>
           <View style={styles.cardContent}>
             <View style={styles.cardHeader}>
               <View style={[styles.statusBadge, { backgroundColor: statusConf.color + '20' }]}>
@@ -165,7 +164,7 @@ export default function DisputesScreen({ navigation }) {
               <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
             </View>
           </View>
-        </BlurCard>
+        </View>
       </HapticPressable>
     );
   };
@@ -185,9 +184,9 @@ export default function DisputesScreen({ navigation }) {
       {/* Filters */}
       <View style={styles.filtersContainer}>
         <SegmentedControl
-          values={STATUS_SEGMENTS.map(s => s.label)}
+          segments={STATUS_SEGMENTS.map(s => s.label)}
           selectedIndex={selectedSegmentIndex >= 0 ? selectedSegmentIndex : 0}
-          onChange={handleSegmentChange}
+          onIndexChange={handleSegmentChange}
         />
 
         <ScrollView
@@ -274,6 +273,12 @@ const styles = StyleSheet.create({
   listContent: {
     padding: SPACING.lg,
     flexGrow: 1,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   card: {
     marginBottom: SPACING.md,
