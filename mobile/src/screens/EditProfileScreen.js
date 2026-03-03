@@ -412,8 +412,9 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   inputLocked: {
-    backgroundColor: COLORS.surfaceElevated,
-    opacity: 0.7,
+    backgroundColor: COLORS.card,
+    borderColor: COLORS.borderLight,
+    color: COLORS.textMuted,
   },
   verifiedBanner: {
     flexDirection: 'row',

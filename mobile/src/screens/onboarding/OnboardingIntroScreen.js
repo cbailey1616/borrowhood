@@ -167,17 +167,28 @@ function MiniPreviewCards() {
         <View style={styles.orLine} />
       </View>
 
-      {/* Wanted card */}
-      <View style={[styles.miniCard, styles.miniCardWanted]}>
-        <View style={[styles.miniCardIcon, { backgroundColor: 'rgba(192,57,43,0.09)' }]}>
-          <Text style={{ fontSize: 20 }}>🪚</Text>
-        </View>
-        <View style={styles.miniCardText}>
-          <Text style={styles.miniCardTitle}>Need a Tile Saw</Text>
-          <Text style={styles.miniCardSubtitle}>Dave R. · Mar 8–10</Text>
-        </View>
-        <View style={styles.wantedBadge}>
-          <Text style={styles.wantedBadgeText}>WANTED</Text>
+      {/* Wanted card — banner style matching feed */}
+      <View style={styles.miniCardWanted}>
+        <LinearGradient
+          colors={['#C0392B', '#E74C3C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.wantedBanner}
+        >
+          <View style={styles.wantedBannerLeft}>
+            <Text style={{ fontSize: 9 }}>📢</Text>
+            <Text style={styles.wantedBannerLabel}>WANTED</Text>
+          </View>
+          <Text style={styles.wantedBannerDate}>Needed by Mar 10</Text>
+        </LinearGradient>
+        <View style={styles.wantedContent}>
+          <View style={[styles.miniCardIcon, { backgroundColor: 'rgba(192,57,43,0.09)' }]}>
+            <Text style={{ fontSize: 20 }}>🪚</Text>
+          </View>
+          <View style={styles.miniCardText}>
+            <Text style={styles.miniCardTitle}>Need a Tile Saw</Text>
+            <Text style={styles.miniCardSubtitle}>Dave R. · 2h ago</Text>
+          </View>
         </View>
       </View>
 
@@ -405,7 +416,10 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   miniCardWanted: {
-    borderColor: 'rgba(192,57,43,0.27)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(192, 57, 43, 0.18)',
   },
   miniCardIcon: {
     width: 40,
@@ -441,18 +455,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
-  wantedBadge: {
-    borderWidth: 1.5,
-    borderColor: '#C0392B',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  wantedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
   },
-  wantedBadgeText: {
+  wantedBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  wantedBannerLabel: {
     fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    color: '#C0392B',
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  wantedBannerDate: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  wantedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: 10,
+    gap: SPACING.sm,
   },
   orDivider: {
     flexDirection: 'row',

@@ -23,6 +23,7 @@ import ShimmerImage from '../components/ShimmerImage';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 import { checkPremiumGate } from '../utils/premiumGate';
 import { ENABLE_PAID_TIERS } from '../utils/config';
@@ -373,83 +374,88 @@ export default function FeedScreen({ navigation }) {
     </AnimatedCard>
   );
 
-  const renderRequestItem = (item, index) => (
-    <AnimatedCard index={index}>
-      <HapticPressable
-        onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-        haptic="light"
-        scaleDown={0.98}
-        style={styles.requestCard}
-      >
-        <View style={styles.requestHeader}>
-          <HapticPressable
-            style={styles.requestUserRow}
-            onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-            haptic="light"
-            scaleDown={1}
+  const renderRequestItem = (item, index) => {
+    const neededByDate = item.neededUntil
+      ? new Date(item.neededUntil).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : null;
+
+    return (
+      <AnimatedCard index={index}>
+        <HapticPressable
+          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+          haptic="light"
+          scaleDown={0.98}
+          style={styles.requestCard}
+        >
+          {/* Red urgency banner */}
+          <LinearGradient
+            colors={item.isExpired ? [COLORS.gray[500], COLORS.gray[400]] : ['#C0392B', '#E74C3C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.requestBannerGradient}
           >
-            {item.user.profilePhotoUrl ? (
-              <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
-            ) : (
-              <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]}>
-                <Ionicons name="person" size={16} color={COLORS.gray[400]} />
-              </View>
-            )}
-            <View>
-              <Text style={styles.requestUserName}>{item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}</Text>
-              <Text style={styles.requestTime}>{formatTimeAgo(item.createdAt)}</Text>
+            <View style={styles.requestBannerLeft}>
+              <Text style={styles.requestBannerEmoji}>📢</Text>
+              <Text style={styles.requestBannerLabel}>{item.isExpired ? 'EXPIRED' : 'WANTED'}</Text>
             </View>
-          </HapticPressable>
-          <View style={[styles.requestWantedBadge, item.isExpired && styles.requestExpiredBadge]}>
-            <Text style={[styles.requestWantedText, item.isExpired && styles.requestExpiredText]}>
-              {item.isExpired ? 'EXPIRED' : 'WANTED'}
+            <Text style={styles.requestBannerDate}>
+              {item.isExpired ? 'Request expired' : neededByDate ? `Needed by ${neededByDate}` : 'Open request'}
             </Text>
+          </LinearGradient>
+
+          {/* Card content */}
+          <View style={styles.requestContent}>
+            <View style={styles.requestContentRow}>
+              <HapticPressable
+                onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+                haptic="light"
+                scaleDown={1}
+              >
+                {item.user.profilePhotoUrl ? (
+                  <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
+                ) : (
+                  <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]}>
+                    <Ionicons name="person" size={16} color={COLORS.gray[400]} />
+                  </View>
+                )}
+              </HapticPressable>
+              <View style={styles.requestContentMeta}>
+                <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={styles.requestSubtitle}>
+                  {item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''} · {formatTimeAgo(item.createdAt)}
+                </Text>
+              </View>
+              {item.user.id === user?.id ? (
+                item.isExpired ? (
+                  <HapticPressable
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      handleRenewRequest(item.id);
+                    }}
+                    haptic="medium"
+                    style={styles.renewCTA}
+                  >
+                    <Text style={styles.renewCTAText}>Renew</Text>
+                  </HapticPressable>
+                ) : null
+              ) : (
+                <HapticPressable
+                  onPress={() => setSelectedRequest(item)}
+                  haptic="medium"
+                  style={styles.requestCTA}
+                >
+                  <Text style={styles.requestCTAText}>I Have This</Text>
+                </HapticPressable>
+              )}
+            </View>
+            {item.description ? (
+              <Text style={styles.requestSnippet} numberOfLines={2}>{item.description}</Text>
+            ) : null}
           </View>
-        </View>
-
-        <Text style={styles.requestTitle}>{item.title}</Text>
-        {item.description ? (
-          <Text style={styles.requestSnippet} numberOfLines={3}>{item.description}</Text>
-        ) : null}
-
-        {(item.neededFrom || item.neededUntil) ? (
-          <View style={styles.requestDateRow}>
-            <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
-            <Text style={styles.requestDateText}>
-              {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
-              {item.neededFrom && item.neededUntil ? ' - ' : ''}
-              {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
-            </Text>
-          </View>
-        ) : null}
-
-        {item.user.id === user?.id ? (
-          item.isExpired ? (
-            <HapticPressable
-              onPress={(e) => {
-                e.stopPropagation?.();
-                handleRenewRequest(item.id);
-              }}
-              haptic="medium"
-              style={styles.renewCTA}
-            >
-              <Ionicons name="refresh" size={18} color={COLORS.primary} />
-              <Text style={styles.renewCTAText}>Renew Request</Text>
-            </HapticPressable>
-          ) : null
-        ) : (
-          <HapticPressable
-            onPress={() => setSelectedRequest(item)}
-            haptic="medium"
-            style={styles.requestCTA}
-          >
-            <Ionicons name="hand-right-outline" size={18} color="#fff" />
-            <Text style={styles.requestCTAText}>I Have This</Text>
-          </HapticPressable>
-        )}
-      </HapticPressable>
-    </AnimatedCard>
-  );
+        </HapticPressable>
+      </AnimatedCard>
+    );
+  };
 
   const renderItem = ({ item, index }) => {
     if (item.type === 'listing') {
@@ -1021,122 +1027,110 @@ const styles = StyleSheet.create({
   },
   requestCard: {
     marginBottom: SPACING.lg,
-    backgroundColor: '#F5E6D0',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
+    borderRadius: 14,
+    overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
+    borderColor: 'rgba(192, 57, 43, 0.18)',
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgba(192, 57, 43, 0.06)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 1,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+    }),
   },
-  requestHeader: {
+  requestBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
   },
-  requestUserRow: {
+  requestBannerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: 5,
+  },
+  requestBannerEmoji: {
+    fontSize: 10,
+  },
+  requestBannerLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  requestBannerDate: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  requestContent: {
+    backgroundColor: COLORS.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  requestContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
   },
   requestAvatar: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.gray[200],
   },
   requestAvatarPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  requestUserName: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  requestTime: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-  },
-  requestWantedBadge: {
-    backgroundColor: '#8B000015',
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: '#C0392B',
-  },
-  requestWantedText: {
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontWeight: '900',
-    color: '#C0392B',
-    letterSpacing: 2,
-    fontSize: 10,
-  },
-  requestExpiredBadge: {
-    backgroundColor: COLORS.textMuted + '15',
-    borderColor: COLORS.textMuted,
-  },
-  requestExpiredText: {
-    color: COLORS.textMuted,
+  requestContentMeta: {
+    flex: 1,
   },
   requestTitle: {
-    ...TYPOGRAPHY.h3,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
+    marginBottom: 2,
+  },
+  requestSubtitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
   },
   requestSnippet: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
-    lineHeight: 21,
-    marginBottom: SPACING.xs,
-  },
-  requestDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    marginTop: SPACING.xs,
-  },
-  requestDateText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
+    lineHeight: 20,
+    marginTop: SPACING.sm,
   },
   requestCTA: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.greenBg,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: 'rgba(45, 90, 39, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 90, 39, 0.25)',
   },
   requestCTAText: {
-    ...TYPOGRAPHY.subheadline,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: COLORS.primary,
   },
   renewCTA: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     backgroundColor: COLORS.primary + '15',
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.primary + '40',
   },
   renewCTAText: {
-    ...TYPOGRAPHY.subheadline,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.primary,
-  },
-  requestBadge: {
-    backgroundColor: COLORS.secondaryMuted,
   },
   typeBadgeText: {
     ...TYPOGRAPHY.caption,
