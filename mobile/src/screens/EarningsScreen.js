@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
-import BlurCard from '../components/BlurCard';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
 import { SkeletonCard, SkeletonListItem } from '../components/SkeletonLoader';
@@ -104,7 +103,7 @@ export default function EarningsScreen({ navigation }) {
         }
       >
         {/* Balance Card */}
-        <BlurCard style={styles.balanceCard}>
+        <View style={[styles.balanceCard, styles.cardBox]}>
           <View style={styles.balanceRow}>
             <View style={styles.balanceColumn}>
               <Text style={styles.balanceLabel}>Available</Text>
@@ -130,25 +129,25 @@ export default function EarningsScreen({ navigation }) {
               <Text style={styles.setupButtonText}>Set Up Payouts</Text>
             </HapticPressable>
           )}
-        </BlurCard>
+        </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <BlurCard style={styles.statCard}>
+          <View style={[styles.statCard, styles.cardBox]}>
             <Ionicons name="cash" size={22} color={COLORS.secondary} />
             <Text style={styles.statValue}>{formatCurrency(stats?.totalEarned)}</Text>
             <Text style={styles.statLabel}>Total Earned</Text>
-          </BlurCard>
-          <BlurCard style={styles.statCard}>
+          </View>
+          <View style={[styles.statCard, styles.cardBox]}>
             <Ionicons name="swap-horizontal" size={22} color={COLORS.primary} />
             <Text style={styles.statValue}>{stats?.totalRentals || 0}</Text>
             <Text style={styles.statLabel}>Rentals</Text>
-          </BlurCard>
-          <BlurCard style={styles.statCard}>
+          </View>
+          <View style={[styles.statCard, styles.cardBox]}>
             <Ionicons name="trending-up" size={22} color={COLORS.warning} />
             <Text style={styles.statValue}>{formatCurrency(stats?.averagePerRental)}</Text>
             <Text style={styles.statLabel}>Avg/Rental</Text>
-          </BlurCard>
+          </View>
         </View>
 
         {(stats?.activeRentals || 0) > 0 && (
@@ -260,6 +259,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: SPACING.lg,
     paddingBottom: 100,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   balanceCard: {
     padding: SPACING.xl,

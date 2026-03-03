@@ -10,7 +10,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import SkeletonShape from '../components/SkeletonLoader';
 import api from '../services/api';
@@ -299,7 +298,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
               ))}
             </View>
           ) : (
-            <BlurCard style={styles.emptyCard}>
+            <View style={[styles.emptyCard, styles.cardBox]}>
               <View style={styles.emptyIconWrap}>
                 <Ionicons name="card-outline" size={36} color={COLORS.primary} />
               </View>
@@ -307,7 +306,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
               <Text style={styles.emptySubtext}>
                 Add a card to start borrowing items with rental fees
               </Text>
-            </BlurCard>
+            </View>
           )}
 
           <HapticPressable haptic="medium" style={styles.addButton} onPress={handleAddCard}>
@@ -333,7 +332,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
             <Text style={styles.sectionTitle}>Earn Money</Text>
 
             {connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled ? (
-              <BlurCard style={styles.payoutCard}>
+              <View style={[styles.payoutCard, styles.cardBox]}>
                 <View style={styles.payoutIconWrap}>
                   <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
                 </View>
@@ -343,9 +342,9 @@ export default function PaymentMethodsScreen({ navigation, route }) {
                     You'll receive payments when others borrow your items. Funds are deposited to your bank account.
                   </Text>
                 </View>
-              </BlurCard>
+              </View>
             ) : connectStatus?.detailsSubmitted ? (
-              <BlurCard style={styles.payoutCard}>
+              <View style={[styles.payoutCard, styles.cardBox]}>
                 <View style={[styles.payoutIconWrap, styles.payoutPendingIcon]}>
                   <Ionicons name="time" size={28} color="#F5A623" />
                 </View>
@@ -355,13 +354,13 @@ export default function PaymentMethodsScreen({ navigation, route }) {
                     Stripe is reviewing your payout account. This usually takes just a few minutes.
                   </Text>
                 </View>
-              </BlurCard>
+              </View>
             ) : (
               <HapticPressable
                 haptic="medium"
                 onPress={() => navigation.navigate('SetupPayout')}
               >
-                <BlurCard style={styles.payoutSetupCard}>
+                <View style={[styles.payoutSetupCard, styles.cardBox]}>
                   <View style={styles.payoutSetupContent}>
                     <View style={[styles.payoutIconWrap, styles.payoutSetupIcon]}>
                       <Ionicons name="wallet-outline" size={28} color={COLORS.primary} />
@@ -377,7 +376,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
                     <Text style={styles.payoutSetupActionText}>Get Started</Text>
                     <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                   </View>
-                </BlurCard>
+                </View>
               </HapticPressable>
             )}
           </View>
@@ -637,6 +636,12 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 3,
     lineHeight: 18,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   payoutSetupCard: {
     padding: SPACING.lg,

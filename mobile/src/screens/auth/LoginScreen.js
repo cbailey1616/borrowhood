@@ -44,6 +44,8 @@ export default function LoginScreen({ navigation }) {
         title: 'Hmm, that didn\'t work',
         message: error.message || 'Please double-check your email and password and try again.',
         primaryAction: 'Try Again',
+        secondaryAction: 'Reset Password',
+        onSecondaryPress: () => navigation.navigate('ForgotPassword'),
       });
     } finally {
       setIsLoading(false);

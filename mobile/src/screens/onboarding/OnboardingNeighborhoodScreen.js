@@ -14,7 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
-import BlurCard from '../../components/BlurCard';
 import ActionSheet from '../../components/ActionSheet';
 import OnboardingProgress from '../../components/OnboardingProgress';
 import { useAuth } from '../../context/AuthContext';
@@ -335,7 +334,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
                 keyExtractor={(item) => item.id}
                 style={styles.list}
                 renderItem={({ item }) => (
-                  <BlurCard style={styles.neighborhoodCard}>
+                  <View style={[styles.neighborhoodCard, styles.cardBox]}>
                     <View style={styles.neighborhoodRow}>
                       <View style={styles.neighborhoodInfo}>
                         <Text style={styles.neighborhoodName}>{item.name}</Text>
@@ -365,7 +364,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
                         </HapticPressable>
                       )}
                     </View>
-                  </BlurCard>
+                  </View>
                 )}
                 ListFooterComponent={
                   <HapticPressable style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
@@ -592,6 +591,12 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
     marginBottom: SPACING.lg,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   neighborhoodCard: {
     marginBottom: SPACING.sm,

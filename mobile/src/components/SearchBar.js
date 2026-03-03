@@ -13,6 +13,7 @@ export default function SearchBar({
   onSubmitEditing,
   autoFocus = false,
   style,
+  dark = false,
   testID,
   accessibilityLabel,
 }) {
@@ -20,20 +21,24 @@ export default function SearchBar({
     onChangeText?.('');
   }, [onChangeText]);
 
+  const iconColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
+  const inputColor = dark ? '#fff' : COLORS.text;
+  const placeholderColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
+
   return (
     <View style={[styles.container, style]} testID={testID} accessibilityLabel={accessibilityLabel || placeholder} accessibilityRole="search">
       <Ionicons
         name="search"
         size={17}
-        color={COLORS.textMuted}
+        color={iconColor}
         style={styles.icon}
       />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textMuted}
-        style={styles.input}
+        placeholderTextColor={placeholderColor}
+        style={[styles.input, { color: inputColor }]}
         autoFocus={autoFocus}
         autoCapitalize="none"
         autoCorrect={false}
@@ -44,7 +49,7 @@ export default function SearchBar({
       />
       {value && value.length > 0 ? (
         <HapticPressable onPress={handleClear} haptic="light" style={styles.clearButton}>
-          <Ionicons name="close-circle-sharp" size={18} color={COLORS.textMuted} />
+          <Ionicons name="close-circle-sharp" size={18} color={iconColor} />
         </HapticPressable>
       ) : null}
     </View>
@@ -55,12 +60,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     height: 36,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderLight,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrownStrong,
   },
   icon: {
     marginRight: SPACING.sm,
@@ -68,7 +73,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     ...TYPOGRAPHY.body,
-    color: COLORS.text,
     padding: 0,
     height: '100%',
   },

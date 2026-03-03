@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
@@ -314,11 +313,11 @@ export default function EditProfileScreen({ navigation }) {
             Your location helps show nearby items and connect you with neighbors.
           </Text>
 
-          <BlurCard style={styles.infoBox}>
+          <View style={styles.infoBox}>
             <Text style={styles.infoTitle}>Email</Text>
             <Text style={styles.infoValue}>{user?.email}</Text>
             <Text style={styles.infoNote}>Email cannot be changed</Text>
-          </BlurCard>
+          </View>
         </View>
 
       <View style={styles.footer}>
@@ -477,6 +476,10 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     padding: SPACING.lg,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   infoTitle: {
     ...TYPOGRAPHY.bodySmall,

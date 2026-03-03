@@ -29,7 +29,7 @@ export default function BlurCard({
       testID={testID}
       accessibilityLabel={accessibilityLabel}
     >
-      <View style={[styles.inner, { backgroundColor: innerColor || COLORS.materials.thick }]}>
+      <View style={[styles.inner, { backgroundColor: innerColor || COLORS.card }]}>
         {children}
       </View>
     </BlurView>

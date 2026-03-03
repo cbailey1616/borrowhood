@@ -13,7 +13,6 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 import GateStepper from '../components/GateStepper';
 
@@ -233,13 +232,13 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         <Text style={styles.title}>{getTitle()}</Text>
         <Text style={styles.subtitle}>{getSubtitle()}</Text>
 
-        <BlurCard style={styles.benefits}>
+        <View style={[styles.benefits, styles.cardBox]}>
           <View style={styles.benefitsInner}>
             <BenefitItem icon="lock-closed" text="Your data is encrypted and secure" />
             <BenefitItem icon="people" text="Build trust with your neighbors" />
             <BenefitItem icon="checkmark-circle" text="Required to borrow or lend items" />
           </View>
-        </BlurCard>
+        </View>
 
         <HapticPressable
           style={[styles.primaryButton, starting && styles.buttonDisabled]}
@@ -334,6 +333,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: SPACING.xxl,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   benefits: {
     marginBottom: SPACING.xxl,

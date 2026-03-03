@@ -908,11 +908,14 @@ const styles = StyleSheet.create({
     width: 50,
     height: 30,
     borderRadius: 15,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     padding: 2,
   },
   switchActive: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   switchKnob: {
     width: 26,

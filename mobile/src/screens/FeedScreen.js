@@ -480,14 +480,80 @@ export default function FeedScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <NativeHeader
-        title="Feed"
+        title=""
         scrollY={scrollY}
-        rightElement={
-          <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create new listing" accessibilityRole="button">
-            <Ionicons name="add-circle-outline" size={28} color={COLORS.primary} />
+      >
+        <View style={styles.searchRow}>
+          <SearchBar
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search..."
+            onSubmitEditing={handleSearch}
+            testID="Feed.searchBar"
+            accessibilityLabel="Search items"
+            style={styles.headerSearchBar}
+            dark
+          />
+          <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create new listing" accessibilityRole="button" style={styles.addButton}>
+            <Ionicons name="add" size={22} color="#fff" />
           </HapticPressable>
-        }
-      />
+        </View>
+
+        <View style={styles.filterChipsRow}>
+          <View>
+            <HapticPressable
+              style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
+              onPress={() => setActiveDropdown('type')}
+              haptic="light"
+              testID="Feed.chip.allTypes"
+              accessibilityLabel="Filter by type"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
+                {typeChipLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
+            </HapticPressable>
+            {activeFilters.length > 0 && <View style={styles.filterDot} />}
+          </View>
+
+          <View>
+            <HapticPressable
+              style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
+              onPress={() => setActiveDropdown('visibility')}
+              haptic="light"
+              testID="Feed.chip.visibility"
+              accessibilityLabel="Filter by visibility"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
+                {visibilityChipLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
+            </HapticPressable>
+            {visibilityFilters.length > 0 && <View style={styles.filterDot} />}
+          </View>
+
+          {categories.length > 0 && (
+            <View>
+              <HapticPressable
+                style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
+                onPress={() => setActiveDropdown('category')}
+                haptic="light"
+                testID="Feed.chip.category"
+                accessibilityLabel="Filter by category"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
+                  {categoryChipLabel}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
+              </HapticPressable>
+              {categoryFilters.length > 0 && <View style={styles.filterDot} />}
+            </View>
+          )}
+        </View>
+      </NativeHeader>
 
       <AnimatedFlatList
         data={feed}
@@ -498,72 +564,6 @@ export default function FeedScreen({ navigation }) {
         scrollEventThrottle={16}
         ListHeaderComponent={
           <>
-            <View style={styles.filtersSection}>
-              <SearchBar
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search..."
-                onSubmitEditing={handleSearch}
-                testID="Feed.searchBar"
-                accessibilityLabel="Search items"
-              />
-
-              <View style={styles.filterChipsRow}>
-                <View>
-                  <HapticPressable
-                    style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
-                    onPress={() => setActiveDropdown('type')}
-                    haptic="light"
-                    testID="Feed.chip.allTypes"
-                    accessibilityLabel="Filter by type"
-                    accessibilityRole="button"
-                  >
-                    <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
-                      {typeChipLabel}
-                    </Text>
-                    <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-                  </HapticPressable>
-                  {activeFilters.length > 0 && <View style={styles.filterDot} />}
-                </View>
-
-                <View>
-                  <HapticPressable
-                    style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
-                    onPress={() => setActiveDropdown('visibility')}
-                    haptic="light"
-                    testID="Feed.chip.visibility"
-                    accessibilityLabel="Filter by visibility"
-                    accessibilityRole="button"
-                  >
-                    <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
-                      {visibilityChipLabel}
-                    </Text>
-                    <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-                  </HapticPressable>
-                  {visibilityFilters.length > 0 && <View style={styles.filterDot} />}
-                </View>
-
-                {categories.length > 0 && (
-                  <View>
-                    <HapticPressable
-                      style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
-                      onPress={() => setActiveDropdown('category')}
-                      haptic="light"
-                      testID="Feed.chip.category"
-                      accessibilityLabel="Filter by category"
-                      accessibilityRole="button"
-                    >
-                      <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
-                        {categoryChipLabel}
-                      </Text>
-                      <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-                    </HapticPressable>
-                    {categoryFilters.length > 0 && <View style={styles.filterDot} />}
-                  </View>
-                )}
-              </View>
-            </View>
-
             {community && (
               <HapticPressable
                 style={styles.communityBanner}
@@ -806,12 +806,34 @@ const styles = StyleSheet.create({
   skeletonContainer: {
     padding: SPACING.lg,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  headerSearchBar: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   filtersSection: {
     paddingBottom: SPACING.md,
     gap: SPACING.md,
   },
   filterChipsRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: SPACING.sm,
   },
   dropdownChip: {
@@ -821,17 +843,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   dropdownChipActive: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   dropdownChipText: {
     ...TYPOGRAPHY.caption1,
     fontWeight: '500',
-    color: COLORS.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
   },
   dropdownChipTextActive: {
     color: '#fff',
@@ -1231,8 +1254,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
+    backgroundColor: COLORS.card,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.warning + '30',
     gap: SPACING.sm,
   },
   verifyUnlockText: {
