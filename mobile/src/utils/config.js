@@ -71,16 +71,16 @@ export const COLORS = {
   danger: '#A03030',
   dangerMuted: 'rgba(160, 48, 48, 0.12)',
   success: '#2D5A27',
-  // Backgrounds
-  background: '#F5ECD7',
-  surface: '#F0E6CE',
-  surfaceElevated: '#EDE3CC',
-  card: '#FFF8E7',
-  cardHover: '#FFF3D9',
-  // Text colors
-  text: '#2C1810',
-  textSecondary: '#6B5744',
-  textMuted: '#9C8B78',
+  // Backgrounds (toasted parchment)
+  background: '#DED2B5',
+  surface: '#D8CBA9',
+  surfaceElevated: '#D2C5A3',
+  card: '#E8DCBF',
+  cardHover: '#E2D5B5',
+  // Text colors (forest green ink)
+  text: '#1B3318',
+  textSecondary: '#3D5A38',
+  textMuted: '#6B8A66',
   // Green accent block colors (for pricing cards, CTAs, profile hero, banners)
   greenBg: '#0F2415',
   greenSurface: '#162E1C',
@@ -89,28 +89,28 @@ export const COLORS = {
   greenBorder: 'rgba(74, 124, 89, 0.35)',
   greenSeparator: 'rgba(122, 141, 125, 0.25)',
   // Border system — key to preventing "everything blurs together"
-  border: '#C4AD82',
-  borderLight: '#D4C5A9',
+  border: '#B8A07A',
+  borderLight: '#C4B493',
   borderGreen: 'rgba(45, 90, 39, 0.25)',
   borderGreenStrong: 'rgba(45, 90, 39, 0.4)',
   borderBrown: 'rgba(139, 69, 19, 0.2)',
   borderBrownStrong: 'rgba(139, 69, 19, 0.35)',
-  // Gray scale (warm parchment tones)
+  // Gray scale (parchment to forest green)
   gray: {
-    50: '#FDFAF2', 100: '#F5ECD7', 200: '#E8DCBF', 300: '#D4C5A9',
-    400: '#B8A88E', 500: '#9C8B78', 600: '#7A6B5A', 700: '#5C4E3E',
-    800: '#3E3428', 900: '#2C1810',
+    50: '#E8DCBF', 100: '#DED2B5', 200: '#D4C5A9', 300: '#C4B493',
+    400: '#9CAA97', 500: '#6B8A66', 600: '#4A6B44', 700: '#3D5A38',
+    800: '#2A4226', 900: '#1B3318',
   },
   // Overlay
-  overlay: 'rgba(44, 24, 16, 0.7)',
-  overlayLight: 'rgba(44, 24, 16, 0.4)',
+  overlay: 'rgba(27, 51, 24, 0.7)',
+  overlayLight: 'rgba(27, 51, 24, 0.4)',
   // Materials — translucency levels for blur card backgrounds
   materials: {
-    ultraThin: 'rgba(245, 236, 215, 0.35)',
-    thin: 'rgba(245, 236, 215, 0.50)',
-    regular: 'rgba(245, 236, 215, 0.65)',
-    thick: 'rgba(245, 236, 215, 0.80)',
-    ultraThick: 'rgba(245, 236, 215, 0.90)',
+    ultraThin: 'rgba(222, 210, 181, 0.35)',
+    thin: 'rgba(222, 210, 181, 0.50)',
+    regular: 'rgba(222, 210, 181, 0.65)',
+    thick: 'rgba(222, 210, 181, 0.80)',
+    ultraThick: 'rgba(222, 210, 181, 0.90)',
   },
   // iOS-style thin divider
   separator: 'rgba(139, 69, 19, 0.15)',

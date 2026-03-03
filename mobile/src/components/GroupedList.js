@@ -84,9 +84,9 @@ export function GroupedListItem({
           <Switch
             value={switchValue}
             onValueChange={onSwitchChange}
-            trackColor={{ false: COLORS.gray[700], true: COLORS.primaryMuted }}
-            thumbColor={switchValue ? COLORS.primary : COLORS.gray[400]}
-            ios_backgroundColor={COLORS.gray[700]}
+            trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+            thumbColor="#fff"
+            ios_backgroundColor={COLORS.primaryMuted}
           />
         ) : null}
         {rightElement || null}

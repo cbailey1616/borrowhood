@@ -124,9 +124,9 @@ export default function NotificationSettingsScreen() {
                 <Switch
                   value={preferences[setting.key] ?? true}
                   onValueChange={(value) => handleToggle(setting.key, value)}
-                  trackColor={{ false: COLORS.gray[700], true: COLORS.primary + '60' }}
-                  thumbColor={preferences[setting.key] ? COLORS.primary : COLORS.gray[400]}
-                  ios_backgroundColor={COLORS.gray[700]}
+                  trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+                  thumbColor="#fff"
+                  ios_backgroundColor={COLORS.primaryMuted}
                 />
               </View>
             ))}

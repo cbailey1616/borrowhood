@@ -90,8 +90,9 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             <Switch
               value={notifications}
               onValueChange={setNotifications}
-              trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
-              thumbColor={notifications ? COLORS.primary : COLORS.gray[400]}
+              trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+              thumbColor="#fff"
+              ios_backgroundColor={COLORS.primaryMuted}
             />
           </View>
         </BlurCard>
@@ -106,8 +107,9 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             </View>
             <Switch
               value={true}
-              trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
-              thumbColor={COLORS.primary}
+              trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+              thumbColor="#fff"
+              ios_backgroundColor={COLORS.primaryMuted}
             />
           </View>
         </BlurCard>
@@ -128,8 +130,9 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             <Switch
               value={showInDirectory}
               onValueChange={setShowInDirectory}
-              trackColor={{ false: COLORS.gray[700], true: COLORS.primaryLight }}
-              thumbColor={showInDirectory ? COLORS.primary : COLORS.gray[400]}
+              trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+              thumbColor="#fff"
+              ios_backgroundColor={COLORS.primaryMuted}
             />
           </View>
         </BlurCard>

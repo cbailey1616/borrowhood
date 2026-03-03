@@ -403,17 +403,17 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.gray[700],
+    borderColor: COLORS.borderBrown,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.card,
     color: COLORS.text,
   },
   inputLocked: {
-    backgroundColor: COLORS.gray[800],
-    opacity: 0.6,
+    backgroundColor: COLORS.surfaceElevated,
+    opacity: 0.7,
   },
   verifiedBanner: {
     flexDirection: 'row',
