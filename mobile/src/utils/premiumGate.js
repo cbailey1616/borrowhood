@@ -7,19 +7,43 @@ import { ENABLE_PAID_TIERS } from './config';
  * @returns {{ passed: boolean, screen?: string, params?: object, completedSteps: number, totalSteps: number }}
  */
 export function checkPremiumGate(user, source) {
-  // TODO: Remove this bypass when re-enabling paid tiers (ENABLE_PAID_TIERS)
   if (!ENABLE_PAID_TIERS) {
+    const isVerified = user?.isVerified;
     const hasConnect = user?.hasConnectAccount;
-    // Still require Stripe Connect for rental listings (payout setup)
-    if (source === 'rental_listing' && !hasConnect) {
+
+    // Verification required for town access even without paid tiers
+    if (source === 'town_browse' && !isVerified) {
       return {
         passed: false,
-        screen: 'SetupPayout',
+        screen: 'IdentityVerification',
         params: { source, totalSteps: 1 },
         completedSteps: 0,
         totalSteps: 1,
       };
     }
+
+    // Stripe Connect required for rental listings (payout setup)
+    if (source === 'rental_listing') {
+      if (!isVerified) {
+        return {
+          passed: false,
+          screen: 'IdentityVerification',
+          params: { source, totalSteps: hasConnect ? 1 : 2 },
+          completedSteps: 0,
+          totalSteps: hasConnect ? 1 : 2,
+        };
+      }
+      if (!hasConnect) {
+        return {
+          passed: false,
+          screen: 'SetupPayout',
+          params: { source, totalSteps: 1 },
+          completedSteps: 0,
+          totalSteps: 1,
+        };
+      }
+    }
+
     return { passed: true, completedSteps: 1, totalSteps: 1 };
   }
 

@@ -405,8 +405,7 @@ export default function ListingDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Footer Action Bar */}
-      {/* TODO: Restore verify banner when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
-      {ENABLE_PAID_TIERS && !listing.isOwner && listing.ownerMasked && (
+      {!listing.isOwner && listing.ownerMasked && (
         <View style={styles.footerWrap}>
           <View style={[styles.footer, styles.footerAndroid]}>
             <HapticPressable

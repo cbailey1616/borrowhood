@@ -323,8 +323,7 @@ export default function FeedScreen({ navigation }) {
             </View>
           </View>
 
-          {/* TODO: Restore ownerMasked banner when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
-          {ENABLE_PAID_TIERS && item.ownerMasked ? (
+          {item.ownerMasked ? (
             <HapticPressable
               style={styles.verifyUnlockBanner}
               onPress={() => {

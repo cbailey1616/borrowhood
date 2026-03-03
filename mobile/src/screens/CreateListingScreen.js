@@ -465,11 +465,7 @@ export default function CreateListingScreen({ navigation, route }) {
                     // Verification required for town visibility
                     if (visibility === 'town' && !user?.isVerified) {
                       haptics.warning();
-                      showError({
-                        type: 'generic',
-                        title: 'Verification Required',
-                        message: 'Verify your identity to share items with your entire town.',
-                      });
+                      navigation.navigate('IdentityVerification', { source: 'town_browse' });
                       return;
                     }
                     if (ENABLE_PAID_TIERS && visibility === 'town') {

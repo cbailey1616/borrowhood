@@ -405,11 +405,7 @@ export default function CreateRequestScreen({ navigation }) {
                     // Verification required for town visibility
                     if (visibility === 'town' && !user?.isVerified) {
                       haptics.warning();
-                      showError({
-                        type: 'generic',
-                        title: 'Verification Required',
-                        message: 'Verify your identity to post requests to your entire town.',
-                      });
+                      navigation.navigate('IdentityVerification', { source: 'town_browse' });
                       return;
                     }
                     if (ENABLE_PAID_TIERS && visibility === 'town') {
