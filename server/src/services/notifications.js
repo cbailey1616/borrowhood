@@ -71,6 +71,29 @@ const NOTIFICATION_TEMPLATES = {
       : 'Your dispute has been resolved. Tap to see the outcome.',
   },
 
+  dispute_filed_against_you: {
+    title: 'Action Needed',
+    body: (data) => data.itemTitle
+      ? `A ${data.typeLabel || 'concern'} was raised about ${data.itemTitle}. You have 48 hours to respond.`
+      : 'An issue was raised about a recent transaction. You have 48 hours to respond.',
+  },
+  dispute_response_received: {
+    title: 'Dispute Response',
+    body: (data) => data.respondentName
+      ? `${data.respondentName} responded to your dispute. Tap to review.`
+      : 'The other party responded to your dispute. Tap to review.',
+  },
+  dispute_ready_for_review: {
+    title: 'Dispute Needs Review',
+    body: (data) => data.itemTitle
+      ? `A dispute about ${data.itemTitle} is ready for your review.`
+      : 'A dispute in your community needs review.',
+  },
+  dispute_under_review: {
+    title: 'Dispute Status Update',
+    body: () => 'Your dispute has been advanced to review after no response was received.',
+  },
+
   // Payment issues
   payment_failed: {
     title: 'Payment Issue',

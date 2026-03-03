@@ -1,50 +1,266 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../utils/db.js';
-import { authenticate, requireOrganizer } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
+import { notifyOrganizers } from '../services/notifications.js';
+import { capturePaymentIntent, cancelPaymentIntent, getPaymentIntent } from '../services/stripe.js';
 
 const router = Router();
 
 const ORGANIZER_FEE_PERCENT = 0.02; // 2% of disputed amount
 
+const VALID_TYPES = ['damagesClaim', 'nonReturn', 'lateReturn', 'itemNotAsDescribed', 'paymentIssue', 'noShow'];
+
+const TYPE_LABELS = {
+  damagesClaim: 'Damages Claim',
+  nonReturn: 'Non-Return',
+  lateReturn: 'Late Return',
+  itemNotAsDescribed: 'Item Not As Described',
+  paymentIssue: 'Payment Issue',
+  noShow: 'No Show',
+};
+
+// ============================================
+// POST /api/disputes
+// File a new dispute
+// ============================================
+router.post('/', authenticate,
+  body('transactionId').isUUID(),
+  body('type').isIn(VALID_TYPES),
+  body('description').isLength({ min: 10, max: 2000 }),
+  body('photoUrls').optional().isArray({ max: 4 }),
+  body('requestedAmount').optional().isFloat({ min: 0 }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { transactionId, type, description, photoUrls = [], requestedAmount } = req.body;
+
+    try {
+      // Get transaction and verify user is a party
+      const txn = await query(
+        `SELECT t.*, l.title as listing_title, l.community_id
+         FROM borrow_transactions t
+         JOIN listings l ON t.listing_id = l.id
+         WHERE t.id = $1`,
+        [transactionId]
+      );
+
+      if (txn.rows.length === 0) {
+        return res.status(404).json({ error: 'Transaction not found' });
+      }
+
+      const t = txn.rows[0];
+
+      // Verify user is a party
+      if (t.borrower_id !== req.user.id && t.lender_id !== req.user.id) {
+        return res.status(403).json({ error: 'Not authorized to file a dispute on this transaction' });
+      }
+
+      // Verify transaction is in a completed/returned state
+      if (!['returned', 'completed'].includes(t.status)) {
+        return res.status(400).json({ error: 'Can only file disputes on returned or completed rentals' });
+      }
+
+      // Verify within 72-hour window (use actual_return_at or requested_end_date)
+      const returnDate = t.actual_return_at || t.requested_end_date;
+      if (returnDate) {
+        const hoursSinceReturn = (Date.now() - new Date(returnDate).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceReturn > 72) {
+          return res.status(400).json({ error: 'Disputes must be filed within 72 hours of rental end' });
+        }
+      }
+
+      // Verify no existing dispute
+      const existing = await query(
+        'SELECT id FROM disputes WHERE transaction_id = $1',
+        [transactionId]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ error: 'A dispute already exists for this transaction' });
+      }
+
+      // Validate requestedAmount for damagesClaim
+      if (type === 'damagesClaim' && (!requestedAmount || requestedAmount <= 0)) {
+        return res.status(400).json({ error: 'Damage claims require a requested amount' });
+      }
+
+      // Cap requestedAmount at deposit
+      const depositAmount = parseFloat(t.deposit_amount) || 0;
+      const cappedAmount = requestedAmount ? Math.min(requestedAmount, depositAmount) : null;
+
+      // Determine claimant and respondent
+      const claimantUserId = req.user.id;
+      const respondentUserId = t.borrower_id === req.user.id ? t.lender_id : t.borrower_id;
+
+      const result = await query(
+        `INSERT INTO disputes (
+          transaction_id, claimant_user_id, respondent_user_id, opened_by_id,
+          type, description, reason, photo_urls, evidence_urls,
+          requested_amount, status
+        ) VALUES ($1, $2, $3, $2, $4, $5, $5, $6, $6, $7, 'awaitingResponse')
+        RETURNING id, created_at`,
+        [transactionId, claimantUserId, respondentUserId, type, description, photoUrls, cappedAmount]
+      );
+
+      // Update transaction status to disputed
+      await query(
+        `UPDATE borrow_transactions SET status = 'disputed' WHERE id = $1`,
+        [transactionId]
+      );
+
+      // Notify respondent
+      await sendNotification(respondentUserId, 'dispute_filed_against_you', {
+        disputeId: result.rows[0].id,
+        transactionId,
+        itemTitle: t.listing_title,
+        typeLabel: TYPE_LABELS[type],
+      });
+
+      res.status(201).json({
+        id: result.rows[0].id,
+        status: 'awaitingResponse',
+        createdAt: result.rows[0].created_at,
+      });
+    } catch (err) {
+      console.error('File dispute error:', err);
+      res.status(500).json({ error: 'Failed to file dispute' });
+    }
+  }
+);
+
+// ============================================
+// POST /api/disputes/:id/respond
+// Respondent submits their response
+// ============================================
+router.post('/:id/respond', authenticate,
+  body('responseDescription').isLength({ min: 10, max: 2000 }),
+  body('responsePhotoUrls').optional().isArray({ max: 4 }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { responseDescription, responsePhotoUrls = [] } = req.body;
+
+    try {
+      const dispute = await query(
+        `SELECT d.*, t.listing_id, l.community_id, l.title as listing_title
+         FROM disputes d
+         JOIN borrow_transactions t ON d.transaction_id = t.id
+         JOIN listings l ON t.listing_id = l.id
+         WHERE d.id = $1`,
+        [req.params.id]
+      );
+
+      if (dispute.rows.length === 0) {
+        return res.status(404).json({ error: 'Dispute not found' });
+      }
+
+      const d = dispute.rows[0];
+
+      // Verify caller is the respondent
+      if (d.respondent_user_id !== req.user.id) {
+        return res.status(403).json({ error: 'Only the respondent can submit a response' });
+      }
+
+      // Verify status is awaitingResponse
+      if (d.status !== 'awaitingResponse') {
+        return res.status(400).json({ error: 'This dispute is no longer accepting responses' });
+      }
+
+      // Verify not already responded
+      if (d.responded_at) {
+        return res.status(400).json({ error: 'You have already responded to this dispute' });
+      }
+
+      // Verify within 48-hour window
+      const hoursSinceFiled = (Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceFiled > 48) {
+        return res.status(400).json({ error: 'The 48-hour response window has passed' });
+      }
+
+      await query(
+        `UPDATE disputes SET
+          response_description = $1, response_photo_urls = $2,
+          responded_at = NOW(), status = 'underReview'
+         WHERE id = $3`,
+        [responseDescription, responsePhotoUrls, req.params.id]
+      );
+
+      // Notify claimant
+      await sendNotification(d.claimant_user_id, 'dispute_response_received', {
+        disputeId: req.params.id,
+        transactionId: d.transaction_id,
+        respondentName: `${req.user.first_name} ${req.user.last_name}`,
+      });
+
+      // Notify community organizers
+      if (d.community_id) {
+        await notifyOrganizers(d.community_id, 'dispute_ready_for_review', {
+          disputeId: req.params.id,
+          transactionId: d.transaction_id,
+          itemTitle: d.listing_title,
+        });
+      }
+
+      res.json({ success: true, status: 'underReview' });
+    } catch (err) {
+      console.error('Respond to dispute error:', err);
+      res.status(500).json({ error: 'Failed to submit response' });
+    }
+  }
+);
+
 // ============================================
 // GET /api/disputes
-// Get disputes (organizer sees community disputes, users see their own)
+// List disputes (parties see their own, organizers see community, admins see all)
 // ============================================
 router.get('/', authenticate, async (req, res) => {
-  const { status, communityId } = req.query;
+  const { status, communityId, type } = req.query;
 
   try {
-    // Check if user is organizer of any community
-    const organized = await query(
-      `SELECT community_id FROM community_memberships
-       WHERE user_id = $1 AND role = 'organizer'`,
-      [req.user.id]
-    );
-
-    const organizedCommunityIds = organized.rows.map(r => r.community_id);
-
     let whereConditions = [];
     let params = [req.user.id];
     let paramIndex = 2;
 
-    // User sees disputes they're involved in, or organizers see their communities
-    if (organizedCommunityIds.length > 0) {
-      whereConditions.push(`(
-        d.opened_by_id = $1 OR
-        t.borrower_id = $1 OR
-        t.lender_id = $1 OR
-        l.community_id = ANY($${paramIndex++})
-      )`);
-      params.push(organizedCommunityIds);
+    // Admin sees all, otherwise scoped
+    if (req.user.is_admin) {
+      whereConditions.push('1=1');
     } else {
-      whereConditions.push(`(d.opened_by_id = $1 OR t.borrower_id = $1 OR t.lender_id = $1)`);
+      // Check if user is organizer of any community
+      const organized = await query(
+        `SELECT community_id FROM community_memberships
+         WHERE user_id = $1 AND role = 'organizer'`,
+        [req.user.id]
+      );
+
+      const organizedCommunityIds = organized.rows.map(r => r.community_id);
+
+      if (organizedCommunityIds.length > 0) {
+        whereConditions.push(`(
+          d.claimant_user_id = $1 OR
+          d.respondent_user_id = $1 OR
+          l.community_id = ANY($${paramIndex++})
+        )`);
+        params.push(organizedCommunityIds);
+      } else {
+        whereConditions.push(`(d.claimant_user_id = $1 OR d.respondent_user_id = $1)`);
+      }
     }
 
     if (status) {
       whereConditions.push(`d.status = $${paramIndex++}`);
       params.push(status);
+    }
+
+    if (type) {
+      whereConditions.push(`d.type = $${paramIndex++}`);
+      params.push(type);
     }
 
     if (communityId) {
@@ -53,17 +269,19 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     const result = await query(
-      `SELECT d.*,
+      `SELECT d.id, d.transaction_id, d.status, d.type, d.description,
+              d.photo_urls, d.requested_amount, d.resolved_amount,
+              d.responded_at, d.created_at, d.resolved_at,
               t.listing_id, l.title as listing_title,
               t.deposit_amount, t.rental_fee,
-              b.id as borrower_id, b.first_name as borrower_first_name, b.last_name as borrower_last_name,
-              lnd.id as lender_id, lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
+              c.id as claimant_id, c.first_name as claimant_first_name, c.last_name as claimant_last_name,
+              r.id as respondent_id, r.first_name as respondent_first_name, r.last_name as respondent_last_name,
               l.community_id
        FROM disputes d
        JOIN borrow_transactions t ON d.transaction_id = t.id
        JOIN listings l ON t.listing_id = l.id
-       JOIN users b ON t.borrower_id = b.id
-       JOIN users lnd ON t.lender_id = lnd.id
+       LEFT JOIN users c ON d.claimant_user_id = c.id
+       LEFT JOIN users r ON d.respondent_user_id = r.id
        WHERE ${whereConditions.join(' AND ')}
        ORDER BY d.created_at DESC`,
       params
@@ -73,28 +291,29 @@ router.get('/', authenticate, async (req, res) => {
       id: d.id,
       transactionId: d.transaction_id,
       status: d.status,
-      reason: d.reason,
-      evidenceUrls: d.evidence_urls,
+      type: d.type,
+      description: d.description,
+      photoUrls: d.photo_urls || [],
       listing: {
         id: d.listing_id,
         title: d.listing_title,
       },
-      borrower: {
-        id: d.borrower_id,
-        firstName: d.borrower_first_name,
-        lastName: d.borrower_last_name,
-      },
-      lender: {
-        id: d.lender_id,
-        firstName: d.lender_first_name,
-        lastName: d.lender_last_name,
-      },
+      claimant: d.claimant_id ? {
+        id: d.claimant_id,
+        firstName: d.claimant_first_name,
+        lastName: d.claimant_last_name,
+      } : null,
+      respondent: d.respondent_id ? {
+        id: d.respondent_id,
+        firstName: d.respondent_first_name,
+        lastName: d.respondent_last_name,
+      } : null,
       depositAmount: parseFloat(d.deposit_amount),
       rentalFee: parseFloat(d.rental_fee),
+      requestedAmount: d.requested_amount ? parseFloat(d.requested_amount) : null,
+      resolvedAmount: d.resolved_amount ? parseFloat(d.resolved_amount) : null,
+      hasResponse: !!d.responded_at,
       communityId: d.community_id,
-      resolutionNotes: d.resolution_notes,
-      depositToLender: d.deposit_to_lender ? parseFloat(d.deposit_to_lender) : null,
-      depositToBorrower: d.deposit_to_borrower ? parseFloat(d.deposit_to_borrower) : null,
       createdAt: d.created_at,
       resolvedAt: d.resolved_at,
     })));
@@ -111,25 +330,28 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT d.id as dispute_id, d.transaction_id, d.opened_by_id, d.status as dispute_status,
-              d.reason, d.evidence_urls, d.resolution_notes,
-              d.deposit_to_lender, d.deposit_to_borrower, d.organizer_fee,
+      `SELECT d.id as dispute_id, d.transaction_id, d.status as dispute_status,
+              d.type, d.description, d.photo_urls, d.reason, d.evidence_urls,
+              d.response_description, d.response_photo_urls, d.responded_at,
+              d.requested_amount, d.resolved_amount, d.hold_expired,
+              d.resolution_notes, d.deposit_to_lender, d.deposit_to_borrower, d.organizer_fee,
+              d.claimant_user_id, d.respondent_user_id,
               d.resolved_by_id, d.resolved_at, d.created_at as dispute_created_at,
               t.listing_id, t.condition_at_pickup, t.condition_at_return, t.condition_notes,
               t.rental_fee, t.deposit_amount,
-              l.title as listing_title,
+              l.title as listing_title, l.community_id,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as listing_photos,
-              b.id as borrower_id, b.first_name as borrower_first_name, b.last_name as borrower_last_name,
-              b.profile_photo_url as borrower_photo,
-              lnd.id as lender_id, lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
-              lnd.profile_photo_url as lender_photo,
-              r.first_name as resolver_first_name, r.last_name as resolver_last_name
+              c.id as claimant_id, c.first_name as claimant_first_name, c.last_name as claimant_last_name,
+              c.profile_photo_url as claimant_photo,
+              resp.id as respondent_id, resp.first_name as respondent_first_name, resp.last_name as respondent_last_name,
+              resp.profile_photo_url as respondent_photo,
+              resolver.first_name as resolver_first_name, resolver.last_name as resolver_last_name
        FROM disputes d
        JOIN borrow_transactions t ON d.transaction_id = t.id
        JOIN listings l ON t.listing_id = l.id
-       JOIN users b ON t.borrower_id = b.id
-       JOIN users lnd ON t.lender_id = lnd.id
-       LEFT JOIN users r ON d.resolved_by_id = r.id
+       LEFT JOIN users c ON d.claimant_user_id = c.id
+       LEFT JOIN users resp ON d.respondent_user_id = resp.id
+       LEFT JOIN users resolver ON d.resolved_by_id = resolver.id
        WHERE d.id = $1`,
       [req.params.id]
     );
@@ -140,16 +362,20 @@ router.get('/:id', authenticate, async (req, res) => {
 
     const d = result.rows[0];
 
-    // Check access
-    const isParty = d.borrower_id === req.user.id || d.lender_id === req.user.id;
-    const isOrganizer = await query(
-      `SELECT 1 FROM community_memberships m
-       JOIN listings l ON l.community_id = m.community_id
-       WHERE m.user_id = $1 AND m.role = 'organizer' AND l.id = $2`,
-      [req.user.id, d.listing_id]
-    );
+    // Check access: party, organizer, or admin
+    const isClaimant = d.claimant_id === req.user.id;
+    const isRespondent = d.respondent_id === req.user.id;
+    const isParty = isClaimant || isRespondent;
 
-    if (!isParty && isOrganizer.rows.length === 0) {
+    const orgCheck = await query(
+      `SELECT 1 FROM community_memberships
+       WHERE user_id = $1 AND community_id = $2 AND role = 'organizer'`,
+      [req.user.id, d.community_id]
+    );
+    const isOrganizer = orgCheck.rows.length > 0;
+    const isAdmin = req.user.is_admin;
+
+    if (!isParty && !isOrganizer && !isAdmin) {
       return res.status(403).json({ error: 'Not authorized to view this dispute' });
     }
 
@@ -157,8 +383,9 @@ router.get('/:id', authenticate, async (req, res) => {
       id: d.dispute_id,
       transactionId: d.transaction_id,
       status: d.dispute_status,
-      reason: d.reason,
-      evidenceUrls: d.evidence_urls || [],
+      type: d.type || 'damagesClaim',
+      description: d.description || d.reason,
+      photoUrls: d.photo_urls || d.evidence_urls || [],
       listing: {
         id: d.listing_id,
         title: d.listing_title,
@@ -171,28 +398,40 @@ router.get('/:id', authenticate, async (req, res) => {
         rentalFee: parseFloat(d.rental_fee),
         depositAmount: parseFloat(d.deposit_amount),
       },
-      borrower: {
-        id: d.borrower_id,
-        firstName: d.borrower_first_name,
-        lastName: d.borrower_last_name,
-        profilePhotoUrl: d.borrower_photo,
-      },
-      lender: {
-        id: d.lender_id,
-        firstName: d.lender_first_name,
-        lastName: d.lender_last_name,
-        profilePhotoUrl: d.lender_photo,
-      },
+      claimant: d.claimant_id ? {
+        id: d.claimant_id,
+        firstName: d.claimant_first_name,
+        lastName: d.claimant_last_name,
+        profilePhotoUrl: d.claimant_photo,
+      } : null,
+      respondent: d.respondent_id ? {
+        id: d.respondent_id,
+        firstName: d.respondent_first_name,
+        lastName: d.respondent_last_name,
+        profilePhotoUrl: d.respondent_photo,
+      } : null,
+      response: d.responded_at ? {
+        description: d.response_description,
+        photoUrls: d.response_photo_urls || [],
+        respondedAt: d.responded_at,
+      } : null,
+      requestedAmount: d.requested_amount ? parseFloat(d.requested_amount) : null,
+      resolvedAmount: d.resolved_amount ? parseFloat(d.resolved_amount) : null,
+      holdExpired: d.hold_expired || false,
       resolution: d.resolved_at ? {
         status: d.dispute_status,
         notes: d.resolution_notes,
-        depositToLender: parseFloat(d.deposit_to_lender),
-        depositToBorrower: parseFloat(d.deposit_to_borrower),
-        organizerFee: parseFloat(d.organizer_fee),
+        resolvedAmount: d.resolved_amount ? parseFloat(d.resolved_amount) : null,
+        depositToLender: d.deposit_to_lender ? parseFloat(d.deposit_to_lender) : null,
+        depositToBorrower: d.deposit_to_borrower ? parseFloat(d.deposit_to_borrower) : null,
+        organizerFee: d.organizer_fee ? parseFloat(d.organizer_fee) : null,
         resolvedBy: d.resolver_first_name ? `${d.resolver_first_name} ${d.resolver_last_name}` : null,
         resolvedAt: d.resolved_at,
       } : null,
-      isOrganizer: isOrganizer.rows.length > 0,
+      isClaimant,
+      isRespondent,
+      isOrganizer,
+      isAdmin,
       createdAt: d.dispute_created_at,
     });
   } catch (err) {
@@ -203,11 +442,11 @@ router.get('/:id', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/disputes/:id/resolve
-// Organizer resolves dispute
+// Organizer or admin resolves dispute
 // ============================================
 router.post('/:id/resolve', authenticate,
-  body('outcome').isIn(['lender', 'borrower', 'split']),
-  body('lenderPercent').optional().isFloat({ min: 0, max: 100 }),
+  body('outcome').isIn(['claimant', 'respondent', 'dismissed']),
+  body('resolvedAmount').optional().isFloat({ min: 0 }),
   body('notes').isLength({ min: 10, max: 1000 }),
   async (req, res) => {
     const errors = validationResult(req);
@@ -215,16 +454,18 @@ router.post('/:id/resolve', authenticate,
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { outcome, lenderPercent = 50, notes } = req.body;
+    const { outcome, resolvedAmount, notes } = req.body;
 
     try {
-      // Get dispute and verify organizer access
+      // Get dispute with transaction and listing info
       const dispute = await query(
-        `SELECT d.*, t.deposit_amount, t.lender_id, t.borrower_id, l.community_id
+        `SELECT d.*, t.deposit_amount, t.lender_id, t.borrower_id,
+                t.stripe_payment_intent_id, t.payment_status,
+                l.community_id
          FROM disputes d
          JOIN borrow_transactions t ON d.transaction_id = t.id
          JOIN listings l ON t.listing_id = l.id
-         WHERE d.id = $1 AND d.status = 'open'`,
+         WHERE d.id = $1 AND d.status IN ('awaitingResponse', 'underReview')`,
         [req.params.id]
       );
 
@@ -234,58 +475,88 @@ router.post('/:id/resolve', authenticate,
 
       const d = dispute.rows[0];
 
-      // Verify organizer
-      const orgCheck = await query(
-        `SELECT 1 FROM community_memberships
-         WHERE user_id = $1 AND community_id = $2 AND role = 'organizer'`,
-        [req.user.id, d.community_id]
-      );
+      // Verify resolver is organizer of community OR admin
+      if (!req.user.is_admin) {
+        const orgCheck = await query(
+          `SELECT 1 FROM community_memberships
+           WHERE user_id = $1 AND community_id = $2 AND role = 'organizer'`,
+          [req.user.id, d.community_id]
+        );
 
-      if (orgCheck.rows.length === 0) {
-        return res.status(403).json({ error: 'Only community organizers can resolve disputes' });
+        if (orgCheck.rows.length === 0) {
+          return res.status(403).json({ error: 'Only community organizers or admins can resolve disputes' });
+        }
       }
 
       const depositAmount = parseFloat(d.deposit_amount);
-      let depositToLender = 0;
-      let depositToBorrower = 0;
+      let finalResolvedAmount = 0;
       let status = '';
+      let holdExpired = false;
 
-      switch (outcome) {
-        case 'lender':
-          depositToLender = depositAmount;
-          status = 'resolved_lender';
-          break;
-        case 'borrower':
-          depositToBorrower = depositAmount;
-          status = 'resolved_borrower';
-          break;
-        case 'split':
-          depositToLender = depositAmount * (lenderPercent / 100);
-          depositToBorrower = depositAmount - depositToLender;
-          status = 'resolved_split';
-          break;
+      if (outcome === 'claimant') {
+        // Cap at deposit and requested amount
+        const maxAmount = Math.min(
+          resolvedAmount || depositAmount,
+          d.requested_amount ? parseFloat(d.requested_amount) : depositAmount,
+          depositAmount
+        );
+        finalResolvedAmount = maxAmount;
+        status = 'resolvedInFavorOfClaimant';
+
+        // Attempt to capture from the authorization hold
+        if (d.stripe_payment_intent_id && d.payment_status === 'authorized') {
+          try {
+            const amountCents = Math.round(finalResolvedAmount * 100);
+            await capturePaymentIntent(d.stripe_payment_intent_id, amountCents);
+          } catch (stripeErr) {
+            // Auth hold likely expired
+            holdExpired = true;
+            status = 'expired';
+            console.error('Stripe capture failed (hold likely expired):', stripeErr.message);
+          }
+        }
+      } else {
+        // respondent or dismissed — release the hold
+        status = outcome === 'respondent' ? 'resolvedInFavorOfRespondent' : 'dismissed';
+        finalResolvedAmount = 0;
+
+        if (d.stripe_payment_intent_id && d.payment_status === 'authorized') {
+          try {
+            const pi = await getPaymentIntent(d.stripe_payment_intent_id);
+            if (pi.status === 'requires_capture') {
+              await cancelPaymentIntent(d.stripe_payment_intent_id);
+            }
+          } catch (stripeErr) {
+            // Hold may have already expired, which is fine for release
+            console.error('Stripe release error (may be already expired):', stripeErr.message);
+          }
+        }
       }
 
       const organizerFee = depositAmount * ORGANIZER_FEE_PERCENT;
 
       await withTransaction(async (client) => {
-        // Update dispute
         await client.query(
           `UPDATE disputes SET
             status = $1, resolved_by_id = $2, resolution_notes = $3,
-            deposit_to_lender = $4, deposit_to_borrower = $5, organizer_fee = $6,
+            resolved_amount = $4, hold_expired = $5,
+            deposit_to_lender = $6, deposit_to_borrower = $7, organizer_fee = $8,
             resolved_at = NOW()
-           WHERE id = $7`,
-          [status, req.user.id, notes, depositToLender, depositToBorrower, organizerFee, req.params.id]
+           WHERE id = $9`,
+          [
+            status, req.user.id, notes, finalResolvedAmount, holdExpired,
+            outcome === 'claimant' ? finalResolvedAmount : 0,
+            outcome === 'respondent' ? depositAmount : 0,
+            organizerFee,
+            req.params.id,
+          ]
         );
 
-        // Update transaction
         await client.query(
           `UPDATE borrow_transactions SET status = 'completed' WHERE id = $1`,
           [d.transaction_id]
         );
 
-        // Mark listing available
         await client.query(
           `UPDATE listings SET is_available = true
            FROM borrow_transactions t
@@ -295,24 +566,29 @@ router.post('/:id/resolve', authenticate,
       });
 
       // Notify both parties
-      await sendNotification(d.lender_id, 'dispute_resolved', {
+      const claimantId = d.claimant_user_id;
+      const respondentId = d.respondent_user_id;
+
+      await sendNotification(claimantId, 'dispute_resolved', {
         disputeId: req.params.id,
+        transactionId: d.transaction_id,
         outcome,
-        amountReceived: depositToLender,
+        resolvedAmount: finalResolvedAmount,
       });
 
-      await sendNotification(d.borrower_id, 'dispute_resolved', {
+      await sendNotification(respondentId, 'dispute_resolved', {
         disputeId: req.params.id,
+        transactionId: d.transaction_id,
         outcome,
-        amountRefunded: depositToBorrower,
+        resolvedAmount: finalResolvedAmount,
       });
 
       res.json({
         success: true,
         resolution: {
           status,
-          depositToLender,
-          depositToBorrower,
+          resolvedAmount: finalResolvedAmount,
+          holdExpired,
           organizerFee,
         },
       });
@@ -325,7 +601,7 @@ router.post('/:id/resolve', authenticate,
 
 // ============================================
 // POST /api/disputes/:id/evidence
-// Add evidence to dispute
+// Add evidence to dispute (legacy endpoint, kept for backward compat)
 // ============================================
 router.post('/:id/evidence', authenticate,
   body('urls').isArray({ min: 1, max: 10 }),
@@ -333,12 +609,11 @@ router.post('/:id/evidence', authenticate,
     const { urls } = req.body;
 
     try {
-      // Verify user is party to dispute
       const dispute = await query(
         `SELECT d.*, t.borrower_id, t.lender_id
          FROM disputes d
          JOIN borrow_transactions t ON d.transaction_id = t.id
-         WHERE d.id = $1 AND d.status = 'open'`,
+         WHERE d.id = $1 AND d.status IN ('awaitingResponse', 'underReview')`,
         [req.params.id]
       );
 
@@ -347,21 +622,25 @@ router.post('/:id/evidence', authenticate,
       }
 
       const d = dispute.rows[0];
+      const isClaimant = d.claimant_user_id === req.user.id;
+      const isRespondent = d.respondent_user_id === req.user.id;
 
-      if (d.borrower_id !== req.user.id && d.lender_id !== req.user.id) {
+      if (!isClaimant && !isRespondent) {
         return res.status(403).json({ error: 'Not authorized' });
       }
 
-      // Append to evidence_urls
-      const currentUrls = d.evidence_urls || [];
-      const newUrls = [...currentUrls, ...urls].slice(0, 20); // Max 20
-
-      await query(
-        'UPDATE disputes SET evidence_urls = $1 WHERE id = $2',
-        [newUrls, req.params.id]
-      );
-
-      res.json({ success: true, evidenceCount: newUrls.length });
+      // Append to the appropriate photo array
+      if (isClaimant) {
+        const currentUrls = d.photo_urls || [];
+        const newUrls = [...currentUrls, ...urls].slice(0, 4);
+        await query('UPDATE disputes SET photo_urls = $1 WHERE id = $2', [newUrls, req.params.id]);
+        res.json({ success: true, evidenceCount: newUrls.length });
+      } else {
+        const currentUrls = d.response_photo_urls || [];
+        const newUrls = [...currentUrls, ...urls].slice(0, 4);
+        await query('UPDATE disputes SET response_photo_urls = $1 WHERE id = $2', [newUrls, req.params.id]);
+        res.json({ success: true, evidenceCount: newUrls.length });
+      }
     } catch (err) {
       console.error('Add evidence error:', err);
       res.status(500).json({ error: 'Failed to add evidence' });

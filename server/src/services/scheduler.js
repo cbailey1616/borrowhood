@@ -74,14 +74,102 @@ async function sendReturnReminders() {
 }
 
 /**
- * Start the scheduler — runs return reminder checks every hour.
+ * Auto-advance disputes from awaitingResponse to underReview
+ * after 48 hours with no response from the respondent.
+ */
+async function autoAdvanceDisputes() {
+  try {
+    const result = await query(
+      `UPDATE disputes
+       SET status = 'underReview'
+       WHERE status = 'awaitingResponse'
+         AND created_at < NOW() - INTERVAL '48 hours'
+       RETURNING id, claimant_user_id, respondent_user_id, transaction_id`
+    );
+
+    for (const d of result.rows) {
+      await sendNotification(d.claimant_user_id, 'dispute_under_review', {
+        disputeId: d.id,
+        transactionId: d.transaction_id,
+      });
+
+      // Notify community organizers
+      const listing = await query(
+        `SELECT l.community_id FROM borrow_transactions t
+         JOIN listings l ON t.listing_id = l.id
+         WHERE t.id = $1`,
+        [d.transaction_id]
+      );
+      if (listing.rows[0]?.community_id) {
+        const organizers = await query(
+          `SELECT user_id FROM community_memberships
+           WHERE community_id = $1 AND role = 'organizer'`,
+          [listing.rows[0].community_id]
+        );
+        for (const org of organizers.rows) {
+          await sendNotification(org.user_id, 'dispute_ready_for_review', {
+            disputeId: d.id,
+            transactionId: d.transaction_id,
+          });
+        }
+      }
+
+      logger.info(`Auto-advanced dispute ${d.id} to underReview`);
+    }
+  } catch (err) {
+    logger.error('Auto-advance disputes error:', err);
+  }
+}
+
+/**
+ * Auto-release security deposit holds for returned rentals
+ * where 72 hours have passed with no dispute filed.
+ */
+async function autoReleaseDeposits() {
+  try {
+    const { cancelPaymentIntent } = await import('../services/stripe.js');
+
+    const result = await query(
+      `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount
+       FROM borrow_transactions bt
+       WHERE bt.status IN ('returned', 'completed')
+         AND bt.actual_return_at < NOW() - INTERVAL '72 hours'
+         AND bt.payment_status = 'authorized'
+         AND NOT EXISTS (SELECT 1 FROM disputes WHERE transaction_id = bt.id)`
+    );
+
+    for (const t of result.rows) {
+      try {
+        if (t.stripe_payment_intent_id) {
+          await cancelPaymentIntent(t.stripe_payment_intent_id);
+        }
+        await query(
+          `UPDATE borrow_transactions SET payment_status = 'deposit_released' WHERE id = $1`,
+          [t.id]
+        );
+        logger.info(`Auto-released deposit for transaction ${t.id}`);
+      } catch (err) {
+        logger.error(`Auto-release deposit failed for txn ${t.id}:`, err);
+      }
+    }
+  } catch (err) {
+    logger.error('Auto-release deposits error:', err);
+  }
+}
+
+/**
+ * Start the scheduler — runs checks every hour.
  */
 export function startScheduler() {
   // Run immediately on startup
   sendReturnReminders();
+  autoAdvanceDisputes();
+  autoReleaseDeposits();
 
   // Then run every hour
   setInterval(sendReturnReminders, 60 * 60 * 1000);
+  setInterval(autoAdvanceDisputes, 60 * 60 * 1000);
+  setInterval(autoReleaseDeposits, 60 * 60 * 1000);
 
-  logger.info('Scheduler started: return reminders every hour');
+  logger.info('Scheduler started: return reminders, dispute auto-advance, deposit auto-release every hour');
 }

@@ -122,15 +122,66 @@ export async function createTestNotification(userId, type = 'new_message', data 
 
 /**
  * Create a test dispute for a transaction.
+ *
+ * Supports two call signatures for backward compatibility:
+ *   Legacy:    createTestDispute(transactionId, openedById, reason)
+ *   Enhanced:  createTestDispute(transactionId, claimantId, respondentId, overrides)
+ *
+ * The heuristic: if the third arg is a string it's the legacy `reason` form;
+ * if it's a UUID (or falsy) it's the new `respondentId` form.
  */
-export async function createTestDispute(transactionId, openedById, reason = 'Item damaged') {
+export async function createTestDispute(transactionId, claimantOrOpenedById, thirdArg, fourthArg) {
+  // --- Legacy path: (transactionId, openedById, reason?) ---
+  if (typeof thirdArg === 'string' && !isUUID(thirdArg)) {
+    const openedById = claimantOrOpenedById;
+    const reason = thirdArg || 'Item damaged';
+    const result = await query(
+      `INSERT INTO disputes (transaction_id, opened_by_id, reason, status)
+       VALUES ($1, $2, $3, 'open')
+       RETURNING id`,
+      [transactionId, openedById, reason]
+    );
+    return result.rows[0].id;
+  }
+
+  if (thirdArg === undefined) {
+    // Called as (transactionId, openedById) — legacy with default reason
+    const openedById = claimantOrOpenedById;
+    const result = await query(
+      `INSERT INTO disputes (transaction_id, opened_by_id, reason, status)
+       VALUES ($1, $2, $3, 'open')
+       RETURNING id`,
+      [transactionId, openedById, 'Item damaged']
+    );
+    return result.rows[0].id;
+  }
+
+  // --- Enhanced path: (transactionId, claimantId, respondentId, overrides?) ---
+  const claimantId = claimantOrOpenedById;
+  const respondentId = thirdArg;
+  const overrides = fourthArg || {};
+
+  const defaults = {
+    type: 'damagesClaim',
+    description: 'Test dispute - item damaged',
+    status: 'awaitingResponse',
+  };
+  const opts = { ...defaults, ...overrides };
+
   const result = await query(
-    `INSERT INTO disputes (transaction_id, opened_by_id, reason, status)
-     VALUES ($1, $2, $3, 'open')
-     RETURNING id`,
-    [transactionId, openedById, reason]
+    `INSERT INTO disputes (
+      transaction_id, claimant_user_id, respondent_user_id, opened_by_id,
+      type, description, reason, status
+    ) VALUES ($1, $2, $3, $2, $4, $5, $5, $6)
+    RETURNING id`,
+    [transactionId, claimantId, respondentId, opts.type, opts.description, opts.status]
   );
   return result.rows[0].id;
+}
+
+/** Simple check whether a value looks like a UUID (v4). */
+function isUUID(val) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 }
 
 /**

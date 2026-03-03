@@ -41,6 +41,8 @@ import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 import PaymentFlowScreen from '../screens/PaymentFlowScreen';
 import RentalCheckoutScreen from '../screens/RentalCheckoutScreen';
 import DamageClaimScreen from '../screens/DamageClaimScreen';
+import ReportIssueScreen from '../screens/ReportIssueScreen';
+import RespondToDisputeScreen from '../screens/RespondToDisputeScreen';
 import EarningsScreen from '../screens/EarningsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -253,6 +255,16 @@ export default function RootNavigator() {
             name="DamageClaim"
             component={DamageClaimScreen}
             options={{ ...sharedScreenOptions, title: 'Damage Claim', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="ReportIssue"
+            component={ReportIssueScreen}
+            options={{ ...sharedScreenOptions, title: 'Report an Issue', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="RespondToDispute"
+            component={RespondToDisputeScreen}
+            options={{ ...sharedScreenOptions, title: 'Respond to Dispute', presentation: 'modal' }}
           />
           <Stack.Screen
             name="Earnings"

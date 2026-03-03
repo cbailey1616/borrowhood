@@ -406,6 +406,9 @@ jest.mock('./src/services/api', () => ({
     // Disputes
     getDisputes: jest.fn().mockResolvedValue([]),
     getDispute: jest.fn(),
+    fileDispute: jest.fn().mockResolvedValue({ id: 'test-dispute-id', status: 'awaitingResponse' }),
+    respondToDispute: jest.fn().mockResolvedValue({ success: true, status: 'underReview' }),
+    resolveDispute: jest.fn().mockResolvedValue({ success: true }),
     // Discussions
     getDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
     // Referrals
@@ -498,7 +501,7 @@ jest.mock('./src/services/api', () => ({
     renewRequest: jest.fn(),
     // Dispute extras
     submitDisputeEvidence: jest.fn(),
-    resolveDispute: jest.fn(),
+    addDisputeEvidence: jest.fn(),
   },
 }));
 

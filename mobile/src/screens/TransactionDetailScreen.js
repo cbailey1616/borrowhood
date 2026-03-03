@@ -553,6 +553,32 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
+      {/* Report Issue button — available on returned/completed rentals within 72 hours */}
+      {['returned', 'completed'].includes(transaction?.status) &&
+        !transaction?.hasDispute &&
+        transaction?.actualReturnAt &&
+        (Date.now() - new Date(transaction.actualReturnAt).getTime()) < 72 * 60 * 60 * 1000 && (
+        <View style={styles.footer}>
+          <HapticPressable
+            testID="Transaction.button.reportIssue"
+            accessibilityLabel="Report an issue"
+            accessibilityRole="button"
+            haptic="medium"
+            style={styles.reportIssueButton}
+            onPress={() => navigation.navigate('ReportIssue', {
+              transactionId: id,
+              depositAmount: transaction?.depositAmount,
+              listingTitle: transaction?.listing?.title,
+              borrowerId: transaction?.borrower?.id,
+              lenderId: transaction?.lender?.id,
+            })}
+          >
+            <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
+            <Text style={styles.reportIssueText}>Report an Issue</Text>
+          </HapticPressable>
+        </View>
+      )}
+
       <ActionSheet
         isVisible={returnSheetVisible}
         onClose={() => setReturnSheetVisible(false)}
@@ -800,6 +826,22 @@ const styles = StyleSheet.create({
   approveButtonText: {
     ...TYPOGRAPHY.button,
     color: '#fff',
+  },
+  reportIssueButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.danger + '40',
+    backgroundColor: COLORS.danger + '10',
+  },
+  reportIssueText: {
+    ...TYPOGRAPHY.button,
+    color: COLORS.danger,
   },
   imagePlaceholder: {
     justifyContent: 'center',

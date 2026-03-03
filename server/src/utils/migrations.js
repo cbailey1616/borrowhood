@@ -271,6 +271,82 @@ export async function runMigrations() {
       logger.info('Migration complete: users.stripe_verification_payment_intent_id added');
     }
 
+    // Migration: Enhance disputes table with claim-response workflow
+    const hasClaimantUserId = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'disputes' AND column_name = 'claimant_user_id'
+    `);
+    if (hasClaimantUserId.rows.length === 0) {
+      logger.info('Running migration: Enhance disputes table');
+
+      // New role columns
+      await query('ALTER TABLE disputes ADD COLUMN claimant_user_id UUID REFERENCES users(id)');
+      await query('ALTER TABLE disputes ADD COLUMN respondent_user_id UUID REFERENCES users(id)');
+
+      // Dispute type
+      await query("ALTER TABLE disputes ADD COLUMN type VARCHAR(30) DEFAULT 'damagesClaim'");
+
+      // Description + photos (replaces reason/evidence_urls)
+      await query('ALTER TABLE disputes ADD COLUMN description TEXT');
+      await query('ALTER TABLE disputes ADD COLUMN photo_urls TEXT[]');
+
+      // Respondent fields
+      await query('ALTER TABLE disputes ADD COLUMN response_description TEXT');
+      await query('ALTER TABLE disputes ADD COLUMN response_photo_urls TEXT[]');
+      await query('ALTER TABLE disputes ADD COLUMN responded_at TIMESTAMPTZ');
+
+      // Financial fields
+      await query('ALTER TABLE disputes ADD COLUMN requested_amount DECIMAL(10,2)');
+      await query('ALTER TABLE disputes ADD COLUMN resolved_amount DECIMAL(10,2)');
+
+      // Expired hold flag
+      await query('ALTER TABLE disputes ADD COLUMN hold_expired BOOLEAN DEFAULT false');
+
+      // Backfill from existing data
+      await query('UPDATE disputes SET claimant_user_id = opened_by_id WHERE claimant_user_id IS NULL');
+      await query(`
+        UPDATE disputes d SET respondent_user_id = CASE
+          WHEN d.opened_by_id = t.borrower_id THEN t.lender_id
+          ELSE t.borrower_id
+        END
+        FROM borrow_transactions t
+        WHERE d.transaction_id = t.id AND d.respondent_user_id IS NULL
+      `);
+      await query('UPDATE disputes SET description = reason WHERE description IS NULL AND reason IS NOT NULL');
+      await query('UPDATE disputes SET photo_urls = evidence_urls WHERE photo_urls IS NULL AND evidence_urls IS NOT NULL');
+
+      // Rename old status column and create new one with enhanced values
+      await query('ALTER TABLE disputes RENAME COLUMN status TO old_status');
+      await query("ALTER TABLE disputes ADD COLUMN status VARCHAR(40) DEFAULT 'pending'");
+      await query(`
+        UPDATE disputes SET status = CASE
+          WHEN old_status = 'open' THEN 'pending'
+          WHEN old_status = 'resolved_lender' THEN 'resolvedInFavorOfClaimant'
+          WHEN old_status = 'resolved_borrower' THEN 'resolvedInFavorOfRespondent'
+          WHEN old_status = 'resolved_split' THEN 'resolvedInFavorOfClaimant'
+          ELSE 'pending'
+        END
+      `);
+
+      // Indexes for scheduler queries
+      await query("CREATE INDEX IF NOT EXISTS idx_disputes_status_created ON disputes(status, created_at) WHERE status IN ('pending', 'awaitingResponse')");
+      await query('CREATE INDEX IF NOT EXISTS idx_disputes_claimant ON disputes(claimant_user_id)');
+      await query('CREATE INDEX IF NOT EXISTS idx_disputes_respondent ON disputes(respondent_user_id)');
+
+      logger.info('Migration complete: disputes table enhanced');
+    }
+
+    // Migration: Add is_admin column to users
+    const hasIsAdmin = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'is_admin'
+    `);
+    if (hasIsAdmin.rows.length === 0) {
+      logger.info('Running migration: Add is_admin to users');
+      await query('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT false');
+      logger.info('Migration complete: users.is_admin added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

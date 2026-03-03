@@ -16,7 +16,7 @@ export async function authenticate(req, res, next) {
 
     // Fetch user from database
     const result = await query(
-      'SELECT id, email, first_name, last_name, status FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, status, is_admin FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -31,6 +31,7 @@ export async function authenticate(req, res, next) {
     }
 
     req.user = user;
+    req.user.is_admin = user.is_admin || false;
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -51,8 +52,15 @@ export function requireVerified(req, res, next) {
   next();
 }
 
+// TODO: Set to true to re-enable paid subscription tiers
+const ENABLE_PAID_TIERS = process.env.ENABLE_PAID_TIERS === 'true';
+export { ENABLE_PAID_TIERS };
+
 // Require active Plus subscription
+// TODO: Restore gate logic when re-enabling paid tiers (ENABLE_PAID_TIERS)
 export async function requireSubscription(req, res, next) {
+  if (!ENABLE_PAID_TIERS) return next();
+
   const result = await query(
     'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
     [req.user.id]
@@ -87,6 +95,14 @@ export async function requireOrganizer(req, res, next) {
     return res.status(403).json({ error: 'Organizer access required' });
   }
 
+  next();
+}
+
+// Require admin role
+export function requireAdmin(req, res, next) {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   next();
 }
 

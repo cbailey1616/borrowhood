@@ -272,3 +272,282 @@ describe('Dispute resolution types', () => {
     expect(res.body.resolution.depositToBorrower).toBe(30);
   });
 });
+
+// ============================================================
+// Enhanced Disputes System Tests
+// ============================================================
+
+describe('POST /api/disputes - File dispute', () => {
+  let enhListingId, enhTxId;
+
+  beforeAll(async () => {
+    // Listing for the enhanced dispute flow
+    enhListingId = await createTestListing(lender.userId, {
+      title: 'Enhanced Dispute Item',
+      isFree: false,
+      pricePerDay: 15.00,
+      depositAmount: 75.00,
+      visibility: 'neighborhood',
+    });
+    await query('UPDATE listings SET community_id = $1 WHERE id = $2', [communityId, enhListingId]);
+  });
+
+  afterAll(async () => {
+    try {
+      await query('DELETE FROM disputes WHERE transaction_id = $1', [enhTxId]);
+      await query('DELETE FROM borrow_transactions WHERE id = $1', [enhTxId]);
+      await query('DELETE FROM listing_photos WHERE listing_id = $1', [enhListingId]);
+      await query('DELETE FROM listings WHERE id = $1', [enhListingId]);
+    } catch (e) { /* */ }
+  });
+
+  it('should create dispute for returned transaction within 72 hours', async () => {
+    // Transaction that was returned recently (actual_return_at within last hour)
+    enhTxId = await createTestTransaction(borrower.userId, lender.userId, enhListingId, {
+      status: 'returned',
+      depositAmount: 75.00,
+    });
+    // Set actual_return_at to 1 hour ago so within the 72-hour filing window
+    await query(
+      `UPDATE borrow_transactions SET actual_return_at = NOW() - INTERVAL '1 hour' WHERE id = $1`,
+      [enhTxId]
+    );
+
+    const res = await request(app)
+      .post('/api/disputes')
+      .set('Authorization', `Bearer ${lender.token}`)
+      .send({
+        transactionId: enhTxId,
+        type: 'damagesClaim',
+        description: 'Item came back with a cracked screen',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.dispute).toBeDefined();
+    expect(res.body.dispute.status).toBe('awaitingResponse');
+    expect(res.body.dispute.type).toBe('damagesClaim');
+    expect(res.body.dispute.claimantUserId).toBe(lender.userId);
+    expect(res.body.dispute.respondentUserId).toBe(borrower.userId);
+  });
+
+  it('should reject filing for transaction older than 72 hours', async () => {
+    // Create a separate transaction with actual_return_at > 72 hours ago
+    const oldTxId = await createTestTransaction(borrower.userId, lender.userId, enhListingId, {
+      status: 'returned',
+      depositAmount: 75.00,
+    });
+    await query(
+      `UPDATE borrow_transactions SET actual_return_at = NOW() - INTERVAL '96 hours' WHERE id = $1`,
+      [oldTxId]
+    );
+
+    const res = await request(app)
+      .post('/api/disputes')
+      .set('Authorization', `Bearer ${lender.token}`)
+      .send({
+        transactionId: oldTxId,
+        type: 'damagesClaim',
+        description: 'Trying to file too late',
+      });
+
+    expect(res.status).toBe(400);
+
+    // Cleanup
+    await query('DELETE FROM borrow_transactions WHERE id = $1', [oldTxId]);
+  });
+
+  it('should reject filing when dispute already exists', async () => {
+    // enhTxId already has a dispute from the first test in this block
+    const res = await request(app)
+      .post('/api/disputes')
+      .set('Authorization', `Bearer ${lender.token}`)
+      .send({
+        transactionId: enhTxId,
+        type: 'damagesClaim',
+        description: 'Duplicate dispute attempt',
+      });
+
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('POST /api/disputes/:id/respond', () => {
+  let respondListingId, respondTxId, respondDisputeId;
+
+  beforeAll(async () => {
+    respondListingId = await createTestListing(lender.userId, {
+      title: 'Respond Dispute Item',
+      isFree: false,
+      pricePerDay: 10.00,
+      depositAmount: 50.00,
+      visibility: 'neighborhood',
+    });
+    await query('UPDATE listings SET community_id = $1 WHERE id = $2', [communityId, respondListingId]);
+
+    respondTxId = await createTestTransaction(borrower.userId, lender.userId, respondListingId, {
+      status: 'returned',
+      depositAmount: 50.00,
+    });
+    await query(
+      `UPDATE borrow_transactions SET actual_return_at = NOW() - INTERVAL '1 hour' WHERE id = $1`,
+      [respondTxId]
+    );
+
+    // Create enhanced dispute: lender is claimant, borrower is respondent
+    respondDisputeId = await createTestDispute(respondTxId, lender.userId, borrower.userId, {
+      type: 'damagesClaim',
+      description: 'Item returned scratched',
+      status: 'awaitingResponse',
+    });
+  });
+
+  afterAll(async () => {
+    try {
+      await query('DELETE FROM disputes WHERE id = $1', [respondDisputeId]);
+      await query('DELETE FROM borrow_transactions WHERE id = $1', [respondTxId]);
+      await query('DELETE FROM listing_photos WHERE listing_id = $1', [respondListingId]);
+      await query('DELETE FROM listings WHERE id = $1', [respondListingId]);
+    } catch (e) { /* */ }
+  });
+
+  it('should accept response from respondent', async () => {
+    const res = await request(app)
+      .post(`/api/disputes/${respondDisputeId}/respond`)
+      .set('Authorization', `Bearer ${borrower.token}`)
+      .send({
+        description: 'The scratches were there before I borrowed it',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dispute.status).toBe('underReview');
+
+    // Verify in DB
+    const dbRow = await query('SELECT status FROM disputes WHERE id = $1', [respondDisputeId]);
+    expect(dbRow.rows[0].status).toBe('underReview');
+  });
+
+  it('should reject response from non-respondent', async () => {
+    // lender is the claimant, not the respondent — should be forbidden
+    const res = await request(app)
+      .post(`/api/disputes/${respondDisputeId}/respond`)
+      .set('Authorization', `Bearer ${lender.token}`)
+      .send({
+        description: 'I am the claimant, not the respondent',
+      });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /api/disputes/:id/resolve - enhanced', () => {
+  let resolveListing, resolveTx1, resolveTx2, resolveTx3;
+  let resolveDispute1, resolveDispute2, resolveDispute3;
+
+  beforeAll(async () => {
+    resolveListing = await createTestListing(lender.userId, {
+      title: 'Resolve Dispute Item',
+      isFree: false,
+      pricePerDay: 10.00,
+      depositAmount: 80.00,
+      visibility: 'neighborhood',
+    });
+    await query('UPDATE listings SET community_id = $1 WHERE id = $2', [communityId, resolveListing]);
+
+    // --- Dispute 1: resolve in favor of claimant ---
+    resolveTx1 = await createTestTransaction(borrower.userId, lender.userId, resolveListing, {
+      status: 'returned',
+      depositAmount: 80.00,
+    });
+    resolveDispute1 = await createTestDispute(resolveTx1, lender.userId, borrower.userId, {
+      type: 'damagesClaim',
+      description: 'Resolve claimant test',
+      status: 'underReview',
+    });
+
+    // --- Dispute 2: resolve in favor of respondent ---
+    resolveTx2 = await createTestTransaction(borrower.userId, lender.userId, resolveListing, {
+      status: 'returned',
+      depositAmount: 80.00,
+    });
+    resolveDispute2 = await createTestDispute(resolveTx2, lender.userId, borrower.userId, {
+      type: 'damagesClaim',
+      description: 'Resolve respondent test',
+      status: 'underReview',
+    });
+
+    // --- Dispute 3: dismiss ---
+    resolveTx3 = await createTestTransaction(borrower.userId, lender.userId, resolveListing, {
+      status: 'returned',
+      depositAmount: 80.00,
+    });
+    resolveDispute3 = await createTestDispute(resolveTx3, lender.userId, borrower.userId, {
+      type: 'damagesClaim',
+      description: 'Dismiss test',
+      status: 'underReview',
+    });
+  });
+
+  afterAll(async () => {
+    try {
+      for (const dId of [resolveDispute1, resolveDispute2, resolveDispute3]) {
+        await query('DELETE FROM disputes WHERE id = $1', [dId]);
+      }
+      for (const txId of [resolveTx1, resolveTx2, resolveTx3]) {
+        await query('DELETE FROM borrow_transactions WHERE id = $1', [txId]);
+      }
+      await query('DELETE FROM listing_photos WHERE listing_id = $1', [resolveListing]);
+      await query('DELETE FROM listings WHERE id = $1', [resolveListing]);
+    } catch (e) { /* */ }
+  });
+
+  it('should resolve in favor of claimant', async () => {
+    const res = await request(app)
+      .post(`/api/disputes/${resolveDispute1}/resolve`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({
+        outcome: 'claimant',
+        notes: 'Evidence supports the claimant.',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.resolution.status).toBe('resolvedInFavorOfClaimant');
+
+    const dbRow = await query('SELECT status, resolved_at FROM disputes WHERE id = $1', [resolveDispute1]);
+    expect(dbRow.rows[0].status).toBe('resolvedInFavorOfClaimant');
+    expect(dbRow.rows[0].resolved_at).toBeTruthy();
+  });
+
+  it('should resolve in favor of respondent', async () => {
+    const res = await request(app)
+      .post(`/api/disputes/${resolveDispute2}/resolve`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({
+        outcome: 'respondent',
+        notes: 'Claimant did not provide sufficient evidence.',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.resolution.status).toBe('resolvedInFavorOfRespondent');
+
+    const dbRow = await query('SELECT status, resolved_at FROM disputes WHERE id = $1', [resolveDispute2]);
+    expect(dbRow.rows[0].status).toBe('resolvedInFavorOfRespondent');
+    expect(dbRow.rows[0].resolved_at).toBeTruthy();
+  });
+
+  it('should dismiss dispute', async () => {
+    const res = await request(app)
+      .post(`/api/disputes/${resolveDispute3}/resolve`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({
+        outcome: 'dismissed',
+        notes: 'This dispute has no merit.',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.resolution.status).toBe('dismissed');
+
+    const dbRow = await query('SELECT status, resolved_at FROM disputes WHERE id = $1', [resolveDispute3]);
+    expect(dbRow.rows[0].status).toBe('dismissed');
+    expect(dbRow.rows[0].resolved_at).toBeTruthy();
+  });
+});

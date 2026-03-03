@@ -638,7 +638,7 @@ router.get('/me', authenticate, async (req, res) => {
               total_transactions, stripe_identity_verified_at,
               subscription_tier, stripe_connect_account_id,
               onboarding_step, onboarding_completed, is_founder,
-              is_verified, verification_grace_until
+              is_verified, verification_grace_until, is_admin
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -668,6 +668,7 @@ router.get('/me', authenticate, async (req, res) => {
       onboardingStep: user.onboarding_step,
       onboardingCompleted: user.onboarding_completed || false,
       isFounder: user.is_founder || false,
+      isAdmin: user.is_admin || false,
     });
   } catch (err) {
     console.error('Get user error:', err);

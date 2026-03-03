@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../utils/db.js';
-import { authenticate, requireVerified } from '../middleware/auth.js';
+import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
   createPaymentIntent,
@@ -52,8 +52,8 @@ router.post('/', authenticate,
 
       const isPaidRental = parseFloat(item.price_per_day) > 0;
 
-      // Paid rentals require Plus subscription for both renter and owner
-      if (isPaidRental || item.visibility === 'town') {
+      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
+      if (ENABLE_PAID_TIERS && (isPaidRental || item.visibility === 'town')) {
         const borrowerInfo = await query(
           'SELECT is_verified, city, subscription_tier, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
@@ -291,6 +291,7 @@ router.get('/:id', authenticate, async (req, res) => {
               l.title as listing_title, l.description as listing_description,
               l.condition as listing_condition,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
+              (SELECT EXISTS(SELECT 1 FROM disputes WHERE transaction_id = t.id)) as has_dispute,
               b.first_name as borrower_first_name, b.last_name as borrower_last_name,
               b.profile_photo_url as borrower_photo, b.rating as borrower_rating, b.rating_count as borrower_rating_count,
               lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
@@ -359,6 +360,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
+      hasDispute: t.has_dispute || false,
       createdAt: t.created_at,
     });
   } catch (err) {

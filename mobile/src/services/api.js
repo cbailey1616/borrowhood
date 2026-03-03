@@ -250,8 +250,14 @@ const getDisputes = (params) =>
 const getDispute = (id) =>
   get(`/disputes/${id}`);
 
-const resolveDispute = (id, outcome, lenderPercent, notes) =>
-  post(`/disputes/${id}/resolve`, { outcome, lenderPercent, notes });
+const fileDispute = (data) =>
+  post('/disputes', data);
+
+const respondToDispute = (id, data) =>
+  post(`/disputes/${id}/respond`, data);
+
+const resolveDispute = (id, { outcome, resolvedAmount, notes }) =>
+  post(`/disputes/${id}/resolve`, { outcome, resolvedAmount, notes });
 
 const addDisputeEvidence = (id, urls) =>
   post(`/disputes/${id}/evidence`, { urls });
@@ -722,6 +728,8 @@ export default {
   // Disputes
   getDisputes,
   getDispute,
+  fileDispute,
+  respondToDispute,
   resolveDispute,
   addDisputeEvidence,
   // Notifications
