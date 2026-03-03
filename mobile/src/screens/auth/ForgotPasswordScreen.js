@@ -114,7 +114,7 @@ export default function ForgotPasswordScreen({ navigation }) {
             : 'Enter the code from your email and your new password.'}
         </Text>
 
-        <BlurCard style={styles.formCard}>
+        <View style={styles.formCard}>
           <View style={styles.form}>
             {step === 'email' ? (
               <>
@@ -207,7 +207,7 @@ export default function ForgotPasswordScreen({ navigation }) {
               </>
             )}
           </View>
-        </BlurCard>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -245,6 +245,10 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: SPACING.xl,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   form: {
     gap: SPACING.xl - SPACING.xs,

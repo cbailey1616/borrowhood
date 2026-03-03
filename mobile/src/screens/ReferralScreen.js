@@ -305,6 +305,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   codeText: {
     ...TYPOGRAPHY.title3,
@@ -383,7 +385,7 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 12,
   },
   friendInfo: {
     flex: 1,

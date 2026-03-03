@@ -295,9 +295,9 @@ export function ErrorProvider({ children, navigationRef }) {
       >
         <View style={styles.overlay}>
           {Platform.OS === 'ios' ? (
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.7)' }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(44,24,16,0.7)' }]} />
           )}
 
           <Animated.View
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.danger + '40',
-    shadowColor: '#000',
+    shadowColor: '#2C1810',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

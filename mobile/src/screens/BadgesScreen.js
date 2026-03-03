@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   leaderAvatar: {
     width: 40,
     height: 40,
-    borderRadius: RADIUS.full,
+    borderRadius: 12,
     backgroundColor: COLORS.gray[700],
     marginRight: SPACING.md,
   },

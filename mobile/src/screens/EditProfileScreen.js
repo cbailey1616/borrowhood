@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: RADIUS.full,
+    borderRadius: 24,
     backgroundColor: COLORS.gray[700],
   },
   changePhotoButton: {

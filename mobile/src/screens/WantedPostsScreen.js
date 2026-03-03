@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: RADIUS.full,
+    borderRadius: 12,
     backgroundColor: COLORS.gray[700],
   },
   requesterInfo: {

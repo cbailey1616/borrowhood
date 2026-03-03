@@ -102,7 +102,7 @@ export default function RegisterScreen({ navigation }) {
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Join your neighborhood sharing community</Text>
 
-          <BlurCard style={styles.formCard}>
+          <View style={styles.formCard}>
             <View style={styles.form}>
               <View style={styles.row}>
                 <View style={[styles.inputContainer, { flex: 1 }]}>
@@ -233,7 +233,7 @@ export default function RegisterScreen({ navigation }) {
                 By creating an account, you agree to our Terms of Service and Privacy Policy
               </Text>
             </View>
-          </BlurCard>
+          </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
@@ -281,6 +281,10 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: SPACING.xl,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   form: {
     gap: SPACING.xl - SPACING.xs,

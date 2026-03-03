@@ -153,7 +153,7 @@ export default function WelcomeScreen({ navigation }) {
               </HapticPressable>
             )}
 
-            <BlurCard style={styles.formCard}>
+            <View style={styles.formCard}>
               <View style={styles.form}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Email</Text>
@@ -212,7 +212,7 @@ export default function WelcomeScreen({ navigation }) {
                   )}
                 </HapticPressable>
               </View>
-            </BlurCard>
+            </View>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
@@ -288,6 +288,10 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: SPACING.xl,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   form: {
     gap: SPACING.xl - SPACING.xs,

@@ -22,7 +22,7 @@ import OnboardingProgress from '../../components/OnboardingProgress';
 import ActionSheet from '../../components/ActionSheet';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 export default function OnboardingFriendsScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -174,7 +174,12 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
     try {
       await api.updateOnboardingStep(3);
     } catch (e) {}
-    navigation.navigate('OnboardingPlan');
+    if (!ENABLE_PAID_TIERS) {
+      try { await api.updateOnboardingStep(4); } catch (e) {}
+      navigation.navigate('OnboardingComplete');
+    } else {
+      navigation.navigate('OnboardingPlan');
+    }
   };
 
   const isFriendOrAdded = (userId) =>
@@ -459,7 +464,7 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: COLORS.gray[700],
   },
   friendInfo: {
@@ -488,6 +493,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   requestedText: {
     ...TYPOGRAPHY.caption1,
@@ -502,7 +509,7 @@ const styles = StyleSheet.create({
   contactAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: COLORS.gray[700],
     alignItems: 'center',
     justifyContent: 'center',

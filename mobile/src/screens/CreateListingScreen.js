@@ -845,6 +845,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   categoryPillActive: {
     backgroundColor: COLORS.primary,
@@ -868,6 +870,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   optionActive: {
     backgroundColor: COLORS.primary,
@@ -993,7 +997,7 @@ const styles = StyleSheet.create({
   // Overlay styles for community join prompt
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(44, 24, 16, 0.85)',
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,

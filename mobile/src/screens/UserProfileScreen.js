@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: RADIUS.full,
+    borderRadius: 24,
     backgroundColor: COLORS.gray[700],
     marginBottom: SPACING.lg,
   },
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   raterAvatar: {
     width: 36,
     height: 36,
-    borderRadius: RADIUS.full,
+    borderRadius: 12,
     backgroundColor: COLORS.gray[700],
   },
   raterInfo: {

@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: COLORS.gray[700],
   },
   friendInfo: {
@@ -708,6 +708,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   requestedText: {
     ...TYPOGRAPHY.caption1,

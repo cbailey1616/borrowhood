@@ -537,7 +537,7 @@ export default function ChatScreen({ route, navigation }) {
 
       {/* Input Bar with Blur Background */}
       {Platform.OS === 'ios' ? (
-        <BlurView intensity={80} tint="dark" style={styles.inputBlur}>
+        <BlurView intensity={80} tint="light" style={styles.inputBlur}>
           <View style={styles.inputInner}>
             <HapticPressable onPress={handlePickImage} haptic="light" disabled={isUploading}>
               <Ionicons
@@ -686,6 +686,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   dateText: {
     ...TYPOGRAPHY.caption1,
@@ -706,7 +708,7 @@ const styles = StyleSheet.create({
   messageAvatar: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 10,
     marginRight: SPACING.sm,
     backgroundColor: COLORS.gray[700],
   },
@@ -881,6 +883,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: RADIUS.full,
     gap: 3,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   reactionPillOwn: {
     borderWidth: 1,

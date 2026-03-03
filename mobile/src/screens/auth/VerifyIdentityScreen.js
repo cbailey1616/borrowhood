@@ -114,7 +114,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
           {fromSubscription ? ' We\'ll notify you once your verification is complete — it usually only takes a few minutes.' : ''}
         </Text>
 
-        <BlurCard style={styles.benefits}>
+        <View style={styles.benefits}>
           <View style={styles.benefitsInner}>
             <BenefitItem
               icon="lock-closed"
@@ -129,7 +129,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
               text="Required to borrow or lend items"
             />
           </View>
-        </BlurCard>
+        </View>
 
         <View style={styles.buttons}>
           <HapticPressable
@@ -223,6 +223,10 @@ const styles = StyleSheet.create({
   benefits: {
     marginBottom: SPACING.xxl,
     padding: SPACING.xl - SPACING.xs,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   benefitsInner: {
     gap: SPACING.lg,

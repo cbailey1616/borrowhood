@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   memberAvatar: {
     width: 32,
     height: 32,
-    borderRadius: RADIUS.full,
+    borderRadius: 10,
     backgroundColor: COLORS.gray[700],
     borderWidth: 2,
     borderColor: COLORS.surface,
@@ -423,15 +423,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#2C1810',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 8,
   },
   fabText: {
     fontSize: 28,
-    color: COLORS.background,
+    color: '#fff',
     fontWeight: '300',
   },
   modalOverlay: {

@@ -2,7 +2,7 @@
 // In production, use environment variables or app config
 // API URL - uses production URL, override with DEV_API_URL for local testing
 const PRODUCTION_BASE = 'https://borrowhood-production.up.railway.app';
-const DEV_BASE = 'http://192.168.7.53:3001'; // Use Mac's IP for physical device testing
+const DEV_BASE = 'http://localhost:3001'; // Use localhost for simulator, LAN IP for physical device
 
 // Switch to PRODUCTION_BASE for App Store release
 // TODO: revert to DEV_BASE for local development

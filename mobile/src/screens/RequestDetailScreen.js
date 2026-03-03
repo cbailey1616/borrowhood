@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   requesterAvatar: {
     width: 48,
     height: 48,
-    borderRadius: RADIUS.full,
+    borderRadius: 14,
     backgroundColor: COLORS.gray[700],
   },
   requesterInfo: {

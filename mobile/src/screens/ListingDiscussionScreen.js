@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   postAvatar: {
     width: 44,
     height: 44,
-    borderRadius: RADIUS.full,
+    borderRadius: 14,
     backgroundColor: COLORS.gray[700],
     borderWidth: 2,
     borderColor: COLORS.surfaceElevated,
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   replyAvatar: {
     width: 32,
     height: 32,
-    borderRadius: RADIUS.full,
+    borderRadius: 10,
     backgroundColor: COLORS.gray[700],
   },
   replyContent: {
