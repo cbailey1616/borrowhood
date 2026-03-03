@@ -162,6 +162,19 @@ jest.mock('expo-font', () => ({
   isLoaded: jest.fn(() => true),
 }));
 
+jest.mock('@expo-google-fonts/dm-sans', () => ({
+  useFonts: jest.fn(() => [true]),
+  DMSans_400Regular: 'DMSans_400Regular',
+  DMSans_500Medium: 'DMSans_500Medium',
+  DMSans_600SemiBold: 'DMSans_600SemiBold',
+  DMSans_700Bold: 'DMSans_700Bold',
+}));
+
+jest.mock('expo-splash-screen', () => ({
+  preventAutoHideAsync: jest.fn(),
+  hideAsync: jest.fn(),
+}));
+
 jest.mock('expo-status-bar', () => ({
   StatusBar: 'StatusBar',
 }));

@@ -152,20 +152,20 @@ export const SHADOWS = {
 };
 
 export const TYPOGRAPHY = {
-  // SF-aligned type scale
-  largeTitle: { fontSize: 34, fontWeight: '700', letterSpacing: 0.37 },
-  headline: { fontSize: 17, fontWeight: '600', lineHeight: 22 },
-  subheadline: { fontSize: 15, fontWeight: '400', lineHeight: 20 },
-  footnote: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
-  caption1: { fontSize: 12, fontWeight: '400', lineHeight: 16 },
+  // DM Sans type scale (400=Regular, 500=Medium, 600=SemiBold, 700=Bold)
+  largeTitle: { fontSize: 34, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0.37 },
+  headline: { fontSize: 17, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', lineHeight: 22 },
+  subheadline: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 20 },
+  footnote: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
+  caption1: { fontSize: 12, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 16 },
   // Existing aliases (kept for migration)
-  h1: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3 },
-  h3: { fontSize: 18, fontWeight: '600' },
-  body: { fontSize: 15, fontWeight: '400', lineHeight: 22 },
-  bodySmall: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
-  caption: { fontSize: 11, fontWeight: '500', letterSpacing: 0.3 },
-  button: { fontSize: 15, fontWeight: '600' },
+  h1: { fontSize: 28, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.5 },
+  h2: { fontSize: 22, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.3 },
+  h3: { fontSize: 18, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
+  body: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
+  bodySmall: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
+  caption: { fontSize: 11, fontFamily: 'DMSans_500Medium', fontWeight: '500', letterSpacing: 0.3 },
+  button: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
 };
 
 // Animation presets
