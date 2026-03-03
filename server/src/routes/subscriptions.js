@@ -214,10 +214,20 @@ router.get('/access-check', authenticate, async (req, res) => {
 
     const isPlusOrVerified = isPlus || isVerified;
 
-    // TODO: Restore tier checks when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    // Verification always required for town; tier checks only when paid tiers enabled
     let hasAccess;
     if (!ENABLE_PAID_TIERS) {
-      hasAccess = true;
+      // Town and rentals still require verification even without paid tiers
+      switch (feature) {
+        case 'town':
+          hasAccess = isVerified;
+          break;
+        case 'rentals':
+          hasAccess = isVerified;
+          break;
+        default:
+          hasAccess = true;
+      }
     } else {
       hasAccess = false;
       switch (feature) {
@@ -231,23 +241,22 @@ router.get('/access-check', authenticate, async (req, res) => {
     }
 
     // Determine next missing requirement
-    const nextStep = !ENABLE_PAID_TIERS
-      ? (feature === 'rentals' && !hasConnect ? 'connect' : null)
-      : !isPlusOrVerified
+    const needsVerification = (feature === 'town' || feature === 'rentals') && !isVerified;
+    const nextStep = needsVerification
+      ? 'identity'
+      : (ENABLE_PAID_TIERS && !isPlusOrVerified)
         ? 'verification'
-        : !isVerified
-          ? 'identity'
-          : (feature === 'rentals' && !hasConnect)
-            ? 'connect'
-            : null;
+        : (feature === 'rentals' && !hasConnect)
+          ? 'connect'
+          : null;
 
-    const requiresVerification = ENABLE_PAID_TIERS && (feature === 'town' || feature === 'rentals');
+    const requiresVerification = feature === 'town' || feature === 'rentals';
     res.json({
       tier: ENABLE_PAID_TIERS ? tier : 'plus',
       feature,
       canAccess: requiresVerification ? hasAccess && isVerified : hasAccess,
       isSubscribed: !ENABLE_PAID_TIERS || isPlus,
-      isVerified: !ENABLE_PAID_TIERS || isVerified,
+      isVerified,
       hasConnect,
       nextStep,
       // Keep legacy fields for backwards compat
@@ -274,8 +283,8 @@ router.get('/can-charge', authenticate, async (req, res) => {
 
     const tier = result.rows[0]?.subscription_tier || 'free';
     const isVerified = result.rows[0]?.is_verified || false;
-    // TODO: Restore tier check when re-enabling paid tiers (ENABLE_PAID_TIERS)
-    const canCharge = !ENABLE_PAID_TIERS || tier === 'plus' || isVerified;
+    // Verification always required for charging; tier check only when paid tiers enabled
+    const canCharge = isVerified && (!ENABLE_PAID_TIERS || tier === 'plus');
 
     res.json({ canCharge, tier: ENABLE_PAID_TIERS ? tier : 'plus' });
   } catch (err) {

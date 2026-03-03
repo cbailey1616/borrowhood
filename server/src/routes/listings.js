@@ -265,9 +265,8 @@ router.get('/:id', authenticate, async (req, res) => {
         // No city set — can't determine if same town
         return res.status(404).json({ error: 'Listing not found' });
       }
-      // TODO: Restore masking when re-enabling paid tiers (ENABLE_PAID_TIERS)
-      if (ENABLE_PAID_TIERS && !viewerVerified) {
-        // Unverified — mask owner info
+      // Verification always required for town listing details
+      if (!viewerVerified) {
         ownerMasked = true;
       }
     }
@@ -584,18 +583,18 @@ router.patch('/:id', authenticate,
       const validStatuses = ['active', 'paused'];
       const validVisibilities = ['close_friends', 'neighborhood', 'town'];
 
-      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
-      if (ENABLE_PAID_TIERS && req.body.visibility) {
+      // Verification always required for town visibility on update
+      if (req.body.visibility) {
         let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
         if (visArray.includes('town')) {
           const subCheck = await query(
-            'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
+            'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
             [req.user.id]
           );
           const u = subCheck.rows[0];
           const graceActive = u?.verification_grace_until && new Date(u.verification_grace_until) > new Date();
           const verified = u?.is_verified || graceActive;
-          if (u?.subscription_tier !== 'plus' || !verified) {
+          if (!verified) {
             visArray = visArray.filter(v => v !== 'town');
             if (visArray.length === 0) visArray.push('close_friends');
           }
