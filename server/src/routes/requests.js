@@ -26,7 +26,7 @@ router.get('/', authenticate, async (req, res) => {
       return res.json([]);
     }
 
-    let whereConditions = [`r.status = 'open'`, `(r.expires_at IS NULL OR r.expires_at > NOW())`];
+    let whereConditions = [`r.status = 'open'`, `(r.expires_at IS NULL OR r.expires_at > NOW())`, `(r.needed_until IS NULL OR r.needed_until >= CURRENT_DATE)`];
     let params = [];
     let paramIndex = 1;
 
@@ -228,6 +228,19 @@ router.post('/', authenticate,
     }
 
     try {
+      // Verification required for town visibility (always enforced)
+      if (visibility === 'town') {
+        const verifyCheck = await query(
+          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
+        const verified = verifyCheck.rows[0]?.is_verified || graceActive;
+
+        if (!verified) {
+          visibility = 'neighborhood';
+        }
+      }
       // Verify user is member of community (if community specified)
       if (communityId) {
         const memberCheck = await query(

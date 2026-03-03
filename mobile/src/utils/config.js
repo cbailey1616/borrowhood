@@ -6,7 +6,7 @@ const DEV_BASE = 'http://localhost:3001'; // Use localhost for simulator, LAN IP
 
 // Switch to PRODUCTION_BASE for App Store release
 // TODO: revert to DEV_BASE for local development
-export const BASE_URL = PRODUCTION_BASE;
+export const BASE_URL = __DEV__ ? DEV_BASE : PRODUCTION_BASE;
 export const API_URL = `${BASE_URL}/api`;
 
 // SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE

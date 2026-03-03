@@ -402,7 +402,16 @@ export default function CreateRequestScreen({ navigation }) {
                       updateField('visibility', current.filter(v => v !== visibility));
                     }
                   } else {
-                    // TODO: Restore gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
+                    // Verification required for town visibility
+                    if (visibility === 'town' && !user?.isVerified) {
+                      haptics.warning();
+                      showError({
+                        type: 'generic',
+                        title: 'Verification Required',
+                        message: 'Verify your identity to post requests to your entire town.',
+                      });
+                      return;
+                    }
                     if (ENABLE_PAID_TIERS && visibility === 'town') {
                       const gate = checkPremiumGate(user, 'town_browse');
                       if (!gate.passed) {

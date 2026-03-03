@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   largeTitleContainer: {
     paddingHorizontal: SPACING.lg,
     paddingTop: 0,
-    paddingBottom: SPACING.sm,
+    paddingBottom: SPACING.xs,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.borderGreen,
     overflow: 'hidden',

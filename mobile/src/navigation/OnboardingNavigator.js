@@ -1,12 +1,13 @@
 import { Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HapticPressable from '../components/HapticPressable';
-import { COLORS } from '../utils/config';
+import { COLORS, ENABLE_PAID_TIERS } from '../utils/config';
 
-import OnboardingWelcomeScreen from '../screens/onboarding/OnboardingWelcomeScreen';
+import OnboardingIntroScreen from '../screens/onboarding/OnboardingIntroScreen';
 import OnboardingNeighborhoodScreen from '../screens/onboarding/OnboardingNeighborhoodScreen';
 import OnboardingFriendsScreen from '../screens/onboarding/OnboardingFriendsScreen';
 import OnboardingPlanScreen from '../screens/onboarding/OnboardingPlanScreen';
+import OnboardingVerifyScreen from '../screens/onboarding/OnboardingVerifyScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
@@ -15,15 +16,15 @@ const Stack = createNativeStackNavigator();
 
 // Map step number to route name
 const STEP_TO_ROUTE = {
-  1: 'OnboardingWelcome',
+  1: 'OnboardingIntro',
   2: 'OnboardingNeighborhood',
   3: 'OnboardingFriends',
-  4: 'OnboardingPlan',
+  4: ENABLE_PAID_TIERS ? 'OnboardingPlan' : 'OnboardingVerify',
   5: 'OnboardingComplete',
 };
 
 export default function OnboardingNavigator({ initialStep = 1 }) {
-  const initialRoute = STEP_TO_ROUTE[initialStep] || 'OnboardingWelcome';
+  const initialRoute = STEP_TO_ROUTE[initialStep] || 'OnboardingIntro';
 
   return (
     <Stack.Navigator
@@ -36,8 +37,8 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
       }}
     >
       <Stack.Screen
-        name="OnboardingWelcome"
-        component={OnboardingWelcomeScreen}
+        name="OnboardingIntro"
+        component={OnboardingIntroScreen}
         options={{ animation: 'fade_from_bottom' }}
       />
       <Stack.Screen
@@ -47,6 +48,10 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
       <Stack.Screen
         name="OnboardingFriends"
         component={OnboardingFriendsScreen}
+      />
+      <Stack.Screen
+        name="OnboardingVerify"
+        component={OnboardingVerifyScreen}
       />
       <Stack.Screen
         name="OnboardingPlan"

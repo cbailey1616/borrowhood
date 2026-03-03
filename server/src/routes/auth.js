@@ -24,16 +24,17 @@ const router = Router();
 // POST /api/auth/register
 // ============================================
 router.post('/register',
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 8 }),
-  body('firstName').trim().notEmpty(),
-  body('lastName').trim().notEmpty(),
-  body('phone').optional({ values: 'falsy' }).isMobilePhone(),
+  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('firstName').trim().notEmpty().withMessage('First name is required'),
+  body('lastName').trim().notEmpty().withMessage('Last name is required'),
+  body('phone').optional({ values: 'falsy' }).isMobilePhone().withMessage('Please enter a valid phone number'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.error('Registration validation errors:', errors.array());
-      return res.status(400).json({ errors: errors.array() });
+      const messages = errors.array().map(e => e.msg);
+      return res.status(400).json({ error: messages[0], errors: errors.array() });
     }
 
     const { email, password, firstName, lastName, phone, referralCode } = req.body;
@@ -111,7 +112,11 @@ router.post('/register',
       });
     } catch (err) {
       console.error('Registration error:', err);
-      res.status(500).json({ error: 'Registration failed' });
+      if (err.code === '23505') {
+        // Unique constraint violation (e.g., duplicate email)
+        return res.status(400).json({ error: 'An account with this email already exists.' });
+      }
+      res.status(500).json({ error: 'Something went wrong creating your account. Please try again.' });
     }
   }
 );
@@ -120,12 +125,13 @@ router.post('/register',
 // POST /api/auth/login
 // ============================================
 router.post('/login',
-  body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty(),
+  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
+  body('password').notEmpty().withMessage('Password is required'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      const messages = errors.array().map(e => e.msg);
+      return res.status(400).json({ error: messages[0], errors: errors.array() });
     }
 
     const { email, password } = req.body;
@@ -681,11 +687,12 @@ router.get('/me', authenticate, async (req, res) => {
 // Request password reset
 // ============================================
 router.post('/forgot-password',
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      const messages = errors.array().map(e => e.msg);
+      return res.status(400).json({ error: messages[0], errors: errors.array() });
     }
 
     const { email } = req.body;
@@ -728,13 +735,14 @@ router.post('/forgot-password',
 // Reset password with code
 // ============================================
 router.post('/reset-password',
-  body('email').isEmail().normalizeEmail(),
-  body('code').isLength({ min: 6, max: 6 }),
-  body('newPassword').isLength({ min: 8 }),
+  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
+  body('code').isLength({ min: 6, max: 6 }).withMessage('Please enter the 6-digit reset code'),
+  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      const messages = errors.array().map(e => e.msg);
+      return res.status(400).json({ error: messages[0], errors: errors.array() });
     }
 
     const { email, code, newPassword } = req.body;

@@ -32,7 +32,12 @@ const request = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
-      const error = new Error(data.error || 'An error occurred');
+      // Handle express-validator errors array and single error string
+      let message = data.error;
+      if (!message && data.errors && Array.isArray(data.errors)) {
+        message = data.errors.map(e => e.msg || e.message).filter(Boolean)[0];
+      }
+      const error = new Error(message || 'Something went wrong. Please try again.');
       error.status = response.status;
       error.code = data.code;
       error.requiredTier = data.requiredTier;

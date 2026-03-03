@@ -26,10 +26,10 @@ router.get('/', authenticate, async (req, res) => {
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    // TODO: Restore tier checks when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    // Verification always required for town access; tier checks only when paid tiers enabled
     const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
-    const canAccessTown = !ENABLE_PAID_TIERS || (isVerified && userCity);
-    const canBrowseTown = !ENABLE_PAID_TIERS || (isPlusOrVerified && userCity);
+    const canAccessTown = isVerified && userCity;
+    const canBrowseTown = ENABLE_PAID_TIERS ? (isPlusOrVerified && userCity) : canAccessTown;
 
     const friendsResult = await query(
       'SELECT friend_id FROM friendships WHERE user_id = $1',
@@ -431,28 +431,35 @@ router.post('/', authenticate,
       const needsPaidCheck = !isFree && pricePerDay > 0;
       const needsTownCheck = visibilityArray.includes('town');
 
-      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
-      if (ENABLE_PAID_TIERS && (needsPaidCheck || needsTownCheck)) {
-        const subCheck = await query(
-          'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
+      // Verification required for town visibility (always enforced)
+      if (needsTownCheck) {
+        const verifyCheck = await query(
+          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
         );
-        const tier = subCheck.rows[0]?.subscription_tier || 'free';
-        const graceActive = subCheck.rows[0]?.verification_grace_until && new Date(subCheck.rows[0].verification_grace_until) > new Date();
-        const verified = subCheck.rows[0]?.is_verified || graceActive;
+        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
+        const verified = verifyCheck.rows[0]?.is_verified || graceActive;
 
-        // Silently downgrade paid rental to free if not plus
-        if (needsPaidCheck && tier !== 'plus') {
-          isFree = true;
-          pricePerDay = null;
-          pricingDowngraded = true;
-        }
-
-        // Silently drop town if not plus/verified
-        if (needsTownCheck && (tier !== 'plus' || !verified)) {
+        if (!verified) {
           const idx = visibilityArray.indexOf('town');
           visibilityArray.splice(idx, 1);
           if (visibilityArray.length === 0) visibilityArray.push('close_friends');
+        }
+      }
+
+      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
+      if (ENABLE_PAID_TIERS && needsPaidCheck) {
+        const subCheck = await query(
+          'SELECT subscription_tier FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const tier = subCheck.rows[0]?.subscription_tier || 'free';
+
+        // Silently downgrade paid rental to free if not plus
+        if (tier !== 'plus') {
+          isFree = true;
+          pricePerDay = null;
+          pricingDowngraded = true;
         }
       }
       // If neighborhood selected but no community, silently drop it from visibility

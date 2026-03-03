@@ -164,6 +164,24 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
 
+        {/* Verification Banner */}
+        {!user?.isVerified && (
+          <HapticPressable
+            style={styles.verifyBanner}
+            onPress={() => navigation.navigate('IdentityVerification', { source: 'profile' })}
+            haptic="medium"
+          >
+            <View style={styles.verifyBannerIcon}>
+              <Ionicons name="shield-outline" size={22} color={COLORS.warning} />
+            </View>
+            <View style={styles.verifyBannerText}>
+              <Text style={styles.verifyBannerTitle}>Verify Your Identity</Text>
+              <Text style={styles.verifyBannerSubtitle}>Required to borrow or lend items</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+        )}
+
         {/* Stats */}
         <View style={styles.stats}>
           <View style={styles.statsInner}>
@@ -222,11 +240,13 @@ export default function ProfileScreen({ navigation }) {
             title="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}
           />
-          <GroupedListItem
-            icon="gift-outline"
-            title="Invite Friends"
-            onPress={() => navigation.navigate('Referral')}
-          />
+          {ENABLE_PAID_TIERS && (
+            <GroupedListItem
+              icon="gift-outline"
+              title="Invite Friends"
+              onPress={() => navigation.navigate('Referral')}
+            />
+          )}
         </GroupedListSection>
 
         {/* Community Section */}
@@ -352,6 +372,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: SPACING.md,
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.xxl,
   },
@@ -411,6 +432,38 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subheadline,
     color: COLORS.greenTextMuted,
     marginTop: SPACING.xs,
+  },
+  verifyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warningMuted,
+    borderWidth: 1.5,
+    borderColor: 'rgba(184, 134, 11, 0.3)',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    gap: SPACING.md,
+  },
+  verifyBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(184, 134, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyBannerText: {
+    flex: 1,
+  },
+  verifyBannerTitle: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
+    fontSize: 15,
+  },
+  verifyBannerSubtitle: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   stats: {
     marginBottom: SPACING.xl,

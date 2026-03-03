@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, Platform, StyleSheet } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { View, Text, Dimensions, StyleSheet } from 'react-native';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetView, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -79,12 +79,14 @@ export default function ActionSheet({
   if (!rendered) return null;
 
   const bottomPad = (insets.bottom || 34) + 80;
+  const maxSheetHeight = (insets.top > 0 ? insets.top : 54) + 80; // leave room at top
 
   return (
     <BottomSheet
       ref={bottomSheetRef}
       index={0}
       enableDynamicSizing
+      maxDynamicContentSize={Dimensions.get('window').height - maxSheetHeight}
       onChange={handleSheetChange}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
@@ -92,7 +94,7 @@ export default function ActionSheet({
       handleIndicatorStyle={styles.handle}
       style={styles.sheet}
     >
-      <BottomSheetView style={[styles.content, { paddingBottom: bottomPad }]}>
+      <BottomSheetScrollView style={styles.content} contentContainerStyle={{ paddingBottom: bottomPad }}>
         {title ? (
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
@@ -128,7 +130,7 @@ export default function ActionSheet({
         >
           <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
         </HapticPressable>
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheet>
   );
 }

@@ -22,9 +22,9 @@ router.get('/', authenticate, async (req, res) => {
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    // TODO: Restore tier checks when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    // Verification always required for town access; tier checks only when paid tiers enabled
     const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
-    const canSeeTownUnmasked = !ENABLE_PAID_TIERS || (isVerified && userCity);
+    const canSeeTownUnmasked = isVerified && userCity;
     const canSeeTown = !!userCity; // Anyone with a city can browse town (owner info masked if not verified)
 
     // Parse visibility filter
@@ -151,12 +151,19 @@ router.get('/', authenticate, async (req, res) => {
           u.profile_photo_url
         FROM item_requests r
         JOIN users u ON r.user_id = u.id
-        WHERE r.status = 'open'`;
+        WHERE r.status = 'open'
+          AND (
+            r.user_id = $1
+            OR (
+              (r.expires_at IS NULL OR r.expires_at > NOW())
+              AND (r.needed_until IS NULL OR r.needed_until >= CURRENT_DATE)
+            )
+          )`;
 
-      const requestParams = [];
+      const requestParams = [req.user.id];
 
       if (search) {
-        requestQuery += ` AND (r.title ILIKE $1 OR r.description ILIKE $1)`;
+        requestQuery += ` AND (r.title ILIKE $${requestParams.length + 1} OR r.description ILIKE $${requestParams.length + 1})`;
         requestParams.push(`%${search}%`);
       }
 

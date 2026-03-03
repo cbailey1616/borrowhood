@@ -15,7 +15,7 @@ import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
@@ -200,18 +200,20 @@ export default function RegisterScreen({ navigation }) {
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Referral code (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.referralCode}
-                  onChangeText={(v) => updateField('referralCode', v)}
-                  placeholder="BH-XXXXXXXX"
-                  placeholderTextColor={COLORS.textMuted}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                />
-              </View>
+              {ENABLE_PAID_TIERS && (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Referral code (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.referralCode}
+                    onChangeText={(v) => updateField('referralCode', v)}
+                    placeholder="BH-XXXXXXXX"
+                    placeholderTextColor={COLORS.textMuted}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                  />
+                </View>
+              )}
 
               <HapticPressable
                 style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}

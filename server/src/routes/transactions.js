@@ -52,8 +52,8 @@ router.post('/', authenticate,
 
       const isPaidRental = parseFloat(item.price_per_day) > 0;
 
-      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
-      if (ENABLE_PAID_TIERS && (isPaidRental || item.visibility === 'town')) {
+      // Verification always required for town-level borrowing
+      if (isPaidRental || item.visibility === 'town') {
         const borrowerInfo = await query(
           'SELECT is_verified, city, subscription_tier, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
@@ -64,16 +64,19 @@ router.post('/', authenticate,
         // Verification required for paid rentals and town-level items
         const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
         const borrowerVerified = borrower?.is_verified || borrowerGraceActive;
-        const borrowerPlusOrVerified = tier === 'plus' || borrowerVerified;
 
-        if (!borrowerPlusOrVerified) {
-          return res.status(403).json({
-            error: isPaidRental
-              ? 'Plus subscription required for paid rentals'
-              : 'Plus subscription required to borrow from town listings',
-            code: 'PLUS_REQUIRED',
-            requiredTier: 'plus',
-          });
+        // Tier enforcement only when paid tiers enabled
+        if (ENABLE_PAID_TIERS) {
+          const borrowerPlusOrVerified = tier === 'plus' || borrowerVerified;
+          if (!borrowerPlusOrVerified) {
+            return res.status(403).json({
+              error: isPaidRental
+                ? 'Plus subscription required for paid rentals'
+                : 'Plus subscription required to borrow from town listings',
+              code: 'PLUS_REQUIRED',
+              requiredTier: 'plus',
+            });
+          }
         }
 
         if (!borrowerVerified) {
