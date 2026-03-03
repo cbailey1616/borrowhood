@@ -25,6 +25,7 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 import { checkPremiumGate } from '../utils/premiumGate';
+import { ENABLE_PAID_TIERS } from '../utils/config';
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
@@ -177,7 +178,8 @@ export default function FeedScreen({ navigation }) {
   }, [fetchFeed]);
 
   const handleTownToggle = () => {
-    if (user?.subscriptionTier !== 'plus' && !user?.isVerified) {
+    // TODO: Restore subscription gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    if (ENABLE_PAID_TIERS && user?.subscriptionTier !== 'plus' && !user?.isVerified) {
       setActiveDropdown(null);
       // Delay so the ActionSheet portal closes before the overlay renders
       setTimeout(() => setShowUpgradePrompt(true), 350);
@@ -314,7 +316,8 @@ export default function FeedScreen({ navigation }) {
             )}
           </View>
 
-          {item.ownerMasked ? (
+          {/* TODO: Restore ownerMasked banner when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
+          {ENABLE_PAID_TIERS && item.ownerMasked ? (
             <HapticPressable
               style={styles.verifyUnlockBanner}
               onPress={() => {
@@ -679,7 +682,8 @@ export default function FeedScreen({ navigation }) {
         ]}
       />
 
-      {showUpgradePrompt && (
+      {/* TODO: Restore upgrade overlay when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
+      {ENABLE_PAID_TIERS && showUpgradePrompt && (
         <View style={styles.overlay} testID="Feed.overlay.upgrade" accessibilityLabel="Upgrade to Plus overlay">
           <View style={styles.overlayCard}>
             <View style={styles.overlayCardInner}>

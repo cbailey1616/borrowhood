@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { query } from '../utils/db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { stripe, createEphemeralKey } from '../services/stripe.js';
 
 const router = Router();
@@ -212,40 +212,47 @@ router.get('/access-check', authenticate, async (req, res) => {
     const isVerified = u?.is_verified || graceActive || false;
     const hasConnect = !!u?.stripe_connect_account_id;
 
-    let hasAccess = false;
-
     const isPlusOrVerified = isPlus || isVerified;
 
-    switch (feature) {
-      case 'town':
-      case 'rentals':
-        hasAccess = isPlusOrVerified;
-        break;
-      default:
-        hasAccess = true;
+    // TODO: Restore tier checks when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    let hasAccess;
+    if (!ENABLE_PAID_TIERS) {
+      hasAccess = true;
+    } else {
+      hasAccess = false;
+      switch (feature) {
+        case 'town':
+        case 'rentals':
+          hasAccess = isPlusOrVerified;
+          break;
+        default:
+          hasAccess = true;
+      }
     }
 
     // Determine next missing requirement
-    const nextStep = !isPlusOrVerified
-      ? 'verification'
-      : !isVerified
-        ? 'identity'
-        : (feature === 'rentals' && !hasConnect)
-          ? 'connect'
-          : null;
+    const nextStep = !ENABLE_PAID_TIERS
+      ? (feature === 'rentals' && !hasConnect ? 'connect' : null)
+      : !isPlusOrVerified
+        ? 'verification'
+        : !isVerified
+          ? 'identity'
+          : (feature === 'rentals' && !hasConnect)
+            ? 'connect'
+            : null;
 
-    const requiresVerification = feature === 'town' || feature === 'rentals';
+    const requiresVerification = ENABLE_PAID_TIERS && (feature === 'town' || feature === 'rentals');
     res.json({
-      tier,
+      tier: ENABLE_PAID_TIERS ? tier : 'plus',
       feature,
       canAccess: requiresVerification ? hasAccess && isVerified : hasAccess,
-      isSubscribed: isPlus,
-      isVerified,
+      isSubscribed: !ENABLE_PAID_TIERS || isPlus,
+      isVerified: !ENABLE_PAID_TIERS || isVerified,
       hasConnect,
       nextStep,
       // Keep legacy fields for backwards compat
       hasAccess,
-      upgradeRequired: !hasAccess,
+      upgradeRequired: ENABLE_PAID_TIERS && !hasAccess,
       requiredTier: 'plus',
     });
   } catch (err) {
@@ -267,9 +274,10 @@ router.get('/can-charge', authenticate, async (req, res) => {
 
     const tier = result.rows[0]?.subscription_tier || 'free';
     const isVerified = result.rows[0]?.is_verified || false;
-    const canCharge = tier === 'plus' || isVerified;
+    // TODO: Restore tier check when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    const canCharge = !ENABLE_PAID_TIERS || tier === 'plus' || isVerified;
 
-    res.json({ canCharge, tier });
+    res.json({ canCharge, tier: ENABLE_PAID_TIERS ? tier : 'plus' });
   } catch (err) {
     console.error('Can charge check error:', err);
     res.status(500).json({ error: 'Failed to check' });

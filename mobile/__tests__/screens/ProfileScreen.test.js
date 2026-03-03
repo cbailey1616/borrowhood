@@ -48,11 +48,11 @@ describe('ProfileScreen', () => {
     expect(getByText('4.5')).toBeTruthy(); // rating
   });
 
-  it('subscription menu navigates', () => {
+  // Subscription menu hidden when ENABLE_PAID_TIERS = false
+  it('hides subscription menu when paid tiers disabled', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByTestId } = render(<ProfileScreen navigation={mockNavigation} />);
-    fireEvent.press(getByTestId('Profile.menu.subscription'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Subscription');
+    const { queryByTestId } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(queryByTestId('Profile.menu.subscription')).toBeNull();
   });
 
   it('Edit Profile menu item navigates', () => {

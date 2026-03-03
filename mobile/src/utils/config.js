@@ -25,6 +25,10 @@ export const CATEGORY_ICONS = {
   'other': 'ellipsis-horizontal-outline',
 };
 
+// Feature flags
+// TODO: Set to true to re-enable paid subscription tiers
+export const ENABLE_PAID_TIERS = false;
+
 // App constants
 export const CONDITION_LABELS = {
   like_new: 'Like New',

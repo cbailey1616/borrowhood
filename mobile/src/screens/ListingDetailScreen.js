@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import { checkPremiumGate } from '../utils/premiumGate';
+import { ENABLE_PAID_TIERS } from '../utils/config';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
@@ -409,7 +410,8 @@ export default function ListingDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Footer Action Bar */}
-      {!listing.isOwner && listing.ownerMasked && (
+      {/* TODO: Restore verify banner when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
+      {ENABLE_PAID_TIERS && !listing.isOwner && listing.ownerMasked && (
         <View style={styles.footerWrap}>
           <View style={[styles.footer, styles.footerAndroid]}>
             <HapticPressable

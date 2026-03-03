@@ -17,7 +17,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function BorrowRequestScreen({ route, navigation }) {
   const { listing } = route.params;
@@ -44,8 +44,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
       try {
         const isPaid = !listing.isFree && parseFloat(listing.pricePerDay) > 0;
 
-        // Paid rentals require Plus for both renter and owner
-        if (isPaid && user?.subscriptionTier !== 'plus' && !user?.isVerified) {
+        // TODO: Restore tier check when re-enabling paid tiers (ENABLE_PAID_TIERS)
+        if (ENABLE_PAID_TIERS && isPaid && user?.subscriptionTier !== 'plus' && !user?.isVerified) {
           setAccessCheck({
             loading: false,
             canAccess: false,
@@ -67,8 +67,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
           return;
         }
 
-        // Paid rentals and town-level items require verification
-        if ((isPaid || listing.visibility === 'town') && !user?.isVerified) {
+        // TODO: Restore verification gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
+        if (ENABLE_PAID_TIERS && (isPaid || listing.visibility === 'town') && !user?.isVerified) {
           setAccessCheck({
             loading: false,
             canAccess: false,

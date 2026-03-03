@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import BlurCard from '../../components/BlurCard';
@@ -9,7 +9,7 @@ import OnboardingProgress from '../../components/OnboardingProgress';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 const COMPARISON_ROWS = [
   { feature: 'Lend & borrow from friends & neighbors', free: true, plus: true },
@@ -22,9 +22,22 @@ export default function OnboardingPlanScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth();
 
+  // TODO: Remove this bypass when re-enabling paid tiers (ENABLE_PAID_TIERS)
+  useEffect(() => {
+    if (!ENABLE_PAID_TIERS) {
+      // Skip plan selection entirely — go straight to complete
+      const skipPlan = async () => {
+        try { await api.updateOnboardingStep(4); } catch (e) {}
+        navigation.replace('OnboardingComplete');
+      };
+      skipPlan();
+    }
+  }, []);
+
   // Check if user subscribed when returning from SubscriptionScreen
   useFocusEffect(
     useCallback(() => {
+      if (!ENABLE_PAID_TIERS) return;
       const checkSubscription = async () => {
         try {
           const updated = await refreshUser();

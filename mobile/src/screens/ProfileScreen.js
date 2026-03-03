@@ -21,7 +21,7 @@ import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout, refreshUser } = useAuth();
@@ -192,14 +192,17 @@ export default function ProfileScreen({ navigation }) {
             title="Edit Profile"
             onPress={() => navigation.navigate('EditProfile')}
           />
-          <GroupedListItem
-            icon="star-outline"
-            title="Subscription"
-            onPress={() => navigation.navigate('Subscription')}
-            testID="Profile.menu.subscription"
-            accessibilityLabel="Subscription settings"
-            accessibilityRole="button"
-          />
+          {/* TODO: Restore when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
+          {ENABLE_PAID_TIERS && (
+            <GroupedListItem
+              icon="star-outline"
+              title="Subscription"
+              onPress={() => navigation.navigate('Subscription')}
+              testID="Profile.menu.subscription"
+              accessibilityLabel="Subscription settings"
+              accessibilityRole="button"
+            />
+          )}
           <GroupedListItem
             icon="mail-outline"
             title="Messages"

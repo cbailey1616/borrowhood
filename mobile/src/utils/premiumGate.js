@@ -1,3 +1,5 @@
+import { ENABLE_PAID_TIERS } from './config';
+
 /**
  * Checks premium feature requirements and returns the next screen to navigate to.
  * @param {Object} user - User object from AuthContext
@@ -5,6 +7,22 @@
  * @returns {{ passed: boolean, screen?: string, params?: object, completedSteps: number, totalSteps: number }}
  */
 export function checkPremiumGate(user, source) {
+  // TODO: Remove this bypass when re-enabling paid tiers (ENABLE_PAID_TIERS)
+  if (!ENABLE_PAID_TIERS) {
+    const hasConnect = user?.hasConnectAccount;
+    // Still require Stripe Connect for rental listings (payout setup)
+    if (source === 'rental_listing' && !hasConnect) {
+      return {
+        passed: false,
+        screen: 'SetupPayout',
+        params: { source, totalSteps: 1 },
+        completedSteps: 0,
+        totalSteps: 1,
+      };
+    }
+    return { passed: true, completedSteps: 1, totalSteps: 1 };
+  }
+
   const isPlus = user?.subscriptionTier === 'plus';
   const isVerified = user?.isVerified;
   const hasConnect = user?.hasConnectAccount;

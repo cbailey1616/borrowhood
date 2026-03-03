@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
-import { authenticate, requireVerified } from '../middleware/auth.js';
+import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
 import { analyzeItemImage } from '../services/imageAnalysis.js';
@@ -26,9 +26,10 @@ router.get('/', authenticate, async (req, res) => {
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const isPlusOrVerified = userTier === 'plus' || isVerified;
-    const canAccessTown = isVerified && userCity;
-    const canBrowseTown = isPlusOrVerified && userCity; // Paid or verified + has city
+    // TODO: Restore tier checks when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
+    const canAccessTown = !ENABLE_PAID_TIERS || (isVerified && userCity);
+    const canBrowseTown = !ENABLE_PAID_TIERS || (isPlusOrVerified && userCity);
 
     const friendsResult = await query(
       'SELECT friend_id FROM friendships WHERE user_id = $1',
@@ -264,7 +265,8 @@ router.get('/:id', authenticate, async (req, res) => {
         // No city set — can't determine if same town
         return res.status(404).json({ error: 'Listing not found' });
       }
-      if (!viewerVerified) {
+      // TODO: Restore masking when re-enabling paid tiers (ENABLE_PAID_TIERS)
+      if (ENABLE_PAID_TIERS && !viewerVerified) {
         // Unverified — mask owner info
         ownerMasked = true;
       }
@@ -429,7 +431,8 @@ router.post('/', authenticate,
       const needsPaidCheck = !isFree && pricePerDay > 0;
       const needsTownCheck = visibilityArray.includes('town');
 
-      if (needsPaidCheck || needsTownCheck) {
+      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
+      if (ENABLE_PAID_TIERS && (needsPaidCheck || needsTownCheck)) {
         const subCheck = await query(
           'SELECT subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
@@ -574,8 +577,8 @@ router.patch('/:id', authenticate,
       const validStatuses = ['active', 'paused'];
       const validVisibilities = ['close_friends', 'neighborhood', 'town'];
 
-      // Silently drop town from visibility if user isn't plus/verified
-      if (req.body.visibility) {
+      // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
+      if (ENABLE_PAID_TIERS && req.body.visibility) {
         let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
         if (visArray.includes('town')) {
           const subCheck = await query(

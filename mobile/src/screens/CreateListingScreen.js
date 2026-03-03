@@ -17,7 +17,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION, ENABLE_PAID_TIERS } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -462,8 +462,8 @@ export default function CreateListingScreen({ navigation, route }) {
                       haptics.warning();
                     }
                   } else {
-                    // Gate check for town visibility — requires Plus + verification
-                    if (visibility === 'town') {
+                    // TODO: Restore gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
+                    if (ENABLE_PAID_TIERS && visibility === 'town') {
                       const gate = checkPremiumGate(user, 'town_browse');
                       if (!gate.passed) {
                         navigation.push(gate.screen, gate.params);
@@ -502,7 +502,8 @@ export default function CreateListingScreen({ navigation, route }) {
           style={styles.toggle}
           onPress={() => {
             if (formData.isFree) {
-              // Turning ON rental — check gate (Plus + verified + payout)
+              // TODO: Restore full gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
+              // Still requires payout setup even when paid tiers are disabled
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
                 navigation.push(gate.screen, gate.params);

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -22,8 +22,9 @@ router.get('/', authenticate, async (req, res) => {
     const userTier = userResult.rows[0]?.subscription_tier || 'free';
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const isPlusOrVerified = userTier === 'plus' || isVerified;
-    const canSeeTownUnmasked = isVerified && userCity;
+    // TODO: Restore tier checks when re-enabling paid tiers (ENABLE_PAID_TIERS)
+    const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
+    const canSeeTownUnmasked = !ENABLE_PAID_TIERS || (isVerified && userCity);
     const canSeeTown = !!userCity; // Anyone with a city can browse town (owner info masked if not verified)
 
     // Parse visibility filter
