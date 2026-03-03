@@ -181,7 +181,7 @@ export default function EditProfileScreen({ navigation }) {
 
         <View style={styles.form}>
           {isVerified && (
-            <BlurCard style={styles.verifiedBanner}>
+            <View style={styles.verifiedBanner}>
               <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.verifiedBannerTitle}>Identity Verified</Text>
@@ -204,7 +204,7 @@ export default function EditProfileScreen({ navigation }) {
               >
                 <Text style={styles.verifiedChangeLink}>Change</Text>
               </HapticPressable>
-            </BlurCard>
+            </View>
           )}
 
           <View style={styles.row}>
@@ -421,6 +421,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.lg,
     gap: SPACING.md,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderGreen,
   },
   verifiedBannerTitle: {
     ...TYPOGRAPHY.footnote,

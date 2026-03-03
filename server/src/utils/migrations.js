@@ -347,6 +347,26 @@ export async function runMigrations() {
       logger.info('Migration complete: users.is_admin added');
     }
 
+    // Migration: Add password reset security columns to users
+    const hasResetCodeHash = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'reset_code_hash'
+    `);
+    if (hasResetCodeHash.rows.length === 0) {
+      logger.info('Running migration: Add password reset security columns');
+      await query('ALTER TABLE users ADD COLUMN reset_code_hash VARCHAR(64)');
+      await query('ALTER TABLE users ADD COLUMN reset_code_expires TIMESTAMPTZ');
+      await query('ALTER TABLE users ADD COLUMN reset_code_attempts INT DEFAULT 0');
+      await query('ALTER TABLE users ADD COLUMN reset_token_hash VARCHAR(64)');
+      await query('ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMPTZ');
+      await query('ALTER TABLE users ADD COLUMN token_invalidated_at TIMESTAMPTZ');
+      // Sparse indexes for account lookup
+      await query('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL');
+      await query('CREATE INDEX IF NOT EXISTS idx_users_apple_id ON users(apple_id) WHERE apple_id IS NOT NULL');
+      await query('CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL');
+      logger.info('Migration complete: password reset security columns added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

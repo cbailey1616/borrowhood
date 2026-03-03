@@ -134,6 +134,13 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.footerLink}>Sign up</Text>
           </HapticPressable>
         </View>
+        <HapticPressable
+          style={styles.findAccount}
+          onPress={() => navigation.navigate('FindAccount')}
+          haptic="light"
+        >
+          <Text style={styles.findAccountText}>Can't find your account?</Text>
+        </HapticPressable>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -254,5 +261,13 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
     fontWeight: '600',
+  },
+  findAccount: {
+    alignItems: 'center',
+    paddingBottom: SPACING.md,
+  },
+  findAccountText: {
+    color: COLORS.textMuted,
+    ...TYPOGRAPHY.caption1,
   },
 });

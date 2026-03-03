@@ -14,11 +14,20 @@ export async function authenticate(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Fetch user from database
-    const result = await query(
-      'SELECT id, email, first_name, last_name, status, is_admin FROM users WHERE id = $1',
-      [decoded.userId]
-    );
+    // Fetch user from database (token_invalidated_at may not exist on first deploy)
+    let result;
+    try {
+      result = await query(
+        'SELECT id, email, first_name, last_name, status, is_admin, token_invalidated_at FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+    } catch (colErr) {
+      // Fallback if token_invalidated_at column doesn't exist yet
+      result = await query(
+        'SELECT id, email, first_name, last_name, status, is_admin FROM users WHERE id = $1',
+        [decoded.userId]
+      );
+    }
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'User not found' });
@@ -28,6 +37,14 @@ export async function authenticate(req, res, next) {
 
     if (user.status === 'suspended') {
       return res.status(403).json({ error: 'Account suspended' });
+    }
+
+    // Check if token was issued before a password reset invalidated all sessions
+    if (user.token_invalidated_at && decoded.iat) {
+      const invalidatedAt = Math.floor(new Date(user.token_invalidated_at).getTime() / 1000);
+      if (decoded.iat < invalidatedAt) {
+        return res.status(401).json({ error: 'Token invalidated — please sign in again' });
+      }
     }
 
     req.user = user;

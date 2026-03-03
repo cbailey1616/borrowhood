@@ -108,8 +108,17 @@ const resetVerification = () =>
 const forgotPassword = (email) =>
   post('/auth/forgot-password', { email });
 
-const resetPassword = (email, code, newPassword) =>
-  post('/auth/reset-password', { email, code, newPassword });
+const verifyResetCode = (email, code) =>
+  post('/auth/verify-reset-code', { email, code });
+
+const resetPassword = (resetToken, newPassword) =>
+  post('/auth/reset-password', { resetToken, newPassword });
+
+const findAccount = (params) =>
+  post('/auth/find-account', params);
+
+const linkAccount = (provider, token) =>
+  post('/auth/link-account', { provider, ...token });
 
 const loginWithGoogle = (idToken) =>
   post('/auth/google', { idToken });
@@ -684,7 +693,10 @@ export default {
   checkVerification,
   resetVerification,
   forgotPassword,
+  verifyResetCode,
   resetPassword,
+  findAccount,
+  linkAccount,
   loginWithGoogle,
   loginWithApple,
   // Users

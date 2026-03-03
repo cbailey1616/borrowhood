@@ -8,6 +8,7 @@ import { query } from '../utils/db.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
 import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
+import { sendResetCodeEmail, sendAccountHintEmail } from '../services/email.js';
 import { body, validationResult } from 'express-validator';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -684,7 +685,7 @@ router.get('/me', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/auth/forgot-password
-// Request password reset
+// Request password reset — stores SHA-256 hash of code, not raw
 // ============================================
 router.post('/forgot-password',
   body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
@@ -698,8 +699,10 @@ router.post('/forgot-password',
     const { email } = req.body;
 
     try {
-      // Check if user exists
-      const result = await query('SELECT id, email FROM users WHERE email = $1', [email]);
+      const result = await query(
+        'SELECT id, email, reset_code_expires FROM users WHERE email = $1',
+        [email]
+      );
 
       // Always return success to prevent email enumeration
       if (result.rows.length === 0) {
@@ -708,19 +711,31 @@ router.post('/forgot-password',
 
       const user = result.rows[0];
 
-      // Generate a 6-digit reset code
-      const resetToken = crypto.randomInt(100000, 999999).toString();
-      const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      // Per-email rate limit: block if a code was sent in the last 20 minutes
+      if (user.reset_code_expires) {
+        const cooldownEnd = new Date(user.reset_code_expires);
+        cooldownEnd.setMinutes(cooldownEnd.getMinutes() - 40); // 1hr expiry minus 40min = 20min after send
+        if (new Date() < cooldownEnd) {
+          return res.json({ message: 'If an account exists, a reset code has been sent' });
+        }
+      }
 
-      // Store reset token
+      // Generate 6-digit code and store SHA-256 hash
+      const code = crypto.randomInt(100000, 999999).toString();
+      const codeHash = crypto.createHash('sha256').update(code).digest('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
       await query(
-        'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
-        [resetToken, resetExpires, user.id]
+        `UPDATE users SET reset_code_hash = $1, reset_code_expires = $2, reset_code_attempts = 0,
+         reset_token_hash = NULL, reset_token_expires = NULL
+         WHERE id = $3`,
+        [codeHash, expires, user.id]
       );
 
-      // TODO: Send email with reset code
-      // For now, log it (in production, integrate with email service)
-      console.log(`Password reset code for ${email}: ${resetToken}`);
+      // Send email (best-effort — don't fail the request if email fails)
+      sendResetCodeEmail(email, code).catch(err => {
+        console.error('Failed to send reset email:', err);
+      });
 
       res.json({ message: 'If an account exists, a reset code has been sent' });
     } catch (err) {
@@ -731,13 +746,12 @@ router.post('/forgot-password',
 );
 
 // ============================================
-// POST /api/auth/reset-password
-// Reset password with code
+// POST /api/auth/verify-reset-code
+// Verify the 6-digit code, return a one-time reset token
 // ============================================
-router.post('/reset-password',
+router.post('/verify-reset-code',
   body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
   body('code').isLength({ min: 6, max: 6 }).withMessage('Please enter the 6-digit reset code'),
-  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -745,16 +759,12 @@ router.post('/reset-password',
       return res.status(400).json({ error: messages[0], errors: errors.array() });
     }
 
-    const { email, code, newPassword } = req.body;
+    const { email, code } = req.body;
 
     try {
-      // Find user with valid reset token
       const result = await query(
-        `SELECT id FROM users
-         WHERE email = $1
-           AND password_reset_token = $2
-           AND password_reset_expires > NOW()`,
-        [email, code]
+        'SELECT id, reset_code_hash, reset_code_expires, reset_code_attempts FROM users WHERE email = $1',
+        [email]
       );
 
       if (result.rows.length === 0) {
@@ -763,13 +773,93 @@ router.post('/reset-password',
 
       const user = result.rows[0];
 
-      // Hash new password
+      // Check lockout (5 attempts max)
+      if (user.reset_code_attempts >= 5) {
+        return res.status(429).json({ error: 'Too many attempts. Please request a new code.' });
+      }
+
+      // Check expiry
+      if (!user.reset_code_hash || !user.reset_code_expires || new Date(user.reset_code_expires) < new Date()) {
+        return res.status(400).json({ error: 'Reset code has expired. Please request a new one.' });
+      }
+
+      // Atomically increment attempts first (prevents race condition)
+      await query(
+        'UPDATE users SET reset_code_attempts = reset_code_attempts + 1 WHERE id = $1',
+        [user.id]
+      );
+
+      // Verify hash using timing-safe comparison
+      const submittedHash = crypto.createHash('sha256').update(code).digest('hex');
+      const storedHash = user.reset_code_hash;
+      const hashesMatch = submittedHash.length === storedHash.length &&
+        crypto.timingSafeEqual(Buffer.from(submittedHash), Buffer.from(storedHash));
+
+      if (!hashesMatch) {
+        return res.status(400).json({ error: 'Invalid reset code' });
+      }
+
+      // Success — generate one-time reset token (10min expiry)
+      const resetToken = crypto.randomUUID();
+      const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const tokenExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+      await query(
+        `UPDATE users SET
+         reset_token_hash = $1, reset_token_expires = $2,
+         reset_code_hash = NULL, reset_code_expires = NULL, reset_code_attempts = 0
+         WHERE id = $3`,
+        [tokenHash, tokenExpires, user.id]
+      );
+
+      res.json({ resetToken });
+    } catch (err) {
+      console.error('Verify reset code error:', err);
+      res.status(500).json({ error: 'Failed to verify code' });
+    }
+  }
+);
+
+// ============================================
+// POST /api/auth/reset-password
+// Reset password with one-time reset token
+// ============================================
+router.post('/reset-password',
+  body('resetToken').notEmpty().withMessage('Reset token is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const messages = errors.array().map(e => e.msg);
+      return res.status(400).json({ error: messages[0], errors: errors.array() });
+    }
+
+    const { resetToken, newPassword } = req.body;
+
+    try {
+      const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+      const result = await query(
+        `SELECT id FROM users
+         WHERE reset_token_hash = $1
+           AND reset_token_expires > NOW()`,
+        [tokenHash]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(400).json({ error: 'Invalid or expired reset token. Please start over.' });
+      }
+
+      const user = result.rows[0];
       const passwordHash = await bcrypt.hash(newPassword, 12);
 
-      // Update password and clear reset token
+      // Update password, clear all reset columns, invalidate existing sessions
       await query(
-        `UPDATE users
-         SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL
+        `UPDATE users SET
+         password_hash = $1,
+         reset_code_hash = NULL, reset_code_expires = NULL, reset_code_attempts = 0,
+         reset_token_hash = NULL, reset_token_expires = NULL,
+         token_invalidated_at = NOW()
          WHERE id = $2`,
         [passwordHash, user.id]
       );
@@ -781,6 +871,135 @@ router.post('/reset-password',
     }
   }
 );
+
+// ============================================
+// POST /api/auth/find-account
+// Send account hint email — never reveals info to requester
+// ============================================
+const findAccountLimiter = new Map(); // IP -> { count, resetAt }
+router.post('/find-account',
+  async (req, res) => {
+    const { phone, firstName, lastName } = req.body;
+
+    const hasPhone = phone && phone.trim().length > 0;
+    const hasName = firstName && firstName.trim().length > 0 && lastName && lastName.trim().length > 0;
+    if (!hasPhone && !hasName) {
+      return res.status(400).json({ error: 'Please provide a phone number or first and last name' });
+    }
+
+    // Rate limit: 3 per hour per IP
+    const ip = req.ip;
+    const now = Date.now();
+    const entry = findAccountLimiter.get(ip);
+    if (entry) {
+      if (now < entry.resetAt) {
+        if (entry.count >= 3) {
+          return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+        }
+        entry.count++;
+      } else {
+        findAccountLimiter.set(ip, { count: 1, resetAt: now + 3600000 });
+      }
+    } else {
+      findAccountLimiter.set(ip, { count: 1, resetAt: now + 3600000 });
+    }
+
+    // Clean up old entries periodically
+    if (findAccountLimiter.size > 1000) {
+      for (const [key, val] of findAccountLimiter) {
+        if (now > val.resetAt) findAccountLimiter.delete(key);
+      }
+    }
+
+    try {
+      let users;
+      if (hasPhone) {
+        const result = await query(
+          'SELECT id, email, apple_id, google_id FROM users WHERE phone = $1 LIMIT 5',
+          [phone.trim()]
+        );
+        users = result.rows;
+      } else {
+        const result = await query(
+          'SELECT id, email, apple_id, google_id FROM users WHERE first_name ILIKE $1 AND last_name ILIKE $2 LIMIT 5',
+          [firstName.trim(), lastName.trim()]
+        );
+        users = result.rows;
+      }
+
+      // Send hint emails (best-effort, skip users without email)
+      for (const u of users) {
+        if (!u.email) continue;
+        const providers = [];
+        if (u.apple_id) providers.push('apple');
+        if (u.google_id) providers.push('google');
+        sendAccountHintEmail(u.email, providers).catch(err => {
+          console.error('Failed to send account hint email:', err);
+        });
+      }
+
+      // Always return generic response
+      res.json({ message: 'If matching accounts were found, we\'ve sent them a hint' });
+    } catch (err) {
+      console.error('Find account error:', err);
+      res.status(500).json({ error: 'Failed to process request' });
+    }
+  }
+);
+
+// ============================================
+// POST /api/auth/link-account
+// Link Apple/Google provider to existing account
+// ============================================
+router.post('/link-account', authenticate, async (req, res) => {
+  const { provider, idToken, identityToken } = req.body;
+
+  if (!provider || !['apple', 'google'].includes(provider)) {
+    return res.status(400).json({ error: 'Provider must be "apple" or "google"' });
+  }
+
+  try {
+    if (provider === 'google') {
+      if (!idToken) return res.status(400).json({ error: 'idToken is required' });
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const { sub: googleId } = ticket.getPayload();
+
+      // Check if another user already has this google_id
+      const existing = await query('SELECT id FROM users WHERE google_id = $1 AND id != $2', [googleId, req.user.id]);
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ error: 'This Google account is already linked to another user' });
+      }
+
+      await query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, req.user.id]);
+    } else {
+      if (!identityToken) return res.status(400).json({ error: 'identityToken is required' });
+
+      // Decode Apple JWT header to get kid
+      const header = JSON.parse(Buffer.from(identityToken.split('.')[0], 'base64').toString());
+      const key = await appleJwksClient.getSigningKey(header.kid);
+      const publicKey = key.getPublicKey();
+      const decoded = jwt.verify(identityToken, publicKey, { algorithms: ['RS256'] });
+      const appleId = decoded.sub;
+
+      // Check if another user already has this apple_id
+      const existing = await query('SELECT id FROM users WHERE apple_id = $1 AND id != $2', [appleId, req.user.id]);
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ error: 'This Apple account is already linked to another user' });
+      }
+
+      await query('UPDATE users SET apple_id = $1 WHERE id = $2', [appleId, req.user.id]);
+    }
+
+    res.json({ message: 'Account linked successfully' });
+  } catch (err) {
+    console.error('Link account error:', err);
+    res.status(400).json({ error: 'Failed to verify provider token' });
+  }
+});
 
 // ============================================
 // POST /api/auth/admin/debug-transactions
