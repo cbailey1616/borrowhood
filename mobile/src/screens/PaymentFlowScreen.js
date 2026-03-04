@@ -63,6 +63,7 @@ export default function PaymentFlowScreen({ navigation, route }) {
         customerEphemeralKeySecret: credentials.ephemeralKey,
         customerId: credentials.customerId,
         merchantDisplayName: 'BorrowHood',
+        returnURL: 'com.borrowhood.app://stripe-redirect',
         applePay: {
           merchantCountryCode: 'US',
         },

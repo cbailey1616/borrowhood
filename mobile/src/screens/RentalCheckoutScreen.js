@@ -83,6 +83,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
         customerEphemeralKeySecret: ephemeralKey,
         customerId,
         merchantDisplayName: 'BorrowHood',
+        returnURL: 'com.borrowhood.app://stripe-redirect',
         applePay: {
           merchantCountryCode: 'US',
         },

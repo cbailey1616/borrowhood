@@ -58,6 +58,7 @@ export default function App() {
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY}
           merchantIdentifier="merchant.com.borrowhood.app"
+          urlScheme="com.borrowhood.app"
         >
           <SafeAreaProvider>
             <AuthProvider navigationRef={navigationRef}>
