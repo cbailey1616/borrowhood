@@ -367,6 +367,18 @@ export async function runMigrations() {
       logger.info('Migration complete: password reset security columns added');
     }
 
+    // Migration: Add return reminder tracking columns to borrow_transactions
+    const hasReminderDayBefore = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'borrow_transactions' AND column_name = 'reminder_day_before_sent'
+    `);
+    if (hasReminderDayBefore.rows.length === 0) {
+      logger.info('Running migration: Add return reminder columns to borrow_transactions');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS reminder_day_before_sent BOOLEAN DEFAULT false');
+      await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS reminder_day_of_sent BOOLEAN DEFAULT false');
+      logger.info('Migration complete: return reminder columns added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);
