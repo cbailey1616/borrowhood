@@ -200,7 +200,10 @@ export default function RootNavigator() {
           <Stack.Screen
             name="ListingDiscussion"
             component={ListingDiscussionScreen}
-            options={{ ...sharedScreenOptions, title: 'Questions & Answers' }}
+            options={({ route }) => ({
+              ...sharedScreenOptions,
+              title: route.params?.requestId ? 'Discussion' : 'Questions & Answers',
+            })}
           />
           <Stack.Screen
             name="Subscription"

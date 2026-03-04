@@ -169,6 +169,12 @@ const NOTIFICATION_TEMPLATES = {
       ? `${data.posterName} asked a question about ${data.itemTitle || 'your listing'}. Tap to respond.`
       : 'Someone asked about your listing. Tap to respond.',
   },
+  request_comment: {
+    title: 'New Response',
+    body: (data) => data.posterName
+      ? `${data.posterName} responded to your request for ${data.itemTitle || 'an item'}. Tap to view.`
+      : 'Someone responded to your request. Tap to view.',
+  },
 
   // Friends
   friend_request: {

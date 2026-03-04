@@ -20,7 +20,11 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
-  const { listingId, listing, autoFocus } = route.params;
+  const { listingId, listing, requestId, request, autoFocus } = route.params;
+  const isRequest = !!requestId;
+  const targetId = requestId || listingId;
+  const targetTitle = request?.title || listing?.title;
+  const isOwner = isRequest ? request?.isOwner : listing?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [expandedPosts, setExpandedPosts] = useState({});
@@ -35,7 +39,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchPosts();
-  }, [listingId]);
+  }, [targetId]);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -45,7 +49,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
   const fetchPosts = async () => {
     try {
-      const data = await api.getDiscussions(listingId, { limit: 50 });
+      const data = isRequest
+        ? await api.getRequestDiscussions(requestId, { limit: 50 })
+        : await api.getDiscussions(listingId, { limit: 50 });
       setPosts(data.posts || []);
     } catch (error) {
       console.error('Failed to fetch discussions:', error);
@@ -56,7 +62,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
   const fetchReplies = async (postId) => {
     try {
-      const data = await api.getDiscussionReplies(listingId, postId);
+      const data = isRequest
+        ? await api.getRequestDiscussionReplies(requestId, postId)
+        : await api.getDiscussionReplies(listingId, postId);
       setReplies(prev => ({ ...prev, [postId]: data.replies || [] }));
     } catch (error) {
       console.error('Failed to fetch replies:', error);
@@ -82,7 +90,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         parentId: replyingTo?.id || undefined,
       };
 
-      const result = await api.createDiscussionPost(listingId, data);
+      const result = isRequest
+        ? await api.createRequestDiscussionPost(requestId, data)
+        : await api.createDiscussionPost(listingId, data);
 
       if (replyingTo) {
         // Add reply to the replies list
@@ -132,6 +142,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       setNewComment('');
       setReplyingTo(null);
     } catch (error) {
+      console.error('Discussion submit error:', error);
       haptics.error();
     } finally {
       setIsSubmitting(false);
@@ -142,7 +153,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     if (!deleteTarget) return;
     const { postId, isReply, parentId } = deleteTarget;
     try {
-      await api.deleteDiscussionPost(listingId, postId);
+      await (isRequest
+        ? api.deleteRequestDiscussionPost(requestId, postId)
+        : api.deleteDiscussionPost(listingId, postId));
 
       if (isReply && parentId) {
         setReplies(prev => ({
@@ -206,7 +219,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           <Text style={styles.replyDate}>{formatDate(reply.createdAt)}</Text>
         </View>
         <Text style={styles.replyText}>{reply.content}</Text>
-        {(reply.isOwn || listing?.isOwner) && (
+        {(reply.isOwn || isOwner) && (
           <HapticPressable
             haptic="light"
             style={styles.deleteButton}
@@ -236,7 +249,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             </Text>
             <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
           </View>
-          {(post.isOwn || listing?.isOwner) && (
+          {(post.isOwn || isOwner) && (
             <HapticPressable
               haptic="light"
               style={styles.moreButton}
@@ -308,7 +321,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           style={styles.input}
           value={newComment}
           onChangeText={setNewComment}
-          placeholder={replyingTo ? 'Write a reply...' : 'Ask a question...'}
+          placeholder={replyingTo ? 'Write a reply...' : isRequest ? 'Write a response...' : 'Ask a question...'}
           placeholderTextColor={COLORS.textMuted}
           multiline
           maxLength={2000}
@@ -335,10 +348,10 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Listing Header */}
-      {listing && (
+      {/* Header */}
+      {targetTitle && (
         <View style={styles.listingHeader}>
-          <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+          <Text style={styles.listingTitle} numberOfLines={1}>{targetTitle}</Text>
         </View>
       )}
 
@@ -352,9 +365,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray[600]} />
-            <Text style={styles.emptyTitle}>No questions yet</Text>
+            <Text style={styles.emptyTitle}>{isRequest ? 'No responses yet' : 'No questions yet'}</Text>
             <Text style={styles.emptySubtitle}>
-              Be the first to ask a question about this item
+              {isRequest
+                ? 'Be the first to respond to this request'
+                : 'Be the first to ask a question about this item'}
             </Text>
           </View>
         }

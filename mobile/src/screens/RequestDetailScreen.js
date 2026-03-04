@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -18,15 +19,19 @@ import { useFocusEffect } from '@react-navigation/native';
 
 export default function RequestDetailScreen({ route, navigation }) {
   const { id } = route.params;
+  const { user } = useAuth();
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [showHaveThisSheet, setShowHaveThisSheet] = useState(false);
+  const [discussions, setDiscussions] = useState([]);
+  const [discussionCount, setDiscussionCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       fetchRequest();
+      fetchDiscussions();
     }, [id])
   );
 
@@ -55,6 +60,16 @@ export default function RequestDetailScreen({ route, navigation }) {
       haptics.error();
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const fetchDiscussions = async () => {
+    try {
+      const data = await api.getRequestDiscussions(id, { limit: 3 });
+      setDiscussions(data.posts || []);
+      setDiscussionCount(data.total || 0);
+    } catch (error) {
+      console.error('Failed to fetch discussions:', error);
     }
   };
 
@@ -169,6 +184,70 @@ export default function RequestDetailScreen({ route, navigation }) {
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
 
+        {/* Discussions Section */}
+        <View style={styles.section}>
+          <View style={styles.discussionHeader}>
+            <Text style={styles.sectionTitle}>
+              Responses {discussionCount > 0 && `(${discussionCount})`}
+            </Text>
+            {discussionCount > 3 && (
+              <HapticPressable
+                onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request })}
+                haptic="light"
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+              </HapticPressable>
+            )}
+          </View>
+
+          {discussions.length > 0 ? (
+            <View style={styles.discussionList}>
+              {discussions.map((post) => (
+                <HapticPressable
+                  key={post.id}
+                  style={styles.discussionPreview}
+                  onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request })}
+                  haptic="light"
+                >
+                  {post.user.profilePhotoUrl ? (
+                    <Image source={{ uri: post.user.profilePhotoUrl }} style={styles.discussionAvatar} />
+                  ) : (
+                    <View style={[styles.discussionAvatar, styles.avatarPlaceholder]}>
+                      <Ionicons name="person" size={16} color={COLORS.gray[400]} />
+                    </View>
+                  )}
+                  <View style={styles.discussionContent}>
+                    <Text style={styles.discussionAuthor}>
+                      {post.user.firstName} {post.user.lastName}
+                    </Text>
+                    <Text style={styles.discussionText} numberOfLines={2}>
+                      {post.content}
+                    </Text>
+                    {post.replyCount > 0 && (
+                      <Text style={styles.discussionReplyCount}>
+                        {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
+                      </Text>
+                    )}
+                  </View>
+                </HapticPressable>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.noDiscussions}>
+              No responses yet. Be the first to help!
+            </Text>
+          )}
+
+          <HapticPressable
+            style={styles.respondButton}
+            onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request, autoFocus: true })}
+            haptic="light"
+          >
+            <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.respondButtonText}>Respond in Thread</Text>
+          </HapticPressable>
+        </View>
+
         {/* Posted date */}
         <Text style={styles.postedDate}>
           Posted {new Date(request.createdAt).toLocaleDateString()}
@@ -223,11 +302,11 @@ export default function RequestDetailScreen({ route, navigation }) {
         title="I Can Help"
         actions={[
           {
-            label: 'Message Them',
-            icon: <Ionicons name="chatbubble-outline" size={20} color={COLORS.text} />,
+            label: 'Respond in Thread',
+            icon: <Ionicons name="chatbubbles-outline" size={20} color={COLORS.text} />,
             onPress: () => {
               setShowHaveThisSheet(false);
-              navigation.navigate('Chat', { recipientId: request.requester.id });
+              navigation.navigate('ListingDiscussion', { requestId: id, request, autoFocus: true });
             },
           },
           {
@@ -404,6 +483,79 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  discussionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  seeAllText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  discussionList: {
+    gap: SPACING.md,
+  },
+  discussionPreview: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+  },
+  discussionAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: COLORS.gray[700],
+  },
+  avatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discussionContent: {
+    flex: 1,
+  },
+  discussionAuthor: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  discussionText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  discussionReplyCount: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.primary,
+    marginTop: SPACING.xs,
+  },
+  noDiscussions: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    paddingVertical: SPACING.lg,
+  },
+  respondButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    marginTop: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+  },
+  respondButtonText: {
+    ...TYPOGRAPHY.button,
+    color: COLORS.primary,
   },
   footer: {
     padding: SPACING.lg,

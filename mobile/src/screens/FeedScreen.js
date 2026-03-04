@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   InteractionManager,
   Platform,
+  TextInput,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -62,6 +63,14 @@ export default function FeedScreen({ navigation }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [requestDiscussions, setRequestDiscussions] = useState({});
+  const [listingDiscussions, setListingDiscussions] = useState({});
+  const [threadInputs, setThreadInputs] = useState({});
+  const [submittingThread, setSubmittingThread] = useState(null);
+  const [expandedThreads, setExpandedThreads] = useState({});
+  const [threadReplies, setThreadReplies] = useState({});
+  const [replyingTo, setReplyingTo] = useState({});
+  const [collapsedThreads, setCollapsedThreads] = useState({});
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -95,6 +104,31 @@ export default function FeedScreen({ navigation }) {
       setIsLoadingMore(false);
     }
   }, [search, activeFilters, visibilityFilters, categoryFilters]);
+
+  // Fetch discussion previews for all feed items
+  useEffect(() => {
+    const requestItems = feed.filter(item => item.type === 'request' && !requestDiscussions[item.id]);
+    requestItems.forEach(async (item) => {
+      try {
+        const data = await api.getRequestDiscussions(item.id, { limit: 2 });
+        setRequestDiscussions(prev => ({
+          ...prev,
+          [item.id]: { posts: data.posts || [], total: data.total || 0 },
+        }));
+      } catch (error) {}
+    });
+
+    const listingItems = feed.filter(item => item.type === 'listing' && !listingDiscussions[item.id]);
+    listingItems.forEach(async (item) => {
+      try {
+        const data = await api.getDiscussions(item.id, { limit: 2 });
+        setListingDiscussions(prev => ({
+          ...prev,
+          [item.id]: { posts: data.posts || [], total: data.total || 0 },
+        }));
+      } catch (error) {}
+    });
+  }, [feed]);
 
   useEffect(() => {
     fetchFeed();
@@ -159,6 +193,8 @@ export default function FeedScreen({ navigation }) {
 
   const onRefresh = () => {
     setIsRefreshing(true);
+    setRequestDiscussions({});
+    setListingDiscussions({});
     fetchFeed(1, false);
     refreshUser(); // Refresh user data on manual pull-to-refresh
     checkNeighborhood();
@@ -343,7 +379,7 @@ export default function FeedScreen({ navigation }) {
             </View>
           </View>
 
-          {item.ownerMasked ? (
+          {item.ownerMasked && (
             <HapticPressable
               style={styles.verifyUnlockBanner}
               onPress={() => {
@@ -361,117 +397,330 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.verifyUnlockText}>Verify to unlock town access</Text>
               <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
             </HapticPressable>
-          ) : (
-            <View style={styles.cardActions}>
-              <HapticPressable
-                style={styles.actionButton}
-                onPress={() => navigation.navigate('ListingDiscussion', { listingId: item.id, listing: item })}
-                haptic="light"
-                scaleDown={1}
-              >
-                <Ionicons name="chatbubbles-outline" size={18} color={COLORS.greenTextMuted} />
-                <Text style={styles.actionText}>Discuss</Text>
-              </HapticPressable>
-              {item.owner?.id !== user?.id && (
-                <>
-                  <View style={styles.actionDivider} />
-                  <HapticPressable
-                    style={styles.actionButton}
-                    onPress={() => navigation.navigate('Chat', { recipientId: item.user.id, listingId: item.id, listing: item })}
-                    haptic="light"
-                    scaleDown={1}
-                  >
-                    <Ionicons name="mail-outline" size={18} color={COLORS.greenText} />
-                    <Text style={styles.actionText}>Message</Text>
-                  </HapticPressable>
-                </>
-              )}
-            </View>
           )}
         </HapticPressable>
+
+        {/* Inline thread */}
+        {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
       </View>
     </AnimatedCard>
   );
+
+  const handleThreadSubmit = async (itemId, isRequest = false) => {
+    const text = (threadInputs[itemId] || '').trim();
+    if (!text) return;
+
+    setSubmittingThread(itemId);
+    try {
+      const parentId = replyingTo[itemId]?.id || undefined;
+      const result = isRequest
+        ? await api.createRequestDiscussionPost(itemId, { content: text, parentId })
+        : await api.createDiscussionPost(itemId, { content: text, parentId });
+
+      const newPost = {
+        id: result.id,
+        content: result.content,
+        replyCount: 0,
+        createdAt: result.createdAt,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profilePhotoUrl: user.profilePhotoUrl,
+        },
+        isOwn: true,
+      };
+
+      const setDiscussions = isRequest ? setRequestDiscussions : setListingDiscussions;
+
+      if (parentId) {
+        setThreadReplies(prev => ({
+          ...prev,
+          [parentId]: [...(prev[parentId] || []), newPost],
+        }));
+        setDiscussions(prev => ({
+          ...prev,
+          [itemId]: {
+            ...prev[itemId],
+            posts: (prev[itemId]?.posts || []).map(p =>
+              p.id === parentId ? { ...p, replyCount: (p.replyCount || 0) + 1 } : p
+            ),
+          },
+        }));
+        setExpandedThreads(prev => ({ ...prev, [parentId]: true }));
+      } else {
+        setDiscussions(prev => ({
+          ...prev,
+          [itemId]: {
+            posts: [newPost, ...(prev[itemId]?.posts || [])],
+            total: (prev[itemId]?.total || 0) + 1,
+          },
+        }));
+      }
+
+      haptics.success();
+      setThreadInputs(prev => ({ ...prev, [itemId]: '' }));
+      setReplyingTo(prev => ({ ...prev, [itemId]: null }));
+    } catch (error) {
+      console.error('Thread submit error:', error);
+      haptics.error();
+    } finally {
+      setSubmittingThread(null);
+    }
+  };
+
+  const fetchThreadReplies = async (itemId, postId, isRequest = false) => {
+    try {
+      const data = isRequest
+        ? await api.getRequestDiscussionReplies(itemId, postId)
+        : await api.getDiscussionReplies(itemId, postId);
+      setThreadReplies(prev => ({ ...prev, [postId]: data.replies || [] }));
+    } catch (error) {
+      console.error('Failed to fetch replies:', error);
+    }
+  };
+
+  const toggleThreadExpand = async (itemId, postId, isRequest = false) => {
+    const isExpanding = !expandedThreads[postId];
+    setExpandedThreads(prev => ({ ...prev, [postId]: isExpanding }));
+    if (isExpanding && !threadReplies[postId]) {
+      await fetchThreadReplies(itemId, postId, isRequest);
+    }
+  };
+
+  const renderInlineThread = (itemId, thread, isRequest) => {
+    const posts = thread?.posts || [];
+    const inputValue = threadInputs[itemId] || '';
+    const isSubmitting = submittingThread === itemId;
+    const currentReply = replyingTo[itemId];
+    const isCollapsed = collapsedThreads[itemId];
+    const feedItem = feed.find(f => f.id === itemId);
+    const navParams = isRequest
+      ? { requestId: itemId, request: feedItem }
+      : { listingId: itemId, listing: feedItem };
+
+    return (
+      <View style={styles.threadContainer}>
+        <HapticPressable
+          haptic="light"
+          onPress={() => setCollapsedThreads(prev => ({ ...prev, [itemId]: !prev[itemId] }))}
+          style={[styles.threadHeader, !isCollapsed && styles.threadHeaderExpanded]}
+        >
+          <Ionicons name="chatbubbles-outline" size={14} color={COLORS.textSecondary} />
+          <Text style={[styles.threadHeaderText, { flex: 1 }]}>
+            {thread?.total > 0 ? `${thread.total} ${thread.total === 1 ? 'comment' : 'comments'}` : 'No comments yet'}
+          </Text>
+          <Ionicons name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={14} color={COLORS.textMuted} />
+        </HapticPressable>
+
+        {isCollapsed ? null : (<>
+
+        {posts.map((post) => (
+          <View key={post.id} style={styles.threadPost}>
+            <View style={styles.threadPostRow}>
+              {post.user.profilePhotoUrl ? (
+                <Image source={{ uri: post.user.profilePhotoUrl }} style={styles.requestThreadAvatar} />
+              ) : (
+                <View style={[styles.requestThreadAvatar, styles.requestAvatarPlaceholder]}>
+                  <Ionicons name="person" size={10} color={COLORS.gray[400]} />
+                </View>
+              )}
+              <View style={styles.requestThreadBody}>
+                <Text style={styles.requestThreadAuthor}>
+                  {post.user.firstName} {post.user.lastName}
+                </Text>
+                <Text style={styles.requestThreadText}>{post.content}</Text>
+                <View style={styles.threadPostActions}>
+                  <HapticPressable
+                    haptic="light"
+                    onPress={() => setReplyingTo(prev => ({ ...prev, [itemId]: post }))}
+                    style={styles.threadReplyBtn}
+                  >
+                    <Text style={styles.threadReplyBtnText}>Reply</Text>
+                  </HapticPressable>
+                  {post.replyCount > 0 && (
+                    <HapticPressable
+                      haptic="light"
+                      onPress={() => toggleThreadExpand(itemId, post.id, isRequest)}
+                      style={styles.threadReplyBtn}
+                    >
+                      <Text style={[styles.threadReplyBtnText, { color: COLORS.primary }]}>
+                        {expandedThreads[post.id] ? 'Hide' : 'View'} {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
+                      </Text>
+                    </HapticPressable>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {expandedThreads[post.id] && (threadReplies[post.id] || []).map((reply) => (
+              <View key={reply.id} style={styles.threadReply}>
+                {reply.user.profilePhotoUrl ? (
+                  <Image source={{ uri: reply.user.profilePhotoUrl }} style={styles.threadReplyAvatar} />
+                ) : (
+                  <View style={[styles.threadReplyAvatar, styles.requestAvatarPlaceholder]}>
+                    <Ionicons name="person" size={8} color={COLORS.gray[400]} />
+                  </View>
+                )}
+                <View style={styles.threadReplyBody}>
+                  <Text style={styles.threadReplyAuthor}>
+                    {reply.user.firstName} {reply.user.lastName}
+                  </Text>
+                  <Text style={styles.threadReplyText}>{reply.content}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+
+        {thread?.total > 2 && (
+          <HapticPressable
+            onPress={() => navigation.navigate('ListingDiscussion', navParams)}
+            haptic="light"
+            style={styles.threadViewAll}
+          >
+            <Text style={styles.requestThreadLinkText}>View all {thread.total} comments</Text>
+          </HapticPressable>
+        )}
+
+        {currentReply && (
+          <View style={styles.threadReplyingBar}>
+            <Text style={styles.threadReplyingText}>
+              Replying to {currentReply.user.firstName}
+            </Text>
+            <HapticPressable
+              haptic="light"
+              onPress={() => setReplyingTo(prev => ({ ...prev, [itemId]: null }))}
+            >
+              <Ionicons name="close" size={16} color={COLORS.textSecondary} />
+            </HapticPressable>
+          </View>
+        )}
+
+        <View style={styles.threadInputRow}>
+          <TextInput
+            style={styles.threadInput}
+            value={inputValue}
+            onChangeText={(text) => setThreadInputs(prev => ({ ...prev, [itemId]: text }))}
+            placeholder={currentReply ? 'Write a reply...' : 'Write a comment...'}
+            placeholderTextColor={COLORS.textMuted}
+            maxLength={2000}
+          />
+          <HapticPressable
+            haptic="medium"
+            style={[styles.threadSendBtn, (!inputValue.trim() || isSubmitting) && styles.threadSendBtnDisabled]}
+            onPress={() => handleThreadSubmit(itemId, isRequest)}
+            disabled={!inputValue.trim() || isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="send" size={14} color="#fff" />
+            )}
+          </HapticPressable>
+        </View>
+
+        {feedItem && feedItem.user?.id !== user?.id && (
+          <HapticPressable
+            haptic="light"
+            style={styles.threadDmButton}
+            onPress={() => navigation.navigate('Chat', {
+              recipientId: feedItem.user.id,
+              ...(isRequest
+                ? {}
+                : { listingId: itemId, listing: feedItem }),
+            })}
+          >
+            <Ionicons name="mail-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.threadDmText}>
+              {isRequest
+                ? `Message ${feedItem.user.firstName} privately`
+                : `Message ${feedItem.user.firstName} about this item`}
+            </Text>
+          </HapticPressable>
+        )}
+        </>)}
+      </View>
+    );
+  };
 
   const renderRequestItem = (item, index) => {
     const neededByDate = item.neededUntil
       ? new Date(item.neededUntil).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
       : null;
+    const thread = requestDiscussions[item.id];
 
     return (
       <AnimatedCard index={index}>
-        <HapticPressable
-          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-          haptic="light"
-          scaleDown={0.98}
-          style={styles.requestCard}
-        >
-          {/* Red urgency banner */}
-          <LinearGradient
-            colors={item.isExpired ? [COLORS.gray[500], COLORS.gray[400]] : ['#C0392B', '#E74C3C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.requestBannerGradient}
+        <View style={styles.requestCard}>
+          {/* Tap header area to go to detail */}
+          <HapticPressable
+            onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+            haptic="light"
+            scaleDown={1}
           >
-            <View style={styles.requestBannerLeft}>
-              <Text style={styles.requestBannerEmoji}>📢</Text>
-              <Text style={styles.requestBannerLabel}>{item.isExpired ? 'EXPIRED' : 'WANTED'}</Text>
-            </View>
-            <Text style={styles.requestBannerDate}>
-              {item.isExpired ? 'Request expired' : neededByDate ? `Needed by ${neededByDate}` : 'Open request'}
-            </Text>
-          </LinearGradient>
-
-          {/* Card content */}
-          <View style={styles.requestContent}>
-            <View style={styles.requestContentRow}>
-              <HapticPressable
-                onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-                haptic="light"
-                scaleDown={1}
-              >
-                {item.user.profilePhotoUrl ? (
-                  <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
-                ) : (
-                  <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]}>
-                    <Ionicons name="person" size={16} color={COLORS.gray[400]} />
-                  </View>
-                )}
-              </HapticPressable>
-              <View style={styles.requestContentMeta}>
-                <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
-                <Text style={styles.requestSubtitle}>
-                  {item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''} · {formatTimeAgo(item.createdAt)}
-                </Text>
+            {/* Red urgency banner */}
+            <LinearGradient
+              colors={item.isExpired ? [COLORS.gray[500], COLORS.gray[400]] : ['#C0392B', '#E74C3C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.requestBannerGradient}
+            >
+              <View style={styles.requestBannerLeft}>
+                <Text style={styles.requestBannerEmoji}>📢</Text>
+                <Text style={styles.requestBannerLabel}>{item.isExpired ? 'EXPIRED' : 'WANTED'}</Text>
               </View>
-              {item.user.id === user?.id ? (
-                item.isExpired ? (
-                  <HapticPressable
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      handleRenewRequest(item.id);
-                    }}
-                    haptic="medium"
-                    style={styles.renewCTA}
-                  >
-                    <Text style={styles.renewCTAText}>Renew</Text>
-                  </HapticPressable>
-                ) : null
-              ) : (
+              <Text style={styles.requestBannerDate}>
+                {item.isExpired ? 'Request expired' : neededByDate ? `Needed by ${neededByDate}` : 'Open request'}
+              </Text>
+            </LinearGradient>
+
+            {/* Card content */}
+            <View style={styles.requestContent}>
+              <View style={styles.requestContentRow}>
                 <HapticPressable
-                  onPress={() => setSelectedRequest(item)}
-                  haptic="medium"
-                  style={styles.requestCTA}
+                  onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+                  haptic="light"
+                  scaleDown={1}
                 >
-                  <Text style={styles.requestCTAText}>I Can Help</Text>
+                  {item.user.profilePhotoUrl ? (
+                    <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
+                  ) : (
+                    <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]}>
+                      <Ionicons name="person" size={16} color={COLORS.gray[400]} />
+                    </View>
+                  )}
                 </HapticPressable>
-              )}
+                <View style={styles.requestContentMeta}>
+                  <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
+                  <Text style={styles.requestSubtitle}>
+                    {item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''} · {formatTimeAgo(item.createdAt)}
+                  </Text>
+                </View>
+                {item.user.id === user?.id ? (
+                  item.isExpired ? (
+                    <HapticPressable
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleRenewRequest(item.id);
+                      }}
+                      haptic="medium"
+                      style={styles.renewCTA}
+                    >
+                      <Text style={styles.renewCTAText}>Renew</Text>
+                    </HapticPressable>
+                  ) : null
+                ) : null}
+              </View>
+              {item.description ? (
+                <Text style={styles.requestSnippet} numberOfLines={2}>{item.description}</Text>
+              ) : null}
             </View>
-            {item.description ? (
-              <Text style={styles.requestSnippet} numberOfLines={2}>{item.description}</Text>
-            ) : null}
-          </View>
-        </HapticPressable>
+          </HapticPressable>
+
+          {/* Embedded thread */}
+          {renderInlineThread(item.id, thread, true)}
+        </View>
       </AnimatedCard>
     );
   };
@@ -1057,6 +1306,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
     ...SHADOWS.md,
   },
   cardHeader: {
@@ -1124,7 +1375,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(192, 57, 43, 0.18)',
+    borderColor: COLORS.primary,
     ...Platform.select({
       ios: {
         shadowColor: 'rgba(192, 57, 43, 0.06)',
@@ -1224,6 +1475,171 @@ const styles = StyleSheet.create({
   renewCTAText: {
     fontSize: 12,
     fontWeight: '700',
+    color: COLORS.primary,
+  },
+  requestThreadDivider: {
+    height: 1,
+    backgroundColor: COLORS.separator,
+    marginBottom: SPACING.md,
+  },
+  requestThreadAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: COLORS.gray[700],
+  },
+  requestThreadBody: {
+    flex: 1,
+  },
+  requestThreadAuthor: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  requestThreadText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+    marginTop: 2,
+  },
+  requestThreadLinkText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  threadContainer: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+    paddingTop: SPACING.md,
+  },
+  threadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  threadHeaderExpanded: {
+    marginBottom: SPACING.md,
+  },
+  threadHeaderText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  threadPost: {
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+  },
+  threadPostRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  threadPostActions: {
+    flexDirection: 'row',
+    gap: SPACING.lg,
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  threadReplyBtn: {
+    paddingVertical: 2,
+  },
+  threadReplyBtnText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  threadReply: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginLeft: 36,
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+  },
+  threadReplyAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: COLORS.gray[700],
+  },
+  threadReplyBody: {
+    flex: 1,
+  },
+  threadReplyAuthor: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  threadReplyText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  threadViewAll: {
+    marginBottom: SPACING.md,
+  },
+  threadReplyingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    marginBottom: SPACING.sm,
+  },
+  threadReplyingText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
+    color: COLORS.primary,
+  },
+  threadInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  threadInput: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.text,
+  },
+  threadSendBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  threadSendBtnDisabled: {
+    backgroundColor: COLORS.gray[700],
+  },
+  threadDmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.separator,
+  },
+  threadDmText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
     color: COLORS.primary,
   },
   typeBadgeText: {

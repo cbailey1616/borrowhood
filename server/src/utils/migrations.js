@@ -401,6 +401,34 @@ export async function runMigrations() {
       logger.info('Migration complete: notifications.dispute_id added');
     }
 
+    // Add request_id to listing_discussions for wanted post threads
+    const hasDiscussionRequestId = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'listing_discussions' AND column_name = 'request_id'
+    `);
+    if (hasDiscussionRequestId.rows.length === 0) {
+      logger.info('Running migration: Add request_id to listing_discussions');
+      await query('ALTER TABLE listing_discussions ADD COLUMN request_id UUID REFERENCES item_requests(id) ON DELETE CASCADE');
+      await query('ALTER TABLE listing_discussions ALTER COLUMN listing_id DROP NOT NULL');
+      await query(`ALTER TABLE listing_discussions ADD CONSTRAINT chk_discussion_target
+        CHECK ((listing_id IS NOT NULL AND request_id IS NULL) OR (listing_id IS NULL AND request_id IS NOT NULL))`);
+      await query(`CREATE INDEX idx_discussions_request_toplevel ON listing_discussions(request_id, created_at DESC)
+        WHERE parent_id IS NULL AND is_hidden = false`);
+      await query(`CREATE INDEX idx_discussions_request_id ON listing_discussions(request_id) WHERE request_id IS NOT NULL`);
+      logger.info('Migration complete: listing_discussions.request_id added');
+    }
+
+    // Add request_comment notification type
+    const hasRequestComment = await query(`
+      SELECT 1 FROM pg_enum WHERE enumlabel = 'request_comment'
+      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'notification_type')
+    `);
+    if (hasRequestComment.rows.length === 0) {
+      logger.info('Running migration: Add request_comment notification type');
+      await query("ALTER TYPE notification_type ADD VALUE 'request_comment'");
+      logger.info('Migration complete: request_comment notification type added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

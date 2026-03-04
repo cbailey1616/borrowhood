@@ -483,6 +483,19 @@ const createDiscussionPost = (listingId, data) =>
 const deleteDiscussionPost = (listingId, postId) =>
   del(`/listings/${listingId}/discussions/${postId}`);
 
+// Request Discussions (Wanted Posts)
+const getRequestDiscussions = (requestId, params) =>
+  get(`/requests/${requestId}/discussions`, params);
+
+const getRequestDiscussionReplies = (requestId, postId, params) =>
+  get(`/requests/${requestId}/discussions/${postId}/replies`, params);
+
+const createRequestDiscussionPost = (requestId, data) =>
+  post(`/requests/${requestId}/discussions`, data);
+
+const deleteRequestDiscussionPost = (requestId, postId) =>
+  del(`/requests/${requestId}/discussions/${postId}`);
+
 // ============================================
 // Sustainability
 // ============================================
@@ -806,6 +819,11 @@ export default {
   getDiscussionReplies,
   createDiscussionPost,
   deleteDiscussionPost,
+  // Request Discussions
+  getRequestDiscussions,
+  getRequestDiscussionReplies,
+  createRequestDiscussionPost,
+  deleteRequestDiscussionPost,
   // Sustainability
   getSustainabilityStats,
   getCommunitySustainability,

@@ -354,12 +354,16 @@ export default function BrowseScreen({ navigation }) {
         title="I Can Help"
         actions={[
           {
-            label: 'Message Them',
-            icon: <Ionicons name="chatbubble-outline" size={20} color={COLORS.text} />,
+            label: 'Respond in Thread',
+            icon: <Ionicons name="chatbubbles-outline" size={20} color={COLORS.text} />,
             onPress: () => {
               const req = selectedRequest;
               setSelectedRequest(null);
-              navigation.navigate('Chat', { recipientId: req.requester.id });
+              navigation.navigate('ListingDiscussion', {
+                requestId: req.id,
+                request: req,
+                autoFocus: true,
+              });
             },
           },
           {
