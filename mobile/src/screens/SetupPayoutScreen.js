@@ -10,7 +10,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { useError } from '../context/ErrorContext';
@@ -125,7 +124,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
 
       {isComplete || isPending ? (
         <>
-          <BlurCard testID="SetupPayout.status.complete" accessibilityLabel="Payout setup status" style={styles.statusCard}>
+          <View testID="SetupPayout.status.complete" accessibilityLabel="Payout setup status" style={[styles.cardBox, styles.statusCard]}>
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Account Status</Text>
               <View style={[styles.statusBadge, !isComplete && styles.statusBadgePending]}>
@@ -144,7 +143,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
                 <ActivityIndicator size="small" color={COLORS.primary} />
               )}
             </View>
-          </BlurCard>
+          </View>
           <HapticPressable
             haptic="medium"
             style={styles.setupButton}
@@ -154,7 +153,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
           </HapticPressable>
         </>
       ) : (
-        <BlurCard style={styles.infoCard}>
+        <View style={[styles.cardBox, styles.infoCard]}>
           <Text style={styles.infoTitle}>What you'll need:</Text>
           <View style={styles.infoItem}>
             <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
@@ -172,7 +171,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
             <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.textSecondary} />
             <Text style={styles.infoText}>Last 4 digits of SSN (for verification)</Text>
           </View>
-        </BlurCard>
+        </View>
       )}
 
       {!isComplete && !isPending && (
@@ -285,6 +284,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   header: {
     alignItems: 'center',

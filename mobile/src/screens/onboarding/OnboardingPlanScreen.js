@@ -4,7 +4,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect } from 'react';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
-import BlurCard from '../../components/BlurCard';
 import OnboardingProgress from '../../components/OnboardingProgress';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -103,7 +102,7 @@ export default function OnboardingPlanScreen({ navigation }) {
         </View>
 
         {/* Comparison rows */}
-        <BlurCard style={styles.comparisonCard}>
+        <View style={[styles.cardBox, styles.comparisonCard]}>
           {COMPARISON_ROWS.map((row, i) => (
             <View
               key={i}
@@ -125,7 +124,7 @@ export default function OnboardingPlanScreen({ navigation }) {
               </View>
             </View>
           ))}
-        </BlurCard>
+        </View>
 
         {/* Plus requirements note */}
         <View style={styles.plusNote}>
@@ -236,6 +235,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption2,
     color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   comparisonCard: {
     padding: 0,

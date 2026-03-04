@@ -209,6 +209,35 @@ export default function ProfileScreen({ navigation }) {
             title="Edit Profile"
             onPress={() => navigation.navigate('EditProfile')}
           />
+          <GroupedListItem
+            icon="mail-outline"
+            title="Messages"
+            onPress={() => navigation.navigate('Conversations')}
+          />
+          <GroupedListItem
+            icon="people-outline"
+            title="Friends"
+            onPress={() => navigation.navigate('Friends')}
+          />
+        </GroupedListSection>
+
+        {/* Rentals & Payments Section */}
+        <GroupedListSection header="Rentals & Payments">
+          <GroupedListItem
+            icon="cash-outline"
+            title="Earnings"
+            onPress={() => navigation.navigate('Earnings')}
+          />
+          <GroupedListItem
+            icon="card-outline"
+            title="Payment Methods"
+            onPress={() => navigation.navigate('PaymentMethods')}
+          />
+          <GroupedListItem
+            icon="flag-outline"
+            title="Disputes"
+            onPress={() => navigation.navigate('Disputes')}
+          />
           {/* TODO: Restore when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
           {ENABLE_PAID_TIERS && (
             <GroupedListItem
@@ -220,33 +249,6 @@ export default function ProfileScreen({ navigation }) {
               accessibilityRole="button"
             />
           )}
-          <GroupedListItem
-            icon="mail-outline"
-            title="Messages"
-            onPress={() => navigation.navigate('Conversations')}
-          />
-          <GroupedListItem
-            icon="people-outline"
-            title="Friends"
-            onPress={() => navigation.navigate('Friends')}
-          />
-          <GroupedListItem
-            icon="cash-outline"
-            title="Earnings"
-            onPress={() => navigation.navigate('Earnings')}
-          />
-          <GroupedListItem
-            icon="card-outline"
-            title="Payment Methods"
-            onPress={() => navigation.navigate('PaymentMethods')}
-          />
-          {ENABLE_PAID_TIERS && (
-            <GroupedListItem
-              icon="gift-outline"
-              title="Invite Friends"
-              onPress={() => navigation.navigate('Referral')}
-            />
-          )}
         </GroupedListSection>
 
         {/* Community Section */}
@@ -256,11 +258,13 @@ export default function ProfileScreen({ navigation }) {
             title="My Neighborhood"
             onPress={() => navigation.navigate('MyCommunity')}
           />
-          <GroupedListItem
-            icon="flag-outline"
-            title="Disputes"
-            onPress={() => navigation.navigate('Disputes')}
-          />
+          {ENABLE_PAID_TIERS && (
+            <GroupedListItem
+              icon="gift-outline"
+              title="Invite Friends"
+              onPress={() => navigation.navigate('Referral')}
+            />
+          )}
         </GroupedListSection>
 
         {/* Settings Section */}

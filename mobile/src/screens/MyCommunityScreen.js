@@ -15,7 +15,6 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 
 export default function MyCommunityScreen({ navigation }) {
   const { user } = useAuth();
@@ -168,7 +167,7 @@ export default function MyCommunityScreen({ navigation }) {
       </View>
 
       {/* Stats */}
-      <BlurCard style={styles.stats}>
+      <View style={[styles.cardBox, styles.stats]}>
         <View style={styles.statsInner}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{community.memberCount || members.length}</Text>
@@ -185,7 +184,7 @@ export default function MyCommunityScreen({ navigation }) {
             <Text style={styles.statLabel}>Borrows</Text>
           </View>
         </View>
-      </BlurCard>
+      </View>
 
       {/* Neighbors Section */}
       <View style={styles.section}>
@@ -359,6 +358,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.sm,
     lineHeight: 20,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   stats: {
     marginTop: 1,

@@ -12,7 +12,7 @@ import api from '../services/api';
 import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import BlurCard from '../components/BlurCard';
+
 import { haptics } from '../utils/haptics';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -126,7 +126,7 @@ export default function RequestDetailScreen({ route, navigation }) {
 
         {/* Date Range */}
         {dateRange && (
-          <BlurCard style={styles.dateCard}>
+          <View style={[styles.cardBox, styles.dateCard]}>
             <View style={styles.dateCardContent}>
               <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
               <View style={styles.dateInfo}>
@@ -134,7 +134,7 @@ export default function RequestDetailScreen({ route, navigation }) {
                 <Text style={styles.dateValue}>{dateRange}</Text>
               </View>
             </View>
-          </BlurCard>
+          </View>
         )}
 
         {/* Description */}
@@ -184,7 +184,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             haptic="medium"
           >
             <Ionicons name="hand-right-outline" size={20} color="#fff" />
-            <Text style={styles.haveThisButtonText}>I Have This</Text>
+            <Text style={styles.haveThisButtonText}>I Can Help</Text>
           </HapticPressable>
         </View>
       )}
@@ -220,7 +220,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       <ActionSheet
         isVisible={showHaveThisSheet}
         onClose={() => setShowHaveThisSheet(false)}
-        title="I Have This"
+        title="I Can Help"
         actions={[
           {
             label: 'Message Them',
@@ -262,6 +262,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

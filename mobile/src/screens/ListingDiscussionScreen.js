@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
+
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -224,7 +224,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     const postReplies = replies[post.id] || [];
 
     return (
-      <BlurCard style={styles.postCard}>
+      <View style={[styles.cardBox, styles.postCard]}>
         <View style={styles.postHeader}>
           <Image
             source={{ uri: post.user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
@@ -278,7 +278,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             {postReplies.map(reply => renderReply(reply, post.id))}
           </View>
         )}
-      </BlurCard>
+      </View>
     );
   };
 
@@ -384,6 +384,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

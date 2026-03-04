@@ -60,17 +60,30 @@ router.post('/', authenticate,
         return res.status(403).json({ error: 'Not authorized to file a dispute on this transaction' });
       }
 
-      // Verify transaction is in a completed/returned state
-      if (!['returned', 'completed'].includes(t.status)) {
-        return res.status(400).json({ error: 'Can only file disputes on returned or completed rentals' });
+      // Verify transaction is in an appropriate state
+      // Non-return and late-return disputes can be filed while item is still picked up
+      const activeDisputeTypes = ['nonReturn', 'lateReturn'];
+      const isActiveDispute = activeDisputeTypes.includes(type);
+
+      if (isActiveDispute) {
+        if (!['picked_up', 'returned', 'completed'].includes(t.status)) {
+          return res.status(400).json({ error: 'Cannot file this dispute on a rental that hasn\'t been picked up' });
+        }
+      } else {
+        if (!['returned', 'completed'].includes(t.status)) {
+          return res.status(400).json({ error: 'Can only file disputes on returned or completed rentals' });
+        }
       }
 
-      // Verify within 7-day window (use actual_return_at or requested_end_date)
-      const returnDate = t.actual_return_at || t.requested_end_date;
-      if (returnDate) {
-        const hoursSinceReturn = (Date.now() - new Date(returnDate).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceReturn > 168) {
-          return res.status(400).json({ error: 'Disputes must be filed within 7 days of rental end' });
+      // Verify within 7-day window for returned/completed (use actual_return_at or requested_end_date)
+      // Skip window check for active rentals (picked_up) — they're filing about an ongoing issue
+      if (!isActiveDispute || ['returned', 'completed'].includes(t.status)) {
+        const returnDate = t.actual_return_at || t.requested_end_date;
+        if (returnDate) {
+          const hoursSinceReturn = (Date.now() - new Date(returnDate).getTime()) / (1000 * 60 * 60);
+          if (hoursSinceReturn > 168) {
+            return res.status(400).json({ error: 'Disputes must be filed within 7 days of rental end' });
+          }
         }
       }
 

@@ -7,7 +7,7 @@ import {
   Switch,
   ActivityIndicator,
 } from 'react-native';
-import BlurCard from '../components/BlurCard';
+
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -108,7 +108,7 @@ export default function NotificationSettingsScreen() {
       {NOTIFICATION_SETTINGS.map((category, index) => (
         <View key={category.category} style={styles.section}>
           <Text style={styles.sectionTitle}>{category.category}</Text>
-          <BlurCard style={styles.settingsGroup}>
+          <View style={[styles.cardBox, styles.settingsGroup]}>
             {category.settings.map((setting, settingIndex) => (
               <View
                 key={setting.key}
@@ -130,7 +130,7 @@ export default function NotificationSettingsScreen() {
                 />
               </View>
             ))}
-          </BlurCard>
+          </View>
         </View>
       ))}
 
@@ -145,6 +145,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

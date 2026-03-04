@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
+
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -232,7 +232,7 @@ export default function UserProfileScreen({ route, navigation }) {
               </View>
             ) : (
               ratings.map((rating) => (
-                <BlurCard key={rating.id} style={styles.ratingCard}>
+                <View key={rating.id} style={[styles.cardBox, styles.ratingCard]}>
                   <View style={styles.ratingHeader}>
                     <Image
                       source={{ uri: rating.raterPhoto || 'https://via.placeholder.com/36' }}
@@ -260,7 +260,7 @@ export default function UserProfileScreen({ route, navigation }) {
                   {rating.comment && (
                     <Text style={styles.ratingComment}>{rating.comment}</Text>
                   )}
-                </BlurCard>
+                </View>
               ))
             )
           )}
@@ -335,6 +335,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

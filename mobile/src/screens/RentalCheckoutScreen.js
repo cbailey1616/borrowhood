@@ -12,7 +12,6 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
 const PAYMENT_SHEET_APPEARANCE = {
@@ -198,7 +197,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
           </View>
         </View>
 
-        <BlurCard style={styles.infoCard}>
+        <View style={[styles.cardBox, styles.infoCard]}>
           <View style={styles.infoContent}>
             <View style={styles.infoRow}>
               <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
@@ -223,7 +222,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
               </View>
             )}
           </View>
-        </BlurCard>
+        </View>
 
         <HapticPressable
           testID="RentalCheckout.button.authorize"
@@ -335,6 +334,12 @@ const styles = StyleSheet.create({
   summaryDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: COLORS.greenSeparator,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   infoCard: {
     marginBottom: SPACING.xl,

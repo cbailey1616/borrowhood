@@ -9,7 +9,6 @@ import {
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
 
 export default function SustainabilityScreen() {
@@ -47,12 +46,12 @@ export default function SustainabilityScreen() {
 
   const StatCard = ({ icon, value, label, sublabel, index }) => (
     <AnimatedCard index={index} style={styles.statCardWrapper}>
-      <BlurCard style={styles.statCard}>
+      <View style={[styles.cardBox, styles.statCard]}>
         <Text style={styles.statIcon}>{icon}</Text>
         <Text style={styles.statValue}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
         {sublabel && <Text style={styles.statSublabel}>{sublabel}</Text>}
-      </BlurCard>
+      </View>
     </AnimatedCard>
   );
 
@@ -106,7 +105,7 @@ export default function SustainabilityScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Environmental Impact</Text>
         <AnimatedCard index={4}>
-          <BlurCard style={styles.impactCard}>
+          <View style={[styles.cardBox, styles.impactCard]}>
             <ImpactRow
               icon="🌲"
               label="Trees equivalent"
@@ -127,14 +126,14 @@ export default function SustainabilityScreen() {
               value={((stats?.wastePreventedKg || 0)).toFixed(1)}
               unit="kg"
             />
-          </BlurCard>
+          </View>
         </AnimatedCard>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Community Impact</Text>
         <AnimatedCard index={5}>
-          <BlurCard style={styles.communityCard}>
+          <View style={[styles.cardBox, styles.communityCard]}>
             <View style={styles.communityHeader}>
               <Text style={styles.communityName}>{communityStats?.name || 'Your Community'}</Text>
               <Text style={styles.communityMembers}>
@@ -164,14 +163,14 @@ export default function SustainabilityScreen() {
                 <Text style={styles.communityStatLabel}>CO₂ Saved</Text>
               </View>
             </View>
-          </BlurCard>
+          </View>
         </AnimatedCard>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your Rank</Text>
         <AnimatedCard index={6}>
-          <BlurCard style={styles.rankCard}>
+          <View style={[styles.cardBox, styles.rankCard]}>
             <Text style={styles.rankEmoji}>
               {stats?.totalLends >= 50 ? '🏆' :
                stats?.totalLends >= 20 ? '🥇' :
@@ -210,7 +209,7 @@ export default function SustainabilityScreen() {
                 </Text>
               </View>
             )}
-          </BlurCard>
+          </View>
         </AnimatedCard>
       </View>
 
@@ -237,6 +236,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   header: {
     padding: SPACING.xl,

@@ -14,7 +14,6 @@ import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
 const TYPE_CONFIG = {
@@ -223,14 +222,14 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
       {/* Expired hold warning */}
       {dispute.holdExpired && (
-        <BlurCard style={styles.section}>
+        <View style={[styles.cardBox, styles.section]}>
           <View style={[styles.sectionContent, styles.warningBanner]}>
             <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
             <Text style={styles.warningText}>
               The authorization hold has expired. Manual follow-up is required to process this payment.
             </Text>
           </View>
-        </BlurCard>
+        </View>
       )}
 
       {/* === TIMELINE === */}
@@ -241,7 +240,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <Ionicons name="flag" size={14} color={COLORS.primary} />
         </View>
         <View style={styles.timelineConnector} />
-        <BlurCard style={styles.timelineCard}>
+        <View style={[styles.cardBox, styles.timelineCard]}>
           <View style={styles.sectionContent}>
             <View style={styles.timelineHeader}>
               <Text style={styles.timelineLabel}>{claimantName === 'You' ? 'You filed a claim' : `${claimantName} filed a claim`}</Text>
@@ -287,7 +286,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
               </View>
             )}
           </View>
-        </BlurCard>
+        </View>
       </View>
 
       {/* Timeline Node 2: Response */}
@@ -297,7 +296,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
             <Ionicons name="chatbubble" size={14} color={COLORS.secondary} />
           </View>
           <View style={styles.timelineConnector} />
-          <BlurCard style={styles.timelineCard}>
+          <View style={[styles.cardBox, styles.timelineCard]}>
             <View style={styles.sectionContent}>
               <View style={styles.timelineHeader}>
                 <Text style={styles.timelineLabel}>{respondentName === 'You' ? 'Your response' : `${respondentName}'s response`}</Text>
@@ -340,7 +339,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
                 </ScrollView>
               )}
             </View>
-          </BlurCard>
+          </View>
         </View>
       ) : dispute.status === 'awaitingResponse' && (
         <View style={styles.timelineNode}>
@@ -348,11 +347,11 @@ export default function DisputeDetailScreen({ route, navigation }) {
             <Ionicons name="hourglass" size={14} color={COLORS.textMuted} />
           </View>
           <View style={styles.timelineConnector} />
-          <BlurCard style={[styles.timelineCard, styles.pendingCard]}>
+          <View style={[styles.cardBox, styles.timelineCard, styles.pendingCard]}>
             <View style={styles.sectionContent}>
               <Text style={styles.pendingText}>Awaiting response from {respondentName === 'You' ? 'you' : respondentName}...</Text>
             </View>
-          </BlurCard>
+          </View>
         </View>
       )}
 
@@ -362,7 +361,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <View style={styles.timelineDot}>
             <Ionicons name="checkmark-circle" size={14} color={COLORS.secondary} />
           </View>
-          <BlurCard style={styles.timelineCard}>
+          <View style={[styles.cardBox, styles.timelineCard]}>
             <View style={styles.sectionContent}>
               <View style={styles.timelineHeader}>
                 <Text style={styles.timelineLabel}>Resolution</Text>
@@ -394,12 +393,12 @@ export default function DisputeDetailScreen({ route, navigation }) {
                 </Text>
               ) : null}
             </View>
-          </BlurCard>
+          </View>
         </View>
       )}
 
       {/* Amounts at stake */}
-      <BlurCard style={styles.section}>
+      <View style={[styles.cardBox, styles.section]}>
         <View style={styles.sectionContent}>
           <Text style={styles.sectionTitle}>Transaction Details</Text>
           {dispute.transaction && (
@@ -421,7 +420,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
             </>
           )}
         </View>
-      </BlurCard>
+      </View>
 
       {/* Respondent action buttons */}
       {canRespond && (
@@ -510,19 +509,19 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
       {/* Waiting info (for claimant) */}
       {dispute.isClaimant && dispute.status === 'awaitingResponse' && (
-        <BlurCard style={styles.section}>
+        <View style={[styles.cardBox, styles.section]}>
           <View style={[styles.sectionContent, styles.infoRow]}>
             <Ionicons name="time-outline" size={20} color={COLORS.primary} />
             <Text style={styles.infoText}>
               Waiting for {respondentName} to respond. {respondentName === 'You' ? 'You have' : 'They have'} 48 hours from when the dispute was filed.
             </Text>
           </View>
-        </BlurCard>
+        </View>
       )}
 
       {/* Resolution Form (for organizers/admins) */}
       {canResolve && (
-        <BlurCard style={styles.section}>
+        <View style={[styles.cardBox, styles.section]}>
           <View style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Resolve Dispute</Text>
 
@@ -596,7 +595,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
               )}
             </HapticPressable>
           </View>
-        </BlurCard>
+        </View>
       )}
 
       <ActionSheet
@@ -734,6 +733,13 @@ const styles = StyleSheet.create({
   itemTitle: {
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
+  },
+
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
 
   // Warning

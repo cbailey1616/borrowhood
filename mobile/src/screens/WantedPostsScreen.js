@@ -12,7 +12,7 @@ import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
+
 import ActionSheet from '../components/ActionSheet';
 
 export default function WantedPostsScreen({ navigation }) {
@@ -65,7 +65,7 @@ export default function WantedPostsScreen({ navigation }) {
       onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
       haptic="light"
     >
-      <BlurCard style={styles.card}>
+      <View style={[styles.cardBox, styles.card]}>
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <Image
@@ -110,10 +110,10 @@ export default function WantedPostsScreen({ navigation }) {
             haptic="medium"
           >
             <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.haveThisText}>I Have This</Text>
+            <Text style={styles.haveThisText}>I Can Help</Text>
           </HapticPressable>
         </View>
-      </BlurCard>
+      </View>
     </HapticPressable>
   );
 
@@ -167,7 +167,7 @@ export default function WantedPostsScreen({ navigation }) {
       <ActionSheet
         isVisible={!!selectedRequest}
         onClose={() => setSelectedRequest(null)}
-        title="I Have This"
+        title="I Can Help"
         actions={[
           {
             label: 'Message Them',
@@ -197,6 +197,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   searchContainer: {
     flexDirection: 'row',

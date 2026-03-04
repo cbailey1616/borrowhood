@@ -463,7 +463,7 @@ export default function FeedScreen({ navigation }) {
                   haptic="medium"
                   style={styles.requestCTA}
                 >
-                  <Text style={styles.requestCTAText}>I Have This</Text>
+                  <Text style={styles.requestCTAText}>I Can Help</Text>
                 </HapticPressable>
               )}
             </View>
@@ -761,7 +761,7 @@ export default function FeedScreen({ navigation }) {
       <ActionSheet
         isVisible={!!selectedRequest}
         onClose={() => setSelectedRequest(null)}
-        title="I Have This"
+        title="I Can Help"
         actions={[
           {
             label: 'Message Them',

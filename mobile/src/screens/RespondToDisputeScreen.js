@@ -13,7 +13,6 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -141,7 +140,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
       >
         {/* Claim Summary */}
-        <BlurCard style={styles.card}>
+        <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
             <View style={styles.typeBadge}>
               <Ionicons name={typeInfo.icon} size={20} color={COLORS.primary} />
@@ -150,10 +149,10 @@ export default function RespondToDisputeScreen({ navigation, route }) {
             <Text style={styles.claimantText}>Filed by {claimantName}</Text>
             <Text style={styles.claimDescription}>{description}</Text>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Response Description */}
-        <BlurCard style={[styles.card, fieldErrors.description && styles.fieldError]}>
+        <View style={[styles.cardBox, styles.card, fieldErrors.description && styles.fieldError]}>
           <View style={styles.cardContent}>
             <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>
               {isCounter ? 'Reason for Counter *' : 'Reason for Declining *'}
@@ -176,11 +175,11 @@ export default function RespondToDisputeScreen({ navigation, route }) {
             />
             <Text style={styles.charCount}>{responseDescription.length}/2000</Text>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Counter Amount (only in counter mode) */}
         {isCounter && (
-          <BlurCard style={[styles.card, fieldErrors.amount && styles.fieldError]}>
+          <View style={[styles.cardBox, styles.card, fieldErrors.amount && styles.fieldError]}>
             <View style={styles.cardContent}>
               <Text style={[styles.cardLabel, fieldErrors.amount && styles.fieldErrorLabel]}>Your Counter Amount *</Text>
               <Text style={styles.cardHint}>
@@ -206,11 +205,11 @@ export default function RespondToDisputeScreen({ navigation, route }) {
                 />
               </View>
             </View>
-          </BlurCard>
+          </View>
         )}
 
         {/* Response Photos */}
-        <BlurCard style={styles.card}>
+        <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Photos</Text>
             <Text style={styles.cardHint}>Upload up to 4 photos to support your response</Text>
@@ -244,7 +243,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
               )}
             </View>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Submit */}
         <HapticPressable
@@ -322,6 +321,12 @@ const styles = StyleSheet.create({
   successCircle: {
     alignItems: 'center',
     marginBottom: SPACING.xl,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   card: {
     marginBottom: SPACING.lg,

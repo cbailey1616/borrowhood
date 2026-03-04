@@ -13,7 +13,6 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config'
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 
@@ -86,7 +85,7 @@ export default function CommunityLibraryScreen({ navigation }) {
         onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
         haptic="light"
       >
-        <BlurCard style={styles.itemCard}>
+        <View style={[styles.cardBox, styles.itemCard]}>
           <Image
             source={{ uri: item.photoUrl || 'https://via.placeholder.com/100' }}
             style={styles.itemImage}
@@ -129,7 +128,7 @@ export default function CommunityLibraryScreen({ navigation }) {
               <Text style={styles.returnButtonText}>Return</Text>
             </HapticPressable>
           ) : null}
-        </BlurCard>
+        </View>
       </HapticPressable>
     </AnimatedCard>
   );
@@ -185,7 +184,7 @@ export default function CommunityLibraryScreen({ navigation }) {
         </View>
       )}
 
-      <BlurCard style={styles.infoCard}>
+      <View style={[styles.cardBox, styles.infoCard]}>
         <Text style={styles.infoIcon}>ℹ️</Text>
         <View style={styles.infoContent}>
           <Text style={styles.infoTitle}>How it works</Text>
@@ -193,7 +192,7 @@ export default function CommunityLibraryScreen({ navigation }) {
             Community library items are free to borrow. Just return them on time so others can enjoy them too!
           </Text>
         </View>
-      </BlurCard>
+      </View>
 
       <ActionSheet
         isVisible={checkoutSheetVisible}
@@ -247,6 +246,12 @@ const styles = StyleSheet.create({
   },
   itemCardPressable: {
     marginBottom: SPACING.md,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   itemCard: {
     flexDirection: 'row',

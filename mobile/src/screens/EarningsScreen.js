@@ -102,23 +102,12 @@ export default function EarningsScreen({ navigation }) {
           />
         }
       >
-        {/* Balance Card */}
+        {/* Total Earned Card */}
         <View style={[styles.balanceCard, styles.cardBox]}>
-          <View style={styles.balanceRow}>
-            <View style={styles.balanceColumn}>
-              <Text style={styles.balanceLabel}>Available</Text>
-              <Text style={styles.balanceAmount}>
-                {formatCurrency(balance?.available)}
-              </Text>
-            </View>
-            <View style={styles.balanceDivider} />
-            <View style={[styles.balanceColumn, { alignItems: 'flex-end' }]}>
-              <Text style={styles.balanceLabel}>Pending</Text>
-              <Text style={styles.balancePending}>
-                {formatCurrency(balance?.pending)}
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.balanceLabel}>Total Earned</Text>
+          <Text style={styles.balanceAmount}>
+            {formatCurrency(stats?.totalEarned)}
+          </Text>
           {!hasConnectAccount && (
             <HapticPressable
               style={styles.setupButton}
@@ -133,11 +122,6 @@ export default function EarningsScreen({ navigation }) {
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, styles.cardBox]}>
-            <Ionicons name="cash" size={22} color={COLORS.secondary} />
-            <Text style={styles.statValue}>{formatCurrency(stats?.totalEarned)}</Text>
-            <Text style={styles.statLabel}>Total Earned</Text>
-          </View>
           <View style={[styles.statCard, styles.cardBox]}>
             <Ionicons name="swap-horizontal" size={22} color={COLORS.primary} />
             <Text style={styles.statValue}>{stats?.totalRentals || 0}</Text>
@@ -269,19 +253,7 @@ const styles = StyleSheet.create({
   balanceCard: {
     padding: SPACING.xl,
     marginBottom: SPACING.lg,
-  },
-  balanceRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-  },
-  balanceColumn: {
-    flex: 1,
-  },
-  balanceDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 40,
-    backgroundColor: COLORS.separator,
-    marginHorizontal: SPACING.lg,
   },
   balanceLabel: {
     ...TYPOGRAPHY.footnote,
@@ -289,12 +261,11 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   balanceAmount: {
-    ...TYPOGRAPHY.h1,
+    fontSize: 36,
+    fontFamily: 'DMSans_700Bold',
+    fontWeight: '700',
     color: COLORS.secondary,
-  },
-  balancePending: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.text,
+    letterSpacing: -1,
   },
   setupButton: {
     flexDirection: 'row',

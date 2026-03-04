@@ -12,7 +12,6 @@ import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -149,7 +148,7 @@ export default function BrowseScreen({ navigation }) {
 
   const renderRequestItem = ({ item, index }) => (
     <AnimatedCard index={index}>
-      <BlurCard style={styles.requestCardOuter}>
+      <View style={[styles.cardBox, styles.requestCardOuter]}>
         <HapticPressable
           style={styles.requestCard}
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
@@ -213,10 +212,10 @@ export default function BrowseScreen({ navigation }) {
             haptic={null}
           >
             <Ionicons name="hand-right-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.haveThisText}>I Have This</Text>
+            <Text style={styles.haveThisText}>I Can Help</Text>
           </HapticPressable>
         </HapticPressable>
-      </BlurCard>
+      </View>
     </AnimatedCard>
   );
 
@@ -352,7 +351,7 @@ export default function BrowseScreen({ navigation }) {
       <ActionSheet
         isVisible={!!selectedRequest}
         onClose={() => setSelectedRequest(null)}
-        title="I Have This"
+        title="I Can Help"
         actions={[
           {
             label: 'Message Them',
@@ -563,6 +562,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     fontWeight: '500',
     color: COLORS.textSecondary,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   // Request card styles
   requestCardOuter: {

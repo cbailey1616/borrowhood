@@ -11,7 +11,6 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '../components/Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
 export default function InviteMembersScreen({ route, navigation }) {
@@ -74,28 +73,28 @@ export default function InviteMembersScreen({ route, navigation }) {
           Share this code with neighbors to let them join
         </Text>
 
-        <BlurCard style={styles.codeCard}>
+        <View style={[styles.cardBox, styles.codeCard]}>
           <View style={styles.codeContainer}>
             <Text style={styles.codeText}>{inviteCode}</Text>
             <HapticPressable style={styles.copyButton} onPress={handleCopyCode} haptic="light">
               <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
             </HapticPressable>
           </View>
-        </BlurCard>
+        </View>
       </View>
 
       {/* Link Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Invite Link</Text>
 
-        <BlurCard style={styles.linkCard}>
+        <View style={[styles.cardBox, styles.linkCard]}>
           <View style={styles.linkContainer}>
             <Text style={styles.linkText} numberOfLines={1}>{inviteLink}</Text>
             <HapticPressable style={styles.copyButton} onPress={handleCopyLink} haptic="light">
               <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
             </HapticPressable>
           </View>
-        </BlurCard>
+        </View>
       </View>
 
       {/* Email Invite Section */}
@@ -167,8 +166,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+  },
   codeCard: {
-    // BlurCard handles the styling
   },
   codeContainer: {
     flexDirection: 'row',
@@ -186,7 +190,6 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   linkCard: {
-    // BlurCard handles the styling
   },
   linkContainer: {
     flexDirection: 'row',

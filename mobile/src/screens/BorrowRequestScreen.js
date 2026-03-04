@@ -12,7 +12,6 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -204,7 +203,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
-          <BlurCard style={styles.promptItemCard}>
+          <View style={[styles.cardBox, styles.promptItemCard]}>
             <Image
               source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/80' }}
               style={styles.promptItemImage}
@@ -213,10 +212,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
               <Text style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
             </View>
-          </BlurCard>
+          </View>
 
           {/* Upgrade Card */}
-          <BlurCard style={styles.promptCard}>
+          <View style={[styles.cardBox, styles.promptCard]}>
             <View style={styles.promptIconContainer}>
               <Ionicons name="star" size={32} color={COLORS.primary} />
             </View>
@@ -250,7 +249,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.promptButtonText}>Verify & Unlock — $1.99</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </HapticPressable>
-          </BlurCard>
+          </View>
 
           <HapticPressable
             haptic="light"
@@ -270,7 +269,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
-          <BlurCard style={styles.promptItemCard}>
+          <View style={[styles.cardBox, styles.promptItemCard]}>
             <Image
               source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/80' }}
               style={styles.promptItemImage}
@@ -279,10 +278,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
               <Text style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
             </View>
-          </BlurCard>
+          </View>
 
           {/* Verification Card */}
-          <BlurCard style={styles.promptCard}>
+          <View style={[styles.cardBox, styles.promptCard]}>
             <View style={styles.promptIconContainer}>
               <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
             </View>
@@ -314,7 +313,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.promptButtonText}>Verify Now</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </HapticPressable>
-          </BlurCard>
+          </View>
 
           <HapticPressable
             haptic="light"
@@ -331,7 +330,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Item Summary */}
-      <BlurCard style={styles.itemCard}>
+      <View style={[styles.cardBox, styles.itemCard]}>
         <Image
           source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/60' }}
           style={styles.itemImage}
@@ -342,7 +341,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName} ${listing.owner.lastName[0]}.`}
           </Text>
         </View>
-      </BlurCard>
+      </View>
 
       {/* Dates */}
       <View style={styles.section}>
@@ -477,6 +476,12 @@ const styles = StyleSheet.create({
   promptContent: {
     padding: SPACING.xl,
     paddingBottom: 40,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   promptItemCard: {
     flexDirection: 'row',

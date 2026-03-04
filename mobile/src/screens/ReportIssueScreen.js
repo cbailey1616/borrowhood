@@ -458,15 +458,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
   },
   dollarSign: {
-    ...TYPOGRAPHY.h1,
+    ...TYPOGRAPHY.h2,
     color: COLORS.textSecondary,
     marginRight: SPACING.xs,
   },
   amountInput: {
     flex: 1,
-    ...TYPOGRAPHY.h1,
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
   },
   errorText: {
     ...TYPOGRAPHY.caption1,

@@ -11,7 +11,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config'
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
+
 import AnimatedCard from '../components/AnimatedCard';
 
 export default function BadgesScreen({ navigation }) {
@@ -55,7 +55,7 @@ export default function BadgesScreen({ navigation }) {
 
   const BadgeCard = ({ badge, earned, index }) => (
     <AnimatedCard index={index} style={styles.badgeCardWrapper}>
-      <BlurCard style={[styles.badgeCard, !earned && styles.badgeCardLocked]}>
+      <View style={[styles.cardBox, styles.badgeCard, !earned && styles.badgeCardLocked]}>
         <Text style={[styles.badgeIcon, !earned && styles.badgeIconLocked]}>
           {badge.icon}
         </Text>
@@ -73,7 +73,7 @@ export default function BadgesScreen({ navigation }) {
         {!earned && badge.requirement && (
           <Text style={styles.badgeRequirement}>{badge.requirement}</Text>
         )}
-      </BlurCard>
+      </View>
     </AnimatedCard>
   );
 
@@ -132,7 +132,7 @@ export default function BadgesScreen({ navigation }) {
       {activeTab === 'badges' ? (
         <ScrollView style={styles.content}>
           <AnimatedCard index={0}>
-            <BlurCard style={styles.statsRow}>
+            <View style={[styles.cardBox, styles.statsRow]}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{myBadges.length}</Text>
                 <Text style={styles.statLabel}>Badges Earned</Text>
@@ -142,7 +142,7 @@ export default function BadgesScreen({ navigation }) {
                 <Text style={styles.statValue}>{allBadges.length}</Text>
                 <Text style={styles.statLabel}>Total Available</Text>
               </View>
-            </BlurCard>
+            </View>
           </AnimatedCard>
 
           <Text style={styles.sectionTitle}>Earned</Text>
@@ -200,6 +200,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

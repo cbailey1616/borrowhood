@@ -107,7 +107,7 @@ export default function CreateListingScreen({ navigation, route }) {
     }
   }, [route?.params?.relistFrom]);
 
-  // Pre-populate from request match ("I Have This" flow)
+  // Pre-populate from request match ("I Can Help" flow)
   useEffect(() => {
     if (requestMatch) {
       setFormData(prev => ({

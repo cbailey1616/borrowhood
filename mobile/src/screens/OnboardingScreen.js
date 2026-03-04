@@ -15,7 +15,6 @@ import * as Location from 'expo-location';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import BlurCard from '../components/BlurCard';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
@@ -285,7 +284,7 @@ export default function OnboardingScreen({ onComplete }) {
           keyExtractor={(item) => item.id}
           style={styles.list}
           renderItem={({ item }) => (
-            <BlurCard style={styles.neighborhoodCard}>
+            <View style={[styles.cardBox, styles.neighborhoodCard]}>
               <View style={styles.neighborhoodRow}>
                 <View style={styles.neighborhoodInfo}>
                   <Text style={styles.neighborhoodName}>{item.name}</Text>
@@ -309,7 +308,7 @@ export default function OnboardingScreen({ onComplete }) {
                   </HapticPressable>
                 )}
               </View>
-            </BlurCard>
+            </View>
           )}
           ListFooterComponent={
             <HapticPressable style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
@@ -364,7 +363,7 @@ export default function OnboardingScreen({ onComplete }) {
           keyExtractor={(item) => item.id}
           style={styles.list}
           renderItem={({ item }) => (
-            <BlurCard style={styles.friendCard}>
+            <View style={[styles.cardBox, styles.friendCard]}>
               <View style={styles.friendRow}>
                 <Image
                   source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/44' }}
@@ -390,7 +389,7 @@ export default function OnboardingScreen({ onComplete }) {
                   </HapticPressable>
                 )}
               </View>
-            </BlurCard>
+            </View>
           )}
           ListEmptyComponent={
             <Text style={styles.noResults}>No users found</Text>
@@ -725,6 +724,12 @@ const styles = StyleSheet.create({
   searchPromptText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   noResults: {
     textAlign: 'center',

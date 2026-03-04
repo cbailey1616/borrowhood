@@ -14,7 +14,6 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 import GateStepper from '../components/GateStepper';
 
@@ -201,7 +200,7 @@ export default function SubscriptionScreen({ navigation, route }) {
           </Text>
         </View>
 
-        <BlurCard style={styles.planCard}>
+        <View style={[styles.cardBox, styles.planCard]}>
           <View style={styles.planCardContent}>
             <View style={styles.planRow}>
               <Text style={styles.planLabel}>Status</Text>
@@ -227,7 +226,7 @@ export default function SubscriptionScreen({ navigation, route }) {
               </>
             )}
           </View>
-        </BlurCard>
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -274,7 +273,7 @@ export default function SubscriptionScreen({ navigation, route }) {
       </View>
 
       {/* Features */}
-      <BlurCard style={styles.featuresCard}>
+      <View style={[styles.cardBox, styles.featuresCard]}>
         <View style={styles.featuresCardContent}>
           {VERIFIED_FEATURES.map((feature, idx) => (
             <View key={idx} style={styles.featureRow}>
@@ -283,7 +282,7 @@ export default function SubscriptionScreen({ navigation, route }) {
             </View>
           ))}
         </View>
-      </BlurCard>
+      </View>
 
       {/* Steps */}
       <View style={styles.stepsContainer}>
@@ -427,6 +426,13 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
 
   // Features card

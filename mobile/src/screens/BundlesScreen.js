@@ -14,7 +14,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import BlurCard from '../components/BlurCard';
+
 import { haptics } from '../utils/haptics';
 
 export default function BundlesScreen({ navigation }) {
@@ -111,7 +111,7 @@ export default function BundlesScreen({ navigation }) {
       onPress={() => navigation.navigate('BundleDetail', { bundleId: item.id })}
       haptic="light"
     >
-      <BlurCard style={styles.bundleCard}>
+      <View style={[styles.cardBox, styles.bundleCard]}>
         <View style={styles.bundleCardContent}>
           <View style={styles.bundleImages}>
             {item.listings?.slice(0, 4).map((listing, idx) => (
@@ -149,7 +149,7 @@ export default function BundlesScreen({ navigation }) {
             </HapticPressable>
           )}
         </View>
-      </BlurCard>
+      </View>
     </HapticPressable>
   );
 
@@ -318,6 +318,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

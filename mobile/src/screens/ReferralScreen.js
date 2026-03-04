@@ -11,7 +11,6 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -90,16 +89,16 @@ export default function ReferralScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero */}
-      <BlurCard style={styles.heroCard}>
+      <View style={[styles.cardBox, styles.heroCard]}>
         <Ionicons name="gift" size={48} color={COLORS.primary} />
         <Text style={styles.heroTitle}>Invite Friends, Get Plus Free</Text>
         <Text style={styles.heroSubtitle}>
           Invite {TARGET} friends to join BorrowHood and earn a free year of Plus!
         </Text>
-      </BlurCard>
+      </View>
 
       {/* Progress */}
-      <BlurCard style={styles.progressCard}>
+      <View style={[styles.cardBox, styles.progressCard]}>
         <Text style={styles.progressTitle}>Your Progress</Text>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
@@ -124,10 +123,10 @@ export default function ReferralScreen() {
             </View>
           ))}
         </View>
-      </BlurCard>
+      </View>
 
       {/* Referral Code */}
-      <BlurCard style={styles.codeCard}>
+      <View style={[styles.cardBox, styles.codeCard]}>
         <Text style={styles.codeLabel}>Your Referral Code</Text>
         <View style={styles.codeRow}>
           <Text style={styles.codeText}>{referralCode}</Text>
@@ -148,11 +147,11 @@ export default function ReferralScreen() {
           <Ionicons name="share-outline" size={20} color={COLORS.background} />
           <Text style={styles.shareButtonText}>Share with Friends</Text>
         </HapticPressable>
-      </BlurCard>
+      </View>
 
       {/* Claim Reward */}
       {status?.eligible && (
-        <BlurCard style={styles.claimCard}>
+        <View style={[styles.cardBox, styles.claimCard]}>
           <Ionicons name="trophy" size={32} color={COLORS.warning} />
           <Text style={styles.claimTitle}>You did it!</Text>
           <Text style={styles.claimSubtitle}>
@@ -170,19 +169,19 @@ export default function ReferralScreen() {
               <Text style={styles.claimButtonText}>Claim Free Plus</Text>
             )}
           </HapticPressable>
-        </BlurCard>
+        </View>
       )}
 
       {status?.rewardClaimed && (
-        <BlurCard style={styles.claimedCard}>
+        <View style={[styles.cardBox, styles.claimedCard]}>
           <Ionicons name="checkmark-circle" size={32} color={COLORS.secondary} />
           <Text style={styles.claimedText}>Plus reward active!</Text>
-        </BlurCard>
+        </View>
       )}
 
       {/* Referred Friends List */}
       {status?.referredFriends?.length > 0 && (
-        <BlurCard style={styles.friendsCard}>
+        <View style={[styles.cardBox, styles.friendsCard]}>
           <Text style={styles.friendsTitle}>Referred Friends</Text>
           {status.referredFriends.map(friend => (
             <View key={friend.id} style={styles.friendRow}>
@@ -201,7 +200,7 @@ export default function ReferralScreen() {
               <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
             </View>
           ))}
-        </BlurCard>
+        </View>
       )}
     </ScrollView>
   );
@@ -222,6 +221,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   // Hero
   heroCard: {

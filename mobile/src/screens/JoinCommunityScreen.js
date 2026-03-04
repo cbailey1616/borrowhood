@@ -17,7 +17,6 @@ import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
 const NEEDS_LOCATION_MESSAGE = 'Set your location in your profile to discover neighborhoods nearby.';
@@ -122,7 +121,7 @@ export default function JoinCommunityScreen({ navigation }) {
   );
 
   const renderNeighborhood = ({ item }) => (
-    <BlurCard style={styles.neighborhoodCard}>
+    <View style={[styles.cardBox, styles.neighborhoodCard]}>
       <View style={styles.neighborhoodCardContent}>
         <View style={styles.neighborhoodHeader}>
           {item.imageUrl ? (
@@ -166,7 +165,7 @@ export default function JoinCommunityScreen({ navigation }) {
           </HapticPressable>
         )}
       </View>
-    </BlurCard>
+    </View>
   );
 
   if (isLoading) {
@@ -369,6 +368,12 @@ const styles = StyleSheet.create({
   listContent: {
     padding: SPACING.lg,
     paddingTop: 0,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   neighborhoodCard: {
     marginBottom: SPACING.md,

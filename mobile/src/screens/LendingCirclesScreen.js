@@ -14,7 +14,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config'
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
+
 import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 
@@ -108,7 +108,7 @@ export default function LendingCirclesScreen({ navigation }) {
         onPress={() => navigation.navigate('CircleDetail', { circleId: circle.id })}
         haptic="light"
       >
-        <BlurCard style={styles.circleCard}>
+        <View style={[styles.cardBox, styles.circleCard]}>
           <View style={styles.circleHeader}>
             <Text style={styles.circleIcon}>⭕</Text>
             <View style={styles.circleInfo}>
@@ -154,7 +154,7 @@ export default function LendingCirclesScreen({ navigation }) {
               )}
             </View>
           )}
-        </BlurCard>
+        </View>
       </HapticPressable>
     </AnimatedCard>
   );
@@ -289,6 +289,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,

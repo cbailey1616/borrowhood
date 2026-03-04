@@ -11,7 +11,6 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 
 const PAYMENT_SHEET_APPEARANCE = {
@@ -136,7 +135,7 @@ export default function PaymentFlowScreen({ navigation, route }) {
       <View style={styles.content}>
         <Text style={styles.screenTitle}>{title}</Text>
 
-        <BlurCard style={styles.summaryCard}>
+        <View style={[styles.cardBox, styles.summaryCard]}>
           <View style={styles.summaryContent}>
             {description && (
               <>
@@ -152,7 +151,7 @@ export default function PaymentFlowScreen({ navigation, route }) {
               <Text style={styles.summaryAmount}>{displayAmount}</Text>
             </View>
           </View>
-        </BlurCard>
+        </View>
 
         <HapticPressable
           style={[styles.primaryButton, processing && styles.buttonDisabled]}
@@ -207,6 +206,12 @@ const styles = StyleSheet.create({
   successCircle: {
     alignItems: 'center',
     marginBottom: SPACING.xl,
+  },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   summaryCard: {
     marginBottom: SPACING.xl,
