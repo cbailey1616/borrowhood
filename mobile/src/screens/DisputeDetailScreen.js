@@ -175,7 +175,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
   const statusConfig = STATUS_CONFIG[dispute.status] || { label: dispute.status, color: COLORS.textMuted };
   const typeConfig = TYPE_CONFIG[dispute.type] || { label: dispute.type, icon: 'help-circle-outline' };
   const canResolve = (dispute.isOrganizer || dispute.isAdmin) &&
-    ['awaitingResponse', 'underReview', 'counterPending'].includes(dispute.status);
+    dispute.status === 'underReview';
   const canRespond = dispute.isRespondent && dispute.status === 'awaitingResponse' && !dispute.response;
   const canRespondToCounter = dispute.isClaimant && dispute.status === 'counterPending' && dispute.response?.counterAmount != null;
 

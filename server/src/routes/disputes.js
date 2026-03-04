@@ -665,12 +665,12 @@ router.post('/:id/resolve', authenticate,
          FROM disputes d
          JOIN borrow_transactions t ON d.transaction_id = t.id
          JOIN listings l ON t.listing_id = l.id
-         WHERE d.id = $1 AND d.status IN ('awaitingResponse', 'underReview')`,
+         WHERE d.id = $1 AND d.status = 'underReview'`,
         [req.params.id]
       );
 
       if (dispute.rows.length === 0) {
-        return res.status(404).json({ error: 'Dispute not found or already resolved' });
+        return res.status(404).json({ error: 'Dispute not found, already resolved, or still awaiting response' });
       }
 
       const d = dispute.rows[0];

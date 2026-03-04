@@ -10,6 +10,7 @@ import {
   InteractionManager,
   Platform,
   TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -60,6 +61,10 @@ export default function FeedScreen({ navigation }) {
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [hasNeighborhood, setHasNeighborhood] = useState(true); // assume yes until checked
   const [activeDisputes, setActiveDisputes] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [dueSoonItems, setDueSoonItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [dismissedBanners, setDismissedBanners] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -144,6 +149,7 @@ export default function FeedScreen({ navigation }) {
     loadCategories();
     checkNeighborhood();
     fetchActiveDisputes();
+    fetchBannerData();
   }, []);
 
   useEffect(() => {
@@ -162,6 +168,7 @@ export default function FeedScreen({ navigation }) {
           fetchFeed(1, false);
           checkNeighborhood();
           fetchActiveDisputes();
+          fetchBannerData();
         });
       }
     });
@@ -191,6 +198,37 @@ export default function FeedScreen({ navigation }) {
     }
   }, []);
 
+  const fetchBannerData = useCallback(async () => {
+    try {
+      const [txData, notifData] = await Promise.all([
+        api.getTransactions({ status: 'all', limit: 50 }).catch(() => null),
+        api.getNotifications({ limit: 1 }).catch(() => null),
+      ]);
+
+      // Pending borrow requests (someone wants to borrow your item)
+      const txList = txData?.transactions || txData || [];
+      const pending = txList.filter(t => t.status === 'pending' && t.ownerId === user?.id);
+      setPendingRequests(pending);
+
+      // Items you've borrowed that are due back within 2 days
+      const now = new Date();
+      const twoDays = 2 * 24 * 60 * 60 * 1000;
+      const dueSoon = txList.filter(t => {
+        if (t.status !== 'active' || t.borrowerId !== user?.id) return false;
+        const returnDate = t.returnDate || t.endDate;
+        if (!returnDate) return false;
+        const due = new Date(returnDate);
+        return due - now < twoDays && due - now > -twoDays; // within 2 days before or after
+      });
+      setDueSoonItems(dueSoon);
+
+      // Unread notification count
+      setUnreadCount(notifData?.unreadCount || 0);
+    } catch (e) {
+      // Keep current state
+    }
+  }, [user?.id]);
+
   const onRefresh = () => {
     setIsRefreshing(true);
     setRequestDiscussions({});
@@ -199,7 +237,60 @@ export default function FeedScreen({ navigation }) {
     refreshUser(); // Refresh user data on manual pull-to-refresh
     checkNeighborhood();
     fetchActiveDisputes();
+    fetchBannerData();
   };
+
+  const dismissBanner = (key) => {
+    setDismissedBanners(prev => ({ ...prev, [key]: true }));
+    haptics.medium();
+  };
+
+  const banners = [
+    activeDisputes.length > 0 && !dismissedBanners.disputes && {
+      key: 'disputes',
+      icon: 'alert-circle',
+      color: COLORS.danger,
+      title: `${activeDisputes.length} active dispute${activeDisputes.length !== 1 ? 's' : ''}`,
+      subtitle: 'Tap to review and respond',
+      onPress: () => activeDisputes.length === 1
+        ? navigation.navigate('DisputeDetail', { id: activeDisputes[0].id })
+        : navigation.navigate('MyItems'),
+    },
+    pendingRequests.length > 0 && !dismissedBanners.pending && {
+      key: 'pending',
+      icon: 'hand-left',
+      color: COLORS.warning,
+      title: `${pendingRequests.length} pending borrow request${pendingRequests.length !== 1 ? 's' : ''}`,
+      subtitle: 'Someone wants to borrow your item',
+      onPress: () => navigation.navigate('MyItems'),
+    },
+    dueSoonItems.length > 0 && !dismissedBanners.dueSoon && {
+      key: 'dueSoon',
+      icon: 'time',
+      color: COLORS.info || '#5BA4CF',
+      title: `${dueSoonItems.length} item${dueSoonItems.length !== 1 ? 's' : ''} due back soon`,
+      subtitle: "Don't forget to return on time",
+      onPress: () => navigation.navigate('MyItems'),
+    },
+    unreadCount > 0 && !dismissedBanners.unread && {
+      key: 'unread',
+      icon: 'notifications',
+      color: COLORS.primary,
+      title: `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`,
+      subtitle: 'Tap to catch up',
+      onPress: () => navigation.navigate('Notifications'),
+    },
+    !hasNeighborhood && !dismissedBanners.join && {
+      key: 'join',
+      icon: 'location',
+      color: COLORS.primary,
+      title: 'Join a nearby neighborhood',
+      subtitle: 'See items and requests from your neighbors',
+      onPress: () => navigation.navigate('JoinCommunity'),
+    },
+  ].filter(Boolean);
+
+  const PEEK_HEIGHT = 8;
 
   const onEndReached = () => {
     if (!isLoadingMore && hasMore) {
@@ -746,7 +837,11 @@ export default function FeedScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       <NativeHeader
         title=""
         scrollY={scrollY}
@@ -830,6 +925,8 @@ export default function FeedScreen({ navigation }) {
         contentContainerStyle={styles.listContent}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -840,50 +937,53 @@ export default function FeedScreen({ navigation }) {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
-          <>
-            {activeDisputes.length > 0 && (
-              <HapticPressable
-                style={styles.disputeBanner}
-                onPress={() => {
-                  if (activeDisputes.length === 1) {
-                    navigation.navigate('DisputeDetail', { id: activeDisputes[0].id });
-                  } else {
-                    navigation.navigate('MyItems');
-                  }
-                }}
-                haptic="light"
-                scaleDown={0.98}
-              >
-                <View style={styles.disputeBannerIcon}>
-                  <Ionicons name="alert-circle" size={20} color={COLORS.danger} />
-                </View>
-                <View style={styles.disputeBannerContent}>
-                  <Text style={styles.disputeBannerTitle}>
-                    You have {activeDisputes.length} active dispute{activeDisputes.length !== 1 ? 's' : ''}
-                  </Text>
-                  <Text style={styles.disputeBannerSubtitle}>Tap to review</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.danger} />
-              </HapticPressable>
-            )}
-            {!hasNeighborhood && (
-              <HapticPressable
-                style={styles.joinBanner}
-                onPress={() => navigation.navigate('JoinCommunity')}
-                haptic="light"
-                scaleDown={0.98}
-              >
-                <View style={styles.joinBannerIcon}>
-                  <Ionicons name="location" size={20} color={COLORS.primary} />
-                </View>
-                <View style={styles.joinBannerContent}>
-                  <Text style={styles.joinBannerTitle}>Join a nearby neighborhood</Text>
-                  <Text style={styles.joinBannerSubtitle}>See items and requests from your neighbors</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-              </HapticPressable>
-            )}
-          </>
+          banners.length > 0 ? (
+            <View style={[styles.bannerDeck, { marginBottom: SPACING.lg, height: 60 + (banners.length - 1) * PEEK_HEIGHT }]}>
+              {banners.map((b, i) => {
+                const isTop = i === 0;
+                return (
+                  <View
+                    key={b.key}
+                    style={[
+                      styles.bannerCard,
+                      {
+                        top: i * PEEK_HEIGHT,
+                        zIndex: banners.length - i,
+                        borderColor: b.color,
+                        opacity: isTop ? 1 : 0.95,
+                        transform: [{ scale: 1 - i * 0.02 }],
+                      },
+                    ]}
+                  >
+                    <HapticPressable
+                      style={styles.bannerCardInner}
+                      onPress={b.onPress}
+                      haptic="light"
+                      scaleDown={0.98}
+                    >
+                      <View style={[styles.bannerIcon, { backgroundColor: b.color + '15' }]}>
+                        <Ionicons name={b.icon} size={20} color={b.color} />
+                      </View>
+                      <View style={styles.bannerContent}>
+                        <Text style={styles.bannerTitle}>{b.title}</Text>
+                        {isTop && <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>}
+                      </View>
+                    </HapticPressable>
+                    {isTop && (
+                      <HapticPressable
+                        style={styles.bannerDismissBtn}
+                        onPress={() => dismissBanner(b.key)}
+                        haptic="light"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close" size={16} color={COLORS.textMuted} />
+                      </HapticPressable>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          ) : null
         }
         ListFooterComponent={
           isLoadingMore && (
@@ -1083,7 +1183,7 @@ export default function FeedScreen({ navigation }) {
           </View>
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1234,69 +1334,56 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.text,
   },
-  joinBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  bannerDeck: {
+    position: 'relative',
+  },
+  bannerCard: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
+    height: 60,
+  },
+  bannerCardInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    paddingRight: 36,
     gap: SPACING.md,
   },
-  joinBannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.primaryMuted,
+  bannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  joinBannerContent: {
+  bannerContent: {
     flex: 1,
   },
-  joinBannerTitle: {
+  bannerTitle: {
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.text,
   },
-  joinBannerSubtitle: {
+  bannerSubtitle: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
-  disputeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.danger,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    gap: SPACING.md,
-  },
-  disputeBannerIcon: {
-    width: 40,
-    height: 40,
+  bannerDismissBtn: {
+    position: 'absolute',
+    top: SPACING.sm,
+    right: SPACING.sm,
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    backgroundColor: COLORS.danger + '15',
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  disputeBannerContent: {
-    flex: 1,
-  },
-  disputeBannerTitle: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  disputeBannerSubtitle: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    marginTop: 2,
   },
   listContent: {
     padding: SPACING.lg,
@@ -1373,9 +1460,9 @@ const styles = StyleSheet.create({
   requestCard: {
     marginBottom: SPACING.lg,
     borderRadius: 14,
-    overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: COLORS.primary,
+    backgroundColor: COLORS.card,
     ...Platform.select({
       ios: {
         shadowColor: 'rgba(192, 57, 43, 0.06)',
@@ -1392,6 +1479,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     paddingHorizontal: 14,
+    borderTopLeftRadius: 12.5,
+    borderTopRightRadius: 12.5,
   },
   requestBannerLeft: {
     flexDirection: 'row',
