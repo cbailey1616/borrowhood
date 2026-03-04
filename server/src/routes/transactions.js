@@ -3,6 +3,7 @@ import { query, withTransaction } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
+  stripe,
   createPaymentIntent,
   getPaymentIntent,
   capturePaymentIntent,
@@ -173,20 +174,38 @@ router.post('/', authenticate,
 
       // Paid rental — create PaymentIntent upfront with manual capture (authorization hold)
       const borrowerInfo = await query(
-        'SELECT stripe_customer_id FROM users WHERE id = $1',
+        'SELECT stripe_customer_id, email FROM users WHERE id = $1',
         [req.user.id]
       );
-      const customerId = borrowerInfo.rows[0]?.stripe_customer_id;
 
+      let customerId = borrowerInfo.rows[0]?.stripe_customer_id;
+
+      // Create Stripe customer if needed
       if (!customerId) {
-        return res.status(400).json({ error: 'Payment method required. Please add a card first.' });
+        const customer = await stripe.customers.create({
+          email: borrowerInfo.rows[0].email,
+          metadata: { userId: req.user.id },
+        });
+        customerId = customer.id;
+        await query(
+          'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
+          [customerId, req.user.id]
+        );
       }
 
-      const paymentIntent = await createPaymentIntent({
-        amount: totalChargeCents,
-        customerId,
-        metadata: { transaction_id: transactionId },
-      });
+      let paymentIntent;
+      try {
+        paymentIntent = await createPaymentIntent({
+          amount: totalChargeCents,
+          customerId,
+          metadata: { transaction_id: transactionId },
+        });
+      } catch (stripeErr) {
+        // Release item lock if PaymentIntent creation fails
+        await query('UPDATE listings SET is_available = true WHERE id = $1', [listingId]);
+        console.error('Stripe PaymentIntent creation failed:', stripeErr);
+        return res.status(500).json({ error: 'Payment setup failed. Please try again.' });
+      }
 
       // Store PI on the transaction
       await query(
@@ -204,6 +223,10 @@ router.post('/', authenticate,
       });
     } catch (err) {
       console.error('Create transaction error:', err);
+      // Release item lock on any unhandled error
+      if (req.body.listingId) {
+        await query('UPDATE listings SET is_available = true WHERE id = $1', [req.body.listingId]).catch(() => {});
+      }
       res.status(500).json({ error: 'Failed to create borrow request' });
     }
   }

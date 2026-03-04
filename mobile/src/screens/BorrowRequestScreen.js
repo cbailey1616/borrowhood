@@ -400,6 +400,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           value={message}
           onChangeText={setMessage}
           placeholder="Introduce yourself and explain what you need the item for..."
+          placeholderTextColor={COLORS.textMuted}
           multiline
           numberOfLines={4}
           maxLength={500}
