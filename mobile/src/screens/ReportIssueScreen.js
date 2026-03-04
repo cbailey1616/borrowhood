@@ -55,7 +55,13 @@ export default function ReportIssueScreen({ navigation, route }) {
   const scrollRef = useRef(null);
   const fieldPositions = useRef({});
 
-  const maxClaimCents = Math.round(((depositAmount || 0) + (rentalFee || 0)) * 100);
+  // Lender claim types use the deposit as max (rental fee is already earned)
+  // Borrower claim types use the rental fee as max (they want their payment back)
+  const isLenderType = ['damagesClaim', 'nonReturn', 'lateReturn'].includes(type);
+  const maxClaimDollars = isLenderType
+    ? (depositAmount || 0)
+    : (rentalFee || 0);
+  const maxClaimCents = Math.round(maxClaimDollars * 100);
   const rawClaimCents = Math.round(parseFloat(amountText || '0') * 100);
   const claimExceedsMax = rawClaimCents > maxClaimCents;
   const claimCents = Math.min(rawClaimCents, maxClaimCents);
@@ -125,7 +131,11 @@ export default function ReportIssueScreen({ navigation, route }) {
         type,
         description,
         photoUrls,
-        requestedAmount: type === 'damagesClaim' ? cappedAmount : (rentalFee || 0),
+        requestedAmount: type === 'nonReturn'
+          ? (depositAmount || 0)
+          : isLenderType
+            ? cappedAmount
+            : (rentalFee || 0),
       });
 
       setCompleted(true);
@@ -278,13 +288,31 @@ export default function ReportIssueScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* Amount field - only for damages claim with non-zero max */}
-        {type === 'damagesClaim' && maxClaimCents > 0 && (
+        {/* Non-return: auto-claim full deposit */}
+        {type === 'nonReturn' && (depositAmount || 0) > 0 && (
+          <View style={[styles.cardBox, styles.card]}>
+            <View style={styles.cardContent}>
+              <View style={styles.depositClaimRow}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
+                <View style={styles.depositClaimInfo}>
+                  <Text style={styles.cardLabel}>Claim Security Deposit</Text>
+                  <Text style={styles.cardHint}>
+                    The full {formatCurrency(depositAmount)} deposit will be claimed. You also keep the {formatCurrency(rentalFee || 0)} rental fee.
+                  </Text>
+                </View>
+                <Text style={styles.depositClaimAmount}>{formatCurrency(depositAmount)}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Damages / late return: custom amount from deposit */}
+        {(type === 'damagesClaim' || type === 'lateReturn') && maxClaimCents > 0 && (
           <View style={[styles.cardBox, styles.card]}>
             <View style={styles.cardContent}>
               <Text style={styles.cardLabel}>Claim Amount</Text>
               <Text style={styles.cardHint}>
-                Maximum: {formatCurrency((depositAmount || 0) + (rentalFee || 0))} ({rentalFee ? 'rental fee + deposit' : 'deposit'})
+                Up to {formatCurrency(maxClaimDollars)} (security deposit). You keep the rental fee separately.
               </Text>
               <View style={styles.amountInputRow}>
                 <Text style={styles.dollarSign}>$</Text>
@@ -307,7 +335,7 @@ export default function ReportIssueScreen({ navigation, route }) {
               </View>
               {claimExceedsMax && (
                 <Text style={styles.errorText}>
-                  Cannot exceed {formatCurrency((depositAmount || 0) + (rentalFee || 0))}. Capped to maximum.
+                  Cannot exceed the deposit of {formatCurrency(maxClaimDollars)}.
                 </Text>
               )}
             </View>
@@ -450,6 +478,19 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'right',
     marginTop: SPACING.xs,
+  },
+  depositClaimRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  depositClaimInfo: {
+    flex: 1,
+  },
+  depositClaimAmount: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
   amountInputRow: {
     flexDirection: 'row',

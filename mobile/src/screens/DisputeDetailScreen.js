@@ -101,7 +101,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
     setActionLoading(true);
     try {
       const resolvedAmount = outcome === 'claimant'
-        ? Math.min(parseFloat(resolvedAmountText) || 0, (dispute.transaction?.rentalFee || 0) + (dispute.transaction?.depositAmount || 0))
+        ? Math.min(parseFloat(resolvedAmountText) || 0, effectiveClaimAmount)
         : undefined;
       await api.resolveDispute(id, { outcome, resolvedAmount, notes });
       haptics.success();
@@ -399,7 +399,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
               <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.depositAmount)}</Text>
             </View>
             <View style={[styles.detailRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Max Claimable</Text>
+              <Text style={styles.totalLabel}>Total Charged</Text>
               <Text style={styles.totalValue}>
                 {formatCurrency((dispute.transaction.rentalFee || 0) + (dispute.transaction.depositAmount || 0))}
               </Text>
@@ -514,9 +514,9 @@ export default function DisputeDetailScreen({ route, navigation }) {
             <Text style={styles.formLabel}>Outcome</Text>
             <View style={styles.outcomeOptions}>
               {[
-                { key: 'claimant', label: 'Favor Claimant' },
-                { key: 'respondent', label: 'Favor Respondent' },
-                { key: 'dismissed', label: 'Dismiss' },
+                { key: 'claimant', label: 'Favor Claimant', icon: 'person-outline' },
+                { key: 'respondent', label: 'Favor Respondent', icon: 'person-outline' },
+                { key: 'dismissed', label: 'Dismiss', icon: 'close-outline' },
               ].map(opt => (
                 <HapticPressable
                   key={opt.key}
@@ -524,6 +524,11 @@ export default function DisputeDetailScreen({ route, navigation }) {
                   onPress={() => setOutcome(opt.key)}
                   haptic="light"
                 >
+                  <Ionicons
+                    name={opt.icon}
+                    size={16}
+                    color={outcome === opt.key ? '#fff' : COLORS.text}
+                  />
                   <Text style={[styles.outcomeText, outcome === opt.key && styles.outcomeTextActive]}>
                     {opt.label}
                   </Text>
@@ -533,13 +538,19 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
             {outcome === 'claimant' && (
               <>
-                <Text style={styles.formLabel}>Amount to Capture from Deposit</Text>
+                <Text style={styles.formLabel}>Amount to Award</Text>
                 <View style={styles.amountInputRow}>
                   <Text style={styles.dollarSign}>$</Text>
                   <TextInput
                     style={styles.amountInput}
                     value={resolvedAmountText}
                     onChangeText={setResolvedAmountText}
+                    onBlur={() => {
+                      const entered = parseFloat(resolvedAmountText) || 0;
+                      if (entered > effectiveClaimAmount) {
+                        setResolvedAmountText(effectiveClaimAmount.toFixed(2));
+                      }
+                    }}
                     placeholder="0.00"
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="decimal-pad"
@@ -547,7 +558,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
                   />
                 </View>
                 <Text style={styles.formHint}>
-                  Max: {formatCurrency((dispute.transaction?.rentalFee || 0) + (dispute.transaction?.depositAmount || 0))} (rental fee + deposit)
+                  Up to {formatCurrency(effectiveClaimAmount)} (claimed amount)
                 </Text>
               </>
             )}
@@ -971,10 +982,10 @@ const styles = StyleSheet.create({
   // Resolve form
   formLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
+    fontWeight: '600',
+    color: COLORS.text,
     marginBottom: SPACING.sm,
-    marginTop: SPACING.md,
+    marginTop: SPACING.lg,
   },
   formHint: {
     ...TYPOGRAPHY.caption1,
@@ -987,18 +998,24 @@ const styles = StyleSheet.create({
   },
   outcomeOption: {
     flex: 1,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.gray?.[800] || '#1a1a1a',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   outcomeOptionActive: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   outcomeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
+    fontWeight: '600',
+    color: COLORS.text,
   },
   outcomeTextActive: {
     color: '#fff',
@@ -1006,24 +1023,28 @@ const styles = StyleSheet.create({
   amountInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray?.[800] || '#1a1a1a',
-    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
     paddingHorizontal: SPACING.md,
   },
   dollarSign: {
-    ...TYPOGRAPHY.headline,
+    ...TYPOGRAPHY.h2,
     color: COLORS.textSecondary,
     marginRight: SPACING.xs,
   },
   amountInput: {
     flex: 1,
-    ...TYPOGRAPHY.headline,
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
   },
   notesInput: {
-    backgroundColor: COLORS.gray?.[800] || '#1a1a1a',
-    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
     padding: SPACING.md,
     ...TYPOGRAPHY.body,
     color: COLORS.text,
@@ -1039,8 +1060,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.lg,
+    marginTop: SPACING.xl,
   },
   buttonDisabled: {
     opacity: 0.5,
