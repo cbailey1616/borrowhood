@@ -9,11 +9,9 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
-import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -26,10 +24,10 @@ export default function DamageClaimScreen({ navigation, route }) {
     conditionAtReturn,
   } = route.params || {};
 
-  const { showError } = useError();
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [claimResult, setClaimResult] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   const [amountText, setAmountText] = useState('');
   const [notes, setNotes] = useState('');
@@ -66,6 +64,7 @@ export default function DamageClaimScreen({ navigation, route }) {
     if (!isValid) return;
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       // Upload evidence photos
       let evidenceUrls = [];
@@ -85,10 +84,7 @@ export default function DamageClaimScreen({ navigation, route }) {
       haptics.success();
     } catch (err) {
       haptics.error();
-      showError({
-        message: err.message || 'Couldn\'t submit your claim right now. Please check your connection and try again.',
-        type: 'network',
-      });
+      setSubmitError(err.message || 'Couldn\'t submit your claim right now. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -134,9 +130,9 @@ export default function DamageClaimScreen({ navigation, route }) {
 
         {/* Condition comparison */}
         {conditionAtPickup && conditionAtReturn && (
-          <BlurCard style={styles.conditionCard}>
-            <View style={styles.conditionContent}>
-              <Text style={styles.conditionLabel}>Condition Change</Text>
+          <View style={[styles.cardBox, styles.card]}>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardLabel}>Condition Change</Text>
               <View style={styles.conditionRow}>
                 <View style={styles.conditionBadge}>
                   <Text style={styles.conditionBadgeText}>Pickup: {conditionAtPickup}</Text>
@@ -147,15 +143,15 @@ export default function DamageClaimScreen({ navigation, route }) {
                 </View>
               </View>
             </View>
-          </BlurCard>
+          </View>
         )}
 
         {/* Claim amount */}
-        <BlurCard style={styles.card}>
+        <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Claim Amount</Text>
             <Text style={styles.cardHint}>
-              Maximum: {formatCurrency(depositAmount)} (deposit amount)
+              Maximum: {formatCurrency(depositAmount)} (deposit)
             </Text>
             <View style={styles.amountInputRow}>
               <Text style={styles.dollarSign}>$</Text>
@@ -164,7 +160,7 @@ export default function DamageClaimScreen({ navigation, route }) {
                 accessibilityLabel="Claim amount"
                 style={styles.amountInput}
                 value={amountText}
-                onChangeText={setAmountText}
+                onChangeText={(text) => { setAmountText(text); setSubmitError(null); }}
                 placeholder="0.00"
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="decimal-pad"
@@ -177,18 +173,19 @@ export default function DamageClaimScreen({ navigation, route }) {
               </Text>
             )}
           </View>
-        </BlurCard>
+        </View>
 
         {/* Damage description */}
-        <BlurCard style={styles.card}>
+        <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Describe the Damage</Text>
+            <Text style={styles.cardHint}>Minimum 10 characters</Text>
             <TextInput
               testID="DamageClaim.input.description"
               accessibilityLabel="Damage description"
               style={styles.notesInput}
               value={notes}
-              onChangeText={setNotes}
+              onChangeText={(text) => { setNotes(text); setSubmitError(null); }}
               placeholder="Describe what's damaged and the extent of the damage..."
               placeholderTextColor={COLORS.textMuted}
               multiline
@@ -197,14 +194,14 @@ export default function DamageClaimScreen({ navigation, route }) {
             />
             <Text style={styles.charCount}>{notes.length}/1000</Text>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Evidence photos */}
-        <BlurCard style={styles.card}>
+        <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Evidence Photos</Text>
             <Text style={styles.cardHint}>
-              Upload up to 5 photos of the damage
+              Optional — upload up to 5 photos of the damage
             </Text>
 
             <View style={styles.photosGrid}>
@@ -236,7 +233,15 @@ export default function DamageClaimScreen({ navigation, route }) {
               )}
             </View>
           </View>
-        </BlurCard>
+        </View>
+
+        {/* Error banner */}
+        {submitError && (
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+            <Text style={styles.errorCardText}>{submitError}</Text>
+          </View>
+        )}
 
         {/* Submit */}
         <HapticPressable
@@ -309,38 +314,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  conditionCard: {
-    marginBottom: SPACING.lg,
-  },
-  conditionContent: {
-    padding: SPACING.lg,
-  },
-  conditionLabel: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  conditionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  conditionBadge: {
-    backgroundColor: COLORS.gray[800],
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.sm,
-  },
-  conditionBadgeText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.text,
-  },
-  conditionBadgeDamaged: {
-    backgroundColor: `${COLORS.danger}20`,
-  },
-  conditionBadgeDamagedText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.danger,
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
   },
   card: {
     marginBottom: SPACING.lg,
@@ -359,11 +337,38 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginBottom: SPACING.md,
   },
+  conditionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  conditionBadge: {
+    backgroundColor: COLORS.surfaceElevated,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
+  },
+  conditionBadgeText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.text,
+  },
+  conditionBadgeDamaged: {
+    backgroundColor: `${COLORS.danger}15`,
+    borderColor: COLORS.danger,
+  },
+  conditionBadgeDamagedText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.danger,
+  },
   amountInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     paddingHorizontal: SPACING.md,
   },
   dollarSign: {
@@ -383,8 +388,10 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   notesInput: {
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     padding: SPACING.md,
     ...TYPOGRAPHY.body,
     color: COLORS.text,
@@ -420,7 +427,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
@@ -428,6 +437,20 @@ const styles = StyleSheet.create({
   addPhotoText: {
     ...TYPOGRAPHY.caption2,
     color: COLORS.textSecondary,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.danger + '12',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  errorCardText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.danger,
+    flex: 1,
   },
   primaryButton: {
     backgroundColor: COLORS.primary,

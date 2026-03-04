@@ -490,7 +490,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Borrower: Submit return */}
+      {/* Borrower: Submit return + Report Issue */}
       {transaction.isBorrower && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
           <HapticPressable
@@ -501,10 +501,25 @@ export default function TransactionDetailScreen({ route, navigation }) {
           >
             <Text style={styles.approveButtonText}>Return Item</Text>
           </HapticPressable>
+          <HapticPressable
+            haptic="light"
+            style={styles.reportIssueButton}
+            onPress={() => navigation.navigate('ReportIssue', {
+              transactionId: id,
+              depositAmount: transaction?.depositAmount,
+              rentalFee: transaction?.rentalFee,
+              listingTitle: transaction?.listing?.title,
+              borrowerId: transaction?.borrower?.id,
+              lenderId: transaction?.lender?.id,
+            })}
+          >
+            <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
+            <Text style={styles.reportIssueText}>Report an Issue</Text>
+          </HapticPressable>
         </View>
       )}
 
-      {/* Lender: Confirm return */}
+      {/* Lender: Confirm return + Report Issue */}
       {transaction.isLender && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
           <HapticPressable
@@ -517,6 +532,21 @@ export default function TransactionDetailScreen({ route, navigation }) {
             disabled={actionLoading}
           >
             <Text style={styles.approveButtonText}>Confirm Return</Text>
+          </HapticPressable>
+          <HapticPressable
+            haptic="light"
+            style={styles.reportIssueButton}
+            onPress={() => navigation.navigate('ReportIssue', {
+              transactionId: id,
+              depositAmount: transaction?.depositAmount,
+              rentalFee: transaction?.rentalFee,
+              listingTitle: transaction?.listing?.title,
+              borrowerId: transaction?.borrower?.id,
+              lenderId: transaction?.lender?.id,
+            })}
+          >
+            <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
+            <Text style={styles.reportIssueText}>Report an Issue</Text>
           </HapticPressable>
         </View>
       )}
@@ -658,6 +688,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           {
             label: 'Yes, looks good',
             onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
+            primary: true,
           },
           {
             label: 'No, there\'s an issue',
