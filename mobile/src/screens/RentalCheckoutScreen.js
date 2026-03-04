@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,14 @@ import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
 
+// Stripe PaymentSheet requires hex colors — COLORS.borderBrown is rgba so use hex equivalent
 const PAYMENT_SHEET_APPEARANCE = {
   colors: {
     primary: COLORS.primary,
     background: COLORS.background,
     componentBackground: '#FFFFFF',
-    componentBorder: COLORS.borderBrown,
-    componentDivider: COLORS.borderBrown,
+    componentBorder: '#C4B299',
+    componentDivider: '#C4B299',
     primaryText: '#1A1A1A',
     secondaryText: '#6B6B6B',
     componentText: '#1A1A1A',
@@ -56,8 +57,48 @@ export default function RentalCheckoutScreen({ navigation, route }) {
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const [processing, setProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [sheetReady, setSheetReady] = useState(false);
+  const [initError, setInitError] = useState(null);
 
   const formatCurrency = (amount) => `$${(amount || 0).toFixed(2)}`;
+
+  // Initialize PaymentSheet on mount
+  useEffect(() => {
+    const initSheet = async () => {
+      if (!clientSecret || !ephemeralKey || !customerId) {
+        console.error('Missing payment credentials:', { clientSecret: !!clientSecret, ephemeralKey: !!ephemeralKey, customerId: !!customerId });
+        setInitError('Payment setup incomplete. Please go back and try again.');
+        return;
+      }
+
+      console.log('Initializing PaymentSheet on mount...');
+      const { error } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        customerEphemeralKeySecret: ephemeralKey,
+        customerId,
+        merchantDisplayName: 'BorrowHood',
+        returnURL: 'com.borrowhood.app://stripe-redirect',
+        applePay: {
+          merchantCountryCode: 'US',
+        },
+        googlePay: {
+          merchantCountryCode: 'US',
+          testEnv: __DEV__,
+        },
+        appearance: PAYMENT_SHEET_APPEARANCE,
+      });
+
+      if (error) {
+        console.error('PaymentSheet init error:', error);
+        setInitError(error.message);
+      } else {
+        console.log('PaymentSheet initialized successfully');
+        setSheetReady(true);
+      }
+    };
+
+    initSheet();
+  }, [clientSecret, ephemeralKey, customerId]);
 
   const pollForAuthorization = useCallback(async () => {
     for (let i = 0; i < 5; i++) {
@@ -75,31 +116,21 @@ export default function RentalCheckoutScreen({ navigation, route }) {
   }, [transactionId]);
 
   const handlePay = async () => {
+    if (initError) {
+      showError({ message: initError, type: 'network' });
+      return;
+    }
+
+    if (!sheetReady) {
+      showError({ message: 'Payment is still loading. Please wait a moment and try again.', type: 'network' });
+      return;
+    }
+
     setProcessing(true);
     try {
-      // Initialize PaymentSheet with credentials from approve
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        customerEphemeralKeySecret: ephemeralKey,
-        customerId,
-        merchantDisplayName: 'BorrowHood',
-        returnURL: 'com.borrowhood.app://stripe-redirect',
-        applePay: {
-          merchantCountryCode: 'US',
-        },
-        googlePay: {
-          merchantCountryCode: 'US',
-          testEnv: __DEV__,
-        },
-        appearance: PAYMENT_SHEET_APPEARANCE,
-      });
-
-      if (initError) {
-        throw new Error(initError.message);
-      }
-
-      // Present PaymentSheet
+      console.log('Presenting PaymentSheet...');
       const { error: presentError } = await presentPaymentSheet();
+      console.log('PaymentSheet result:', presentError ? `Error: ${presentError.code} - ${presentError.message}` : 'Success');
 
       if (presentError) {
         if (presentError.code === 'Canceled') {
@@ -225,17 +256,29 @@ export default function RentalCheckoutScreen({ navigation, route }) {
           </View>
         </View>
 
+        {initError && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+            <Text style={styles.errorBannerText}>{initError}</Text>
+          </View>
+        )}
+
         <HapticPressable
           testID="RentalCheckout.button.authorize"
           accessibilityLabel="Authorize payment"
           accessibilityRole="button"
-          style={[styles.primaryButton, processing && styles.buttonDisabled]}
+          style={[styles.primaryButton, (processing || !sheetReady) && styles.buttonDisabled]}
           onPress={handlePay}
-          disabled={processing}
+          disabled={processing || !!initError}
           haptic="medium"
         >
           {processing ? (
             <ActivityIndicator color="#fff" />
+          ) : !sheetReady && !initError ? (
+            <View style={styles.buttonLoading}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.primaryButtonText}>Setting up payment...</Text>
+            </View>
           ) : (
             <Text style={styles.primaryButtonText}>
               Authorize {formatCurrency(totalAmount)}
@@ -360,12 +403,31 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.danger + '15',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  errorBannerText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.danger,
+    flex: 1,
+  },
   primaryButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
   },
   buttonDisabled: {
     opacity: 0.7,

@@ -13,13 +13,14 @@ import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
 
+// Stripe PaymentSheet requires hex colors — COLORS.borderBrown is rgba so use hex equivalent
 const PAYMENT_SHEET_APPEARANCE = {
   colors: {
     primary: COLORS.primary,
     background: COLORS.background,
     componentBackground: '#FFFFFF',
-    componentBorder: COLORS.borderBrown,
-    componentDivider: COLORS.borderBrown,
+    componentBorder: '#C4B299',
+    componentDivider: '#C4B299',
     primaryText: '#1A1A1A',
     secondaryText: '#6B6B6B',
     componentText: '#1A1A1A',
@@ -57,6 +58,7 @@ export default function PaymentFlowScreen({ navigation, route }) {
       const credentials = await api.createPaymentIntent(amount, description, metadata);
       setPaymentIntentId(credentials.paymentIntentId);
 
+      console.log('Initializing PaymentSheet...');
       // Initialize PaymentSheet
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: credentials.clientSecret,
@@ -75,9 +77,11 @@ export default function PaymentFlowScreen({ navigation, route }) {
       });
 
       if (initError) {
+        console.error('PaymentSheet init error:', initError);
         throw new Error(initError.message);
       }
 
+      console.log('Presenting PaymentSheet...');
       // Present PaymentSheet
       const { error: presentError } = await presentPaymentSheet();
 

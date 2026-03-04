@@ -753,13 +753,14 @@ router.post('/:id/return', authenticate,
         );
 
         // Create dispute
-        await query(
+        const disputeRecord = await query(
           `INSERT INTO disputes (transaction_id, opened_by_id, reason)
-           VALUES ($1, $2, $3)`,
+           VALUES ($1, $2, $3) RETURNING id`,
           [t.id, req.user.id, `Item returned in worse condition: ${t.condition_at_pickup} → ${condition}. ${notes || ''}`]
         );
 
         await sendNotification(t.borrower_id, 'dispute_opened', {
+          disputeId: disputeRecord.rows[0].id,
           transactionId: t.id,
         });
 

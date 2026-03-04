@@ -223,8 +223,8 @@ export async function sendNotification(userId, type, data, options = {}) {
 
     // Create notification record
     const result = await query(
-      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id, dispute_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
       [
         userId,
@@ -236,6 +236,7 @@ export async function sendNotification(userId, type, data, options = {}) {
         options.listingId || data.listingId || null,
         options.requestId || data.requestId || null,
         options.conversationId || data.conversationId || null,
+        options.disputeId || data.disputeId || null,
       ]
     );
 

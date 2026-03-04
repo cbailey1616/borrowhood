@@ -24,13 +24,14 @@ const VERIFIED_FEATURES = [
   'Support local sharing infrastructure',
 ];
 
+// Stripe PaymentSheet requires hex colors — COLORS.borderBrown is rgba so use hex equivalent
 const PAYMENT_SHEET_APPEARANCE = {
   colors: {
     primary: COLORS.primary,
     background: COLORS.background,
     componentBackground: '#FFFFFF',
-    componentBorder: COLORS.borderBrown,
-    componentDivider: COLORS.borderBrown,
+    componentBorder: '#C4B299',
+    componentDivider: '#C4B299',
     primaryText: '#1A1A1A',
     secondaryText: '#6B6B6B',
     componentText: '#1A1A1A',

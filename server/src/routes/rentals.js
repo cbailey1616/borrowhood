@@ -712,90 +712,58 @@ router.post('/:id/damage-claim', authenticate,
         return res.status(400).json({ error: 'Cannot file damage claim in current status' });
       }
 
-      // Cap damage claim at deposit amount
-      const depositCents = Math.round(parseFloat(t.deposit_amount) * 100);
-      const claimAmount = Math.min(amountCents, depositCents);
+      // Cap damage claim at rental fee + deposit
+      const depositAmount = parseFloat(t.deposit_amount) || 0;
+      const rentalFee = parseFloat(t.rental_fee) || 0;
+      const maxAmount = depositAmount + rentalFee;
+      const claimAmountDollars = Math.min(amountCents / 100, maxAmount);
 
-      if (claimAmount <= 0) {
+      if (claimAmountDollars <= 0) {
         return res.status(400).json({ error: 'No deposit to claim against' });
       }
 
-      // Record the damage claim
+      // Mark transaction as returned with damage noted
       await query(
         `UPDATE borrow_transactions
          SET status = 'returned', actual_return_at = NOW(),
              damage_claim_amount_cents = $1, damage_claim_notes = $2,
-             damage_evidence_urls = $3, payment_status = 'damage_claimed'
+             damage_evidence_urls = $3
          WHERE id = $4`,
-        [claimAmount, notes, evidenceUrls, t.id]
+        [amountCents, notes, evidenceUrls, t.id]
       );
 
-      // Refund only the remaining deposit (deposit - claim)
-      const refundAmount = depositCents - claimAmount;
-      if (refundAmount > 0 && t.stripe_payment_intent_id) {
-        try {
-          await stripe.refunds.create({
-            payment_intent: t.stripe_payment_intent_id,
-            amount: refundAmount,
-          });
-        } catch (refundErr) {
-          logger.error('Damage claim refund failed (non-blocking):', refundErr.message);
-          // Continue — the claim is recorded, refund can be handled manually
-        }
-      }
+      // Create a dispute through the standard workflow
+      const listing = await query('SELECT title FROM listings WHERE id = $1', [t.listing_id]);
+      const listingTitle = listing.rows[0]?.title || 'Unknown item';
 
-      // Transfer rental fee + claim amount to lender
-      const lenderResult = await query(
-        'SELECT stripe_connect_account_id FROM users WHERE id = $1',
-        [t.lender_id]
+      const dispute = await query(
+        `INSERT INTO disputes (
+          transaction_id, claimant_user_id, respondent_user_id, opened_by_id,
+          type, description, reason, photo_urls, evidence_urls,
+          requested_amount, status
+        ) VALUES ($1, $2, $3, $2, 'damagesClaim', $4, $4, $5, $5, $6, 'awaitingResponse')
+        RETURNING id, created_at`,
+        [t.id, req.user.id, t.borrower_id, notes, evidenceUrls, claimAmountDollars]
       );
-      const lenderConnectId = lenderResult.rows[0]?.stripe_connect_account_id;
 
-      if (lenderConnectId) {
-        const payoutCents = Math.round(parseFloat(t.lender_payout || 0) * 100) + claimAmount;
-        if (payoutCents > 0) {
-          try {
-            const transfer = await createTransfer({
-              amount: payoutCents,
-              destinationAccountId: lenderConnectId,
-              metadata: {
-                transactionId: t.id,
-                type: 'rental_payout_with_damage',
-                damageClaimCents: claimAmount,
-              },
-            });
-
-            await query(
-              'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
-              [transfer.id, t.id]
-            );
-          } catch (transferErr) {
-            logger.error('Damage claim transfer failed (non-blocking):', transferErr.message);
-            // Continue — claim is recorded, transfer can be handled manually
-          }
-        }
-      }
-
-      // Mark listing available again
+      // Update transaction to disputed status
       await query(
-        `UPDATE listings
-         SET is_available = true,
-             times_borrowed = times_borrowed + 1,
-             total_earnings = total_earnings + $1
-         WHERE id = $2`,
-        [parseFloat(t.lender_payout || 0), t.listing_id]
+        `UPDATE borrow_transactions SET status = 'disputed' WHERE id = $1`,
+        [t.id]
       );
 
       // Notify borrower
-      await sendNotification(t.borrower_id, 'dispute_opened', {
+      await sendNotification(t.borrower_id, 'dispute_filed_against_you', {
+        disputeId: dispute.rows[0].id,
         transactionId: t.id,
-        message: `Damage claim filed: $${(claimAmount / 100).toFixed(2)} deducted from deposit.`,
+        itemTitle: listingTitle,
+        typeLabel: 'Damages Claim',
       });
 
       res.json({
         success: true,
-        claimAmount: claimAmount,
-        depositRefunded: depositCents - claimAmount,
+        disputeId: dispute.rows[0].id,
+        status: 'awaitingResponse',
       });
     } catch (err) {
       logger.error('Damage claim error:', err);

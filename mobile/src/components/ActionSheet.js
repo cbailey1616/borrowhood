@@ -1,11 +1,12 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, Dimensions, StyleSheet } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { View, Text, Dimensions, StyleSheet, Pressable } from 'react-native';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, Easing } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function ActionSheet({
   isVisible,
@@ -16,32 +17,12 @@ export default function ActionSheet({
   cancelLabel = 'Cancel',
   multiSelect = false,
 }) {
-  const bottomSheetRef = useRef(null);
   const insets = useSafeAreaInsets();
-  const [rendered, setRendered] = useState(false);
-
-  useEffect(() => {
-    if (isVisible) {
-      setRendered(true);
-    } else if (rendered) {
-      bottomSheetRef.current?.close();
-    }
-  }, [isVisible]);
-
-  const handleSheetChange = useCallback(
-    (index) => {
-      if (index === -1) {
-        setRendered(false);
-        onClose?.();
-      }
-    },
-    [onClose]
-  );
 
   const handleCancel = useCallback(() => {
     haptics.light();
-    bottomSheetRef.current?.close();
-  }, []);
+    onClose?.();
+  }, [onClose]);
 
   const handleAction = useCallback(
     (action) => {
@@ -53,80 +34,69 @@ export default function ActionSheet({
       if (multiSelect) {
         action.onPress?.();
       } else {
-        bottomSheetRef.current?.close();
-        // Delay action to let sheet close animation finish
+        onClose?.();
         setTimeout(() => {
           action.onPress?.();
         }, 200);
       }
     },
-    [multiSelect]
+    [multiSelect, onClose]
   );
 
-  const renderBackdrop = useCallback(
-    (props) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.6}
-        pressBehavior="close"
-      />
-    ),
-    []
-  );
-
-  if (!rendered) return null;
+  if (!isVisible) return null;
 
   const bottomPad = (insets.bottom || 34) + SPACING.sm;
-  const maxSheetHeight = (insets.top > 0 ? insets.top : 54) + 80; // leave room at top
 
   return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={0}
-      enableDynamicSizing
-      maxDynamicContentSize={Dimensions.get('window').height - maxSheetHeight}
-      onChange={handleSheetChange}
-      enablePanDownToClose
-      backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sheetBg}
-      handleIndicatorStyle={styles.handle}
-      style={styles.sheet}
-    >
-      <BottomSheetScrollView style={styles.content} contentContainerStyle={{ paddingBottom: bottomPad }}>
-        {title ? (
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            {message ? <Text style={styles.message}>{message}</Text> : null}
-          </View>
-        ) : null}
-        <View style={styles.actionsContainer}>
-          {actions.map((action, index) => (
-            <HapticPressable
-              key={index}
-              onPress={() => handleAction(action)}
-              haptic={null}
-              style={[
-                styles.actionButton,
-                action.destructive && styles.destructiveButton,
-                action.primary && styles.primaryButton,
-              ]}
-            >
-              {action.icon ? (
-                <View style={styles.actionIcon}>{action.icon}</View>
-              ) : null}
-              <Text
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {/* Full-screen dim backdrop */}
+      <AnimatedPressable
+        entering={FadeIn.duration(200)}
+        exiting={FadeOut.duration(200)}
+        style={styles.backdrop}
+        onPress={handleCancel}
+      />
+
+      {/* Sheet content */}
+      <Animated.View
+        entering={SlideInDown.duration(300).easing(Easing.out(Easing.cubic))}
+        exiting={SlideOutDown.duration(200).easing(Easing.in(Easing.cubic))}
+        style={[styles.sheetContainer, { paddingBottom: bottomPad }]}
+      >
+        <View style={styles.sheetCard}>
+          {title ? (
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              {message ? <Text style={styles.message}>{message}</Text> : null}
+            </View>
+          ) : null}
+          <View style={styles.actionsContainer}>
+            {actions.map((action, index) => (
+              <HapticPressable
+                key={index}
+                onPress={() => handleAction(action)}
+                haptic={null}
                 style={[
-                  styles.actionText,
-                  action.destructive && styles.destructiveText,
-                  action.primary && styles.primaryText,
+                  styles.actionButton,
+                  action.destructive && styles.destructiveButton,
+                  action.primary && styles.primaryButton,
                 ]}
               >
-                {action.label}
-              </Text>
-            </HapticPressable>
-          ))}
+                {action.icon ? (
+                  <View style={styles.actionIcon}>{action.icon}</View>
+                ) : null}
+                <Text
+                  style={[
+                    styles.actionText,
+                    action.destructive && styles.destructiveText,
+                    action.primary && styles.primaryText,
+                  ]}
+                >
+                  {action.label}
+                </Text>
+              </HapticPressable>
+            ))}
+          </View>
         </View>
         <HapticPressable
           onPress={handleCancel}
@@ -135,28 +105,28 @@ export default function ActionSheet({
         >
           <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
         </HapticPressable>
-      </BottomSheetScrollView>
-    </BottomSheet>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    zIndex: 999,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  sheetBg: {
+  sheetContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: SPACING.md,
+  },
+  sheetCard: {
     backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xxl,
-    borderTopRightRadius: RADIUS.xxl,
-  },
-  handle: {
-    backgroundColor: COLORS.gray[600],
-    width: 36,
-    height: 5,
-  },
-  content: {
+    borderRadius: RADIUS.xl,
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
+    overflow: 'hidden',
   },
   header: {
     alignItems: 'center',
@@ -219,8 +189,8 @@ const styles = StyleSheet.create({
   cancelButton: {
     alignItems: 'center',
     paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
     marginTop: SPACING.sm,
   },
   cancelText: {

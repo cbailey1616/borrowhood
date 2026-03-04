@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
 import { notifyOrganizers } from '../services/notifications.js';
-import { capturePaymentIntent, cancelPaymentIntent, getPaymentIntent } from '../services/stripe.js';
+import { stripe, capturePaymentIntent, cancelPaymentIntent, getPaymentIntent, createTransfer } from '../services/stripe.js';
 
 const router = Router();
 
@@ -480,28 +480,60 @@ async function resolveDisputeInternally({ dispute, outcome, resolvedAmount, note
     finalResolvedAmount = maxAmount;
     status = 'resolvedInFavorOfClaimant';
 
-    if (dispute.stripe_payment_intent_id && dispute.payment_status === 'authorized') {
-      try {
-        const amountCents = Math.round(finalResolvedAmount * 100);
-        await capturePaymentIntent(dispute.stripe_payment_intent_id, amountCents);
-      } catch (stripeErr) {
-        holdExpired = true;
-        status = 'expired';
-        console.error('Stripe capture failed (hold likely expired):', stripeErr.message);
+    if (dispute.stripe_payment_intent_id) {
+      if (dispute.payment_status === 'authorized') {
+        // Payment still held — capture just the resolved amount
+        try {
+          const amountCents = Math.round(finalResolvedAmount * 100);
+          await capturePaymentIntent(dispute.stripe_payment_intent_id, amountCents);
+        } catch (stripeErr) {
+          holdExpired = true;
+          status = 'expired';
+          console.error('Stripe capture failed (hold likely expired):', stripeErr.message);
+        }
+      } else if (dispute.payment_status === 'captured') {
+        // Payment already captured — refund the borrower's portion (deposit - claim)
+        const refundAmount = Math.round((depositAmount - finalResolvedAmount) * 100);
+        if (refundAmount > 0) {
+          try {
+            await stripe.refunds.create({
+              payment_intent: dispute.stripe_payment_intent_id,
+              amount: refundAmount,
+            });
+          } catch (stripeErr) {
+            console.error('Stripe refund failed (non-blocking):', stripeErr.message);
+          }
+        }
       }
     }
   } else {
     status = outcome === 'respondent' ? 'resolvedInFavorOfRespondent' : 'dismissed';
     finalResolvedAmount = 0;
 
-    if (dispute.stripe_payment_intent_id && dispute.payment_status === 'authorized') {
-      try {
-        const pi = await getPaymentIntent(dispute.stripe_payment_intent_id);
-        if (pi.status === 'requires_capture') {
-          await cancelPaymentIntent(dispute.stripe_payment_intent_id);
+    if (dispute.stripe_payment_intent_id) {
+      if (dispute.payment_status === 'authorized') {
+        // Release the hold
+        try {
+          const pi = await getPaymentIntent(dispute.stripe_payment_intent_id);
+          if (pi.status === 'requires_capture') {
+            await cancelPaymentIntent(dispute.stripe_payment_intent_id);
+          }
+        } catch (stripeErr) {
+          console.error('Stripe release error (may be already expired):', stripeErr.message);
         }
-      } catch (stripeErr) {
-        console.error('Stripe release error (may be already expired):', stripeErr.message);
+      } else if (dispute.payment_status === 'captured') {
+        // Refund the full deposit to borrower
+        const refundAmount = Math.round(depositAmount * 100);
+        if (refundAmount > 0) {
+          try {
+            await stripe.refunds.create({
+              payment_intent: dispute.stripe_payment_intent_id,
+              amount: refundAmount,
+            });
+          } catch (stripeErr) {
+            console.error('Stripe deposit refund failed (non-blocking):', stripeErr.message);
+          }
+        }
       }
     }
   }
@@ -542,17 +574,54 @@ async function resolveDisputeInternally({ dispute, outcome, resolvedAmount, note
     );
 
     await client.query(
-      `UPDATE borrow_transactions SET status = 'completed' WHERE id = $1`,
+      `UPDATE borrow_transactions SET status = 'completed', payment_status = 'resolved' WHERE id = $1`,
       [dispute.transaction_id]
     );
 
+    // Update listing: mark available, increment borrowCount, add earnings
+    const lenderPayout = outcome === 'claimant' && !claimantIsBorrower
+      ? finalResolvedAmount
+      : (outcome === 'claimant' && claimantIsBorrower ? 0 : rentalFee);
+
     await client.query(
-      `UPDATE listings SET is_available = true
+      `UPDATE listings SET is_available = true,
+              times_borrowed = times_borrowed + 1,
+              total_earnings = total_earnings + $1
        FROM borrow_transactions t
-       WHERE listings.id = t.listing_id AND t.id = $1`,
-      [dispute.transaction_id]
+       WHERE listings.id = t.listing_id AND t.id = $2`,
+      [lenderPayout, dispute.transaction_id]
     );
   });
+
+  // Transfer to lender's Connect account if applicable
+  if (outcome === 'claimant' && dispute.payment_status === 'captured') {
+    const lenderId = claimantIsBorrower ? dispute.borrower_id : dispute.lender_id;
+    const payeeId = claimantIsBorrower ? dispute.borrower_id : dispute.lender_id;
+    // If lender is the claimant, transfer claim amount to them
+    if (!claimantIsBorrower && finalResolvedAmount > 0) {
+      try {
+        const lenderResult = await query(
+          'SELECT stripe_connect_account_id FROM users WHERE id = $1',
+          [dispute.lender_id]
+        );
+        const connectId = lenderResult.rows[0]?.stripe_connect_account_id;
+        if (connectId) {
+          const transferCents = Math.round(finalResolvedAmount * 100);
+          await createTransfer({
+            amount: transferCents,
+            destinationAccountId: connectId,
+            metadata: {
+              transactionId: dispute.transaction_id,
+              disputeId: dispute.id,
+              type: 'dispute_resolution_payout',
+            },
+          });
+        }
+      } catch (transferErr) {
+        console.error('Dispute resolution transfer failed (non-blocking):', transferErr.message);
+      }
+    }
+  }
 
   // Notify both parties
   await sendNotification(dispute.claimant_user_id, 'dispute_resolved', {
@@ -687,14 +756,14 @@ router.post('/:id/accept', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'The 48-hour response window has passed' });
     }
 
-    // Full refund: rental fee + deposit
-    const resolvedAmount = (parseFloat(d.rental_fee) || 0) + parseFloat(d.deposit_amount);
+    // Use the requested amount from the claim
+    const resolvedAmount = parseFloat(d.requested_amount) || ((parseFloat(d.rental_fee) || 0) + parseFloat(d.deposit_amount));
 
     const result = await resolveDisputeInternally({
       dispute: d,
       outcome: 'claimant',
       resolvedAmount,
-      notes: 'Full refund accepted by respondent — resolved automatically.',
+      notes: 'Claim accepted by respondent — resolved automatically.',
       resolvedById: null,
     });
 

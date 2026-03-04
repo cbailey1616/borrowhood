@@ -639,19 +639,22 @@ async function handleChargeDisputeCreated(dispute) {
   );
 
   // Create dispute record
-  await query(
+  const disputeRecord = await query(
     `INSERT INTO disputes (transaction_id, opened_by_id, reason)
-     VALUES ($1, $2, $3)`,
+     VALUES ($1, $2, $3) RETURNING id`,
     [t.id, t.borrower_id, `Stripe chargeback filed (dispute ID: ${dispute.id})`]
   );
 
   // Notify both parties
+  const newDisputeId = disputeRecord.rows[0].id;
   await sendNotification(t.lender_id, 'dispute_opened', {
+    disputeId: newDisputeId,
     transactionId: t.id,
     itemTitle: t.item_title,
   });
 
   await sendNotification(t.borrower_id, 'dispute_opened', {
+    disputeId: newDisputeId,
     transactionId: t.id,
     itemTitle: t.item_title,
   });

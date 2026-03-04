@@ -56,10 +56,9 @@ export default function ReportIssueScreen({ navigation, route }) {
   const fieldPositions = useRef({});
 
   const maxClaimCents = Math.round(((depositAmount || 0) + (rentalFee || 0)) * 100);
-  const claimCents = Math.min(
-    Math.round(parseFloat(amountText || '0') * 100),
-    maxClaimCents
-  );
+  const rawClaimCents = Math.round(parseFloat(amountText || '0') * 100);
+  const claimExceedsMax = rawClaimCents > maxClaimCents;
+  const claimCents = Math.min(rawClaimCents, maxClaimCents);
   const cappedAmount = claimCents / 100;
 
   const formatCurrency = (amount) => `$${(amount || 0).toFixed(2)}`;
@@ -126,7 +125,7 @@ export default function ReportIssueScreen({ navigation, route }) {
         type,
         description,
         photoUrls,
-        requestedAmount: type === 'damagesClaim' ? cappedAmount : undefined,
+        requestedAmount: type === 'damagesClaim' ? cappedAmount : (rentalFee || 0),
       });
 
       setCompleted(true);
@@ -295,15 +294,20 @@ export default function ReportIssueScreen({ navigation, route }) {
                   style={styles.amountInput}
                   value={amountText}
                   onChangeText={setAmountText}
+                  onBlur={() => {
+                    if (claimExceedsMax) {
+                      setAmountText((maxClaimCents / 100).toFixed(2));
+                    }
+                  }}
                   placeholder="0.00"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="decimal-pad"
                   returnKeyType="done"
                 />
               </View>
-              {claimCents > maxClaimCents && (
+              {claimExceedsMax && (
                 <Text style={styles.errorText}>
-                  Cannot exceed {formatCurrency((depositAmount || 0) + (rentalFee || 0))} ({rentalFee ? 'rental fee + deposit' : 'deposit'})
+                  Cannot exceed {formatCurrency((depositAmount || 0) + (rentalFee || 0))}. Capped to maximum.
                 </Text>
               )}
             </View>

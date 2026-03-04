@@ -94,7 +94,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const total = rentalFee + listing.depositAmount;
 
   const handleStartDateChange = (event, selectedDate) => {
-    setShowStartPicker(Platform.OS === 'ios');
+    if (Platform.OS === 'android') setShowStartPicker(false);
     if (selectedDate) {
       setStartDate(selectedDate);
       // Ensure end date is after start date
@@ -107,7 +107,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   };
 
   const handleEndDateChange = (event, selectedDate) => {
-    setShowEndPicker(Platform.OS === 'ios');
+    if (Platform.OS === 'android') setShowEndPicker(false);
     if (selectedDate && selectedDate > startDate) {
       setEndDate(selectedDate);
     }
@@ -122,6 +122,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   };
 
   const handleSubmit = async () => {
+    console.log('handleSubmit called, days:', days, 'min:', listing.minDuration, 'max:', listing.maxDuration);
     if (days < listing.minDuration || days > listing.maxDuration) {
       showError({
         type: 'validation',
@@ -328,7 +329,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
         <Image
@@ -353,16 +354,16 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <View style={styles.dateRow}>
           <HapticPressable
             haptic="light"
-            style={styles.dateButton}
-            onPress={() => setShowStartPicker(true)}
+            style={[styles.dateButton, showStartPicker && styles.dateButtonActive]}
+            onPress={() => { setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
           >
             <Text style={styles.dateLabel}>Start Date</Text>
             <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
           </HapticPressable>
           <HapticPressable
             haptic="light"
-            style={styles.dateButton}
-            onPress={() => setShowEndPicker(true)}
+            style={[styles.dateButton, showEndPicker && styles.dateButtonActive]}
+            onPress={() => { setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
           >
             <Text style={styles.dateLabel}>End Date</Text>
             <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
@@ -370,23 +371,45 @@ export default function BorrowRequestScreen({ route, navigation }) {
         </View>
 
         {showStartPicker && (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            minimumDate={new Date()}
-            onChange={handleStartDateChange}
-          />
+          <View style={styles.pickerContainer}>
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={new Date()}
+              onChange={handleStartDateChange}
+            />
+            {Platform.OS === 'ios' && (
+              <HapticPressable
+                haptic="light"
+                style={styles.pickerDoneButton}
+                onPress={() => setShowStartPicker(false)}
+              >
+                <Text style={styles.pickerDoneText}>Done</Text>
+              </HapticPressable>
+            )}
+          </View>
         )}
 
         {showEndPicker && (
-          <DateTimePicker
-            value={endDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            minimumDate={new Date(startDate.getTime() + 86400000)}
-            onChange={handleEndDateChange}
-          />
+          <View style={styles.pickerContainer}>
+            <DateTimePicker
+              value={endDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={new Date(startDate.getTime() + 86400000)}
+              onChange={handleEndDateChange}
+            />
+            {Platform.OS === 'ios' && (
+              <HapticPressable
+                haptic="light"
+                style={styles.pickerDoneButton}
+                onPress={() => setShowEndPicker(false)}
+              >
+                <Text style={styles.pickerDoneText}>Done</Text>
+              </HapticPressable>
+            )}
+          </View>
         )}
 
         <Text style={styles.daysText}>{days} days</Text>
@@ -626,6 +649,28 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.separator,
+  },
+  dateButtonActive: {
+    borderColor: COLORS.primary,
+  },
+  pickerContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+    marginTop: SPACING.sm,
+    overflow: 'hidden',
+  },
+  pickerDoneButton: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  pickerDoneText: {
+    ...TYPOGRAPHY.headline,
+    fontSize: 16,
+    color: COLORS.primary,
   },
   dateLabel: {
     ...TYPOGRAPHY.caption1,

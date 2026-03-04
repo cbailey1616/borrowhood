@@ -390,6 +390,17 @@ export async function runMigrations() {
       logger.info('Migration complete: return reminder columns added');
     }
 
+    // Migration: Add dispute_id column to notifications (for dispute tap navigation)
+    const hasDisputeId = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'notifications' AND column_name = 'dispute_id'
+    `);
+    if (hasDisputeId.rows.length === 0) {
+      logger.info('Running migration: Add dispute_id to notifications');
+      await query('ALTER TABLE notifications ADD COLUMN dispute_id UUID REFERENCES disputes(id) ON DELETE SET NULL');
+      logger.info('Migration complete: notifications.dispute_id added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

@@ -402,8 +402,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Returned — auto-close info */}
-        {transaction.status === 'returned' && transaction.actualReturnAt && (
+        {/* Returned — auto-close info (hide if dispute exists) */}
+        {transaction.status === 'returned' && transaction.actualReturnAt && !transaction.hasDispute && (
           <View style={styles.returnedBanner}>
             <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
             <Text style={styles.returnedBannerText}>

@@ -91,7 +91,7 @@ export default function DamageClaimScreen({ navigation, route }) {
   };
 
   // Success state
-  if (completed && claimResult) {
+  if (completed) {
     return (
       <View style={styles.container}>
         <View style={styles.centeredContent}>
@@ -100,10 +100,9 @@ export default function DamageClaimScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Claim Submitted</Text>
           <Text style={styles.subtitle}>
-            {formatCurrency(claimResult.claimAmount / 100)} has been deducted from the
-            borrower's deposit. {claimResult.depositRefunded > 0
-              ? `${formatCurrency(claimResult.depositRefunded / 100)} was refunded to them.`
-              : 'No deposit was refunded.'}
+            Your damage claim for {formatCurrency(claimCents / 100)} has been sent to the
+            borrower. They have 48 hours to respond, accept, or make a counter offer.
+            If they don't respond, a community organizer will step in.
           </Text>
           <HapticPressable
             style={styles.primaryButton}

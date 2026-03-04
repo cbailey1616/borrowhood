@@ -178,7 +178,6 @@ export default function DisputeDetailScreen({ route, navigation }) {
     ['awaitingResponse', 'underReview', 'counterPending'].includes(dispute.status);
   const canRespond = dispute.isRespondent && dispute.status === 'awaitingResponse' && !dispute.response;
   const canRespondToCounter = dispute.isClaimant && dispute.status === 'counterPending' && dispute.response?.counterAmount != null;
-  const hasDamageAmount = dispute.type === 'damagesClaim' && dispute.requestedAmount != null;
 
   const personName = (person) => {
     if (!person) return 'Unknown';
@@ -188,9 +187,20 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
   const claimantName = personName(dispute.claimant);
   const respondentName = personName(dispute.respondent);
+  const claimantDisplayName = claimantName === 'You' ? 'yourself' : claimantName;
+
+  // Effective claim amount — falls back to rental fee if requestedAmount wasn't set
+  const effectiveClaimAmount = dispute.requestedAmount != null
+    ? dispute.requestedAmount
+    : (dispute.transaction?.rentalFee || 0);
+  const hasClaimAmount = effectiveClaimAmount > 0;
+
+  // Determine if this is a lender-filed or borrower-filed dispute for messaging
+  const isLenderFiled = ['damagesClaim', 'nonReturn', 'lateReturn'].includes(dispute.type);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <View style={styles.container}>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
       {/* Status + Type header */}
       <View style={styles.header}>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
@@ -232,195 +242,171 @@ export default function DisputeDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* === TIMELINE === */}
+      {/* === Claim === */}
+      <View style={[styles.cardBox, styles.section]}>
+        <View style={styles.sectionContent}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="flag" size={16} color={COLORS.primary} />
+            <Text style={styles.cardHeaderLabel}>{claimantName === 'You' ? 'You filed a claim' : `${claimantName} filed a claim`}</Text>
+            <Text style={styles.cardHeaderDate}>{timeAgo(dispute.createdAt)}</Text>
+          </View>
 
-      {/* Timeline Node 1: Filed */}
-      <View style={styles.timelineNode}>
-        <View style={styles.timelineDot}>
-          <Ionicons name="flag" size={14} color={COLORS.primary} />
+          {dispute.claimant && (
+            <HapticPressable
+              style={styles.personRow}
+              onPress={() => navigation.navigate('UserProfile', { id: dispute.claimant.id })}
+              haptic="light"
+            >
+              <Image
+                source={{ uri: dispute.claimant.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+                style={styles.avatar}
+              />
+              <Text style={styles.personName}>
+                {dispute.claimant.firstName} {dispute.claimant.lastName}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+            </HapticPressable>
+          )}
+
+          <Text style={styles.descriptionText}>{dispute.description}</Text>
+
+          {dispute.photoUrls?.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
+              <View style={styles.photosRow}>
+                {dispute.photoUrls.map((url, i) => (
+                  <Image key={i} source={{ uri: url }} style={styles.evidenceImage} />
+                ))}
+              </View>
+            </ScrollView>
+          )}
+
+          {effectiveClaimAmount > 0 && (
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>
+                {isLenderFiled ? 'Claimed' : 'Refund Requested'}
+              </Text>
+              <Text style={styles.amountValue}>{formatCurrency(effectiveClaimAmount)}</Text>
+            </View>
+          )}
         </View>
-        <View style={styles.timelineConnector} />
-        <View style={[styles.cardBox, styles.timelineCard]}>
+      </View>
+
+      {/* Response */}
+      {dispute.response ? (
+        <View style={[styles.cardBox, styles.section]}>
           <View style={styles.sectionContent}>
-            <View style={styles.timelineHeader}>
-              <Text style={styles.timelineLabel}>{claimantName === 'You' ? 'You filed a claim' : `${claimantName} filed a claim`}</Text>
-              <Text style={styles.timelineDate}>{timeAgo(dispute.createdAt)}</Text>
+            <View style={styles.cardHeader}>
+              <Ionicons name="chatbubble" size={16} color={COLORS.secondary} />
+              <Text style={styles.cardHeaderLabel}>{respondentName === 'You' ? 'Your response' : `${respondentName}'s response`}</Text>
+              <Text style={styles.cardHeaderDate}>{timeAgo(dispute.response.respondedAt)}</Text>
             </View>
 
-            {/* Claimant info */}
-            {dispute.claimant && (
+            {dispute.respondent && (
               <HapticPressable
                 style={styles.personRow}
-                onPress={() => navigation.navigate('UserProfile', { id: dispute.claimant.id })}
+                onPress={() => navigation.navigate('UserProfile', { id: dispute.respondent.id })}
                 haptic="light"
               >
                 <Image
-                  source={{ uri: dispute.claimant.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+                  source={{ uri: dispute.respondent.profilePhotoUrl || 'https://via.placeholder.com/32' }}
                   style={styles.avatar}
                 />
                 <Text style={styles.personName}>
-                  {dispute.claimant.firstName} {dispute.claimant.lastName}
+                  {dispute.respondent.firstName} {dispute.respondent.lastName}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
               </HapticPressable>
             )}
 
-            <Text style={styles.descriptionText}>{dispute.description}</Text>
+            <Text style={styles.descriptionText}>{dispute.response.description}</Text>
 
-            {/* Claim photos */}
-            {dispute.photoUrls?.length > 0 && (
+            {dispute.response.counterAmount != null && (
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Counter Proposal</Text>
+                <Text style={styles.amountValue}>{formatCurrency(dispute.response.counterAmount)}</Text>
+              </View>
+            )}
+
+            {dispute.response.photoUrls?.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
                 <View style={styles.photosRow}>
-                  {dispute.photoUrls.map((url, i) => (
+                  {dispute.response.photoUrls.map((url, i) => (
                     <Image key={i} source={{ uri: url }} style={styles.evidenceImage} />
                   ))}
                 </View>
               </ScrollView>
             )}
-
-            {/* Requested amount */}
-            {dispute.requestedAmount != null && (
-              <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Requested</Text>
-                <Text style={styles.amountValue}>{formatCurrency(dispute.requestedAmount)}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-
-      {/* Timeline Node 2: Response */}
-      {dispute.response ? (
-        <View style={styles.timelineNode}>
-          <View style={styles.timelineDot}>
-            <Ionicons name="chatbubble" size={14} color={COLORS.secondary} />
-          </View>
-          <View style={styles.timelineConnector} />
-          <View style={[styles.cardBox, styles.timelineCard]}>
-            <View style={styles.sectionContent}>
-              <View style={styles.timelineHeader}>
-                <Text style={styles.timelineLabel}>{respondentName === 'You' ? 'Your response' : `${respondentName}'s response`}</Text>
-                <Text style={styles.timelineDate}>{timeAgo(dispute.response.respondedAt)}</Text>
-              </View>
-
-              {dispute.respondent && (
-                <HapticPressable
-                  style={styles.personRow}
-                  onPress={() => navigation.navigate('UserProfile', { id: dispute.respondent.id })}
-                  haptic="light"
-                >
-                  <Image
-                    source={{ uri: dispute.respondent.profilePhotoUrl || 'https://via.placeholder.com/32' }}
-                    style={styles.avatar}
-                  />
-                  <Text style={styles.personName}>
-                    {dispute.respondent.firstName} {dispute.respondent.lastName}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-                </HapticPressable>
-              )}
-
-              <Text style={styles.descriptionText}>{dispute.response.description}</Text>
-
-              {dispute.response.counterAmount != null && (
-                <View style={styles.amountRow}>
-                  <Text style={styles.amountLabel}>Counter Proposal</Text>
-                  <Text style={styles.amountValue}>{formatCurrency(dispute.response.counterAmount)}</Text>
-                </View>
-              )}
-
-              {dispute.response.photoUrls?.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
-                  <View style={styles.photosRow}>
-                    {dispute.response.photoUrls.map((url, i) => (
-                      <Image key={i} source={{ uri: url }} style={styles.evidenceImage} />
-                    ))}
-                  </View>
-                </ScrollView>
-              )}
-            </View>
           </View>
         </View>
       ) : dispute.status === 'awaitingResponse' && (
-        <View style={styles.timelineNode}>
-          <View style={[styles.timelineDot, styles.timelineDotPending]}>
-            <Ionicons name="hourglass" size={14} color={COLORS.textMuted} />
-          </View>
-          <View style={styles.timelineConnector} />
-          <View style={[styles.cardBox, styles.timelineCard, styles.pendingCard]}>
-            <View style={styles.sectionContent}>
-              <Text style={styles.pendingText}>Awaiting response from {respondentName === 'You' ? 'you' : respondentName}...</Text>
-            </View>
+        <View style={[styles.cardBox, styles.section, styles.pendingCard]}>
+          <View style={[styles.sectionContent, styles.pendingRow]}>
+            <Ionicons name="hourglass-outline" size={16} color={COLORS.textMuted} />
+            <Text style={styles.pendingText}>Awaiting response from {respondentName === 'You' ? 'you' : respondentName}...</Text>
           </View>
         </View>
       )}
 
-      {/* Timeline Node 3: Resolution */}
+      {/* Resolution */}
       {dispute.resolution && (
-        <View style={styles.timelineNode}>
-          <View style={styles.timelineDot}>
-            <Ionicons name="checkmark-circle" size={14} color={COLORS.secondary} />
-          </View>
-          <View style={[styles.cardBox, styles.timelineCard]}>
-            <View style={styles.sectionContent}>
-              <View style={styles.timelineHeader}>
-                <Text style={styles.timelineLabel}>Resolution</Text>
-                <Text style={styles.timelineDate}>
-                  {new Date(dispute.resolution.resolvedAt).toLocaleDateString()}
+        <View style={[styles.cardBox, styles.section]}>
+          <View style={styles.sectionContent}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="checkmark-circle" size={16} color={COLORS.secondary} />
+              <Text style={styles.cardHeaderLabel}>Resolution</Text>
+              <Text style={styles.cardHeaderDate}>
+                {new Date(dispute.resolution.resolvedAt).toLocaleDateString()}
+              </Text>
+            </View>
+
+            {dispute.resolution.resolvedAmount != null && (
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Resolved Amount</Text>
+                <Text style={[styles.amountValue, { color: COLORS.secondary }]}>
+                  {formatCurrency(dispute.resolution.resolvedAmount)}
                 </Text>
               </View>
+            )}
 
-              {dispute.resolution.resolvedAmount != null && (
-                <View style={styles.amountRow}>
-                  <Text style={styles.amountLabel}>Resolved Amount</Text>
-                  <Text style={[styles.amountValue, { color: COLORS.secondary }]}>
-                    {formatCurrency(dispute.resolution.resolvedAmount)}
-                  </Text>
-                </View>
-              )}
+            {dispute.resolution.notes && (
+              <Text style={styles.resolutionNotes}>{dispute.resolution.notes}</Text>
+            )}
 
-              {dispute.resolution.notes && (
-                <Text style={styles.resolutionNotes}>{dispute.resolution.notes}</Text>
-              )}
-
-              {dispute.resolution.resolvedBy ? (
-                <Text style={styles.resolvedBy}>
-                  Resolved by {dispute.resolution.resolvedBy}
-                </Text>
-              ) : dispute.status === 'resolvedInFavorOfClaimant' ? (
-                <Text style={styles.resolvedBy}>
-                  {respondentName === 'You' ? 'You accepted the claim' : `Accepted by ${respondentName}`}
-                </Text>
-              ) : null}
-            </View>
+            {dispute.resolution.resolvedBy ? (
+              <Text style={styles.resolvedBy}>
+                Resolved by {dispute.resolution.resolvedBy}
+              </Text>
+            ) : dispute.status === 'resolvedInFavorOfClaimant' ? (
+              <Text style={styles.resolvedBy}>
+                {respondentName === 'You' ? 'You accepted the claim' : `Accepted by ${respondentName}`}
+              </Text>
+            ) : null}
           </View>
         </View>
       )}
 
-      {/* Amounts at stake */}
-      <View style={[styles.cardBox, styles.section]}>
-        <View style={styles.sectionContent}>
-          <Text style={styles.sectionTitle}>Transaction Details</Text>
-          {dispute.transaction && (
-            <>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Rental Fee</Text>
-                <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.rentalFee)}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Security Deposit</Text>
-                <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.depositAmount)}</Text>
-              </View>
-              <View style={[styles.detailRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Max Refundable</Text>
-                <Text style={styles.totalValue}>
-                  {formatCurrency((dispute.transaction.rentalFee || 0) + (dispute.transaction.depositAmount || 0))}
-                </Text>
-              </View>
-            </>
-          )}
+      {/* Amounts at stake — only shown to organizers/admins who need full context */}
+      {(dispute.isOrganizer || dispute.isAdmin) && dispute.transaction && (
+        <View style={[styles.cardBox, styles.section]}>
+          <View style={styles.sectionContent}>
+            <Text style={styles.sectionTitle}>Transaction Details</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Rental Fee</Text>
+              <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.rentalFee)}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Security Deposit</Text>
+              <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.depositAmount)}</Text>
+            </View>
+            <View style={[styles.detailRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Max Claimable</Text>
+              <Text style={styles.totalValue}>
+                {formatCurrency((dispute.transaction.rentalFee || 0) + (dispute.transaction.depositAmount || 0))}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Respondent action buttons */}
       {canRespond && (
@@ -435,8 +421,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Ionicons name="cash-outline" size={18} color="#fff" />
-                <Text style={styles.actionButtonText}>Refund</Text>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                <Text style={styles.actionButtonText}>Accept</Text>
               </>
             )}
           </HapticPressable>
@@ -456,7 +442,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
             <Ionicons name="close-circle-outline" size={18} color="#fff" />
             <Text style={styles.actionButtonText}>Decline</Text>
           </HapticPressable>
-          {hasDamageAmount && (
+          {hasClaimAmount && (
             <HapticPressable
               style={[styles.counterButton, actionLoading && styles.buttonDisabled]}
               onPress={() => navigation.navigate('RespondToDispute', {
@@ -598,6 +584,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
         </View>
       )}
 
+    </ScrollView>
+
       <ActionSheet
         isVisible={showResolveSheet}
         onClose={() => setShowResolveSheet(false)}
@@ -614,11 +602,16 @@ export default function DisputeDetailScreen({ route, navigation }) {
       <ActionSheet
         isVisible={showAcceptSheet}
         onClose={() => setShowAcceptSheet(false)}
-        title="Confirm Full Refund"
-        message={`The ${formatCurrency(dispute?.transaction?.rentalFee || 0)} rental fee you received will be returned to ${claimantName === 'You' ? 'you' : claimantName}. The ${formatCurrency(dispute?.transaction?.depositAmount || 0)} deposit will be released automatically from escrow. This cannot be undone.`}
+        title="Accept Claim"
+        message={isLenderFiled
+          ? `You agree to pay ${formatCurrency(effectiveClaimAmount)} to ${claimantDisplayName}. This will be deducted from the security deposit. This cannot be undone.`
+          : `You agree to refund ${formatCurrency(effectiveClaimAmount)} to ${claimantDisplayName}. This cannot be undone.`
+        }
         actions={[
           {
-            label: `Refund ${formatCurrency(dispute?.transaction?.rentalFee || 0)}`,
+            label: isLenderFiled
+              ? `Pay ${formatCurrency(effectiveClaimAmount)} to ${claimantDisplayName}`
+              : `Refund ${formatCurrency(effectiveClaimAmount)} to ${claimantDisplayName}`,
             onPress: performAccept,
             destructive: true,
           },
@@ -652,7 +645,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
           },
         ]}
       />
-    </ScrollView>
+    </View>
   );
 }
 
@@ -660,6 +653,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: SPACING.xxl,
@@ -754,60 +750,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Timeline
-  timelineNode: {
-    paddingLeft: SPACING.xl,
-    paddingRight: SPACING.lg,
-    marginTop: SPACING.md,
-    position: 'relative',
-  },
-  timelineDot: {
-    position: 'absolute',
-    left: SPACING.sm,
-    top: SPACING.lg + 2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  timelineDotPending: {
-    opacity: 0.8,
-  },
-  timelineConnector: {
-    position: 'absolute',
-    left: SPACING.sm + 13,
-    top: SPACING.lg + 30,
-    bottom: -SPACING.md,
-    width: 2,
-    backgroundColor: COLORS.separator,
-    zIndex: 1,
-  },
-  timelineCard: {
-    flex: 1,
-  },
-  timelineHeader: {
+  // Card headers
+  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: SPACING.sm,
     marginBottom: SPACING.md,
   },
-  timelineLabel: {
+  cardHeaderLabel: {
     ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.text,
+    flex: 1,
   },
-  timelineDate: {
+  cardHeaderDate: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
-  pendingCard: {},
+  pendingCard: {
+    opacity: 0.7,
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
   pendingText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     fontStyle: 'italic',
+    flex: 1,
   },
 
   // Person row
