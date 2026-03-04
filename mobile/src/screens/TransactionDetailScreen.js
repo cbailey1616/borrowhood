@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
@@ -22,6 +23,22 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import RentalProgress from '../components/RentalProgress';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, TRANSACTION_STATUS_LABELS, CONDITION_LABELS } from '../utils/config';
+import { scheduleReturnReminders, cancelReturnReminders } from '../utils/returnReminders';
+
+async function dismissRelatedNotifications(transactionId) {
+  try {
+    const delivered = await Notifications.getPresentedNotificationsAsync();
+    for (const n of delivered) {
+      if (n.request.content.data?.transactionId === transactionId) {
+        await Notifications.dismissNotificationAsync(n.request.identifier);
+      }
+    }
+    // Reset badge count
+    await Notifications.setBadgeCountAsync(0);
+  } catch (e) {
+    // Ignore — notifications may not be available on simulator
+  }
+}
 
 export default function TransactionDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -40,9 +57,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
   useFocusEffect(useCallback(() => {
     fetchTransaction();
+    dismissRelatedNotifications(id);
     pollRef.current = setInterval(fetchTransaction, 10000);
     return () => clearInterval(pollRef.current);
   }, [id]));
+
+  // Schedule or cancel return reminders based on transaction status
+  useEffect(() => {
+    if (!transaction) return;
+    if (transaction.status === 'picked_up') {
+      scheduleReturnReminders(id, transaction.endDate, transaction.listing?.title || 'Item');
+    } else if (['returned', 'completed', 'cancelled'].includes(transaction.status)) {
+      cancelReturnReminders(id);
+    }
+  }, [transaction?.status]);
 
   const fetchTransaction = async () => {
     try {
@@ -163,28 +191,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleChargeLateFee = async () => {
-    setActionLoading(true);
-    try {
-      const result = await api.createLateFee(id);
-      navigation.navigate('RentalCheckout', {
-        transactionId: id,
-        rentalFee: result.lateFeeCents / 100,
-        depositAmount: 0,
-        totalAmount: result.lateFeeCents / 100,
-        rentalDays: result.daysOverdue,
-        listingTitle: transaction.listing.title,
-        clientSecret: result.clientSecret,
-        ephemeralKey: result.ephemeralKey,
-        customerId: result.customerId,
-      });
-    } catch (error) {
-      haptics.error();
-      showError({ message: error.message || 'Couldn\'t process the late fee right now. Please check your connection and try again.' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
   const canRate = ['returned', 'completed'].includes(transaction?.status) && !transaction?.myRating;
 
@@ -320,16 +326,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
               <Text style={styles.priceLabel}>
                 Rental fee ({transaction.rentalDays} days x ${transaction.dailyRate})
               </Text>
-              <Text style={styles.priceValue}>${transaction.rentalFee.toFixed(2)}</Text>
+              <Text style={styles.priceValue}>${(transaction.rentalFee || 0).toFixed(2)}</Text>
             </View>
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Refundable deposit</Text>
-              <Text style={styles.priceValue}>${transaction.depositAmount.toFixed(2)}</Text>
+              <Text style={styles.priceValue}>${(transaction.depositAmount || 0).toFixed(2)}</Text>
             </View>
             <View style={[styles.priceRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>
-                ${(transaction.rentalFee + transaction.depositAmount).toFixed(2)}
+                ${((transaction.rentalFee || 0) + (transaction.depositAmount || 0)).toFixed(2)}
               </Text>
             </View>
           </View>
@@ -372,11 +378,37 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* Active Dispute Banner */}
+        {transaction?.hasDispute && transaction?.disputeId && (
+          <HapticPressable
+            haptic="light"
+            style={styles.disputeBanner}
+            onPress={() => navigation.navigate('DisputeDetail', { id: transaction.disputeId })}
+          >
+            <Ionicons name="alert-circle" size={20} color={COLORS.danger} />
+            <View style={styles.disputeBannerContent}>
+              <Text style={styles.disputeBannerTitle}>Active Dispute</Text>
+              <Text style={styles.disputeBannerSubtitle}>Tap to view details</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.danger} />
+          </HapticPressable>
+        )}
+
         {/* Overdue Banner */}
         {transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (
           <View style={styles.overdueBanner}>
             <Ionicons name="warning" size={20} color={COLORS.warning} />
             <Text style={styles.overdueText}>This rental is overdue</Text>
+          </View>
+        )}
+
+        {/* Returned — auto-close info */}
+        {transaction.status === 'returned' && transaction.actualReturnAt && (
+          <View style={styles.returnedBanner}>
+            <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
+            <Text style={styles.returnedBannerText}>
+              Item returned. This transaction will close automatically in {Math.max(0, Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(transaction.actualReturnAt).getTime())) / (24 * 60 * 60 * 1000)))} days if no dispute is filed.
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -458,18 +490,23 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
+      {/* Borrower: Submit return */}
+      {transaction.isBorrower && transaction.status === 'picked_up' && (
+        <View style={styles.footer}>
+          <HapticPressable
+            haptic="medium"
+            style={styles.approveButton}
+            onPress={() => setReturnSheetVisible(true)}
+            disabled={actionLoading}
+          >
+            <Text style={styles.approveButtonText}>Return Item</Text>
+          </HapticPressable>
+        </View>
+      )}
+
+      {/* Lender: Confirm return */}
       {transaction.isLender && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
-          {new Date() > new Date(transaction.endDate) && (
-            <HapticPressable
-              haptic="medium"
-              style={styles.declineButton}
-              onPress={handleChargeLateFee}
-              disabled={actionLoading}
-            >
-              <Text style={styles.declineButtonText}>Charge Late Fee</Text>
-            </HapticPressable>
-          )}
           <HapticPressable
             testID="Transaction.button.confirmReturn"
             accessibilityLabel="Confirm return"
@@ -553,11 +590,26 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Report Issue button — available on returned/completed rentals within 72 hours */}
+      {/* Lender: Confirm return & release deposit when borrower already reported */}
+      {transaction.isLender && transaction.status === 'returned' &&
+        transaction.paymentStatus === 'authorized' && !transaction.hasDispute && (
+        <View style={styles.footer}>
+          <HapticPressable
+            haptic="medium"
+            style={styles.approveButton}
+            onPress={() => setReturnSheetVisible(true)}
+            disabled={actionLoading}
+          >
+            <Text style={styles.approveButtonText}>Confirm Return & Release Deposit</Text>
+          </HapticPressable>
+        </View>
+      )}
+
+      {/* Report Issue button — either party can dispute within 7 days of return */}
       {['returned', 'completed'].includes(transaction?.status) &&
         !transaction?.hasDispute &&
         transaction?.actualReturnAt &&
-        (Date.now() - new Date(transaction.actualReturnAt).getTime()) < 72 * 60 * 60 * 1000 && (
+        (Date.now() - new Date(transaction.actualReturnAt).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
         <View style={styles.footer}>
           <HapticPressable
             testID="Transaction.button.reportIssue"
@@ -568,6 +620,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             onPress={() => navigation.navigate('ReportIssue', {
               transactionId: id,
               depositAmount: transaction?.depositAmount,
+              rentalFee: transaction?.rentalFee,
               listingTitle: transaction?.listing?.title,
               borrowerId: transaction?.borrower?.id,
               lenderId: transaction?.lender?.id,
@@ -576,11 +629,28 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
             <Text style={styles.reportIssueText}>Report an Issue</Text>
           </HapticPressable>
+          <Text style={styles.disputeWindowText}>
+            You have {Math.max(0, Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(transaction.actualReturnAt).getTime())) / (24 * 60 * 60 * 1000)))} days left to file a dispute
+          </Text>
         </View>
       )}
 
       <ActionSheet
-        isVisible={returnSheetVisible}
+        isVisible={returnSheetVisible && transaction?.isBorrower}
+        onClose={() => setReturnSheetVisible(false)}
+        title="Return Item"
+        message="Confirm that you've returned the item to the lender. They'll have 7 days to report any issues."
+        actions={[
+          {
+            label: 'Confirm Return',
+            onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
+            primary: true,
+          },
+        ]}
+      />
+
+      <ActionSheet
+        isVisible={returnSheetVisible && transaction?.isLender}
         onClose={() => setReturnSheetVisible(false)}
         title="Confirm Return"
         message="Is the item in the same condition as when it was picked up?"
@@ -635,6 +705,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warning + '15',
     padding: SPACING.lg,
     marginTop: SPACING.md,
+  },
+  returnedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.secondary + '15',
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+    borderRadius: RADIUS.md,
+  },
+  returnedBannerText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
+    flex: 1,
+    lineHeight: 20,
   },
   overdueText: {
     ...TYPOGRAPHY.bodySmall,
@@ -854,6 +940,36 @@ const styles = StyleSheet.create({
   reportIssueText: {
     ...TYPOGRAPHY.button,
     color: COLORS.danger,
+  },
+  disputeWindowText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+  },
+  disputeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.danger + '15',
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+    borderRadius: RADIUS.md,
+  },
+  disputeBannerContent: {
+    flex: 1,
+  },
+  disputeBannerTitle: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '600',
+    color: COLORS.danger,
+  },
+  disputeBannerSubtitle: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.danger,
+    opacity: 0.8,
+    marginTop: 2,
   },
   imagePlaceholder: {
     justifyContent: 'center',

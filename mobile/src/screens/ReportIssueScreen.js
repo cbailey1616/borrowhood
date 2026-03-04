@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,11 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
-import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import { haptics } from '../utils/haptics';
+import { useAuth } from '../context/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 
 const ISSUE_TYPES = [
@@ -30,20 +29,33 @@ export default function ReportIssueScreen({ navigation, route }) {
   const {
     transactionId,
     depositAmount,
+    rentalFee,
     listingTitle,
     borrowerId,
     lenderId,
   } = route.params || {};
 
-  const { showError } = useError();
+  const { user } = useAuth();
+  const isLender = user?.id === lenderId;
+
+  const filteredTypes = ISSUE_TYPES.filter(t =>
+    isLender
+      ? ['damagesClaim', 'nonReturn', 'lateReturn'].includes(t.key)
+      : ['itemNotAsDescribed', 'paymentIssue', 'noShow'].includes(t.key)
+  );
+
   const [type, setType] = useState(null);
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState([]);
   const [amountText, setAmountText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ type: false, description: false });
+  const [submitError, setSubmitError] = useState(null);
+  const scrollRef = useRef(null);
+  const fieldPositions = useRef({});
 
-  const maxClaimCents = Math.round((depositAmount || 0) * 100);
+  const maxClaimCents = Math.round(((depositAmount || 0) + (rentalFee || 0)) * 100);
   const claimCents = Math.min(
     Math.round(parseFloat(amountText || '0') * 100),
     maxClaimCents
@@ -51,8 +63,6 @@ export default function ReportIssueScreen({ navigation, route }) {
   const cappedAmount = claimCents / 100;
 
   const formatCurrency = (amount) => `$${(amount || 0).toFixed(2)}`;
-
-  const isValid = type !== null && description.length >= 10;
 
   const pickPhotos = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -72,8 +82,37 @@ export default function ReportIssueScreen({ navigation, route }) {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
+  const selectType = (key) => {
+    setType(key);
+    setSubmitError(null);
+    if (fieldErrors.type) setFieldErrors(prev => ({ ...prev, type: false }));
+  };
+
+  const updateDescription = (text) => {
+    setDescription(text);
+    setSubmitError(null);
+    if (fieldErrors.description) setFieldErrors(prev => ({ ...prev, description: false }));
+  };
+
   const handleSubmit = async () => {
-    if (!isValid || submitting) return;
+    if (submitting) return;
+
+    const errors = {
+      type: type === null,
+      description: description.length < 10,
+    };
+
+    if (errors.type || errors.description) {
+      setFieldErrors(errors);
+      setSubmitError(null);
+      haptics.warning();
+
+      const y = errors.type ? fieldPositions.current.type : fieldPositions.current.description;
+      if (y != null && scrollRef.current) {
+        scrollRef.current.scrollTo({ y: Math.max(0, y - SPACING.xl), animated: true });
+      }
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -94,10 +133,7 @@ export default function ReportIssueScreen({ navigation, route }) {
       haptics.success();
     } catch (err) {
       haptics.error();
-      showError({
-        message: err.message || 'Couldn\'t submit your report right now. Please check your connection and try again.',
-        type: 'network',
-      });
+      setSubmitError(err.message || 'Couldn\'t submit your report right now. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -131,6 +167,7 @@ export default function ReportIssueScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
         keyboardShouldPersistTaps="handled"
@@ -140,20 +177,23 @@ export default function ReportIssueScreen({ navigation, route }) {
         )}
 
         {/* Issue type picker */}
-        <BlurCard style={styles.card}>
+        <View
+          style={[styles.cardBox, styles.card, fieldErrors.type && styles.fieldError]}
+          onLayout={(e) => { fieldPositions.current.type = e.nativeEvent.layout.y; }}
+        >
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Issue Type</Text>
+            <Text style={[styles.cardLabel, fieldErrors.type && styles.fieldErrorLabel]}>Issue Type *</Text>
             <Text style={styles.cardHint}>Select the type of issue you want to report</Text>
 
-            {ISSUE_TYPES.map((issueType, index) => (
+            {filteredTypes.map((issueType, index) => (
               <HapticPressable
                 testID={`ReportIssue.picker.${issueType.key}`}
                 key={issueType.key}
                 style={[
                   styles.typeRow,
-                  index < ISSUE_TYPES.length - 1 && styles.typeRowBorder,
+                  index < filteredTypes.length - 1 && styles.typeRowBorder,
                 ]}
-                onPress={() => setType(issueType.key)}
+                onPress={() => selectType(issueType.key)}
                 haptic="light"
               >
                 <Ionicons
@@ -175,18 +215,22 @@ export default function ReportIssueScreen({ navigation, route }) {
               </HapticPressable>
             ))}
           </View>
-        </BlurCard>
+        </View>
 
         {/* Description */}
-        <BlurCard style={styles.card}>
+        <View
+          style={[styles.cardBox, styles.card, fieldErrors.description && styles.fieldError]}
+          onLayout={(e) => { fieldPositions.current.description = e.nativeEvent.layout.y; }}
+        >
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Description</Text>
+            <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>Description *</Text>
+            <Text style={styles.cardHint}>Minimum 10 characters</Text>
             <TextInput
               testID="ReportIssue.input.description"
               accessibilityLabel="Issue description"
-              style={styles.notesInput}
+              style={[styles.notesInput, fieldErrors.description && styles.fieldError]}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={updateDescription}
               placeholder="Describe the issue in detail..."
               placeholderTextColor={COLORS.textMuted}
               multiline
@@ -195,14 +239,14 @@ export default function ReportIssueScreen({ navigation, route }) {
             />
             <Text style={styles.charCount}>{description.length}/2000</Text>
           </View>
-        </BlurCard>
+        </View>
 
         {/* Evidence photos */}
-        <BlurCard style={styles.card}>
+        <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Photos</Text>
             <Text style={styles.cardHint}>
-              Upload up to 4 photos as evidence
+              Optional — upload up to 4 photos as evidence
             </Text>
 
             <View style={styles.photosGrid}>
@@ -234,15 +278,15 @@ export default function ReportIssueScreen({ navigation, route }) {
               )}
             </View>
           </View>
-        </BlurCard>
+        </View>
 
-        {/* Amount field - only for damages claim */}
-        {type === 'damagesClaim' && (
-          <BlurCard style={styles.card}>
+        {/* Amount field - only for damages claim with non-zero max */}
+        {type === 'damagesClaim' && maxClaimCents > 0 && (
+          <View style={[styles.cardBox, styles.card]}>
             <View style={styles.cardContent}>
               <Text style={styles.cardLabel}>Claim Amount</Text>
               <Text style={styles.cardHint}>
-                Maximum: {formatCurrency(depositAmount)} (deposit amount)
+                Maximum: {formatCurrency((depositAmount || 0) + (rentalFee || 0))} ({rentalFee ? 'rental fee + deposit' : 'deposit'})
               </Text>
               <View style={styles.amountInputRow}>
                 <Text style={styles.dollarSign}>$</Text>
@@ -260,11 +304,19 @@ export default function ReportIssueScreen({ navigation, route }) {
               </View>
               {claimCents > maxClaimCents && (
                 <Text style={styles.errorText}>
-                  Cannot exceed deposit of {formatCurrency(depositAmount)}
+                  Cannot exceed {formatCurrency((depositAmount || 0) + (rentalFee || 0))} ({rentalFee ? 'rental fee + deposit' : 'deposit'})
                 </Text>
               )}
             </View>
-          </BlurCard>
+          </View>
+        )}
+
+        {/* Error banner */}
+        {submitError && (
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+            <Text style={styles.errorCardText}>{submitError}</Text>
+          </View>
         )}
 
         {/* Submit */}
@@ -274,10 +326,10 @@ export default function ReportIssueScreen({ navigation, route }) {
           accessibilityRole="button"
           style={[
             styles.primaryButton,
-            (!isValid || submitting) && styles.buttonDisabled,
+            submitting && styles.buttonDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={!isValid || submitting}
+          disabled={submitting}
           haptic="medium"
         >
           {submitting ? (
@@ -331,8 +383,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+  },
   card: {
     marginBottom: SPACING.lg,
+  },
+  fieldError: {
+    borderColor: COLORS.danger,
+    borderWidth: 1.5,
+  },
+  fieldErrorLabel: {
+    color: COLORS.danger,
   },
   cardContent: {
     padding: SPACING.lg,
@@ -368,8 +433,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   notesInput: {
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     padding: SPACING.md,
     ...TYPOGRAPHY.body,
     color: COLORS.text,
@@ -384,8 +451,10 @@ const styles = StyleSheet.create({
   amountInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     paddingHorizontal: SPACING.md,
   },
   dollarSign: {
@@ -428,7 +497,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.borderBrown,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
@@ -436,6 +507,20 @@ const styles = StyleSheet.create({
   addPhotoText: {
     ...TYPOGRAPHY.caption2,
     color: COLORS.textSecondary,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.danger + '12',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  errorCardText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.danger,
+    flex: 1,
   },
   primaryButton: {
     backgroundColor: COLORS.primary,
