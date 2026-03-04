@@ -156,19 +156,20 @@ router.post('/', authenticate,
 
       const transactionId = result.rows[0].id;
 
-      // Send notification to lender
-      await sendNotification(item.owner_id, 'borrow_request', {
-        borrowerName: req.user.first_name,
-        itemTitle: item.title,
-        transactionId,
-        listingId,
-        fromUserId: req.user.id,
-      });
-
       // Free rental (no fee + no deposit, or below Stripe minimum) — no payment needed
       if (totalChargeCents < 50) {
+        // Notify lender immediately — no payment step to wait for
+        await sendNotification(item.owner_id, 'borrow_request', {
+          borrowerName: req.user.first_name,
+          itemTitle: item.title,
+          transactionId,
+          listingId,
+          fromUserId: req.user.id,
+        });
         return res.status(201).json({ id: transactionId, freeRental: true });
       }
+
+      // Paid rental — don't notify lender yet, wait until payment is confirmed via webhook
 
       // Paid rental — create PaymentIntent upfront with manual capture (authorization hold)
       const borrowerInfo = await query(
@@ -184,7 +185,7 @@ router.post('/', authenticate,
       const paymentIntent = await createPaymentIntent({
         amount: totalChargeCents,
         customerId,
-        metadata: { transactionId },
+        metadata: { transaction_id: transactionId },
       });
 
       // Store PI on the transaction
@@ -295,6 +296,7 @@ router.get('/:id', authenticate, async (req, res) => {
               l.condition as listing_condition,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
               (SELECT EXISTS(SELECT 1 FROM disputes WHERE transaction_id = t.id)) as has_dispute,
+              (SELECT id FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_id,
               b.first_name as borrower_first_name, b.last_name as borrower_last_name,
               b.profile_photo_url as borrower_photo, b.rating as borrower_rating, b.rating_count as borrower_rating_count,
               lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
@@ -364,6 +366,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isLender: t.lender_id === req.user.id,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       hasDispute: t.has_dispute || false,
+      disputeId: t.dispute_id || null,
       createdAt: t.created_at,
     });
   } catch (err) {
@@ -529,6 +532,24 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
         `UPDATE borrow_transactions SET payment_status = 'authorized' WHERE id = $1`,
         [req.params.id]
       );
+
+      // Now that payment is authorized, notify the lender of the borrow request
+      const listing = await query(
+        'SELECT title FROM listings WHERE id = $1',
+        [t.listing_id]
+      );
+      const borrower = await query(
+        'SELECT first_name FROM users WHERE id = $1',
+        [t.borrower_id]
+      );
+      await sendNotification(t.lender_id, 'borrow_request', {
+        borrowerName: borrower.rows[0]?.first_name,
+        itemTitle: listing.rows[0]?.title,
+        transactionId: t.id,
+        listingId: t.listing_id,
+        fromUserId: t.borrower_id,
+      });
+
       return res.json({ success: true });
     }
 

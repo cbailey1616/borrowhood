@@ -137,14 +137,8 @@ router.post('/request', authenticate,
 
       const transactionId = txnResult.rows[0].id;
 
-      // Notify lender of new request
-      await sendNotification(item.owner_id, 'borrow_request', {
-        borrowerName: req.user.first_name,
-        itemTitle: item.title,
-        transactionId,
-        listingId,
-        fromUserId: req.user.id,
-      });
+      // Don't notify lender yet — wait until payment is confirmed via webhook
+      // so they can't try to approve before the borrower has paid
 
       res.status(201).json({
         transactionId,
@@ -279,6 +273,12 @@ router.post('/:id/decline', authenticate,
 
       const t = result.rows[0];
 
+      // Re-list the item so it can be borrowed again
+      await query(
+        'UPDATE listings SET is_available = true WHERE id = $1',
+        [t.listing_id]
+      );
+
       // Cancel PaymentIntent if one exists
       if (t.stripe_payment_intent_id) {
         try {
@@ -332,6 +332,24 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
         `UPDATE borrow_transactions SET payment_status = 'authorized' WHERE id = $1`,
         [t.id]
       );
+
+      // Now that payment is authorized, notify the lender of the borrow request
+      const listing = await query(
+        'SELECT title FROM listings WHERE id = $1',
+        [t.listing_id]
+      );
+      const borrower = await query(
+        'SELECT first_name FROM users WHERE id = $1',
+        [t.borrower_id]
+      );
+      await sendNotification(t.lender_id, 'borrow_request', {
+        borrowerName: borrower.rows[0]?.first_name,
+        itemTitle: listing.rows[0]?.title,
+        transactionId: t.id,
+        listingId: t.listing_id,
+        fromUserId: t.borrower_id,
+      });
+
       return res.json({ success: true, status: 'authorized' });
     }
 
@@ -504,6 +522,48 @@ router.post('/:id/return', authenticate,
         return res.status(403).json({ error: 'Only the lender or borrower can confirm return' });
       }
 
+      // Lender confirming return after borrower already reported it — release deposit
+      if (t.status === 'returned') {
+        if (!isLender) {
+          return res.status(400).json({ error: 'Item already marked as returned' });
+        }
+        if (t.payment_status !== 'authorized') {
+          return res.status(400).json({ error: 'Deposit has already been processed' });
+        }
+
+        const conditionOrder = ['like_new', 'good', 'fair', 'worn'];
+        const pickupIdx = conditionOrder.indexOf(t.condition_at_pickup);
+        const returnIdx = conditionOrder.indexOf(condition);
+
+        if (returnIdx > pickupIdx) {
+          return res.json({
+            success: true,
+            conditionDegraded: true,
+            message: 'Condition degraded. You can file a damage claim.',
+          });
+        }
+
+        // Release deposit immediately
+        try {
+          if (t.stripe_payment_intent_id) {
+            await cancelPaymentIntent(t.stripe_payment_intent_id);
+          }
+        } catch (releaseErr) {
+          logger.warn('Deposit release failed (non-fatal):', releaseErr.message);
+        }
+
+        await query(
+          `UPDATE borrow_transactions SET payment_status = 'deposit_released' WHERE id = $1`,
+          [t.id]
+        );
+
+        await sendNotification(t.borrower_id, 'deposit_released', {
+          transactionId: t.id,
+        });
+
+        return res.json({ success: true, depositReleased: true });
+      }
+
       if (t.status !== 'picked_up' && t.status !== 'return_pending') {
         return res.status(400).json({ error: 'Item not currently borrowed' });
       }
@@ -529,15 +589,15 @@ router.post('/:id/return', authenticate,
         });
       }
 
-      // Clean return — process payout and refund deposit
+      // Clean return — process payout, release deposit only if lender confirms
       await withTransaction(async (client) => {
         await client.query(
           `UPDATE borrow_transactions
            SET status = 'returned', condition_at_return = $1,
                condition_notes = $2, actual_return_at = NOW(),
-               payment_status = 'completed'
-           WHERE id = $3`,
-          [condition, notes, t.id]
+               payment_status = $3
+           WHERE id = $4`,
+          [condition, notes, isLender ? 'deposit_released' : t.payment_status, t.id]
         );
 
         // Transfer rental fee to lender (minus platform fee)
@@ -572,20 +632,23 @@ router.post('/:id/return', authenticate,
           }).catch(() => {});
         }
 
-        // Refund deposit to borrower
-        try {
-          const depositCents = Math.round(parseFloat(t.deposit_amount) * 100);
-          if (depositCents > 0 && t.stripe_payment_intent_id) {
-            await stripe.refunds.create({
-              payment_intent: t.stripe_payment_intent_id,
-              amount: depositCents,
-            });
+        // Refund deposit to borrower — only when lender confirms clean return
+        // If borrower reported return, deposit stays held for the 7-day dispute window
+        if (isLender) {
+          try {
+            const depositCents = Math.round(parseFloat(t.deposit_amount) * 100);
+            if (depositCents > 0 && t.stripe_payment_intent_id) {
+              await stripe.refunds.create({
+                payment_intent: t.stripe_payment_intent_id,
+                amount: depositCents,
+              });
+            }
+          } catch (refundErr) {
+            logger.warn('Deposit refund failed (non-fatal):', refundErr.message);
+            sendNotification(t.borrower_id, 'payment_failed', {
+              body: `We couldn't refund your deposit for "${t.listing_title || 'a rental'}". Please contact support for assistance.`,
+            }).catch(() => {});
           }
-        } catch (refundErr) {
-          logger.warn('Deposit refund failed (non-fatal):', refundErr.message);
-          sendNotification(t.borrower_id, 'payment_failed', {
-            body: `We couldn't refund your deposit for "${t.listing_title || 'a rental'}". Please contact support for assistance.`,
-          }).catch(() => {});
         }
 
         // Mark listing available again and update stats

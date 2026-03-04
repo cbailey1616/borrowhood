@@ -301,13 +301,13 @@ describe('POST /api/disputes - File dispute', () => {
     } catch (e) { /* */ }
   });
 
-  it('should create dispute for returned transaction within 72 hours', async () => {
+  it('should create dispute for returned transaction within 7 days', async () => {
     // Transaction that was returned recently (actual_return_at within last hour)
     enhTxId = await createTestTransaction(borrower.userId, lender.userId, enhListingId, {
       status: 'returned',
       depositAmount: 75.00,
     });
-    // Set actual_return_at to 1 hour ago so within the 72-hour filing window
+    // Set actual_return_at to 1 hour ago so within the 7-day filing window
     await query(
       `UPDATE borrow_transactions SET actual_return_at = NOW() - INTERVAL '1 hour' WHERE id = $1`,
       [enhTxId]
@@ -330,14 +330,14 @@ describe('POST /api/disputes - File dispute', () => {
     expect(res.body.dispute.respondentUserId).toBe(borrower.userId);
   });
 
-  it('should reject filing for transaction older than 72 hours', async () => {
-    // Create a separate transaction with actual_return_at > 72 hours ago
+  it('should reject filing for transaction older than 7 days', async () => {
+    // Create a separate transaction with actual_return_at > 7 days ago
     const oldTxId = await createTestTransaction(borrower.userId, lender.userId, enhListingId, {
       status: 'returned',
       depositAmount: 75.00,
     });
     await query(
-      `UPDATE borrow_transactions SET actual_return_at = NOW() - INTERVAL '96 hours' WHERE id = $1`,
+      `UPDATE borrow_transactions SET actual_return_at = NOW() - INTERVAL '8 days' WHERE id = $1`,
       [oldTxId]
     );
 

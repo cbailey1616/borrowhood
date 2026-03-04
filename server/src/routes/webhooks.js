@@ -229,18 +229,17 @@ async function handlePaymentSucceeded(paymentIntent) {
     return;
   }
 
-  // Update transaction status
+  // payment_intent.succeeded fires after capture (lender already approved).
+  // Only update payment_status to 'captured' — don't overwrite status set by approve route.
   await query(
-    `UPDATE borrow_transactions SET
-      status = 'payment_confirmed',
-      payment_status = 'captured'
-     WHERE id = $1`,
+    `UPDATE borrow_transactions SET payment_status = 'captured'
+     WHERE id = $1 AND payment_status != 'captured'`,
     [transactionId]
   );
 
-  // Get transaction details for notification
+  // Notify the borrower that payment was captured
   const transaction = await query(
-    `SELECT t.*, l.title as item_title, l.owner_id as lender_id
+    `SELECT t.*, l.title as item_title
      FROM borrow_transactions t
      JOIN listings l ON t.listing_id = l.id
      WHERE t.id = $1`,
@@ -249,16 +248,14 @@ async function handlePaymentSucceeded(paymentIntent) {
 
   if (transaction.rows.length > 0) {
     const t = transaction.rows[0];
-    await sendNotification(t.lender_id, 'payment_confirmed', {
+    await sendNotification(t.borrower_id, 'payment_confirmed', {
       itemTitle: t.item_title,
-    }, {
       transactionId: t.id,
       listingId: t.listing_id,
-      fromUserId: t.borrower_id,
     });
   }
 
-  logger.info(`Payment succeeded for transaction ${transactionId}`);
+  logger.info(`Payment captured for transaction ${transactionId}`);
 }
 
 async function handlePaymentFailed(paymentIntent) {
@@ -300,11 +297,36 @@ async function handleAuthorizationHeld(paymentIntent) {
   const transactionId = paymentIntent.metadata?.transaction_id;
   if (!transactionId) return;
 
-  // Update to show authorization is ready
-  await query(
-    `UPDATE borrow_transactions SET payment_status = 'authorized' WHERE id = $1`,
+  // Update to show authorization is ready (only if not already set by confirm-payment route)
+  const updated = await query(
+    `UPDATE borrow_transactions SET payment_status = 'authorized'
+     WHERE id = $1 AND payment_status != 'authorized'
+     RETURNING id`,
     [transactionId]
   );
+
+  // Only notify lender if confirm-payment route hasn't already handled it
+  if (updated.rows.length > 0) {
+    const transaction = await query(
+      `SELECT t.*, l.title as item_title, u.first_name as borrower_first_name
+       FROM borrow_transactions t
+       JOIN listings l ON t.listing_id = l.id
+       JOIN users u ON t.borrower_id = u.id
+       WHERE t.id = $1`,
+      [transactionId]
+    );
+
+    if (transaction.rows.length > 0) {
+      const t = transaction.rows[0];
+      await sendNotification(t.lender_id, 'borrow_request', {
+        borrowerName: t.borrower_first_name,
+        itemTitle: t.item_title,
+        transactionId: t.id,
+        listingId: t.listing_id,
+        fromUserId: t.borrower_id,
+      });
+    }
+  }
 
   logger.info(`Authorization held for transaction ${transactionId}`);
 }

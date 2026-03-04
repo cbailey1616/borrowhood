@@ -65,12 +65,12 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Can only file disputes on returned or completed rentals' });
       }
 
-      // Verify within 72-hour window (use actual_return_at or requested_end_date)
+      // Verify within 7-day window (use actual_return_at or requested_end_date)
       const returnDate = t.actual_return_at || t.requested_end_date;
       if (returnDate) {
         const hoursSinceReturn = (Date.now() - new Date(returnDate).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceReturn > 72) {
-          return res.status(400).json({ error: 'Disputes must be filed within 72 hours of rental end' });
+        if (hoursSinceReturn > 168) {
+          return res.status(400).json({ error: 'Disputes must be filed within 7 days of rental end' });
         }
       }
 
@@ -88,9 +88,11 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Damage claims require a requested amount' });
       }
 
-      // Cap requestedAmount at deposit
+      // Cap requestedAmount at full transaction amount (rental fee + deposit)
       const depositAmount = parseFloat(t.deposit_amount) || 0;
-      const cappedAmount = requestedAmount ? Math.min(requestedAmount, depositAmount) : null;
+      const rentalFee = parseFloat(t.rental_fee) || 0;
+      const maxAmount = rentalFee + depositAmount;
+      const cappedAmount = requestedAmount ? Math.min(requestedAmount, maxAmount) : null;
 
       // Determine claimant and respondent
       const claimantUserId = req.user.id;
@@ -139,13 +141,14 @@ router.post('/', authenticate,
 router.post('/:id/respond', authenticate,
   body('responseDescription').isLength({ min: 10, max: 2000 }),
   body('responsePhotoUrls').optional().isArray({ max: 4 }),
+  body('counterAmount').optional().isFloat({ min: 0 }),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { responseDescription, responsePhotoUrls = [] } = req.body;
+    const { responseDescription, responsePhotoUrls = [], counterAmount } = req.body;
 
     try {
       const dispute = await query(
@@ -184,23 +187,28 @@ router.post('/:id/respond', authenticate,
         return res.status(400).json({ error: 'The 48-hour response window has passed' });
       }
 
+      const hasCounter = counterAmount != null && counterAmount >= 0;
+      const newStatus = hasCounter ? 'counterPending' : 'underReview';
+
       await query(
         `UPDATE disputes SET
           response_description = $1, response_photo_urls = $2,
-          responded_at = NOW(), status = 'underReview'
-         WHERE id = $3`,
-        [responseDescription, responsePhotoUrls, req.params.id]
+          counter_amount = $3,
+          responded_at = NOW(), status = $4
+         WHERE id = $5`,
+        [responseDescription, responsePhotoUrls, counterAmount ?? null, newStatus, req.params.id]
       );
 
       // Notify claimant
-      await sendNotification(d.claimant_user_id, 'dispute_response_received', {
+      await sendNotification(d.claimant_user_id, hasCounter ? 'dispute_counter_received' : 'dispute_response_received', {
         disputeId: req.params.id,
         transactionId: d.transaction_id,
         respondentName: `${req.user.first_name} ${req.user.last_name}`,
+        ...(hasCounter ? { counterAmount } : {}),
       });
 
-      // Notify community organizers
-      if (d.community_id) {
+      // Only notify organizers for declines (no counter) — counter goes to claimant first
+      if (!hasCounter && d.community_id) {
         await notifyOrganizers(d.community_id, 'dispute_ready_for_review', {
           disputeId: req.params.id,
           transactionId: d.transaction_id,
@@ -208,7 +216,7 @@ router.post('/:id/respond', authenticate,
         });
       }
 
-      res.json({ success: true, status: 'underReview' });
+      res.json({ success: true, status: newStatus });
     } catch (err) {
       console.error('Respond to dispute error:', err);
       res.status(500).json({ error: 'Failed to submit response' });
@@ -332,7 +340,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = await query(
       `SELECT d.id as dispute_id, d.transaction_id, d.status as dispute_status,
               d.type, d.description, d.photo_urls, d.reason, d.evidence_urls,
-              d.response_description, d.response_photo_urls, d.responded_at,
+              d.response_description, d.response_photo_urls, d.responded_at, d.counter_amount,
               d.requested_amount, d.resolved_amount, d.hold_expired,
               d.resolution_notes, d.deposit_to_lender, d.deposit_to_borrower, d.organizer_fee,
               d.claimant_user_id, d.respondent_user_id,
@@ -413,6 +421,7 @@ router.get('/:id', authenticate, async (req, res) => {
       response: d.responded_at ? {
         description: d.response_description,
         photoUrls: d.response_photo_urls || [],
+        counterAmount: d.counter_amount ? parseFloat(d.counter_amount) : null,
         respondedAt: d.responded_at,
       } : null,
       requestedAmount: d.requested_amount ? parseFloat(d.requested_amount) : null,
@@ -441,6 +450,118 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================
+// Shared resolution helper
+// ============================================
+async function resolveDisputeInternally({ dispute, outcome, resolvedAmount, notes, resolvedById }) {
+  const depositAmount = parseFloat(dispute.deposit_amount);
+  const rentalFee = parseFloat(dispute.rental_fee) || 0;
+  const totalAmount = rentalFee + depositAmount;
+  let finalResolvedAmount = 0;
+  let status = '';
+  let holdExpired = false;
+
+  if (outcome === 'claimant') {
+    const maxAmount = Math.min(
+      resolvedAmount || totalAmount,
+      dispute.requested_amount ? parseFloat(dispute.requested_amount) : totalAmount,
+      totalAmount
+    );
+    finalResolvedAmount = maxAmount;
+    status = 'resolvedInFavorOfClaimant';
+
+    if (dispute.stripe_payment_intent_id && dispute.payment_status === 'authorized') {
+      try {
+        const amountCents = Math.round(finalResolvedAmount * 100);
+        await capturePaymentIntent(dispute.stripe_payment_intent_id, amountCents);
+      } catch (stripeErr) {
+        holdExpired = true;
+        status = 'expired';
+        console.error('Stripe capture failed (hold likely expired):', stripeErr.message);
+      }
+    }
+  } else {
+    status = outcome === 'respondent' ? 'resolvedInFavorOfRespondent' : 'dismissed';
+    finalResolvedAmount = 0;
+
+    if (dispute.stripe_payment_intent_id && dispute.payment_status === 'authorized') {
+      try {
+        const pi = await getPaymentIntent(dispute.stripe_payment_intent_id);
+        if (pi.status === 'requires_capture') {
+          await cancelPaymentIntent(dispute.stripe_payment_intent_id);
+        }
+      } catch (stripeErr) {
+        console.error('Stripe release error (may be already expired):', stripeErr.message);
+      }
+    }
+  }
+
+  const organizerFee = finalResolvedAmount * ORGANIZER_FEE_PERCENT;
+
+  // Determine deposit direction based on winner's role
+  const claimantIsBorrower = dispute.claimant_user_id === dispute.borrower_id;
+  let depositToLender = 0;
+  let depositToBorrower = 0;
+
+  if (outcome === 'claimant') {
+    if (claimantIsBorrower) {
+      depositToBorrower = finalResolvedAmount;
+    } else {
+      depositToLender = finalResolvedAmount;
+    }
+  } else if (outcome === 'respondent') {
+    // Deposit returns to borrower (they posted it)
+    depositToBorrower = depositAmount;
+  }
+
+  await withTransaction(async (client) => {
+    await client.query(
+      `UPDATE disputes SET
+        status = $1, resolved_by_id = $2, resolution_notes = $3,
+        resolved_amount = $4, hold_expired = $5,
+        deposit_to_lender = $6, deposit_to_borrower = $7, organizer_fee = $8,
+        resolved_at = NOW()
+       WHERE id = $9`,
+      [
+        status, resolvedById, notes, finalResolvedAmount, holdExpired,
+        depositToLender,
+        depositToBorrower,
+        organizerFee,
+        dispute.id,
+      ]
+    );
+
+    await client.query(
+      `UPDATE borrow_transactions SET status = 'completed' WHERE id = $1`,
+      [dispute.transaction_id]
+    );
+
+    await client.query(
+      `UPDATE listings SET is_available = true
+       FROM borrow_transactions t
+       WHERE listings.id = t.listing_id AND t.id = $1`,
+      [dispute.transaction_id]
+    );
+  });
+
+  // Notify both parties
+  await sendNotification(dispute.claimant_user_id, 'dispute_resolved', {
+    disputeId: dispute.id,
+    transactionId: dispute.transaction_id,
+    outcome,
+    resolvedAmount: finalResolvedAmount,
+  });
+
+  await sendNotification(dispute.respondent_user_id, 'dispute_resolved', {
+    disputeId: dispute.id,
+    transactionId: dispute.transaction_id,
+    outcome,
+    resolvedAmount: finalResolvedAmount,
+  });
+
+  return { status, finalResolvedAmount, holdExpired, organizerFee };
+}
+
+// ============================================
 // POST /api/disputes/:id/resolve
 // Organizer or admin resolves dispute
 // ============================================
@@ -457,9 +578,8 @@ router.post('/:id/resolve', authenticate,
     const { outcome, resolvedAmount, notes } = req.body;
 
     try {
-      // Get dispute with transaction and listing info
       const dispute = await query(
-        `SELECT d.*, t.deposit_amount, t.lender_id, t.borrower_id,
+        `SELECT d.*, t.deposit_amount, t.rental_fee, t.lender_id, t.borrower_id,
                 t.stripe_payment_intent_id, t.payment_status,
                 l.community_id
          FROM disputes d
@@ -488,108 +608,21 @@ router.post('/:id/resolve', authenticate,
         }
       }
 
-      const depositAmount = parseFloat(d.deposit_amount);
-      let finalResolvedAmount = 0;
-      let status = '';
-      let holdExpired = false;
-
-      if (outcome === 'claimant') {
-        // Cap at deposit and requested amount
-        const maxAmount = Math.min(
-          resolvedAmount || depositAmount,
-          d.requested_amount ? parseFloat(d.requested_amount) : depositAmount,
-          depositAmount
-        );
-        finalResolvedAmount = maxAmount;
-        status = 'resolvedInFavorOfClaimant';
-
-        // Attempt to capture from the authorization hold
-        if (d.stripe_payment_intent_id && d.payment_status === 'authorized') {
-          try {
-            const amountCents = Math.round(finalResolvedAmount * 100);
-            await capturePaymentIntent(d.stripe_payment_intent_id, amountCents);
-          } catch (stripeErr) {
-            // Auth hold likely expired
-            holdExpired = true;
-            status = 'expired';
-            console.error('Stripe capture failed (hold likely expired):', stripeErr.message);
-          }
-        }
-      } else {
-        // respondent or dismissed — release the hold
-        status = outcome === 'respondent' ? 'resolvedInFavorOfRespondent' : 'dismissed';
-        finalResolvedAmount = 0;
-
-        if (d.stripe_payment_intent_id && d.payment_status === 'authorized') {
-          try {
-            const pi = await getPaymentIntent(d.stripe_payment_intent_id);
-            if (pi.status === 'requires_capture') {
-              await cancelPaymentIntent(d.stripe_payment_intent_id);
-            }
-          } catch (stripeErr) {
-            // Hold may have already expired, which is fine for release
-            console.error('Stripe release error (may be already expired):', stripeErr.message);
-          }
-        }
-      }
-
-      const organizerFee = depositAmount * ORGANIZER_FEE_PERCENT;
-
-      await withTransaction(async (client) => {
-        await client.query(
-          `UPDATE disputes SET
-            status = $1, resolved_by_id = $2, resolution_notes = $3,
-            resolved_amount = $4, hold_expired = $5,
-            deposit_to_lender = $6, deposit_to_borrower = $7, organizer_fee = $8,
-            resolved_at = NOW()
-           WHERE id = $9`,
-          [
-            status, req.user.id, notes, finalResolvedAmount, holdExpired,
-            outcome === 'claimant' ? finalResolvedAmount : 0,
-            outcome === 'respondent' ? depositAmount : 0,
-            organizerFee,
-            req.params.id,
-          ]
-        );
-
-        await client.query(
-          `UPDATE borrow_transactions SET status = 'completed' WHERE id = $1`,
-          [d.transaction_id]
-        );
-
-        await client.query(
-          `UPDATE listings SET is_available = true
-           FROM borrow_transactions t
-           WHERE listings.id = t.listing_id AND t.id = $1`,
-          [d.transaction_id]
-        );
-      });
-
-      // Notify both parties
-      const claimantId = d.claimant_user_id;
-      const respondentId = d.respondent_user_id;
-
-      await sendNotification(claimantId, 'dispute_resolved', {
-        disputeId: req.params.id,
-        transactionId: d.transaction_id,
+      const result = await resolveDisputeInternally({
+        dispute: d,
         outcome,
-        resolvedAmount: finalResolvedAmount,
-      });
-
-      await sendNotification(respondentId, 'dispute_resolved', {
-        disputeId: req.params.id,
-        transactionId: d.transaction_id,
-        outcome,
-        resolvedAmount: finalResolvedAmount,
+        resolvedAmount,
+        notes,
+        resolvedById: req.user.id,
       });
 
       res.json({
         success: true,
         resolution: {
-          status,
-          resolvedAmount: finalResolvedAmount,
-          holdExpired,
-          organizerFee,
+          status: result.status,
+          resolvedAmount: result.finalResolvedAmount,
+          holdExpired: result.holdExpired,
+          organizerFee: result.organizerFee,
         },
       });
     } catch (err) {
@@ -598,6 +631,189 @@ router.post('/:id/resolve', authenticate,
     }
   }
 );
+
+// ============================================
+// POST /api/disputes/:id/accept
+// Respondent accepts the claim — resolves automatically
+// ============================================
+router.post('/:id/accept', authenticate, async (req, res) => {
+  try {
+    const dispute = await query(
+      `SELECT d.*, t.deposit_amount, t.rental_fee, t.lender_id, t.borrower_id,
+              t.stripe_payment_intent_id, t.payment_status,
+              l.community_id
+       FROM disputes d
+       JOIN borrow_transactions t ON d.transaction_id = t.id
+       JOIN listings l ON t.listing_id = l.id
+       WHERE d.id = $1`,
+      [req.params.id]
+    );
+
+    if (dispute.rows.length === 0) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+
+    const d = dispute.rows[0];
+
+    // Only respondent can accept
+    if (d.respondent_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the respondent can accept a claim' });
+    }
+
+    // Must be awaitingResponse
+    if (d.status !== 'awaitingResponse') {
+      return res.status(400).json({ error: 'This dispute can no longer be accepted' });
+    }
+
+    // Cannot have already responded
+    if (d.responded_at) {
+      return res.status(400).json({ error: 'You have already responded to this dispute' });
+    }
+
+    // 48-hour window check
+    const hoursSinceFiled = (Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60);
+    if (hoursSinceFiled > 48) {
+      return res.status(400).json({ error: 'The 48-hour response window has passed' });
+    }
+
+    // Full refund: rental fee + deposit
+    const resolvedAmount = (parseFloat(d.rental_fee) || 0) + parseFloat(d.deposit_amount);
+
+    const result = await resolveDisputeInternally({
+      dispute: d,
+      outcome: 'claimant',
+      resolvedAmount,
+      notes: 'Full refund accepted by respondent — resolved automatically.',
+      resolvedById: null,
+    });
+
+    res.json({
+      success: true,
+      resolution: {
+        status: result.status,
+        resolvedAmount: result.finalResolvedAmount,
+        holdExpired: result.holdExpired,
+        organizerFee: result.organizerFee,
+      },
+    });
+  } catch (err) {
+    console.error('Accept dispute error:', err);
+    res.status(500).json({ error: 'Failed to accept dispute' });
+  }
+});
+
+// ============================================
+// POST /api/disputes/:id/accept-counter
+// Claimant accepts the respondent's counter offer — resolves automatically
+// ============================================
+router.post('/:id/accept-counter', authenticate, async (req, res) => {
+  try {
+    const dispute = await query(
+      `SELECT d.*, t.deposit_amount, t.rental_fee, t.lender_id, t.borrower_id,
+              t.stripe_payment_intent_id, t.payment_status,
+              l.community_id
+       FROM disputes d
+       JOIN borrow_transactions t ON d.transaction_id = t.id
+       JOIN listings l ON t.listing_id = l.id
+       WHERE d.id = $1`,
+      [req.params.id]
+    );
+
+    if (dispute.rows.length === 0) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+
+    const d = dispute.rows[0];
+
+    // Only claimant can accept a counter
+    if (d.claimant_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the claimant can accept a counter offer' });
+    }
+
+    // Must be counterPending
+    if (d.status !== 'counterPending') {
+      return res.status(400).json({ error: 'This dispute is not in a state to accept a counter offer' });
+    }
+
+    // Must have a counter amount
+    if (d.counter_amount == null) {
+      return res.status(400).json({ error: 'No counter offer exists for this dispute' });
+    }
+
+    const counterAmount = parseFloat(d.counter_amount);
+
+    const result = await resolveDisputeInternally({
+      dispute: d,
+      outcome: 'claimant',
+      resolvedAmount: counterAmount,
+      notes: `Counter offer of $${counterAmount.toFixed(2)} accepted by claimant — resolved automatically.`,
+      resolvedById: null,
+    });
+
+    res.json({
+      success: true,
+      resolution: {
+        status: result.status,
+        resolvedAmount: result.finalResolvedAmount,
+        holdExpired: result.holdExpired,
+        organizerFee: result.organizerFee,
+      },
+    });
+  } catch (err) {
+    console.error('Accept counter error:', err);
+    res.status(500).json({ error: 'Failed to accept counter offer' });
+  }
+});
+
+// ============================================
+// POST /api/disputes/:id/decline-counter
+// Claimant declines counter — escalates to organizer review
+// ============================================
+router.post('/:id/decline-counter', authenticate, async (req, res) => {
+  try {
+    const dispute = await query(
+      `SELECT d.*, l.community_id
+       FROM disputes d
+       JOIN borrow_transactions t ON d.transaction_id = t.id
+       JOIN listings l ON t.listing_id = l.id
+       WHERE d.id = $1`,
+      [req.params.id]
+    );
+
+    if (dispute.rows.length === 0) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+
+    const d = dispute.rows[0];
+
+    if (d.claimant_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the claimant can decline a counter offer' });
+    }
+
+    if (d.status !== 'counterPending') {
+      return res.status(400).json({ error: 'This dispute is not in a state to decline a counter offer' });
+    }
+
+    await query(
+      `UPDATE disputes SET status = 'underReview' WHERE id = $1`,
+      [req.params.id]
+    );
+
+    // Now notify organizers for arbitration
+    if (d.community_id) {
+      await notifyOrganizers(d.community_id, 'dispute_ready_for_review', {
+        disputeId: req.params.id,
+        transactionId: d.transaction_id,
+        itemTitle: d.listing_title,
+      });
+    }
+
+    res.json({ success: true, status: 'underReview' });
+  } catch (err) {
+    console.error('Decline counter error:', err);
+    res.status(500).json({ error: 'Failed to decline counter offer' });
+  }
+});
 
 // ============================================
 // POST /api/disputes/:id/evidence

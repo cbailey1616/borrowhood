@@ -133,7 +133,7 @@ async function autoReleaseDeposits() {
       `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount
        FROM borrow_transactions bt
        WHERE bt.status IN ('returned', 'completed')
-         AND bt.actual_return_at < NOW() - INTERVAL '72 hours'
+         AND bt.actual_return_at < NOW() - INTERVAL '7 days'
          AND bt.payment_status = 'authorized'
          AND NOT EXISTS (SELECT 1 FROM disputes WHERE transaction_id = bt.id)`
     );

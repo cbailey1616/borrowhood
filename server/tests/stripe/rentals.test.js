@@ -343,7 +343,7 @@ describe('Rentals API', () => {
         [listing.transactionId]
       );
       expect(txn.rows[0].status).toBe('returned');
-      expect(txn.rows[0].payment_status).toBe('completed');
+      expect(txn.rows[0].payment_status).toBe('deposit_released');
       expect(txn.rows[0].condition_at_return).toBe('good');
 
       // Verify listing is available again
