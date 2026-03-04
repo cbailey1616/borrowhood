@@ -61,23 +61,21 @@ router.post('/', authenticate,
       }
 
       // Verify transaction is in an appropriate state
-      // Non-return and late-return disputes can be filed while item is still picked up
-      const activeDisputeTypes = ['nonReturn', 'lateReturn'];
-      const isActiveDispute = activeDisputeTypes.includes(type);
+      if (!['picked_up', 'returned', 'completed'].includes(t.status)) {
+        return res.status(400).json({ error: 'Cannot file a dispute until the item has been picked up' });
+      }
 
-      if (isActiveDispute) {
-        if (!['picked_up', 'returned', 'completed'].includes(t.status)) {
-          return res.status(400).json({ error: 'Cannot file this dispute on a rental that hasn\'t been picked up' });
-        }
-      } else {
-        if (!['returned', 'completed'].includes(t.status)) {
-          return res.status(400).json({ error: 'Can only file disputes on returned or completed rentals' });
+      // Non-return disputes can only be filed after the rental period ends
+      if (type === 'nonReturn' && t.status === 'picked_up') {
+        const endDate = new Date(t.requested_end_date);
+        if (Date.now() < endDate.getTime()) {
+          return res.status(400).json({ error: 'Non-return disputes can only be filed after the rental period ends' });
         }
       }
 
       // Verify within 7-day window for returned/completed (use actual_return_at or requested_end_date)
       // Skip window check for active rentals (picked_up) — they're filing about an ongoing issue
-      if (!isActiveDispute || ['returned', 'completed'].includes(t.status)) {
+      if (['returned', 'completed'].includes(t.status)) {
         const returnDate = t.actual_return_at || t.requested_end_date;
         if (returnDate) {
           const hoursSinceReturn = (Date.now() - new Date(returnDate).getTime()) / (1000 * 60 * 60);

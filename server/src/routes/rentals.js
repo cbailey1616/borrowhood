@@ -720,36 +720,41 @@ router.post('/:id/damage-claim', authenticate,
         return res.status(400).json({ error: 'No deposit to claim against' });
       }
 
-      await withTransaction(async (client) => {
-        // Record the damage claim
-        await client.query(
-          `UPDATE borrow_transactions
-           SET status = 'returned', actual_return_at = NOW(),
-               damage_claim_amount_cents = $1, damage_claim_notes = $2,
-               damage_evidence_urls = $3, payment_status = 'damage_claimed'
-           WHERE id = $4`,
-          [claimAmount, notes, evidenceUrls, t.id]
-        );
+      // Record the damage claim
+      await query(
+        `UPDATE borrow_transactions
+         SET status = 'returned', actual_return_at = NOW(),
+             damage_claim_amount_cents = $1, damage_claim_notes = $2,
+             damage_evidence_urls = $3, payment_status = 'damage_claimed'
+         WHERE id = $4`,
+        [claimAmount, notes, evidenceUrls, t.id]
+      );
 
-        // Refund only the remaining deposit (deposit - claim)
-        const refundAmount = depositCents - claimAmount;
-        if (refundAmount > 0 && t.stripe_payment_intent_id) {
+      // Refund only the remaining deposit (deposit - claim)
+      const refundAmount = depositCents - claimAmount;
+      if (refundAmount > 0 && t.stripe_payment_intent_id) {
+        try {
           await stripe.refunds.create({
             payment_intent: t.stripe_payment_intent_id,
             amount: refundAmount,
           });
+        } catch (refundErr) {
+          logger.error('Damage claim refund failed (non-blocking):', refundErr.message);
+          // Continue — the claim is recorded, refund can be handled manually
         }
+      }
 
-        // Transfer rental fee + claim amount to lender
-        const lenderResult = await client.query(
-          'SELECT stripe_connect_account_id FROM users WHERE id = $1',
-          [t.lender_id]
-        );
-        const lenderConnectId = lenderResult.rows[0]?.stripe_connect_account_id;
+      // Transfer rental fee + claim amount to lender
+      const lenderResult = await query(
+        'SELECT stripe_connect_account_id FROM users WHERE id = $1',
+        [t.lender_id]
+      );
+      const lenderConnectId = lenderResult.rows[0]?.stripe_connect_account_id;
 
-        if (lenderConnectId) {
-          const payoutCents = Math.round(parseFloat(t.lender_payout) * 100) + claimAmount;
-          if (payoutCents > 0) {
+      if (lenderConnectId) {
+        const payoutCents = Math.round(parseFloat(t.lender_payout || 0) * 100) + claimAmount;
+        if (payoutCents > 0) {
+          try {
             const transfer = await createTransfer({
               amount: payoutCents,
               destinationAccountId: lenderConnectId,
@@ -760,23 +765,26 @@ router.post('/:id/damage-claim', authenticate,
               },
             });
 
-            await client.query(
+            await query(
               'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
               [transfer.id, t.id]
             );
+          } catch (transferErr) {
+            logger.error('Damage claim transfer failed (non-blocking):', transferErr.message);
+            // Continue — claim is recorded, transfer can be handled manually
           }
         }
+      }
 
-        // Mark listing available again
-        await client.query(
-          `UPDATE listings
-           SET is_available = true,
-               times_borrowed = times_borrowed + 1,
-               total_earnings = total_earnings + $1
-           WHERE id = $2`,
-          [parseFloat(t.lender_payout), t.listing_id]
-        );
-      });
+      // Mark listing available again
+      await query(
+        `UPDATE listings
+         SET is_available = true,
+             times_borrowed = times_borrowed + 1,
+             total_earnings = total_earnings + $1
+         WHERE id = $2`,
+        [parseFloat(t.lender_payout || 0), t.listing_id]
+      );
 
       // Notify borrower
       await sendNotification(t.borrower_id, 'dispute_opened', {
@@ -791,7 +799,7 @@ router.post('/:id/damage-claim', authenticate,
       });
     } catch (err) {
       logger.error('Damage claim error:', err);
-      res.status(500).json({ error: 'Failed to process damage claim' });
+      res.status(500).json({ error: err.message || 'Failed to process damage claim' });
     }
   }
 );
