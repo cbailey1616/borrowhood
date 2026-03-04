@@ -273,6 +273,15 @@ const respondToDispute = (id, data) =>
 const resolveDispute = (id, { outcome, resolvedAmount, notes }) =>
   post(`/disputes/${id}/resolve`, { outcome, resolvedAmount, notes });
 
+const acceptDispute = (id) =>
+  post(`/disputes/${id}/accept`);
+
+const acceptCounter = (id) =>
+  post(`/disputes/${id}/accept-counter`);
+
+const declineCounter = (id) =>
+  post(`/disputes/${id}/decline-counter`);
+
 const addDisputeEvidence = (id, urls) =>
   post(`/disputes/${id}/evidence`, { urls });
 
@@ -748,6 +757,9 @@ export default {
   fileDispute,
   respondToDispute,
   resolveDispute,
+  acceptDispute,
+  acceptCounter,
+  declineCounter,
   addDisputeEvidence,
   // Notifications
   getNotifications,

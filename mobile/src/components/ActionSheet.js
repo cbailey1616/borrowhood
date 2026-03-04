@@ -110,6 +110,7 @@ export default function ActionSheet({
               style={[
                 styles.actionButton,
                 action.destructive && styles.destructiveButton,
+                action.primary && styles.primaryButton,
               ]}
             >
               {action.icon ? (
@@ -119,6 +120,7 @@ export default function ActionSheet({
                 style={[
                   styles.actionText,
                   action.destructive && styles.destructiveText,
+                  action.primary && styles.primaryText,
                 ]}
               >
                 {action.label}
@@ -192,13 +194,26 @@ const styles = StyleSheet.create({
   },
   destructiveButton: {
     justifyContent: 'center',
-    backgroundColor: COLORS.danger + '12',
+    backgroundColor: COLORS.danger,
     borderRadius: RADIUS.md,
     borderBottomWidth: 0,
     marginTop: SPACING.xs,
+    paddingVertical: SPACING.lg,
   },
   destructiveText: {
-    color: COLORS.danger,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  primaryButton: {
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    borderBottomWidth: 0,
+    marginTop: SPACING.xs,
+    paddingVertical: SPACING.lg,
+  },
+  primaryText: {
+    color: '#fff',
     fontWeight: '600',
   },
   cancelButton: {

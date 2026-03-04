@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
@@ -47,6 +48,9 @@ export default function ActivityScreen({ navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchTransactions();
+      // Clear notification badge when viewing activity
+      Notifications.setBadgeCountAsync(0).catch(() => {});
+      Notifications.dismissAllNotificationsAsync().catch(() => {});
     });
     return unsubscribe;
   }, [navigation, fetchTransactions]);

@@ -108,6 +108,7 @@ function handleNotificationResponse(data) {
     case 'pickup_confirmed':
     case 'return_confirmed':
     case 'payment_confirmed':
+    case 'return_reminder':
       if (data.transactionId) {
         navigationRef.navigate('TransactionDetail', { id: data.transactionId });
       }

@@ -265,7 +265,11 @@ export default function RootNavigator() {
           <Stack.Screen
             name="RespondToDispute"
             component={RespondToDisputeScreen}
-            options={{ ...sharedScreenOptions, title: 'Respond to Dispute', presentation: 'modal' }}
+            options={({ route }) => ({
+              ...sharedScreenOptions,
+              title: route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim',
+              presentation: 'modal',
+            })}
           />
           <Stack.Screen
             name="Earnings"

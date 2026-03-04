@@ -31,6 +31,11 @@ const NOTIFICATION_ICONS = {
   return_confirmed: 'checkbox',
   return_reminder: 'alarm',
   dispute_opened: 'warning',
+  dispute_filed_against_you: 'alert-circle',
+  dispute_counter_received: 'swap-horizontal',
+  dispute_response_received: 'chatbubble-ellipses',
+  dispute_ready_for_review: 'eye',
+  dispute_under_review: 'time',
   dispute_resolved: 'checkmark-done',
   new_rating: 'star',
   rating_received: 'star',
@@ -129,6 +134,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       nav.navigate('Friends');
     } else if (item.type === 'new_request' && item.requestId) {
       nav.navigate('RequestDetail', { id: item.requestId });
+    } else if (item.disputeId) {
+      nav.navigate('DisputeDetail', { id: item.disputeId });
     } else if (item.transactionId) {
       nav.navigate('TransactionDetail', { id: item.transactionId });
     } else if (item.listingId) {

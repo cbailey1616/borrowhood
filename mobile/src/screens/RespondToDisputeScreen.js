@@ -14,6 +14,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
+import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -27,16 +28,23 @@ const TYPE_CONFIG = {
 };
 
 export default function RespondToDisputeScreen({ navigation, route }) {
-  const { disputeId, claimantName, type, description } = route.params || {};
+  const { disputeId, claimantName, type, description, requestedAmount, mode } = route.params || {};
 
   const { showError } = useError();
   const [responseDescription, setResponseDescription] = useState('');
+  const [counterAmountText, setCounterAmountText] = useState('');
   const [photos, setPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
 
+  const [fieldErrors, setFieldErrors] = useState({ description: false, amount: false });
+  const [showConfirmSheet, setShowConfirmSheet] = useState(false);
+
   const typeInfo = TYPE_CONFIG[type] || { label: type, icon: 'help-circle-outline' };
-  const isValid = responseDescription.length >= 10;
+  const isCounter = mode === 'counter';
+  const counterAmount = parseFloat(counterAmountText);
+  const hasValidAmount = !isNaN(counterAmount) && counterAmount > 0;
+  const isValid = responseDescription.length >= 10 && (!isCounter || hasValidAmount);
 
   const pickPhotos = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -56,9 +64,22 @@ export default function RespondToDisputeScreen({ navigation, route }) {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
-    if (!isValid) return;
+  const handleSubmitPress = () => {
+    const errors = {
+      description: responseDescription.length < 10,
+      amount: isCounter && !hasValidAmount,
+    };
 
+    if (errors.description || errors.amount) {
+      setFieldErrors(errors);
+      haptics.warning();
+      return;
+    }
+
+    setShowConfirmSheet(true);
+  };
+
+  const handleSubmit = async () => {
     setSubmitting(true);
     try {
       let responsePhotoUrls = [];
@@ -66,9 +87,11 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         responsePhotoUrls = await api.uploadImages(photos, 'disputes');
       }
 
+      const counterAmount = parseFloat(counterAmountText);
       await api.respondToDispute(disputeId, {
         responseDescription,
         responsePhotoUrls,
+        ...(isCounter && !isNaN(counterAmount) && counterAmount >= 0 ? { counterAmount } : {}),
       });
 
       setCompleted(true);
@@ -94,7 +117,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           <View style={styles.successCircle}>
             <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
           </View>
-          <Text style={styles.title}>Response Submitted</Text>
+          <Text style={styles.title}>{isCounter ? 'Counter Submitted' : 'Decline Submitted'}</Text>
           <Text style={styles.subtitle}>
             Your response has been recorded. An organizer will review the dispute.
           </Text>
@@ -130,16 +153,22 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         </BlurCard>
 
         {/* Response Description */}
-        <BlurCard style={styles.card}>
+        <BlurCard style={[styles.card, fieldErrors.description && styles.fieldError]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Your Response</Text>
+            <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>
+              {isCounter ? 'Reason for Counter *' : 'Reason for Declining *'}
+            </Text>
+            <Text style={styles.cardHint}>Minimum 10 characters</Text>
             <TextInput
               testID="RespondDispute.input.description"
               accessibilityLabel="Response description"
-              style={styles.responseInput}
+              style={[styles.responseInput, fieldErrors.description && styles.fieldError]}
               value={responseDescription}
-              onChangeText={setResponseDescription}
-              placeholder="Describe your side of the situation..."
+              onChangeText={(text) => {
+                setResponseDescription(text);
+                if (fieldErrors.description) setFieldErrors(prev => ({ ...prev, description: false }));
+              }}
+              placeholder={isCounter ? 'Explain why you think a different amount is fair...' : 'Explain why you disagree with this claim...'}
               placeholderTextColor={COLORS.textMuted}
               multiline
               textAlignVertical="top"
@@ -148,6 +177,37 @@ export default function RespondToDisputeScreen({ navigation, route }) {
             <Text style={styles.charCount}>{responseDescription.length}/2000</Text>
           </View>
         </BlurCard>
+
+        {/* Counter Amount (only in counter mode) */}
+        {isCounter && (
+          <BlurCard style={[styles.card, fieldErrors.amount && styles.fieldError]}>
+            <View style={styles.cardContent}>
+              <Text style={[styles.cardLabel, fieldErrors.amount && styles.fieldErrorLabel]}>Your Counter Amount *</Text>
+              <Text style={styles.cardHint}>
+                {requestedAmount != null
+                  ? `They requested $${requestedAmount.toFixed(2)}. How much do you think is fair?`
+                  : 'Enter the amount you think is fair.'}
+              </Text>
+              <View style={[styles.amountInputRow, fieldErrors.amount && styles.fieldError]}>
+                <Text style={styles.dollarSign}>$</Text>
+                <TextInput
+                  testID="RespondDispute.input.counterAmount"
+                  accessibilityLabel="Counter amount"
+                  style={styles.amountInput}
+                  value={counterAmountText}
+                  onChangeText={(text) => {
+                    setCounterAmountText(text);
+                    if (fieldErrors.amount) setFieldErrors(prev => ({ ...prev, amount: false }));
+                  }}
+                  placeholder="0.00"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                />
+              </View>
+            </View>
+          </BlurCard>
+        )}
 
         {/* Response Photos */}
         <BlurCard style={styles.card}>
@@ -178,7 +238,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
                   onPress={pickPhotos}
                   haptic="light"
                 >
-                  <Ionicons name="camera-outline" size={28} color={COLORS.textSecondary} />
+                  <Ionicons name="camera-outline" size={28} color={COLORS.text} />
                   <Text style={styles.addPhotoText}>Add</Text>
                 </HapticPressable>
               )}
@@ -189,23 +249,41 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {/* Submit */}
         <HapticPressable
           testID="RespondDispute.button.submit"
-          accessibilityLabel="Submit response"
+          accessibilityLabel={isCounter ? 'Submit counter proposal' : 'Submit decline'}
           accessibilityRole="button"
           style={[
             styles.primaryButton,
             (!isValid || submitting) && styles.buttonDisabled,
           ]}
-          onPress={handleSubmit}
+          onPress={handleSubmitPress}
           disabled={!isValid || submitting}
           haptic="medium"
         >
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryButtonText}>Submit Response</Text>
+            <Text style={styles.primaryButtonText}>
+              {isCounter ? 'Submit Counter' : 'Submit Decline'}
+            </Text>
           )}
         </HapticPressable>
       </ScrollView>
+
+      <ActionSheet
+        isVisible={showConfirmSheet}
+        onClose={() => setShowConfirmSheet(false)}
+        title={isCounter ? 'Submit Counter Proposal' : 'Submit Decline'}
+        message={isCounter
+          ? `Your counter proposal of $${parseFloat(counterAmountText || '0').toFixed(2)} will be sent to ${claimantName} to accept or decline.`
+          : 'This dispute will be sent to an organizer for arbitration. They will review both sides and make a decision.'}
+        actions={[
+          {
+            label: isCounter ? 'Submit Counter' : 'Submit Decline',
+            onPress: handleSubmit,
+            primary: true,
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -248,6 +326,13 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: SPACING.lg,
   },
+  fieldError: {
+    borderColor: COLORS.danger,
+    borderWidth: 1.5,
+  },
+  fieldErrorLabel: {
+    color: COLORS.danger,
+  },
   cardContent: {
     padding: SPACING.lg,
   },
@@ -284,12 +369,14 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   responseInput: {
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.sm,
     padding: SPACING.md,
     ...TYPOGRAPHY.body,
     color: COLORS.text,
     minHeight: 120,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
   },
   charCount: {
     ...TYPOGRAPHY.caption2,
@@ -321,14 +408,37 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+    borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
   },
   addPhotoText: {
     ...TYPOGRAPHY.caption2,
+    color: COLORS.text,
+  },
+  amountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.separator,
+  },
+  dollarSign: {
+    ...TYPOGRAPHY.headline,
     color: COLORS.textSecondary,
+    marginRight: SPACING.xs,
+  },
+  amountInput: {
+    flex: 1,
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
+    paddingVertical: SPACING.md,
   },
   primaryButton: {
     backgroundColor: COLORS.primary,
@@ -343,6 +453,5 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     ...TYPOGRAPHY.button,
-    fontSize: 16,
   },
 });

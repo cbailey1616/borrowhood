@@ -17,7 +17,6 @@ import Animated, {
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
-import BlurCard from '../components/BlurCard';
 import ActionSheet from '../components/ActionSheet';
 import RentalProgress from '../components/RentalProgress';
 import { SkeletonCard } from '../components/SkeletonLoader';
@@ -264,7 +263,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
               haptic="light"
             >
-              <BlurCard style={styles.transactionCard}>
+              <View style={[styles.transactionCard, styles.cardBox]}>
                 <RentalProgress
                   status={listing.activeTransaction.status}
                   paymentStatus={listing.activeTransaction.paymentStatus}
@@ -274,7 +273,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   <Text style={styles.viewTransactionText}>Go to Transaction</Text>
                   <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                 </View>
-              </BlurCard>
+              </View>
             </HapticPressable>
           )}
 
@@ -352,7 +351,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
           {/* Owner */}
           {listing.ownerMasked ? (
-            <BlurCard style={styles.ownerCard}>
+            <View style={[styles.ownerCard, styles.cardBox]}>
               <View style={[styles.ownerAvatar, styles.maskedOwnerAvatar]}>
                 <Ionicons name="shield-checkmark" size={24} color={COLORS.primary} />
               </View>
@@ -362,13 +361,13 @@ export default function ListingDetailScreen({ route, navigation }) {
                   Verify your identity to see who's lending this item
                 </Text>
               </View>
-            </BlurCard>
+            </View>
           ) : (
             <HapticPressable
               onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
               haptic="light"
             >
-              <BlurCard style={styles.ownerCard}>
+              <View style={[styles.ownerCard, styles.cardBox]}>
                 {listing.owner.profilePhotoUrl ? (
                   <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
                 ) : (
@@ -398,7 +397,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
-              </BlurCard>
+              </View>
             </HapticPressable>
           )}
         </View>
@@ -513,6 +512,12 @@ export default function ListingDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  cardBox: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

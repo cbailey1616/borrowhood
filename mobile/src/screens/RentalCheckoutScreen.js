@@ -18,20 +18,20 @@ import { haptics } from '../utils/haptics';
 const PAYMENT_SHEET_APPEARANCE = {
   colors: {
     primary: COLORS.primary,
-    background: COLORS.surface,
-    componentBackground: COLORS.gray[800],
-    componentBorder: '#2A3A2D',
-    componentDivider: '#2A3A2D',
-    primaryText: COLORS.text,
-    secondaryText: COLORS.textSecondary,
-    componentText: COLORS.text,
-    placeholderText: COLORS.textMuted,
-    icon: COLORS.textSecondary,
+    background: COLORS.background,
+    componentBackground: '#FFFFFF',
+    componentBorder: COLORS.borderBrown,
+    componentDivider: COLORS.borderBrown,
+    primaryText: '#1A1A1A',
+    secondaryText: '#6B6B6B',
+    componentText: '#1A1A1A',
+    placeholderText: '#9E9E9E',
+    icon: '#6B6B6B',
     error: COLORS.danger,
   },
   shapes: {
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
   },
 };
 

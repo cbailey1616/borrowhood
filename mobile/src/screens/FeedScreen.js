@@ -58,6 +58,7 @@ export default function FeedScreen({ navigation }) {
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [hasNeighborhood, setHasNeighborhood] = useState(true); // assume yes until checked
+  const [activeDisputes, setActiveDisputes] = useState([]);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -108,6 +109,7 @@ export default function FeedScreen({ navigation }) {
     };
     loadCategories();
     checkNeighborhood();
+    fetchActiveDisputes();
   }, []);
 
   useEffect(() => {
@@ -125,11 +127,25 @@ export default function FeedScreen({ navigation }) {
           setIsRefreshing(true);
           fetchFeed(1, false);
           checkNeighborhood();
+          fetchActiveDisputes();
         });
       }
     });
     return unsubscribe;
   }, [navigation, isInitialLoad, fetchFeed]);
+
+  const fetchActiveDisputes = useCallback(async () => {
+    try {
+      const data = await api.getDisputes();
+      const disputes = data?.disputes || data || [];
+      const active = disputes.filter(d =>
+        ['awaitingResponse', 'counterPending', 'underReview'].includes(d.status)
+      );
+      setActiveDisputes(active);
+    } catch (e) {
+      // Keep current state on error
+    }
+  }, []);
 
   const checkNeighborhood = useCallback(async () => {
     try {
@@ -146,6 +162,7 @@ export default function FeedScreen({ navigation }) {
     fetchFeed(1, false);
     refreshUser(); // Refresh user data on manual pull-to-refresh
     checkNeighborhood();
+    fetchActiveDisputes();
   };
 
   const onEndReached = () => {
@@ -574,23 +591,50 @@ export default function FeedScreen({ navigation }) {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
-          !hasNeighborhood ? (
-            <HapticPressable
-              style={styles.joinBanner}
-              onPress={() => navigation.navigate('JoinCommunity')}
-              haptic="light"
-              scaleDown={0.98}
-            >
-              <View style={styles.joinBannerIcon}>
-                <Ionicons name="location" size={20} color={COLORS.primary} />
-              </View>
-              <View style={styles.joinBannerContent}>
-                <Text style={styles.joinBannerTitle}>Join a nearby neighborhood</Text>
-                <Text style={styles.joinBannerSubtitle}>See items and requests from your neighbors</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-            </HapticPressable>
-          ) : null
+          <>
+            {activeDisputes.length > 0 && (
+              <HapticPressable
+                style={styles.disputeBanner}
+                onPress={() => {
+                  if (activeDisputes.length === 1) {
+                    navigation.navigate('DisputeDetail', { id: activeDisputes[0].id });
+                  } else {
+                    navigation.navigate('MyItems');
+                  }
+                }}
+                haptic="light"
+                scaleDown={0.98}
+              >
+                <View style={styles.disputeBannerIcon}>
+                  <Ionicons name="alert-circle" size={20} color={COLORS.danger} />
+                </View>
+                <View style={styles.disputeBannerContent}>
+                  <Text style={styles.disputeBannerTitle}>
+                    You have {activeDisputes.length} active dispute{activeDisputes.length !== 1 ? 's' : ''}
+                  </Text>
+                  <Text style={styles.disputeBannerSubtitle}>Tap to review</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={COLORS.danger} />
+              </HapticPressable>
+            )}
+            {!hasNeighborhood && (
+              <HapticPressable
+                style={styles.joinBanner}
+                onPress={() => navigation.navigate('JoinCommunity')}
+                haptic="light"
+                scaleDown={0.98}
+              >
+                <View style={styles.joinBannerIcon}>
+                  <Ionicons name="location" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.joinBannerContent}>
+                  <Text style={styles.joinBannerTitle}>Join a nearby neighborhood</Text>
+                  <Text style={styles.joinBannerSubtitle}>See items and requests from your neighbors</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+              </HapticPressable>
+            )}
+          </>
         }
         ListFooterComponent={
           isLoadingMore && (
@@ -969,6 +1013,38 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   joinBannerSubtitle: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  disputeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.danger,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    gap: SPACING.md,
+  },
+  disputeBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.danger + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disputeBannerContent: {
+    flex: 1,
+  },
+  disputeBannerTitle: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  disputeBannerSubtitle: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginTop: 2,

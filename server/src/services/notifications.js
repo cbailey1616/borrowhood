@@ -71,6 +71,12 @@ const NOTIFICATION_TEMPLATES = {
       : 'Your dispute has been resolved. Tap to see the outcome.',
   },
 
+  dispute_counter_received: {
+    title: 'Counter Offer Received',
+    body: (data) => data.respondentName
+      ? `${data.respondentName} sent a counter offer${data.counterAmount ? ` of $${parseFloat(data.counterAmount).toFixed(2)}` : ''}. Tap to review.`
+      : 'You received a counter offer on your dispute. Tap to review.',
+  },
   dispute_filed_against_you: {
     title: 'Action Needed',
     body: (data) => data.itemTitle
