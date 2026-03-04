@@ -149,8 +149,7 @@ export default function ReportIssueScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Issue Reported</Text>
           <Text style={styles.subtitle}>
-            Your report has been submitted and will be reviewed by our team.
-            We'll follow up with you shortly.
+            Your report has been sent to the other party. They have 48 hours to respond, accept, or make a counter offer. If they don't respond or you can't reach an agreement, a community organizer will step in.
           </Text>
           <HapticPressable
             style={styles.primaryButton}

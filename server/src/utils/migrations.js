@@ -336,6 +336,17 @@ export async function runMigrations() {
       logger.info('Migration complete: disputes table enhanced');
     }
 
+    // Migration: Add counter_amount column to disputes
+    const hasCounterAmount = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'disputes' AND column_name = 'counter_amount'
+    `);
+    if (hasCounterAmount.rows.length === 0) {
+      logger.info('Running migration: Add counter_amount to disputes');
+      await query('ALTER TABLE disputes ADD COLUMN counter_amount DECIMAL(10,2)');
+      logger.info('Migration complete: counter_amount added to disputes');
+    }
+
     // Migration: Add is_admin column to users
     const hasIsAdmin = await query(`
       SELECT column_name FROM information_schema.columns
