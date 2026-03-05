@@ -68,10 +68,10 @@ describe('WelcomeScreen', () => {
     expect(mockLogin).toHaveBeenCalledWith('test@test.com', 'MyPass123');
   });
 
-  it('login error shows error via showError', async () => {
+  it('login error shows inline error', async () => {
     mockLogin.mockRejectedValueOnce(new Error('Invalid credentials'));
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText, findByText } = render(
       <WelcomeScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
@@ -79,7 +79,24 @@ describe('WelcomeScreen', () => {
     await act(async () => {
       fireEvent.press(getByText('Sign In'));
     });
-    expect(mockShowError).toHaveBeenCalled();
+    expect(await findByText('Invalid credentials')).toBeTruthy();
+  });
+
+  it('renders forgot password link', () => {
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const { getByText } = render(
+      <WelcomeScreen navigation={mockNavigation} />
+    );
+    expect(getByText('Forgot your password?')).toBeTruthy();
+  });
+
+  it('forgot password navigates to ForgotPassword', () => {
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const { getByText } = render(
+      <WelcomeScreen navigation={mockNavigation} />
+    );
+    fireEvent.press(getByText('Forgot your password?'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
   });
 
   it('"Create one" link navigates to Register', () => {

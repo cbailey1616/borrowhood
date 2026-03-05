@@ -36,10 +36,18 @@ describe('RespondToDisputeScreen', () => {
   });
 
   it('submit calls api.respondToDispute', async () => {
+    jest.useFakeTimers();
     const RespondToDisputeScreen = require('../../src/screens/RespondToDisputeScreen').default;
-    const { getByTestId } = render(<RespondToDisputeScreen navigation={mockNavigation} route={route} />);
+    const { getByTestId, getAllByText } = render(<RespondToDisputeScreen navigation={mockNavigation} route={route} />);
     fireEvent.changeText(getByTestId('RespondDispute.input.description'), 'The item was returned in good condition');
+    // Step 1: Press submit to show confirmation ActionSheet
     await act(async () => { fireEvent.press(getByTestId('RespondDispute.button.submit')); });
+    // Step 2: Press confirm in ActionSheet - use last match (ActionSheet action)
+    const buttons = getAllByText('Submit Decline');
+    await act(async () => { fireEvent.press(buttons[buttons.length - 1]); });
+    // ActionSheet closes with 200ms delay before calling onPress
+    await act(async () => { jest.advanceTimersByTime(300); });
     expect(api.respondToDispute).toHaveBeenCalled();
+    jest.useRealTimers();
   });
 });

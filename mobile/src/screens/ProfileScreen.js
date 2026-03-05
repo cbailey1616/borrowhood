@@ -190,6 +190,11 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('EditProfile')}
           />
           <GroupedListItem
+            icon="home-outline"
+            title="My Neighborhood"
+            onPress={() => navigation.navigate('MyCommunity')}
+          />
+          <GroupedListItem
             icon="mail-outline"
             title="Messages"
             onPress={() => navigation.navigate('Conversations')}
@@ -203,6 +208,11 @@ export default function ProfileScreen({ navigation }) {
 
         {/* Rentals & Payments Section */}
         <GroupedListSection header="Rentals & Payments">
+          <GroupedListItem
+            icon="receipt-outline"
+            title="Transaction History"
+            onPress={() => navigation.navigate('TransactionHistory')}
+          />
           <GroupedListItem
             icon="cash-outline"
             title="Earnings"
@@ -232,20 +242,15 @@ export default function ProfileScreen({ navigation }) {
         </GroupedListSection>
 
         {/* Community Section */}
-        <GroupedListSection header="Community">
-          <GroupedListItem
-            icon="home-outline"
-            title="My Neighborhood"
-            onPress={() => navigation.navigate('MyCommunity')}
-          />
-          {ENABLE_PAID_TIERS && (
+        {ENABLE_PAID_TIERS && (
+          <GroupedListSection header="Community">
             <GroupedListItem
               icon="gift-outline"
               title="Invite Friends"
               onPress={() => navigation.navigate('Referral')}
             />
-          )}
-        </GroupedListSection>
+          </GroupedListSection>
+        )}
 
         {/* Settings Section */}
         <GroupedListSection header="Settings">

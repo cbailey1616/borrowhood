@@ -99,7 +99,7 @@ function detectErrorType(message) {
   if (msg.includes('network') || msg.includes('connection') || msg.includes('fetch')) {
     return 'network';
   }
-  if (msg.includes('unauthorized') || msg.includes('sign in') || msg.includes('login') || msg.includes('token')) {
+  if ((msg.includes('unauthorized') || msg.includes('sign in') || msg.includes('login') || msg.includes('token')) && !msg.includes('password')) {
     return 'auth';
   }
   if (msg.includes('verification') || msg.includes('verify')) {

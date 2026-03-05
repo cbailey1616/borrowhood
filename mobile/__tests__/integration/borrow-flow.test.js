@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
 
 jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }),
@@ -114,7 +114,8 @@ describe('Borrow Flow Integration', () => {
       <TransactionDetailScreen navigation={mockNavigation} route={route} />
     );
     await waitFor(() => {
-      expect(getByText(/Pending Approval/i)).toBeTruthy();
+      // RentalProgress renders step labels, not status label text
+      expect(getByText('Request')).toBeTruthy();
     });
   });
 

@@ -10,6 +10,8 @@ const wrapper = ({ children }) => <AuthProvider>{children}</AuthProvider>;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // AuthContext calls api.getMe() after login/register to fetch full profile
+  api.getMe.mockResolvedValue({ id: 'u-1', firstName: 'Test', lastName: 'User' });
 });
 
 describe('Auth Flow Integration', () => {

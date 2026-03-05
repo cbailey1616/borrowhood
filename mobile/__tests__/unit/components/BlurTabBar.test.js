@@ -15,7 +15,7 @@ const createTabBarProps = (activeIndex = 0) => ({
       { key: 'Feed-key', name: 'Feed' },
       { key: 'Saved-key', name: 'Saved' },
       { key: 'MyItems-key', name: 'MyItems' },
-      { key: 'Inbox-key', name: 'Inbox' },
+      { key: 'Activity-key', name: 'Activity' },
       { key: 'Profile-key', name: 'Profile' },
     ],
   },
@@ -23,7 +23,7 @@ const createTabBarProps = (activeIndex = 0) => ({
     'Feed-key': { options: {} },
     'Saved-key': { options: {} },
     'MyItems-key': { options: {} },
-    'Inbox-key': { options: {} },
+    'Activity-key': { options: {} },
     'Profile-key': { options: {} },
   },
   navigation: {
@@ -42,7 +42,7 @@ describe('BlurTabBar', () => {
     expect(getByText('Feed')).toBeTruthy();
     expect(getByText('Saved')).toBeTruthy();
     expect(getByText('My Items')).toBeTruthy();
-    expect(getByText('Inbox')).toBeTruthy();
+    expect(getByText('Activity')).toBeTruthy();
     expect(getByText('Profile')).toBeTruthy();
   });
 

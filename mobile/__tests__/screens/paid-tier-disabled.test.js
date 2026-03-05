@@ -74,20 +74,28 @@ describe('Feature flag', () => {
 // premiumGate bypassed for free users
 // ============================================
 describe('premiumGate with paid tiers disabled', () => {
-  it('town_browse passes for free unverified user', () => {
+  it('town_browse requires verification for unverified user', () => {
     const result = checkPremiumGate(freeUser, 'town_browse');
+    // Unverified users must verify even without paid tiers
+    expect(result.passed).toBe(false);
+    expect(result.screen).toBe('IdentityVerification');
+  });
+
+  it('town_browse passes for verified free user', () => {
+    const verifiedUser = { ...freeUser, isVerified: true };
+    const result = checkPremiumGate(verifiedUser, 'town_browse');
     expect(result.passed).toBe(true);
   });
 
-  it('rental_listing only requires Stripe Connect', () => {
+  it('rental_listing requires verification first, then Stripe Connect', () => {
     const result = checkPremiumGate(freeUser, 'rental_listing');
-    // Free user without Connect should be gated to SetupPayout only
+    // Unverified user goes to IdentityVerification first
     expect(result.passed).toBe(false);
-    expect(result.screen).toBe('SetupPayout');
+    expect(result.screen).toBe('IdentityVerification');
   });
 
-  it('rental_listing passes when user has Connect', () => {
-    const userWithConnect = { ...freeUser, hasConnectAccount: true };
+  it('rental_listing passes when user is verified and has Connect', () => {
+    const userWithConnect = { ...freeUser, isVerified: true, hasConnectAccount: true };
     const result = checkPremiumGate(userWithConnect, 'rental_listing');
     expect(result.passed).toBe(true);
   });

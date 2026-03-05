@@ -88,11 +88,18 @@ export default function UserProfileScreen({ route, navigation }) {
     }
   };
 
-  const handleMessage = () => {
-    navigation.navigate('Chat', {
-      recipientId: id,
-      listing: null,
-    });
+  const handleMessage = async () => {
+    try {
+      const conversations = await api.getConversations();
+      const existing = conversations.find(c => c.otherUser?.id === id);
+      if (existing) {
+        navigation.navigate('Chat', { conversationId: existing.id });
+      } else {
+        navigation.navigate('Chat', { recipientId: id, listing: null });
+      }
+    } catch {
+      navigation.navigate('Chat', { recipientId: id, listing: null });
+    }
   };
 
   if (isLoading) {
@@ -153,39 +160,6 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Items */}
-        <View style={styles.ratingsSection}>
-          <Text style={styles.sectionTitle}>Items ({listings.length})</Text>
-          {listings.length === 0 ? (
-            <View style={styles.emptyRatings}>
-              <Ionicons name="cube-outline" size={32} color={COLORS.textMuted} />
-              <Text style={styles.emptyText}>No items listed yet</Text>
-            </View>
-          ) : (
-            <View style={styles.listingsGrid}>
-              {listings.map((listing) => (
-                <HapticPressable
-                  key={listing.id}
-                  haptic="light"
-                  style={styles.listingCard}
-                  onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
-                >
-                  <Image
-                    source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
-                    style={styles.listingImage}
-                  />
-                  <View style={styles.listingInfo}>
-                    <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
-                    <Text style={styles.listingPrice}>
-                      {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
-                    </Text>
-                  </View>
-                </HapticPressable>
-              ))}
-            </View>
-          )}
-        </View>
-
         {/* Action Buttons */}
         {!isOwnProfile && (
           <View style={styles.actionButtons}>
@@ -220,6 +194,39 @@ export default function UserProfileScreen({ route, navigation }) {
             </HapticPressable>
           </View>
         )}
+
+        {/* Items */}
+        <View style={styles.ratingsSection}>
+          <Text style={styles.sectionTitle}>Items ({listings.length})</Text>
+          {listings.length === 0 ? (
+            <View style={styles.emptyRatings}>
+              <Ionicons name="cube-outline" size={32} color={COLORS.textMuted} />
+              <Text style={styles.emptyText}>No items listed yet</Text>
+            </View>
+          ) : (
+            <View style={styles.listingsGrid}>
+              {listings.map((listing) => (
+                <HapticPressable
+                  key={listing.id}
+                  haptic="light"
+                  style={styles.listingCard}
+                  onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
+                >
+                  <Image
+                    source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
+                    style={styles.listingImage}
+                  />
+                  <View style={styles.listingInfo}>
+                    <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+                    <Text style={styles.listingPrice}>
+                      {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
+                    </Text>
+                  </View>
+                </HapticPressable>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       <ActionSheet

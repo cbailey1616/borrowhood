@@ -11,11 +11,11 @@ describe('SubscriptionScreen', () => {
   it('fetches subscription on mount', async () => { const S = require('../../src/screens/SubscriptionScreen').default; render(<S navigation={mockNavigation} route={route} />); await waitFor(() => { expect(api.getCurrentSubscription).toHaveBeenCalled(); }); });
   it('free user sees subscribe button', async () => { const S = require('../../src/screens/SubscriptionScreen').default; const { findByTestId } = render(<S navigation={mockNavigation} route={route} />); await findByTestId('Subscription.button.subscribe'); });
   it('displays price', async () => { const S = require('../../src/screens/SubscriptionScreen').default; const { getAllByText } = render(<S navigation={mockNavigation} route={route} />); await waitFor(() => { expect(getAllByText(/\$1/).length).toBeGreaterThan(0); }); });
-  it('plus user sees plan info', async () => {
+  it('plus user sees verified plan info', async () => {
     api.getCurrentSubscription.mockResolvedValue({ tier: 'plus', status: 'active', cancelAtPeriodEnd: false, nextBillingDate: new Date().toISOString(), startedAt: new Date().toISOString() });
     const S = require('../../src/screens/SubscriptionScreen').default;
-    const { getAllByText } = render(<S navigation={mockNavigation} route={route} />);
-    await waitFor(() => { expect(getAllByText(/Plus/i).length).toBeGreaterThan(0); });
+    const { findByText } = render(<S navigation={mockNavigation} route={route} />);
+    await findByText("You're Verified");
   });
   it('shows features list', async () => { const S = require('../../src/screens/SubscriptionScreen').default; const { findByText } = render(<S navigation={mockNavigation} route={route} />); await findByText(/Borrow from anyone/i); });
 });

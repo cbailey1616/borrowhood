@@ -73,6 +73,7 @@ export default function PaymentFlowScreen({ navigation, route }) {
           merchantCountryCode: 'US',
           testEnv: __DEV__,
         },
+        link: { display: 'never' },
         appearance: PAYMENT_SHEET_APPEARANCE,
       });
 

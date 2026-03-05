@@ -61,18 +61,19 @@ describe('ForgotPasswordScreen', () => {
     expect(mockShowError).toHaveBeenCalled();
   });
 
-  it('success transitions to step 2 (reset code form)', async () => {
+  it('success transitions to step 2 (code entry)', async () => {
     const ForgotPasswordScreen = require('../../../src/screens/auth/ForgotPasswordScreen').default;
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText, findByText } = render(
       <ForgotPasswordScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     await act(async () => {
       fireEvent.press(getByText('Send Reset Code'));
     });
-    // Step 2 should now be visible - code input has placeholder "123456"
+    // Step 2 shows "Enter your code" title and resend button
     await waitFor(() => {
-      expect(getByPlaceholderText('123456')).toBeTruthy();
+      expect(getByText('Enter your code')).toBeTruthy();
     });
+    expect(getByText(/Resend code/)).toBeTruthy();
   });
 });

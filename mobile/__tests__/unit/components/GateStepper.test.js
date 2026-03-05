@@ -16,8 +16,8 @@ describe('GateStepper', () => {
     const { getByText } = render(
       <GateStepper currentStep={1} totalSteps={3} />
     );
-    expect(getByText('Plus Membership')).toBeTruthy();
-    expect(getByText('Identity Verification')).toBeTruthy();
+    expect(getByText('Verify & Pay')).toBeTruthy();
+    expect(getByText('Identity Check')).toBeTruthy();
     expect(getByText('Payout Setup')).toBeTruthy();
   });
 
@@ -26,7 +26,7 @@ describe('GateStepper', () => {
     const { getByText } = render(
       <GateStepper currentStep={2} totalSteps={3} />
     );
-    expect(getByText('Identity Verification')).toBeTruthy();
+    expect(getByText('Identity Check')).toBeTruthy();
   });
 
   it('shows step 1 as current when at step 1', () => {
@@ -35,7 +35,7 @@ describe('GateStepper', () => {
       <GateStepper currentStep={1} totalSteps={3} />
     );
     // Step 1 label should be rendered
-    expect(getByText('Plus Membership')).toBeTruthy();
+    expect(getByText('Verify & Pay')).toBeTruthy();
   });
 
   it('renders two steps when totalSteps is 2', () => {
@@ -43,8 +43,8 @@ describe('GateStepper', () => {
     const { getByText, queryByText } = render(
       <GateStepper currentStep={1} totalSteps={2} />
     );
-    expect(getByText('Plus Membership')).toBeTruthy();
-    expect(getByText('Identity Verification')).toBeTruthy();
+    expect(getByText('Verify & Pay')).toBeTruthy();
+    expect(getByText('Identity Check')).toBeTruthy();
     expect(queryByText('Payout Setup')).toBeNull();
   });
 

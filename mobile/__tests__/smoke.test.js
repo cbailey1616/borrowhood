@@ -54,6 +54,7 @@ const mockNavigation = {
   replace: jest.fn(),
   dispatch: jest.fn(),
   canGoBack: () => true,
+  isFocused: () => true,
 };
 
 // ============================================

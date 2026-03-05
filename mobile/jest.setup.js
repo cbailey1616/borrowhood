@@ -17,7 +17,7 @@ jest.mock('react-native-reanimated', () => {
   // Chainable mock for entering/exiting animations
   const chainable = () => {
     const obj = {};
-    const methods = ['duration', 'delay', 'springify', 'damping', 'stiffness', 'mass', 'overshootClamping', 'restDisplacementThreshold', 'restSpeedThreshold', 'withInitialValues', 'withCallback', 'build'];
+    const methods = ['duration', 'delay', 'springify', 'damping', 'stiffness', 'mass', 'overshootClamping', 'restDisplacementThreshold', 'restSpeedThreshold', 'withInitialValues', 'withCallback', 'build', 'easing'];
     methods.forEach((m) => { obj[m] = () => obj; });
     return obj;
   };
@@ -45,19 +45,33 @@ jest.mock('react-native-reanimated', () => {
     withRepeat: (val) => val,
     interpolate: (val) => val,
     Extrapolation: { CLAMP: 'clamp', EXTEND: 'extend' },
+    FadeIn: chainable(),
+    FadeOut: chainable(),
     FadeInUp: chainable(),
     FadeInDown: chainable(),
+    FadeInLeft: chainable(),
+    FadeInRight: chainable(),
     FadeOutUp: chainable(),
     FadeOutDown: chainable(),
+    FadeOutLeft: chainable(),
+    FadeOutRight: chainable(),
     SlideInUp: chainable(),
     SlideOutUp: chainable(),
     SlideInDown: chainable(),
     SlideOutDown: chainable(),
+    SlideInLeft: chainable(),
+    SlideInRight: chainable(),
+    SlideOutLeft: chainable(),
+    SlideOutRight: chainable(),
+    ZoomIn: chainable(),
+    ZoomOut: chainable(),
     Layout: chainable(),
     LinearTransition: chainable(),
+    SequencedTransition: chainable(),
+    JumpingTransition: chainable(),
     runOnJS: (fn) => fn,
     runOnUI: (fn) => fn,
-    Easing: { bezier: () => {}, inOut: () => {}, ease: 'ease', linear: 'linear', quad: 'quad' },
+    Easing: { bezier: () => () => 0, inOut: (e) => e, out: (e) => e, in: (e) => e, ease: 'ease', linear: 'linear', quad: 'quad', cubic: 'cubic' },
     createAnimatedComponent: (comp) => comp,
   };
 });
@@ -81,7 +95,10 @@ jest.mock('expo-blur', () => ({
 }));
 
 jest.mock('expo-linear-gradient', () => ({
-  LinearGradient: 'LinearGradient',
+  LinearGradient: ({ children, ...props }) => {
+    const View = require('react-native').View;
+    return require('react').createElement(View, props, children);
+  },
 }));
 
 jest.mock('expo-secure-store', () => ({
@@ -515,6 +532,12 @@ jest.mock('./src/services/api', () => ({
     // Dispute extras
     submitDisputeEvidence: jest.fn(),
     addDisputeEvidence: jest.fn(),
+    // Earnings
+    getEarnings: jest.fn().mockResolvedValue({ balance: { available: 0 }, stats: { totalEarned: 0, totalRentals: 0, averagePerRental: 0, activeRentals: 0 }, recentTransactions: [], payouts: [], hasConnectAccount: true }),
+    // Cancel rental
+    cancelRental: jest.fn(),
+    // Find account
+    findAccount: jest.fn(),
   },
 }));
 

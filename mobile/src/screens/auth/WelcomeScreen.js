@@ -42,6 +42,7 @@ export default function WelcomeScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState(null);
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
   const [biometricSheetVisible, setBiometricSheetVisible] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
@@ -87,14 +88,12 @@ export default function WelcomeScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showError({
-        type: 'validation',
-        title: 'Missing Information',
-        message: 'Please enter your email and password to sign in.',
-      });
+      haptics.warning();
+      setLoginError('Please enter your email and password.');
       return;
     }
 
+    setLoginError(null);
     setIsLoading(true);
     try {
       await login(email, password);
@@ -108,10 +107,8 @@ export default function WelcomeScreen({ navigation }) {
         }, 500);
       }
     } catch (error) {
-      showError({
-        type: 'auth',
-        message: error.message || 'That didn\'t work. Please double-check your email and password and try again.',
-      });
+      haptics.error();
+      setLoginError(error.message || 'Incorrect email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +157,7 @@ export default function WelcomeScreen({ navigation }) {
                   <TextInput
                     style={styles.input}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(t) => { setEmail(t); setLoginError(null); }}
                     placeholder="you@example.com"
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="email-address"
@@ -177,7 +174,7 @@ export default function WelcomeScreen({ navigation }) {
                     <TextInput
                       style={styles.passwordInput}
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={(t) => { setPassword(t); setLoginError(null); }}
                       placeholder="Enter your password"
                       placeholderTextColor={COLORS.textMuted}
                       secureTextEntry={!showPassword}
@@ -196,6 +193,13 @@ export default function WelcomeScreen({ navigation }) {
                   </View>
                 </View>
 
+                {loginError && (
+                  <View style={styles.errorCard}>
+                    <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+                    <Text style={styles.errorText}>{loginError}</Text>
+                  </View>
+                )}
+
                 <HapticPressable
                   style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
                   onPress={handleLogin}
@@ -210,6 +214,14 @@ export default function WelcomeScreen({ navigation }) {
                   ) : (
                     <Text style={styles.loginButtonText}>Sign In</Text>
                   )}
+                </HapticPressable>
+
+                <HapticPressable
+                  onPress={() => navigation.navigate('ForgotPassword')}
+                  style={styles.forgotPassword}
+                  haptic="light"
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
                 </HapticPressable>
               </View>
             </View>
@@ -347,6 +359,31 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: COLORS.background,
     ...TYPOGRAPHY.headline,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.danger + '10',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.danger + '25',
+    padding: SPACING.md,
+  },
+  errorText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.danger,
+    flex: 1,
+    lineHeight: 20,
+  },
+  forgotPassword: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+  },
+  forgotPasswordText: {
+    color: COLORS.primary,
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

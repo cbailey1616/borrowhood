@@ -52,34 +52,38 @@ describe('LoginScreen', () => {
     expect(mockLogin).toHaveBeenCalledWith('test@test.com', 'MyPassword1');
   });
 
-  it('empty email shows validation error', async () => {
+  it('empty email shows inline validation error', async () => {
     const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText, queryByText } = render(
       <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'MyPassword1');
     await act(async () => {
       fireEvent.press(getByText('Sign In'));
     });
-    expect(mockShowError).toHaveBeenCalled();
+    // LoginScreen uses inline error state (setLoginError), not useError().showError
+    expect(queryByText('Please enter your email and password.')).toBeTruthy();
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
-  it('empty password shows validation error', async () => {
+  it('empty password shows inline validation error', async () => {
     const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText, queryByText } = render(
       <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     await act(async () => {
       fireEvent.press(getByText('Sign In'));
     });
-    expect(mockShowError).toHaveBeenCalled();
+    // LoginScreen uses inline error state (setLoginError), not useError().showError
+    expect(queryByText('Please enter your email and password.')).toBeTruthy();
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
-  it('wrong credentials show error', async () => {
+  it('wrong credentials show inline error', async () => {
     mockLogin.mockRejectedValueOnce(new Error('Invalid credentials'));
     const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText, findByText } = render(
       <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
@@ -87,7 +91,8 @@ describe('LoginScreen', () => {
     await act(async () => {
       fireEvent.press(getByText('Sign In'));
     });
-    expect(mockShowError).toHaveBeenCalled();
+    // LoginScreen shows the server's error message inline
+    expect(await findByText('Invalid credentials')).toBeTruthy();
   });
 
   it('renders forgot password link', () => {
@@ -95,6 +100,15 @@ describe('LoginScreen', () => {
     const { getByText } = render(
       <LoginScreen navigation={mockNavigation} />
     );
-    expect(getByText(/Forgot/i)).toBeTruthy();
+    expect(getByText('Forgot your password?')).toBeTruthy();
+  });
+
+  it('forgot password navigates to ForgotPassword', () => {
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
+    const { getByText } = render(
+      <LoginScreen navigation={mockNavigation} />
+    );
+    fireEvent.press(getByText('Forgot your password?'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
   });
 });

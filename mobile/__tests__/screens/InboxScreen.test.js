@@ -8,9 +8,10 @@ const mockUser = {
   onboardingCompleted: true, rating: 4.5, ratingCount: 10, totalTransactions: 5,
 };
 
+const mockParentNavigate = jest.fn();
 const mockNavigation = {
   navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(),
-  addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }),
+  addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn(), navigate: mockParentNavigate }),
   dispatch: jest.fn(), canGoBack: () => true,
 };
 
@@ -44,7 +45,7 @@ describe('InboxScreen', () => {
     });
   });
 
-  it('displays conversations', async () => {
+  it('displays conversations on Messages tab', async () => {
     api.getConversations.mockResolvedValue([{
       id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null },
       lastMessage: 'Hey!', lastMessageAt: new Date().toISOString(),
@@ -52,25 +53,32 @@ describe('InboxScreen', () => {
     }]);
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
+    // Switch to Messages tab (index 1)
+    const messagesTab = await findByText('Messages');
+    await act(async () => {
+      fireEvent.press(messagesTab);
+    });
     await findByText('Alice Jones');
   });
 
-  it('activity tab calls api.getTransactions', async () => {
+  it('fetches notifications and conversations on load', async () => {
     const InboxScreen = require('../../src/screens/InboxScreen').default;
-    const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
-    const activityTab = await findByText('Activity');
-    await act(async () => {
-      fireEvent.press(activityTab);
-    });
+    render(<InboxScreen navigation={mockNavigation} />);
     await waitFor(() => {
-      expect(api.getTransactions).toHaveBeenCalled();
+      expect(api.getNotifications).toHaveBeenCalled();
+      expect(api.getConversations).toHaveBeenCalled();
     });
   });
 
-  it('empty messages state', async () => {
+  it('empty messages state on Messages tab', async () => {
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
-    await findByText(/no messages/i);
+    // Switch to Messages tab
+    const messagesTab = await findByText('Messages');
+    await act(async () => {
+      fireEvent.press(messagesTab);
+    });
+    await findByText(/No messages yet/i);
   });
 
   it('tap conversation navigates to Chat', async () => {
@@ -81,8 +89,14 @@ describe('InboxScreen', () => {
     }]);
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
+    // Switch to Messages tab first
+    const messagesTab = await findByText('Messages');
+    await act(async () => {
+      fireEvent.press(messagesTab);
+    });
     const conv = await findByText('Alice Jones');
     fireEvent.press(conv);
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ conversationId: 'conv-1' }));
+    // InboxScreen uses navigation.getParent().navigate for Chat navigation
+    expect(mockParentNavigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ conversationId: 'conv-1' }));
   });
 });

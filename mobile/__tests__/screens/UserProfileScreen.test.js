@@ -29,16 +29,15 @@ describe('UserProfileScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText(/Add Friend/i);
   });
-  it('shows items and reviews tabs', async () => {
+  it('shows items section', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    // Tab labels render as "Items (0)" and "Reviews (0)"
     await findByText(/Items \(/);
-    await findByText(/Reviews \(/);
   });
-  it('displays transaction count', async () => {
+  it('displays tier badge based on transaction count', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText('15');
+    // User with 15 transactions = Outlaw tier (11-30)
+    await findByText('Outlaw');
   });
 });

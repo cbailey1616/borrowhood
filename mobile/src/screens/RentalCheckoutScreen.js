@@ -62,6 +62,16 @@ export default function RentalCheckoutScreen({ navigation, route }) {
 
   const formatCurrency = (amount) => `$${(amount || 0).toFixed(2)}`;
 
+  // Cancel transaction if user leaves without paying
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!completed && transactionId) {
+        api.cancelRental(transactionId).catch(() => {});
+      }
+    });
+    return unsubscribe;
+  }, [navigation, completed, transactionId]);
+
   // Initialize PaymentSheet on mount
   useEffect(() => {
     const initSheet = async () => {
@@ -85,6 +95,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
           merchantCountryCode: 'US',
           testEnv: __DEV__,
         },
+        link: { display: 'never' },
         appearance: PAYMENT_SHEET_APPEARANCE,
       });
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, popToTop: jest.fn() };
-jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-1' }, refreshUser: jest.fn() }) }));
+const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, popToTop: jest.fn(), replace: jest.fn() };
+jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-1', isVerified: true, hasConnectAccount: false }, refreshUser: jest.fn() }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getConnectStatus.mockResolvedValue(null); api.getConnectOnboardingLink.mockResolvedValue({ url: 'https://connect.stripe.com/test' }); });
 describe('SetupPayoutScreen', () => {

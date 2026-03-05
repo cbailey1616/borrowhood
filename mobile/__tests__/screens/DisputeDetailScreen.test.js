@@ -7,14 +7,18 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 const mockDispute = {
   id: 'd-1',
-  status: 'open',
+  status: 'awaitingResponse',
+  type: 'damagesClaim',
   reason: 'Item damaged',
+  description: 'Item damaged',
   listing: { id: 'listing-1', title: 'Camera', photos: ['https://test.com/photo.jpg'] },
-  lender: { id: 'user-1', firstName: 'Test', lastName: 'User', profilePhotoUrl: null },
-  borrower: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null },
+  claimant: { id: 'user-1', firstName: 'Test', lastName: 'User', profilePhotoUrl: null },
+  respondent: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null },
   transaction: { id: 'txn-1', rentalFee: 25.00, depositAmount: 50.00, conditionAtPickup: 'good', conditionAtReturn: 'damaged' },
   evidenceUrls: [],
   isOrganizer: false,
+  isClaimant: true,
+  isRespondent: false,
   createdAt: new Date().toISOString(),
 };
 beforeEach(() => { jest.clearAllMocks(); api.getDispute.mockResolvedValue(mockDispute); });
@@ -22,6 +26,6 @@ describe('DisputeDetailScreen', () => {
   const route = { params: { id: 'd-1' } };
   it('fetches dispute', async () => { const S = require('../../src/screens/DisputeDetailScreen').default; render(<S navigation={mockNavigation} route={route} />); await waitFor(() => { expect(api.getDispute).toHaveBeenCalledWith('d-1'); }); });
   it('displays reason', async () => { const S = require('../../src/screens/DisputeDetailScreen').default; const { findByText } = render(<S navigation={mockNavigation} route={route} />); await findByText('Item damaged'); });
-  it('displays parties', async () => { const S = require('../../src/screens/DisputeDetailScreen').default; const { findByText } = render(<S navigation={mockNavigation} route={route} />); await findByText('Alice'); });
-  it('shows status', async () => { const S = require('../../src/screens/DisputeDetailScreen').default; const { findByText } = render(<S navigation={mockNavigation} route={route} />); await findByText('Open'); });
+  it('displays parties', async () => { const S = require('../../src/screens/DisputeDetailScreen').default; const { findAllByText } = render(<S navigation={mockNavigation} route={route} />); const matches = await findAllByText(/Alice/); expect(matches.length).toBeGreaterThan(0); });
+  it('shows status', async () => { const S = require('../../src/screens/DisputeDetailScreen').default; const { findByText } = render(<S navigation={mockNavigation} route={route} />); await findByText('Awaiting Response'); });
 });

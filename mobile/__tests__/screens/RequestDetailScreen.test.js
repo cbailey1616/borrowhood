@@ -45,10 +45,10 @@ describe('RequestDetailScreen', () => {
     await findByText(/Alice/);
   });
 
-  it('non-owner sees I Have This button', async () => {
+  it('non-owner sees Respond in Thread button', async () => {
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText(/I Have This/i);
+    await findByText(/Respond in Thread/i);
   });
 
   it('owner sees edit and close buttons', async () => {

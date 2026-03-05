@@ -38,8 +38,6 @@ export default function ListingDetailScreen({ route, navigation }) {
   const [listing, setListing] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPhoto, setCurrentPhoto] = useState(0);
-  const [discussions, setDiscussions] = useState([]);
-  const [discussionCount, setDiscussionCount] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
 
@@ -50,7 +48,6 @@ export default function ListingDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchListing();
-    fetchDiscussions();
     checkIfSaved();
   }, [id]);
 
@@ -105,16 +102,6 @@ export default function ListingDetailScreen({ route, navigation }) {
       console.error('Failed to fetch listing:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchDiscussions = async () => {
-    try {
-      const data = await api.getDiscussions(id, { limit: 3 });
-      setDiscussions(data.posts || []);
-      setDiscussionCount(data.total || 0);
-    } catch (error) {
-      console.error('Failed to fetch discussions:', error);
     }
   };
 
@@ -241,16 +228,14 @@ export default function ListingDetailScreen({ route, navigation }) {
 
           {/* Pricing */}
           <View style={styles.pricingCard} testID="ListingDetail.price" accessibilityLabel="Pricing details">
-            {listing.isFree ? (
-              <Text style={styles.freeLabel}>Free to borrow</Text>
-            ) : (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Rental fee</Text>
-                <Text style={styles.priceValue}>${listing.pricePerDay}/day</Text>
-              </View>
-            )}
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Rental fee</Text>
+              <Text style={[styles.priceValue, listing.isFree && { color: COLORS.greenText, fontWeight: '700' }]}>
+                {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
+              </Text>
+            </View>
             {listing.depositAmount > 0 && (
-              <View style={styles.priceRow}>
+              <View style={[styles.priceRow, { marginBottom: 0 }]}>
                 <Text style={styles.priceLabel}>Refundable deposit</Text>
                 <Text style={styles.priceValue}>${listing.depositAmount}</Text>
               </View>
@@ -284,70 +269,6 @@ export default function ListingDetailScreen({ route, navigation }) {
               <Text style={styles.description}>{listing.description}</Text>
             </View>
           )}
-
-          {/* Discussions Section */}
-          <View style={styles.section}>
-            <View style={styles.discussionHeader}>
-              <Text style={styles.sectionTitle}>
-                Questions & Answers {discussionCount > 0 && `(${discussionCount})`}
-              </Text>
-              {discussionCount > 3 && (
-                <HapticPressable
-                  onPress={() => navigation.navigate('ListingDiscussion', { listingId: id, listing })}
-                  haptic="light"
-                >
-                  <Text style={styles.seeAllText}>See All</Text>
-                </HapticPressable>
-              )}
-            </View>
-
-            {discussions.length > 0 ? (
-              <View style={styles.discussionList}>
-                {discussions.map((post) => (
-                  <HapticPressable
-                    key={post.id}
-                    style={styles.discussionPreview}
-                    onPress={() => navigation.navigate('ListingDiscussion', { listingId: id, listing })}
-                    haptic="light"
-                  >
-                    {post.user.profilePhotoUrl ? (
-                      <Image source={{ uri: post.user.profilePhotoUrl }} style={styles.discussionAvatar} />
-                    ) : (
-                      <View style={[styles.discussionAvatar, styles.avatarPlaceholder]}>
-                        <Ionicons name="person" size={16} color={COLORS.gray[400]} />
-                      </View>
-                    )}
-                    <View style={styles.discussionContent}>
-                      <Text style={styles.discussionAuthor}>
-                        {post.user.firstName} {post.user.lastName}
-                      </Text>
-                      <Text style={styles.discussionText} numberOfLines={2}>
-                        {post.content}
-                      </Text>
-                      {post.replyCount > 0 && (
-                        <Text style={styles.replyCount}>
-                          {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
-                        </Text>
-                      )}
-                    </View>
-                  </HapticPressable>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.noDiscussions}>
-                No questions yet. Be the first to ask!
-              </Text>
-            )}
-
-            <HapticPressable
-              style={styles.askQuestionButton}
-              onPress={() => navigation.navigate('ListingDiscussion', { listingId: id, listing, autoFocus: true })}
-              haptic="light"
-            >
-              <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.askQuestionText}>Ask a Question</Text>
-            </HapticPressable>
-          </View>
 
           {/* Owner */}
           {listing.ownerMasked ? (
@@ -429,16 +350,37 @@ export default function ListingDetailScreen({ route, navigation }) {
           <View style={styles.footerGreen}>
             <HapticPressable
               style={styles.messageButton}
-              onPress={() => navigation.navigate('Chat', {
-                recipientId: listing.owner.id,
-                listingId: listing.id,
-                listing: {
-                  id: listing.id,
-                  title: listing.title,
-                  photoUrl: listing.photos?.[0],
-                  owner: listing.owner,
+              onPress={async () => {
+                try {
+                  const conversations = await api.getConversations();
+                  const existing = conversations.find(c => c.otherUser?.id === listing.owner.id);
+                  if (existing) {
+                    navigation.navigate('Chat', { conversationId: existing.id });
+                  } else {
+                    navigation.navigate('Chat', {
+                      recipientId: listing.owner.id,
+                      listingId: listing.id,
+                      listing: {
+                        id: listing.id,
+                        title: listing.title,
+                        photoUrl: listing.photos?.[0],
+                        owner: listing.owner,
+                      }
+                    });
+                  }
+                } catch {
+                  navigation.navigate('Chat', {
+                    recipientId: listing.owner.id,
+                    listingId: listing.id,
+                    listing: {
+                      id: listing.id,
+                      title: listing.title,
+                      photoUrl: listing.photos?.[0],
+                      owner: listing.owner,
+                    }
+                  });
                 }
-              })}
+              }}
               haptic="light"
             >
               <Ionicons name="chatbubble" size={20} color={COLORS.greenText} />
@@ -638,11 +580,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.greenBorder,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
-  },
-  freeLabel: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.greenText,
-    textAlign: 'center',
   },
   priceRow: {
     flexDirection: 'row',
@@ -849,74 +786,5 @@ const styles = StyleSheet.create({
   borrowButtonText: {
     color: '#fff',
     ...TYPOGRAPHY.headline,
-  },
-  discussionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  seeAllText: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  discussionList: {
-    gap: SPACING.md,
-  },
-  discussionPreview: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    gap: SPACING.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
-  discussionAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: COLORS.gray[700],
-  },
-  discussionContent: {
-    flex: 1,
-  },
-  discussionAuthor: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  discussionText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-  },
-  replyCount: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.primary,
-    marginTop: SPACING.xs,
-  },
-  noDiscussions: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    paddingVertical: SPACING.lg,
-  },
-  askQuestionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.md,
-    marginTop: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-  },
-  askQuestionText: {
-    ...TYPOGRAPHY.button,
-    color: COLORS.primary,
   },
 });

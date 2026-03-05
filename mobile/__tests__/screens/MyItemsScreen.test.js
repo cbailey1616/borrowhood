@@ -63,8 +63,8 @@ describe('MyItemsScreen', () => {
   it('requests tab calls api.getMyRequests', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const { findByText } = render(<MyItemsScreen navigation={mockNavigation} />);
-    // Switch to My Requests tab
-    const requestsTab = await findByText('My Requests');
+    // Switch to Wanted tab (index 2)
+    const requestsTab = await findByText('Wanted');
     await act(async () => {
       fireEvent.press(requestsTab);
     });
@@ -80,7 +80,7 @@ describe('MyItemsScreen', () => {
     }]);
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const { findByText } = render(<MyItemsScreen navigation={mockNavigation} />);
-    const requestsTab = await findByText('My Requests');
+    const requestsTab = await findByText('Wanted');
     await act(async () => {
       fireEvent.press(requestsTab);
     });

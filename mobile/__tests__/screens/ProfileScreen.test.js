@@ -41,11 +41,11 @@ describe('ProfileScreen', () => {
     expect(getByText('Verified')).toBeTruthy();
   });
 
-  it('shows rating and transaction count', () => {
+  it('shows tier badge based on transaction count', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('5')).toBeTruthy(); // totalTransactions
-    expect(getByText('4.5')).toBeTruthy(); // rating
+    // User with 5 transactions = Archer tier (3-10)
+    expect(getByText('Archer')).toBeTruthy();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false

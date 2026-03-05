@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   Image,
@@ -48,9 +47,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
-  const [selectedRating, setSelectedRating] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
-  const [ratingFormVisible, setRatingFormVisible] = useState(false);
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const pollRef = useRef(null);
@@ -159,23 +155,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleSubmitRating = async () => {
-    if (selectedRating === 0) return;
-    setActionLoading(true);
-    try {
-      await api.rateTransaction(id, selectedRating, ratingComment || undefined);
-      haptics.success();
-      showToast('Thanks for the rating!', 'success');
-      setRatingFormVisible(false);
-      fetchTransaction();
-    } catch (error) {
-      haptics.error();
-      showError({ message: error.message || 'Couldn\'t submit your rating right now. Please check your connection and try again.' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleCancel = async () => {
     setActionLoading(true);
     try {
@@ -191,8 +170,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
-
-  const canRate = ['returned', 'completed'].includes(transaction?.status) && !transaction?.myRating;
 
   if (isLoading) {
     return (
@@ -356,42 +333,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Your Rating (read-only) */}
-        {transaction.myRating && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Rating</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Ionicons
-                  key={star}
-                  name={star <= transaction.myRating.rating ? 'star' : 'star-outline'}
-                  size={24}
-                  color={COLORS.warning}
-                />
-              ))}
-            </View>
-            {transaction.myRating.comment ? (
-              <Text style={[styles.messageText, { marginTop: SPACING.sm }]}>
-                {transaction.myRating.comment}
-              </Text>
-            ) : null}
-          </View>
-        )}
-
         {/* Dispute Banner */}
         {transaction?.hasDispute && transaction?.disputeId && (() => {
-          const resolved = ['resolvedInFavorOfClaimant', 'resolvedInFavorOfRespondent', 'dismissed', 'expired'].includes(transaction.disputeStatus);
-          const bannerColor = resolved ? COLORS.secondary : COLORS.danger;
+          const active = ['pending', 'awaitingResponse', 'underReview'].includes(transaction.disputeStatus);
+          const bannerColor = active ? COLORS.danger : COLORS.secondary;
           return (
             <HapticPressable
               haptic="light"
               style={[styles.disputeBanner, { backgroundColor: bannerColor + '15' }]}
               onPress={() => navigation.navigate('DisputeDetail', { id: transaction.disputeId })}
             >
-              <Ionicons name={resolved ? 'checkmark-circle' : 'alert-circle'} size={20} color={bannerColor} />
+              <Ionicons name={active ? 'alert-circle' : 'checkmark-circle'} size={20} color={bannerColor} />
               <View style={styles.disputeBannerContent}>
                 <Text style={[styles.disputeBannerTitle, { color: bannerColor }]}>
-                  {resolved ? 'Dispute Resolved' : 'Active Dispute'}
+                  {active ? 'Active Dispute' : 'Dispute Resolved'}
                 </Text>
                 <Text style={[styles.disputeBannerSubtitle, { color: bannerColor }]}>Tap to view details</Text>
               </View>
@@ -413,7 +368,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <View style={styles.returnedBanner}>
             <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
             <Text style={styles.returnedBannerText}>
-              Item returned. This transaction will close automatically in {Math.max(0, Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(transaction.actualReturnAt).getTime())) / (24 * 60 * 60 * 1000)))} days if no dispute is filed.
+              Item returned. This transaction will close automatically on {new Date(new Date(transaction.actualReturnAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} if no dispute is filed.
             </Text>
           </View>
         )}
@@ -557,75 +512,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Rate button */}
-      {canRate && !ratingFormVisible && (
-        <View style={styles.footer}>
-          <HapticPressable
-            haptic="medium"
-            style={styles.approveButton}
-            onPress={() => setRatingFormVisible(true)}
-          >
-            <Text style={styles.approveButtonText}>Rate {otherPerson.firstName}</Text>
-          </HapticPressable>
-        </View>
-      )}
-
-      {/* Inline rating form */}
-      {canRate && ratingFormVisible && (
-        <View style={styles.ratingFooter}>
-          <View style={styles.starsRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <HapticPressable
-                key={star}
-                haptic="light"
-                style={styles.starButton}
-                onPress={() => setSelectedRating(star)}
-              >
-                <Ionicons
-                  name={star <= selectedRating ? 'star' : 'star-outline'}
-                  size={32}
-                  color={COLORS.warning}
-                />
-              </HapticPressable>
-            ))}
-          </View>
-          <TextInput
-            style={styles.ratingInput}
-            placeholder="Add a comment (optional)"
-            placeholderTextColor={COLORS.gray[500]}
-            value={ratingComment}
-            onChangeText={setRatingComment}
-            maxLength={500}
-            multiline
-          />
-          <View style={styles.ratingActions}>
-            <HapticPressable
-              haptic="light"
-              style={styles.declineButton}
-              onPress={() => {
-                setRatingFormVisible(false);
-                setSelectedRating(0);
-                setRatingComment('');
-              }}
-            >
-              <Text style={styles.declineButtonText}>Cancel</Text>
-            </HapticPressable>
-            <HapticPressable
-              haptic="medium"
-              style={[styles.approveButton, selectedRating === 0 && { opacity: 0.5 }]}
-              onPress={handleSubmitRating}
-              disabled={actionLoading || selectedRating === 0}
-            >
-              {actionLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.approveButtonText}>Submit</Text>
-              )}
-            </HapticPressable>
-          </View>
-        </View>
-      )}
-
       {/* Lender: Confirm return & release deposit when borrower already reported */}
       {transaction.isLender && transaction.status === 'returned' &&
         transaction.paymentStatus === 'authorized' && !transaction.hasDispute && (
@@ -666,7 +552,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Text style={styles.reportIssueText}>Report an Issue</Text>
           </HapticPressable>
           <Text style={styles.disputeWindowText}>
-            You have {Math.max(0, Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - new Date(transaction.actualReturnAt).getTime())) / (24 * 60 * 60 * 1000)))} days left to file a dispute
+            Dispute window closes {new Date(new Date(transaction.actualReturnAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </Text>
         </View>
       )}
@@ -1017,33 +903,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.gray[800],
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: SPACING.xs,
-  },
-  starButton: {
-    padding: SPACING.xs,
-  },
-  ratingFooter: {
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
-    gap: SPACING.md,
-  },
-  ratingInput: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.text,
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  ratingActions: {
-    flexDirection: 'row',
-    gap: SPACING.md,
   },
 });

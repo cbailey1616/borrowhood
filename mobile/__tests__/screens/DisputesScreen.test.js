@@ -14,8 +14,9 @@ describe('DisputesScreen', () => {
   it('renders loading state', () => {
     api.getDisputes.mockResolvedValue([]);
     const DisputesScreen = require('../../src/screens/DisputesScreen').default;
-    const { getByTestId } = render(<DisputesScreen navigation={mockNavigation} />);
-    expect(getByTestId('ActivityIndicator')).toBeTruthy();
+    const { UNSAFE_getByType } = render(<DisputesScreen navigation={mockNavigation} />);
+    const { ActivityIndicator } = require('react-native');
+    expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
   });
 
   it('renders empty state', async () => {

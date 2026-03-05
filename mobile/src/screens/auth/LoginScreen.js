@@ -37,7 +37,7 @@ export default function LoginScreen({ navigation }) {
       haptics.success();
     } catch (error) {
       haptics.error();
-      setLoginError('Incorrect email or password. Please try again or reset your password below.');
+      setLoginError(error.message || 'Incorrect email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -97,14 +97,14 @@ export default function LoginScreen({ navigation }) {
                   </Text>
                 </HapticPressable>
               </View>
-              <HapticPressable
-                onPress={() => navigation.navigate('ForgotPassword')}
-                style={styles.forgotPassword}
-                haptic="light"
-              >
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-              </HapticPressable>
             </View>
+
+            {loginError && (
+              <View style={styles.errorCard}>
+                <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+                <Text style={styles.errorText}>{loginError}</Text>
+              </View>
+            )}
 
             <HapticPressable
               style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
@@ -118,23 +118,16 @@ export default function LoginScreen({ navigation }) {
                 <Text style={styles.loginButtonText}>Sign In</Text>
               )}
             </HapticPressable>
+
+            <HapticPressable
+              onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotPassword}
+              haptic="light"
+            >
+              <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+            </HapticPressable>
           </View>
         </View>
-
-        {loginError && (
-          <View style={styles.errorCard}>
-            <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
-            <View style={styles.errorContent}>
-              <Text style={styles.errorText}>{loginError}</Text>
-              <HapticPressable
-                onPress={() => navigation.navigate('ForgotPassword')}
-                haptic="light"
-              >
-                <Text style={styles.errorLink}>Reset Password</Text>
-              </HapticPressable>
-            </View>
-          </View>
-        )}
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
@@ -232,15 +225,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     fontWeight: '500',
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: SPACING.sm,
-  },
-  forgotPasswordText: {
-    color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
-  },
   loginButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,
@@ -255,30 +239,30 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     ...TYPOGRAPHY.headline,
   },
+  forgotPassword: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+  },
+  forgotPasswordText: {
+    color: COLORS.primary,
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+  },
   errorCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: SPACING.sm,
     backgroundColor: COLORS.danger + '10',
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.danger + '25',
-    padding: SPACING.lg,
-    marginTop: SPACING.lg,
-  },
-  errorContent: {
-    flex: 1,
-    gap: SPACING.sm,
+    padding: SPACING.md,
   },
   errorText: {
     ...TYPOGRAPHY.footnote,
-    color: COLORS.text,
+    color: COLORS.danger,
+    flex: 1,
     lineHeight: 20,
-  },
-  errorLink: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.primary,
-    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

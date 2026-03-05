@@ -11,12 +11,12 @@ jest.mock('../../../src/context/ErrorContext', () => ({
 describe('UserBadges', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders nothing when no badges', () => {
+  it('renders Squire tier when no transactions', () => {
     const UserBadges = require('../../../src/components/UserBadges').default;
-    const { toJSON } = render(
+    const { getByText } = render(
       <UserBadges isVerified={false} totalTransactions={0} />
     );
-    expect(toJSON()).toBeNull();
+    expect(getByText('Squire')).toBeTruthy();
   });
 
   it('renders verified badge', () => {
@@ -27,19 +27,19 @@ describe('UserBadges', () => {
     expect(getByText('Verified')).toBeTruthy();
   });
 
-  it('renders trusted badge for 10+ transactions', () => {
+  it('renders Outlaw tier for 15 transactions', () => {
     const UserBadges = require('../../../src/components/UserBadges').default;
     const { getByText } = render(
       <UserBadges isVerified={false} totalTransactions={15} />
     );
-    expect(getByText('Trusted')).toBeTruthy();
+    expect(getByText('Outlaw')).toBeTruthy();
   });
 
-  it('renders power user badge for 25+ transactions', () => {
+  it('renders Sherwood Ranger tier for 31+ transactions', () => {
     const UserBadges = require('../../../src/components/UserBadges').default;
     const { getByText } = render(
-      <UserBadges isVerified={false} totalTransactions={30} />
+      <UserBadges isVerified={false} totalTransactions={35} />
     );
-    expect(getByText('Power User')).toBeTruthy();
+    expect(getByText('Sherwood Ranger')).toBeTruthy();
   });
 });
