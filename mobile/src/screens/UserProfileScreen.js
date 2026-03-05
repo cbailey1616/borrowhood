@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
-
+import UserBadges from '../components/UserBadges';
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -20,19 +20,16 @@ export default function UserProfileScreen({ route, navigation }) {
   const { id } = route.params;
   const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
-  const [ratings, setRatings] = useState([]);
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('listings');
   const [isFriend, setIsFriend] = useState(false);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
   const [removeFriendSheetVisible, setRemoveFriendSheetVisible] = useState(false);
 
-  const isOwnProfile = currentUser?.id === id;
+  const isOwnProfile = String(currentUser?.id) === String(id);
 
   useEffect(() => {
     fetchUser();
-    fetchRatings();
     fetchListings();
     checkFriendStatus();
   }, [id]);
@@ -45,15 +42,6 @@ export default function UserProfileScreen({ route, navigation }) {
       console.error('Failed to fetch user:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchRatings = async () => {
-    try {
-      const data = await api.getUserRatings(id);
-      setRatings(data);
-    } catch (error) {
-      console.error('Failed to fetch ratings:', error);
     }
   };
 
@@ -125,7 +113,7 @@ export default function UserProfileScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView>
+      <ScrollView style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
           <Image
@@ -133,18 +121,29 @@ export default function UserProfileScreen({ route, navigation }) {
             style={styles.avatar}
           />
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
-          {user.city && user.state && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.location}>{user.city}, {user.state}</Text>
-            </View>
-          )}
-          {user.isVerified && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="shield-checkmark" size={14} color={COLORS.secondary} />
-              <Text style={styles.verifiedText}>Verified Member</Text>
-            </View>
-          )}
+
+          <UserBadges
+            isVerified={user.isVerified}
+            totalTransactions={user.totalTransactions || 0}
+            size="medium"
+          />
+
+          <View style={styles.metaRow}>
+            {user.city && user.state && (
+              <View style={styles.metaItem}>
+                <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.metaText}>{user.city}, {user.state}</Text>
+              </View>
+            )}
+            {user.memberSince && (
+              <View style={styles.metaItem}>
+                <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.metaText}>
+                  Joined {new Date(user.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Bio */}
@@ -154,155 +153,55 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Stats */}
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{user.totalTransactions}</Text>
-            <Text style={styles.statLabel}>Transactions</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={16} color={COLORS.warning} />
-              <Text style={styles.statValue}>
-                {user.rating?.toFixed(1) || '-'}
-              </Text>
-            </View>
-            <Text style={styles.statLabel}>Rating ({user.ratingCount || 0})</Text>
-          </View>
-        </View>
-
-        {/* Tabs */}
+        {/* Items */}
         <View style={styles.ratingsSection}>
-          <View style={styles.tabs}>
-            <HapticPressable
-              haptic="light"
-              style={[styles.tab, activeTab === 'listings' && styles.tabActive]}
-              onPress={() => setActiveTab('listings')}
-            >
-              <Text style={[styles.tabText, activeTab === 'listings' && styles.tabTextActive]}>
-                Items ({listings.length})
-              </Text>
-            </HapticPressable>
-            <HapticPressable
-              haptic="light"
-              style={[styles.tab, activeTab === 'reviews' && styles.tabActive]}
-              onPress={() => setActiveTab('reviews')}
-            >
-              <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>
-                Reviews ({ratings.length})
-              </Text>
-            </HapticPressable>
-          </View>
-
-          {activeTab === 'listings' ? (
-            listings.length === 0 ? (
-              <View style={styles.emptyRatings}>
-                <Ionicons name="cube-outline" size={32} color={COLORS.textMuted} />
-                <Text style={styles.emptyText}>No items listed yet</Text>
-              </View>
-            ) : (
-              <View style={styles.listingsGrid}>
-                {listings.map((listing) => (
-                  <HapticPressable
-                    key={listing.id}
-                    haptic="light"
-                    style={styles.listingCard}
-                    onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
-                  >
-                    <Image
-                      source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
-                      style={styles.listingImage}
-                    />
-                    <View style={styles.listingInfo}>
-                      <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
-                      <Text style={styles.listingPrice}>
-                        {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
-                      </Text>
-                    </View>
-                  </HapticPressable>
-                ))}
-              </View>
-            )
+          <Text style={styles.sectionTitle}>Items ({listings.length})</Text>
+          {listings.length === 0 ? (
+            <View style={styles.emptyRatings}>
+              <Ionicons name="cube-outline" size={32} color={COLORS.textMuted} />
+              <Text style={styles.emptyText}>No items listed yet</Text>
+            </View>
           ) : (
-            ratings.length === 0 ? (
-              <View style={styles.emptyRatings}>
-                <Ionicons name="star-outline" size={32} color={COLORS.textMuted} />
-                <Text style={styles.emptyText}>No reviews yet</Text>
-              </View>
-            ) : (
-              ratings.map((rating) => (
-                <View key={rating.id} style={[styles.cardBox, styles.ratingCard]}>
-                  <View style={styles.ratingHeader}>
-                    <Image
-                      source={{ uri: rating.raterPhoto || 'https://via.placeholder.com/36' }}
-                      style={styles.raterAvatar}
-                    />
-                    <View style={styles.raterInfo}>
-                      <Text style={styles.raterName}>
-                        {rating.raterFirstName} {rating.raterLastName?.[0]}.
-                      </Text>
-                      <Text style={styles.ratingDate}>
-                        {new Date(rating.createdAt).toLocaleDateString()}
-                      </Text>
-                    </View>
-                    <View style={styles.ratingStars}>
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <Ionicons
-                          key={star}
-                          name={star <= rating.rating ? 'star' : 'star-outline'}
-                          size={14}
-                          color={COLORS.warning}
-                        />
-                      ))}
-                    </View>
+            <View style={styles.listingsGrid}>
+              {listings.map((listing) => (
+                <HapticPressable
+                  key={listing.id}
+                  haptic="light"
+                  style={styles.listingCard}
+                  onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
+                >
+                  <Image
+                    source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
+                    style={styles.listingImage}
+                  />
+                  <View style={styles.listingInfo}>
+                    <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+                    <Text style={styles.listingPrice}>
+                      {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
+                    </Text>
                   </View>
-                  {rating.comment && (
-                    <Text style={styles.ratingComment}>{rating.comment}</Text>
-                  )}
-                </View>
-              ))
-            )
+                </HapticPressable>
+              ))}
+            </View>
           )}
         </View>
-      </ScrollView>
 
-      {/* Action Buttons */}
-      {!isOwnProfile && (
-        <View style={styles.footer}>
-          <HapticPressable
-            haptic="light"
-            style={styles.messageButton}
-            onPress={handleMessage}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-          </HapticPressable>
-
-          {isFriend ? (
-            <HapticPressable
-              haptic="light"
-              style={[styles.friendButton, styles.friendButtonActive]}
-              onPress={() => setRemoveFriendSheetVisible(true)}
-              disabled={isAddingFriend}
-            >
-              {isAddingFriend ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
-              ) : (
-                <>
-                  <Ionicons name="checkmark" size={20} color={COLORS.primary} />
-                  <Text style={styles.friendButtonTextActive}>Friends</Text>
-                </>
-              )}
-            </HapticPressable>
-          ) : (
+        {/* Action Buttons */}
+        {!isOwnProfile && (
+          <View style={styles.actionButtons}>
             <HapticPressable
               haptic="medium"
-              style={styles.friendButton}
-              onPress={handleAddFriend}
+              style={[styles.friendButton, isFriend && styles.friendButtonActive]}
+              onPress={isFriend ? () => setRemoveFriendSheetVisible(true) : handleAddFriend}
               disabled={isAddingFriend}
             >
               {isAddingFriend ? (
                 <ActivityIndicator size="small" color="#fff" />
+              ) : isFriend ? (
+                <>
+                  <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                  <Text style={styles.friendButtonTextActive}>Friends</Text>
+                </>
               ) : (
                 <>
                   <Ionicons name="person-add-outline" size={20} color="#fff" />
@@ -310,9 +209,18 @@ export default function UserProfileScreen({ route, navigation }) {
                 </>
               )}
             </HapticPressable>
-          )}
-        </View>
-      )}
+
+            <HapticPressable
+              haptic="light"
+              style={styles.messageButton}
+              onPress={handleMessage}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.messageButtonText}>Message</Text>
+            </HapticPressable>
+          </View>
+        )}
+      </ScrollView>
 
       <ActionSheet
         isVisible={removeFriendSheetVisible}
@@ -375,29 +283,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: COLORS.text,
   },
-  locationRow: {
+  metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    marginTop: SPACING.xs,
-  },
-  location: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: SPACING.md,
     marginTop: SPACING.md,
-    backgroundColor: COLORS.secondary + '15',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.lg,
   },
-  verifiedText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.secondary,
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
   },
   bioSection: {
     padding: SPACING.lg,
@@ -409,35 +309,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
-  stats: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    paddingVertical: SPACING.xl,
-    marginTop: 1,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: COLORS.gray[700],
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  statValue: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
-    color: COLORS.text,
-  },
-  statLabel: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-  },
   ratingsSection: {
     padding: SPACING.lg,
   },
@@ -445,29 +316,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h3,
     color: COLORS.text,
     marginBottom: SPACING.md,
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-  },
-  tabActive: {
-    backgroundColor: COLORS.primary + '15',
-  },
-  tabText: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-  },
-  tabTextActive: {
-    color: COLORS.primary,
   },
   emptyRatings: {
     backgroundColor: COLORS.surface,
@@ -510,60 +358,26 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginTop: SPACING.xs,
   },
-  ratingCard: {
-    padding: SPACING.lg,
-    marginBottom: SPACING.sm,
-  },
-  ratingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  raterAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: COLORS.gray[700],
-  },
-  raterInfo: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  raterName: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  ratingDate: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-  },
-  ratingStars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  ratingComment: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
-    lineHeight: 20,
-  },
-  footer: {
+  actionButtons: {
     flexDirection: 'row',
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
-    backgroundColor: COLORS.surface,
     gap: SPACING.md,
   },
   messageButton: {
-    width: 52,
+    flexDirection: 'row',
     height: 52,
+    paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: SPACING.sm,
+  },
+  messageButtonText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   friendButton: {
     flex: 1,

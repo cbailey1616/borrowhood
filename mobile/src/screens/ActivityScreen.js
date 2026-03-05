@@ -27,6 +27,7 @@ export default function ActivityScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -43,21 +44,41 @@ export default function ActivityScreen({ navigation }) {
 
   useEffect(() => {
     fetchTransactions();
-  }, [fetchTransactions]);
+    fetchUnreadCount();
+  }, [fetchTransactions, fetchUnreadCount]);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const data = await api.getNotifications({ limit: 1 });
+      setUnreadCount(data?.unreadCount || 0);
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchTransactions();
+      fetchUnreadCount();
       // Clear notification badge when viewing activity
       Notifications.setBadgeCountAsync(0).catch(() => {});
       Notifications.dismissAllNotificationsAsync().catch(() => {});
     });
     return unsubscribe;
-  }, [navigation, fetchTransactions]);
+  }, [navigation, fetchTransactions, fetchUnreadCount]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchTransactions();
+    fetchUnreadCount();
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setUnreadCount(0);
+      haptics.success();
+    } catch (e) {
+      haptics.error();
+    }
   };
 
   const getStatusColor = (status) => {
@@ -133,6 +154,14 @@ export default function ActivityScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {unreadCount > 0 && (
+        <View style={styles.unreadHeader}>
+          <Text style={styles.unreadLabel}>{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</Text>
+          <HapticPressable onPress={handleMarkAllRead} haptic="light">
+            <Text style={styles.markAllRead}>Mark all read</Text>
+          </HapticPressable>
+        </View>
+      )}
       <View style={styles.tabs}>
         {TABS.map((tab) => (
           <HapticPressable
@@ -183,6 +212,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  unreadHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
+  },
+  unreadLabel: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  markAllRead: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
+    color: COLORS.primary,
   },
   tabs: {
     flexDirection: 'row',

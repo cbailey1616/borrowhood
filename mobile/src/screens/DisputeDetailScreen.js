@@ -994,15 +994,16 @@ const styles = StyleSheet.create({
   },
   outcomeOptions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: SPACING.sm,
   },
   outcomeOption: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.xs,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.surfaceElevated,
     borderWidth: 1.5,

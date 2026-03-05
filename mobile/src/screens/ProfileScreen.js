@@ -182,26 +182,6 @@ export default function ProfileScreen({ navigation }) {
           </HapticPressable>
         )}
 
-        {/* Stats */}
-        <View style={styles.stats}>
-          <View style={styles.statsInner}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{user?.totalTransactions || 0}</Text>
-              <Text style={styles.statLabel}>Transactions</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <View style={styles.ratingRow}>
-                <Text style={styles.starIcon}>★</Text>
-                <Text style={styles.statValue}>
-                  {user?.rating?.toFixed(1) || '0.0'}
-                </Text>
-              </View>
-              <Text style={styles.statLabel}>Rating ({user?.ratingCount || 0})</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Account Section */}
         <GroupedListSection header="Account">
           <GroupedListItem
@@ -473,44 +453,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginTop: 2,
-  },
-  stats: {
-    marginBottom: SPACING.xl,
-    backgroundColor: COLORS.greenBg,
-    borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-  },
-  statsInner: {
-    flexDirection: 'row',
-    paddingVertical: SPACING.lg,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: COLORS.greenSeparator,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  starIcon: {
-    ...TYPOGRAPHY.subheadline,
-    color: COLORS.warning,
-  },
-  statValue: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.greenText,
-  },
-  statLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.greenTextMuted,
-    marginTop: SPACING.xs,
   },
   version: {
     textAlign: 'center',

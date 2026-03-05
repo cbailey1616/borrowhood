@@ -93,6 +93,19 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     fetchData();
   };
 
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      haptics.success();
+      if (onRead) onRead();
+    } catch (e) {
+      haptics.error();
+    }
+  };
+
   const getTimeAgo = (date) => {
     if (!date) return '';
     const now = new Date();
@@ -272,6 +285,16 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
               tintColor={COLORS.primary}
             />
           }
+          ListHeaderComponent={
+            unreadCount > 0 ? (
+              <View style={styles.markAllBar}>
+                <Text style={styles.markAllLabel}>{unreadCount} unread</Text>
+                <HapticPressable onPress={handleMarkAllRead} haptic="light">
+                  <Text style={styles.markAllBtn}>Mark all read</Text>
+                </HapticPressable>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconWrap}>
@@ -328,6 +351,22 @@ const styles = StyleSheet.create({
   },
   segmented: {
     marginTop: SPACING.sm,
+  },
+  markAllBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  markAllLabel: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  markAllBtn: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   listContent: {
     padding: SPACING.lg,

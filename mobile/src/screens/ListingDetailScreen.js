@@ -384,16 +384,13 @@ export default function ListingDetailScreen({ route, navigation }) {
                     totalTransactions={listing.owner.totalTransactions || 0}
                     size="small"
                   />
-                  {listing.owner.rating > 0 && (
-                    <View style={styles.ownerRating}>
-                      <Ionicons name="star" size={14} color={COLORS.warning} />
-                      <Text style={styles.ownerRatingText}>
-                        {listing.owner.rating.toFixed(1)} ({listing.owner.ratingCount} reviews)
-                      </Text>
-                    </View>
+                  {listing.owner.ratingCount > 0 && (
+                    <Text style={styles.ownerTransactions}>
+                      {listing.owner.ratingCount} review{listing.owner.ratingCount !== 1 ? 's' : ''}
+                    </Text>
                   )}
                   <Text style={styles.ownerTransactions}>
-                    {listing.owner.totalTransactions} transactions
+                    {listing.owner.totalTransactions} transaction{listing.owner.totalTransactions !== 1 ? 's' : ''}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />

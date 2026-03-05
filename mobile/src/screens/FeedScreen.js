@@ -10,7 +10,6 @@ import {
   InteractionManager,
   Platform,
   TextInput,
-  KeyboardAvoidingView,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -278,7 +277,7 @@ export default function FeedScreen({ navigation }) {
       color: COLORS.primary,
       title: `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`,
       subtitle: 'Tap to catch up',
-      onPress: () => navigation.navigate('Notifications'),
+      onPress: () => navigation.navigate('Activity'),
     },
     !hasNeighborhood && !dismissedBanners.join && {
       key: 'join',
@@ -409,19 +408,19 @@ export default function FeedScreen({ navigation }) {
                 </View>
               </View>
             ) : (
-              <HapticPressable
-                style={styles.userInfo}
-                onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-                haptic="light"
-                scaleDown={1}
-              >
-                {item.user.profilePhotoUrl ? (
-                  <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Ionicons name="person" size={20} color={COLORS.gray[400]} />
-                  </View>
-                )}
+              <View style={styles.userInfo}>
+                <HapticPressable
+                  onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
+                  haptic="light"
+                >
+                  {item.user.profilePhotoUrl ? (
+                    <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.avatar} />
+                  ) : (
+                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                      <Ionicons name="person" size={20} color={COLORS.gray[400]} />
+                    </View>
+                  )}
+                </HapticPressable>
                 <View style={styles.userMeta}>
                   <View style={styles.userNameRow}>
                     <Text style={styles.userName}>
@@ -436,7 +435,7 @@ export default function FeedScreen({ navigation }) {
                   </View>
                   <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
                 </View>
-              </HapticPressable>
+              </View>
             )}
             <View style={[styles.typeBadge, !item.isAvailable && styles.borrowedBadge]}>
               <Ionicons name={item.isAvailable !== false ? "cube-outline" : "time-outline"} size={12} color={item.isAvailable !== false ? COLORS.primary : COLORS.warning} />
@@ -584,7 +583,7 @@ export default function FeedScreen({ navigation }) {
     const inputValue = threadInputs[itemId] || '';
     const isSubmitting = submittingThread === itemId;
     const currentReply = replyingTo[itemId];
-    const isCollapsed = collapsedThreads[itemId];
+    const isCollapsed = collapsedThreads[itemId] !== false;
     const feedItem = feed.find(f => f.id === itemId);
     const navParams = isRequest
       ? { requestId: itemId, request: feedItem }
@@ -772,7 +771,6 @@ export default function FeedScreen({ navigation }) {
                 <HapticPressable
                   onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
                   haptic="light"
-                  scaleDown={1}
                 >
                   {item.user.profilePhotoUrl ? (
                     <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
@@ -837,11 +835,7 @@ export default function FeedScreen({ navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
+    <View style={styles.container}>
       <NativeHeader
         title=""
         scrollY={scrollY}
@@ -927,6 +921,7 @@ export default function FeedScreen({ navigation }) {
         scrollEventThrottle={16}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1183,7 +1178,7 @@ export default function FeedScreen({ navigation }) {
           </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
