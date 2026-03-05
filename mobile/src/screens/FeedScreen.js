@@ -75,6 +75,8 @@ export default function FeedScreen({ navigation }) {
   const [threadReplies, setThreadReplies] = useState({});
   const [replyingTo, setReplyingTo] = useState({});
   const [collapsedThreads, setCollapsedThreads] = useState({});
+  const listRef = useRef(null);
+  const [focusedItemId, setFocusedItemId] = useState(null);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -695,6 +697,16 @@ export default function FeedScreen({ navigation }) {
             placeholder={currentReply ? 'Write a reply...' : 'Write a comment...'}
             placeholderTextColor={COLORS.textMuted}
             maxLength={2000}
+            onFocus={() => {
+              setFocusedItemId(itemId);
+              const index = feed.findIndex(f => f.id === itemId);
+              if (index >= 0 && listRef.current) {
+                setTimeout(() => {
+                  listRef.current.scrollToIndex({ index, viewPosition: 0, animated: true });
+                }, 300);
+              }
+            }}
+            onBlur={() => setFocusedItemId(null)}
           />
           <HapticPressable
             haptic="medium"
@@ -913,6 +925,7 @@ export default function FeedScreen({ navigation }) {
       </NativeHeader>
 
       <AnimatedFlatList
+        ref={listRef}
         data={feed}
         renderItem={renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}

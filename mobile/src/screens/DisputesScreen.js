@@ -158,8 +158,8 @@ export default function DisputesScreen({ navigation }) {
                   </Text>
                 )}
               </View>
-              {item.requestedAmount != null && (
-                <Text style={styles.amountText}>${item.requestedAmount.toFixed(2)}</Text>
+              {(item.resolvedAmount ?? item.requestedAmount) != null && (
+                <Text style={styles.amountText}>${(item.resolvedAmount ?? item.requestedAmount).toFixed(2)}</Text>
               )}
               <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
             </View>

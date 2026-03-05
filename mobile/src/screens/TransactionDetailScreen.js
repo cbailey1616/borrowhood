@@ -378,21 +378,27 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Active Dispute Banner */}
-        {transaction?.hasDispute && transaction?.disputeId && (
-          <HapticPressable
-            haptic="light"
-            style={styles.disputeBanner}
-            onPress={() => navigation.navigate('DisputeDetail', { id: transaction.disputeId })}
-          >
-            <Ionicons name="alert-circle" size={20} color={COLORS.danger} />
-            <View style={styles.disputeBannerContent}>
-              <Text style={styles.disputeBannerTitle}>Active Dispute</Text>
-              <Text style={styles.disputeBannerSubtitle}>Tap to view details</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.danger} />
-          </HapticPressable>
-        )}
+        {/* Dispute Banner */}
+        {transaction?.hasDispute && transaction?.disputeId && (() => {
+          const resolved = ['resolvedInFavorOfClaimant', 'resolvedInFavorOfRespondent', 'dismissed', 'expired'].includes(transaction.disputeStatus);
+          const bannerColor = resolved ? COLORS.secondary : COLORS.danger;
+          return (
+            <HapticPressable
+              haptic="light"
+              style={[styles.disputeBanner, { backgroundColor: bannerColor + '15' }]}
+              onPress={() => navigation.navigate('DisputeDetail', { id: transaction.disputeId })}
+            >
+              <Ionicons name={resolved ? 'checkmark-circle' : 'alert-circle'} size={20} color={bannerColor} />
+              <View style={styles.disputeBannerContent}>
+                <Text style={[styles.disputeBannerTitle, { color: bannerColor }]}>
+                  {resolved ? 'Dispute Resolved' : 'Active Dispute'}
+                </Text>
+                <Text style={[styles.disputeBannerSubtitle, { color: bannerColor }]}>Tap to view details</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={bannerColor} />
+            </HapticPressable>
+          );
+        })()}
 
         {/* Overdue Banner */}
         {transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (

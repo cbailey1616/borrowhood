@@ -320,6 +320,7 @@ router.get('/:id', authenticate, async (req, res) => {
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
               (SELECT EXISTS(SELECT 1 FROM disputes WHERE transaction_id = t.id)) as has_dispute,
               (SELECT id FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_id,
+              (SELECT status FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_status,
               b.first_name as borrower_first_name, b.last_name as borrower_last_name,
               b.profile_photo_url as borrower_photo, b.rating as borrower_rating, b.rating_count as borrower_rating_count,
               lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
@@ -390,6 +391,7 @@ router.get('/:id', authenticate, async (req, res) => {
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       hasDispute: t.has_dispute || false,
       disputeId: t.dispute_id || null,
+      disputeStatus: t.dispute_status || null,
       createdAt: t.created_at,
     });
   } catch (err) {
