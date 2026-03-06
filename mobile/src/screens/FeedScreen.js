@@ -392,12 +392,12 @@ export default function FeedScreen({ navigation }) {
 
   const renderListingItem = (item, index) => (
     <AnimatedCard index={index}>
-      <View style={styles.card}>
-        <HapticPressable
-          onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-          haptic="light"
-          scaleDown={0.98}
-        >
+      <HapticPressable
+        style={styles.card}
+        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+        haptic="light"
+        scaleDown={0.98}
+      >
           <View style={styles.cardHeader}>
             {item.ownerMasked ? (
               <View style={styles.userInfo}>
@@ -490,11 +490,9 @@ export default function FeedScreen({ navigation }) {
               <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
             </HapticPressable>
           )}
-        </HapticPressable>
-
         {/* Inline thread */}
         {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
-      </View>
+      </HapticPressable>
     </AnimatedCard>
   );
 
@@ -1395,7 +1393,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.lg,
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
   card: {
     marginBottom: SPACING.lg,
