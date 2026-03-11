@@ -54,6 +54,9 @@ export default function CreateListingScreen({ navigation, route }) {
   const requestMatch = route?.params?.requestMatch;
   const requestMatchId = requestMatch?.id || null;
 
+  const [listingType, setListingType] = useState('lend'); // 'lend' or 'giveaway'
+  const isGiveaway = listingType === 'giveaway';
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -264,11 +267,12 @@ export default function CreateListingScreen({ navigation, route }) {
         condition: data.condition,
         categoryId: data.categoryId,
         visibility: data.visibility, // Send as array
-        isFree: data.isFree,
-        pricePerDay: data.isFree ? undefined : parseFloat(data.pricePerDay) || 0,
-        depositAmount: parseFloat(data.depositAmount) || 0,
-        minDuration: parseInt(data.minDuration) || 1,
-        maxDuration: parseInt(data.maxDuration) || 14,
+        isFree: isGiveaway ? true : data.isFree,
+        pricePerDay: (isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
+        depositAmount: isGiveaway ? 0 : parseFloat(data.depositAmount) || 0,
+        minDuration: isGiveaway ? undefined : parseInt(data.minDuration) || 1,
+        maxDuration: isGiveaway ? undefined : parseInt(data.maxDuration) || 14,
+        listingType: isGiveaway ? 'giveaway' : 'lend',
         photos: photoUrls.length > 0 ? photoUrls : undefined,
         communityId: communityId || undefined, // Always send communityId (required by DB)
         requestMatchId: requestMatchId || undefined,
@@ -410,6 +414,34 @@ export default function CreateListingScreen({ navigation, route }) {
         </View>
       </View>
 
+      {/* Listing Type */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Listing Type</Text>
+        <View style={styles.options}>
+          <HapticPressable
+            style={[styles.option, !isGiveaway && styles.optionActive]}
+            onPress={() => { setListingType('lend'); haptics.selection(); }}
+            haptic={null}
+          >
+            <Ionicons name="swap-horizontal" size={16} color={!isGiveaway ? '#fff' : COLORS.textSecondary} style={{ marginRight: 4 }} />
+            <Text style={[styles.optionText, !isGiveaway && styles.optionTextActive]}>Lend</Text>
+          </HapticPressable>
+          <HapticPressable
+            style={[styles.option, isGiveaway && styles.optionActive]}
+            onPress={() => { setListingType('giveaway'); haptics.selection(); }}
+            haptic={null}
+          >
+            <Ionicons name="gift" size={16} color={isGiveaway ? '#fff' : COLORS.textSecondary} style={{ marginRight: 4 }} />
+            <Text style={[styles.optionText, isGiveaway && styles.optionTextActive]}>Give Away</Text>
+          </HapticPressable>
+        </View>
+        {isGiveaway && (
+          <Text style={[styles.hint, { marginTop: SPACING.sm }]}>
+            This item will be given away permanently — no return expected.
+          </Text>
+        )}
+      </View>
+
       {/* Category */}
       <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
@@ -496,7 +528,8 @@ export default function CreateListingScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Pricing */}
+      {/* Pricing — hidden for giveaways */}
+      {!isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
         <Text style={styles.freeLabel}>Free to borrow</Text>
@@ -560,8 +593,10 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
+      )}
 
-      {/* Duration */}
+      {/* Duration — hidden for giveaways */}
+      {!isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.label}>Rental duration (days)</Text>
         <View style={styles.durationRow}>
@@ -586,6 +621,7 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         </View>
       </View>
+      )}
 
       {/* Submit */}
       <HapticPressable
@@ -600,7 +636,7 @@ export default function CreateListingScreen({ navigation, route }) {
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>List Item</Text>
+          <Text style={styles.submitButtonText}>{isGiveaway ? 'Give Away Item' : 'List Item'}</Text>
         )}
       </HapticPressable>
 

@@ -152,6 +152,7 @@ router.get('/', authenticate, async (req, res) => {
         depositAmount: parseFloat(l.deposit_amount),
         minDuration: l.min_duration,
         maxDuration: l.max_duration,
+        listingType: l.listing_type || 'lend',
         visibility: l.visibility,
         photoUrl: l.photo_url,
         category: l.category_name,
@@ -209,6 +210,7 @@ router.get('/mine', authenticate, async (req, res) => {
       condition: l.condition,
       categoryId: l.category_id,
       isFree: l.is_free,
+      listingType: l.listing_type || 'lend',
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
       isAvailable: l.is_available,
@@ -311,6 +313,7 @@ router.get('/:id', authenticate, async (req, res) => {
       description: l.description,
       condition: l.condition,
       isFree: l.is_free,
+      listingType: l.listing_type || 'lend',
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
       minDuration: l.min_duration,
@@ -416,10 +419,11 @@ router.post('/', authenticate,
     const {
       title, description, condition, communityId, categoryId,
       isFree: _isFree, pricePerDay: _pricePerDay, depositAmount, minDuration, maxDuration,
-      visibility, photos, requestMatchId
+      visibility, photos, requestMatchId, listingType: _listingType
     } = req.body;
-    let isFree = _isFree;
-    let pricePerDay = _pricePerDay;
+    const listingType = _listingType === 'giveaway' ? 'giveaway' : 'lend';
+    let isFree = listingType === 'giveaway' ? true : _isFree;
+    let pricePerDay = listingType === 'giveaway' ? null : _pricePerDay;
 
     // Normalize visibility to array
     let visibilityArray = Array.isArray(visibility) ? [...visibility] : [visibility];
@@ -475,16 +479,18 @@ router.post('/', authenticate,
         : 'close_friends';
 
       // Create listing
+      const isGiveaway = listingType === 'giveaway';
       const result = await query(
         `INSERT INTO listings (
           owner_id, community_id, category_id, title, description, condition,
-          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id`,
         [
           req.user.id, communityId || null, categoryId || null, title, description, condition,
-          isFree, isFree ? null : pricePerDay, depositAmount || 0,
-          minDuration || 1, maxDuration || 14, primaryVisibility
+          isFree, isFree ? null : pricePerDay, isGiveaway ? 0 : (depositAmount || 0),
+          isGiveaway ? null : (minDuration || 1), isGiveaway ? null : (maxDuration || 14),
+          primaryVisibility, listingType
         ]
       );
 

@@ -158,7 +158,15 @@ export default function MyItemsScreen({ navigation }) {
           )}
           <View style={styles.cardContent}>
             <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
+            <View style={styles.cardSubRow}>
+              <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
+              {item.listingType === 'giveaway' && (
+                <View style={styles.giveawayTag}>
+                  <Ionicons name="gift" size={10} color={COLORS.secondary} />
+                  <Text style={styles.giveawayTagText}>Giveaway</Text>
+                </View>
+              )}
+            </View>
 
             <View style={styles.cardStats}>
               <View style={styles.stat}>
@@ -184,7 +192,7 @@ export default function MyItemsScreen({ navigation }) {
                   styles.statusText,
                   { color: item.isAvailable ? COLORS.secondary : COLORS.warning }
                 ]}>
-                  {item.isAvailable ? 'Available' : 'Borrowed'}
+                  {item.status === 'given_away' ? 'Claimed' : item.isAvailable ? 'Available' : 'Borrowed'}
                 </Text>
               </View>
               {item.pendingRequests > 0 && (
@@ -501,8 +509,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.separator,
   },
   cardImage: {
     width: 100,
@@ -522,9 +530,28 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
+  cardSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
   cardCondition: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
+  },
+  giveawayTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: COLORS.secondary + '15',
+    paddingHorizontal: SPACING.xs + 2,
+    paddingVertical: 1,
+    borderRadius: RADIUS.xs,
+  },
+  giveawayTagText: {
+    ...TYPOGRAPHY.caption2,
+    color: COLORS.secondary,
+    fontWeight: '600',
   },
   cardStats: {
     flexDirection: 'row',

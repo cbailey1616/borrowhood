@@ -24,8 +24,8 @@ const PLATFORM_FEE_PERCENT = 0.02; // 2%
 // ============================================
 router.post('/', authenticate,
   body('listingId').isUUID(),
-  body('startDate').isISO8601(),
-  body('endDate').isISO8601(),
+  body('startDate').optional().isISO8601(),
+  body('endDate').optional().isISO8601(),
   body('message').optional().isLength({ max: 500 }),
   async (req, res) => {
     const errors = validationResult(req);
@@ -50,8 +50,14 @@ router.post('/', authenticate,
       }
 
       const item = listing.rows[0];
+      const isGiveaway = item.listing_type === 'giveaway';
 
-      const isPaidRental = parseFloat(item.price_per_day) > 0;
+      // Giveaways don't need dates
+      if (!isGiveaway && (!startDate || !endDate)) {
+        return res.status(400).json({ error: 'Start and end dates are required for borrow requests' });
+      }
+
+      const isPaidRental = !isGiveaway && parseFloat(item.price_per_day) > 0;
 
       // Verification always required for town-level borrowing
       if (isPaidRental || item.visibility === 'town') {
@@ -117,26 +123,37 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Item was just borrowed by someone else' });
       }
 
-      // Calculate rental days
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      // Giveaways: no dates, no pricing
+      let rentalDays = 0;
+      let dailyRate = 0;
+      let rentalFee = 0;
+      let depositAmount = 0;
+      let platformFee = 0;
+      let lenderPayout = 0;
+      let totalChargeCents = 0;
 
-      if (rentalDays < item.min_duration || rentalDays > item.max_duration) {
-        return res.status(400).json({
-          error: `Duration must be between ${item.min_duration} and ${item.max_duration} days`
-        });
+      if (!isGiveaway) {
+        // Calculate rental days
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+        if (rentalDays < item.min_duration || rentalDays > item.max_duration) {
+          return res.status(400).json({
+            error: `Duration must be between ${item.min_duration} and ${item.max_duration} days`
+          });
+        }
+
+        // Calculate pricing
+        dailyRate = parseFloat(item.price_per_day) || 0;
+        rentalFee = dailyRate * rentalDays;
+        depositAmount = parseFloat(item.deposit_amount) || 0;
+        platformFee = rentalFee * PLATFORM_FEE_PERCENT;
+        lenderPayout = rentalFee - platformFee;
+
+        // Calculate total charge in cents
+        totalChargeCents = Math.round((rentalFee + depositAmount) * 100);
       }
-
-      // Calculate pricing
-      const dailyRate = parseFloat(item.price_per_day) || 0;
-      const rentalFee = dailyRate * rentalDays;
-      const depositAmount = parseFloat(item.deposit_amount) || 0;
-      const platformFee = rentalFee * PLATFORM_FEE_PERCENT;
-      const lenderPayout = rentalFee - platformFee;
-
-      // Calculate total charge in cents
-      const totalChargeCents = Math.round((rentalFee + depositAmount) * 100);
 
       // Create transaction
       const result = await query(
@@ -149,7 +166,7 @@ router.post('/', authenticate,
         RETURNING id`,
         [
           listingId, req.user.id, item.owner_id,
-          startDate, endDate,
+          isGiveaway ? null : startDate, isGiveaway ? null : endDate,
           rentalDays, dailyRate, rentalFee, depositAmount,
           platformFee, lenderPayout, message
         ]
@@ -157,17 +174,17 @@ router.post('/', authenticate,
 
       const transactionId = result.rows[0].id;
 
-      // Free rental (no fee + no deposit, or below Stripe minimum) — no payment needed
+      // Free rental / giveaway (no fee + no deposit, or below Stripe minimum) — no payment needed
       if (totalChargeCents < 50) {
-        // Notify lender immediately — no payment step to wait for
-        await sendNotification(item.owner_id, 'borrow_request', {
+        // Notify owner immediately — no payment step to wait for
+        await sendNotification(item.owner_id, isGiveaway ? 'giveaway_claim' : 'borrow_request', {
           borrowerName: req.user.first_name,
           itemTitle: item.title,
           transactionId,
           listingId,
           fromUserId: req.user.id,
         });
-        return res.status(201).json({ id: transactionId, freeRental: true });
+        return res.status(201).json({ id: transactionId, freeRental: true, isGiveaway });
       }
 
       // Paid rental — don't notify lender yet, wait until payment is confirmed via webhook
@@ -258,7 +275,7 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await query(
       `SELECT t.*,
-              l.title as listing_title,
+              l.title as listing_title, l.listing_type,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
               b.first_name as borrower_first_name, b.last_name as borrower_last_name,
               b.profile_photo_url as borrower_photo,
@@ -276,6 +293,7 @@ router.get('/', authenticate, async (req, res) => {
     res.json(result.rows.map(t => ({
       id: t.id,
       status: t.status,
+      listingType: t.listing_type || 'lend',
       listing: {
         id: t.listing_id,
         title: t.listing_title,
@@ -316,7 +334,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = await query(
       `SELECT t.*,
               l.title as listing_title, l.description as listing_description,
-              l.condition as listing_condition,
+              l.condition as listing_condition, l.listing_type,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
               (SELECT EXISTS(SELECT 1 FROM disputes WHERE transaction_id = t.id)) as has_dispute,
               (SELECT id FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_id,
@@ -349,6 +367,7 @@ router.get('/:id', authenticate, async (req, res) => {
     res.json({
       id: t.id,
       status: t.status,
+      listingType: t.listing_type || 'lend',
       listing: {
         id: t.listing_id,
         title: t.listing_title,
@@ -684,23 +703,51 @@ router.post('/:id/pickup', authenticate,
         return res.status(403).json({ error: 'Not authorized' });
       }
 
+      // Check if this is a giveaway
+      const listingCheck = await query(
+        'SELECT listing_type FROM listings WHERE id = $1',
+        [t.listing_id]
+      );
+      const isGiveaway = listingCheck.rows[0]?.listing_type === 'giveaway';
+
       // Payment is already captured at approve time — no capture needed at pickup
       if (isLender) {
-        await query(
-          `UPDATE borrow_transactions
-           SET status = 'picked_up', actual_pickup_at = NOW(), condition_at_pickup = $1
-           WHERE id = $2`,
-          [condition || t.condition_at_pickup, req.params.id]
-        );
+        if (isGiveaway) {
+          // Giveaway: pickup = complete. No return step needed.
+          await query(
+            `UPDATE borrow_transactions
+             SET status = 'returned', actual_pickup_at = NOW(), actual_return_at = NOW(), condition_at_pickup = $1
+             WHERE id = $2`,
+            [condition || t.condition_at_pickup, req.params.id]
+          );
 
-        await sendNotification(t.borrower_id, 'pickup_confirmed', {
-          itemTitle: t.item_title,
-          returnDate: t.requested_end_date,
-          transactionId: t.id,
-        });
+          // Permanently delist the item (given away)
+          await query(
+            `UPDATE listings SET status = 'given_away', is_available = false WHERE id = $1`,
+            [t.listing_id]
+          );
+
+          await sendNotification(t.borrower_id, 'giveaway_complete', {
+            itemTitle: t.item_title,
+            transactionId: t.id,
+          });
+        } else {
+          await query(
+            `UPDATE borrow_transactions
+             SET status = 'picked_up', actual_pickup_at = NOW(), condition_at_pickup = $1
+             WHERE id = $2`,
+            [condition || t.condition_at_pickup, req.params.id]
+          );
+
+          await sendNotification(t.borrower_id, 'pickup_confirmed', {
+            itemTitle: t.item_title,
+            returnDate: t.requested_end_date,
+            transactionId: t.id,
+          });
+        }
       }
 
-      res.json({ success: true });
+      res.json({ success: true, isGiveaway });
     } catch (err) {
       console.error('Confirm pickup error:', err);
       res.status(500).json({ error: 'Failed to confirm pickup' });
@@ -738,6 +785,15 @@ router.post('/:id/return', authenticate,
 
       if (t.status !== 'picked_up' && t.status !== 'return_pending') {
         return res.status(400).json({ error: 'Item not currently borrowed' });
+      }
+
+      // Block returns for giveaway items — they're given permanently
+      const listingCheck = await query(
+        'SELECT listing_type FROM listings WHERE id = $1',
+        [t.listing_id]
+      );
+      if (listingCheck.rows[0]?.listing_type === 'giveaway') {
+        return res.status(400).json({ error: 'Giveaway items cannot be returned' });
       }
 
       // Check if condition is worse than at pickup

@@ -216,16 +216,23 @@ router.post('/', authenticate,
       // Find or create conversation
       let conversationId;
 
-      // Check if conversation exists (with or without listing context)
+      // Find existing conversation between these two users (regardless of listing)
       const existingConv = await query(
         `SELECT id FROM conversations
-         WHERE ((user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1))
-         AND (listing_id = $3 OR ($3 IS NULL AND listing_id IS NULL))`,
-        [req.user.id, recipientId, listingId || null]
+         WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
+         ORDER BY created_at ASC LIMIT 1`,
+        [req.user.id, recipientId]
       );
 
       if (existingConv.rows.length > 0) {
         conversationId = existingConv.rows[0].id;
+        // Update listing context if provided and conversation doesn't have one
+        if (listingId) {
+          await query(
+            'UPDATE conversations SET listing_id = $1 WHERE id = $2 AND listing_id IS NULL',
+            [listingId, conversationId]
+          );
+        }
       } else {
         // Create new conversation
         const newConv = await query(

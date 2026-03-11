@@ -58,10 +58,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
     return () => clearInterval(pollRef.current);
   }, [id]));
 
-  // Schedule or cancel return reminders based on transaction status
+  const isGiveaway = transaction?.listingType === 'giveaway';
+
+  // Schedule or cancel return reminders based on transaction status (skip for giveaways)
   useEffect(() => {
     if (!transaction) return;
-    if (transaction.status === 'picked_up') {
+    if (transaction.status === 'picked_up' && !isGiveaway) {
       scheduleReturnReminders(id, transaction.endDate, transaction.listing?.title || 'Item');
     } else if (['returned', 'completed', 'cancelled'].includes(transaction.status)) {
       cancelReturnReminders(id);

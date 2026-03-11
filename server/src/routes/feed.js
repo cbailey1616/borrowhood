@@ -47,8 +47,16 @@ router.get('/', authenticate, async (req, res) => {
     let listingsResult = { rows: [] };
     let requestsResult = { rows: [] };
 
-    // Get listings if not filtered to requests only
-    if (type !== 'requests') {
+    // Parse type filters (can be comma-separated: listings,free,requests)
+    const typeFilters = type ? type.split(',') : [];
+    const wantListings = typeFilters.length === 0 || typeFilters.includes('listings') || typeFilters.includes('free') || typeFilters.includes('giveaway');
+    const wantFreeOnly = typeFilters.includes('free') && !typeFilters.includes('listings') && !typeFilters.includes('giveaway');
+    const wantGiveawayOnly = typeFilters.includes('giveaway') && !typeFilters.includes('listings') && !typeFilters.includes('free');
+    const wantBorrowOnly = typeFilters.includes('listings') && !typeFilters.includes('giveaway') && !typeFilters.includes('free');
+    const wantRequests = typeFilters.length === 0 || typeFilters.includes('requests');
+
+    // Get listings if applicable
+    if (wantListings) {
       let listingQuery = `
         SELECT
           l.id,
@@ -69,6 +77,7 @@ router.get('/', authenticate, async (req, res) => {
           u.status,
           u.total_transactions,
           l.owner_id,
+          l.listing_type,
           l.visibility as listing_visibility,
           u.city as owner_city,
           cat.name as category_name,
@@ -84,6 +93,14 @@ router.get('/', authenticate, async (req, res) => {
       if (search) {
         listingQuery += ` AND (l.title ILIKE $${listingParams.length + 1} OR l.description ILIKE $${listingParams.length + 1})`;
         listingParams.push(`%${search}%`);
+      }
+
+      if (wantFreeOnly) {
+        listingQuery += ` AND l.is_free = true`;
+      } else if (wantGiveawayOnly) {
+        listingQuery += ` AND l.listing_type = 'giveaway'`;
+      } else if (wantBorrowOnly) {
+        listingQuery += ` AND l.listing_type = 'lend'`;
       }
 
       if (categoryId) {
@@ -133,8 +150,8 @@ router.get('/', authenticate, async (req, res) => {
       listingsResult = await query(listingQuery, listingParams);
     }
 
-    // Get requests if not filtered to listings only
-    if (type !== 'listings') {
+    // Get requests if applicable
+    if (wantRequests) {
       let requestQuery = `
         SELECT
           r.id,
@@ -199,6 +216,7 @@ router.get('/', authenticate, async (req, res) => {
         description: l.description,
         condition: l.condition,
         isFree: l.is_free,
+        listingType: l.listing_type || 'lend',
         isAvailable: l.is_available,
         pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
         photoUrl: l.photo_url,

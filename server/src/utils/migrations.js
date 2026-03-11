@@ -429,6 +429,28 @@ export async function runMigrations() {
       logger.info('Migration complete: request_comment notification type added');
     }
 
+    // Add admin_notes jsonb column to disputes for admin activity tracking
+    const hasAdminNotes = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'disputes' AND column_name = 'admin_notes'
+    `);
+    if (hasAdminNotes.rows.length === 0) {
+      logger.info('Running migration: Add admin_notes to disputes');
+      await query("ALTER TABLE disputes ADD COLUMN admin_notes jsonb DEFAULT '[]'");
+      logger.info('Migration complete: disputes.admin_notes added');
+    }
+
+    // Migration: Add listing_type column to listings (lend vs giveaway)
+    const hasListingType = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'listings' AND column_name = 'listing_type'
+    `);
+    if (hasListingType.rows.length === 0) {
+      logger.info('Running migration: Add listing_type to listings');
+      await query("ALTER TABLE listings ADD COLUMN listing_type VARCHAR(10) DEFAULT 'lend' NOT NULL");
+      logger.info('Migration complete: listings.listing_type added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

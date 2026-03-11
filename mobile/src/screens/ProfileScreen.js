@@ -38,6 +38,8 @@ export default function ProfileScreen({ navigation }) {
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
   const [biometricSheet, setBiometricSheet] = useState(null);
   const [showLogoutSheet, setShowLogoutSheet] = useState(false);
+  const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -117,6 +119,21 @@ export default function ProfileScreen({ navigation }) {
   const handleLogout = () => {
     haptics.warning();
     setShowLogoutSheet(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await api.deleteAccount();
+      haptics.success();
+      logout();
+    } catch (err) {
+      showError({
+        message: err.message || 'Failed to delete account. Please try again or contact support.',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -296,6 +313,14 @@ export default function ProfileScreen({ navigation }) {
             accessibilityLabel="Sign out"
             accessibilityRole="button"
           />
+          <GroupedListItem
+            icon="trash-outline"
+            title="Delete Account"
+            onPress={() => { haptics.warning(); setShowDeleteSheet(true); }}
+            destructive
+            accessibilityLabel="Delete account"
+            accessibilityRole="button"
+          />
         </GroupedListSection>
 
         <Text style={styles.version}>Borrowhood v1.0.0</Text>
@@ -351,6 +376,17 @@ export default function ProfileScreen({ navigation }) {
         message="Are you sure you want to sign out?"
         actions={[
           { label: 'Sign Out', destructive: true, onPress: logout },
+        ]}
+      />
+
+      {/* Delete Account Sheet */}
+      <ActionSheet
+        isVisible={showDeleteSheet}
+        onClose={() => setShowDeleteSheet(false)}
+        title="Delete Account"
+        message="This will permanently delete your account, listings, transaction history, and all associated data. This action cannot be undone."
+        actions={[
+          { label: isDeleting ? 'Deleting...' : 'Delete My Account', destructive: true, onPress: handleDeleteAccount },
         ]}
       />
     </View>

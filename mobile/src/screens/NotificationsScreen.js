@@ -31,6 +31,9 @@ const NOTIFICATION_ICONS = {
   item_match: 'sparkles',
   new_request: 'search',
   new_message: 'chatbubble',
+  discussion_reply: 'chatbubble-ellipses',
+  listing_comment: 'chatbubble-ellipses',
+  request_comment: 'chatbubble-ellipses',
   friend_request: 'person-add',
   friend_accepted: 'people',
   default: 'notifications',
@@ -112,6 +115,14 @@ export default function NotificationsScreen({ navigation }) {
       return;
     } else if (notification.type === 'new_request' && notification.requestId) {
       navigation.navigate('RequestDetail', { id: notification.requestId });
+    } else if (notification.type === 'discussion_reply' || notification.type === 'listing_comment') {
+      if (notification.listingId) {
+        navigation.navigate('ListingDiscussion', { listingId: notification.listingId });
+      }
+    } else if (notification.type === 'request_comment') {
+      if (notification.requestId) {
+        navigation.navigate('RequestDetail', { id: notification.requestId });
+      }
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
       navigation.navigate('Friends');
     } else if (notification.transactionId) {

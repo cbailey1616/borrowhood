@@ -111,10 +111,21 @@ app.use(express.json({ limit: '10mb' }));
 // Serve uploaded files (for local development without S3)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Remove helmet CSP for admin pages (they use inline scripts/styles)
+app.use('/admin', (req, res, next) => {
+  res.removeHeader('Content-Security-Policy');
+  next();
+});
+
 // Serve legal pages (terms, privacy)
 app.use(express.static(path.join(__dirname, '../public')));
 app.get('/terms', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/terms.html'));
+});
+app.get('/admin/disputes', (req, res) => {
+  // Remove helmet CSP so inline scripts/styles work on admin dashboard
+  res.removeHeader('Content-Security-Policy');
+  res.sendFile(path.join(__dirname, '../public/admin/disputes.html'));
 });
 app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/privacy.html'));

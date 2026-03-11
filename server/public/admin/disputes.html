@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispute Dashboard — Borrowhood Admin</title>
+<style>
+  :root {
+    --bg: #0F1A0E;
+    --surface: #162114;
+    --surface2: #1C2B19;
+    --border: rgba(74, 124, 89, 0.3);
+    --text: #E0E5E1;
+    --muted: #8A9A8D;
+    --primary: #4A7C59;
+    --danger: #C04040;
+    --warning: #B8860B;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, system-ui, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Login */
+  .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; max-width: 380px; width: 100%; }
+  .login-card h1 { font-size: 22px; margin-bottom: 4px; }
+  .login-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .login-card input { width: 100%; padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; margin-bottom: 12px; outline: none; }
+  .login-card input:focus { border-color: var(--primary); }
+  .login-card button { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .login-card button:hover { opacity: 0.9; }
+  .login-error { color: var(--danger); font-size: 13px; margin-bottom: 12px; }
+
+  /* Dashboard */
+  .dashboard { display: none; }
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  .header h1 { font-size: 20px; }
+  .header-actions { display: flex; gap: 12px; align-items: center; }
+  .header-actions span { color: var(--muted); font-size: 13px; }
+  .logout-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .logout-btn:hover { color: var(--text); border-color: var(--text); }
+
+  /* Filters */
+  .filters { padding: 16px 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn { padding: 6px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); font-size: 13px; cursor: pointer; transition: all 0.15s; }
+  .filter-btn:hover { border-color: var(--primary); color: var(--text); }
+  .filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* Stats */
+  .stats { padding: 0 24px 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; min-width: 140px; }
+  .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat-card .value.warning { color: var(--warning); }
+  .stat-card .value.danger { color: var(--danger); }
+
+  /* List */
+  .dispute-list { padding: 0 24px 24px; }
+  .dispute-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .dispute-card:hover { border-color: var(--primary); }
+  .dispute-card .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .dispute-card .title { font-size: 15px; font-weight: 600; }
+  .dispute-card .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .badge.awaiting { background: rgba(184, 134, 11, 0.2); color: #D4A017; }
+  .badge.counter { background: rgba(100, 100, 220, 0.2); color: #8888EE; }
+  .badge.review { background: rgba(200, 60, 60, 0.2); color: #E06060; }
+  .badge.resolved { background: rgba(74, 124, 89, 0.2); color: #6BAF7B; }
+  .badge.expired { background: rgba(100, 100, 100, 0.2); color: #999; }
+  .empty { text-align: center; padding: 60px 24px; color: var(--muted); }
+
+  /* Detail Panel */
+  .panel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; }
+  .panel { position: fixed; right: 0; top: 0; bottom: 0; width: 560px; max-width: 100vw; background: var(--bg); border-left: 1px solid var(--border); z-index: 101; overflow-y: auto; transform: translateX(100%); transition: transform 0.25s ease; }
+  .panel.open { transform: translateX(0); }
+  .panel-header { position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 1; }
+  .panel-header h2 { font-size: 17px; }
+  .close-btn { background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; padding: 4px; line-height: 1; }
+  .close-btn:hover { color: var(--text); }
+  .panel-body { padding: 24px; }
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .info-item .label { font-size: 12px; color: var(--muted); }
+  .info-item .value { font-size: 14px; margin-top: 2px; }
+  .description-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 14px; line-height: 1.5; }
+  .photos { display: flex; gap: 8px; flex-wrap: wrap; }
+  .photos img { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .user-avatar { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; background: var(--surface2); }
+  .user-name { font-size: 14px; font-weight: 600; }
+  .user-role { font-size: 12px; color: var(--muted); }
+
+  /* Resolve Form */
+  .resolve-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .resolve-form h3 { font-size: 15px; margin-bottom: 16px; }
+  .resolve-form label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .resolve-form select, .resolve-form input, .resolve-form textarea {
+    width: 100%; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 14px; outline: none; font-family: inherit;
+  }
+  .resolve-form textarea { resize: vertical; min-height: 80px; }
+  .resolve-form select:focus, .resolve-form input:focus, .resolve-form textarea:focus { border-color: var(--primary); }
+  .resolve-btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .resolve-btn:hover { opacity: 0.9; }
+  .resolve-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .resolve-success { background: rgba(74, 124, 89, 0.15); border: 1px solid var(--primary); border-radius: 8px; padding: 14px; text-align: center; color: #6BAF7B; font-weight: 600; }
+
+  .timeline { border-left: 2px solid var(--border); padding-left: 16px; margin-left: 8px; }
+  .timeline-item { position: relative; margin-bottom: 16px; }
+  .timeline-item::before { content: ''; position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+  .timeline-item .time { font-size: 11px; color: var(--muted); }
+  .timeline-item .event { font-size: 14px; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-container" id="loginScreen">
+  <div class="login-card">
+    <h1>Dispute Dashboard</h1>
+    <p>Sign in with your Borrowhood admin account</p>
+    <div class="login-error" id="loginError" style="display:none"></div>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" autocomplete="email">
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+      <button type="submit">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="dashboard" id="dashboard">
+  <div class="header">
+    <h1>Dispute Dashboard</h1>
+    <div class="header-actions">
+      <span id="adminName"></span>
+      <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-status="">All</button>
+    <button class="filter-btn" data-status="awaitingResponse">Awaiting Response</button>
+    <button class="filter-btn" data-status="counterPending">Counter Pending</button>
+    <button class="filter-btn" data-status="underReview">Needs Review</button>
+    <button class="filter-btn" data-status="resolvedInFavorOfClaimant">Resolved</button>
+  </div>
+
+  <div class="dispute-list" id="disputeList"></div>
+</div>
+
+<!-- Detail Panel -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+<div class="panel" id="detailPanel">
+  <div class="panel-header">
+    <h2 id="panelTitle">Dispute Details</h2>
+    <button class="close-btn" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + '/api';
+let token = localStorage.getItem('bh_admin_token');
+let disputes = [];
+let currentFilter = '';
+
+// ── Auth ──
+async function handleLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const errorEl = document.getElementById('loginError');
+  errorEl.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+
+    token = data.accessToken;
+    localStorage.setItem('bh_admin_token', token);
+    showDashboard();
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.style.display = 'block';
+  }
+}
+
+function handleLogout() {
+  token = null;
+  localStorage.removeItem('bh_admin_token');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+}
+
+async function api(endpoint) {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
+  return res.json();
+}
+
+async function apiPost(endpoint, body) {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
+  return res.json();
+}
+
+// ── Dashboard ──
+async function showDashboard() {
+  try {
+    const me = await api('/auth/me');
+    if (!me.isAdmin) {
+      alert('Access denied — admin accounts only.');
+      handleLogout();
+      return;
+    }
+    document.getElementById('adminName').textContent = `${me.firstName} ${me.lastName}`;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    await loadDisputes();
+  } catch {
+    handleLogout();
+  }
+}
+
+async function loadDisputes() {
+  try {
+    disputes = await api('/disputes');
+    renderStats();
+    renderList();
+  } catch (err) {
+    console.error('Failed to load disputes:', err);
+  }
+}
+
+function renderStats() {
+  const total = disputes.length;
+  const needsReview = disputes.filter(d => d.status === 'underReview').length;
+  const awaiting = disputes.filter(d => d.status === 'awaitingResponse').length;
+  const resolved = disputes.filter(d => d.status.startsWith('resolved') || d.status === 'dismissed').length;
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="label">Total</div><div class="value">${total}</div></div>
+    <div class="stat-card"><div class="label">Needs Review</div><div class="value ${needsReview > 0 ? 'danger' : ''}">${needsReview}</div></div>
+    <div class="stat-card"><div class="label">Awaiting Response</div><div class="value ${awaiting > 0 ? 'warning' : ''}">${awaiting}</div></div>
+    <div class="stat-card"><div class="label">Resolved</div><div class="value">${resolved}</div></div>
+  `;
+}
+
+function renderList() {
+  const filtered = currentFilter
+    ? disputes.filter(d => currentFilter === 'resolvedInFavorOfClaimant'
+        ? (d.status.startsWith('resolved') || d.status === 'dismissed' || d.status === 'expired')
+        : d.status === currentFilter)
+    : disputes;
+
+  if (filtered.length === 0) {
+    document.getElementById('disputeList').innerHTML = '<div class="empty">No disputes found</div>';
+    return;
+  }
+
+  document.getElementById('disputeList').innerHTML = filtered.map(d => `
+    <div class="dispute-card" onclick="openDispute('${d.id}')">
+      <div class="row">
+        <div>
+          <div class="title">${d.listing?.title || 'Unknown Item'}</div>
+          <div class="meta">
+            ${typeLabel(d.type)} &middot;
+            ${d.claimant?.firstName || '?'} ${d.claimant?.lastName || ''} vs
+            ${d.respondent?.firstName || '?'} ${d.respondent?.lastName || ''}
+            ${d.requestedAmount ? ' &middot; $' + d.requestedAmount.toFixed(2) : ''}
+          </div>
+          <div class="meta">${timeAgo(d.createdAt)}</div>
+        </div>
+        <span class="badge ${statusClass(d.status)}">${statusLabel(d.status)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Detail Panel ──
+async function openDispute(id) {
+  document.getElementById('panelOverlay').style.display = 'block';
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('panelBody').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Loading...</div>';
+
+  try {
+    const d = await api(`/disputes/${id}`);
+    renderDetail(d);
+  } catch (err) {
+    document.getElementById('panelBody').innerHTML = `<div class="empty">Failed to load dispute</div>`;
+  }
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').style.display = 'none';
+  document.getElementById('detailPanel').classList.remove('open');
+}
+
+function renderDetail(d) {
+  const canResolve = d.status === 'underReview';
+  const isResolved = d.status.startsWith('resolved') || d.status === 'dismissed' || d.status === 'expired';
+
+  document.getElementById('panelTitle').textContent = d.listing?.title || 'Dispute Details';
+
+  let html = `
+    <div class="section">
+      <div class="info-grid">
+        <div class="info-item"><div class="label">Type</div><div class="value">${typeLabel(d.type)}</div></div>
+        <div class="info-item"><div class="label">Status</div><div class="value"><span class="badge ${statusClass(d.status)}">${statusLabel(d.status)}</span></div></div>
+        <div class="info-item"><div class="label">Filed</div><div class="value">${new Date(d.createdAt).toLocaleDateString()}</div></div>
+        <div class="info-item"><div class="label">Requested</div><div class="value">${d.requestedAmount ? '$' + d.requestedAmount.toFixed(2) : 'N/A'}</div></div>
+        <div class="info-item"><div class="label">Rental Fee</div><div class="value">$${d.transaction?.rentalFee?.toFixed(2) || '0.00'}</div></div>
+        <div class="info-item"><div class="label">Deposit</div><div class="value">$${d.transaction?.depositAmount?.toFixed(2) || '0.00'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Claimant</div>
+      <div class="user-row">
+        ${d.claimant?.profilePhotoUrl ? `<img class="user-avatar" src="${d.claimant.profilePhotoUrl}">` : '<div class="user-avatar"></div>'}
+        <div>
+          <div class="user-name">${d.claimant?.firstName || '?'} ${d.claimant?.lastName || ''}</div>
+          <div class="user-role">Filed the dispute</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Claim</div>
+      <div class="description-box">${escapeHtml(d.description || '')}</div>
+      ${d.photoUrls?.length ? `<div class="photos" style="margin-top:8px">${d.photoUrls.map(u => `<img src="${u}">`).join('')}</div>` : ''}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Respondent</div>
+      <div class="user-row">
+        ${d.respondent?.profilePhotoUrl ? `<img class="user-avatar" src="${d.respondent.profilePhotoUrl}">` : '<div class="user-avatar"></div>'}
+        <div>
+          <div class="user-name">${d.respondent?.firstName || '?'} ${d.respondent?.lastName || ''}</div>
+          <div class="user-role">${d.response ? 'Responded' : 'No response yet'}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (d.response) {
+    html += `
+      <div class="section">
+        <div class="section-title">Response</div>
+        <div class="description-box">${escapeHtml(d.response.description || '')}</div>
+        ${d.response.counterAmount != null ? `<div style="margin-top:8px;font-size:14px">Counter offer: <strong>$${d.response.counterAmount.toFixed(2)}</strong></div>` : ''}
+        ${d.response.photoUrls?.length ? `<div class="photos" style="margin-top:8px">${d.response.photoUrls.map(u => `<img src="${u}">`).join('')}</div>` : ''}
+      </div>
+    `;
+  }
+
+  if (d.transaction) {
+    html += `
+      <div class="section">
+        <div class="section-title">Condition Tracking</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="label">At Pickup</div><div class="value">${d.transaction.conditionAtPickup || '—'}</div></div>
+          <div class="info-item"><div class="label">At Return</div><div class="value">${d.transaction.conditionAtReturn || '—'}</div></div>
+        </div>
+        ${d.transaction.conditionNotes ? `<div class="description-box" style="margin-top:8px">${escapeHtml(d.transaction.conditionNotes)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  if (isResolved && d.resolution) {
+    html += `
+      <div class="section">
+        <div class="section-title">Resolution</div>
+        <div class="resolve-success">
+          ${statusLabel(d.resolution.status)}<br>
+          ${d.resolution.resolvedAmount != null ? `Amount: $${d.resolution.resolvedAmount.toFixed(2)}` : ''}
+          ${d.resolution.resolvedBy ? `<br>By: ${d.resolution.resolvedBy}` : ''}
+          ${d.resolution.notes ? `<br><span style="font-weight:400;font-size:13px">${escapeHtml(d.resolution.notes)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // Admin notes timeline
+  if (d.adminNotes?.length) {
+    html += `
+      <div class="section">
+        <div class="section-title">Admin Activity</div>
+        <div class="timeline">
+          ${d.adminNotes.map(n => `
+            <div class="timeline-item">
+              <div class="time">${new Date(n.at).toLocaleString()} &middot; ${escapeHtml(n.by)}</div>
+              <div class="event">
+                ${n.type === 'info_request'
+                  ? `<strong>Requested info from ${n.target}</strong><br>${escapeHtml(n.message)}`
+                  : escapeHtml(n.message)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Request Info + Add Note (for unresolved disputes)
+  if (!isResolved) {
+    html += `
+      <div class="section">
+        <div class="resolve-form" id="infoForm">
+          <h3>Request More Information</h3>
+          <label>Send to</label>
+          <select id="infoTarget">
+            <option value="claimant">Claimant (${d.claimant?.firstName || 'Claimant'})</option>
+            <option value="respondent">Respondent (${d.respondent?.firstName || 'Respondent'})</option>
+            <option value="both">Both parties</option>
+          </select>
+          <label>Message</label>
+          <textarea id="infoMessage" placeholder="What information do you need?"></textarea>
+          <button class="resolve-btn" style="background:var(--warning)" id="infoBtn" onclick="requestInfo('${d.id}')">Send Request</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="resolve-form" id="noteForm">
+          <h3>Add Internal Note</h3>
+          <textarea id="noteMessage" placeholder="Notes visible only to admins..."></textarea>
+          <button class="resolve-btn" style="background:var(--muted)" id="noteBtn" onclick="addNote('${d.id}')">Save Note</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (canResolve) {
+    html += `
+      <div class="section">
+        <div class="resolve-form" id="resolveForm">
+          <h3>Resolve This Dispute</h3>
+          <label>Outcome</label>
+          <select id="resolveOutcome">
+            <option value="claimant">In favor of claimant (${d.claimant?.firstName || 'Claimant'})</option>
+            <option value="respondent">In favor of respondent (${d.respondent?.firstName || 'Respondent'})</option>
+            <option value="dismissed">Dismiss</option>
+          </select>
+          <label>Amount (if favoring claimant)</label>
+          <input type="number" id="resolveAmount" step="0.01" min="0" value="${d.requestedAmount || ''}" placeholder="0.00">
+          <label>Resolution Notes</label>
+          <textarea id="resolveNotes" placeholder="Explain your decision (min 10 characters)..."></textarea>
+          <button class="resolve-btn" id="resolveBtn" onclick="resolveDispute('${d.id}')">Submit Resolution</button>
+        </div>
+      </div>
+    `;
+  }
+
+  document.getElementById('panelBody').innerHTML = html;
+}
+
+async function resolveDispute(id) {
+  const btn = document.getElementById('resolveBtn');
+  const outcome = document.getElementById('resolveOutcome').value;
+  const resolvedAmount = parseFloat(document.getElementById('resolveAmount').value) || 0;
+  const notes = document.getElementById('resolveNotes').value;
+
+  if (notes.length < 10) {
+    alert('Please provide at least 10 characters of resolution notes.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    const result = await apiPost(`/disputes/${id}/resolve`, { outcome, resolvedAmount, notes });
+    if (result.success) {
+      document.getElementById('resolveForm').innerHTML = `
+        <div class="resolve-success">
+          Dispute resolved successfully.<br>
+          ${result.resolution?.resolvedAmount != null ? 'Amount: $' + result.resolution.resolvedAmount.toFixed(2) : ''}
+          ${result.resolution?.holdExpired ? '<br><span style="color:var(--warning)">Note: Payment hold had expired</span>' : ''}
+        </div>
+      `;
+      await loadDisputes();
+    } else {
+      alert(result.error || 'Failed to resolve dispute');
+      btn.disabled = false;
+      btn.textContent = 'Submit Resolution';
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Submit Resolution';
+  }
+}
+
+// ── Request Info & Notes ──
+async function requestInfo(id) {
+  const btn = document.getElementById('infoBtn');
+  const target = document.getElementById('infoTarget').value;
+  const message = document.getElementById('infoMessage').value;
+  if (message.length < 5) { alert('Message must be at least 5 characters.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    const result = await apiPost(`/disputes/${id}/request-info`, { target, message });
+    if (result.success) {
+      document.getElementById('infoMessage').value = '';
+      btn.textContent = 'Sent!';
+      setTimeout(() => openDispute(id), 800);
+    } else {
+      alert(result.error || 'Failed');
+      btn.disabled = false;
+      btn.textContent = 'Send Request';
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Send Request';
+  }
+}
+
+async function addNote(id) {
+  const btn = document.getElementById('noteBtn');
+  const message = document.getElementById('noteMessage').value;
+  if (!message.trim()) { alert('Note cannot be empty.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    const result = await apiPost(`/disputes/${id}/admin-note`, { message });
+    if (result.success) {
+      document.getElementById('noteMessage').value = '';
+      btn.textContent = 'Saved!';
+      setTimeout(() => openDispute(id), 800);
+    } else {
+      alert(result.error || 'Failed');
+      btn.disabled = false;
+      btn.textContent = 'Save Note';
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Save Note';
+  }
+}
+
+// ── Helpers ──
+function typeLabel(type) {
+  const map = { damagesClaim: 'Damages Claim', nonReturn: 'Non-Return', lateReturn: 'Late Return', itemNotAsDescribed: 'Not As Described', paymentIssue: 'Payment Issue', noShow: 'No Show' };
+  return map[type] || type;
+}
+
+function statusLabel(status) {
+  const map = { awaitingResponse: 'Awaiting Response', counterPending: 'Counter Pending', underReview: 'Needs Review', resolvedInFavorOfClaimant: 'Claimant Won', resolvedInFavorOfRespondent: 'Respondent Won', dismissed: 'Dismissed', expired: 'Expired' };
+  return map[status] || status;
+}
+
+function statusClass(status) {
+  if (status === 'awaitingResponse') return 'awaiting';
+  if (status === 'counterPending') return 'counter';
+  if (status === 'underReview') return 'review';
+  if (status === 'expired') return 'expired';
+  return 'resolved';
+}
+
+function timeAgo(date) {
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(date).toLocaleDateString();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Filter handlers ──
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.status;
+    renderList();
+  });
+});
+
+// ── Init ──
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  handleLogin();
+});
+
+if (token) {
+  showDashboard();
+}
+</script>
+</body>
+</html>

@@ -9,8 +9,10 @@ const DEV_BASE = 'http://localhost:3001'; // Use localhost for simulator, LAN IP
 export const BASE_URL = __DEV__ ? DEV_BASE : PRODUCTION_BASE;
 export const API_URL = `${BASE_URL}/api`;
 
-// SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
-export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Svf5n7NWs4o2FyPTSeaiUH8jveT8Gt4owTZNpNEQYpmVEMiBJveqg4ALEujT4O1fJvpSDBZRM68M365qutkDVl000ADk6iFVL';
+// Test key for development, live key for production
+const STRIPE_TEST_KEY = 'pk_test_51Svf5n7NWs4o2FyPTSeaiUH8jveT8Gt4owTZNpNEQYpmVEMiBJveqg4ALEujT4O1fJvpSDBZRM68M365qutkDVl000ADk6iFVL';
+const STRIPE_LIVE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || STRIPE_TEST_KEY;
+export const STRIPE_PUBLISHABLE_KEY = __DEV__ ? STRIPE_TEST_KEY : STRIPE_LIVE_KEY;
 
 // Category icon fallback map (slug → Ionicons name)
 export const CATEGORY_ICONS = {

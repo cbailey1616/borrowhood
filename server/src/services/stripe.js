@@ -105,9 +105,7 @@ export async function createPaymentIntent({
     currency: 'usd',
     customer: customerId,
     capture_method: captureMethod,
-    automatic_payment_methods: {
-      enabled: true,
-    },
+    payment_method_types: ['card'],
     metadata,
   }, {
     idempotencyKey,
@@ -168,9 +166,7 @@ export async function refundPayment(paymentIntentId, amount = null) {
 export async function createSetupIntent(customerId) {
   return stripe.setupIntents.create({
     customer: customerId,
-    automatic_payment_methods: {
-      enabled: true,
-    },
+    payment_method_types: ['card'],
   });
 }
 

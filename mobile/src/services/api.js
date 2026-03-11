@@ -126,6 +126,9 @@ const loginWithGoogle = (idToken) =>
 const loginWithApple = (identityToken, fullName) =>
   post('/auth/apple', { identityToken, fullName });
 
+const deleteAccount = () =>
+  del('/auth/account');
+
 // ============================================
 // Users
 // ============================================
@@ -721,6 +724,7 @@ export default {
   linkAccount,
   loginWithGoogle,
   loginWithApple,
+  deleteAccount,
   // Users
   getUser,
   updateProfile,

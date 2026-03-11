@@ -82,8 +82,10 @@ export default function ListingDetailScreen({ route, navigation }) {
   const handleShare = async () => {
     haptics.light();
     try {
-      const priceText = listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`;
-      const message = `Check out "${listing.title}" on Borrowhood!\n\n${priceText}\n\nDownload Borrowhood to borrow items from your neighbors.`;
+      const isGiveaway = listing.listingType === 'giveaway';
+      const priceText = isGiveaway ? 'Free Giveaway' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`;
+      const actionText = isGiveaway ? 'claim this free item' : 'borrow items from your neighbors';
+      const message = `Check out "${listing.title}" on Borrowhood!\n\n${priceText}\n\nDownload Borrowhood to ${actionText}.`;
 
       await Share.share({
         message,
@@ -210,6 +212,12 @@ export default function ListingDetailScreen({ route, navigation }) {
           )}
 
           <View style={styles.badges}>
+            {listing.listingType === 'giveaway' && (
+              <View style={[styles.badge, styles.badgeGiveaway]}>
+                <Ionicons name="gift" size={12} color={COLORS.secondary} />
+                <Text style={[styles.badgeText, { color: COLORS.secondary }]}>Giveaway</Text>
+              </View>
+            )}
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{CONDITION_LABELS[listing.condition]}</Text>
             </View>
@@ -228,17 +236,28 @@ export default function ListingDetailScreen({ route, navigation }) {
 
           {/* Pricing */}
           <View style={styles.pricingCard} testID="ListingDetail.price" accessibilityLabel="Pricing details">
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Rental fee</Text>
-              <Text style={[styles.priceValue, listing.isFree && { color: COLORS.greenText, fontWeight: '700' }]}>
-                {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
-              </Text>
-            </View>
-            {listing.depositAmount > 0 && (
+            {listing.listingType === 'giveaway' ? (
               <View style={[styles.priceRow, { marginBottom: 0 }]}>
-                <Text style={styles.priceLabel}>Refundable deposit</Text>
-                <Text style={styles.priceValue}>${listing.depositAmount}</Text>
+                <Text style={styles.priceLabel}>Price</Text>
+                <Text style={[styles.priceValue, { color: COLORS.greenText, fontWeight: '700' }]}>
+                  Free — Yours to Keep
+                </Text>
               </View>
+            ) : (
+              <>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Rental fee</Text>
+                  <Text style={[styles.priceValue, listing.isFree && { color: COLORS.greenText, fontWeight: '700' }]}>
+                    {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
+                  </Text>
+                </View>
+                {listing.depositAmount > 0 && (
+                  <View style={[styles.priceRow, { marginBottom: 0 }]}>
+                    <Text style={styles.priceLabel}>Refundable deposit</Text>
+                    <Text style={styles.priceValue}>${listing.depositAmount}</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
 
@@ -388,13 +407,15 @@ export default function ListingDetailScreen({ route, navigation }) {
             {listing.isAvailable && !listing.activeTransaction && (
               <HapticPressable
                 testID="ListingDetail.button.borrow"
-                accessibilityLabel="Request to borrow"
+                accessibilityLabel={listing.listingType === 'giveaway' ? 'Claim this item' : 'Request to borrow'}
                 accessibilityRole="button"
                 style={styles.borrowButton}
                 onPress={() => navigation.navigate('BorrowRequest', { listing })}
                 haptic="medium"
               >
-                <Text style={styles.borrowButtonText}>Request to Borrow</Text>
+                <Text style={styles.borrowButtonText}>
+                  {listing.listingType === 'giveaway' ? 'Claim This Item' : 'Request to Borrow'}
+                </Text>
               </HapticPressable>
             )}
             {listing.activeTransaction && (
@@ -566,6 +587,10 @@ const styles = StyleSheet.create({
   },
   badgeSecondary: {
     borderColor: COLORS.borderGreenStrong,
+  },
+  badgeGiveaway: {
+    borderColor: COLORS.secondary,
+    backgroundColor: COLORS.secondary + '15',
   },
   badgeText: {
     ...TYPOGRAPHY.caption1,

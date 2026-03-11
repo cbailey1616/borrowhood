@@ -8,6 +8,7 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
@@ -15,7 +16,7 @@ import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
+import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
@@ -232,7 +233,14 @@ export default function RegisterScreen({ navigation }) {
               </HapticPressable>
 
               <Text style={styles.terms}>
-                By creating an account, you agree to our Terms of Service and Privacy Policy
+                By creating an account, you agree to our{' '}
+                <Text style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>
+                  Terms of Service
+                </Text>
+                {' '}and{' '}
+                <Text style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>
+                  Privacy Policy
+                </Text>
               </Text>
             </View>
           </View>
@@ -351,6 +359,11 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  termsLink: {
+    color: COLORS.primary,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   footer: {
     flexDirection: 'row',

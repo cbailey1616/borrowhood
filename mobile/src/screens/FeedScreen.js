@@ -33,7 +33,8 @@ const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const FILTER_OPTIONS = [
   { key: 'all', label: 'All' },
-  { key: 'listings', label: 'Items' },
+  { key: 'listings', label: 'Borrow' },
+  { key: 'giveaway', label: 'Giveaway' },
   { key: 'requests', label: 'Wanted' },
 ];
 
@@ -360,19 +361,19 @@ export default function FeedScreen({ navigation }) {
   const visibilityKeys = VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(o => o.key);
 
   const typeChipLabel = activeFilters.length === 0
-    ? 'All Types'
+    ? 'Listing Types'
     : activeFilters.length === 1
       ? FILTER_OPTIONS.find(o => o.key === activeFilters[0])?.label
       : `${activeFilters.length} Types`;
 
   const visibilityChipLabel = visibilityFilters.length === 0
-    ? 'Everyone'
+    ? 'Visibility'
     : visibilityFilters.length === 1
       ? VISIBILITY_OPTIONS.find(o => o.key === visibilityFilters[0])?.label
       : `${visibilityFilters.length} Areas`;
 
   const categoryChipLabel = categoryFilters.length === 0
-    ? 'All Categories'
+    ? 'Categories'
     : categoryFilters.length === 1
       ? categories.find(c => c.id === categoryFilters[0])?.name || 'Category'
       : `${categoryFilters.length} Categories`;
@@ -390,111 +391,83 @@ export default function FeedScreen({ navigation }) {
     },
   ];
 
-  const renderListingItem = (item, index) => (
+  // Color config per card type
+  const CARD_TINTS = {
+    borrow: { bg: COLORS.greenBg, accent: '#2D5A27', border: '#2D5A2730' },
+    giveaway: { bg: COLORS.greenBg, accent: '#A03030', border: '#0F241530' },
+    wanted: { bg: '#3A2A0A', accent: '#D4A03C', border: '#D4A03C30' },
+  };
+  const getCardTint = (item) =>
+    item.type === 'request' ? CARD_TINTS.wanted
+      : item.listingType === 'giveaway' ? CARD_TINTS.giveaway
+      : CARD_TINTS.borrow;
+
+  const renderListingItem = (item, index) => {
+    const tint = getCardTint(item);
+    const userName = item.ownerMasked ? 'Verified Lender'
+      : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
+    const communityName = item.category || null;
+    const isGiveaway = item.listingType === 'giveaway';
+
+    return (
     <AnimatedCard index={index}>
-      <HapticPressable
-        style={styles.card}
-        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-        haptic="light"
-        scaleDown={0.98}
-      >
-          <View style={styles.cardHeader}>
-            {item.ownerMasked ? (
-              <View style={styles.userInfo}>
-                <View style={[styles.avatar, styles.maskedAvatar]}>
-                  <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
-                </View>
-                <View style={styles.userMeta}>
-                  <Text style={styles.userName}>Verified Lender</Text>
-                  <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
-                </View>
-              </View>
+      <View style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}>
+        <HapticPressable
+          onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+          haptic="light"
+          scaleDown={0.98}
+          style={styles.tileRow}
+        >
+          {/* Thumbnail */}
+          <View style={[styles.tileThumb, { backgroundColor: tint.bg }]}>
+            {item.photoUrl ? (
+              <ShimmerImage
+                source={{ uri: item.photoUrl }}
+                style={styles.tileThumbImage}
+                sharedTransitionTag={`listing-photo-${item.id}`}
+              />
             ) : (
-              <View style={styles.userInfo}>
-                <HapticPressable
-                  onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-                  haptic="light"
-                >
-                  {item.user.profilePhotoUrl ? (
-                    <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.avatar} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={20} color={COLORS.gray[400]} />
-                    </View>
-                  )}
-                </HapticPressable>
-                <View style={styles.userMeta}>
-                  <View style={styles.userNameRow}>
-                    <Text style={styles.userName}>
-                      {item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}
-                    </Text>
-                    <UserBadges
-                      isVerified={item.user.isVerified}
-                      totalTransactions={item.user.totalTransactions || 0}
-                      size="small"
-                      compact
-                    />
-                  </View>
-                  <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
-                </View>
-              </View>
+              <Ionicons name="image-outline" size={28} color={tint.accent + '40'} />
             )}
-            <View style={[styles.typeBadge, !item.isAvailable && styles.borrowedBadge]}>
-              <Ionicons name={item.isAvailable !== false ? "cube-outline" : "time-outline"} size={12} color={item.isAvailable !== false ? COLORS.primary : COLORS.warning} />
-              <Text style={[styles.typeBadgeText, !item.isAvailable && styles.borrowedBadgeText]}>
-                {item.isAvailable !== false ? 'Available' : 'Borrowed'}
-              </Text>
-            </View>
           </View>
-
-          {item.photoUrl && (
-            <ShimmerImage
-              source={{ uri: item.photoUrl }}
-              style={styles.listingImage}
-              sharedTransitionTag={`listing-photo-${item.id}`}
-            />
-          )}
-
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <View style={styles.listingMeta}>
-              {item.condition && (
-                <View style={styles.conditionBadge}>
-                  <Text style={styles.conditionText}>{CONDITION_LABELS[item.condition]}</Text>
+          {/* Content */}
+          <View style={styles.tileContent}>
+            <View style={styles.tileTopRow}>
+              {isGiveaway ? (
+                <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
+                  <Ionicons name="gift" size={10} color="#fff" />
+                  <Text style={styles.tilePillText}>GIVEAWAY</Text>
+                </View>
+              ) : (
+                <View style={styles.tilePillRow}>
+                  <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
+                    <Ionicons name="swap-horizontal" size={10} color="#fff" />
+                    <Text style={styles.tilePillText}>BORROW</Text>
+                  </View>
+                  <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
+                    <Text style={styles.tilePillText}>
+                      {item.isFree ? 'Free' : `$${item.pricePerDay}/day`}
+                    </Text>
+                  </View>
                 </View>
               )}
-              {item.isFree ? (
-                <Text style={styles.freeLabel}>Free to borrow</Text>
-              ) : (
-                <Text style={styles.priceLabel}>${item.pricePerDay}/day</Text>
-              )}
+              <Text style={[styles.tileTimeText, { color: COLORS.greenTextMuted }]}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
+            <Text style={[styles.tileTitle, { color: '#fff' }]} numberOfLines={1}>{item.title}</Text>
+            {item.description ? (
+              <Text style={[styles.tileDesc, { color: COLORS.greenText }]} numberOfLines={2}>{item.description}</Text>
+            ) : null}
+            <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>
+              {userName}
+            </Text>
           </View>
-
-          {item.ownerMasked && (
-            <HapticPressable
-              style={styles.verifyUnlockBanner}
-              onPress={() => {
-                const gate = checkPremiumGate(user, 'town_browse');
-                if (!gate.passed) {
-                  navigation.navigate(gate.screen, gate.params);
-                } else {
-                  navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                }
-              }}
-              haptic="light"
-              scaleDown={1}
-            >
-              <Ionicons name="lock-closed" size={14} color={COLORS.warning} />
-              <Text style={styles.verifyUnlockText}>Verify to unlock town access</Text>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
-            </HapticPressable>
-          )}
+        </HapticPressable>
         {/* Inline thread */}
         {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
-      </HapticPressable>
+      </View>
     </AnimatedCard>
-  );
+    );
+  };
 
   const handleThreadSubmit = async (itemId, isRequest = false) => {
     const text = (threadInputs[itemId] || '').trim();
@@ -745,80 +718,36 @@ export default function FeedScreen({ navigation }) {
   };
 
   const renderRequestItem = (item, index) => {
-    const neededByDate = item.neededUntil
-      ? new Date(item.neededUntil).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-      : null;
-    const thread = requestDiscussions[item.id];
+    const tint = CARD_TINTS.wanted;
+    const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
       <AnimatedCard index={index}>
-        <View style={styles.requestCard}>
-          {/* Tap header area to go to detail */}
+        <View style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}>
           <HapticPressable
             onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
             haptic="light"
-            scaleDown={1}
+            scaleDown={0.98}
+            style={styles.tileRow}
           >
-            {/* Red urgency banner */}
-            <LinearGradient
-              colors={item.isExpired ? [COLORS.gray[500], COLORS.gray[400]] : ['#C0392B', '#E74C3C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.requestBannerGradient}
-            >
-              <View style={styles.requestBannerLeft}>
-                <Text style={styles.requestBannerEmoji}>📢</Text>
-                <Text style={styles.requestBannerLabel}>{item.isExpired ? 'EXPIRED' : 'WANTED'}</Text>
-              </View>
-              <Text style={styles.requestBannerDate}>
-                {item.isExpired ? 'Request expired' : neededByDate ? `Needed by ${neededByDate}` : 'Open request'}
-              </Text>
-            </LinearGradient>
-
-            {/* Card content */}
-            <View style={styles.requestContent}>
-              <View style={styles.requestContentRow}>
-                <HapticPressable
-                  onPress={() => navigation.navigate('UserProfile', { id: item.user.id })}
-                  haptic="light"
-                >
-                  {item.user.profilePhotoUrl ? (
-                    <Image source={{ uri: item.user.profilePhotoUrl }} style={styles.requestAvatar} />
-                  ) : (
-                    <View style={[styles.requestAvatar, styles.requestAvatarPlaceholder]}>
-                      <Ionicons name="person" size={16} color={COLORS.gray[400]} />
-                    </View>
-                  )}
-                </HapticPressable>
-                <View style={styles.requestContentMeta}>
-                  <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
-                  <Text style={styles.requestSubtitle}>
-                    {item.user.firstName} {item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''} · {formatTimeAgo(item.createdAt)}
-                  </Text>
+            {/* Content */}
+            <View style={styles.tileContent}>
+              <View style={styles.tileTopRow}>
+                <View style={styles.tileTypeLabel}>
+                  <Ionicons name="search" size={12} color={tint.accent} />
+                  <Text style={[styles.tileTypeLabelText, { color: tint.accent }]}>WANTED</Text>
                 </View>
-                {item.user.id === user?.id ? (
-                  item.isExpired ? (
-                    <HapticPressable
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        handleRenewRequest(item.id);
-                      }}
-                      haptic="medium"
-                      style={styles.renewCTA}
-                    >
-                      <Text style={styles.renewCTAText}>Renew</Text>
-                    </HapticPressable>
-                  ) : null
-                ) : null}
+                <Text style={[styles.tileTimeText, { color: COLORS.greenTextMuted }]}>{formatTimeAgo(item.createdAt)}</Text>
               </View>
+              <Text style={[styles.tileTitle, { color: '#fff' }]} numberOfLines={1}>{item.title}</Text>
               {item.description ? (
-                <Text style={styles.requestSnippet} numberOfLines={2}>{item.description}</Text>
+                <Text style={[styles.tileDesc, { color: COLORS.greenText }]} numberOfLines={2}>{item.description}</Text>
               ) : null}
+              <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>{userName}</Text>
             </View>
           </HapticPressable>
-
-          {/* Embedded thread */}
-          {renderInlineThread(item.id, thread, true)}
+          {/* Inline thread */}
+          {renderInlineThread(item.id, requestDiscussions[item.id], true)}
         </View>
       </AnimatedCard>
     );
@@ -867,7 +796,7 @@ export default function FeedScreen({ navigation }) {
         </View>
 
         <View style={styles.filterChipsRow}>
-          <View>
+          <View style={styles.chipWrapper}>
             <HapticPressable
               style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
               onPress={() => setActiveDropdown('type')}
@@ -884,7 +813,7 @@ export default function FeedScreen({ navigation }) {
             {activeFilters.length > 0 && <View style={styles.filterDot} />}
           </View>
 
-          <View>
+          <View style={styles.chipWrapper}>
             <HapticPressable
               style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
               onPress={() => setActiveDropdown('visibility')}
@@ -902,7 +831,7 @@ export default function FeedScreen({ navigation }) {
           </View>
 
           {categories.length > 0 && (
-            <View>
+            <View style={styles.chipWrapper}>
               <HapticPressable
                 style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
                 onPress={() => setActiveDropdown('category')}
@@ -1228,12 +1157,15 @@ const styles = StyleSheet.create({
   },
   filterChipsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     gap: SPACING.sm,
+  },
+  chipWrapper: {
+    flex: 1,
   },
   dropdownChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
@@ -1392,16 +1324,117 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
     paddingBottom: 160,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  tile: {
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    backgroundColor: COLORS.card,
+    marginBottom: SPACING.md,
+  },
+  tileRow: {
+    flexDirection: 'row',
+  },
+  tileThumb: {
+    width: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    borderTopLeftRadius: RADIUS.lg - 1,
+    overflow: 'hidden',
+  },
+  tileThumbImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  tilePricePill: {
+    position: 'absolute',
+    bottom: SPACING.sm,
+    left: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  tilePillText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  tileContent: {
+    flex: 1,
+    padding: SPACING.md,
+    justifyContent: 'center',
+  },
+  tileTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  tileTypeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  tilePillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  tileTypePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  tileTypeLabelText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  tileTimeText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textMuted,
+  },
+  tileTitle: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  tileDesc: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+    lineHeight: 17,
+  },
+  tileFooterText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textMuted,
   },
   card: {
     marginBottom: SPACING.lg,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.greenBorder,
     ...SHADOWS.md,
+  },
+  cardGiveaway: {
+    borderColor: '#8B451340',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1466,12 +1499,12 @@ const styles = StyleSheet.create({
   requestCard: {
     marginBottom: SPACING.lg,
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: '#D4A03C40',
     backgroundColor: COLORS.card,
     ...Platform.select({
       ios: {
-        shadowColor: 'rgba(192, 57, 43, 0.06)',
+        shadowColor: 'rgba(212, 160, 60, 0.08)',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 1,
         shadowRadius: 8,
@@ -1604,8 +1637,11 @@ const styles = StyleSheet.create({
   },
   threadContainer: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
+    paddingBottom: SPACING.xl,
     paddingTop: SPACING.md,
+    backgroundColor: COLORS.card,
+    borderBottomLeftRadius: RADIUS.lg,
+    borderBottomRightRadius: RADIUS.lg,
   },
   threadHeader: {
     flexDirection: 'row',
@@ -1752,6 +1788,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 220,
     backgroundColor: COLORS.separator,
+  },
+  ribbon: {
+    position: 'absolute',
+    top: SPACING.sm,
+    right: SPACING.sm,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.sm,
+  },
+  ribbonGiveaway: {
+    backgroundColor: '#8B4513',
+  },
+  ribbonFreeBorrow: {
+    backgroundColor: '#2D5A27',
+  },
+  ribbonPaid: {
+    backgroundColor: '#2D5A27',
+  },
+  ribbonText: {
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 1,
   },
   cardBody: {
     padding: SPACING.lg,

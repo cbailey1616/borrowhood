@@ -250,6 +250,8 @@ router.get('/', authenticate, async (req, res) => {
     // Admin sees all, otherwise scoped
     if (req.user.is_admin) {
       whereConditions.push('1=1');
+      params = [];
+      paramIndex = 1;
     } else {
       // Check if user is organizer of any community
       const organized = await query(
@@ -354,6 +356,7 @@ router.get('/:id', authenticate, async (req, res) => {
               d.response_description, d.response_photo_urls, d.responded_at, d.counter_amount,
               d.requested_amount, d.resolved_amount, d.hold_expired,
               d.resolution_notes, d.deposit_to_lender, d.deposit_to_borrower, d.organizer_fee,
+              d.admin_notes,
               d.claimant_user_id, d.respondent_user_id,
               d.resolved_by_id, d.resolved_at, d.created_at as dispute_created_at,
               t.listing_id, t.condition_at_pickup, t.condition_at_return, t.condition_notes,
@@ -448,6 +451,7 @@ router.get('/:id', authenticate, async (req, res) => {
         resolvedBy: d.resolver_first_name ? `${d.resolver_first_name} ${d.resolver_last_name}` : null,
         resolvedAt: d.resolved_at,
       } : null,
+      adminNotes: (isOrganizer || isAdmin) ? (d.admin_notes || []) : undefined,
       isClaimant,
       isRespondent,
       isOrganizer,
@@ -640,6 +644,118 @@ async function resolveDisputeInternally({ dispute, outcome, resolvedAmount, note
 
   return { status, finalResolvedAmount, holdExpired, organizerFee };
 }
+
+// ============================================
+// POST /api/disputes/:id/request-info
+// Admin/organizer requests more info from a party
+// ============================================
+router.post('/:id/request-info', authenticate,
+  body('message').isLength({ min: 5, max: 1000 }),
+  body('target').isIn(['claimant', 'respondent', 'both']),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { message, target } = req.body;
+
+    try {
+      const dispute = await query(
+        `SELECT d.*, l.title as listing_title, l.community_id
+         FROM disputes d
+         JOIN borrow_transactions t ON d.transaction_id = t.id
+         JOIN listings l ON t.listing_id = l.id
+         WHERE d.id = $1`,
+        [req.params.id]
+      );
+
+      if (dispute.rows.length === 0) {
+        return res.status(404).json({ error: 'Dispute not found' });
+      }
+
+      const d = dispute.rows[0];
+
+      // Verify admin or organizer
+      if (!req.user.is_admin) {
+        const orgCheck = await query(
+          `SELECT 1 FROM community_memberships
+           WHERE user_id = $1 AND community_id = $2 AND role = 'organizer'`,
+          [req.user.id, d.community_id]
+        );
+        if (orgCheck.rows.length === 0) {
+          return res.status(403).json({ error: 'Only admins or organizers can request info' });
+        }
+      }
+
+      // Append to admin_notes
+      const note = {
+        type: 'info_request',
+        target,
+        message,
+        by: `${req.user.first_name} ${req.user.last_name}`,
+        at: new Date().toISOString(),
+      };
+
+      await query(
+        `UPDATE disputes SET admin_notes = COALESCE(admin_notes, '[]'::jsonb) || $1::jsonb WHERE id = $2`,
+        [JSON.stringify(note), req.params.id]
+      );
+
+      // Send notifications
+      const recipients = [];
+      if (target === 'claimant' || target === 'both') recipients.push(d.claimant_user_id);
+      if (target === 'respondent' || target === 'both') recipients.push(d.respondent_user_id);
+
+      for (const userId of recipients) {
+        await sendNotification(userId, 'dispute_opened', {
+          disputeId: req.params.id,
+          itemTitle: d.listing_title,
+          body: message,
+        }, { disputeId: req.params.id });
+      }
+
+      res.json({ success: true, note });
+    } catch (err) {
+      console.error('Request info error:', err);
+      res.status(500).json({ error: 'Failed to request info' });
+    }
+  }
+);
+
+// ============================================
+// POST /api/disputes/:id/admin-note
+// Admin adds an internal note
+// ============================================
+router.post('/:id/admin-note', authenticate,
+  body('message').isLength({ min: 1, max: 2000 }),
+  async (req, res) => {
+    const { message } = req.body;
+
+    try {
+      if (!req.user.is_admin) {
+        return res.status(403).json({ error: 'Admin only' });
+      }
+
+      const note = {
+        type: 'note',
+        message,
+        by: `${req.user.first_name} ${req.user.last_name}`,
+        at: new Date().toISOString(),
+      };
+
+      await query(
+        `UPDATE disputes SET admin_notes = COALESCE(admin_notes, '[]'::jsonb) || $1::jsonb WHERE id = $2`,
+        [JSON.stringify(note), req.params.id]
+      );
+
+      res.json({ success: true, note });
+    } catch (err) {
+      console.error('Admin note error:', err);
+      res.status(500).json({ error: 'Failed to add note' });
+    }
+  }
+);
 
 // ============================================
 // POST /api/disputes/:id/resolve

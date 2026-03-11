@@ -22,6 +22,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const { listing } = route.params;
   const { user } = useAuth();
   const { showError } = useError();
+  const isGiveaway = listing.listingType === 'giveaway';
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -29,7 +30,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const [startDate, setStartDate] = useState(tomorrow);
   const [endDate, setEndDate] = useState(() => {
     const end = new Date(tomorrow);
-    end.setDate(end.getDate() + listing.minDuration);
+    end.setDate(end.getDate() + (listing.minDuration || 1));
     return end;
   });
   const [message, setMessage] = useState('');
@@ -122,22 +123,26 @@ export default function BorrowRequestScreen({ route, navigation }) {
   };
 
   const handleSubmit = async () => {
-    console.log('handleSubmit called, days:', days, 'min:', listing.minDuration, 'max:', listing.maxDuration);
-    if (days < listing.minDuration || days > listing.maxDuration) {
-      showError({
-        type: 'validation',
-        title: 'Adjust Your Dates',
-        message: `This item can be borrowed for ${listing.minDuration}–${listing.maxDuration} days. Try picking a shorter or longer window.`,
-      });
-      return;
+    if (!isGiveaway) {
+      console.log('handleSubmit called, days:', days, 'min:', listing.minDuration, 'max:', listing.maxDuration);
+      if (days < listing.minDuration || days > listing.maxDuration) {
+        showError({
+          type: 'validation',
+          title: 'Adjust Your Dates',
+          message: `This item can be borrowed for ${listing.minDuration}–${listing.maxDuration} days. Try picking a shorter or longer window.`,
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
       const result = await api.createTransaction({
         listingId: listing.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        ...(isGiveaway ? {} : {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        }),
         message: message.trim() || undefined,
       });
 
@@ -341,10 +346,17 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <Text style={styles.itemOwner}>
             {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName} ${listing.owner.lastName[0]}.`}
           </Text>
+          {isGiveaway && (
+            <View style={styles.giveawayBadge}>
+              <Ionicons name="gift" size={12} color={COLORS.secondary} />
+              <Text style={styles.giveawayBadgeText}>Giveaway — Yours to Keep</Text>
+            </View>
+          )}
         </View>
       </View>
 
-      {/* Dates */}
+      {/* Dates — hidden for giveaways */}
+      {!isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Rental Period</Text>
         <Text style={styles.hint}>
@@ -414,6 +426,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
         <Text style={styles.daysText}>{days} days</Text>
       </View>
+      )}
 
       {/* Message */}
       <View style={styles.section}>
@@ -430,7 +443,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
         />
       </View>
 
-      {/* Pricing */}
+      {/* Pricing — hidden for giveaways */}
+      {!isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Summary</Text>
         <View style={styles.pricingCard}>
@@ -450,7 +464,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           )}
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Refundable deposit</Text>
-            <Text style={styles.priceValue}>${listing.depositAmount.toFixed(2)}</Text>
+            <Text style={styles.priceValue}>${(listing.depositAmount || 0).toFixed(2)}</Text>
           </View>
           <View style={[styles.priceRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total authorization hold</Text>
@@ -462,6 +476,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           {' '}Deposit is refunded when you return the item in good condition
         </Text>
       </View>
+      )}
 
       {/* Submit */}
       <HapticPressable
@@ -474,13 +489,15 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
+            {isGiveaway ? 'Claim Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
           </Text>
         )}
       </HapticPressable>
 
       <Text style={styles.termsText}>
-        By sending this request, you agree to our borrowing terms and conditions
+        {isGiveaway
+          ? 'By claiming this item, you agree to our terms and conditions'
+          : 'By sending this request, you agree to our borrowing terms and conditions'}
       </Text>
     </ScrollView>
   );
@@ -623,6 +640,17 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  giveawayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: SPACING.xs,
+  },
+  giveawayBadgeText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.secondary,
+    fontWeight: '600',
   },
   section: {
     marginBottom: SPACING.xl,

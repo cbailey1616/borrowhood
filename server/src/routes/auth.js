@@ -633,6 +633,60 @@ router.post('/admin/reset-user', async (req, res) => {
   }
 });
 
+// DELETE /api/auth/account
+// Delete user account (Apple App Store requirement)
+// ============================================
+router.delete('/account', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Delete in dependency order to avoid FK violations
+    // 1. Tables referencing borrow_transactions
+    await query('DELETE FROM disputes WHERE claimant_user_id = $1 OR respondent_user_id = $1', [userId]);
+    await query('DELETE FROM ratings WHERE rater_id = $1 OR ratee_id = $1', [userId]);
+    await query('DELETE FROM notifications WHERE user_id = $1 OR from_user_id = $1', [userId]);
+    // 2. Transactions themselves
+    await query('DELETE FROM borrow_transactions WHERE borrower_id = $1 OR lender_id = $1', [userId]);
+    // 3. Tables referencing listings
+    await query('DELETE FROM listing_discussions WHERE user_id = $1', [userId]);
+    await query('DELETE FROM listing_discussions WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
+    await query('DELETE FROM listing_photos WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
+    await query('DELETE FROM listing_availability WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
+    await query('DELETE FROM saved_listings WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
+    await query('DELETE FROM saved_listings WHERE user_id = $1', [userId]);
+    await query('DELETE FROM bundle_items WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
+    await query('DELETE FROM community_library_items WHERE donated_by = $1', [userId]);
+    await query('DELETE FROM rto_contracts WHERE borrower_id = $1 OR lender_id = $1', [userId]);
+    await query('DELETE FROM conversations WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
+    // 4. Listings
+    await query('DELETE FROM listings WHERE owner_id = $1', [userId]);
+    // 5. Messages & conversations (messages/participants reference conversations)
+    await query('DELETE FROM message_reactions WHERE user_id = $1', [userId]);
+    await query('DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE sender_id = $1)', [userId]);
+    await query('DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = $1 OR user2_id = $1)', [userId]);
+    await query('DELETE FROM conversation_participants WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = $1 OR user2_id = $1)', [userId]);
+    await query('DELETE FROM conversations WHERE user1_id = $1 OR user2_id = $1', [userId]);
+    // 6. Remaining user-referenced tables
+    await query('DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1', [userId]);
+    await query('DELETE FROM community_memberships WHERE user_id = $1', [userId]);
+    await query('DELETE FROM user_badges WHERE user_id = $1', [userId]);
+    await query('DELETE FROM bundle_items WHERE bundle_id IN (SELECT id FROM bundles WHERE owner_id = $1)', [userId]);
+    await query('DELETE FROM bundles WHERE owner_id = $1', [userId]);
+    await query('DELETE FROM lending_circle_members WHERE user_id = $1', [userId]);
+    await query('DELETE FROM subscription_history WHERE user_id = $1', [userId]);
+    await query('DELETE FROM audit_log WHERE actor_id = $1', [userId]);
+    await query('DELETE FROM item_requests WHERE user_id = $1', [userId]);
+    // 7. Clear self-referencing FK and delete user
+    await query('UPDATE users SET referred_by = NULL WHERE referred_by = $1', [userId]);
+    await query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ error: 'Failed to delete account. Please contact support.' });
+  }
+});
+
 // GET /api/auth/me
 // Get current user
 // ============================================
