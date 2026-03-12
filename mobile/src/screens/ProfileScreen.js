@@ -59,10 +59,11 @@ export default function ProfileScreen({ navigation }) {
 
   const handlePickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.6,
+      exif: false,
     });
 
     if (!result.canceled) {
@@ -84,7 +85,8 @@ export default function ProfileScreen({ navigation }) {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.6,
+      exif: false,
     });
 
     if (!result.canceled) {
@@ -168,7 +170,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </HapticPressable>
             <View style={styles.headerInfo}>
-              <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.firstName} {user?.lastName}</Text>
+              <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
               <Text style={styles.email}>{user?.email}</Text>
               {user?.isVerified && (
                 <UserBadges
@@ -422,8 +424,6 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    borderRadius: 28,
-    overflow: 'hidden',
   },
   avatar: {
     width: 88,
@@ -440,8 +440,8 @@ const styles = StyleSheet.create({
   },
   avatarBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -2,
+    right: -2,
     width: 28,
     height: 28,
     borderRadius: RADIUS.full,
@@ -450,6 +450,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: COLORS.greenBg,
+    zIndex: 10,
   },
   headerInfo: {
     flex: 1,

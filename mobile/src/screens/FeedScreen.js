@@ -776,7 +776,6 @@ export default function FeedScreen({ navigation }) {
   if (isInitialLoad) {
     return (
       <View style={styles.container}>
-        <NativeHeader title="Feed" scrollY={scrollY} />
         <View style={styles.skeletonContainer}>
           <SkeletonCard />
           <SkeletonCard />

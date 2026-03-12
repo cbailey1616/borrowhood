@@ -235,7 +235,7 @@ export default function EditProfileScreen({ navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Preferred name</Text>
+            <Text style={styles.label}>Display name</Text>
             <TextInput
               style={styles.input}
               value={formData.displayName}
