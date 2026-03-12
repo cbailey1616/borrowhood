@@ -9,6 +9,7 @@ import {
   Dimensions,
   InteractionManager,
 } from 'react-native';
+import ShimmerImage from '../components/ShimmerImage';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -114,7 +115,7 @@ export default function SavedScreen({ navigation }) {
         style={styles.card}
       >
         <View style={styles.imageWrap}>
-          <Image
+          <ShimmerImage
             source={{ uri: item.photoUrl || 'https://via.placeholder.com/200' }}
             style={styles.cardImage}
           />

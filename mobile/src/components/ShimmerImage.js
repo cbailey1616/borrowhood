@@ -1,30 +1,20 @@
 import React, { useState, useCallback } from 'react';
-import { Image, View, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import SkeletonShape from './SkeletonLoader';
 
-const AnimatedImage = Animated.createAnimatedComponent(Image);
-
-export default function ShimmerImage({ style, ...imageProps }) {
+export default function ShimmerImage({ source, style, ...imageProps }) {
   const [loaded, setLoaded] = useState(false);
-  const opacity = useSharedValue(0);
 
   const handleLoad = useCallback(() => {
     setLoaded(true);
-    opacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.ease) });
   }, []);
-
-  const imageAnimStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
 
   // Flatten style to extract width/height/borderRadius for the skeleton
   const flatStyle = StyleSheet.flatten(style) || {};
+
+  // expo-image uses `source` as string or object
+  const src = typeof source === 'object' && source?.uri ? source.uri : source;
 
   return (
     <View style={[style, styles.container]}>
@@ -36,10 +26,15 @@ export default function ShimmerImage({ style, ...imageProps }) {
           style={StyleSheet.absoluteFill}
         />
       )}
-      <AnimatedImage
-        {...imageProps}
-        style={[StyleSheet.absoluteFill, imageAnimStyle]}
+      <Image
+        source={src}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        cachePolicy="disk"
+        transition={300}
         onLoad={handleLoad}
+        recyclingKey={typeof src === 'string' ? src : undefined}
+        {...imageProps}
       />
     </View>
   );

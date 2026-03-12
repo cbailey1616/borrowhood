@@ -9,6 +9,7 @@ import {
   Animated as RNAnimated,
   InteractionManager,
 } from 'react-native';
+import ShimmerImage from '../components/ShimmerImage';
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -150,7 +151,7 @@ export default function MyItemsScreen({ navigation }) {
           haptic="light"
         >
           {item.photoUrl ? (
-            <Image source={{ uri: item.photoUrl }} style={styles.cardImage} />
+            <ShimmerImage source={{ uri: item.photoUrl }} style={styles.cardImage} />
           ) : (
             <View style={[styles.cardImage, styles.imagePlaceholder]}>
               <Ionicons name="image-outline" size={28} color={COLORS.gray[500]} />
@@ -338,7 +339,7 @@ export default function MyItemsScreen({ navigation }) {
         >
           <View style={styles.rentalTop}>
             {item.listing.photoUrl ? (
-              <Image source={{ uri: item.listing.photoUrl }} style={styles.rentalImage} />
+              <ShimmerImage source={{ uri: item.listing.photoUrl }} style={styles.rentalImage} />
             ) : (
               <View style={[styles.rentalImage, styles.imagePlaceholder]}>
                 <Ionicons name="image-outline" size={22} color={COLORS.gray[500]} />

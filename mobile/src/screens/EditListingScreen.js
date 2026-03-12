@@ -14,6 +14,7 @@ import { Ionicons } from '../components/Icon';
 import * as ImagePicker from 'expo-image-picker';
 import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
@@ -23,6 +24,7 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function EditListingScreen({ navigation, route }) {
   const { listing } = route.params;
+  const { user } = useAuth();
   const { showError, showToast } = useError();
   const scrollRef = useRef(null);
   const fieldPositions = useRef({});
@@ -139,6 +141,15 @@ export default function EditListingScreen({ navigation, route }) {
       return;
     }
 
+    // Require payout setup for listings with deposit or rental fee
+    const hasDeposit = parseFloat(formData.depositAmount) > 0;
+    const hasRentalFee = !formData.isFree && parseFloat(formData.pricePerDay) > 0;
+    if ((hasDeposit || hasRentalFee) && !user?.hasConnectAccount) {
+      haptics.warning();
+      navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Upload any new photos to S3
@@ -171,7 +182,14 @@ export default function EditListingScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';
-      if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('verification required')) {
+      if (error.code === 'PAYOUT_SETUP_REQUIRED' || errorMsg.includes('set up payouts')) {
+        showError({
+          title: 'Payout Setup Required',
+          message: 'Set up payouts to list items with rental fees or deposits.',
+          primaryAction: 'Set Up Payouts',
+          onPrimaryAction: () => navigation.navigate('SetupPayout', { source: 'rental_listing' }),
+        });
+      } else if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('verification required')) {
         showError({
           type: 'subscription',
           title: 'Verification Required',

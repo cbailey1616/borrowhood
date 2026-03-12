@@ -254,6 +254,15 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
+    // Require payout setup for listings with deposit or rental fee
+    const hasDeposit = !isGiveaway && parseFloat(data.depositAmount) > 0;
+    const hasRentalFee = !isGiveaway && !data.isFree && parseFloat(data.pricePerDay) > 0;
+    if ((hasDeposit || hasRentalFee) && !user?.hasConnectAccount) {
+      haptics.warning();
+      navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Upload photos to S3 (skip if no photos - S3 not configured for testing)

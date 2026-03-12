@@ -1,4 +1,19 @@
 import { API_URL } from '../utils/config';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+
+// Compress image to max 1600px wide, JPEG 80% quality
+const compressImage = async (uri) => {
+  try {
+    const result = await manipulateAsync(
+      uri,
+      [{ resize: { width: 1600 } }],
+      { compress: 0.8, format: SaveFormat.JPEG }
+    );
+    return result.uri;
+  } catch {
+    return uri; // fallback to original if compression fails
+  }
+};
 
 // Token management
 let authToken = null;
@@ -434,8 +449,10 @@ const uploadToS3 = async (uploadUrl, fileUri, contentType, isLocal = false) => {
 };
 
 const uploadImage = async (fileUri, category = 'listings') => {
+  // Compress before upload
+  const compressedUri = await compressImage(fileUri);
   // Get file info
-  const response = await fetch(fileUri);
+  const response = await fetch(compressedUri);
   const blob = await response.blob();
   const contentType = blob.type || 'image/jpeg';
   const fileSize = blob.size;
@@ -444,15 +461,18 @@ const uploadImage = async (fileUri, category = 'listings') => {
   const { uploadUrl, publicUrl, isLocal } = await getPresignedUrl(contentType, fileSize, category);
 
   // Upload file
-  await uploadToS3(uploadUrl, fileUri, contentType, isLocal);
+  await uploadToS3(uploadUrl, compressedUri, contentType, isLocal);
 
   return publicUrl;
 };
 
 const uploadImages = async (fileUris, category = 'listings') => {
+  // Compress images before upload (resize to 1200px wide, JPEG 70%)
+  const compressedUris = await Promise.all(fileUris.map(compressImage));
+
   // Get file info for all images
   const fileInfos = await Promise.all(
-    fileUris.map(async (uri) => {
+    compressedUris.map(async (uri) => {
       const response = await fetch(uri);
       const blob = await response.blob();
       return {

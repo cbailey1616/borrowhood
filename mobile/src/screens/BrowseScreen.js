@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import ShimmerImage from '../components/ShimmerImage';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
@@ -85,7 +86,7 @@ export default function BrowseScreen({ navigation }) {
         haptic="light"
       >
         {item.photoUrl ? (
-          <Image source={{ uri: item.photoUrl }} style={styles.cardImage} />
+          <ShimmerImage source={{ uri: item.photoUrl }} style={styles.cardImage} />
         ) : (
           <View style={[styles.cardImage, styles.imagePlaceholder]}>
             <Ionicons name="image-outline" size={32} color={COLORS.gray[500]} />

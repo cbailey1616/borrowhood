@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import ShimmerImage from '../components/ShimmerImage';
 import HapticPressable from '../components/HapticPressable';
 import UserBadges from '../components/UserBadges';
 import ActionSheet from '../components/ActionSheet';
@@ -212,7 +213,7 @@ export default function UserProfileScreen({ route, navigation }) {
                   style={styles.listingCard}
                   onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
                 >
-                  <Image
+                  <ShimmerImage
                     source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
                     style={styles.listingImage}
                   />

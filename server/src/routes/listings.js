@@ -427,6 +427,21 @@ router.post('/', authenticate,
     let visibilityArray = Array.isArray(visibility) ? [...visibility] : [visibility];
 
     try {
+      // Require Stripe Connect for listings with rental fees or deposits
+      const hasPaidComponent = (!isFree && pricePerDay > 0) || (depositAmount && depositAmount > 0);
+      if (hasPaidComponent) {
+        const connectCheck = await query(
+          'SELECT stripe_account_id FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        if (!connectCheck.rows[0]?.stripe_account_id) {
+          return res.status(400).json({
+            error: 'Please set up payouts before listing items with rental fees or deposits.',
+            code: 'PAYOUT_SETUP_REQUIRED'
+          });
+        }
+      }
+
       // Check subscription/verification for paid rentals and town visibility
       let pricingDowngraded = false;
       const needsPaidCheck = !isFree && pricePerDay > 0;
@@ -604,6 +619,25 @@ router.patch('/:id', authenticate,
           }
         }
         req.body.visibility = visArray;
+      }
+
+      // Require Stripe Connect for deposit or rental fee
+      const updatedDeposit = req.body.depositAmount ?? req.body.deposit_amount;
+      const updatedPrice = req.body.pricePerDay ?? req.body.price_per_day;
+      const updatedIsFree = req.body.isFree ?? req.body.is_free;
+      const hasPaidUpdate = (updatedDeposit && parseFloat(updatedDeposit) > 0) ||
+        (updatedIsFree === false && updatedPrice && parseFloat(updatedPrice) > 0);
+      if (hasPaidUpdate) {
+        const connectCheck = await query(
+          'SELECT stripe_account_id FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        if (!connectCheck.rows[0]?.stripe_account_id) {
+          return res.status(400).json({
+            error: 'Please set up payouts before adding rental fees or deposits.',
+            code: 'PAYOUT_SETUP_REQUIRED'
+          });
+        }
       }
 
       // Validate status
