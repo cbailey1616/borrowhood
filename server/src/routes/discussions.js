@@ -17,7 +17,7 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT d.id, d.content, d.reply_count, d.created_at, d.updated_at,
-              u.id as user_id, u.first_name, u.last_name, u.profile_photo_url
+              u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
        WHERE d.listing_id = $1 AND d.parent_id IS NULL AND d.is_hidden = false
@@ -42,8 +42,8 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
         updatedAt: d.updated_at,
         user: {
           id: d.user_id,
-          firstName: d.first_name,
-          lastName: d.last_name,
+          firstName: d.display_name || d.first_name,
+          lastName: d.last_name ? d.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: d.profile_photo_url,
         },
         isOwn: d.user_id === req.user.id,
@@ -69,7 +69,7 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
   try {
     const result = await query(
       `SELECT d.id, d.content, d.created_at, d.updated_at,
-              u.id as user_id, u.first_name, u.last_name, u.profile_photo_url
+              u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
        WHERE d.parent_id = $1 AND d.is_hidden = false
@@ -86,8 +86,8 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
         updatedAt: d.updated_at,
         user: {
           id: d.user_id,
-          firstName: d.first_name,
-          lastName: d.last_name,
+          firstName: d.display_name || d.first_name,
+          lastName: d.last_name ? d.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: d.profile_photo_url,
         },
         isOwn: d.user_id === req.user.id,
@@ -156,10 +156,12 @@ router.post('/:listingId/discussions', authenticate,
 
       // Get poster's name for notifications
       const posterResult = await query(
-        'SELECT first_name, last_name FROM users WHERE id = $1',
+        'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
         [req.user.id]
       );
-      const posterName = `${posterResult.rows[0].first_name} ${posterResult.rows[0].last_name}`;
+      const posterFirst = posterResult.rows[0].display_name || posterResult.rows[0].first_name;
+      const posterLastInitial = posterResult.rows[0].last_name ? posterResult.rows[0].last_name.charAt(0) + '.' : '';
+      const posterName = `${posterFirst} ${posterLastInitial}`;
 
       // Send notifications
       if (parentId) {
@@ -213,8 +215,8 @@ router.post('/:listingId/discussions', authenticate,
         createdAt: post.created_at,
         user: {
           id: req.user.id,
-          firstName: posterResult.rows[0].first_name,
-          lastName: posterResult.rows[0].last_name,
+          firstName: posterFirst,
+          lastName: posterLastInitial,
         },
       });
     } catch (err) {

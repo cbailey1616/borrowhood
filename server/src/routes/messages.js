@@ -24,12 +24,12 @@ router.get('/conversations', authenticate, async (req, res) => {
            ELSE c.user1_id
          END as other_user_id,
          CASE
-           WHEN c.user1_id = $1 THEN u2.first_name
-           ELSE u1.first_name
+           WHEN c.user1_id = $1 THEN COALESCE(u2.display_name, u2.first_name)
+           ELSE COALESCE(u1.display_name, u1.first_name)
          END as other_first_name,
          CASE
-           WHEN c.user1_id = $1 THEN u2.last_name
-           ELSE u1.last_name
+           WHEN c.user1_id = $1 THEN CASE WHEN u2.last_name IS NOT NULL THEN LEFT(u2.last_name, 1) || '.' ELSE '' END
+           ELSE CASE WHEN u1.last_name IS NOT NULL THEN LEFT(u1.last_name, 1) || '.' ELSE '' END
          END as other_last_name,
          CASE
            WHEN c.user1_id = $1 THEN u2.profile_photo_url
@@ -106,7 +106,7 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
     // Get other user info
     const otherUserId = conv.user1_id === req.user.id ? conv.user2_id : conv.user1_id;
     const otherUser = await query(
-      'SELECT id, first_name, last_name, profile_photo_url FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, display_name, profile_photo_url FROM users WHERE id = $1',
       [otherUserId]
     );
 
@@ -164,8 +164,8 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
         listing,
         otherUser: otherUser.rows[0] ? {
           id: otherUser.rows[0].id,
-          firstName: otherUser.rows[0].first_name,
-          lastName: otherUser.rows[0].last_name,
+          firstName: otherUser.rows[0].display_name || otherUser.rows[0].first_name,
+          lastName: otherUser.rows[0].last_name ? otherUser.rows[0].last_name.charAt(0) + '.' : '',
           profilePhotoUrl: otherUser.rows[0].profile_photo_url,
         } : null,
       },
@@ -250,7 +250,7 @@ router.post('/', authenticate,
 
       // Get sender name for notification
       const sender = await query(
-        'SELECT first_name FROM users WHERE id = $1',
+        'SELECT first_name, display_name FROM users WHERE id = $1',
         [req.user.id]
       );
 
@@ -260,7 +260,7 @@ router.post('/', authenticate,
         recipientId,
         'new_message',
         {
-          senderName: sender.rows[0]?.first_name || 'Someone',
+          senderName: sender.rows[0]?.display_name || sender.rows[0]?.first_name || 'Someone',
           messagePreview: preview,
           conversationId,
         },

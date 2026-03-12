@@ -22,6 +22,7 @@ router.get('/', authenticate, async (req, res) => {
         u.id as owner_id,
         u.first_name,
         u.last_name,
+        u.display_name,
         u.profile_photo_url,
         u.lender_rating as rating,
         u.lender_rating_count as rating_count,
@@ -48,8 +49,8 @@ router.get('/', authenticate, async (req, res) => {
       savedAt: l.saved_at,
       owner: {
         id: l.owner_id,
-        firstName: l.first_name,
-        lastName: l.last_name,
+        firstName: l.display_name || l.first_name,
+        lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: l.profile_photo_url,
         rating: parseFloat(l.rating) || 0,
         ratingCount: l.rating_count,

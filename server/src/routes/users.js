@@ -12,6 +12,13 @@ import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
 
+// Helper: format public-facing name (display_name or first_name + last initial)
+function publicName(user) {
+  const first = user.display_name || user.first_name;
+  const lastInitial = user.last_name ? user.last_name.charAt(0) + '.' : '';
+  return { firstName: first, lastName: lastInitial };
+}
+
 // ============================================
 // PATCH /api/users/me
 // Update current user profile
@@ -23,6 +30,7 @@ router.patch('/me', authenticate,
   body('bio').optional().isLength({ max: 500 }),
   body('city').optional().trim().isLength({ max: 100 }),
   body('state').optional().trim().isLength({ max: 50 }),
+  body('displayName').optional().trim().isLength({ max: 100 }),
   body('profilePhotoUrl').optional(),
   async (req, res) => {
     const errors = validationResult(req);
@@ -37,7 +45,7 @@ router.patch('/me', authenticate,
     const userResult = await query('SELECT is_verified FROM users WHERE id = $1', [req.user.id]);
     const isVerified = userResult.rows[0]?.is_verified;
 
-    const { firstName, lastName, phone, bio, city, state, latitude, longitude, profilePhotoUrl } = req.body;
+    const { firstName, lastName, phone, bio, city, state, latitude, longitude, profilePhotoUrl, displayName } = req.body;
 
     if (isVerified && (firstName !== undefined || lastName !== undefined)) {
       return res.status(403).json({ error: 'Name is locked to your verified identity. Re-verify to change it.' });
@@ -87,6 +95,10 @@ router.patch('/me', authenticate,
       updates.push(`longitude = $${paramIndex++}`);
       values.push(longitude);
     }
+    if (displayName !== undefined) {
+      updates.push(`display_name = $${paramIndex++}`);
+      values.push(displayName);
+    }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No updates provided' });
@@ -116,18 +128,17 @@ router.patch('/me', authenticate,
 router.get('/me/friends', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url
+      `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM friendships f
        JOIN users u ON f.friend_id = u.id
        WHERE f.user_id = $1 AND f.status = 'accepted'
-       ORDER BY u.first_name, u.last_name`,
+       ORDER BY COALESCE(u.display_name, u.first_name), u.last_name`,
       [req.user.id]
     );
 
     res.json(result.rows.map(u => ({
       id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
+      ...publicName(u),
       profilePhotoUrl: u.profile_photo_url,
     })));
   } catch (err) {
@@ -143,7 +154,7 @@ router.get('/me/friends', authenticate, async (req, res) => {
 router.get('/me/friend-requests', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT f.id as request_id, u.id, u.first_name, u.last_name, u.profile_photo_url, f.created_at
+      `SELECT f.id as request_id, u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, f.created_at
        FROM friendships f
        JOIN users u ON f.user_id = u.id
        WHERE f.friend_id = $1 AND f.status = 'pending'
@@ -154,8 +165,7 @@ router.get('/me/friend-requests', authenticate, async (req, res) => {
     res.json(result.rows.map(r => ({
       requestId: r.request_id,
       id: r.id,
-      firstName: r.first_name,
-      lastName: r.last_name,
+      ...publicName(r),
       profilePhotoUrl: r.profile_photo_url,
       requestedAt: r.created_at,
     })));
@@ -200,11 +210,13 @@ router.post('/me/friend-requests/:requestId/accept', authenticate, async (req, r
 
     // Notify the requester that their request was accepted
     const accepter = await query(
-      'SELECT first_name, last_name FROM users WHERE id = $1',
+      'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
       [req.user.id]
     );
+    const accepterFirst = accepter.rows[0]?.display_name || accepter.rows[0]?.first_name;
+    const accepterLastInitial = accepter.rows[0]?.last_name ? accepter.rows[0].last_name.charAt(0) + '.' : '';
     const friendName = accepter.rows[0]
-      ? `${accepter.rows[0].first_name} ${accepter.rows[0].last_name}`
+      ? `${accepterFirst} ${accepterLastInitial}`
       : null;
 
     await sendNotification(requesterId, 'friend_accepted', {
@@ -256,7 +268,7 @@ router.get('/suggested', authenticate, async (req, res) => {
     if (neighborhood) {
       // Get users in the specified community
       result = await query(
-        `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url, u.city, u.state
+        `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.city, u.state
          FROM community_memberships m
          JOIN users u ON m.user_id = u.id
          WHERE m.community_id = $1 AND u.id != $2
@@ -267,12 +279,12 @@ router.get('/suggested', authenticate, async (req, res) => {
     } else {
       // Get users in any community the current user is in
       result = await query(
-        `SELECT DISTINCT u.id, u.first_name, u.last_name, u.profile_photo_url, u.city, u.state
+        `SELECT DISTINCT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.city, u.state
          FROM community_memberships m
          JOIN community_memberships m2 ON m.community_id = m2.community_id
          JOIN users u ON m2.user_id = u.id
          WHERE m.user_id = $1 AND u.id != $1
-         ORDER BY u.first_name, u.last_name
+         ORDER BY COALESCE(u.display_name, u.first_name), u.last_name
          LIMIT 20`,
         [req.user.id]
       );
@@ -287,8 +299,7 @@ router.get('/suggested', authenticate, async (req, res) => {
 
     res.json(result.rows.map(u => ({
       id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
+      ...publicName(u),
       profilePhotoUrl: u.profile_photo_url,
       city: u.city,
       state: u.state,
@@ -313,11 +324,12 @@ router.get('/search', authenticate, async (req, res) => {
 
   try {
     const result = await query(
-      `SELECT id, first_name, last_name, profile_photo_url, city, state
+      `SELECT id, first_name, last_name, display_name, profile_photo_url, city, state
        FROM users
        WHERE id != $1
          AND (
-           LOWER(first_name || ' ' || last_name) LIKE LOWER($2)
+           LOWER(COALESCE(display_name, first_name) || ' ' || last_name) LIKE LOWER($2)
+           OR LOWER(first_name || ' ' || last_name) LIKE LOWER($2)
            OR LOWER(email) LIKE LOWER($2)
          )
        LIMIT 20`,
@@ -333,8 +345,7 @@ router.get('/search', authenticate, async (req, res) => {
 
     res.json(result.rows.map(u => ({
       id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
+      ...publicName(u),
       profilePhotoUrl: u.profile_photo_url,
       city: u.city,
       state: u.state,
@@ -371,7 +382,7 @@ router.post('/contacts/match', authenticate, async (req, res) => {
     // Find users with matching phone numbers
     const placeholders = normalizedNumbers.map((_, i) => `$${i + 2}`).join(', ');
     const result = await query(
-      `SELECT id, first_name, last_name, profile_photo_url, city, state, phone,
+      `SELECT id, first_name, last_name, display_name, profile_photo_url, city, state, phone,
               RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) as normalized_phone
        FROM users
        WHERE id != $1
@@ -389,8 +400,7 @@ router.post('/contacts/match', authenticate, async (req, res) => {
 
     res.json(result.rows.map(u => ({
       id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
+      ...publicName(u),
       profilePhotoUrl: u.profile_photo_url,
       city: u.city,
       state: u.state,
@@ -444,11 +454,13 @@ router.post('/me/friends', authenticate,
 
         // Notify both users they're now friends
         const currentUser = await query(
-          'SELECT first_name, last_name FROM users WHERE id = $1',
+          'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
           [req.user.id]
         );
+        const curFirst = currentUser.rows[0]?.display_name || currentUser.rows[0]?.first_name;
+        const curLastInitial = currentUser.rows[0]?.last_name ? currentUser.rows[0].last_name.charAt(0) + '.' : '';
         const currentName = currentUser.rows[0]
-          ? `${currentUser.rows[0].first_name} ${currentUser.rows[0].last_name}`
+          ? `${curFirst} ${curLastInitial}`
           : null;
 
         await sendNotification(friendId, 'friend_accepted', {
@@ -480,11 +492,13 @@ router.post('/me/friends', authenticate,
 
       // Get requester name for notification
       const requester = await query(
-        'SELECT first_name, last_name FROM users WHERE id = $1',
+        'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
         [req.user.id]
       );
+      const reqFirst = requester.rows[0]?.display_name || requester.rows[0]?.first_name;
+      const reqLastInitial = requester.rows[0]?.last_name ? requester.rows[0].last_name.charAt(0) + '.' : '';
       const fromName = requester.rows[0]
-        ? `${requester.rows[0].first_name} ${requester.rows[0].last_name}`
+        ? `${reqFirst} ${reqLastInitial}`
         : null;
 
       await sendNotification(friendId, 'friend_request', {
@@ -883,7 +897,7 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT r.rating, r.comment, r.created_at,
-              u.id as rater_id, u.first_name, u.last_name, u.profile_photo_url
+              u.id as rater_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM ratings r
        JOIN users u ON r.rater_id = u.id
        WHERE r.ratee_id = $1
@@ -898,8 +912,8 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
       createdAt: r.created_at,
       rater: {
         id: r.rater_id,
-        firstName: r.first_name,
-        lastName: r.last_name,
+        firstName: r.display_name || r.first_name,
+        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: r.profile_photo_url,
       },
     })));
@@ -917,9 +931,9 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, first_name, last_name, profile_photo_url, bio,
-              city, state, status, rating, rating_count, total_transactions,
-              created_at
+      `SELECT id, first_name, last_name, display_name, profile_photo_url, bio,
+              city, state, status, lender_rating as rating, lender_rating_count as rating_count,
+              total_transactions, is_verified, created_at
        FROM users WHERE id = $1`,
       [req.params.id]
     );
@@ -929,15 +943,18 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const user = result.rows[0];
+    const publicName = user.display_name || user.first_name;
+    const lastInitial = user.last_name ? user.last_name.charAt(0) + '.' : '';
     res.json({
       id: user.id,
-      firstName: user.first_name,
-      lastName: user.last_name,
+      firstName: publicName,
+      lastName: lastInitial,
+      displayName: publicName,
       profilePhotoUrl: user.profile_photo_url,
       bio: user.bio,
       city: user.city,
       state: user.state,
-      isVerified: user.status === 'verified',
+      isVerified: user.is_verified || false,
       rating: parseFloat(user.rating) || 0,
       ratingCount: user.rating_count,
       totalTransactions: user.total_transactions,

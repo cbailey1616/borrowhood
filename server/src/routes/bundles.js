@@ -12,7 +12,7 @@ const router = Router();
 router.get('/', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT b.*, u.first_name, u.last_name, u.profile_photo_url,
+      `SELECT b.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               (SELECT COUNT(*) FROM bundle_items WHERE bundle_id = b.id) as item_count
        FROM bundles b
        JOIN users u ON b.owner_id = u.id
@@ -45,8 +45,8 @@ router.get('/', authenticate, async (req, res) => {
         timesBorrowed: b.times_borrowed,
         owner: {
           id: b.owner_id,
-          firstName: b.first_name,
-          lastName: b.last_name,
+          firstName: b.display_name || b.first_name,
+          lastName: b.last_name ? b.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: b.profile_photo_url,
         },
         items: items.rows.map(i => ({

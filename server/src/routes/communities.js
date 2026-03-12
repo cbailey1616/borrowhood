@@ -244,7 +244,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     // Get organizers
     const organizers = await query(
-      `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url
+      `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM community_memberships m
        JOIN users u ON m.user_id = u.id
        WHERE m.community_id = $1 AND m.role = 'organizer'`,
@@ -265,8 +265,8 @@ router.get('/:id', authenticate, async (req, res) => {
       role: membership.rows[0]?.role || null,
       organizers: organizers.rows.map(o => ({
         id: o.id,
-        firstName: o.first_name,
-        lastName: o.last_name,
+        firstName: o.display_name || o.first_name,
+        lastName: o.last_name ? o.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: o.profile_photo_url,
       })),
     });
@@ -355,7 +355,7 @@ router.get('/:id/members', authenticate, async (req, res) => {
 
   try {
     const result = await query(
-      `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url,
+      `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count,
               m.role, m.joined_at
        FROM community_memberships m
@@ -368,8 +368,8 @@ router.get('/:id/members', authenticate, async (req, res) => {
 
     res.json(result.rows.map(m => ({
       id: m.id,
-      firstName: m.first_name,
-      lastName: m.last_name,
+      firstName: m.display_name || m.first_name,
+      lastName: m.last_name ? m.last_name.charAt(0) + '.' : '',
       profilePhotoUrl: m.profile_photo_url,
       role: m.role,
       rating: parseFloat(m.rating) || 0,

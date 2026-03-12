@@ -21,7 +21,7 @@ router.get('/', authenticate, async (req, res) => {
     const result = await query(
       `SELECT n.*,
               u.first_name as from_first_name, u.last_name as from_last_name,
-              u.profile_photo_url as from_photo
+              u.display_name as from_display_name, u.profile_photo_url as from_photo
        FROM notifications n
        LEFT JOIN users u ON n.from_user_id = u.id
        WHERE ${whereClause}
@@ -49,8 +49,8 @@ router.get('/', authenticate, async (req, res) => {
         disputeId: n.dispute_id,
         fromUserId: n.from_user_id,
         fromUser: n.from_first_name ? {
-          firstName: n.from_first_name,
-          lastName: n.from_last_name,
+          firstName: n.from_display_name || n.from_first_name,
+          lastName: n.from_last_name ? n.from_last_name.charAt(0) + '.' : '',
           profilePhotoUrl: n.from_photo,
         } : null,
         isRead: n.is_read,

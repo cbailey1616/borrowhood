@@ -451,6 +451,17 @@ export async function runMigrations() {
       logger.info('Migration complete: listings.listing_type added');
     }
 
+    // Migration: Add display_name column to users
+    const hasDisplayName = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'display_name'
+    `);
+    if (hasDisplayName.rows.length === 0) {
+      logger.info('Running migration: Add display_name to users');
+      await query('ALTER TABLE users ADD COLUMN display_name VARCHAR(100)');
+      logger.info('Migration complete: users.display_name added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

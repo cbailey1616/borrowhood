@@ -41,7 +41,7 @@ router.get('/status', authenticate, async (req, res) => {
   try {
     // Get referred users
     const referred = await query(
-      `SELECT id, first_name, last_name, profile_photo_url, created_at
+      `SELECT id, first_name, last_name, display_name, profile_photo_url, created_at
        FROM users
        WHERE referred_by = $1
        ORDER BY created_at DESC`,
@@ -64,8 +64,8 @@ router.get('/status', authenticate, async (req, res) => {
       eligible: referred.rows.length >= 3 && !rewardClaimed,
       referredFriends: referred.rows.map(f => ({
         id: f.id,
-        firstName: f.first_name,
-        lastName: f.last_name,
+        firstName: f.display_name || f.first_name,
+        lastName: f.last_name ? f.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: f.profile_photo_url,
         joinedAt: f.created_at,
       })),

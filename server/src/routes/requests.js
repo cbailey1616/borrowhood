@@ -58,7 +58,7 @@ router.get('/', authenticate, async (req, res) => {
     params.push(limit, offset);
 
     const result = await query(
-      `SELECT r.*, u.first_name, u.last_name, u.profile_photo_url,
+      `SELECT r.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               c.name as category_name
        FROM item_requests r
        JOIN users u ON r.user_id = u.id
@@ -81,8 +81,8 @@ router.get('/', authenticate, async (req, res) => {
       category: r.category_name,
       requester: {
         id: r.user_id,
-        firstName: r.first_name,
-        lastName: r.last_name,
+        firstName: r.display_name || r.first_name,
+        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: r.profile_photo_url,
       },
       createdAt: r.created_at,
@@ -163,6 +163,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
         u.id as user_id,
         u.first_name,
         u.last_name,
+        u.display_name,
         u.profile_photo_url,
         (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
       FROM listings l
@@ -188,8 +189,8 @@ router.get('/suggestions', authenticate, async (req, res) => {
         photoUrl: l.photo_url,
         user: {
           id: l.user_id,
-          firstName: l.first_name,
-          lastName: l.last_name,
+          firstName: l.display_name || l.first_name,
+          lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: l.profile_photo_url,
         },
       })),
@@ -207,7 +208,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.profile_photo_url,
+      `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               c.name as category_name
        FROM item_requests r
@@ -236,8 +237,8 @@ router.get('/:id', authenticate, async (req, res) => {
       categoryId: r.category_id,
       requester: {
         id: r.user_id,
-        firstName: r.first_name,
-        lastName: r.last_name,
+        firstName: r.display_name || r.first_name,
+        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: r.profile_photo_url,
         rating: parseFloat(r.rating) || 0,
         ratingCount: r.rating_count,
@@ -375,8 +376,8 @@ router.post('/', authenticate,
       (async () => {
         try {
           // Get the creator's name
-          const creator = await query('SELECT first_name FROM users WHERE id = $1', [req.user.id]);
-          const firstName = creator.rows[0]?.first_name || 'Someone';
+          const creator = await query('SELECT first_name, display_name FROM users WHERE id = $1', [req.user.id]);
+          const firstName = creator.rows[0]?.display_name || creator.rows[0]?.first_name || 'Someone';
 
           let recipientIds = [];
 

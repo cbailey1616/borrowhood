@@ -119,7 +119,7 @@ router.get('/', authenticate, async (req, res) => {
     const orderBy = userLocation ? 'distance_miles ASC NULLS LAST, l.created_at DESC' : 'l.created_at DESC';
 
     const result = await query(
-      `SELECT l.*, u.first_name, u.last_name, u.profile_photo_url,
+      `SELECT l.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.city as owner_city,
               u.total_transactions, u.status as owner_status,
               owner.location as owner_location,
@@ -169,8 +169,8 @@ router.get('/', authenticate, async (req, res) => {
           isVerified: true,
         } : {
           id: l.owner_id,
-          firstName: l.first_name,
-          lastName: l.last_name,
+          firstName: l.display_name || l.first_name,
+          lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: l.profile_photo_url,
           rating: parseFloat(l.rating) || 0,
           ratingCount: l.rating_count,
@@ -234,7 +234,7 @@ router.get('/mine', authenticate, async (req, res) => {
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.profile_photo_url,
+      `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               u.status as owner_status, c.name as category_name
        FROM listings l
@@ -336,8 +336,8 @@ router.get('/:id', authenticate, async (req, res) => {
         isVerified: true,
       } : {
         id: l.owner_id,
-        firstName: l.first_name,
-        lastName: l.last_name,
+        firstName: l.display_name || l.first_name,
+        lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: l.profile_photo_url,
         rating: parseFloat(l.rating) || 0,
         ratingCount: l.rating_count,

@@ -699,7 +699,8 @@ router.get('/me', authenticate, async (req, res) => {
               total_transactions, stripe_identity_verified_at,
               subscription_tier, stripe_connect_account_id,
               onboarding_step, onboarding_completed, is_founder,
-              is_verified, verification_grace_until, is_admin
+              is_verified, verification_grace_until, is_admin,
+              display_name
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -714,6 +715,7 @@ router.get('/me', authenticate, async (req, res) => {
       email: user.email,
       firstName: user.first_name,
       lastName: user.last_name,
+      displayName: user.display_name || '',
       phone: user.phone,
       profilePhotoUrl: user.profile_photo_url,
       bio: user.bio,

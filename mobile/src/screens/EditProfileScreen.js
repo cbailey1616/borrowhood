@@ -31,6 +31,7 @@ export default function EditProfileScreen({ navigation }) {
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
+    displayName: user?.displayName || '',
     phone: user?.phone || '',
     bio: user?.bio || '',
     city: user?.city || '',
@@ -231,6 +232,21 @@ export default function EditProfileScreen({ navigation }) {
                 editable={!isVerified}
               />
             </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Preferred name</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.displayName}
+              onChangeText={(v) => updateField('displayName', v)}
+              placeholder={formData.firstName || 'How neighbors see you'}
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="words"
+            />
+            <Text style={styles.fieldHint}>
+              This is how your name appears to others (e.g., "Danny" instead of "Daniel")
+            </Text>
           </View>
 
           <View style={styles.inputContainer}>
@@ -468,6 +484,11 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  fieldHint: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
   },
   locationNote: {
     ...TYPOGRAPHY.footnote,

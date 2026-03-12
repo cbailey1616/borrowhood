@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { CardField, useConfirmSetupIntent, usePlatformPay, PlatformPayButton, PlatformPay } from '@stripe/stripe-react-native';
 import HapticPressable from '../components/HapticPressable';
@@ -113,7 +114,11 @@ export default function AddPaymentMethodScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+    >
       <View style={styles.content}>
         {Platform.OS === 'ios' && applePaySupported && (
           <>
@@ -174,7 +179,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
           )}
         </HapticPressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

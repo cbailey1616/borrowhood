@@ -68,11 +68,11 @@ router.get('/:id', authenticate, async (req, res) => {
 
     // Get members
     const members = await query(
-      `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url, lcm.role, lcm.joined_at
+      `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, lcm.role, lcm.joined_at
        FROM lending_circle_members lcm
        JOIN users u ON lcm.user_id = u.id
        WHERE lcm.circle_id = $1 AND lcm.status = 'active'
-       ORDER BY lcm.role, u.first_name`,
+       ORDER BY lcm.role, COALESCE(u.display_name, u.first_name)`,
       [req.params.id]
     );
 
@@ -80,7 +80,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const items = await query(
       `SELECT l.id, l.title, l.is_free, l.price_per_day,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
-              u.first_name as owner_first_name
+              COALESCE(u.display_name, u.first_name) as owner_first_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id
        WHERE l.circle_id = $1 AND l.status = 'active'
@@ -99,8 +99,8 @@ router.get('/:id', authenticate, async (req, res) => {
       userRole: memberCheck.rows[0].role,
       members: members.rows.map(m => ({
         id: m.id,
-        firstName: m.first_name,
-        lastName: m.last_name,
+        firstName: m.display_name || m.first_name,
+        lastName: m.last_name ? m.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: m.profile_photo_url,
         role: m.role,
         joinedAt: m.joined_at,
