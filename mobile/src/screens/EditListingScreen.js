@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
+import { checkPremiumGate } from '../utils/premiumGate';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
@@ -40,6 +41,7 @@ export default function EditListingScreen({ navigation, route }) {
     visibility: Array.isArray(listing.visibility) ? listing.visibility : [listing.visibility || 'close_friends'],
     isFree: listing.isFree ?? true,
     pricePerDay: listing.pricePerDay?.toString() || '',
+    requireDeposit: parseFloat(listing.depositAmount) > 0,
     depositAmount: listing.depositAmount?.toString() || '',
     minDuration: listing.minDuration?.toString() || '1',
     maxDuration: listing.maxDuration?.toString() || '14',
@@ -141,10 +143,32 @@ export default function EditListingScreen({ navigation, route }) {
       return;
     }
 
-    // Require payout setup for listings with deposit or rental fee
-    const hasDeposit = parseFloat(formData.depositAmount) > 0;
+    // Validate rental fee when charging
+    if (!formData.isFree && !(parseFloat(formData.pricePerDay) > 0)) {
+      haptics.warning();
+      showError({
+        type: 'validation',
+        title: 'Rental Fee Required',
+        message: 'Please enter a rental fee amount.',
+      });
+      return;
+    }
+
+    // Validate deposit amount when deposit is required
+    if (formData.requireDeposit && !(parseFloat(formData.depositAmount) > 0)) {
+      haptics.warning();
+      showError({
+        type: 'validation',
+        title: 'Deposit Required',
+        message: 'Please enter a deposit amount.',
+      });
+      return;
+    }
+
+    // Safety net: require payout setup for listings with deposit or rental fee
+    const hasDeposit = formData.requireDeposit && parseFloat(formData.depositAmount) > 0;
     const hasRentalFee = !formData.isFree && parseFloat(formData.pricePerDay) > 0;
-    if ((hasDeposit || hasRentalFee) && !user?.hasConnectAccount) {
+    if ((hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
       haptics.warning();
       navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
       return;
@@ -170,7 +194,7 @@ export default function EditListingScreen({ navigation, route }) {
         visibility: formData.visibility,
         isFree: formData.isFree,
         pricePerDay: formData.isFree ? undefined : parseFloat(formData.pricePerDay) || 0,
-        depositAmount: parseFloat(formData.depositAmount) || 0,
+        depositAmount: formData.requireDeposit ? parseFloat(formData.depositAmount) || 0 : 0,
         minDuration: parseInt(formData.minDuration) || 1,
         maxDuration: parseInt(formData.maxDuration) || 14,
         photos: allPhotos,
@@ -388,13 +412,25 @@ export default function EditListingScreen({ navigation, route }) {
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
         <HapticPressable
-          haptic="light"
+          accessibilityLabel="Charge a rental fee"
+          accessibilityRole="switch"
           style={styles.toggle}
-          onPress={() => updateField('isFree', !formData.isFree)}
+          onPress={() => {
+            if (formData.isFree) {
+              const gate = checkPremiumGate(user, 'rental_listing');
+              if (!gate.passed) {
+                navigation.push(gate.screen, gate.params);
+                return;
+              }
+            }
+            updateField('isFree', !formData.isFree);
+            haptics.light();
+          }}
+          haptic={null}
         >
-          <Text style={styles.toggleText}>Free to borrow</Text>
-          <View style={[styles.switch, formData.isFree && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.isFree && styles.switchKnobActive]} />
+          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a rental fee</Text>
+          <View style={[styles.switch, !formData.isFree && styles.switchActive]}>
+            <View style={[styles.switchKnob, !formData.isFree && styles.switchKnobActive]} />
           </View>
         </HapticPressable>
 
@@ -412,8 +448,30 @@ export default function EditListingScreen({ navigation, route }) {
           </View>
         )}
 
-        <View style={styles.depositSection}>
-          <Text style={styles.subLabel}>Refundable deposit (optional)</Text>
+        <HapticPressable
+          accessibilityLabel="Require a deposit"
+          accessibilityRole="switch"
+          style={styles.toggle}
+          onPress={() => {
+            if (!formData.requireDeposit) {
+              const gate = checkPremiumGate(user, 'rental_listing');
+              if (!gate.passed) {
+                navigation.push(gate.screen, gate.params);
+                return;
+              }
+            }
+            updateField('requireDeposit', !formData.requireDeposit);
+            haptics.light();
+          }}
+          haptic={null}
+        >
+          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Require a deposit</Text>
+          <View style={[styles.switch, formData.requireDeposit && styles.switchActive]}>
+            <View style={[styles.switchKnob, formData.requireDeposit && styles.switchKnobActive]} />
+          </View>
+        </HapticPressable>
+
+        {formData.requireDeposit && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
@@ -421,10 +479,11 @@ export default function EditListingScreen({ navigation, route }) {
               value={formData.depositAmount}
               onChangeText={(v) => updateField('depositAmount', v)}
               placeholder="0.00"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
           </View>
-        </View>
+        )}
       </View>
 
       {/* Duration */}
@@ -600,6 +659,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text,
   },
+  toggleTextDisabled: {
+    color: COLORS.textSecondary,
+  },
+  payoutHint: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+  },
   toggleHint: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
@@ -646,14 +713,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   priceSuffix: {
-    ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  depositSection: {
-    marginTop: SPACING.lg,
-  },
-  subLabel: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.textSecondary,

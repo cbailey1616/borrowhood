@@ -700,7 +700,7 @@ router.get('/me', authenticate, async (req, res) => {
               subscription_tier, stripe_connect_account_id,
               onboarding_step, onboarding_completed, is_founder,
               is_verified, verification_grace_until, is_admin,
-              display_name
+              display_name, payouts_enabled
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -730,6 +730,7 @@ router.get('/me', authenticate, async (req, res) => {
       totalTransactions: user.total_transactions,
       subscriptionTier: user.subscription_tier || 'free',
       hasConnectAccount: !!user.stripe_connect_account_id,
+      payoutsEnabled: user.payouts_enabled || false,
       onboardingStep: user.onboarding_step,
       onboardingCompleted: user.onboarding_completed || false,
       isFounder: user.is_founder || false,

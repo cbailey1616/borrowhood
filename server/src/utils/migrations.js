@@ -462,6 +462,19 @@ export async function runMigrations() {
       logger.info('Migration complete: users.display_name added');
     }
 
+    // Migration: Add payouts_enabled column to users
+    const hasPayoutsEnabled = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'payouts_enabled'
+    `);
+    if (hasPayoutsEnabled.rows.length === 0) {
+      logger.info('Running migration: Add payouts_enabled to users');
+      await query('ALTER TABLE users ADD COLUMN payouts_enabled BOOLEAN DEFAULT false');
+      // Backfill: users with connect accounts who are verified likely have payouts enabled
+      await query(`UPDATE users SET payouts_enabled = true WHERE stripe_connect_account_id IS NOT NULL AND is_verified = true`);
+      logger.info('Migration complete: users.payouts_enabled added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

@@ -20,6 +20,21 @@ router.get('/', authenticate, async (req, res) => {
     const connectId = userResult.rows[0]?.stripe_connect_account_id;
     const hasConnectAccount = !!connectId;
 
+    // Fetch Connect account status for payout card display
+    let connectStatus = null;
+    if (connectId) {
+      try {
+        const account = await stripe.accounts.retrieve(connectId);
+        connectStatus = {
+          chargesEnabled: account.charges_enabled,
+          payoutsEnabled: account.payouts_enabled,
+          detailsSubmitted: account.details_submitted,
+        };
+      } catch (err) {
+        console.error('Get Connect account status error:', err.message);
+      }
+    }
+
     // Initialize response object
     const response = {
       balance: {
@@ -36,6 +51,7 @@ router.get('/', authenticate, async (req, res) => {
       recentTransactions: [],
       payouts: [],
       hasConnectAccount,
+      connectStatus,
     };
 
     // Fetch Stripe balance if Connect account exists

@@ -88,7 +88,7 @@ export default function EarningsScreen({ navigation }) {
     );
   }
 
-  const { balance, stats, recentTransactions, payouts, hasConnectAccount } = earnings || {};
+  const { balance, stats, recentTransactions, payouts, hasConnectAccount, connectStatus } = earnings || {};
 
   return (
     <View style={styles.container}>
@@ -108,17 +108,57 @@ export default function EarningsScreen({ navigation }) {
           <Text style={styles.balanceAmount}>
             {formatCurrency(stats?.totalEarned)}
           </Text>
-          {!hasConnectAccount && (
-            <HapticPressable
-              style={styles.setupButton}
-              onPress={() => navigation.navigate('SetupPayout')}
-              haptic="medium"
-            >
-              <Ionicons name="wallet-outline" size={18} color="#fff" />
-              <Text style={styles.setupButtonText}>Set Up Payouts</Text>
-            </HapticPressable>
-          )}
         </View>
+
+        {/* Payout Status Card */}
+        {connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled ? (
+          <View style={[styles.payoutStatusCard, styles.cardBox]}>
+            <View style={styles.payoutIconWrap}>
+              <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
+            </View>
+            <View style={styles.payoutStatusInfo}>
+              <Text style={styles.payoutStatusTitle}>Payouts Active</Text>
+              <Text style={styles.payoutStatusSubtext}>
+                You'll receive payments when others borrow your items. Funds are deposited to your bank account.
+              </Text>
+            </View>
+          </View>
+        ) : connectStatus?.detailsSubmitted ? (
+          <View style={[styles.payoutStatusCard, styles.cardBox]}>
+            <View style={styles.payoutIconWrap}>
+              <Ionicons name="time" size={28} color="#F5A623" />
+            </View>
+            <View style={styles.payoutStatusInfo}>
+              <Text style={styles.payoutStatusTitle}>Verification in Progress</Text>
+              <Text style={styles.payoutStatusSubtext}>
+                Stripe is reviewing your payout account. This usually takes just a few minutes.
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <HapticPressable
+            haptic="medium"
+            onPress={() => navigation.navigate('SetupPayout')}
+          >
+            <View style={[styles.payoutSetupCard, styles.cardBox]}>
+              <View style={styles.payoutSetupContent}>
+                <View style={styles.payoutIconWrap}>
+                  <Ionicons name="wallet-outline" size={28} color={COLORS.primary} />
+                </View>
+                <View style={styles.payoutStatusInfo}>
+                  <Text style={styles.payoutStatusTitle}>Set Up Payouts</Text>
+                  <Text style={styles.payoutStatusSubtext}>
+                    Connect a bank account to earn money when people borrow your items.
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.payoutSetupAction}>
+                <Text style={styles.payoutSetupActionText}>Get Started</Text>
+                <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+              </View>
+            </View>
+          </HapticPressable>
+        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -267,19 +307,56 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     letterSpacing: -1,
   },
-  setupButton: {
+  payoutStatusCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.lg,
-    gap: SPACING.sm,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    gap: SPACING.md,
   },
-  setupButtonText: {
+  payoutSetupCard: {
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  payoutSetupContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  payoutIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payoutStatusInfo: {
+    flex: 1,
+  },
+  payoutStatusTitle: {
     ...TYPOGRAPHY.headline,
-    color: '#fff',
+    color: COLORS.text,
+  },
+  payoutStatusSubtext: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  payoutSetupAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  payoutSetupActionText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   statsRow: {
     flexDirection: 'row',

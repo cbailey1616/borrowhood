@@ -67,6 +67,7 @@ export default function CreateListingScreen({ navigation, route }) {
       : ['close_friends', 'neighborhood'],
     isFree: true,
     pricePerDay: '',
+    requireDeposit: false,
     depositAmount: '',
     minDuration: '1',
     maxDuration: '14',
@@ -226,7 +227,7 @@ export default function CreateListingScreen({ navigation, route }) {
     const errors = {
       title: !data.title.trim(),
       photos: data.photos.length === 0,
-      categoryId: !data.categoryId,
+      categoryId: !isGiveaway && !data.categoryId,
     };
 
     if (errors.title || errors.photos || errors.categoryId) {
@@ -254,10 +255,32 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
-    // Require payout setup for listings with deposit or rental fee
-    const hasDeposit = !isGiveaway && parseFloat(data.depositAmount) > 0;
+    // Validate rental fee when charging
+    if (!isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) > 0)) {
+      haptics.warning();
+      showError({
+        type: 'validation',
+        title: 'Rental Fee Required',
+        message: 'Please enter a rental fee amount.',
+      });
+      return;
+    }
+
+    // Validate deposit amount when deposit is required
+    if (!isGiveaway && data.requireDeposit && !(parseFloat(data.depositAmount) > 0)) {
+      haptics.warning();
+      showError({
+        type: 'validation',
+        title: 'Deposit Required',
+        message: 'Please enter a deposit amount.',
+      });
+      return;
+    }
+
+    // Safety net: require payout setup for listings with deposit or rental fee
+    const hasDeposit = !isGiveaway && data.requireDeposit && parseFloat(data.depositAmount) > 0;
     const hasRentalFee = !isGiveaway && !data.isFree && parseFloat(data.pricePerDay) > 0;
-    if ((hasDeposit || hasRentalFee) && !user?.hasConnectAccount) {
+    if ((hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
       haptics.warning();
       navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
       return;
@@ -274,11 +297,11 @@ export default function CreateListingScreen({ navigation, route }) {
         title: data.title.trim(),
         description: data.description.trim() || undefined,
         condition: data.condition,
-        categoryId: data.categoryId,
+        categoryId: data.categoryId || undefined,
         visibility: data.visibility, // Send as array
         isFree: isGiveaway ? true : data.isFree,
         pricePerDay: (isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
-        depositAmount: isGiveaway ? 0 : parseFloat(data.depositAmount) || 0,
+        depositAmount: (isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
         minDuration: isGiveaway ? undefined : parseInt(data.minDuration) || 1,
         maxDuration: isGiveaway ? undefined : parseInt(data.maxDuration) || 14,
         listingType: isGiveaway ? 'giveaway' : 'lend',
@@ -453,7 +476,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Category */}
       <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
+        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category{!isGiveaway ? ' *' : ''}</Text>
         {categories.length > 0 ? (
           <HapticPressable
             haptic="light"
@@ -541,7 +564,6 @@ export default function CreateListingScreen({ navigation, route }) {
       {!isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
-        <Text style={styles.freeLabel}>Free to borrow</Text>
         <HapticPressable
           testID="CreateListing.toggle.rentalFee"
           accessibilityLabel="Charge a rental fee"
@@ -549,8 +571,6 @@ export default function CreateListingScreen({ navigation, route }) {
           style={styles.toggle}
           onPress={() => {
             if (formData.isFree) {
-              // TODO: Restore full gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
-              // Still requires payout setup even when paid tiers are disabled
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
                 navigation.push(gate.screen, gate.params);
@@ -562,7 +582,7 @@ export default function CreateListingScreen({ navigation, route }) {
           }}
           haptic={null}
         >
-          <Text style={styles.toggleText}>Charge a rental fee</Text>
+          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a rental fee</Text>
           <View style={[styles.switch, !formData.isFree && styles.switchActive]}>
             <View style={[styles.switchKnob, !formData.isFree && styles.switchKnobActive]} />
           </View>
@@ -585,8 +605,31 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
         )}
 
-        <View style={styles.depositSection}>
-          <Text style={styles.subLabel}>Refundable deposit (optional)</Text>
+        <HapticPressable
+          testID="CreateListing.toggle.deposit"
+          accessibilityLabel="Require a deposit"
+          accessibilityRole="switch"
+          style={styles.toggle}
+          onPress={() => {
+            if (!formData.requireDeposit) {
+              const gate = checkPremiumGate(user, 'rental_listing');
+              if (!gate.passed) {
+                navigation.push(gate.screen, gate.params);
+                return;
+              }
+            }
+            updateField('requireDeposit', !formData.requireDeposit);
+            haptics.light();
+          }}
+          haptic={null}
+        >
+          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Require a deposit</Text>
+          <View style={[styles.switch, formData.requireDeposit && styles.switchActive]}>
+            <View style={[styles.switchKnob, formData.requireDeposit && styles.switchKnobActive]} />
+          </View>
+        </HapticPressable>
+
+        {formData.requireDeposit && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
@@ -600,7 +643,7 @@ export default function CreateListingScreen({ navigation, route }) {
               keyboardType="decimal-pad"
             />
           </View>
-        </View>
+        )}
       </View>
       )}
 
@@ -645,7 +688,7 @@ export default function CreateListingScreen({ navigation, route }) {
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>{isGiveaway ? 'Give Away Item' : 'List Item'}</Text>
+          <Text style={styles.submitButtonText}>{isGiveaway ? 'Give Away Item' : formData.isFree && !formData.requireDeposit ? 'List Item for Free' : 'List Item'}</Text>
         )}
       </HapticPressable>
 
@@ -805,13 +848,17 @@ const styles = StyleSheet.create({
   photoScroll: {
     marginHorizontal: -SPACING.xl,
     paddingHorizontal: SPACING.xl,
+    overflow: 'visible',
   },
   photoRow: {
     flexDirection: 'row',
     gap: SPACING.md,
+    paddingTop: 6,
+    paddingRight: 6,
   },
   photoWrapper: {
     position: 'relative',
+    overflow: 'visible',
   },
   photo: {
     width: 100,
@@ -949,6 +996,14 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
+  toggleTextDisabled: {
+    color: COLORS.textSecondary,
+  },
+  payoutHint: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+  },
   switch: {
     width: 50,
     height: 30,
@@ -993,13 +1048,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   priceSuffix: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-  },
-  depositSection: {
-    marginTop: SPACING.lg,
-  },
-  subLabel: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
   },

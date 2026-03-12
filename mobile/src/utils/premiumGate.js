@@ -9,7 +9,7 @@ import { ENABLE_PAID_TIERS } from './config';
 export function checkPremiumGate(user, source) {
   if (!ENABLE_PAID_TIERS) {
     const isVerified = user?.isVerified;
-    const hasConnect = user?.hasConnectAccount;
+    const payoutsEnabled = user?.payoutsEnabled;
 
     // Verification required for town access even without paid tiers
     if (source === 'town_browse' && !isVerified) {
@@ -22,18 +22,18 @@ export function checkPremiumGate(user, source) {
       };
     }
 
-    // Stripe Connect required for rental listings (payout setup)
+    // Payout setup required for rental listings (deposit/fee toggles)
     if (source === 'rental_listing') {
       if (!isVerified) {
         return {
           passed: false,
           screen: 'IdentityVerification',
-          params: { source, totalSteps: hasConnect ? 1 : 2 },
+          params: { source, totalSteps: payoutsEnabled ? 1 : 2 },
           completedSteps: 0,
-          totalSteps: hasConnect ? 1 : 2,
+          totalSteps: payoutsEnabled ? 1 : 2,
         };
       }
-      if (!hasConnect) {
+      if (!payoutsEnabled) {
         return {
           passed: false,
           screen: 'SetupPayout',
@@ -49,7 +49,7 @@ export function checkPremiumGate(user, source) {
 
   const isPlus = user?.subscriptionTier === 'plus';
   const isVerified = user?.isVerified;
-  const hasConnect = user?.hasConnectAccount;
+  const payoutsEnabled = user?.payoutsEnabled;
   const totalSteps = source === 'rental_listing' ? 3 : 2;
 
   // If verified, they've completed the full flow (payment + identity)
@@ -74,7 +74,7 @@ export function checkPremiumGate(user, source) {
     };
   }
 
-  if (source === 'rental_listing' && !hasConnect) {
+  if (source === 'rental_listing' && !payoutsEnabled) {
     return {
       passed: false,
       screen: 'SetupPayout',
