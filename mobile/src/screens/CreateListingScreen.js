@@ -257,6 +257,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
     // Validate rental fee when charging
     if (!isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) > 0)) {
+      Keyboard.dismiss();
       haptics.warning();
       showError({
         type: 'validation',
@@ -268,6 +269,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
     // Validate deposit amount when deposit is required
     if (!isGiveaway && data.requireDeposit && !(parseFloat(data.depositAmount) > 0)) {
+      Keyboard.dismiss();
       haptics.warning();
       showError({
         type: 'validation',
@@ -1011,20 +1013,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.borderBrown,
-    padding: 2,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
   },
   switchActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
   switchKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#fff',
   },
   switchKnobActive: {
-    marginLeft: 20,
+    alignSelf: 'flex-end',
   },
   priceInput: {
     flexDirection: 'row',

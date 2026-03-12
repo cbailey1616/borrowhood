@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
@@ -145,6 +146,7 @@ export default function EditListingScreen({ navigation, route }) {
 
     // Validate rental fee when charging
     if (!formData.isFree && !(parseFloat(formData.pricePerDay) > 0)) {
+      Keyboard.dismiss();
       haptics.warning();
       showError({
         type: 'validation',
@@ -156,6 +158,7 @@ export default function EditListingScreen({ navigation, route }) {
 
     // Validate deposit amount when deposit is required
     if (formData.requireDeposit && !(parseFloat(formData.depositAmount) > 0)) {
+      Keyboard.dismiss();
       haptics.warning();
       showError({
         type: 'validation',
@@ -677,19 +680,20 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     backgroundColor: COLORS.gray[700],
-    padding: 2,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
   },
   switchActive: {
     backgroundColor: COLORS.secondary,
   },
   switchKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#fff',
   },
   switchKnobActive: {
-    marginLeft: 20,
+    alignSelf: 'flex-end',
   },
   priceInput: {
     flexDirection: 'row',

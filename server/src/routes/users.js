@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
-import { authenticate, requireVerified } from '../middleware/auth.js';
+import { authenticate, requireVerified, requireAdmin } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
   stripe,
@@ -996,6 +996,23 @@ router.get('/:id/listings', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Get user listings error:', err);
     res.status(500).json({ error: 'Failed to get listings' });
+  }
+});
+
+// ============================================
+// PATCH /api/users/me/toggle-payouts
+// Admin: toggle payouts_enabled for testing
+// ============================================
+router.patch('/me/toggle-payouts', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const result = await query(
+      'UPDATE users SET payouts_enabled = NOT payouts_enabled WHERE id = $1 RETURNING payouts_enabled',
+      [req.user.id]
+    );
+    res.json({ payoutsEnabled: result.rows[0].payouts_enabled });
+  } catch (err) {
+    console.error('Toggle payouts error:', err);
+    res.status(500).json({ error: 'Failed to toggle payouts' });
   }
 });
 
