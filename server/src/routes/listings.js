@@ -120,7 +120,7 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await query(
       `SELECT l.*, u.first_name, u.last_name, u.profile_photo_url,
-              u.rating, u.rating_count, u.city as owner_city,
+              u.lender_rating as rating, u.lender_rating_count as rating_count, u.city as owner_city,
               u.total_transactions, u.status as owner_status,
               owner.location as owner_location,
               cat.name as category_name,
@@ -235,7 +235,7 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.profile_photo_url,
-              u.rating, u.rating_count, u.total_transactions,
+              u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               u.status as owner_status, c.name as category_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id

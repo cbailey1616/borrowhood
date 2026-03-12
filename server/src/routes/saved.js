@@ -23,8 +23,8 @@ router.get('/', authenticate, async (req, res) => {
         u.first_name,
         u.last_name,
         u.profile_photo_url,
-        u.rating,
-        u.rating_count,
+        u.lender_rating as rating,
+        u.lender_rating_count as rating_count,
         (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
         s.created_at as saved_at
       FROM saved_listings s

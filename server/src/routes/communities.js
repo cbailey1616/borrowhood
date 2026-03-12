@@ -356,7 +356,7 @@ router.get('/:id/members', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT u.id, u.first_name, u.last_name, u.profile_photo_url,
-              u.rating, u.rating_count,
+              u.lender_rating as rating, u.lender_rating_count as rating_count,
               m.role, m.joined_at
        FROM community_memberships m
        JOIN users u ON m.user_id = u.id

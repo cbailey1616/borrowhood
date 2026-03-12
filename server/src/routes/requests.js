@@ -208,7 +208,7 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.profile_photo_url,
-              u.rating, u.rating_count, u.total_transactions,
+              u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               c.name as category_name
        FROM item_requests r
        JOIN users u ON r.user_id = u.id
