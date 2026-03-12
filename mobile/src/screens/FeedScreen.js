@@ -113,30 +113,39 @@ export default function FeedScreen({ navigation }) {
     }
   }, [search, activeFilters, visibilityFilters, categoryFilters]);
 
-  // Fetch discussion previews for all feed items
+  // Fetch discussion previews for visible feed items (batched)
   useEffect(() => {
-    const requestItems = feed.filter(item => item.type === 'request' && !requestDiscussions[item.id]);
-    requestItems.forEach(async (item) => {
-      try {
-        const data = await api.getRequestDiscussions(item.id, { limit: 2 });
-        setRequestDiscussions(prev => ({
-          ...prev,
-          [item.id]: { posts: data.posts || [], total: data.total || 0 },
-        }));
-      } catch (error) {}
-    });
+    if (feed.length === 0) return;
 
-    const listingItems = feed.filter(item => item.type === 'listing' && !listingDiscussions[item.id]);
-    listingItems.forEach(async (item) => {
-      try {
-        const data = await api.getDiscussions(item.id, { limit: 2 });
-        setListingDiscussions(prev => ({
-          ...prev,
-          [item.id]: { posts: data.posts || [], total: data.total || 0 },
-        }));
-      } catch (error) {}
-    });
-  }, [feed]);
+    const fetchDiscussions = async () => {
+      const requestItems = feed.filter(item => item.type === 'request' && !requestDiscussions[item.id]);
+      const listingItems = feed.filter(item => item.type === 'listing' && !listingDiscussions[item.id]);
+
+      const reqResults = await Promise.allSettled(
+        requestItems.slice(0, 10).map(item =>
+          api.getRequestDiscussions(item.id, { limit: 2 }).then(data => ({ id: item.id, data }))
+        )
+      );
+      const reqMap = {};
+      reqResults.forEach(r => {
+        if (r.status === 'fulfilled') reqMap[r.value.id] = { posts: r.value.data.posts || [], total: r.value.data.total || 0 };
+      });
+      if (Object.keys(reqMap).length > 0) setRequestDiscussions(prev => ({ ...prev, ...reqMap }));
+
+      const listResults = await Promise.allSettled(
+        listingItems.slice(0, 10).map(item =>
+          api.getDiscussions(item.id, { limit: 2 }).then(data => ({ id: item.id, data }))
+        )
+      );
+      const listMap = {};
+      listResults.forEach(r => {
+        if (r.status === 'fulfilled') listMap[r.value.id] = { posts: r.value.data.posts || [], total: r.value.data.total || 0 };
+      });
+      if (Object.keys(listMap).length > 0) setListingDiscussions(prev => ({ ...prev, ...listMap }));
+    };
+
+    fetchDiscussions();
+  }, [feed.length]);
 
   useEffect(() => {
     fetchFeed();

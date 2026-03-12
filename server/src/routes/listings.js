@@ -44,13 +44,13 @@ router.get('/', authenticate, async (req, res) => {
 
     // Add distance calculation if user has location
     if (userLocation) {
-      selectExtra = `, ST_Distance(owner.location, $${paramIndex}::geography) / 1609.34 as distance_miles`;
+      selectExtra = `, ST_Distance(u.location, $${paramIndex}::geography) / 1609.34 as distance_miles`;
       params.push(userLocation);
       paramIndex++;
 
       // Filter by max distance if specified
       if (maxDistance) {
-        whereConditions.push(`ST_DWithin(owner.location, $${paramIndex}::geography, $${paramIndex + 1})`);
+        whereConditions.push(`ST_DWithin(u.location, $${paramIndex}::geography, $${paramIndex + 1})`);
         params.push(userLocation, parseFloat(maxDistance) * 1609.34); // miles to meters
         paramIndex += 2;
       }
@@ -122,13 +122,11 @@ router.get('/', authenticate, async (req, res) => {
       `SELECT l.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.city as owner_city,
               u.total_transactions, u.status as owner_status,
-              owner.location as owner_location,
               cat.name as category_name,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
               ${selectExtra}
        FROM listings l
        JOIN users u ON l.owner_id = u.id
-       JOIN users owner ON l.owner_id = owner.id
        LEFT JOIN categories cat ON l.category_id = cat.id
        WHERE ${whereConditions.join(' AND ')}
        ORDER BY ${orderBy}

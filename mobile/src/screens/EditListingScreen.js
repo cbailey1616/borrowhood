@@ -42,12 +42,6 @@ export default function EditListingScreen({ navigation, route }) {
     minDuration: listing.minDuration?.toString() || '1',
     maxDuration: listing.maxDuration?.toString() || '14',
     photos: listing.photos || [],
-    // RTO fields
-    rtoAvailable: listing.rtoAvailable || false,
-    rtoPurchasePrice: listing.rtoPurchasePrice?.toString() || '',
-    rtoMinPayments: listing.rtoMinPayments?.toString() || '6',
-    rtoMaxPayments: listing.rtoMaxPayments?.toString() || '24',
-    rtoRentalCreditPercent: listing.rtoRentalCreditPercent?.toString() || '50',
   });
   const [newPhotos, setNewPhotos] = useState([]); // Local URIs of newly added photos
   const [removedPhotos, setRemovedPhotos] = useState([]); // URLs of removed photos
@@ -169,12 +163,6 @@ export default function EditListingScreen({ navigation, route }) {
         minDuration: parseInt(formData.minDuration) || 1,
         maxDuration: parseInt(formData.maxDuration) || 14,
         photos: allPhotos,
-        // RTO fields
-        rtoAvailable: formData.rtoAvailable,
-        rtoPurchasePrice: formData.rtoAvailable ? parseFloat(formData.rtoPurchasePrice) || 0 : undefined,
-        rtoMinPayments: formData.rtoAvailable ? parseInt(formData.rtoMinPayments) || 6 : undefined,
-        rtoMaxPayments: formData.rtoAvailable ? parseInt(formData.rtoMaxPayments) || 24 : undefined,
-        rtoRentalCreditPercent: formData.rtoAvailable ? parseFloat(formData.rtoRentalCreditPercent) || 50 : undefined,
       });
 
       haptics.success();
@@ -447,81 +435,6 @@ export default function EditListingScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Rent-to-Own */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Rent-to-Own</Text>
-        <HapticPressable
-          haptic="light"
-          style={styles.toggle}
-          onPress={() => updateField('rtoAvailable', !formData.rtoAvailable)}
-        >
-          <View>
-            <Text style={styles.toggleText}>Allow rent-to-own</Text>
-            <Text style={styles.toggleHint}>Let borrowers purchase over time</Text>
-          </View>
-          <View style={[styles.switch, formData.rtoAvailable && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.rtoAvailable && styles.switchKnobActive]} />
-          </View>
-        </HapticPressable>
-
-        {formData.rtoAvailable && (
-          <View style={styles.rtoFields}>
-            <View style={styles.rtoRow}>
-              <Text style={styles.subLabel}>Purchase Price</Text>
-              <View style={styles.priceInput}>
-                <Text style={styles.currency}>$</Text>
-                <TextInput
-                  style={styles.priceField}
-                  value={formData.rtoPurchasePrice}
-                  onChangeText={(v) => updateField('rtoPurchasePrice', v)}
-                  placeholder="0.00"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-
-            <View style={styles.rtoRow}>
-              <Text style={styles.subLabel}>Equity Credit Per Payment</Text>
-              <View style={styles.percentInput}>
-                <TextInput
-                  style={styles.percentField}
-                  value={formData.rtoRentalCreditPercent}
-                  onChangeText={(v) => updateField('rtoRentalCreditPercent', v)}
-                  keyboardType="number-pad"
-                  maxLength={3}
-                />
-                <Text style={styles.percentSymbol}>%</Text>
-              </View>
-            </View>
-
-            <View style={styles.rtoPaymentRange}>
-              <Text style={styles.subLabel}>Payment Range</Text>
-              <View style={styles.durationRow}>
-                <View style={styles.durationInput}>
-                  <Text style={styles.durationLabel}>Min</Text>
-                  <TextInput
-                    style={styles.durationField}
-                    value={formData.rtoMinPayments}
-                    onChangeText={(v) => updateField('rtoMinPayments', v)}
-                    keyboardType="number-pad"
-                  />
-                </View>
-                <Text style={styles.durationSeparator}>to</Text>
-                <View style={styles.durationInput}>
-                  <Text style={styles.durationLabel}>Max</Text>
-                  <TextInput
-                    style={styles.durationField}
-                    value={formData.rtoMaxPayments}
-                    onChangeText={(v) => updateField('rtoMaxPayments', v)}
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-      </View>
-
       {/* Submit */}
       <HapticPressable
         haptic="medium"
@@ -756,16 +669,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: SPACING.xl,
-  },
-  rtoFields: {
-    marginTop: SPACING.lg,
-    gap: SPACING.lg,
-  },
-  rtoRow: {
-    gap: SPACING.sm,
-  },
-  rtoPaymentRange: {
-    gap: SPACING.sm,
   },
   percentInput: {
     flexDirection: 'row',

@@ -186,6 +186,9 @@ const leaveCommunity = (id) =>
 const getCommunityMembers = (id, params) =>
   get(`/communities/${id}/members`, params);
 
+const addCommunityAdmin = (communityId, userId) =>
+  post(`/communities/${communityId}/add-admin`, { userId });
+
 const createCommunity = (data) =>
   post('/communities', data);
 
@@ -750,6 +753,7 @@ export default {
   joinCommunity,
   leaveCommunity,
   getCommunityMembers,
+  addCommunityAdmin,
   createCommunity,
   // Listings
   getListings,

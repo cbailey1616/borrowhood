@@ -36,6 +36,7 @@ import BundlesScreen from '../screens/BundlesScreen';
 import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 import InviteMembersScreen from '../screens/InviteMembersScreen';
 import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
+import CommunityMembersScreen from '../screens/CommunityMembersScreen';
 import ReferralScreen from '../screens/ReferralScreen';
 import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
 import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
@@ -249,6 +250,11 @@ export default function RootNavigator() {
             name="InviteMembers"
             component={InviteMembersScreen}
             options={{ ...sharedScreenOptions, title: 'Invite Neighbors' }}
+          />
+          <Stack.Screen
+            name="CommunityMembers"
+            component={CommunityMembersScreen}
+            options={{ ...sharedScreenOptions, title: 'Members' }}
           />
           <Stack.Screen
             name="CommunitySettings"

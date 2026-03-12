@@ -12,11 +12,14 @@ import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
 
-// Helper: format public-facing name (display_name or first_name + last initial)
+// Helper: format public-facing name
+// If display_name is set, use it alone. Otherwise first_name + last initial.
 function publicName(user) {
-  const first = user.display_name || user.first_name;
+  if (user.display_name) {
+    return { firstName: user.display_name, lastName: '' };
+  }
   const lastInitial = user.last_name ? user.last_name.charAt(0) + '.' : '';
-  return { firstName: first, lastName: lastInitial };
+  return { firstName: user.first_name, lastName: lastInitial };
 }
 
 // ============================================
@@ -943,13 +946,13 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const user = result.rows[0];
-    const publicName = user.display_name || user.first_name;
-    const lastInitial = user.last_name ? user.last_name.charAt(0) + '.' : '';
+    const displayFirst = user.display_name || user.first_name;
+    const displayLast = user.display_name ? '' : (user.last_name ? user.last_name.charAt(0) + '.' : '');
     res.json({
       id: user.id,
-      firstName: publicName,
-      lastName: lastInitial,
-      displayName: publicName,
+      firstName: displayFirst,
+      lastName: displayLast,
+      displayName: user.display_name || '',
       profilePhotoUrl: user.profile_photo_url,
       bio: user.bio,
       city: user.city,
