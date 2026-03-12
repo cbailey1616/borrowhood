@@ -56,26 +56,30 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration - allow all for development
+// CORS configuration
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? ['https://borrowhood.com', 'https://www.borrowhood.com', 'https://borrowhood-production.up.railway.app']
+  : true;
 app.use(cors({
-  origin: true,
+  origin: ALLOWED_ORIGINS,
   credentials: true,
 }));
 
-// Rate limiting - relaxed for alpha testing
+// Rate limiting
+const isProduction = process.env.NODE_ENV === 'production';
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Relaxed for alpha
+  max: isProduction ? 200 : 500,
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === '/health', // Skip health checks
+  skip: (req) => req.path === '/health',
 });
 
-// Rate limit for auth routes - relaxed for alpha testing
+// Rate limit for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Relaxed for alpha
+  max: isProduction ? 20 : 100,
   message: { error: 'Too many login attempts. Please wait 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
