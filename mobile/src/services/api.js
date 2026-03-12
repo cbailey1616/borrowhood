@@ -11,7 +11,7 @@ const setAuthToken = (token) => {
 const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
 
-  console.log('API Request:', url); // Debug logging
+  if (__DEV__) console.log('API Request:', url);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ const request = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.log('API Error:', error.message, error.code); // Debug logging
+    if (__DEV__) console.log('API Error:', error.message, error.code);
     // Re-throw with preserved properties
     const apiError = new Error(error.message || 'Network error');
     apiError.status = error.status;

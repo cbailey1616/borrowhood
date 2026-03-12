@@ -11,8 +11,8 @@ export const API_URL = `${BASE_URL}/api`;
 
 // Test key for development, live key for production
 const STRIPE_TEST_KEY = 'pk_test_51Svf5n7NWs4o2FyPTSeaiUH8jveT8Gt4owTZNpNEQYpmVEMiBJveqg4ALEujT4O1fJvpSDBZRM68M365qutkDVl000ADk6iFVL';
-const STRIPE_LIVE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || STRIPE_TEST_KEY;
-export const STRIPE_PUBLISHABLE_KEY = __DEV__ ? STRIPE_TEST_KEY : STRIPE_LIVE_KEY;
+const STRIPE_LIVE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+export const STRIPE_PUBLISHABLE_KEY = __DEV__ ? STRIPE_TEST_KEY : (STRIPE_LIVE_KEY || STRIPE_TEST_KEY);
 
 // Category icon fallback map (slug → Ionicons name)
 export const CATEGORY_ICONS = {

@@ -26,7 +26,6 @@ const NOTIFICATION_SETTINGS = [
     settings: [
       { key: 'payment_updates', label: 'Payment Updates', description: 'Payment confirmations and receipts' },
       { key: 'pickup_return', label: 'Pickup & Return', description: 'When items are picked up or returned' },
-      { key: 'rating_received', label: 'Ratings', description: 'When you receive a new rating' },
     ],
   },
   {
