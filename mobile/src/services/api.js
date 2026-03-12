@@ -333,6 +333,12 @@ const deleteRequest = (id) =>
 const renewRequest = (id, expiresIn) =>
   post(`/requests/${id}/renew`, expiresIn ? { expiresIn } : {});
 
+const getRequestSuggestions = (id) =>
+  get(`/requests/${id}/suggestions`);
+
+const searchListingSuggestions = (title) =>
+  get(`/requests/suggestions?title=${encodeURIComponent(title)}`);
+
 // ============================================
 // Messages / Chat
 // ============================================
@@ -793,6 +799,8 @@ export default {
   updateRequest,
   deleteRequest,
   renewRequest,
+  getRequestSuggestions,
+  searchListingSuggestions,
   // Messages / Chat
   getConversations,
   getConversation,

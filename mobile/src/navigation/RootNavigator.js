@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { COLORS } from '../utils/config';
 
 import AuthNavigator from './AuthNavigator';
@@ -17,6 +17,7 @@ import BorrowRequestScreen from '../screens/BorrowRequestScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import WantedPostsScreen from '../screens/WantedPostsScreen';
 import CreateRequestScreen from '../screens/CreateRequestScreen';
+import RequestSuggestionsScreen from '../screens/RequestSuggestionsScreen';
 import RequestDetailScreen from '../screens/RequestDetailScreen';
 import ConversationsScreen from '../screens/ConversationsScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -50,6 +51,10 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 const Stack = createNativeStackNavigator();
 
 // Shared screen options for native iOS feel
+const GrabHandle = () => (
+  <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 2.5, backgroundColor: COLORS.textMuted, opacity: 0.4, marginBottom: 4 }} />
+);
+
 const sharedScreenOptions = {
   headerShown: true,
   headerStyle: {
@@ -64,6 +69,20 @@ const sharedScreenOptions = {
   },
   contentStyle: { backgroundColor: COLORS.background },
 };
+
+const modalScreenOptions = (title) => ({
+  ...sharedScreenOptions,
+  title,
+  presentation: 'modal',
+  header: ({ options }) => (
+    <View style={{ backgroundColor: COLORS.background, paddingTop: 8 }}>
+      <GrabHandle />
+      <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+        <Text style={{ fontWeight: '600', color: COLORS.primary, fontSize: 17 }}>{options.title}</Text>
+      </View>
+    </View>
+  ),
+});
 
 export default function RootNavigator() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -116,22 +135,22 @@ export default function RootNavigator() {
           <Stack.Screen
             name="CreateListing"
             component={CreateListingScreen}
-            options={{ ...sharedScreenOptions, title: 'List an Item', presentation: 'modal' }}
+            options={modalScreenOptions('List an Item')}
           />
           <Stack.Screen
             name="EditListing"
             component={EditListingScreen}
-            options={{ ...sharedScreenOptions, title: 'Edit Listing', presentation: 'modal' }}
+            options={modalScreenOptions('Edit Listing')}
           />
           <Stack.Screen
             name="BorrowRequest"
             component={BorrowRequestScreen}
-            options={{ ...sharedScreenOptions, title: 'Request to Borrow', presentation: 'modal' }}
+            options={modalScreenOptions('Request to Borrow')}
           />
           <Stack.Screen
             name="EditProfile"
             component={EditProfileScreen}
-            options={{ ...sharedScreenOptions, title: 'Edit Profile', presentation: 'modal' }}
+            options={modalScreenOptions('Edit Profile')}
           />
           <Stack.Screen
             name="WantedPosts"
@@ -141,7 +160,12 @@ export default function RootNavigator() {
           <Stack.Screen
             name="CreateRequest"
             component={CreateRequestScreen}
-            options={{ ...sharedScreenOptions, title: 'Post a Request', presentation: 'modal' }}
+            options={modalScreenOptions('Post a Request')}
+          />
+          <Stack.Screen
+            name="RequestSuggestions"
+            component={RequestSuggestionsScreen}
+            options={{ ...sharedScreenOptions, title: 'Suggestions', headerShown: false }}
           />
           <Stack.Screen
             name="RequestDetail"
@@ -151,7 +175,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="EditRequest"
             component={EditRequestScreen}
-            options={{ ...sharedScreenOptions, title: 'Edit Request', presentation: 'modal' }}
+            options={modalScreenOptions('Edit Request')}
           />
           <Stack.Screen
             name="Conversations"
@@ -176,7 +200,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="AddPaymentMethod"
             component={AddPaymentMethodScreen}
-            options={{ ...sharedScreenOptions, title: 'Add Card', presentation: 'modal' }}
+            options={modalScreenOptions('Add Card')}
           />
           <Stack.Screen
             name="MyCommunity"
@@ -186,7 +210,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="NotificationSettings"
             component={NotificationSettingsScreen}
-            options={{ ...sharedScreenOptions, title: 'Notification Settings', presentation: 'modal' }}
+            options={modalScreenOptions('Notification Settings')}
           />
           <Stack.Screen
             name="Disputes"
@@ -196,7 +220,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="SetupPayout"
             component={SetupPayoutScreen}
-            options={{ ...sharedScreenOptions, title: 'Payout Settings', presentation: 'modal' }}
+            options={modalScreenOptions('Payout Settings')}
           />
           <Stack.Screen
             name="ListingDiscussion"
@@ -209,7 +233,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Subscription"
             component={SubscriptionScreen}
-            options={{ ...sharedScreenOptions, title: 'Subscription', presentation: 'modal' }}
+            options={modalScreenOptions('Subscription')}
           />
           <Stack.Screen
             name="Bundles"
@@ -244,36 +268,34 @@ export default function RootNavigator() {
           <Stack.Screen
             name="IdentityVerification"
             component={IdentityVerificationScreen}
-            options={{ ...sharedScreenOptions, title: 'Verify Identity', presentation: 'modal' }}
+            options={modalScreenOptions('Verify Identity')}
           />
           <Stack.Screen
             name="PaymentFlow"
             component={PaymentFlowScreen}
-            options={{ ...sharedScreenOptions, title: 'Payment', presentation: 'modal' }}
+            options={modalScreenOptions('Payment')}
           />
           <Stack.Screen
             name="RentalCheckout"
             component={RentalCheckoutScreen}
-            options={{ ...sharedScreenOptions, title: 'Rental Checkout', presentation: 'modal' }}
+            options={modalScreenOptions('Rental Checkout')}
           />
           <Stack.Screen
             name="DamageClaim"
             component={DamageClaimScreen}
-            options={{ ...sharedScreenOptions, title: 'Damage Claim', presentation: 'modal' }}
+            options={modalScreenOptions('Damage Claim')}
           />
           <Stack.Screen
             name="ReportIssue"
             component={ReportIssueScreen}
-            options={{ ...sharedScreenOptions, title: 'Report an Issue', presentation: 'modal' }}
+            options={modalScreenOptions('Report an Issue')}
           />
           <Stack.Screen
             name="RespondToDispute"
             component={RespondToDisputeScreen}
-            options={({ route }) => ({
-              ...sharedScreenOptions,
-              title: route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim',
-              presentation: 'modal',
-            })}
+            options={({ route }) => modalScreenOptions(
+              route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim'
+            )}
           />
           <Stack.Screen
             name="Earnings"
@@ -288,7 +310,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="ChangePassword"
             component={ForgotPasswordScreen}
-            options={{ ...sharedScreenOptions, title: 'Change Password', presentation: 'modal' }}
+            options={modalScreenOptions('Change Password')}
           />
         </>
       )}

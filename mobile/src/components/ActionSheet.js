@@ -64,6 +64,7 @@ export default function ActionSheet({
         style={[styles.sheetContainer, { paddingBottom: bottomPad }]}
       >
         <View style={styles.sheetCard}>
+          <View style={styles.grabHandle} />
           {title ? (
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
@@ -127,6 +128,16 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     paddingHorizontal: SPACING.lg,
     overflow: 'hidden',
+  },
+  grabHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.textMuted,
+    opacity: 0.4,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   header: {
     alignItems: 'center',

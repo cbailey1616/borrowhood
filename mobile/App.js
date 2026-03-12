@@ -53,7 +53,7 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#DED2B5' }}>
       <ErrorBoundary>
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY}

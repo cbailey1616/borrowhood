@@ -10,6 +10,7 @@ import {
   InteractionManager,
   Platform,
   TextInput,
+  Pressable,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
@@ -440,9 +441,9 @@ export default function FeedScreen({ navigation }) {
                 </View>
               ) : (
                 <View style={styles.tilePillRow}>
-                  <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
-                    <Ionicons name="swap-horizontal" size={10} color="#fff" />
-                    <Text style={styles.tilePillText}>BORROW</Text>
+                  <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? tint.accent : COLORS.textMuted }]}>
+                    <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
+                    <Text style={styles.tilePillText}>{item.isAvailable ? 'BORROW' : 'CURRENTLY BORROWED'}</Text>
                   </View>
                   <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
                     <Text style={styles.tilePillText}>
@@ -564,9 +565,12 @@ export default function FeedScreen({ navigation }) {
 
     return (
       <View style={styles.threadContainer}>
-        <HapticPressable
-          haptic="light"
-          onPress={() => setCollapsedThreads(prev => ({ ...prev, [itemId]: !prev[itemId] }))}
+        <Pressable
+          onPress={() => {
+            haptics.light();
+            setCollapsedThreads(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={[styles.threadHeader, !isCollapsed && styles.threadHeaderExpanded]}
         >
           <Ionicons name="chatbubbles-outline" size={14} color={COLORS.textSecondary} />
@@ -574,7 +578,7 @@ export default function FeedScreen({ navigation }) {
             {thread?.total > 0 ? `${thread.total} ${thread.total === 1 ? 'comment' : 'comments'}` : 'No comments yet'}
           </Text>
           <Ionicons name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={14} color={COLORS.textMuted} />
-        </HapticPressable>
+        </Pressable>
 
         {isCollapsed ? null : (<>
 
@@ -1636,9 +1640,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   threadContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    paddingTop: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.sm,
+    paddingTop: SPACING.sm,
     backgroundColor: COLORS.card,
     borderBottomLeftRadius: RADIUS.lg,
     borderBottomRightRadius: RADIUS.lg,

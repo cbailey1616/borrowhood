@@ -103,10 +103,9 @@ export default function CreateRequestScreen({ navigation }) {
   const handleSubmit = async () => {
     const errors = {
       title: !formData.title.trim(),
-      categoryId: !formData.categoryId,
     };
 
-    if (errors.title || errors.categoryId) {
+    if (errors.title) {
       setFieldErrors(errors);
       haptics.warning();
       showError({
@@ -138,8 +137,23 @@ export default function CreateRequestScreen({ navigation }) {
         requestData.expiresIn = formData.expiresIn;
       }
 
-      await api.createRequest(requestData);
+      // Check for matching listings before creating
+      try {
+        const { suggestions } = await api.searchListingSuggestions(requestData.title);
+        if (suggestions && suggestions.length > 0) {
+          haptics.success();
+          navigation.replace('RequestSuggestions', {
+            requestData,
+            requestTitle: formData.title.trim(),
+            suggestions,
+          });
+          return;
+        }
+      } catch (e) {
+        // Suggestions are best-effort, don't block
+      }
 
+      await api.createRequest(requestData);
       haptics.success();
       showToast('Your request has been posted!', 'success');
       navigation.goBack();
@@ -156,6 +170,16 @@ export default function CreateRequestScreen({ navigation }) {
   const availableVisibilities = communityId
     ? ALL_VISIBILITIES
     : ALL_VISIBILITIES.filter(v => v !== 'neighborhood');
+
+  // Default visibility to highest available level
+  useEffect(() => {
+    if (communityId === undefined) return; // still loading
+    const defaultVis = [];
+    defaultVis.push('close_friends');
+    if (communityId) defaultVis.push('neighborhood');
+    if (user?.isVerified) defaultVis.push('town');
+    updateField('visibility', defaultVis);
+  }, [communityId]);
 
   // Loading state while checking community
   if (communityId === undefined) {
@@ -254,7 +278,7 @@ export default function CreateRequestScreen({ navigation }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
+          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category</Text>
           <HapticPressable
             haptic="light"
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}

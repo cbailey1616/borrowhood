@@ -129,6 +129,78 @@ router.get('/mine', authenticate, async (req, res) => {
 });
 
 // ============================================
+// GET /api/requests/suggestions
+// Search listings matching a title string (pre-creation)
+// ============================================
+router.get('/suggestions', authenticate, async (req, res) => {
+  try {
+    const title = req.query.title || '';
+
+    // Build search terms from title words (3+ chars)
+    const words = title
+      .split(/\s+/)
+      .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
+      .filter(w => w.length >= 3);
+
+    if (words.length === 0) {
+      return res.json({ suggestions: [] });
+    }
+
+    // Search listings matching any keyword in title or description
+    const likeClauses = words.map((_, i) => `(l.title ILIKE $${i + 1} OR l.description ILIKE $${i + 1})`);
+    const likeParams = words.map(w => `%${w}%`);
+
+    const suggestions = await query(
+      `SELECT
+        l.id,
+        l.title,
+        l.description,
+        l.is_free,
+        l.price_per_day,
+        l.is_available,
+        l.listing_type,
+        l.condition,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.profile_photo_url,
+        (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
+      FROM listings l
+      JOIN users u ON l.owner_id = u.id
+      WHERE l.status = 'active'
+        AND l.owner_id != $${likeParams.length + 1}
+        AND (${likeClauses.join(' OR ')})
+      ORDER BY l.is_available DESC, l.created_at DESC
+      LIMIT 10`,
+      [...likeParams, req.user.id]
+    );
+
+    res.json({
+      suggestions: suggestions.rows.map(l => ({
+        id: l.id,
+        title: l.title,
+        description: l.description,
+        isFree: l.is_free,
+        pricePerDay: l.price_per_day,
+        isAvailable: l.is_available,
+        listingType: l.listing_type || 'lend',
+        condition: l.condition,
+        photoUrl: l.photo_url,
+        user: {
+          id: l.user_id,
+          firstName: l.first_name,
+          lastName: l.last_name,
+          profilePhotoUrl: l.profile_photo_url,
+        },
+      })),
+    });
+  } catch (err) {
+    console.error('Request suggestions error:', err);
+    res.status(500).json({ error: 'Failed to get suggestions' });
+  }
+});
+
+// ============================================
 // GET /api/requests/:id
 // Get request details
 // ============================================
@@ -188,7 +260,7 @@ router.post('/', authenticate,
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
   body('communityId').optional({ nullable: true }).isUUID(),
-  body('categoryId').isUUID(),
+  body('categoryId').optional({ nullable: true }).isUUID(),
   body('type').optional().isIn(['item', 'service']),
   body('neededFrom').optional().isISO8601(),
   body('neededUntil').optional().isISO8601(),
