@@ -916,7 +916,7 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
       rater: {
         id: r.rater_id,
         firstName: r.display_name || r.first_name,
-        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
+        lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: r.profile_photo_url,
       },
     })));

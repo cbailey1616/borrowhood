@@ -165,7 +165,7 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
         otherUser: otherUser.rows[0] ? {
           id: otherUser.rows[0].id,
           firstName: otherUser.rows[0].display_name || otherUser.rows[0].first_name,
-          lastName: otherUser.rows[0].last_name ? otherUser.rows[0].last_name.charAt(0) + '.' : '',
+          lastName: otherUser.rows[0].display_name ? '' : (otherUser.rows[0].last_name ? otherUser.rows[0].last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: otherUser.rows[0].profile_photo_url,
         } : null,
       },

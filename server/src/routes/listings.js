@@ -168,7 +168,7 @@ router.get('/', authenticate, async (req, res) => {
         } : {
           id: l.owner_id,
           firstName: l.display_name || l.first_name,
-          lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
+          lastName: l.display_name ? '' : (l.last_name ? l.last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: l.profile_photo_url,
           rating: parseFloat(l.rating) || 0,
           ratingCount: l.rating_count,
@@ -335,7 +335,7 @@ router.get('/:id', authenticate, async (req, res) => {
       } : {
         id: l.owner_id,
         firstName: l.display_name || l.first_name,
-        lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
+        lastName: l.display_name ? '' : (l.last_name ? l.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: l.profile_photo_url,
         rating: parseFloat(l.rating) || 0,
         ratingCount: l.rating_count,

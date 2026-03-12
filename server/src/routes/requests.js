@@ -82,7 +82,7 @@ router.get('/', authenticate, async (req, res) => {
       requester: {
         id: r.user_id,
         firstName: r.display_name || r.first_name,
-        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
+        lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: r.profile_photo_url,
       },
       createdAt: r.created_at,
@@ -190,7 +190,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
         user: {
           id: l.user_id,
           firstName: l.display_name || l.first_name,
-          lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
+          lastName: l.display_name ? '' : (l.last_name ? l.last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: l.profile_photo_url,
         },
       })),
@@ -238,7 +238,7 @@ router.get('/:id', authenticate, async (req, res) => {
       requester: {
         id: r.user_id,
         firstName: r.display_name || r.first_name,
-        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
+        lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: r.profile_photo_url,
         rating: parseFloat(r.rating) || 0,
         ratingCount: r.rating_count,

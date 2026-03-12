@@ -42,7 +42,7 @@ router.get('/:requestId/discussions', authenticate, async (req, res) => {
         user: {
           id: d.user_id,
           firstName: d.display_name || d.first_name,
-          lastName: d.last_name ? d.last_name.charAt(0) + '.' : '',
+          lastName: d.display_name ? '' : (d.last_name ? d.last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: d.profile_photo_url,
         },
         isOwn: d.user_id === req.user.id,
@@ -86,7 +86,7 @@ router.get('/:requestId/discussions/:postId/replies', authenticate, async (req, 
         user: {
           id: d.user_id,
           firstName: d.display_name || d.first_name,
-          lastName: d.last_name ? d.last_name.charAt(0) + '.' : '',
+          lastName: d.display_name ? '' : (d.last_name ? d.last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: d.profile_photo_url,
         },
         isOwn: d.user_id === req.user.id,
