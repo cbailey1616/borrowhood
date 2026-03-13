@@ -63,6 +63,31 @@ export default function CommunityMembersScreen({ route, navigation }) {
     );
   };
 
+  const handleRemove = (member) => {
+    Alert.alert(
+      'Remove Member',
+      `Remove ${member.firstName} from this neighborhood?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.removeCommunityMember(communityId, member.id);
+              haptics.success();
+              showToast(`${member.firstName} has been removed`, 'success');
+              fetchMembers();
+            } catch (err) {
+              haptics.error();
+              showError({ message: err.message || 'Failed to remove member' });
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const isOrganizer = userRole === 'organizer';
 
   const renderMember = ({ item }) => (
@@ -90,13 +115,22 @@ export default function CommunityMembersScreen({ route, navigation }) {
         )}
       </View>
       {isOrganizer && item.role !== 'organizer' && item.id !== user?.id && (
-        <HapticPressable
-          haptic="medium"
-          style={styles.promoteButton}
-          onPress={() => handlePromote(item)}
-        >
-          <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
-        </HapticPressable>
+        <View style={styles.adminActions}>
+          <HapticPressable
+            haptic="medium"
+            style={styles.promoteButton}
+            onPress={() => handlePromote(item)}
+          >
+            <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+          </HapticPressable>
+          <HapticPressable
+            haptic="medium"
+            style={styles.removeButton}
+            onPress={() => handleRemove(item)}
+          >
+            <Ionicons name="person-remove-outline" size={18} color={COLORS.danger} />
+          </HapticPressable>
+        </View>
       )}
     </HapticPressable>
   );
@@ -183,10 +217,19 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 2,
   },
+  adminActions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
   promoteButton: {
     padding: SPACING.sm,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.primaryMuted,
+  },
+  removeButton: {
+    padding: SPACING.sm,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.dangerMuted,
   },
   separator: {
     height: 1,

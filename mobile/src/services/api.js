@@ -204,6 +204,9 @@ const getCommunityMembers = (id, params) =>
 const addCommunityAdmin = (communityId, userId) =>
   post(`/communities/${communityId}/add-admin`, { userId });
 
+const removeCommunityMember = (communityId, userId) =>
+  del(`/communities/${communityId}/members/${userId}`);
+
 const createCommunity = (data) =>
   post('/communities', data);
 
@@ -774,6 +777,7 @@ export default {
   leaveCommunity,
   getCommunityMembers,
   addCommunityAdmin,
+  removeCommunityMember,
   createCommunity,
   // Listings
   getListings,
