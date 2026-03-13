@@ -58,9 +58,17 @@ export async function authenticate(req, res, next) {
   }
 }
 
-// Require verified identity
-export function requireVerified(req, res, next) {
-  if (req.user.status !== 'verified') {
+// Require verified identity (checks both is_verified flag and grace period)
+export async function requireVerified(req, res, next) {
+  const result = await query(
+    'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
+    [req.user.id]
+  );
+  const u = result.rows[0];
+  const graceActive = u?.verification_grace_until && new Date(u.verification_grace_until) > new Date();
+  const isVerified = u?.is_verified || graceActive;
+
+  if (!isVerified) {
     return res.status(403).json({
       error: 'Identity verification required',
       code: 'VERIFICATION_REQUIRED',

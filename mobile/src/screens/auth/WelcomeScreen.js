@@ -11,6 +11,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
@@ -24,7 +26,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 const logo = require('../../../assets/logo.png');
 
 export default function WelcomeScreen({ navigation }) {
-  const { login } = useAuth();
+  const { login, loginWithApple, loginWithGoogle } = useAuth();
 
   const { showError } = useError();
   const {
@@ -46,10 +48,18 @@ export default function WelcomeScreen({ navigation }) {
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
   const [biometricSheetVisible, setBiometricSheetVisible] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
 
   useEffect(() => {
     checkBiometricsReady();
   }, [isBiometricsAvailable, isBiometricsEnabled]);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
+    }
+  }, []);
 
   const checkBiometricsReady = async () => {
     if (isBiometricsAvailable && isBiometricsEnabled) {
@@ -57,6 +67,55 @@ export default function WelcomeScreen({ navigation }) {
       setCanUseBiometrics(hasCredentials);
     } else {
       setCanUseBiometrics(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setSocialLoading('apple');
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      const fullName = credential.fullName?.givenName
+        ? { givenName: credential.fullName.givenName, familyName: credential.fullName.familyName }
+        : null;
+      await loginWithApple(credential.identityToken, fullName);
+      haptics.success();
+    } catch (err) {
+      if (err.code !== 'ERR_REQUEST_CANCELED') {
+        haptics.error();
+        showError({
+          type: 'auth',
+          message: err.message || 'Apple Sign-In failed. Please try again.',
+        });
+      }
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setSocialLoading('google');
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken || response.idToken;
+      if (!idToken) throw new Error('No ID token received from Google');
+      await loginWithGoogle(idToken);
+      haptics.success();
+    } catch (err) {
+      if (err.code !== 'SIGN_IN_CANCELLED' && err.code !== '12501') {
+        haptics.error();
+        showError({
+          type: 'auth',
+          message: err.message || 'Google Sign-In failed. Please try again.',
+        });
+      }
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -226,6 +285,41 @@ export default function WelcomeScreen({ navigation }) {
               </View>
             </View>
 
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {appleAvailable && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={RADIUS.full}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+            )}
+
+            <HapticPressable
+              style={[styles.googleButton, socialLoading === 'google' && styles.loginButtonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={!!socialLoading}
+              haptic="medium"
+              testID="Welcome.button.google"
+              accessibilityLabel="Sign in with Google"
+              accessibilityRole="button"
+            >
+              {socialLoading === 'google' ? (
+                <ActivityIndicator color={COLORS.text} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={18} color={COLORS.text} />
+                  <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                </>
+              )}
+            </HapticPressable>
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
               <HapticPressable onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link">
@@ -384,6 +478,41 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.separator,
+  },
+  dividerText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textMuted,
+    paddingHorizontal: SPACING.md,
+  },
+  appleButton: {
+    height: 50,
+    marginBottom: SPACING.sm,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    height: 50,
+    borderRadius: RADIUS.full,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+    backgroundColor: COLORS.surface,
+  },
+  googleButtonText: {
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
   },
   footer: {
     flexDirection: 'row',

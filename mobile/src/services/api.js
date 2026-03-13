@@ -115,7 +115,7 @@ const startIdentityVerification = () =>
   post('/auth/verify-identity');
 
 const checkVerification = () =>
-  post('/auth/check-verification');
+  get('/identity/status');
 
 const resetVerification = () =>
   post('/auth/reset-verification');
@@ -270,8 +270,6 @@ const confirmPayment = (id) =>
 const confirmPickup = (id, condition) =>
   post(`/transactions/${id}/pickup`, { condition });
 
-const confirmReturn = (id, condition, notes) =>
-  post(`/transactions/${id}/return`, { condition, notes });
 
 const cancelTransaction = (id) =>
   post(`/transactions/${id}/cancel`);
@@ -799,7 +797,6 @@ export default {
   declineTransaction,
   confirmPayment,
   confirmPickup,
-  confirmReturn,
   cancelTransaction,
   rateTransaction,
   // Disputes

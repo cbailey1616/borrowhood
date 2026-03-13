@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../utils/db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
   stripe,
@@ -14,11 +14,9 @@ import {
 } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
 import logger from '../utils/logger.js';
+import { PLATFORM_FEE_PERCENT, BORROWER_SERVICE_FEE_PERCENT } from '../utils/constants.js';
 
 const router = Router();
-
-const LENDER_FEE_PERCENT = 0.03;  // 3% from lender
-const BORROWER_FEE_PERCENT = 0.03; // 3% from borrower
 
 // ============================================
 // POST /api/rentals/request
@@ -41,7 +39,7 @@ router.post('/request', authenticate,
     try {
       // Get listing details
       const listing = await query(
-        `SELECT l.*, u.stripe_connect_account_id as lender_connect_id
+        `SELECT l.*, u.stripe_connect_account_id as lender_connect_id, u.city as lender_city
          FROM listings l
          JOIN users u ON l.owner_id = u.id
          WHERE l.id = $1 AND l.status = 'active'`,
@@ -53,6 +51,83 @@ router.post('/request', authenticate,
       }
 
       const item = listing.rows[0];
+
+      const isPaidRental = parseFloat(item.price_per_day) > 0;
+
+      // Verification always required for town-level borrowing
+      if (isPaidRental || item.visibility === 'town') {
+        const borrowerInfo = await query(
+          'SELECT is_verified, city, subscription_tier, verification_grace_until FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const borrower = borrowerInfo.rows[0];
+        const tier = borrower?.subscription_tier || 'free';
+
+        // Verification required for paid rentals and town-level items
+        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
+        const borrowerVerified = borrower?.is_verified || borrowerGraceActive;
+
+        // Tier enforcement only when paid tiers enabled
+        if (ENABLE_PAID_TIERS) {
+          const borrowerPlusOrVerified = tier === 'plus' || borrowerVerified;
+          if (!borrowerPlusOrVerified) {
+            return res.status(403).json({
+              error: isPaidRental
+                ? 'Plus subscription required for paid rentals'
+                : 'Plus subscription required to borrow from town listings',
+              code: 'PLUS_REQUIRED',
+              requiredTier: 'plus',
+            });
+          }
+        }
+
+        if (!borrowerVerified) {
+          return res.status(403).json({
+            error: isPaidRental
+              ? 'Identity verification required for paid rentals'
+              : 'Identity verification required to borrow from town listings',
+            code: 'VERIFICATION_REQUIRED',
+          });
+        }
+
+        // City matching for town-level listings
+        if (item.visibility === 'town') {
+          if (!borrower.city || !item.lender_city || borrower.city.toLowerCase() !== item.lender_city.toLowerCase()) {
+            return res.status(403).json({
+              error: 'This item is only available to verified users in the same town',
+              code: 'TOWN_MISMATCH',
+            });
+          }
+        }
+      }
+
+      // Neighborhood listings require the borrower to be in the same city
+      if (item.visibility === 'neighborhood') {
+        const borrowerCity = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
+        const bCity = borrowerCity.rows[0]?.city;
+        if (!bCity || !item.lender_city || bCity.toLowerCase() !== item.lender_city.toLowerCase()) {
+          return res.status(403).json({
+            error: 'This item is only available to neighbors',
+            code: 'NEIGHBORHOOD_MISMATCH',
+          });
+        }
+      }
+
+      // Close friends listings require an accepted friendship
+      if (item.visibility === 'close_friends') {
+        const friendship = await query(
+          `SELECT 1 FROM friendships
+           WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
+           AND status = 'accepted'`,
+          [req.user.id, item.owner_id]
+        );
+        if (friendship.rows.length === 0) {
+          return res.status(403).json({
+            error: 'This item is only available to close friends',
+            code: 'FRIENDSHIP_REQUIRED',
+          });
+        }
+      }
 
       if (item.owner_id === req.user.id) {
         return res.status(400).json({ error: 'Cannot borrow your own item' });
@@ -86,8 +161,8 @@ router.post('/request', authenticate,
       const dailyRate = parseFloat(item.price_per_day) || 0;
       const rentalFee = dailyRate * rentalDays;
       const depositAmount = parseFloat(item.deposit_amount) || 0;
-      const lenderFee = rentalFee * LENDER_FEE_PERCENT;
-      const borrowerServiceFee = rentalFee * BORROWER_FEE_PERCENT;
+      const lenderFee = rentalFee * PLATFORM_FEE_PERCENT;
+      const borrowerServiceFee = rentalFee * BORROWER_SERVICE_FEE_PERCENT;
       const lenderPayout = rentalFee - lenderFee;
       const totalAmountCents = Math.round((rentalFee + borrowerServiceFee + depositAmount) * 100);
       const platformFee = lenderFee; // Keep platformFee for DB compat
@@ -515,6 +590,13 @@ router.post('/:id/return', authenticate,
       }
 
       const t = txn.rows[0];
+
+      // Giveaways are permanent — no return flow
+      const listing = await query('SELECT listing_type FROM listings WHERE id = $1', [t.listing_id]);
+      if (listing.rows[0]?.listing_type === 'giveaway') {
+        return res.status(400).json({ error: 'Giveaway items cannot be processed through the rental return flow' });
+      }
+
       const isLender = t.lender_id === req.user.id;
       const isBorrower = t.borrower_id === req.user.id;
 
@@ -626,10 +708,18 @@ router.post('/:id/return', authenticate,
             logger.info(`Lender ${t.lender_id} has no Connect account, skipping payout transfer`);
           }
         } catch (transferErr) {
-          logger.warn('Payout transfer failed (non-fatal):', transferErr.message);
-          sendNotification(t.lender_id, 'payment_failed', {
-            body: `We couldn't process your payout for "${t.listing_title || 'a rental'}". Please check your payout settings or contact support.`,
-          }).catch(() => {});
+          logger.error('Payout transfer failed:', transferErr.message);
+          await client.query(
+            `UPDATE borrow_transactions SET payment_status = 'transfer_failed' WHERE id = $1`,
+            [t.id]
+          );
+          try {
+            await sendNotification(t.lender_id, 'payment_failed', {
+              body: `We couldn't process your payout for "${t.listing_title || 'a rental'}". Please check your payout settings or contact support.`,
+            });
+          } catch (notifyErr) {
+            logger.error('Failed to notify lender of transfer failure:', notifyErr.message);
+          }
         }
 
         // Refund deposit to borrower — only when lender confirms clean return

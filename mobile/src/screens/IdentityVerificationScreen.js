@@ -15,6 +15,7 @@ import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
 import GateStepper from '../components/GateStepper';
+import { isUserVerified } from '../utils/auth';
 
 export default function IdentityVerificationScreen({ navigation, route }) {
   const source = route?.params?.source || 'generic';
@@ -30,7 +31,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     try {
       const result = await api.getVerificationStatus();
       setStatus(result.status);
-      if (result.verified) {
+      if (isUserVerified(result)) {
         await refreshUser();
         // Auto-chain if source is provided and we haven't already
         if (source !== 'generic' && !hasAutoChained.current) {
@@ -103,7 +104,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     }
   };
 
-  if (loading) {
+  if (loading || status === null) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -154,7 +155,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     );
   }
 
-  // Submitted — treat as verified (grace period active behind the scenes)
+  // Submitted — grace period active, but not yet fully verified
   if (status === 'submitted' || status === 'processing') {
     const handleContinue = () => {
       if (source === 'onboarding') {
@@ -174,14 +175,17 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
         )}
         <View style={styles.content}>
-          <View style={styles.iconContainer} testID="Identity.status.submitted" accessibilityLabel="Identity verified" accessibilityRole="image">
-            <View style={styles.successCircle}>
-              <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+          <View style={styles.iconContainer} testID="Identity.status.submitted" accessibilityLabel="Verification processing" accessibilityRole="image">
+            <View style={[styles.successCircle, { backgroundColor: COLORS.warning + '20' }]}>
+              <Ionicons name="time" size={48} color={COLORS.warning} />
             </View>
           </View>
-          <Text style={styles.title}>Identity Verified</Text>
+          <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your identity has been verified. You can now borrow and lend items across your entire town.
+            Your submission is being reviewed — you have temporary access while we confirm your identity.
+          </Text>
+          <Text style={styles.graceNotice}>
+            Temporary access expires in ~6 hours. We'll notify you once verification is complete.
           </Text>
           <HapticPressable
             style={styles.primaryButton}
@@ -332,6 +336,12 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: SPACING.md,
+  },
+  graceNotice: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.warning,
+    textAlign: 'center',
     marginBottom: SPACING.xxl,
   },
   cardBox: {

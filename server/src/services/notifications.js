@@ -10,6 +10,12 @@ const NOTIFICATION_TEMPLATES = {
       ? `${data.borrowerName} wants to borrow your ${data.itemTitle || 'item'}. Tap to review their request.`
       : 'You have a new borrow request. Tap to review and respond.',
   },
+  giveaway_claim: {
+    title: 'Someone Claimed Your Item!',
+    body: (data) => data.borrowerName
+      ? `${data.borrowerName} wants to claim your ${data.itemTitle || 'item'}. Tap to review their request.`
+      : 'Someone wants to claim your giveaway item. Tap to review.',
+  },
   request_approved: {
     title: 'You\'re all set!',
     body: (data) => data.itemTitle
@@ -46,6 +52,18 @@ const NOTIFICATION_TEMPLATES = {
     body: (data) => data.itemTitle
       ? `${data.itemTitle} has been returned. Tap to leave a rating for your neighbor.`
       : 'Your item has been returned. Tap to leave a rating for your neighbor.',
+  },
+  deposit_released: {
+    title: 'Deposit Refunded',
+    body: (data) => data.itemTitle
+      ? `Your deposit for ${data.itemTitle} has been refunded. Tap to view details.`
+      : 'Your security deposit has been refunded. Tap to view details.',
+  },
+  giveaway_complete: {
+    title: 'Item is Yours!',
+    body: (data) => data.itemTitle
+      ? `The handoff for ${data.itemTitle} is complete — it's all yours! Tap to leave a rating.`
+      : 'Your giveaway pickup is complete. Tap to leave a rating.',
   },
   return_reminder: {
     title: 'Friendly Reminder',
@@ -88,6 +106,10 @@ const NOTIFICATION_TEMPLATES = {
     body: (data) => data.respondentName
       ? `${data.respondentName} responded to your dispute. Tap to review.`
       : 'The other party responded to your dispute. Tap to review.',
+  },
+  dispute_auto_advanced: {
+    title: 'Response Window Closed',
+    body: () => 'The 48-hour response window has passed. This dispute has been escalated for review. Tap to view details.',
   },
   dispute_ready_for_review: {
     title: 'Dispute Needs Review',
@@ -188,6 +210,12 @@ const NOTIFICATION_TEMPLATES = {
     body: (data) => data.friendName
       ? `${data.friendName} accepted your friend request. You can now see each other's items.`
       : 'Your friend request was accepted! You can now see each other\'s items.',
+  },
+
+  // Verification
+  verification_expiring: {
+    title: 'Temporary Access Expiring',
+    body: () => 'Your temporary access expires soon — check your verification status.',
   },
 
   // Subscription

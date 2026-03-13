@@ -91,6 +91,21 @@ export async function runMigrations() {
       logger.info('Migration complete: identity verification columns added');
     }
 
+    // Migration: Drop legacy stripe_identity_verified_at and identity_verification_session_id columns
+    // These were from 001_initial_schema.sql; all code now uses verified_at and stripe_identity_session_id
+    const hasLegacyVerifiedAt = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'stripe_identity_verified_at'
+    `);
+    if (hasLegacyVerifiedAt.rows.length > 0) {
+      logger.info('Running migration: Drop legacy identity verification columns');
+      // Copy any data from old columns to new before dropping
+      await query(`UPDATE users SET verified_at = stripe_identity_verified_at WHERE verified_at IS NULL AND stripe_identity_verified_at IS NOT NULL`);
+      await query('ALTER TABLE users DROP COLUMN IF EXISTS stripe_identity_verified_at');
+      await query('ALTER TABLE users DROP COLUMN IF EXISTS identity_verification_session_id');
+      logger.info('Migration complete: legacy identity columns dropped');
+    }
+
     // Migration: Add expires_at column to item_requests
     const hasExpiresAt = await query(`
       SELECT column_name FROM information_schema.columns
@@ -492,6 +507,17 @@ export async function runMigrations() {
       await query('CREATE INDEX idx_saved_listings_user ON saved_listings(user_id)');
       await query('CREATE INDEX idx_saved_listings_listing ON saved_listings(listing_id)');
       logger.info('Migration complete: saved_listings table created');
+    }
+
+    // Migration: Add grace_expiry_notified column to users (for verification grace expiry scheduler)
+    const hasGraceExpiryNotified = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'grace_expiry_notified'
+    `);
+    if (hasGraceExpiryNotified.rows.length === 0) {
+      logger.info('Running migration: Add grace_expiry_notified to users');
+      await query('ALTER TABLE users ADD COLUMN grace_expiry_notified BOOLEAN DEFAULT false');
+      logger.info('Migration complete: users.grace_expiry_notified added');
     }
 
     logger.info('Migrations check complete');

@@ -32,7 +32,7 @@ const EXPIRATION_OPTIONS = [
 ];
 
 export default function CreateRequestScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
     type: 'item',
@@ -177,7 +177,7 @@ export default function CreateRequestScreen({ navigation }) {
     const defaultVis = [];
     defaultVis.push('close_friends');
     if (communityId) defaultVis.push('neighborhood');
-    if (user?.isVerified) defaultVis.push('town');
+    if (user?.isVerified || isGracePeriodActive) defaultVis.push('town');
     updateField('visibility', defaultVis);
   }, [communityId]);
 
@@ -427,7 +427,7 @@ export default function CreateRequestScreen({ navigation }) {
                     }
                   } else {
                     // Verification required for town visibility
-                    if (visibility === 'town' && !user?.isVerified) {
+                    if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                       haptics.warning();
                       navigation.navigate('IdentityVerification', { source: 'town_browse' });
                       return;

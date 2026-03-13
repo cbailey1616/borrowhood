@@ -6,6 +6,59 @@ import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
 
+// Shared visibility gate for discussion endpoints
+async function checkListingAccess(req, res, listingId) {
+  const listingCheck = await query(
+    `SELECT l.visibility, l.owner_id, u.city as owner_city
+     FROM listings l JOIN users u ON l.owner_id = u.id
+     WHERE l.id = $1`,
+    [listingId]
+  );
+
+  if (listingCheck.rows.length === 0) {
+    res.status(404).json({ error: 'Listing not found' });
+    return false;
+  }
+
+  const listing = listingCheck.rows[0];
+
+  if (listing.owner_id !== req.user.id) {
+    if (listing.visibility === 'close_friends') {
+      const friendship = await query(
+        `SELECT 1 FROM friendships
+         WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
+         AND status = 'accepted'`,
+        [req.user.id, listing.owner_id]
+      );
+      if (friendship.rows.length === 0) {
+        res.status(403).json({ error: 'This item is only available to close friends', code: 'FRIENDSHIP_REQUIRED' });
+        return false;
+      }
+    } else if (listing.visibility === 'neighborhood') {
+      const viewerCity = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
+      const vCity = viewerCity.rows[0]?.city;
+      if (!vCity || !listing.owner_city || vCity.toLowerCase() !== listing.owner_city.toLowerCase()) {
+        res.status(403).json({ error: 'This item is only available to neighbors', code: 'NEIGHBORHOOD_MISMATCH' });
+        return false;
+      }
+    } else if (listing.visibility === 'town') {
+      const viewerResult = await query(
+        'SELECT city, is_verified, verification_grace_until FROM users WHERE id = $1',
+        [req.user.id]
+      );
+      const viewer = viewerResult.rows[0];
+      const graceActive = viewer?.verification_grace_until && new Date(viewer.verification_grace_until) > new Date();
+      const viewerVerified = viewer?.is_verified || graceActive;
+      if (!viewerVerified || !viewer?.city || !listing.owner_city || viewer.city.toLowerCase() !== listing.owner_city.toLowerCase()) {
+        res.status(403).json({ error: 'This item is only available to verified users in the same town', code: 'TOWN_MISMATCH' });
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 // ============================================
 // GET /api/listings/:listingId/discussions
 // Get top-level discussion posts for a listing
@@ -15,6 +68,9 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
+    const hasAccess = await checkListingAccess(req, res, req.params.listingId);
+    if (!hasAccess) return;
+
     const result = await query(
       `SELECT d.id, d.content, d.reply_count, d.created_at, d.updated_at,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
@@ -67,6 +123,9 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
   const offset = (page - 1) * limit;
 
   try {
+    const hasAccess = await checkListingAccess(req, res, req.params.listingId);
+    if (!hasAccess) return;
+
     const result = await query(
       `SELECT d.id, d.content, d.created_at, d.updated_at,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
@@ -116,6 +175,9 @@ router.post('/:listingId/discussions', authenticate,
     const { listingId } = req.params;
 
     try {
+      const hasAccess = await checkListingAccess(req, res, listingId);
+      if (!hasAccess) return;
+
       // Verify listing exists
       const listing = await query(
         'SELECT id, owner_id, title FROM listings WHERE id = $1 AND status = $2',

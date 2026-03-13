@@ -32,7 +32,7 @@ router.get('/', authenticate, async (req, res) => {
     const canBrowseTown = ENABLE_PAID_TIERS ? (isPlusOrVerified && userCity) : canAccessTown;
 
     const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
       [req.user.id]
     );
     const friendIds = friendsResult.rows.map(f => f.friend_id);
@@ -77,13 +77,13 @@ router.get('/', authenticate, async (req, res) => {
     // Visibility rules:
     // - Own listings: always visible
     // - close_friends: visible if owner is in user's friends list
-    // - neighborhood: visible if in same community (handled elsewhere)
+    // - neighborhood: visible if owner is in the same city
     // - town: visible only if user has Explorer+ subscription, is verified, and owner is in same city
     if (canAccessTown) {
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        (l.visibility = 'town' AND owner.city = $${paramIndex + 1} AND owner.city IS NOT NULL) OR
-        l.visibility = 'neighborhood' OR
+        (l.visibility = 'town' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        (l.visibility = 'neighborhood' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
         (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
@@ -92,8 +92,8 @@ router.get('/', authenticate, async (req, res) => {
       // Plus but unverified — include town listings for window shopping (will be masked)
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        (l.visibility = 'town' AND owner.city = $${paramIndex + 1} AND owner.city IS NOT NULL) OR
-        l.visibility = 'neighborhood' OR
+        (l.visibility = 'town' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        (l.visibility = 'neighborhood' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
         (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
@@ -102,11 +102,11 @@ router.get('/', authenticate, async (req, res) => {
       // User can't access town listings - only show friends and neighborhood
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        l.visibility = 'neighborhood' OR
-        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
+        (l.visibility = 'neighborhood' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
-      params.push(req.user.id, friendIds.length > 0 ? friendIds : [null]);
-      paramIndex += 2;
+      params.push(req.user.id, userCity || '', friendIds.length > 0 ? friendIds : [null]);
+      paramIndex += 3;
     }
 
     // Don't show user's own listings in browse

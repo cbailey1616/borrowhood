@@ -71,7 +71,8 @@ export default function RegisterScreen({ navigation }) {
     try {
       await register({ firstName, lastName, email, phone: phone || undefined, password, referralCode: formData.referralCode || undefined });
       haptics.success();
-      navigation.navigate('VerifyIdentity');
+      // RootNavigator will automatically swap to OnboardingNavigator
+      // once isAuthenticated=true and onboardingCompleted=false
     } catch (error) {
       showError({
         message: error.message || 'Couldn\'t create your account right now. Please check your connection and try again.',

@@ -53,7 +53,7 @@ export default function RentalCheckoutScreen({ navigation, route }) {
     customerId,
   } = route.params || {};
 
-  const { showError } = useError();
+  const { showError, showToast } = useError();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const [processing, setProcessing] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -112,8 +112,8 @@ export default function RentalCheckoutScreen({ navigation, route }) {
   }, [clientSecret, ephemeralKey, customerId]);
 
   const pollForAuthorization = useCallback(async () => {
-    for (let i = 0; i < 5; i++) {
-      await new Promise(r => setTimeout(r, 1000));
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 2000));
       try {
         const status = await api.getRentalPaymentStatus(transactionId);
         if (status.paymentStatus === 'authorized' || status.status === 'paid') {
@@ -154,11 +154,19 @@ export default function RentalCheckoutScreen({ navigation, route }) {
       // Payment succeeded — confirm on our server
       try {
         await api.confirmRentalPayment(transactionId);
-        await pollForAuthorization();
+        const confirmed = await pollForAuthorization();
+        if (!confirmed) {
+          showToast('We\'re still confirming your payment — please check your Activity tab in a moment.', 'info');
+          navigation.goBack();
+          return;
+        }
       } catch (confirmErr) {
-        // Payment went through but server confirmation failed — still show success
-        // The server will reconcile via webhook
         console.warn('Server confirmation failed after successful payment:', confirmErr);
+        haptics.error();
+        showError({
+          message: 'Your card was authorized but we couldn\'t confirm the request. Please contact support — do not retry the payment.',
+        });
+        return;
       }
 
       setCompleted(true);

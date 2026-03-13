@@ -47,7 +47,7 @@ const VISIBILITY_OPTIONS = [
 ];
 
 export default function FeedScreen({ navigation }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isGracePeriodActive } = useAuth();
   const [feed, setFeed] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -292,6 +292,14 @@ export default function FeedScreen({ navigation }) {
       subtitle: 'Tap to catch up',
       onPress: () => navigation.navigate('Activity'),
     },
+    !user?.city && !dismissedBanners.location && {
+      key: 'location',
+      icon: 'navigate',
+      color: COLORS.warning,
+      title: 'Add your location to see items near you',
+      subtitle: 'Go to Settings to set your city',
+      onPress: () => navigation.navigate('Settings'),
+    },
     !hasNeighborhood && !dismissedBanners.join && {
       key: 'join',
       icon: 'location',
@@ -347,7 +355,7 @@ export default function FeedScreen({ navigation }) {
 
   const handleTownToggle = () => {
     // TODO: Restore subscription gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
-    if (ENABLE_PAID_TIERS && user?.subscriptionTier !== 'plus' && !user?.isVerified) {
+    if (ENABLE_PAID_TIERS && user?.subscriptionTier !== 'plus' && !user?.isVerified && !isGracePeriodActive) {
       setActiveDropdown(null);
       // Delay so the ActionSheet portal closes before the overlay renders
       setTimeout(() => setShowUpgradePrompt(true), 350);
@@ -951,20 +959,22 @@ export default function FeedScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconWrap}>
-              <Ionicons name="cube-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 16 }} />
+              <Ionicons name={user?.city ? 'cube-outline' : 'navigate-outline'} size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 16 }} />
               <Ionicons name="arrow-forward-outline" size={20} color={COLORS.primary} style={{ position: 'absolute', bottom: 18, right: 14, opacity: 0.6 }} />
               <Ionicons name="person-outline" size={24} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, left: 20, opacity: 0.8 }} />
             </View>
-            <Text style={styles.emptyTitle}>Your hood is quiet</Text>
+            <Text style={styles.emptyTitle}>{user?.city ? 'Your hood is quiet' : 'Add your location'}</Text>
             <Text style={styles.emptySubtitle}>
-              Be the first to list a tool or post a request in your neighborhood!
+              {user?.city
+                ? 'Be the first to list a tool or post a request in your neighborhood!'
+                : 'Set your city so we can show items from neighbors near you.'}
             </Text>
             <HapticPressable
               style={styles.emptyButton}
-              onPress={() => navigation.navigate('CreateListing')}
+              onPress={() => user?.city ? navigation.navigate('CreateListing') : navigation.navigate('Settings')}
               haptic="medium"
             >
-              <Text style={styles.emptyButtonText}>List an Item</Text>
+              <Text style={styles.emptyButtonText}>{user?.city ? 'List an Item' : 'Go to Settings'}</Text>
             </HapticPressable>
           </View>
         }

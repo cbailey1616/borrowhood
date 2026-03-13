@@ -154,6 +154,13 @@ router.get('/status', authenticate, async (req, res) => {
             // Grace was just set — mark active so the response reflects it immediately
             user.verification_grace_until = new Date(Date.now() + 6 * 60 * 60 * 1000);
           }
+        } else {
+          // Unrecognized status (e.g. 'canceled' or future Stripe additions)
+          return res.json({
+            verified: false,
+            status: 'unknown',
+            lastError: session.last_error?.reason || null,
+          });
         }
 
         const graceActive = user.verification_grace_until && new Date(user.verification_grace_until) > new Date();
@@ -165,6 +172,11 @@ router.get('/status', authenticate, async (req, res) => {
         });
       } catch (stripeErr) {
         console.error('Failed to fetch verification session:', stripeErr.message);
+        return res.json({
+          verified: false,
+          status: 'unknown',
+          error: 'Could not retrieve verification status',
+        });
       }
     }
 

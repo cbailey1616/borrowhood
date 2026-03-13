@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query, withTransaction } from '../utils/db.js';
+import { query } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
@@ -8,15 +8,13 @@ import {
   getPaymentIntent,
   capturePaymentIntent,
   cancelPaymentIntent,
-  createTransfer,
   createEphemeralKey,
   refundPayment,
 } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
+import { PLATFORM_FEE_PERCENT } from '../utils/constants.js';
 
 const router = Router();
-
-const PLATFORM_FEE_PERCENT = 0.02; // 2%
 
 // ============================================
 // POST /api/transactions
@@ -97,12 +95,40 @@ router.post('/', authenticate,
 
         // City matching for town-level listings
         if (item.visibility === 'town') {
-          if (!borrower.city || !item.lender_city || borrower.city !== item.lender_city) {
+          if (!borrower.city || !item.lender_city || borrower.city.toLowerCase() !== item.lender_city.toLowerCase()) {
             return res.status(403).json({
               error: 'This item is only available to verified users in the same town',
               code: 'TOWN_MISMATCH',
             });
           }
+        }
+      }
+
+      // Neighborhood listings require the borrower to be in the same city
+      if (item.visibility === 'neighborhood') {
+        const borrowerCity = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
+        const bCity = borrowerCity.rows[0]?.city;
+        if (!bCity || !item.lender_city || bCity.toLowerCase() !== item.lender_city.toLowerCase()) {
+          return res.status(403).json({
+            error: 'This item is only available to neighbors',
+            code: 'NEIGHBORHOOD_MISMATCH',
+          });
+        }
+      }
+
+      // Close friends listings require an accepted friendship
+      if (item.visibility === 'close_friends') {
+        const friendship = await query(
+          `SELECT 1 FROM friendships
+           WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
+           AND status = 'accepted'`,
+          [req.user.id, item.owner_id]
+        );
+        if (friendship.rows.length === 0) {
+          return res.status(403).json({
+            error: 'This item is only available to close friends',
+            code: 'FRIENDSHIP_REQUIRED',
+          });
         }
       }
 
@@ -115,12 +141,15 @@ router.post('/', authenticate,
       }
 
       // Atomically mark item unavailable to prevent race conditions
-      const lockResult = await query(
-        `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
-        [item.id]
-      );
-      if (lockResult.rows.length === 0) {
-        return res.status(400).json({ error: 'Item was just borrowed by someone else' });
+      // Giveaways stay available until the lender approves a claim
+      if (!isGiveaway) {
+        const lockResult = await query(
+          `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
+          [item.id]
+        );
+        if (lockResult.rows.length === 0) {
+          return res.status(400).json({ error: 'Item was just borrowed by someone else' });
+        }
       }
 
       // Giveaways: no dates, no pricing
@@ -218,8 +247,9 @@ router.post('/', authenticate,
           metadata: { transaction_id: transactionId },
         });
       } catch (stripeErr) {
-        // Release item lock if PaymentIntent creation fails
+        // Release item lock and delete orphaned transaction
         await query('UPDATE listings SET is_available = true WHERE id = $1', [listingId]);
+        await query('DELETE FROM borrow_transactions WHERE id = $1', [transactionId]);
         console.error('Stripe PaymentIntent creation failed:', stripeErr);
         return res.status(500).json({ error: 'Payment setup failed. Please try again.' });
       }
@@ -230,7 +260,15 @@ router.post('/', authenticate,
         [paymentIntent.id, transactionId]
       );
 
-      const ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
+      let ephemeralKey;
+      try {
+        ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
+      } catch (keyErr) {
+        await query('UPDATE listings SET is_available = true WHERE id = $1', [listingId]);
+        await query('DELETE FROM borrow_transactions WHERE id = $1', [transactionId]);
+        console.error('Ephemeral key creation failed:', keyErr);
+        return res.status(500).json({ error: 'Payment setup failed. Please try again.' });
+      }
 
       res.status(201).json({
         id: transactionId,
@@ -475,7 +513,24 @@ router.post('/:id/approve', authenticate,
         });
       }
 
-      await capturePaymentIntent(t.stripe_payment_intent_id);
+      // Stripe authorization holds expire after 7 days — warn before it's too late
+      const piAgeDays = (Date.now() - pi.created * 1000) / (1000 * 60 * 60 * 24);
+      if (piAgeDays > 6) {
+        return res.status(400).json({
+          error: 'This request has nearly expired. The borrower must resubmit their payment.',
+          code: 'AUTHORIZATION_EXPIRING',
+        });
+      }
+
+      try {
+        await capturePaymentIntent(t.stripe_payment_intent_id);
+      } catch (captureErr) {
+        console.error('Payment capture failed:', captureErr.message);
+        await query('UPDATE listings SET is_available = true WHERE id = $1', [t.listing_id]);
+        return res.status(500).json({
+          error: 'Payment capture failed. The authorization may have expired. Please ask the borrower to resubmit.',
+        });
+      }
 
       await query(
         `UPDATE borrow_transactions
@@ -534,6 +589,9 @@ router.post('/:id/decline', authenticate,
           console.error('Could not cancel PI on decline:', e.message);
         }
       }
+
+      // Re-enable the listing so it can be requested again
+      await query('UPDATE listings SET is_available = true WHERE id = $1', [t.listing_id]);
 
       await sendNotification(t.borrower_id, 'request_declined', {
         transactionId: req.params.id,
@@ -755,151 +813,6 @@ router.post('/:id/pickup', authenticate,
     } catch (err) {
       console.error('Confirm pickup error:', err);
       res.status(500).json({ error: 'Failed to confirm pickup' });
-    }
-  }
-);
-
-// ============================================
-// POST /api/transactions/:id/return
-// Confirm return
-// ============================================
-router.post('/:id/return', authenticate,
-  body('condition').optional().isIn(['like_new', 'good', 'fair', 'worn']),
-  body('notes').optional().isLength({ max: 500 }),
-  async (req, res) => {
-    const { condition, notes } = req.body;
-
-    try {
-      const txn = await query(
-        'SELECT * FROM borrow_transactions WHERE id = $1',
-        [req.params.id]
-      );
-
-      if (txn.rows.length === 0) {
-        return res.status(404).json({ error: 'Transaction not found' });
-      }
-
-      const t = txn.rows[0];
-      const isLender = t.lender_id === req.user.id;
-      const isBorrower = t.borrower_id === req.user.id;
-
-      if (!isLender && !isBorrower) {
-        return res.status(403).json({ error: 'Only the lender or borrower can confirm return' });
-      }
-
-      if (t.status !== 'picked_up' && t.status !== 'return_pending') {
-        return res.status(400).json({ error: 'Item not currently borrowed' });
-      }
-
-      // Block returns for giveaway items — they're given permanently
-      const listingCheck = await query(
-        'SELECT listing_type FROM listings WHERE id = $1',
-        [t.listing_id]
-      );
-      if (listingCheck.rows[0]?.listing_type === 'giveaway') {
-        return res.status(400).json({ error: 'Giveaway items cannot be returned' });
-      }
-
-      // Check if condition is worse than at pickup
-      const conditionOrder = ['like_new', 'good', 'fair', 'worn'];
-      const pickupIdx = conditionOrder.indexOf(t.condition_at_pickup);
-      const returnIdx = conditionOrder.indexOf(condition);
-
-      if (returnIdx > pickupIdx) {
-        // Condition is worse - open dispute automatically
-        await query(
-          `UPDATE borrow_transactions
-           SET status = 'disputed', condition_at_return = $1, condition_notes = $2, actual_return_at = NOW()
-           WHERE id = $3`,
-          [condition, notes, req.params.id]
-        );
-
-        // Create dispute
-        const disputeRecord = await query(
-          `INSERT INTO disputes (transaction_id, opened_by_id, reason)
-           VALUES ($1, $2, $3) RETURNING id`,
-          [t.id, req.user.id, `Item returned in worse condition: ${t.condition_at_pickup} → ${condition}. ${notes || ''}`]
-        );
-
-        await sendNotification(t.borrower_id, 'dispute_opened', {
-          disputeId: disputeRecord.rows[0].id,
-          transactionId: t.id,
-        });
-
-        res.json({ success: true, disputed: true });
-      } else {
-        // Good condition - complete transaction
-        await withTransaction(async (client) => {
-          await client.query(
-            `UPDATE borrow_transactions
-             SET status = 'returned', condition_at_return = $1, actual_return_at = NOW()
-             WHERE id = $2`,
-            [condition, req.params.id]
-          );
-
-          // Transfer rental fee to lender if they have a Connect account
-          try {
-            const lenderResult = await client.query(
-              'SELECT stripe_connect_account_id FROM users WHERE id = $1',
-              [t.lender_id]
-            );
-            const lenderConnectId = lenderResult.rows[0]?.stripe_connect_account_id;
-
-            if (lenderConnectId) {
-              const transfer = await createTransfer({
-                amount: Math.round(parseFloat(t.lender_payout) * 100),
-                destinationAccountId: lenderConnectId,
-                metadata: { transactionId: t.id, type: 'rental_payout' },
-              });
-              await client.query(
-                'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
-                [transfer.id, t.id]
-              );
-            }
-          } catch (transferErr) {
-            console.warn('Payout transfer failed (non-fatal):', transferErr.message);
-            sendNotification(t.lender_id, 'payment_failed', {
-              body: `We couldn't process your payout for "${t.listing_title || 'a rental'}". Please check your payout settings or contact support.`,
-            }).catch(() => {});
-          }
-
-          // Refund deposit to borrower
-          try {
-            if (parseFloat(t.deposit_amount) > 0 && t.stripe_payment_intent_id) {
-              await refundPayment(
-                t.stripe_payment_intent_id,
-                Math.round(parseFloat(t.deposit_amount) * 100)
-              );
-            }
-          } catch (refundErr) {
-            console.warn('Deposit refund failed (non-fatal):', refundErr.message);
-            sendNotification(t.borrower_id, 'payment_failed', {
-              body: `We couldn't refund your deposit for "${t.listing_title || 'a rental'}". Please contact support for assistance.`,
-            }).catch(() => {});
-          }
-
-          // Mark listing available again and update stats
-          await client.query(
-            `UPDATE listings
-             SET is_available = true,
-                 times_borrowed = times_borrowed + 1,
-                 total_earnings = total_earnings + $1
-             WHERE id = $2`,
-            [parseFloat(t.lender_payout), t.listing_id]
-          );
-        });
-
-        // Notify the other party
-        const notifyUserId = isLender ? t.borrower_id : t.lender_id;
-        await sendNotification(notifyUserId, 'return_confirmed', {
-          transactionId: t.id,
-        });
-
-        res.json({ success: true, disputed: false });
-      }
-    } catch (err) {
-      console.error('Confirm return error:', err);
-      res.status(500).json({ error: 'Failed to confirm return' });
     }
   }
 );

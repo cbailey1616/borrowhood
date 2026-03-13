@@ -46,7 +46,7 @@ const SLIDES = [
       {
         emoji: '🏘️',
         label: 'Neighborhood',
-        description: 'Verified neighbors nearby',
+        description: 'Neighbors in your city',
         tintBg: 'rgba(184,134,11,0.09)',
         tintBorder: 'rgba(184,134,11,0.27)',
       },

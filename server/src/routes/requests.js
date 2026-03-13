@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
-import { authenticate, requireVerified } from '../middleware/auth.js';
+import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification, sendBulkNotification } from '../services/notifications.js';
 
@@ -146,9 +146,47 @@ router.get('/suggestions', authenticate, async (req, res) => {
       return res.json({ suggestions: [] });
     }
 
+    // Get user's visibility context
+    const userResult = await query(
+      'SELECT city, is_verified, subscription_tier, verification_grace_until FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const userCity = userResult.rows[0]?.city;
+    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
+    const isVerified = userResult.rows[0]?.is_verified || graceActive;
+    const canAccessTown = isVerified && userCity;
+
+    const friendsResult = await query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
+      [req.user.id]
+    );
+    const friendIds = friendsResult.rows.map(f => f.friend_id);
+
     // Search listings matching any keyword in title or description
     const likeClauses = words.map((_, i) => `(l.title ILIKE $${i + 1} OR l.description ILIKE $${i + 1})`);
     const likeParams = words.map(w => `%${w}%`);
+
+    let paramIndex = likeParams.length + 1;
+
+    // Build visibility filter (same rules as feed)
+    let visibilityClause;
+    const visibilityParams = [];
+    if (canAccessTown) {
+      visibilityClause = `(
+        (l.visibility = 'town' AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        (l.visibility = 'neighborhood' AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
+      )`;
+      visibilityParams.push(userCity, friendIds.length > 0 ? friendIds : [null]);
+      paramIndex += 2;
+    } else {
+      visibilityClause = `(
+        (l.visibility = 'neighborhood' AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
+      )`;
+      visibilityParams.push(userCity || '', friendIds.length > 0 ? friendIds : [null]);
+      paramIndex += 2;
+    }
 
     const suggestions = await query(
       `SELECT
@@ -169,11 +207,12 @@ router.get('/suggestions', authenticate, async (req, res) => {
       FROM listings l
       JOIN users u ON l.owner_id = u.id
       WHERE l.status = 'active'
-        AND l.owner_id != $${likeParams.length + 1}
+        AND l.owner_id != $${paramIndex}
         AND (${likeClauses.join(' OR ')})
+        AND ${visibilityClause}
       ORDER BY l.is_available DESC, l.created_at DESC
       LIMIT 10`,
-      [...likeParams, req.user.id]
+      [...likeParams, ...visibilityParams, req.user.id]
     );
 
     res.json({

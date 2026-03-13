@@ -93,6 +93,12 @@ async function autoAdvanceDisputes() {
         transactionId: d.transaction_id,
       });
 
+      // Notify respondent they missed the window
+      await sendNotification(d.respondent_user_id, 'dispute_auto_advanced', {
+        disputeId: d.id,
+        transactionId: d.transaction_id,
+      });
+
       // Notify community organizers
       const listing = await query(
         `SELECT l.community_id FROM borrow_transactions t
@@ -152,8 +158,61 @@ async function autoReleaseDeposits() {
         logger.error(`Auto-release deposit failed for txn ${t.id}:`, err);
       }
     }
+
+    // Second pass: lender ghosted — return marked 48+ hours ago but lender never confirmed
+    const ghosted = await query(
+      `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount
+       FROM borrow_transactions bt
+       WHERE bt.status = 'returned'
+         AND bt.actual_return_at < NOW() - INTERVAL '48 hours'
+         AND bt.payment_status = 'authorized'
+         AND NOT EXISTS (SELECT 1 FROM disputes WHERE transaction_id = bt.id)`
+    );
+
+    for (const t of ghosted.rows) {
+      try {
+        if (t.stripe_payment_intent_id) {
+          await cancelPaymentIntent(t.stripe_payment_intent_id);
+        }
+        await query(
+          `UPDATE borrow_transactions SET payment_status = 'deposit_released' WHERE id = $1`,
+          [t.id]
+        );
+        logger.info(`Auto-released deposit (lender ghosted) for transaction ${t.id}`);
+      } catch (err) {
+        logger.error(`Auto-release (lender ghosted) failed for txn ${t.id}:`, err);
+      }
+    }
   } catch (err) {
     logger.error('Auto-release deposits error:', err);
+  }
+}
+
+/**
+ * Notify users whose verification grace period expires within the next hour
+ * and who still aren't fully verified.
+ */
+async function checkVerificationGraceExpiry() {
+  try {
+    const result = await query(
+      `SELECT id FROM users
+       WHERE is_verified = false
+         AND verification_grace_until IS NOT NULL
+         AND verification_grace_until > NOW()
+         AND verification_grace_until <= NOW() + INTERVAL '1 hour'
+         AND grace_expiry_notified IS NOT TRUE`
+    );
+
+    for (const user of result.rows) {
+      await sendNotification(user.id, 'verification_expiring', {});
+      await query(
+        'UPDATE users SET grace_expiry_notified = true WHERE id = $1',
+        [user.id]
+      );
+      logger.info(`Sent verification grace expiry warning to user ${user.id}`);
+    }
+  } catch (err) {
+    logger.error('Verification grace expiry check error:', err);
   }
 }
 
@@ -165,11 +224,13 @@ export function startScheduler() {
   sendReturnReminders();
   autoAdvanceDisputes();
   autoReleaseDeposits();
+  checkVerificationGraceExpiry();
 
   // Then run every hour
   setInterval(sendReturnReminders, 60 * 60 * 1000);
   setInterval(autoAdvanceDisputes, 60 * 60 * 1000);
   setInterval(autoReleaseDeposits, 60 * 60 * 1000);
+  setInterval(checkVerificationGraceExpiry, 60 * 60 * 1000);
 
-  logger.info('Scheduler started: return reminders, dispute auto-advance, deposit auto-release every hour');
+  logger.info('Scheduler started: return reminders, dispute auto-advance, deposit auto-release, verification grace expiry every hour');
 }

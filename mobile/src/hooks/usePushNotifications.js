@@ -16,16 +16,35 @@ Notifications.setNotificationHandler({
 
 // Navigation ref will be set from App.js
 let navigationRef = null;
+let currentUser = null;
+let pendingNotification = null;
 
 export function setNavigationRef(ref) {
   navigationRef = ref;
 }
 
-export default function usePushNotifications(isAuthenticated) {
+export function flushPendingNotification() {
+  if (pendingNotification && navigationRef) {
+    handleNotificationResponse(pendingNotification);
+    pendingNotification = null;
+  }
+}
+
+export default function usePushNotifications(isAuthenticated, user) {
   const [expoPushToken, setExpoPushToken] = useState(null);
   const [notification, setNotification] = useState(null);
   const notificationListener = useRef();
   const responseListener = useRef();
+
+  // Keep module-level user ref in sync
+  useEffect(() => {
+    currentUser = user || null;
+
+    // If onboarding just completed and there's a pending notification, flush it
+    if (user?.onboardingCompleted && pendingNotification) {
+      flushPendingNotification();
+    }
+  }, [user?.onboardingCompleted]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -103,12 +122,21 @@ function handleNotificationResponse(data) {
     return;
   }
 
+  // During onboarding, store the notification and defer navigation
+  if (currentUser && !currentUser.onboardingCompleted) {
+    pendingNotification = data;
+    return;
+  }
+
   switch (data.type) {
     case 'borrow_request':
+    case 'giveaway_claim':
     case 'request_approved':
     case 'request_declined':
     case 'pickup_confirmed':
     case 'return_confirmed':
+    case 'deposit_released':
+    case 'giveaway_complete':
     case 'payment_confirmed':
     case 'return_reminder':
       if (data.transactionId) {
@@ -148,6 +176,7 @@ function handleNotificationResponse(data) {
 
     case 'dispute_opened':
     case 'dispute_resolved':
+    case 'dispute_auto_advanced':
       if (data.disputeId) {
         navigationRef.navigate('DisputeDetail', { id: data.disputeId });
       }
@@ -156,6 +185,10 @@ function handleNotificationResponse(data) {
     case 'friend_request':
     case 'friend_accepted':
       navigationRef.navigate('Friends');
+      break;
+
+    case 'verification_expiring':
+      navigationRef.navigate('IdentityVerification', { source: 'generic' });
       break;
 
     default:

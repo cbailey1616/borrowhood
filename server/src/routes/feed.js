@@ -32,7 +32,7 @@ router.get('/', authenticate, async (req, res) => {
 
     // Get user's friends for visibility filtering
     const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
       [req.user.id]
     );
     const friendIds = friendsResult.rows.map(f => f.friend_id);

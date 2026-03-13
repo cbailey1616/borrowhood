@@ -27,6 +27,8 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationError, setLocationError] = useState('');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
@@ -38,6 +40,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
   const [locationSaved, setLocationSaved] = useState(false);
 
   // Create neighborhood sheet
+  const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [createSheet, setCreateSheet] = useState(false);
   const [neighborhoodName, setNeighborhoodName] = useState('');
   const [neighborhoodDesc, setNeighborhoodDesc] = useState('');
@@ -97,22 +100,53 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
   };
 
   const handleSaveManualLocation = async () => {
-    if (!city.trim() || !state.trim()) {
-      setErrorSheet({ visible: true, title: 'Required', message: 'Please enter your city and state.' });
+    const searchText = locationSearch.trim();
+    if (!searchText) {
+      setLocationError('Please enter a city name.');
       return;
     }
+    setLocationError('');
     setIsLoading(true);
     try {
+      // Geocode the input to validate it's a real place
+      const geocoded = await Location.geocodeAsync(searchText);
+      if (!geocoded || geocoded.length === 0) {
+        setLocationError("We couldn't find that city — try including the state (e.g. 'Boston, MA').");
+        setIsLoading(false);
+        return;
+      }
+
+      // Reverse geocode to get canonical city/state names
+      const coords = { latitude: geocoded[0].latitude, longitude: geocoded[0].longitude };
+      const [address] = await Location.reverseGeocodeAsync(coords);
+      const resolvedCity = address?.city || address?.subregion || '';
+      const resolvedState = address?.region || '';
+
+      if (!resolvedCity) {
+        setLocationError("We couldn't find that city — try including the state (e.g. 'Boston, MA').");
+        setIsLoading(false);
+        return;
+      }
+
+      setCity(resolvedCity);
+      setState(resolvedState);
+      setCoordinates(coords);
+
       try {
-        await api.updateProfile({ city: city.trim(), state: state.trim() });
+        await api.updateProfile({
+          city: resolvedCity,
+          state: resolvedState,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
       } catch (profileErr) {
         // Ignore — user may already be verified with a locked location
       }
       await refreshUser();
       setLocationSaved(true);
-      fetchNeighborhoods(null);
+      fetchNeighborhoods(coords);
     } catch (error) {
-      setErrorSheet({ visible: true, title: 'Error', message: 'Failed to save location.' });
+      setLocationError("We couldn't find that city — try including the state (e.g. 'Boston, MA').");
     } finally {
       setIsLoading(false);
     }
@@ -219,7 +253,14 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     }
   };
 
+  const isSkipping = !joinedCommunity && !neighborhoods.some(n => n.isMember);
+
   const handleContinue = async () => {
+    if (isSkipping && !showSkipWarning) {
+      setShowSkipWarning(true);
+      haptics.light();
+      return;
+    }
     haptics.medium();
     try {
       await api.updateOnboardingStep(2);
@@ -279,31 +320,25 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 
             <Text style={styles.orText}>or enter manually</Text>
 
-            <View style={styles.inputRow}>
-              <TextInput
-                style={[styles.input, styles.inputCity]}
-                placeholder="City"
-                placeholderTextColor={COLORS.textMuted}
-                value={city}
-                onChangeText={setCity}
-                testID="Onboarding.Neighborhood.cityInput"
-              />
-              <TextInput
-                style={[styles.input, styles.inputState]}
-                placeholder="State"
-                placeholderTextColor={COLORS.textMuted}
-                value={state}
-                onChangeText={setState}
-                maxLength={2}
-                autoCapitalize="characters"
-                testID="Onboarding.Neighborhood.stateInput"
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="City, State (e.g. Boston, MA)"
+              placeholderTextColor={COLORS.textMuted}
+              value={locationSearch}
+              onChangeText={(v) => { setLocationSearch(v); setLocationError(''); }}
+              testID="Onboarding.Neighborhood.cityInput"
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={handleSaveManualLocation}
+            />
+            {locationError ? (
+              <Text style={styles.locationError}>{locationError}</Text>
+            ) : null}
 
             <HapticPressable
-              style={[styles.saveLocationButton, (!city || !state) && styles.buttonDisabled]}
+              style={[styles.saveLocationButton, !locationSearch.trim() && styles.buttonDisabled]}
               onPress={handleSaveManualLocation}
-              disabled={!city || !state || isLoading}
+              disabled={!locationSearch.trim() || isLoading}
               haptic="medium"
             >
               {isLoading ? (
@@ -380,6 +415,11 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 
       {showNeighborhoods && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
+          {showSkipWarning && isSkipping && (
+            <Text style={styles.skipWarning}>
+              Without a neighborhood, your feed will be empty. You can join one later in Settings.
+            </Text>
+          )}
           <HapticPressable
             style={styles.primaryButton}
             onPress={handleContinue}
@@ -387,7 +427,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
             testID="Onboarding.Neighborhood.continue"
           >
             <Text style={styles.primaryButtonText}>
-              {joinedCommunity || neighborhoods.some(n => n.isMember) ? 'Continue' : 'Skip for now'}
+              {!isSkipping ? 'Continue' : showSkipWarning ? 'Skip anyway' : 'Skip for now'}
             </Text>
           </HapticPressable>
         </View>
@@ -562,20 +602,19 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     marginBottom: SPACING.lg,
   },
-  inputRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.xl,
-  },
   input: {
     backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.md,
     padding: SPACING.lg,
     fontSize: 16,
     color: COLORS.text,
+    marginBottom: SPACING.md,
   },
-  inputCity: { flex: 2 },
-  inputState: { flex: 1 },
+  locationError: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.danger,
+    marginBottom: SPACING.md,
+  },
   saveLocationButton: {
     backgroundColor: COLORS.primary,
     padding: SPACING.lg,
@@ -678,6 +717,12 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: SPACING.xl,
+  },
+  skipWarning: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.warning,
+    textAlign: 'center',
+    marginBottom: SPACING.md,
   },
   primaryButton: {
     backgroundColor: COLORS.primary,

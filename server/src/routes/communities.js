@@ -292,6 +292,15 @@ router.post('/:id/join', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Community not found' });
     }
 
+    // Geographic validation: user's city must match the community's city
+    const userResult = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
+    const userCity = userResult.rows[0]?.city;
+    const communityCity = community.rows[0].city;
+
+    if (userCity && communityCity && userCity.toLowerCase() !== communityCity.toLowerCase()) {
+      return res.status(403).json({ error: 'You can only join communities in your city.' });
+    }
+
     await query(
       `INSERT INTO community_memberships (user_id, community_id)
        VALUES ($1, $2)

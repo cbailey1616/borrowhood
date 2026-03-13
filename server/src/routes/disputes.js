@@ -5,10 +5,9 @@ import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
 import { notifyOrganizers } from '../services/notifications.js';
 import { stripe, capturePaymentIntent, cancelPaymentIntent, getPaymentIntent, createTransfer } from '../services/stripe.js';
+import { ORGANIZER_FEE_PERCENT } from '../utils/constants.js';
 
 const router = Router();
-
-const ORGANIZER_FEE_PERCENT = 0.02; // 2% of disputed amount
 
 const VALID_TYPES = ['damagesClaim', 'nonReturn', 'lateReturn', 'itemNotAsDescribed', 'paymentIssue', 'noShow'];
 

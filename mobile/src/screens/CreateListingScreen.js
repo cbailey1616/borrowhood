@@ -27,7 +27,7 @@ const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateListingScreen({ navigation, route }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
   const scrollRef = useRef(null);
   const fieldPositions = useRef({});
@@ -50,7 +50,7 @@ export default function CreateListingScreen({ navigation, route }) {
   );
   const [communityId, setCommunityId] = useState(null);
   const [categories, setCategories] = useState([]);
-  const isVerifiedOrPlus = user?.isVerified || user?.subscriptionTier === 'plus';
+  const isVerifiedOrPlus = user?.isVerified || isGracePeriodActive || user?.subscriptionTier === 'plus';
   const requestMatch = route?.params?.requestMatch;
   const requestMatchId = requestMatch?.id || null;
 
@@ -529,7 +529,7 @@ export default function CreateListingScreen({ navigation, route }) {
                     }
                   } else {
                     // Verification required for town visibility
-                    if (visibility === 'town' && !user?.isVerified) {
+                    if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                       haptics.warning();
                       navigation.navigate('IdentityVerification', { source: 'town_browse' });
                       return;

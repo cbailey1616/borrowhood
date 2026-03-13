@@ -69,8 +69,8 @@ CREATE TABLE users (
   status user_status DEFAULT 'pending',
   stripe_customer_id VARCHAR(255),
   stripe_connect_account_id VARCHAR(255), -- For receiving payments
-  stripe_identity_verified_at TIMESTAMPTZ,
-  identity_verification_session_id VARCHAR(255),
+  verified_at TIMESTAMPTZ,
+  stripe_identity_session_id VARCHAR(255),
 
   -- Trust metrics (denormalized for performance)
   borrower_rating DECIMAL(3,2) DEFAULT 0,

@@ -130,8 +130,8 @@ router.post('/stripe', async (req, res) => {
 async function handleIdentityVerified(session) {
   const customerId = session.metadata?.customer_id;
   if (!customerId) {
-    logger.warn('Identity verification without customer_id in metadata');
-    return;
+    logger.error('Identity verification webhook missing customer_id in metadata', { sessionId: session.id });
+    throw new Error('Missing customer_id in identity verification metadata');
   }
 
   // Extract verified data
@@ -145,7 +145,7 @@ async function handleIdentityVerified(session) {
   const dobDate = dob ? `${dob.year}-${String(dob.month).padStart(2, '0')}-${String(dob.day).padStart(2, '0')}` : null;
 
   // Update user as verified
-  await query(
+  const updateResult = await query(
     `UPDATE users SET
       status = 'verified',
       is_verified = true,
@@ -159,7 +159,8 @@ async function handleIdentityVerified(session) {
       state = COALESCE($6, state),
       zip_code = COALESCE($7, zip_code),
       date_of_birth = COALESCE($9, date_of_birth)
-     WHERE stripe_customer_id = $8`,
+     WHERE stripe_customer_id = $8
+     RETURNING id`,
     [
       session.id,
       firstName,
@@ -173,23 +174,27 @@ async function handleIdentityVerified(session) {
     ]
   );
 
-  // Get user ID for notification
-  const user = await query(
-    'SELECT id FROM users WHERE stripe_customer_id = $1',
-    [customerId]
-  );
-
-  if (user.rows.length > 0) {
-    await sendNotification(user.rows[0].id, 'join_approved', {
-      communityName: 'Borrowhood',
-    });
+  if (updateResult.rows.length === 0) {
+    logger.error(`Identity verified webhook: no user found for stripe_customer_id ${customerId}`, { sessionId: session.id });
+    throw new Error(`No user found for stripe_customer_id ${customerId}`);
   }
 
-  logger.info(`Identity verified for customer ${customerId}`);
+  const userId = updateResult.rows[0].id;
+
+  await sendNotification(userId, 'join_approved', {
+    communityName: 'Borrowhood',
+  });
+
+  logger.info(`Identity verified for customer ${customerId}, user ${userId}`);
 }
 
 async function handleIdentityRequiresInput(session) {
   const customerId = session.metadata?.customer_id;
+  if (!customerId) {
+    logger.error('Identity requires_input webhook missing customer_id in metadata', { sessionId: session.id });
+    throw new Error('Missing customer_id in identity requires_input metadata');
+  }
+
   logger.info(`Identity verification requires input for customer ${customerId}`);
 
   const user = await query(
@@ -197,19 +202,22 @@ async function handleIdentityRequiresInput(session) {
     [customerId]
   );
 
-  if (user.rows.length > 0) {
-    // Clear grace period so user is prompted to re-verify
-    await query(
-      `UPDATE users SET verification_status = 'requires_input', verification_grace_until = NULL WHERE id = $1`,
-      [user.rows[0].id]
-    );
-
-    await sendNotification(user.rows[0].id, 'verification_failed', {
-      message: 'Your identity verification needs attention. Please try again.',
-    });
-
-    logger.info(`User ${user.rows[0].id} needs to retry identity verification`);
+  if (user.rows.length === 0) {
+    logger.error(`Identity requires_input webhook: no user found for stripe_customer_id ${customerId}`, { sessionId: session.id });
+    throw new Error(`No user found for stripe_customer_id ${customerId}`);
   }
+
+  // Clear grace period so user is prompted to re-verify
+  await query(
+    `UPDATE users SET verification_status = 'requires_input', verification_grace_until = NULL WHERE id = $1`,
+    [user.rows[0].id]
+  );
+
+  await sendNotification(user.rows[0].id, 'verification_failed', {
+    message: 'Your identity verification needs attention. Please try again.',
+  });
+
+  logger.info(`User ${user.rows[0].id} needs to retry identity verification`);
 }
 
 // ============================================
@@ -630,6 +638,16 @@ async function handleChargeDisputeCreated(dispute) {
 
   const t = transaction.rows[0];
 
+  // Deduplication: skip if a dispute already exists for this transaction
+  const existing = await query(
+    'SELECT id FROM disputes WHERE transaction_id = $1 LIMIT 1',
+    [t.id]
+  );
+  if (existing.rows.length > 0) {
+    logger.warn(`Dispute already exists for transaction ${t.id}, skipping chargeback dispute creation`);
+    return;
+  }
+
   // Flag the transaction as disputed
   await query(
     `UPDATE borrow_transactions
@@ -640,9 +658,9 @@ async function handleChargeDisputeCreated(dispute) {
 
   // Create dispute record
   const disputeRecord = await query(
-    `INSERT INTO disputes (transaction_id, opened_by_id, reason)
-     VALUES ($1, $2, $3) RETURNING id`,
-    [t.id, t.borrower_id, `Stripe chargeback filed (dispute ID: ${dispute.id})`]
+    `INSERT INTO disputes (transaction_id, opened_by_id, type, reason)
+     VALUES ($1, $2, $3, $4) RETURNING id`,
+    [t.id, t.borrower_id, 'chargeback', `Stripe chargeback filed (dispute ID: ${dispute.id})`]
   );
 
   // Notify both parties

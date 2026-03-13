@@ -16,6 +16,7 @@ import { useError } from '../../context/ErrorContext';
 import { haptics } from '../../utils/haptics';
 import api from '../../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { isUserVerified } from '../../utils/auth';
 
 export default function OnboardingVerifyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -33,7 +34,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
   const checkStatus = async () => {
     try {
       const result = await api.getVerificationStatus();
-      if (result.verified || result.status === 'submitted' || result.status === 'processing') {
+      if (isUserVerified(result)) {
         setAlreadyVerified(true);
       }
     } catch (e) {

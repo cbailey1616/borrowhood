@@ -10,6 +10,46 @@ const router = Router();
 // ============================================
 router.get('/', authenticate, async (req, res) => {
   try {
+    // Get user's visibility context for filtering
+    const userResult = await query(
+      'SELECT city, is_verified, verification_grace_until FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const userCity = userResult.rows[0]?.city;
+    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
+    const isVerified = userResult.rows[0]?.is_verified || graceActive;
+    const canAccessTown = isVerified && userCity;
+
+    const friendsResult = await query(
+      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
+      [req.user.id]
+    );
+    const friendIds = friendsResult.rows.map(f => f.friend_id);
+
+    // Build visibility filter — silently exclude listings user no longer has access to
+    let visibilityClause;
+    const params = [req.user.id];
+    let paramIndex = 2;
+
+    if (canAccessTown) {
+      visibilityClause = `(
+        l.owner_id = $1 OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex})) OR
+        (l.visibility = 'neighborhood' AND LOWER(u.city) = LOWER($${paramIndex + 1}) AND u.city IS NOT NULL) OR
+        (l.visibility = 'town' AND LOWER(u.city) = LOWER($${paramIndex + 1}) AND u.city IS NOT NULL)
+      )`;
+      params.push(friendIds.length > 0 ? friendIds : [null], userCity);
+      paramIndex += 2;
+    } else {
+      visibilityClause = `(
+        l.owner_id = $1 OR
+        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex})) OR
+        (l.visibility = 'neighborhood' AND LOWER(u.city) = LOWER($${paramIndex + 1}) AND u.city IS NOT NULL)
+      )`;
+      params.push(friendIds.length > 0 ? friendIds : [null], userCity || '');
+      paramIndex += 2;
+    }
+
     const result = await query(
       `SELECT
         l.id,
@@ -33,8 +73,9 @@ router.get('/', authenticate, async (req, res) => {
       JOIN users u ON l.owner_id = u.id
       WHERE s.user_id = $1
         AND l.status = 'active'
+        AND ${visibilityClause}
       ORDER BY s.created_at DESC`,
-      [req.user.id]
+      params
     );
 
     const listings = result.rows.map(l => ({

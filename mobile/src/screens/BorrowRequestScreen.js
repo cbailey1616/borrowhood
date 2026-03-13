@@ -20,7 +20,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils
 
 export default function BorrowRequestScreen({ route, navigation }) {
   const { listing } = route.params;
-  const { user } = useAuth();
+  const { user, isGracePeriodActive } = useAuth();
   const { showError } = useError();
   const isGiveaway = listing.listingType === 'giveaway';
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
@@ -45,7 +45,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         const isPaid = !listing.isFree && parseFloat(listing.pricePerDay) > 0;
 
         // TODO: Restore tier check when re-enabling paid tiers (ENABLE_PAID_TIERS)
-        if (ENABLE_PAID_TIERS && isPaid && user?.subscriptionTier !== 'plus' && !user?.isVerified) {
+        if (ENABLE_PAID_TIERS && isPaid && user?.subscriptionTier !== 'plus' && !user?.isVerified && !isGracePeriodActive) {
           setAccessCheck({
             loading: false,
             canAccess: false,
@@ -68,7 +68,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         }
 
         // TODO: Restore verification gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
-        if (ENABLE_PAID_TIERS && (isPaid || listing.visibility === 'town') && !user?.isVerified) {
+        if (ENABLE_PAID_TIERS && (isPaid || listing.visibility === 'town') && !user?.isVerified && !isGracePeriodActive) {
           setAccessCheck({
             loading: false,
             canAccess: false,
@@ -84,7 +84,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       }
     };
     checkAccess();
-  }, [listing.visibility, listing.isFree, user?.subscriptionTier, user?.isVerified]);
+  }, [listing.visibility, listing.isFree, user?.subscriptionTier, user?.isVerified, isGracePeriodActive]);
 
   const calculateDays = () => {
     return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));

@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
-import { COLORS } from '../utils/config';
+import { ActivityIndicator, View, Modal, Text, TextInput, StyleSheet } from 'react-native';
+import HapticPressable from '../components/HapticPressable';
+import api from '../services/api';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -75,7 +78,27 @@ const modalScreenOptions = (title) => ({
 });
 
 export default function RootNavigator() {
-  const { isLoading, isAuthenticated, user } = useAuth();
+  const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
+  const [nameInput, setNameInput] = useState({ first: '', last: '' });
+  const [savingName, setSavingName] = useState(false);
+
+  const showNamePrompt = isAuthenticated && user?.needsName;
+
+  const handleSaveName = async () => {
+    if (!nameInput.first.trim()) return;
+    setSavingName(true);
+    try {
+      await api.updateProfile({
+        firstName: nameInput.first.trim(),
+        lastName: nameInput.last.trim(),
+      });
+      await refreshUser();
+    } catch (e) {
+      console.error('Failed to save name:', e);
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   // Check if user needs onboarding
   const needsOnboarding = isAuthenticated && user && !user.onboardingCompleted;
@@ -91,11 +114,15 @@ export default function RootNavigator() {
   // Show onboarding for new users
   if (needsOnboarding) {
     return (
-      <OnboardingNavigator initialStep={user?.onboardingStep || 1} />
+      <>
+        <OnboardingNavigator initialStep={user?.onboardingStep || 1} />
+        {showNamePrompt && <NamePromptModal nameInput={nameInput} setNameInput={setNameInput} saving={savingName} onSave={handleSaveName} />}
+      </>
     );
   }
 
   return (
+    <>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
@@ -310,5 +337,90 @@ export default function RootNavigator() {
         </>
       )}
     </Stack.Navigator>
+    {showNamePrompt && <NamePromptModal nameInput={nameInput} setNameInput={setNameInput} saving={savingName} onSave={handleSaveName} />}
+    </>
   );
 }
+
+function NamePromptModal({ nameInput, setNameInput, saving, onSave }) {
+  return (
+    <Modal visible animationType="slide" presentationStyle="pageSheet">
+      <View style={nameStyles.container}>
+        <Text style={nameStyles.title}>What's your name?</Text>
+        <Text style={nameStyles.subtitle}>
+          We need your name so neighbors know who they're borrowing from.
+        </Text>
+        <TextInput
+          style={nameStyles.input}
+          placeholder="First name"
+          placeholderTextColor={COLORS.textMuted}
+          value={nameInput.first}
+          onChangeText={(v) => setNameInput(prev => ({ ...prev, first: v }))}
+          autoCapitalize="words"
+          autoFocus
+        />
+        <TextInput
+          style={nameStyles.input}
+          placeholder="Last name"
+          placeholderTextColor={COLORS.textMuted}
+          value={nameInput.last}
+          onChangeText={(v) => setNameInput(prev => ({ ...prev, last: v }))}
+          autoCapitalize="words"
+        />
+        <HapticPressable
+          style={[nameStyles.button, !nameInput.first.trim() && { opacity: 0.5 }]}
+          onPress={onSave}
+          disabled={!nameInput.first.trim() || saving}
+          haptic="medium"
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={nameStyles.buttonText}>Continue</Text>
+          )}
+        </HapticPressable>
+      </View>
+    </Modal>
+  );
+}
+
+const nameStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    padding: SPACING.xl,
+    justifyContent: 'center',
+  },
+  title: {
+    ...TYPOGRAPHY.h1,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
+  },
+  subtitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.xxl,
+  },
+  input: {
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  button: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.full,
+    alignItems: 'center',
+    marginTop: SPACING.md,
+  },
+  buttonText: {
+    ...TYPOGRAPHY.headline,
+    color: '#fff',
+  },
+});

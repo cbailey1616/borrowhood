@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
 import usePushNotifications from '../hooks/usePushNotifications';
@@ -11,7 +11,7 @@ export function AuthProvider({ children, navigationRef }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Initialize push notifications when user is authenticated
-  usePushNotifications(isAuthenticated);
+  usePushNotifications(isAuthenticated, user);
 
   useEffect(() => {
     checkAuth();
@@ -100,10 +100,16 @@ export function AuthProvider({ children, navigationRef }) {
     }
   };
 
+  const isGracePeriodActive = useMemo(() => {
+    if (!user?.verificationGraceUntil) return false;
+    return new Date(user.verificationGraceUntil) > new Date();
+  }, [user?.verificationGraceUntil]);
+
   const value = {
     user,
     isLoading,
     isAuthenticated,
+    isGracePeriodActive,
     login,
     loginWithGoogle,
     loginWithApple,
