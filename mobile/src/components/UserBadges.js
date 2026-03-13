@@ -113,10 +113,10 @@ function RobinHatIcon({ size, color }) {
 }
 
 const TIERS = [
-  { key: 'squire', label: 'Squire', icon: 'shield-half', min: 0, max: 2, color: COLORS.textSecondary, description: 'New to the Borrowhood' },
-  { key: 'archer', label: 'Archer', customIcon: BowArrowIcon, min: 3, max: 10, color: COLORS.secondary, description: 'Learning the ropes' },
+  { key: 'squire', label: 'Squire', icon: 'shield-half', min: 0, max: 2, color: '#6B8DB5', description: 'New to the Borrowhood' },
+  { key: 'archer', label: 'Archer', customIcon: BowArrowIcon, min: 3, max: 10, color: '#8B5E3C', description: 'Learning the ropes' },
   { key: 'outlaw', label: 'Outlaw', icon: 'bonfire', min: 11, max: 30, color: COLORS.warning, description: 'Active member of the crew' },
-  { key: 'ranger', label: 'Sherwood Ranger', icon: 'trail-sign', min: 31, max: 75, color: COLORS.primary, description: 'Trusted community veteran' },
+  { key: 'ranger', label: 'Sherwood Ranger', icon: 'trail-sign', min: 31, max: 75, color: '#C0392B', description: 'Trusted community veteran' },
   { key: 'robin', label: 'Robin', customIcon: RobinHatIcon, min: 76, max: Infinity, color: '#D4AF37', description: 'Legendary Borrowhood member' },
 ];
 

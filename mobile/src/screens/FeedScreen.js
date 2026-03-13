@@ -371,7 +371,7 @@ export default function FeedScreen({ navigation }) {
   const visibilityKeys = VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(o => o.key);
 
   const typeChipLabel = activeFilters.length === 0
-    ? 'Listing Types'
+    ? 'Listings'
     : activeFilters.length === 1
       ? FILTER_OPTIONS.find(o => o.key === activeFilters[0])?.label
       : `${activeFilters.length} Types`;
@@ -852,7 +852,7 @@ export default function FeedScreen({ navigation }) {
                 accessibilityLabel="Filter by category"
                 accessibilityRole="button"
               >
-                <Text style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive]}>
+                <Text numberOfLines={1} style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive, { flexShrink: 1 }]}>
                   {categoryChipLabel}
                 </Text>
                 <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />

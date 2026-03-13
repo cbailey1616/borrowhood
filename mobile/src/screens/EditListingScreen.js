@@ -557,10 +557,13 @@ const styles = StyleSheet.create({
   photoScroll: {
     marginHorizontal: -SPACING.xl,
     paddingHorizontal: SPACING.xl,
+    overflow: 'visible',
   },
   photoRow: {
     flexDirection: 'row',
     gap: SPACING.md,
+    paddingTop: 8,
+    overflow: 'visible',
   },
   photoWrapper: {
     position: 'relative',

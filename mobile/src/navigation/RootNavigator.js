@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { COLORS } from '../utils/config';
 
 import AuthNavigator from './AuthNavigator';
@@ -52,10 +52,6 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 const Stack = createNativeStackNavigator();
 
 // Shared screen options for native iOS feel
-const GrabHandle = () => (
-  <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 2.5, backgroundColor: COLORS.textMuted, opacity: 0.4, marginBottom: 4 }} />
-);
-
 const sharedScreenOptions = {
   headerShown: true,
   headerStyle: {
@@ -74,15 +70,9 @@ const sharedScreenOptions = {
 const modalScreenOptions = (title) => ({
   ...sharedScreenOptions,
   title,
-  presentation: 'modal',
-  header: ({ options }) => (
-    <View style={{ backgroundColor: COLORS.background, paddingTop: 8 }}>
-      <GrabHandle />
-      <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-        <Text style={{ fontWeight: '600', color: COLORS.primary, fontSize: 17 }}>{options.title}</Text>
-      </View>
-    </View>
-  ),
+  presentation: 'formSheet',
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 20,
 });
 
 export default function RootNavigator() {
