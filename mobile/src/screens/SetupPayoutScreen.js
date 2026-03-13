@@ -105,20 +105,20 @@ export default function SetupPayoutScreen({ navigation, route }) {
       <View style={styles.header}>
         <View style={[styles.iconContainer, (isComplete || isPending) && styles.iconContainerSuccess]}>
           <Ionicons
-            name={isComplete ? 'checkmark-circle' : isPending ? 'time-outline' : 'wallet-outline'}
+            name={isComplete ? 'checkmark-circle' : isPending ? 'time-outline' : 'cash-outline'}
             size={48}
             color={isComplete ? COLORS.primary : isPending ? COLORS.primary : COLORS.textSecondary}
           />
         </View>
         <Text style={styles.title}>
-          {isComplete ? 'Payouts Enabled' : isPending ? 'Verification in Progress' : 'Setup Payouts'}
+          {isComplete ? 'You\'re All Set!' : isPending ? 'Almost There' : 'Get Paid for Lending'}
         </Text>
         <Text style={styles.subtitle}>
           {isComplete
-            ? 'You can now receive payments when people borrow your items.'
+            ? 'You\'ll earn money whenever neighbors borrow your items.'
             : isPending
-            ? 'Your payout account details have been submitted. Stripe is verifying your information — this usually takes a few minutes.'
-            : 'Connect your bank account to receive payments when people borrow your items.'}
+            ? 'Stripe is verifying your info — this usually takes just a few minutes.'
+            : 'Earn money when neighbors borrow your items. Setup takes about 2 minutes.'}
         </Text>
       </View>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -46,10 +46,23 @@ export default function ListingDetailScreen({ route, navigation }) {
     transform: [{ scale: heartScale.value }],
   }));
 
+  const hasMounted = useRef(false);
+
   useEffect(() => {
     fetchListing();
     checkIfSaved();
+    hasMounted.current = true;
   }, [id]);
+
+  // Re-fetch listing when returning from edit screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (hasMounted.current) {
+        fetchListing();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, id]);
 
   const checkIfSaved = async () => {
     try {

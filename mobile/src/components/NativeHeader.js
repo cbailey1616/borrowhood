@@ -22,7 +22,7 @@ export default function NativeHeader({
 
   // Large title: fades + slides up + collapses height
   const largeTitleStyle = useAnimatedStyle(() => {
-    if (!scrollY) return { opacity: 1, transform: [{ translateY: 0 }], maxHeight: LARGE_TITLE_HEIGHT };
+    if (!scrollY) return { opacity: 1, transform: [{ translateY: 0 }] };
     return {
       opacity: interpolate(
         scrollY.value,
@@ -40,10 +40,23 @@ export default function NativeHeader({
           ),
         },
       ],
+    };
+  });
+
+  // Collapse the green wrapper's bottom padding + content height smoothly
+  const wrapperStyle = useAnimatedStyle(() => {
+    if (!scrollY) return { paddingBottom: SPACING.lg };
+    return {
+      paddingBottom: interpolate(
+        scrollY.value,
+        [0, LARGE_TITLE_THRESHOLD],
+        [SPACING.lg, 0],
+        Extrapolation.CLAMP
+      ),
       maxHeight: interpolate(
         scrollY.value,
         [0, LARGE_TITLE_THRESHOLD],
-        [LARGE_TITLE_HEIGHT, 0],
+        [LARGE_TITLE_HEIGHT + insets.top + SPACING.lg, insets.top + 4],
         Extrapolation.CLAMP
       ),
     };
@@ -52,7 +65,7 @@ export default function NativeHeader({
   return (
     <View>
       {/* Green header wrapper — status bar + large title, seamless */}
-      <View style={[styles.greenWrapper, { paddingTop: insets.top + 4 }]}>
+      <Animated.View style={[styles.greenWrapper, { paddingTop: insets.top + 4, overflow: 'hidden' }, wrapperStyle]}>
         <Animated.View style={largeTitleStyle}>
           {(title || rightElement) && (
             <View style={styles.titleRow}>
@@ -62,7 +75,7 @@ export default function NativeHeader({
           )}
           {children}
         </Animated.View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -71,7 +84,6 @@ const styles = StyleSheet.create({
   greenWrapper: {
     backgroundColor: COLORS.greenBg,
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
   },
   titleRow: {
     flexDirection: 'row',
