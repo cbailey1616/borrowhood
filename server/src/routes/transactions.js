@@ -178,7 +178,7 @@ router.post('/', authenticate,
       if (totalChargeCents < 50) {
         // Notify owner immediately — no payment step to wait for
         await sendNotification(item.owner_id, isGiveaway ? 'giveaway_claim' : 'borrow_request', {
-          borrowerName: req.user.first_name,
+          borrowerName: req.user.display_name || req.user.first_name,
           itemTitle: item.title,
           transactionId,
           listingId,
@@ -277,9 +277,11 @@ router.get('/', authenticate, async (req, res) => {
       `SELECT t.*,
               l.title as listing_title, l.listing_type,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
-              b.first_name as borrower_first_name, b.last_name as borrower_last_name,
+              COALESCE(b.display_name, b.first_name) as borrower_first_name,
+              CASE WHEN b.display_name IS NOT NULL THEN '' ELSE b.last_name END as borrower_last_name,
               b.profile_photo_url as borrower_photo,
-              lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
+              COALESCE(lnd.display_name, lnd.first_name) as lender_first_name,
+              CASE WHEN lnd.display_name IS NOT NULL THEN '' ELSE lnd.last_name END as lender_last_name,
               lnd.profile_photo_url as lender_photo
        FROM borrow_transactions t
        JOIN listings l ON t.listing_id = l.id
@@ -339,9 +341,11 @@ router.get('/:id', authenticate, async (req, res) => {
               (SELECT EXISTS(SELECT 1 FROM disputes WHERE transaction_id = t.id)) as has_dispute,
               (SELECT id FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_id,
               (SELECT status FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_status,
-              b.first_name as borrower_first_name, b.last_name as borrower_last_name,
+              COALESCE(b.display_name, b.first_name) as borrower_first_name,
+              CASE WHEN b.display_name IS NOT NULL THEN '' ELSE b.last_name END as borrower_last_name,
               b.profile_photo_url as borrower_photo, b.rating as borrower_rating, b.rating_count as borrower_rating_count,
-              lnd.first_name as lender_first_name, lnd.last_name as lender_last_name,
+              COALESCE(lnd.display_name, lnd.first_name) as lender_first_name,
+              CASE WHEN lnd.display_name IS NOT NULL THEN '' ELSE lnd.last_name END as lender_last_name,
               lnd.profile_photo_url as lender_photo
        FROM borrow_transactions t
        JOIN listings l ON t.listing_id = l.id
@@ -583,11 +587,11 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
         [t.listing_id]
       );
       const borrower = await query(
-        'SELECT first_name FROM users WHERE id = $1',
+        'SELECT first_name, display_name FROM users WHERE id = $1',
         [t.borrower_id]
       );
       await sendNotification(t.lender_id, 'borrow_request', {
-        borrowerName: borrower.rows[0]?.first_name,
+        borrowerName: borrower.rows[0]?.display_name || borrower.rows[0]?.first_name,
         itemTitle: listing.rows[0]?.title,
         transactionId: t.id,
         listingId: t.listing_id,

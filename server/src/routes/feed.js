@@ -125,7 +125,7 @@ router.get('/', authenticate, async (req, res) => {
           listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         }
         if (visibilityFilters.includes('town') && canSeeTown) {
-          visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
+          visConds.push(`(l.visibility = 'town' AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
         listingQuery += ` AND (${visConds.join(' OR ')})`;
@@ -139,7 +139,7 @@ router.get('/', authenticate, async (req, res) => {
         visConds.push(`(l.visibility = 'neighborhood' AND l.community_id = ANY($${listingParams.length + 1}))`);
         listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         if (canSeeTown) {
-          visConds.push(`(l.visibility = 'town' AND u.city = $${listingParams.length + 1} AND u.city IS NOT NULL)`);
+          visConds.push(`(l.visibility = 'town' AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
         listingQuery += ` AND (${visConds.join(' OR ')})`;

@@ -18,7 +18,7 @@ export async function authenticate(req, res, next) {
     let result;
     try {
       result = await query(
-        'SELECT id, email, first_name, last_name, status, is_admin, token_invalidated_at FROM users WHERE id = $1',
+        'SELECT id, email, first_name, last_name, display_name, status, is_admin, token_invalidated_at FROM users WHERE id = $1',
         [decoded.userId]
       );
     } catch (colErr) {

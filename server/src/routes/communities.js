@@ -346,6 +346,52 @@ router.post('/:id/leave', authenticate, async (req, res) => {
 });
 
 // ============================================
+// DELETE /api/communities/:id/members/:userId
+// Remove a member (organizer only)
+// ============================================
+router.delete('/:id/members/:userId', authenticate, async (req, res) => {
+  const { id: communityId, userId } = req.params;
+
+  try {
+    // Verify caller is an organizer
+    const callerRole = await query(
+      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [communityId, req.user.id]
+    );
+    if (!callerRole.rows.length || callerRole.rows[0].role !== 'organizer') {
+      return res.status(403).json({ error: 'Only admins can remove members' });
+    }
+
+    // Cannot remove yourself
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot remove yourself' });
+    }
+
+    // Cannot remove other organizers
+    const targetRole = await query(
+      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [communityId, userId]
+    );
+    if (!targetRole.rows.length) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    if (targetRole.rows[0].role === 'organizer') {
+      return res.status(400).json({ error: 'Cannot remove another admin' });
+    }
+
+    await query(
+      'DELETE FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [communityId, userId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Remove member error:', err);
+    res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
+// ============================================
 // GET /api/communities/:id/members
 // Get community members
 // ============================================

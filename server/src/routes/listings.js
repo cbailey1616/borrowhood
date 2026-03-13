@@ -602,9 +602,11 @@ router.patch('/:id', authenticate,
       const validStatuses = ['active', 'paused'];
       const validVisibilities = ['close_friends', 'neighborhood', 'town'];
 
-      // Verification always required for town visibility on update
+      // Validate visibility on update
       if (req.body.visibility) {
         let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
+
+        // Town requires verification
         if (visArray.includes('town')) {
           const subCheck = await query(
             'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
@@ -615,9 +617,21 @@ router.patch('/:id', authenticate,
           const verified = u?.is_verified || graceActive;
           if (!verified) {
             visArray = visArray.filter(v => v !== 'town');
-            if (visArray.length === 0) visArray.push('close_friends');
           }
         }
+
+        // Neighborhood requires community membership
+        if (visArray.includes('neighborhood')) {
+          const communityCheck = await query(
+            'SELECT community_id FROM community_memberships WHERE user_id = $1 LIMIT 1',
+            [req.user.id]
+          );
+          if (communityCheck.rows.length === 0) {
+            visArray = visArray.filter(v => v !== 'neighborhood');
+          }
+        }
+
+        if (visArray.length === 0) visArray.push('close_friends');
         req.body.visibility = visArray;
       }
 
