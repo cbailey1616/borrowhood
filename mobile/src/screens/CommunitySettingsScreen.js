@@ -13,9 +13,11 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
+import { useError } from '../context/ErrorContext';
 
 export default function CommunitySettingsScreen({ route, navigation }) {
   const { id } = route.params;
+  const { showError } = useError();
   const [community, setCommunity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
@@ -44,6 +46,10 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       navigation.navigate('Main');
     } catch (error) {
       haptics.error();
+      const msg = error.message || 'Failed to leave neighborhood';
+      showError({ message: msg.includes('active listings')
+        ? 'Please delete or pause your listings in this neighborhood first.'
+        : msg });
     }
   };
 
