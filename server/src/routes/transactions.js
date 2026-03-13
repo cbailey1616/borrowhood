@@ -268,7 +268,7 @@ router.get('/', authenticate, async (req, res) => {
       whereClause = '(t.borrower_id = $1 OR t.lender_id = $1)';
     }
 
-    if (status) {
+    if (status && status !== 'all') {
       params.push(status);
       whereClause += ` AND t.status = $${params.length}`;
     }
