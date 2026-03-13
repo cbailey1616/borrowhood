@@ -475,6 +475,25 @@ export async function runMigrations() {
       logger.info('Migration complete: users.payouts_enabled added');
     }
 
+    // Migration: Create saved_listings table
+    const hasSavedListings = await query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_name = 'saved_listings'
+    `);
+    if (hasSavedListings.rows.length === 0) {
+      logger.info('Running migration: Create saved_listings table');
+      await query(`CREATE TABLE saved_listings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        listing_id UUID NOT NULL REFERENCES listings(id),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, listing_id)
+      )`);
+      await query('CREATE INDEX idx_saved_listings_user ON saved_listings(user_id)');
+      await query('CREATE INDEX idx_saved_listings_listing ON saved_listings(listing_id)');
+      logger.info('Migration complete: saved_listings table created');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);
