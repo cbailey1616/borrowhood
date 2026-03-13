@@ -199,20 +199,22 @@ export default function ListingDetailScreen({ route, navigation }) {
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
-            <View style={styles.actionButtons}>
-              <HapticPressable testID="ListingDetail.button.save" accessibilityLabel="Save listing" accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
-                <Animated.View style={heartAnimStyle}>
-                  <Ionicons
-                    name={isSaved ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={isSaved ? COLORS.danger : COLORS.textSecondary}
-                  />
-                </Animated.View>
-              </HapticPressable>
-              <HapticPressable onPress={handleShare} haptic="light" style={styles.actionBtn}>
-                <Ionicons name="arrow-redo-outline" size={20} color={COLORS.textSecondary} />
-              </HapticPressable>
-            </View>
+            {!listing.ownerMasked && (
+              <View style={styles.actionButtons}>
+                <HapticPressable testID="ListingDetail.button.save" accessibilityLabel="Save listing" accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
+                  <Animated.View style={heartAnimStyle}>
+                    <Ionicons
+                      name={isSaved ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={isSaved ? COLORS.danger : COLORS.textSecondary}
+                    />
+                  </Animated.View>
+                </HapticPressable>
+                <HapticPressable onPress={handleShare} haptic="light" style={styles.actionBtn}>
+                  <Ionicons name="arrow-redo-outline" size={20} color={COLORS.textSecondary} />
+                </HapticPressable>
+              </View>
+            )}
           </View>
 
           {(listing.distanceMiles || (!listing.ownerMasked && listing.owner?.city)) && (
@@ -224,6 +226,34 @@ export default function ListingDetailScreen({ route, navigation }) {
             </View>
           )}
 
+          {listing.ownerMasked ? (
+            /* Unverified user viewing a town listing — show verify prompt only */
+            <HapticPressable
+              style={styles.verifyCard}
+              onPress={() => {
+                const gate = checkPremiumGate(user, 'town_browse');
+                if (!gate.passed) {
+                  navigation.navigate(gate.screen, gate.params);
+                } else {
+                  navigation.navigate('IdentityVerification', { source: 'town_browse' });
+                }
+              }}
+              haptic="medium"
+            >
+              <View style={styles.verifyCardIcon}>
+                <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
+              </View>
+              <Text style={styles.verifyCardTitle}>Verify to unlock this listing</Text>
+              <Text style={styles.verifyCardSubtitle}>
+                Verify your identity to see full details, message the lender, and borrow items across town.
+              </Text>
+              <View style={styles.verifyCardButton}>
+                <Text style={styles.verifyCardButtonText}>Verify Identity</Text>
+                <Ionicons name="chevron-forward" size={16} color="#fff" />
+              </View>
+            </HapticPressable>
+          ) : (
+          <>
           <View style={styles.badges}>
             {listing.listingType === 'giveaway' && (
               <View style={[styles.badge, styles.badgeGiveaway]}>
@@ -303,19 +333,6 @@ export default function ListingDetailScreen({ route, navigation }) {
           )}
 
           {/* Owner */}
-          {listing.ownerMasked ? (
-            <View style={[styles.ownerCard, styles.cardBox]}>
-              <View style={[styles.ownerAvatar, styles.maskedOwnerAvatar]}>
-                <Ionicons name="shield-checkmark" size={24} color={COLORS.primary} />
-              </View>
-              <View style={styles.ownerInfo}>
-                <Text style={styles.ownerName}>Verified Lender</Text>
-                <Text style={styles.ownerMaskedHint}>
-                  Verify your identity to see who's lending this item
-                </Text>
-              </View>
-            </View>
-          ) : (
             <HapticPressable
               onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
               haptic="light"
@@ -349,34 +366,12 @@ export default function ListingDetailScreen({ route, navigation }) {
                 <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
               </View>
             </HapticPressable>
+          </>
           )}
         </View>
       </ScrollView>
 
       {/* Footer Action Bar */}
-      {!listing.isOwner && listing.ownerMasked && (
-        <View style={styles.footerWrap}>
-          <View style={[styles.footer, styles.footerAndroid]}>
-            <HapticPressable
-              style={styles.verifyBanner}
-              onPress={() => {
-                const gate = checkPremiumGate(user, 'town_browse');
-                if (!gate.passed) {
-                  navigation.navigate(gate.screen, gate.params);
-                } else {
-                  navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                }
-              }}
-              haptic="medium"
-            >
-              <Ionicons name="lock-closed" size={18} color={COLORS.warning} />
-              <Text style={styles.verifyBannerText}>Verify your identity to unlock town access</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-            </HapticPressable>
-          </View>
-        </View>
-      )}
-
       {!listing.isOwner && !listing.ownerMasked && (
         <View style={styles.footerWrap}>
           <View style={styles.footerGreen}>
@@ -686,6 +681,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary + '20',
+  },
+  verifyCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    marginTop: SPACING.lg,
+  },
+  verifyCardIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+  },
+  verifyCardTitle: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
+  },
+  verifyCardSubtitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.xl,
+  },
+  verifyCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.md,
+  },
+  verifyCardButtonText: {
+    ...TYPOGRAPHY.button,
+    color: '#fff',
   },
   avatarPlaceholder: {
     alignItems: 'center',
