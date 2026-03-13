@@ -1,6 +1,6 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet, Pressable } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, Easing } from 'react-native-reanimated';
+import React, { useCallback } from 'react';
+import { View, Text, Modal, StyleSheet, Pressable } from 'react-native';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { haptics } from '../utils/haptics';
@@ -31,87 +31,92 @@ export default function ActionSheet({
       } else {
         haptics.light();
       }
-      if (multiSelect) {
-        action.onPress?.();
-      } else {
+      action.onPress?.();
+      if (!multiSelect) {
         onClose?.();
-        setTimeout(() => {
-          action.onPress?.();
-        }, 200);
       }
     },
     [multiSelect, onClose]
   );
 
-  if (!isVisible) return null;
-
   const bottomPad = (insets.bottom || 34) + SPACING.sm;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Full-screen dim backdrop */}
-      <AnimatedPressable
-        entering={FadeIn.duration(200)}
-        exiting={FadeOut.duration(200)}
-        style={styles.backdrop}
-        onPress={handleCancel}
-      />
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={handleCancel}
+    >
+      <View style={styles.modalContainer}>
+        {/* Full-screen dim backdrop */}
+        <AnimatedPressable
+          entering={FadeIn.duration(150)}
+          exiting={FadeOut.duration(120)}
+          style={styles.backdrop}
+          onPress={handleCancel}
+        />
 
-      {/* Sheet content */}
-      <Animated.View
-        entering={SlideInDown.duration(300).easing(Easing.out(Easing.cubic))}
-        exiting={SlideOutDown.duration(200).easing(Easing.in(Easing.cubic))}
-        style={[styles.sheetContainer, { paddingBottom: bottomPad }]}
-      >
-        <View style={styles.sheetCard}>
-          <View style={styles.grabHandle} />
-          {title ? (
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
-              {message ? <Text style={styles.message}>{message}</Text> : null}
-            </View>
-          ) : null}
-          <View style={styles.actionsContainer}>
-            {actions.map((action, index) => (
-              <HapticPressable
-                key={index}
-                onPress={() => handleAction(action)}
-                haptic={null}
-                style={[
-                  styles.actionButton,
-                  action.destructive && styles.destructiveButton,
-                  action.primary && styles.primaryButton,
-                ]}
-              >
-                {action.icon ? (
-                  <View style={styles.actionIcon}>{action.icon}</View>
-                ) : null}
-                <Text
+        {/* Sheet content */}
+        <Animated.View
+          entering={SlideInDown.duration(200)}
+          exiting={SlideOutDown.duration(150)}
+          style={[styles.sheetContainer, { paddingBottom: bottomPad }]}
+        >
+          <View style={styles.sheetCard}>
+            <View style={styles.grabHandle} />
+            {title ? (
+              <View style={styles.header}>
+                <Text style={styles.title}>{title}</Text>
+                {message ? <Text style={styles.message}>{message}</Text> : null}
+              </View>
+            ) : null}
+            <View style={styles.actionsContainer}>
+              {actions.map((action, index) => (
+                <HapticPressable
+                  key={index}
+                  onPress={() => handleAction(action)}
+                  haptic={null}
                   style={[
-                    styles.actionText,
-                    action.destructive && styles.destructiveText,
-                    action.primary && styles.primaryText,
+                    styles.actionButton,
+                    action.destructive && styles.destructiveButton,
+                    action.primary && styles.primaryButton,
                   ]}
                 >
-                  {action.label}
-                </Text>
-              </HapticPressable>
-            ))}
+                  {action.icon ? (
+                    <View style={styles.actionIcon}>{action.icon}</View>
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.actionText,
+                      action.destructive && styles.destructiveText,
+                      action.primary && styles.primaryText,
+                    ]}
+                  >
+                    {action.label}
+                  </Text>
+                </HapticPressable>
+              ))}
+            </View>
           </View>
-        </View>
-        <HapticPressable
-          onPress={handleCancel}
-          haptic="light"
-          style={styles.cancelButton}
-        >
-          <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
-        </HapticPressable>
-      </Animated.View>
-    </View>
+          <HapticPressable
+            onPress={handleCancel}
+            haptic="light"
+            style={styles.cancelButton}
+          >
+            <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
+          </HapticPressable>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',

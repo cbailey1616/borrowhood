@@ -7,7 +7,7 @@ import api from '../services/api';
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),

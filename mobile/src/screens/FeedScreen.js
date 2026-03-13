@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
-import UserBadges from '../components/UserBadges';
+import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import SearchBar from '../components/SearchBar';
 import AnimatedCard from '../components/AnimatedCard';
@@ -467,9 +467,12 @@ export default function FeedScreen({ navigation }) {
             {item.description ? (
               <Text style={[styles.tileDesc, { color: COLORS.greenText }]} numberOfLines={2}>{item.description}</Text>
             ) : null}
-            <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>
-              {userName}
-            </Text>
+            <View style={styles.tileFooterRow}>
+              {!item.ownerMasked && <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={12} />}
+              <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>
+                {userName}
+              </Text>
+            </View>
           </View>
         </HapticPressable>
         {/* Inline thread */}
@@ -756,7 +759,10 @@ export default function FeedScreen({ navigation }) {
               {item.description ? (
                 <Text style={[styles.tileDesc, { color: COLORS.greenText }]} numberOfLines={2}>{item.description}</Text>
               ) : null}
-              <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>{userName}</Text>
+              <View style={styles.tileFooterRow}>
+                <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={12} />
+                <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>{userName}</Text>
+              </View>
             </View>
           </HapticPressable>
           {/* Inline thread */}
@@ -1432,6 +1438,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
     lineHeight: 17,
+  },
+  tileFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   tileFooterText: {
     ...TYPOGRAPHY.caption,

@@ -1,5 +1,5 @@
 import React from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { View } from 'react-native';
 
 export default function AnimatedCard({
   index = 0,
@@ -8,14 +8,8 @@ export default function AnimatedCard({
   children,
 }) {
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * delay)
-        .springify()
-        .damping(18)
-        .stiffness(200)}
-      style={style}
-    >
+    <View style={style}>
       {children}
-    </Animated.View>
+    </View>
   );
 }

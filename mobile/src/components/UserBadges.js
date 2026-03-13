@@ -120,11 +120,11 @@ const TIERS = [
   { key: 'robin', label: 'Robin', customIcon: RobinHatIcon, min: 76, max: Infinity, color: '#D4AF37', description: 'Legendary Borrowhood member' },
 ];
 
-function getTier(totalTransactions) {
+export function getTier(totalTransactions) {
   return TIERS.find(t => totalTransactions >= t.min && totalTransactions <= t.max) || TIERS[0];
 }
 
-function TierIcon({ tier, size }) {
+export function TierIcon({ tier, size }) {
   if (tier.customIcon) {
     const CustomIcon = tier.customIcon;
     return <CustomIcon size={size} color={tier.color} />;

@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     bottom: 2,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.primary,
     borderRadius: RADIUS.sm - 2,
     zIndex: 0,
   },
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   segmentTextActive: {
-    color: COLORS.text,
-    fontWeight: '600',
+    color: '#fff',
+    fontWeight: '700',
   },
 });

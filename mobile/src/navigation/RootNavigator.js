@@ -70,9 +70,8 @@ const sharedScreenOptions = {
 const modalScreenOptions = (title) => ({
   ...sharedScreenOptions,
   title,
-  presentation: 'formSheet',
+  presentation: 'modal',
   sheetGrabberVisible: true,
-  sheetCornerRadius: 20,
 });
 
 export default function RootNavigator() {
