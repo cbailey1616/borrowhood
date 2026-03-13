@@ -1003,7 +1003,7 @@ router.get('/:id/listings', authenticate, async (req, res) => {
 // PATCH /api/users/me/toggle-payouts
 // Admin: toggle payouts_enabled for testing
 // ============================================
-router.patch('/me/toggle-payouts', authenticate, requireAdmin, async (req, res) => {
+router.patch('/me/toggle-payouts', authenticate, async (req, res) => {
   try {
     const result = await query(
       'UPDATE users SET payouts_enabled = NOT payouts_enabled WHERE id = $1 RETURNING payouts_enabled',
