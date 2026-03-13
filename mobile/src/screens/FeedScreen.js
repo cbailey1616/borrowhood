@@ -880,11 +880,14 @@ export default function FeedScreen({ navigation }) {
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        bounces
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
             tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+            progressViewOffset={0}
           />
         }
         onEndReached={onEndReached}
