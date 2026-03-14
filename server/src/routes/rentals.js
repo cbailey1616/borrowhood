@@ -534,28 +534,58 @@ router.post('/:id/pickup', authenticate,
       }
 
       const t = txn.rows[0];
+      const isBorrower = t.borrower_id === req.user.id;
+      const isLender = t.lender_id === req.user.id;
 
-      if (t.lender_id !== req.user.id) {
-        return res.status(403).json({ error: 'Only the lender can confirm pickup' });
+      if (!isBorrower && !isLender) {
+        return res.status(403).json({ error: 'Not authorized' });
       }
 
-      // Payment is already captured at approve time — no capture needed here
+      // Either party can confirm pickup
+      const otherPartyId = isBorrower ? t.lender_id : t.borrower_id;
 
-      await query(
-        `UPDATE borrow_transactions
-         SET status = 'picked_up', actual_pickup_at = NOW(),
-             condition_at_pickup = $1
-         WHERE id = $2`,
-        [condition || 'good', t.id]
+      // Check if this is a giveaway
+      const listingCheck = await query(
+        'SELECT listing_type FROM listings WHERE id = $1',
+        [t.listing_id]
       );
+      const isGiveaway = listingCheck.rows[0]?.listing_type === 'giveaway';
 
-      await sendNotification(t.borrower_id, 'pickup_confirmed', {
-        itemTitle: t.item_title,
-        returnDate: t.requested_end_date,
-        transactionId: t.id,
-      });
+      if (isGiveaway) {
+        // Giveaway: pickup = complete. No return step needed.
+        await query(
+          `UPDATE borrow_transactions
+           SET status = 'returned', actual_pickup_at = NOW(), actual_return_at = NOW(), condition_at_pickup = $1
+           WHERE id = $2`,
+          [condition || 'good', t.id]
+        );
 
-      res.json({ success: true });
+        await query(
+          `UPDATE listings SET status = 'given_away', is_available = false WHERE id = $1`,
+          [t.listing_id]
+        );
+
+        await sendNotification(otherPartyId, 'giveaway_complete', {
+          itemTitle: t.item_title,
+          transactionId: t.id,
+        });
+      } else {
+        await query(
+          `UPDATE borrow_transactions
+           SET status = 'picked_up', actual_pickup_at = NOW(),
+               condition_at_pickup = $1
+           WHERE id = $2`,
+          [condition || 'good', t.id]
+        );
+
+        await sendNotification(otherPartyId, 'pickup_confirmed', {
+          itemTitle: t.item_title,
+          returnDate: t.requested_end_date,
+          transactionId: t.id,
+        });
+      }
+
+      res.json({ success: true, isGiveaway });
     } catch (err) {
       logger.error('Confirm pickup error:', err);
       res.status(500).json({ error: 'Failed to confirm pickup' });
