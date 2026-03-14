@@ -443,6 +443,19 @@ router.post('/', authenticate,
         }
       }
 
+      // Town visibility requires verification
+      if (visibilityArray.includes('town')) {
+        const verifyCheck = await query(
+          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
+          [req.user.id]
+        );
+        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
+        if (!verifyCheck.rows[0]?.is_verified && !graceActive) {
+          visibilityArray = visibilityArray.filter(v => v !== 'town');
+          if (visibilityArray.length === 0) visibilityArray.push('close_friends');
+        }
+      }
+
       // Check subscription/verification for paid rentals
       let pricingDowngraded = false;
       const needsPaidCheck = !isFree && pricePerDay > 0;
@@ -580,6 +593,19 @@ router.patch('/:id', authenticate,
       if (req.body.visibility) {
         let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
         visArray = visArray.filter(v => ['close_friends', 'neighborhood', 'town'].includes(v));
+
+        // Town requires verification
+        if (visArray.includes('town')) {
+          const verifyCheck = await query(
+            'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
+            [req.user.id]
+          );
+          const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
+          if (!verifyCheck.rows[0]?.is_verified && !graceActive) {
+            visArray = visArray.filter(v => v !== 'town');
+          }
+        }
+
         if (visArray.length === 0) visArray.push('close_friends');
         req.body.visibility = visArray;
       }
