@@ -300,7 +300,14 @@ export async function sendNotification(userId, type, data, options = {}) {
 
       // Send push notification if enabled and token exists
       if (push_token && prefs.push !== false && prefs[type] !== false) {
-        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data } });
+        // Get unread count for app icon badge
+        const unreadResult = await query(
+          'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+          [userId]
+        );
+        const badge = parseInt(unreadResult.rows[0].count) || 1;
+
+        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data }, badge });
       }
     }
 
@@ -315,7 +322,7 @@ export async function sendNotification(userId, type, data, options = {}) {
  * Send push notification via Expo Push Service
  * Borrowhood uses React Native with Expo, so we use Expo's push service
  */
-async function sendPushNotification(pushToken, { title, body, data }) {
+async function sendPushNotification(pushToken, { title, body, data, badge }) {
   try {
     // Validate Expo push token format
     if (!pushToken.startsWith('ExponentPushToken[')) {
@@ -329,6 +336,7 @@ async function sendPushNotification(pushToken, { title, body, data }) {
       title,
       body,
       data,
+      badge: badge || 1,
     };
 
     const response = await fetch('https://exp.host/--/api/v2/push/send', {

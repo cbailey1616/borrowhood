@@ -64,6 +64,11 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Cannot file a dispute until the item has been picked up' });
       }
 
+      // No disputes on free transactions — no money to dispute
+      if (t.payment_status === 'none' && !t.stripe_payment_intent_id) {
+        return res.status(400).json({ error: 'Disputes are not available for free rentals' });
+      }
+
       // Non-return disputes can only be filed after the rental period ends
       if (type === 'nonReturn' && t.status === 'picked_up') {
         const endDate = new Date(t.requested_end_date);

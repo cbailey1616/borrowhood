@@ -686,16 +686,31 @@ router.patch('/:id', authenticate,
         }
       }
 
-      if (updates.length === 0) {
+      // Handle photo updates separately (not a column on listings table)
+      const hasPhotoUpdate = Array.isArray(req.body.photos);
+
+      if (updates.length === 0 && !hasPhotoUpdate) {
         return res.status(400).json({ error: 'No updates provided' });
       }
 
-      values.push(req.params.id);
+      if (updates.length > 0) {
+        values.push(req.params.id);
+        await query(
+          `UPDATE listings SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+          values
+        );
+      }
 
-      await query(
-        `UPDATE listings SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-        values
-      );
+      // Replace listing photos if provided
+      if (hasPhotoUpdate && req.body.photos.length > 0) {
+        await query('DELETE FROM listing_photos WHERE listing_id = $1', [req.params.id]);
+        for (let i = 0; i < req.body.photos.length; i++) {
+          await query(
+            'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
+            [req.params.id, req.body.photos[i], i]
+          );
+        }
+      }
 
       res.json({ success: true });
     } catch (err) {

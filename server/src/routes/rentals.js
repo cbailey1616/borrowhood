@@ -701,15 +701,19 @@ router.post('/:id/return', authenticate,
         });
       }
 
+      // Free rental — no money involved, complete immediately (no dispute window)
+      const isFreeRental = t.payment_status === 'none' && !t.stripe_payment_intent_id;
+
       // Clean return — process payout, release deposit only if lender confirms
       await withTransaction(async (client) => {
         await client.query(
           `UPDATE borrow_transactions
-           SET status = 'returned', condition_at_return = $1,
+           SET status = $5, condition_at_return = $1,
                condition_notes = $2, actual_return_at = NOW(),
                payment_status = $3
            WHERE id = $4`,
-          [condition, notes, isLender ? 'deposit_released' : t.payment_status, t.id]
+          [condition, notes, isLender ? 'deposit_released' : t.payment_status, t.id,
+           isFreeRental ? 'completed' : 'returned']
         );
 
         // Transfer rental fee to lender (minus platform fee)
