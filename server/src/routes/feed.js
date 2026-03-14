@@ -243,8 +243,8 @@ router.get('/', authenticate, async (req, res) => {
         createdAt: l.created_at,
         user: ownerMasked ? maskedUser : {
           id: l.user_id,
-          firstName: l.display_name || l.first_name,
-          lastName: l.display_name ? '' : (l.last_name ? l.last_name.charAt(0) + '.' : ''),
+          firstName: l.first_name,
+          lastName: l.last_name ? l.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: l.profile_photo_url,
           rating: parseFloat(l.rating) || 0,
           ratingCount: l.rating_count,
@@ -269,8 +269,8 @@ router.get('/', authenticate, async (req, res) => {
       createdAt: r.created_at,
       user: {
         id: r.user_id,
-        firstName: r.display_name || r.first_name,
-        lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
+        firstName: r.first_name,
+        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: r.profile_photo_url,
       },
     }));

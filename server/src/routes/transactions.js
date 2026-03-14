@@ -209,7 +209,7 @@ router.post('/', authenticate,
       if (totalChargeCents < 50) {
         // Notify owner immediately — no payment step to wait for
         await sendNotification(item.owner_id, isGiveaway ? 'giveaway_claim' : 'borrow_request', {
-          borrowerName: req.user.display_name || req.user.first_name,
+          borrowerName: req.user.first_name,
           itemTitle: item.title,
           transactionId,
           listingId,
@@ -651,7 +651,7 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
         [t.borrower_id]
       );
       await sendNotification(t.lender_id, 'borrow_request', {
-        borrowerName: borrower.rows[0]?.display_name || borrower.rows[0]?.first_name,
+        borrowerName: borrower.rows[0]?.first_name,
         itemTitle: listing.rows[0]?.title,
         transactionId: t.id,
         listingId: t.listing_id,

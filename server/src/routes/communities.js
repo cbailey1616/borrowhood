@@ -265,8 +265,8 @@ router.get('/:id', authenticate, async (req, res) => {
       role: membership.rows[0]?.role || null,
       organizers: organizers.rows.map(o => ({
         id: o.id,
-        firstName: o.display_name || o.first_name,
-        lastName: o.display_name ? '' : (o.last_name ? o.last_name.charAt(0) + '.' : ''),
+        firstName: o.first_name,
+        lastName: o.last_name ? o.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: o.profile_photo_url,
       })),
     });
@@ -423,8 +423,8 @@ router.get('/:id/members', authenticate, async (req, res) => {
 
     res.json(result.rows.map(m => ({
       id: m.id,
-      firstName: m.display_name || m.first_name,
-      lastName: m.display_name ? '' : (m.last_name ? m.last_name.charAt(0) + '.' : ''),
+      firstName: m.first_name,
+      lastName: m.last_name ? m.last_name.charAt(0) + '.' : '',
       profilePhotoUrl: m.profile_photo_url,
       role: m.role,
       rating: parseFloat(m.rating) || 0,

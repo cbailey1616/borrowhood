@@ -45,8 +45,8 @@ router.get('/', authenticate, async (req, res) => {
         timesBorrowed: b.times_borrowed,
         owner: {
           id: b.owner_id,
-          firstName: b.display_name || b.first_name,
-          lastName: b.display_name ? '' : (b.last_name ? b.last_name.charAt(0) + '.' : ''),
+          firstName: b.first_name,
+          lastName: b.last_name ? b.last_name.charAt(0) + '.' : '',
           profilePhotoUrl: b.profile_photo_url,
         },
         items: items.rows.map(i => ({

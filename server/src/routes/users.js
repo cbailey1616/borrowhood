@@ -16,9 +16,6 @@ const router = Router();
 // Helper: format public-facing name
 // If display_name is set, use it alone. Otherwise first_name + last initial.
 function publicName(user) {
-  if (user.display_name) {
-    return { firstName: user.display_name, lastName: '' };
-  }
   const lastInitial = user.last_name ? user.last_name.charAt(0) + '.' : '';
   return { firstName: user.first_name, lastName: lastInitial };
 }
@@ -217,7 +214,7 @@ router.post('/me/friend-requests/:requestId/accept', authenticate, async (req, r
       'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
       [req.user.id]
     );
-    const accepterFirst = accepter.rows[0]?.display_name || accepter.rows[0]?.first_name;
+    const accepterFirst = accepter.rows[0]?.first_name;
     const accepterLastInitial = accepter.rows[0]?.last_name ? accepter.rows[0].last_name.charAt(0) + '.' : '';
     const friendName = accepter.rows[0]
       ? `${accepterFirst} ${accepterLastInitial}`
@@ -461,7 +458,7 @@ router.post('/me/friends', authenticate,
           'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
           [req.user.id]
         );
-        const curFirst = currentUser.rows[0]?.display_name || currentUser.rows[0]?.first_name;
+        const curFirst = currentUser.rows[0]?.first_name;
         const curLastInitial = currentUser.rows[0]?.last_name ? currentUser.rows[0].last_name.charAt(0) + '.' : '';
         const currentName = currentUser.rows[0]
           ? `${curFirst} ${curLastInitial}`
@@ -499,7 +496,7 @@ router.post('/me/friends', authenticate,
         'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
         [req.user.id]
       );
-      const reqFirst = requester.rows[0]?.display_name || requester.rows[0]?.first_name;
+      const reqFirst = requester.rows[0]?.first_name;
       const reqLastInitial = requester.rows[0]?.last_name ? requester.rows[0].last_name.charAt(0) + '.' : '';
       const fromName = requester.rows[0]
         ? `${reqFirst} ${reqLastInitial}`
@@ -956,8 +953,8 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
       createdAt: r.created_at,
       rater: {
         id: r.rater_id,
-        firstName: r.display_name || r.first_name,
-        lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
+        firstName: r.first_name,
+        lastName: r.last_name ? r.last_name.charAt(0) + '.' : '',
         profilePhotoUrl: r.profile_photo_url,
       },
     })));
@@ -987,8 +984,8 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const user = result.rows[0];
-    const displayFirst = user.display_name || user.first_name;
-    const displayLast = user.display_name ? '' : (user.last_name ? user.last_name.charAt(0) + '.' : '');
+    const displayFirst = user.first_name;
+    const displayLast = user.last_name ? user.last_name.charAt(0) + '.' : '';
     res.json({
       id: user.id,
       firstName: displayFirst,
