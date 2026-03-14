@@ -84,6 +84,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         fetchData();
         checkNotifPermission();
         if (onRead) onRead();
+        // Clear iOS badge when viewing activity
+        Notifications.setBadgeCountAsync(0).catch(() => {});
+        Notifications.dismissAllNotificationsAsync().catch(() => {});
       });
     }, [fetchData, checkNotifPermission, onRead])
   );
