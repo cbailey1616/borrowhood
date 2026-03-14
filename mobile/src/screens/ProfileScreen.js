@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   Image,
+  ScrollView,
   Linking,
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -41,12 +41,6 @@ export default function ProfileScreen({ navigation }) {
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   useEffect(() => {
     setBiometricToggle(isBiometricsEnabled);
@@ -140,13 +134,11 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Profile" scrollY={scrollY} />
+      <NativeHeader title="Profile" />
 
-      <Animated.ScrollView
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
@@ -326,7 +318,7 @@ export default function ProfileScreen({ navigation }) {
         </GroupedListSection>
 
         <Text style={styles.version}>Borrowhood v1.0.0</Text>
-      </Animated.ScrollView>
+      </ScrollView>
 
       {/* Photo Action Sheet */}
       <ActionSheet

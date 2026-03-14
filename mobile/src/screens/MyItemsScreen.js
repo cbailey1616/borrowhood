@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
 import { Swipeable } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
@@ -21,8 +20,6 @@ import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
-
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const STATUS_COLORS = {
   pending: COLORS.warning,
@@ -44,12 +41,6 @@ export default function MyItemsScreen({ navigation }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const swipeableRefs = useRef({});
 
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   const fetchData = useCallback(async () => {
     try {
@@ -400,7 +391,7 @@ export default function MyItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="My Items" scrollY={scrollY}>
+      <NativeHeader title="My Items">
         <SegmentedControl
           testID="MyItems.segment"
           segments={['Listings', 'Borrowed', 'Wanted']}
@@ -410,13 +401,11 @@ export default function MyItemsScreen({ navigation }) {
         />
       </NativeHeader>
 
-      <AnimatedFlatList
+      <FlatList
         data={data}
         renderItem={activeTab === 0 ? renderListingItem : activeTab === 1 ? renderRentalItem : renderRequestItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

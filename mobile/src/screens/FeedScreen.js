@@ -12,7 +12,6 @@ import {
   TextInput,
   Pressable,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -79,12 +78,6 @@ export default function FeedScreen({ navigation }) {
   const listRef = useRef(null);
   const [focusedItemId, setFocusedItemId] = useState(null);
 
-  const scrollY = useSharedValue(0);
-  const handleScroll = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
     try {
@@ -807,7 +800,6 @@ export default function FeedScreen({ navigation }) {
     <View style={styles.container}>
       <NativeHeader
         title=""
-        scrollY={scrollY}
       >
         <View style={styles.searchRow}>
           <SearchBar
@@ -881,22 +873,16 @@ export default function FeedScreen({ navigation }) {
         </View>
       </NativeHeader>
 
-      <Animated.FlatList
+      <FlatList
         ref={listRef}
         data={feed}
         renderItem={renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}
         contentContainerStyle={styles.listContent}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         bounces
-        removeClippedSubviews
-        windowSize={5}
-        maxToRenderPerBatch={3}
-        updateCellsBatchingPeriod={50}
         style={{ backgroundColor: COLORS.background }}
         refreshControl={
           <RefreshControl

@@ -154,6 +154,8 @@ export default function CreateListingScreen({ navigation, route }) {
         setHasFriends(friends && friends.length > 0);
       } catch (err) {
         console.log('Failed to fetch data:', err);
+      } finally {
+        setDataLoaded(true);
       }
     };
     fetchData();
@@ -162,9 +164,10 @@ export default function CreateListingScreen({ navigation, route }) {
   // Once async data loads, strip visibilities that have no audience
   // and prompt the user if they have no reachable audience at all
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   useEffect(() => {
-    // Only run after initial data fetch, not on relist
-    if (isRelist) return;
+    // Only run after initial data fetch completes, not on relist
+    if (isRelist || !dataLoaded) return;
     const valid = formData.visibility.filter(v => {
       if (v === 'close_friends') return hasFriends;
       if (v === 'neighborhood') return !!communityId;
@@ -190,7 +193,7 @@ export default function CreateListingScreen({ navigation, route }) {
     } else if (valid.length > 0) {
       setInitialCheckDone(true);
     }
-  }, [hasFriends, communityId]);
+  }, [hasFriends, communityId, dataLoaded]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));

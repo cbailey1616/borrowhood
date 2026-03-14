@@ -494,6 +494,7 @@ export default function EditListingScreen({ navigation, route }) {
               value={formData.pricePerDay}
               onChangeText={(v) => updateField('pricePerDay', v)}
               placeholder="0.00"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
             <Text style={styles.priceSuffix}>/day</Text>

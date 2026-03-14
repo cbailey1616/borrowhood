@@ -12,7 +12,6 @@ import {
 import ShimmerImage from '../components/ShimmerImage';
 import Animated, {
   useSharedValue,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   withSpring,
   withSequence,
@@ -30,7 +29,6 @@ const GRID_GAP = SPACING.sm;
 const CARD_WIDTH = (SCREEN_WIDTH - SPACING.lg * 2 - GRID_GAP) / 2;
 const IMAGE_HEIGHT = CARD_WIDTH * 1.1;
 
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 function HeartButton({ onUnsave }) {
   const scale = useSharedValue(1);
@@ -61,12 +59,6 @@ export default function SavedScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   const fetchSaved = useCallback(async () => {
     try {
@@ -160,16 +152,14 @@ export default function SavedScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Saved" scrollY={scrollY} />
+      <NativeHeader title="Saved" />
 
-      <AnimatedFlatList
+      <FlatList
         data={listings}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.listContent}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

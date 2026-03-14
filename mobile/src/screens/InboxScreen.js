@@ -9,7 +9,6 @@ import {
   InteractionManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
@@ -19,8 +18,6 @@ import { SkeletonListItem } from '../components/SkeletonLoader';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
-
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const NOTIFICATION_ICONS = {
   borrow_request: 'hand-left',
@@ -56,12 +53,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   const fetchData = useCallback(async () => {
     try {
@@ -244,7 +235,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <NativeHeader title="Activity" scrollY={scrollY} />
+        <NativeHeader title="Activity" />
         <View style={styles.skeletonContainer}>
           <SkeletonListItem />
           <SkeletonListItem />
@@ -257,7 +248,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Activity" scrollY={scrollY}>
+      <NativeHeader title="Activity">
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
@@ -271,13 +262,11 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       </NativeHeader>
 
       {activeTab === 0 ? (
-        <AnimatedFlatList
+        <FlatList
           data={notifications}
           renderItem={renderNotification}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -309,13 +298,11 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           }
         />
       ) : (
-        <AnimatedFlatList
+        <FlatList
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
