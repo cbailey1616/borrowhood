@@ -21,6 +21,21 @@ let pendingNotification = null;
 
 export function setNavigationRef(ref) {
   navigationRef = ref;
+
+  // Handle cold start — check if the app was launched by tapping a notification
+  Notifications.getLastNotificationResponseAsync().then(response => {
+    if (response) {
+      const data = response.notification.request.content.data;
+      if (data?.type) {
+        // If user isn't authenticated yet, store as pending — will flush when auth loads
+        if (!currentUser) {
+          pendingNotification = data;
+        } else {
+          handleNotificationResponse(data);
+        }
+      }
+    }
+  });
 }
 
 export function flushPendingNotification() {
@@ -48,6 +63,11 @@ export default function usePushNotifications(isAuthenticated, user) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+
+    // Flush any pending cold-start notification now that auth is ready
+    if (pendingNotification && navigationRef) {
+      flushPendingNotification();
+    }
 
     // Don't auto-request notification permissions during onboarding —
     // the onboarding flow has a dedicated pre-prompt step

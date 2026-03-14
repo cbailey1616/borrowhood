@@ -334,7 +334,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <View style={styles.itemInfo}>
           <Text style={styles.itemTitle}>{listing.title}</Text>
           <Text style={styles.itemOwner}>
-            {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName} ${listing.owner.lastName[0]}.`}
+            {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner?.firstName || 'the owner'}${listing.owner?.lastName ? ` ${listing.owner.lastName}` : ''}`}
           </Text>
           {isGiveaway && (
             <View style={styles.giveawayBadge}>
