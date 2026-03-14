@@ -544,6 +544,29 @@ export async function runMigrations() {
       logger.info('Migration complete: notifications.type is now varchar');
     }
 
+    // Migration: Convert listings.visibility from enum to varchar
+    // to support comma-separated multi-scope visibility (e.g. 'close_friends,town')
+    const listingVisType = await query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'listings' AND column_name = 'visibility'
+    `);
+    if (listingVisType.rows.length > 0 && listingVisType.rows[0].data_type === 'USER-DEFINED') {
+      logger.info('Running migration: Convert listings.visibility from enum to varchar');
+      await query("ALTER TABLE listings ALTER COLUMN visibility TYPE VARCHAR(60) USING visibility::text");
+      logger.info('Migration complete: listings.visibility is now varchar');
+    }
+
+    // Migration: Convert item_requests.visibility from enum to varchar
+    const requestVisType = await query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'item_requests' AND column_name = 'visibility'
+    `);
+    if (requestVisType.rows.length > 0 && requestVisType.rows[0].data_type === 'USER-DEFINED') {
+      logger.info('Running migration: Convert item_requests.visibility from enum to varchar');
+      await query("ALTER TABLE item_requests ALTER COLUMN visibility TYPE VARCHAR(60) USING visibility::text");
+      logger.info('Migration complete: item_requests.visibility is now varchar');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

@@ -118,15 +118,15 @@ router.get('/', authenticate, async (req, res) => {
         listingParams.push(req.user.id);
 
         if (visibilityFilters.includes('close_friends')) {
-          visConds.push(`('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${listingParams.length + 1}))`);
+          visConds.push(`('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${listingParams.length + 1}))`);
           listingParams.push(friendIds.length > 0 ? friendIds : [null]);
         }
         if (visibilityFilters.includes('neighborhood')) {
-          visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND l.community_id = ANY($${listingParams.length + 1}))`);
+          visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND l.community_id = ANY($${listingParams.length + 1}))`);
           listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         }
         if (visibilityFilters.includes('town') && canSeeTown) {
-          visConds.push(`('town' = ANY(string_to_array(l.visibility, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
+          visConds.push(`('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
         listingQuery += ` AND (${visConds.join(' OR ')})`;
@@ -135,12 +135,12 @@ router.get('/', authenticate, async (req, res) => {
         const visConds = [];
         visConds.push(`l.owner_id = $${listingParams.length + 1}`);
         listingParams.push(req.user.id);
-        visConds.push(`('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${listingParams.length + 1}))`);
+        visConds.push(`('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${listingParams.length + 1}))`);
         listingParams.push(friendIds.length > 0 ? friendIds : [null]);
-        visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND l.community_id = ANY($${listingParams.length + 1}))`);
+        visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND l.community_id = ANY($${listingParams.length + 1}))`);
         listingParams.push(communityIds.length > 0 ? communityIds : [null]);
         if (canSeeTown) {
-          visConds.push(`('town' = ANY(string_to_array(l.visibility, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
+          visConds.push(`('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
           listingParams.push(userCity);
         }
         listingQuery += ` AND (${visConds.join(' OR ')})`;
@@ -187,12 +187,12 @@ router.get('/', authenticate, async (req, res) => {
       const reqVisConds = [];
       reqVisConds.push(`r.user_id = $${requestParams.length + 1}`);
       requestParams.push(req.user.id);
-      reqVisConds.push(`('close_friends' = ANY(string_to_array(r.visibility, ',')) AND r.user_id = ANY($${requestParams.length + 1}))`);
+      reqVisConds.push(`('close_friends' = ANY(string_to_array(r.visibility::text, ',')) AND r.user_id = ANY($${requestParams.length + 1}))`);
       requestParams.push(friendIds.length > 0 ? friendIds : [null]);
-      reqVisConds.push(`('neighborhood' = ANY(string_to_array(r.visibility, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
+      reqVisConds.push(`('neighborhood' = ANY(string_to_array(r.visibility::text, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
       requestParams.push(userCity || '');
       if (canSeeTown) {
-        reqVisConds.push(`('town' = ANY(string_to_array(r.visibility, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
+        reqVisConds.push(`('town' = ANY(string_to_array(r.visibility::text, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
         requestParams.push(userCity);
       }
       requestQuery += ` AND (${reqVisConds.join(' OR ')})`;
