@@ -489,14 +489,14 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {isGiveaway ? 'Claim Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
+            {isGiveaway ? 'Request Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
           </Text>
         )}
       </HapticPressable>
 
       <Text style={styles.termsText}>
         {isGiveaway
-          ? 'By claiming this item, you agree to our terms and conditions'
+          ? 'By requesting this item, you agree to our terms and conditions'
           : 'By sending this request, you agree to our borrowing terms and conditions'}
       </Text>
     </ScrollView>

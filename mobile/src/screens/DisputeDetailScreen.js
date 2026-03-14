@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
@@ -49,6 +50,7 @@ const timeAgo = (date) => {
 export default function DisputeDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const { user } = useAuth();
+  const { showToast } = useError();
   const [dispute, setDispute] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -217,7 +219,14 @@ export default function DisputeDetailScreen({ route, navigation }) {
       {/* Item link */}
       <HapticPressable
         style={styles.itemCard}
-        onPress={() => navigation.navigate('ListingDetail', { id: dispute.listing?.id })}
+        onPress={() => {
+          if (dispute.listing?.id) {
+            navigation.navigate('ListingDetail', { id: dispute.listing.id });
+          } else {
+            haptics.warning();
+            showToast('This listing is no longer available.', 'warning');
+          }
+        }}
         haptic="light"
       >
         <Image

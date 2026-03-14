@@ -40,6 +40,7 @@ export default function ListingDetailScreen({ route, navigation }) {
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [messageLoading, setMessageLoading] = useState(false);
 
   const heartScale = useSharedValue(1);
   const heartAnimStyle = useAnimatedStyle(() => ({
@@ -376,8 +377,10 @@ export default function ListingDetailScreen({ route, navigation }) {
         <View style={styles.footerWrap}>
           <View style={styles.footerGreen}>
             <HapticPressable
-              style={styles.messageButton}
+              style={[styles.messageButton, messageLoading && { opacity: 0.5 }]}
+              disabled={messageLoading}
               onPress={async () => {
+                setMessageLoading(true);
                 try {
                   const conversations = await api.getConversations();
                   const existing = conversations.find(c => c.otherUser?.id === listing.owner.id);
@@ -406,6 +409,8 @@ export default function ListingDetailScreen({ route, navigation }) {
                       owner: listing.owner,
                     }
                   });
+                } finally {
+                  setMessageLoading(false);
                 }
               }}
               haptic="light"
@@ -422,7 +427,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 haptic="medium"
               >
                 <Text style={styles.borrowButtonText}>
-                  {listing.listingType === 'giveaway' ? 'Claim This Item' : 'Request to Borrow'}
+                  {listing.listingType === 'giveaway' ? 'Request This Item' : 'Request to Borrow'}
                 </Text>
               </HapticPressable>
             )}

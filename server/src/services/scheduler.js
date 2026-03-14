@@ -217,6 +217,76 @@ async function checkVerificationGraceExpiry() {
 }
 
 /**
+ * Expire giveaway requests that the owner hasn't responded to
+ * within 48 hours. Cancels the transaction and notifies the requester.
+ */
+async function expireStaleGiveawayRequests() {
+  try {
+    const result = await query(
+      `UPDATE borrow_transactions bt
+       SET status = 'cancelled'
+       FROM listings l
+       WHERE bt.listing_id = l.id
+         AND l.listing_type = 'giveaway'
+         AND bt.status = 'pending'
+         AND bt.created_at < NOW() - INTERVAL '48 hours'
+       RETURNING bt.id, bt.borrower_id, bt.lender_id, l.title as item_title`
+    );
+
+    for (const t of result.rows) {
+      await sendNotification(t.borrower_id, 'giveaway_expired', {
+        itemTitle: t.item_title,
+        transactionId: t.id,
+      });
+      logger.info(`Expired stale giveaway request ${t.id}`);
+    }
+  } catch (err) {
+    logger.error('Expire stale giveaway requests error:', err);
+  }
+}
+
+/**
+ * Expire approved giveaway transactions where nobody picked up
+ * within 7 days. Cancels the transaction and relists the item.
+ */
+async function expireGiveawayPickups() {
+  try {
+    const result = await query(
+      `SELECT bt.id, bt.borrower_id, bt.lender_id, bt.listing_id, l.title as item_title
+       FROM borrow_transactions bt
+       JOIN listings l ON bt.listing_id = l.id
+       WHERE l.listing_type = 'giveaway'
+         AND bt.status = 'paid'
+         AND bt.actual_pickup_at IS NULL
+         AND bt.updated_at < NOW() - INTERVAL '7 days'`
+    );
+
+    for (const t of result.rows) {
+      await query(
+        `UPDATE borrow_transactions SET status = 'cancelled' WHERE id = $1`,
+        [t.id]
+      );
+      await query(
+        `UPDATE listings SET is_available = true, status = 'active' WHERE id = $1`,
+        [t.listing_id]
+      );
+
+      await sendNotification(t.borrower_id, 'giveaway_pickup_expired', {
+        itemTitle: t.item_title,
+        transactionId: t.id,
+      });
+      await sendNotification(t.lender_id, 'giveaway_pickup_expired', {
+        itemTitle: t.item_title,
+        transactionId: t.id,
+      });
+      logger.info(`Expired giveaway pickup ${t.id}, relisted item ${t.listing_id}`);
+    }
+  } catch (err) {
+    logger.error('Expire giveaway pickups error:', err);
+  }
+}
+
+/**
  * Start the scheduler — runs checks every hour.
  */
 export function startScheduler() {
@@ -225,12 +295,16 @@ export function startScheduler() {
   autoAdvanceDisputes();
   autoReleaseDeposits();
   checkVerificationGraceExpiry();
+  expireStaleGiveawayRequests();
+  expireGiveawayPickups();
 
   // Then run every hour
   setInterval(sendReturnReminders, 60 * 60 * 1000);
   setInterval(autoAdvanceDisputes, 60 * 60 * 1000);
   setInterval(autoReleaseDeposits, 60 * 60 * 1000);
   setInterval(checkVerificationGraceExpiry, 60 * 60 * 1000);
+  setInterval(expireStaleGiveawayRequests, 60 * 60 * 1000);
+  setInterval(expireGiveawayPickups, 60 * 60 * 1000);
 
-  logger.info('Scheduler started: return reminders, dispute auto-advance, deposit auto-release, verification grace expiry every hour');
+  logger.info('Scheduler started: return reminders, dispute auto-advance, deposit auto-release, verification grace expiry, giveaway expiry every hour');
 }

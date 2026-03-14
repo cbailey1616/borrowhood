@@ -169,18 +169,27 @@ export default function CreateListingScreen({ navigation, route }) {
   };
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-      selectionLimit: 10 - formData.photos.length,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10 - formData.photos.length,
+      });
 
-    if (!result.canceled) {
-      const newPhotos = result.assets.map(a => a.uri);
-      const allPhotos = [...formData.photos, ...newPhotos].slice(0, 10);
-      updateField('photos', allPhotos);
-      haptics.light();
+      if (!result.canceled) {
+        const newPhotos = result.assets.map(a => a.uri);
+        const allPhotos = [...formData.photos, ...newPhotos].slice(0, 10);
+        updateField('photos', allPhotos);
+        haptics.light();
+      }
+    } catch (error) {
+      haptics.error();
+      showError({
+        type: 'validation',
+        title: 'Photo Error',
+        message: 'Couldn\'t load photos from your library. Please try again.',
+      });
     }
   };
 

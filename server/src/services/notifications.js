@@ -11,10 +11,10 @@ const NOTIFICATION_TEMPLATES = {
       : 'You have a new borrow request. Tap to review and respond.',
   },
   giveaway_claim: {
-    title: 'Someone Claimed Your Item!',
+    title: 'Someone Wants Your Item!',
     body: (data) => data.borrowerName
-      ? `${data.borrowerName} wants to claim your ${data.itemTitle || 'item'}. Tap to review their request.`
-      : 'Someone wants to claim your giveaway item. Tap to review.',
+      ? `${data.borrowerName} wants your ${data.itemTitle || 'item'}. Tap to review their request.`
+      : 'Someone wants your giveaway item. Tap to review.',
   },
   request_approved: {
     title: 'You\'re all set!',
@@ -64,6 +64,18 @@ const NOTIFICATION_TEMPLATES = {
     body: (data) => data.itemTitle
       ? `The handoff for ${data.itemTitle} is complete — it's all yours! Tap to leave a rating.`
       : 'Your giveaway pickup is complete. Tap to leave a rating.',
+  },
+  giveaway_expired: {
+    title: 'Request Expired',
+    body: (data) => data.itemTitle
+      ? `Your request for ${data.itemTitle} expired because the owner didn't respond in time.`
+      : 'Your giveaway request expired because the owner didn\'t respond in time.',
+  },
+  giveaway_pickup_expired: {
+    title: 'Pickup Expired',
+    body: (data) => data.itemTitle
+      ? `The pickup window for ${data.itemTitle} has expired. The item has been relisted.`
+      : 'The giveaway pickup window has expired. The item has been relisted.',
   },
   return_reminder: {
     title: 'Friendly Reminder',

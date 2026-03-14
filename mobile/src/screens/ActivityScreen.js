@@ -28,6 +28,7 @@ export default function ActivityScreen({ navigation }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [markingRead, setMarkingRead] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -72,12 +73,15 @@ export default function ActivityScreen({ navigation }) {
   };
 
   const handleMarkAllRead = async () => {
+    setMarkingRead(true);
     try {
       await api.markAllNotificationsRead();
       setUnreadCount(0);
       haptics.success();
     } catch (e) {
       haptics.error();
+    } finally {
+      setMarkingRead(false);
     }
   };
 
@@ -157,8 +161,8 @@ export default function ActivityScreen({ navigation }) {
       {unreadCount > 0 && (
         <View style={styles.unreadHeader}>
           <Text style={styles.unreadLabel}>{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</Text>
-          <HapticPressable onPress={handleMarkAllRead} haptic="light">
-            <Text style={styles.markAllRead}>Mark all read</Text>
+          <HapticPressable onPress={handleMarkAllRead} disabled={markingRead} haptic="light">
+            <Text style={[styles.markAllRead, markingRead && { opacity: 0.5 }]}>Mark all read</Text>
           </HapticPressable>
         </View>
       )}

@@ -191,6 +191,15 @@ function handleNotificationResponse(data) {
       navigationRef.navigate('IdentityVerification', { source: 'generic' });
       break;
 
+    case 'giveaway_expired':
+    case 'giveaway_pickup_expired':
+      if (data.transactionId) {
+        navigationRef.navigate('TransactionDetail', { id: data.transactionId });
+      } else {
+        navigationRef.navigate('Main', { screen: 'Activity' });
+      }
+      break;
+
     default:
       navigationRef.navigate('Main', { screen: 'Activity' });
       break;

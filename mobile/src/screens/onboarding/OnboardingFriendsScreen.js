@@ -41,6 +41,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   const [phoneContacts, setPhoneContacts] = useState([]);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
 
+  const [addingFriendId, setAddingFriendId] = useState(null);
   const [errorSheet, setErrorSheet] = useState({ visible: false, title: '', message: '' });
 
   useEffect(() => {
@@ -159,12 +160,15 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   };
 
   const handleAddFriend = async (user) => {
+    setAddingFriendId(user.id);
     try {
       await api.addFriend(user.id);
       setAddedFriends(prev => [...prev, user.id]);
       haptics.light();
     } catch (error) {
       setErrorSheet({ visible: true, title: 'Error', message: 'Failed to send friend request.' });
+    } finally {
+      setAddingFriendId(null);
     }
   };
 
@@ -202,11 +206,16 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
           </View>
         ) : (
           <HapticPressable
-            style={styles.addButton}
+            style={[styles.addButton, addingFriendId === item.id && { opacity: 0.5 }]}
             onPress={() => handleAddFriend(item)}
+            disabled={addingFriendId === item.id}
             haptic="light"
           >
-            <Ionicons name="person-add" size={18} color="#fff" />
+            {addingFriendId === item.id ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Ionicons name="person-add" size={18} color="#fff" />
+            )}
           </HapticPressable>
         )}
       </View>

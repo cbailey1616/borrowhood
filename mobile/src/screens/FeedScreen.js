@@ -298,7 +298,7 @@ export default function FeedScreen({ navigation }) {
       color: COLORS.warning,
       title: 'Add your location to see items near you',
       subtitle: 'Go to Settings to set your city',
-      onPress: () => navigation.navigate('Settings'),
+      onPress: () => navigation.navigate('EditProfile'),
     },
     !hasNeighborhood && !dismissedBanners.join && {
       key: 'join',
@@ -971,7 +971,7 @@ export default function FeedScreen({ navigation }) {
             </Text>
             <HapticPressable
               style={styles.emptyButton}
-              onPress={() => user?.city ? navigation.navigate('CreateListing') : navigation.navigate('Settings')}
+              onPress={() => user?.city ? navigation.navigate('CreateListing') : navigation.navigate('EditProfile')}
               haptic="medium"
             >
               <Text style={styles.emptyButtonText}>{user?.city ? 'List an Item' : 'Go to Settings'}</Text>
