@@ -335,20 +335,6 @@ router.post('/', authenticate,
     if (visArray.length === 0) visArray = ['close_friends'];
 
     try {
-      // Verification required for town visibility (always enforced)
-      if (visArray.includes('town')) {
-        const verifyCheck = await query(
-          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
-        const verified = verifyCheck.rows[0]?.is_verified || graceActive;
-
-        if (!verified) {
-          visArray = visArray.filter(v => v !== 'town');
-          if (visArray.length === 0) visArray = ['close_friends'];
-        }
-      }
       visibility = visArray.join(',');
       // Verify user is member of community (if community specified)
       if (communityId) {

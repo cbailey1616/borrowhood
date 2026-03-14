@@ -443,26 +443,9 @@ router.post('/', authenticate,
         }
       }
 
-      // Check subscription/verification for paid rentals and town visibility
+      // Check subscription/verification for paid rentals
       let pricingDowngraded = false;
       const needsPaidCheck = !isFree && pricePerDay > 0;
-      const needsTownCheck = visibilityArray.includes('town');
-
-      // Verification required for town visibility (always enforced)
-      if (needsTownCheck) {
-        const verifyCheck = await query(
-          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
-        const verified = verifyCheck.rows[0]?.is_verified || graceActive;
-
-        if (!verified) {
-          const idx = visibilityArray.indexOf('town');
-          visibilityArray.splice(idx, 1);
-          if (visibilityArray.length === 0) visibilityArray.push('close_friends');
-        }
-      }
 
       // TODO: Restore tier enforcement when re-enabling paid tiers (ENABLE_PAID_TIERS)
       if (ENABLE_PAID_TIERS && needsPaidCheck) {
@@ -479,13 +462,6 @@ router.post('/', authenticate,
           pricingDowngraded = true;
         }
       }
-      // If neighborhood selected but no community, silently drop it from visibility
-      if (visibilityArray.includes('neighborhood') && !communityId) {
-        const idx = visibilityArray.indexOf('neighborhood');
-        visibilityArray.splice(idx, 1);
-        if (visibilityArray.length === 0) visibilityArray.push('close_friends');
-      }
-
       // Store visibility as comma-separated (e.g. 'close_friends,town')
       const primaryVisibility = visibilityArray.join(',');
 
@@ -603,32 +579,7 @@ router.patch('/:id', authenticate,
       // Validate visibility on update
       if (req.body.visibility) {
         let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
-
-        // Town requires verification
-        if (visArray.includes('town')) {
-          const subCheck = await query(
-            'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
-            [req.user.id]
-          );
-          const u = subCheck.rows[0];
-          const graceActive = u?.verification_grace_until && new Date(u.verification_grace_until) > new Date();
-          const verified = u?.is_verified || graceActive;
-          if (!verified) {
-            visArray = visArray.filter(v => v !== 'town');
-          }
-        }
-
-        // Neighborhood requires community membership
-        if (visArray.includes('neighborhood')) {
-          const communityCheck = await query(
-            'SELECT community_id FROM community_memberships WHERE user_id = $1 LIMIT 1',
-            [req.user.id]
-          );
-          if (communityCheck.rows.length === 0) {
-            visArray = visArray.filter(v => v !== 'neighborhood');
-          }
-        }
-
+        visArray = visArray.filter(v => ['close_friends', 'neighborhood', 'town'].includes(v));
         if (visArray.length === 0) visArray.push('close_friends');
         req.body.visibility = visArray;
       }
