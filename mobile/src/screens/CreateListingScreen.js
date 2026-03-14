@@ -334,16 +334,9 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
-    // Validate deposit amount when deposit is required
-    if (!isGiveaway && data.requireDeposit && !(parseFloat(data.depositAmount) > 0)) {
-      Keyboard.dismiss();
-      haptics.warning();
-      showError({
-        type: 'validation',
-        title: 'Deposit Required',
-        message: 'Please enter a deposit amount.',
-      });
-      return;
+    // Auto-disable deposit if amount is $0
+    if (data.requireDeposit && !(parseFloat(data.depositAmount) > 0)) {
+      data.requireDeposit = false;
     }
 
     // Safety net: require payout setup for listings with deposit or rental fee
