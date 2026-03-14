@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 
@@ -129,9 +129,6 @@ export default function RequestDetailScreen({ route, navigation }) {
               <Text style={[styles.badgeText, { color: COLORS.primary }]}>Service</Text>
             </View>
           )}
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{VISIBILITY_LABELS[request.visibility]}</Text>
-          </View>
           {request.category && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{request.category}</Text>

@@ -161,16 +161,16 @@ export default function BorrowRequestScreen({ route, navigation }) {
       } else {
         // Free rental / giveaway — request sent
         haptics.success();
-        showError({
-          type: 'success',
-          title: 'Request Sent!',
-          message: isGiveaway
-            ? `Your request has been sent to ${listing.owner?.firstName || 'the owner'}. They'll be notified right away.`
-            : `Your borrow request has been sent. ${listing.owner?.firstName || 'The owner'} will be notified.`,
-          primaryAction: 'OK',
-          onPrimaryAction: () => navigation.goBack(),
-          onDismiss: () => navigation.goBack(),
-        });
+        navigation.goBack();
+        setTimeout(() => {
+          showError({
+            type: 'success',
+            title: 'Request Sent!',
+            message: isGiveaway
+              ? `Your request has been sent to ${listing.owner?.firstName || 'the owner'}. They'll be notified right away.`
+              : `Your borrow request has been sent. ${listing.owner?.firstName || 'The owner'} will be notified.`,
+          });
+        }, 500);
       }
     } catch (error) {
       haptics.error();

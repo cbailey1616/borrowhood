@@ -27,7 +27,7 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 export default function EditListingScreen({ navigation, route }) {
   const { listing } = route.params;
   const { user } = useAuth();
-  const { showError, showToast } = useError();
+  const { showError } = useError();
   const scrollRef = useRef(null);
   const fieldPositions = useRef({});
 
@@ -221,7 +221,6 @@ export default function EditListingScreen({ navigation, route }) {
 
       haptics.success();
       navigation.goBack();
-      setTimeout(() => showToast('Your listing has been updated!', 'success'), 500);
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';

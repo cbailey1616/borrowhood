@@ -32,7 +32,7 @@ const formatDate = (dateStr) => {
 export default function EditRequestScreen({ navigation, route }) {
   const { request } = route.params;
   const { user } = useAuth();
-  const { showError, showToast } = useError();
+  const { showError } = useError();
   const [formData, setFormData] = useState({
     type: request.type || 'item',
     title: request.title || '',
@@ -116,7 +116,6 @@ export default function EditRequestScreen({ navigation, route }) {
 
       haptics.success();
       navigation.goBack();
-      setTimeout(() => showToast('Request updated!', 'success'), 500);
     } catch (error) {
       showError({
         message: error.message || 'Couldn\'t save your changes right now. Please check your connection and try again.',
