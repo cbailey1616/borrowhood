@@ -52,6 +52,8 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handlePickPhoto = async () => {
+    // Wait for ActionSheet modal to fully dismiss before presenting picker
+    await new Promise(resolve => setTimeout(resolve, 500));
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -66,6 +68,8 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleTakePhoto = async () => {
+    // Wait for ActionSheet modal to fully dismiss before presenting camera
+    await new Promise(resolve => setTimeout(resolve, 500));
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       showError({
