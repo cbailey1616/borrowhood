@@ -12,7 +12,7 @@ import {
   TextInput,
   Pressable,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
+import Animated, { useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -30,7 +30,6 @@ import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '
 import { checkPremiumGate } from '../utils/premiumGate';
 import { ENABLE_PAID_TIERS } from '../utils/config';
 
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const FILTER_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -81,11 +80,9 @@ export default function FeedScreen({ navigation }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
 
   const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
+  const handleScroll = useCallback((event) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  }, []);
 
   const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
     try {
@@ -446,6 +443,11 @@ export default function FeedScreen({ navigation }) {
               />
             ) : (
               <Ionicons name="image-outline" size={28} color={tint.accent + '40'} />
+            )}
+            {item.ownerMasked && (
+              <View style={styles.tileLockOverlay}>
+                <Ionicons name="lock-closed" size={16} color="#fff" />
+              </View>
             )}
           </View>
           {/* Content */}
@@ -877,13 +879,13 @@ export default function FeedScreen({ navigation }) {
         </View>
       </NativeHeader>
 
-      <AnimatedFlatList
+      <FlatList
         ref={listRef}
         data={feed}
         renderItem={renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}
         contentContainerStyle={styles.listContent}
-        onScroll={scrollHandler}
+        onScroll={handleScroll}
         scrollEventThrottle={16}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -895,7 +897,6 @@ export default function FeedScreen({ navigation }) {
             onRefresh={onRefresh}
             tintColor={COLORS.primary}
             colors={[COLORS.primary]}
-            progressViewOffset={0}
           />
         }
         onEndReached={onEndReached}
@@ -1385,6 +1386,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
+  },
+  tileLockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tilePricePill: {
     position: 'absolute',

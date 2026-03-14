@@ -161,6 +161,22 @@ export default function CreateListingScreen({ navigation, route }) {
     fetchData();
   }, []);
 
+  // Strip default visibilities the user can't actually use once async data loads
+  useEffect(() => {
+    // Only run after initial data fetch, not on relist
+    if (isRelist) return;
+    const valid = formData.visibility.filter(v => {
+      if (v === 'close_friends') return hasFriends;
+      if (v === 'neighborhood') return !!communityId;
+      if (v === 'town') return user?.isVerified || isGracePeriodActive;
+      return false;
+    });
+    // If nothing is valid, keep the defaults so the user sees what they need to set up
+    if (valid.length > 0 && valid.length !== formData.visibility.length) {
+      setFormData(prev => ({ ...prev, visibility: valid }));
+    }
+  }, [hasFriends, communityId]);
+
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (field in fieldErrors) {
@@ -261,6 +277,30 @@ export default function CreateListingScreen({ navigation, route }) {
         title: 'Almost There',
         message: `Please add ${missing.join(' and ')} before listing your item.`,
       });
+      return;
+    }
+
+    // Validate that selected visibilities have an actual audience
+    const hasAudience = data.visibility.some(v => {
+      if (v === 'close_friends') return hasFriends;
+      if (v === 'neighborhood') return !!communityId;
+      if (v === 'town') return user?.isVerified || isGracePeriodActive;
+      return false;
+    });
+    if (!hasAudience) {
+      Keyboard.dismiss();
+      haptics.warning();
+      if (!hasFriends && !communityId) {
+        showError({
+          type: 'validation',
+          title: 'Nobody Can See This Yet',
+          message: 'Add friends or join a neighborhood first so people can find your listing.',
+        });
+      } else if (!hasFriends) {
+        setShowAddFriends(true);
+      } else {
+        setShowJoinCommunity(true);
+      }
       return;
     }
 
@@ -535,8 +575,25 @@ export default function CreateListingScreen({ navigation, route }) {
                       haptics.selection();
                     } else {
                       haptics.warning();
+                      showError({
+                        type: 'validation',
+                        title: 'Visibility Required',
+                        message: 'Your listing needs at least one visibility option so people can find it.',
+                      });
                     }
                   } else {
+                    // Must have friends to select close_friends
+                    if (visibility === 'close_friends' && !hasFriends) {
+                      haptics.warning();
+                      setShowAddFriends(true);
+                      return;
+                    }
+                    // Must have a neighborhood to select neighborhood
+                    if (visibility === 'neighborhood' && !communityId) {
+                      haptics.warning();
+                      setShowJoinCommunity(true);
+                      return;
+                    }
                     // Verification required for town visibility
                     if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                       haptics.warning();

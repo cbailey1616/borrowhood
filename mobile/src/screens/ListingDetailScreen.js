@@ -27,7 +27,7 @@ import { haptics } from '../utils/haptics';
 import { checkPremiumGate } from '../utils/premiumGate';
 import { ENABLE_PAID_TIERS } from '../utils/config';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
 const { width } = Dimensions.get('window');
 
@@ -263,10 +263,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               </View>
             )}
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{CONDITION_LABELS[listing.condition]}</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{VISIBILITY_LABELS[listing.visibility]}</Text>
+              <Text style={styles.badgeText}>Condition: {CONDITION_LABELS[listing.condition]}</Text>
             </View>
             {listing.timesBorrowed > 0 && (
               <View style={[styles.badge, styles.badgeSecondary]}>
