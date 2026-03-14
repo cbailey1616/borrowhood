@@ -44,6 +44,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { user } = useAuth();
   const { showError, showToast } = useError();
   const [transaction, setTransaction] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
@@ -74,8 +75,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
     try {
       const data = await api.getTransaction(id);
       setTransaction(data);
+      setFetchError(null);
     } catch (error) {
       console.error('Failed to fetch transaction:', error);
+      setFetchError(`${error.message} (status: ${error.status || 'network'}, id: ${id})`);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -185,6 +188,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Transaction not found</Text>
+        {fetchError && <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>{fetchError}</Text>}
       </View>
     );
   }

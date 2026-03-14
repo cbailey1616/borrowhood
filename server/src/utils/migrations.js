@@ -520,6 +520,18 @@ export async function runMigrations() {
       logger.info('Migration complete: users.grace_expiry_notified added');
     }
 
+    // Migration: Add rating and rating_count columns to users
+    const hasRating = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'rating'
+    `);
+    if (hasRating.rows.length === 0) {
+      logger.info('Running migration: Add rating and rating_count to users');
+      await query('ALTER TABLE users ADD COLUMN rating DECIMAL(3,2) DEFAULT 0');
+      await query('ALTER TABLE users ADD COLUMN rating_count INT DEFAULT 0');
+      logger.info('Migration complete: users.rating and users.rating_count added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

@@ -161,7 +161,9 @@ export default function CreateListingScreen({ navigation, route }) {
     fetchData();
   }, []);
 
-  // Strip default visibilities the user can't actually use once async data loads
+  // Once async data loads, strip visibilities that have no audience
+  // and prompt the user if they have no reachable audience at all
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   useEffect(() => {
     // Only run after initial data fetch, not on relist
     if (isRelist) return;
@@ -171,9 +173,24 @@ export default function CreateListingScreen({ navigation, route }) {
       if (v === 'town') return user?.isVerified || isGracePeriodActive;
       return false;
     });
-    // If nothing is valid, keep the defaults so the user sees what they need to set up
     if (valid.length > 0 && valid.length !== formData.visibility.length) {
       setFormData(prev => ({ ...prev, visibility: valid }));
+    }
+    // If no visibility has an audience, prompt the user immediately
+    if (valid.length === 0 && !initialCheckDone) {
+      setInitialCheckDone(true);
+      // Small delay so the screen finishes rendering first
+      setTimeout(() => {
+        if (!hasFriends && !communityId) {
+          setShowJoinCommunity(true);
+        } else if (!hasFriends) {
+          setShowAddFriends(true);
+        } else if (!communityId) {
+          setShowJoinCommunity(true);
+        }
+      }, 400);
+    } else if (valid.length > 0) {
+      setInitialCheckDone(true);
     }
   }, [hasFriends, communityId]);
 
@@ -806,7 +823,7 @@ export default function CreateListingScreen({ navigation, route }) {
             </View>
             <Text style={styles.overlayTitle}>Join Your Neighborhood</Text>
             <Text style={styles.overlayText}>
-              To share with "My Neighborhood", you need to join or create one first.
+              You need to join a neighborhood before you can list items. This is how neighbors find your stuff!
             </Text>
             <HapticPressable
               style={styles.overlayButton}
@@ -847,7 +864,7 @@ export default function CreateListingScreen({ navigation, route }) {
             </View>
             <Text style={styles.overlayTitle}>Add Some Friends</Text>
             <Text style={styles.overlayText}>
-              To share with "My Friends", you need to add friends first. Invite people you know or find friends nearby.
+              You need to add friends before you can list items. Invite people you know or find friends nearby.
             </Text>
             <HapticPressable
               style={styles.overlayButton}

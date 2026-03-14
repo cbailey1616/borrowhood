@@ -462,7 +462,7 @@ export default function FeedScreen({ navigation }) {
                 <View style={styles.tilePillRow}>
                   <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? tint.accent : COLORS.textMuted }]}>
                     <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
-                    <Text style={styles.tilePillText}>{item.isAvailable ? 'BORROW' : 'CURRENTLY BORROWED'}</Text>
+                    <Text style={styles.tilePillText}>{item.isAvailable ? 'BORROW' : 'BORROWED'}</Text>
                   </View>
                   <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
                     <Text style={styles.tilePillText}>
@@ -891,11 +891,12 @@ export default function FeedScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         bounces
+        style={{ backgroundColor: COLORS.background }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primary}
+            tintColor={COLORS.textSecondary}
             colors={[COLORS.primary]}
           />
         }

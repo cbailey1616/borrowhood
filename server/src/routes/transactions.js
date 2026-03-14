@@ -140,18 +140,6 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Item not available' });
       }
 
-      // Atomically mark item unavailable to prevent race conditions
-      // Giveaways stay available until the lender approves a claim
-      if (!isGiveaway) {
-        const lockResult = await query(
-          `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
-          [item.id]
-        );
-        if (lockResult.rows.length === 0) {
-          return res.status(400).json({ error: 'Item was just borrowed by someone else' });
-        }
-      }
-
       // Giveaways: no dates, no pricing
       let rentalDays = 0;
       let dailyRate = 0;
@@ -182,6 +170,20 @@ router.post('/', authenticate,
 
         // Calculate total charge in cents
         totalChargeCents = Math.round((rentalFee + depositAmount) * 100);
+      }
+
+      // Atomically mark item unavailable to prevent race conditions
+      // Only lock for paid rentals (authorization hold prevents double-booking)
+      // Free rentals + giveaways stay available until the lender approves
+      const requiresPayment = totalChargeCents >= 50;
+      if (requiresPayment) {
+        const lockResult = await query(
+          `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
+          [item.id]
+        );
+        if (lockResult.rows.length === 0) {
+          return res.status(400).json({ error: 'Item was just borrowed by someone else' });
+        }
       }
 
       // Create transaction
