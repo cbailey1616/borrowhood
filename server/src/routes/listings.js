@@ -431,10 +431,10 @@ router.post('/', authenticate,
       const hasPaidComponent = (!isFree && pricePerDay > 0) || (depositAmount && depositAmount > 0);
       if (hasPaidComponent) {
         const connectCheck = await query(
-          'SELECT stripe_account_id FROM users WHERE id = $1',
+          'SELECT stripe_connect_account_id FROM users WHERE id = $1',
           [req.user.id]
         );
-        if (!connectCheck.rows[0]?.stripe_account_id) {
+        if (!connectCheck.rows[0]?.stripe_connect_account_id) {
           return res.status(400).json({
             error: 'Please set up payouts before listing items with rental fees or deposits.',
             code: 'PAYOUT_SETUP_REQUIRED'
@@ -643,10 +643,10 @@ router.patch('/:id', authenticate,
         (updatedIsFree === false && updatedPrice && parseFloat(updatedPrice) > 0);
       if (hasPaidUpdate) {
         const connectCheck = await query(
-          'SELECT stripe_account_id FROM users WHERE id = $1',
+          'SELECT stripe_connect_account_id FROM users WHERE id = $1',
           [req.user.id]
         );
-        if (!connectCheck.rows[0]?.stripe_account_id) {
+        if (!connectCheck.rows[0]?.stripe_connect_account_id) {
           return res.status(400).json({
             error: 'Please set up payouts before adding rental fees or deposits.',
             code: 'PAYOUT_SETUP_REQUIRED'
