@@ -350,13 +350,17 @@ export default function OnboardingScreen({ onComplete }) {
       style={styles.stepContainer}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.iconContainer}>
-        <Ionicons name="people" size={48} color={COLORS.primary} />
-      </View>
-      <Text style={styles.title}>Find Friends</Text>
-      <Text style={styles.subtitle}>
-        Add friends to share items just with people you know
-      </Text>
+      {searchQuery.length < 2 && (
+        <>
+          <View style={styles.iconContainer}>
+            <Ionicons name="people" size={48} color={COLORS.primary} />
+          </View>
+          <Text style={styles.title}>Find Friends</Text>
+          <Text style={styles.subtitle}>
+            Add friends to share items just with people you know
+          </Text>
+        </>
+      )}
 
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color={COLORS.textMuted} />
@@ -376,6 +380,7 @@ export default function OnboardingScreen({ onComplete }) {
           data={searchResults}
           keyExtractor={(item) => item.id}
           style={styles.list}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <View style={[styles.cardBox, styles.friendCard]}>
               <View style={styles.friendRow}>
