@@ -98,8 +98,8 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
         updatedAt: d.updated_at,
         user: {
           id: d.user_id,
-          firstName: d.first_name,
-          lastName: d.last_name ? d.last_name.charAt(0) + '.' : '',
+          firstName: d.display_name || d.first_name,
+          lastName: d.display_name ? '' : (d.last_name ? d.last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: d.profile_photo_url,
         },
         isOwn: d.user_id === req.user.id,
@@ -145,8 +145,8 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
         updatedAt: d.updated_at,
         user: {
           id: d.user_id,
-          firstName: d.first_name,
-          lastName: d.last_name ? d.last_name.charAt(0) + '.' : '',
+          firstName: d.display_name || d.first_name,
+          lastName: d.display_name ? '' : (d.last_name ? d.last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: d.profile_photo_url,
         },
         isOwn: d.user_id === req.user.id,
@@ -221,7 +221,7 @@ router.post('/:listingId/discussions', authenticate,
         'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
         [req.user.id]
       );
-      const posterFirst = posterResult.rows[0].first_name;
+      const posterFirst = posterResult.rows[0].display_name || posterResult.rows[0].first_name;
       const posterLastInitial = posterResult.rows[0].last_name ? posterResult.rows[0].last_name.charAt(0) + '.' : '';
       const posterName = `${posterFirst} ${posterLastInitial}`;
 

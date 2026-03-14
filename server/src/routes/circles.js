@@ -99,8 +99,8 @@ router.get('/:id', authenticate, async (req, res) => {
       userRole: memberCheck.rows[0].role,
       members: members.rows.map(m => ({
         id: m.id,
-        firstName: m.first_name,
-        lastName: m.last_name ? m.last_name.charAt(0) + '.' : '',
+        firstName: m.display_name || m.first_name,
+        lastName: m.display_name ? '' : (m.last_name ? m.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: m.profile_photo_url,
         role: m.role,
         joinedAt: m.joined_at,

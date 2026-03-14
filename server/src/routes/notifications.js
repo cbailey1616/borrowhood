@@ -49,8 +49,8 @@ router.get('/', authenticate, async (req, res) => {
         disputeId: n.dispute_id,
         fromUserId: n.from_user_id,
         fromUser: n.from_first_name ? {
-          firstName: n.from_first_name,
-          lastName: n.from_last_name ? n.from_last_name.charAt(0) + '.' : '',
+          firstName: n.from_display_name || n.from_first_name,
+          lastName: n.from_display_name ? '' : (n.from_last_name ? n.from_last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: n.from_photo,
         } : null,
         isRead: n.is_read,

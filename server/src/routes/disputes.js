@@ -218,7 +218,7 @@ router.post('/:id/respond', authenticate,
       await sendNotification(d.claimant_user_id, hasCounter ? 'dispute_counter_received' : 'dispute_response_received', {
         disputeId: req.params.id,
         transactionId: d.transaction_id,
-        respondentName: req.user.first_name,
+        respondentName: req.user.display_name || req.user.first_name,
         ...(hasCounter ? { counterAmount } : {}),
       });
 
@@ -702,7 +702,7 @@ router.post('/:id/request-info', authenticate,
         type: 'info_request',
         target,
         message,
-        by: req.user.first_name,
+        by: req.user.display_name || req.user.first_name,
         at: new Date().toISOString(),
       };
 
@@ -749,7 +749,7 @@ router.post('/:id/admin-note', authenticate,
       const note = {
         type: 'note',
         message,
-        by: req.user.first_name,
+        by: req.user.display_name || req.user.first_name,
         at: new Date().toISOString(),
       };
 

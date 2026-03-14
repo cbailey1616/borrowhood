@@ -64,8 +64,8 @@ router.get('/status', authenticate, async (req, res) => {
       eligible: referred.rows.length >= 3 && !rewardClaimed,
       referredFriends: referred.rows.map(f => ({
         id: f.id,
-        firstName: f.first_name,
-        lastName: f.last_name ? f.last_name.charAt(0) + '.' : '',
+        firstName: f.display_name || f.first_name,
+        lastName: f.display_name ? '' : (f.last_name ? f.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: f.profile_photo_url,
         joinedAt: f.created_at,
       })),
