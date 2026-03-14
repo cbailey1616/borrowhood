@@ -443,12 +443,12 @@ export default function BorrowRequestScreen({ route, navigation }) {
         />
       </View>
 
-      {/* Pricing — hidden for giveaways */}
-      {!isGiveaway && (
+      {/* Pricing — hidden for giveaways and free rentals */}
+      {!isGiveaway && total > 0 && (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Summary</Text>
         <View style={styles.pricingCard}>
-          {!listing.isFree && days > 0 && (
+          {days > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>
                 Rental fee ({days} days x ${listing.pricePerDay})
@@ -456,16 +456,12 @@ export default function BorrowRequestScreen({ route, navigation }) {
               <Text style={styles.priceValue}>${rentalFee.toFixed(2)}</Text>
             </View>
           )}
-          {listing.isFree && (
+          {listing.depositAmount > 0 && (
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Rental fee</Text>
-              <Text style={[styles.priceValue, { color: COLORS.secondary }]}>Free</Text>
+              <Text style={styles.priceLabel}>Refundable deposit</Text>
+              <Text style={styles.priceValue}>${listing.depositAmount.toFixed(2)}</Text>
             </View>
           )}
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Refundable deposit</Text>
-            <Text style={styles.priceValue}>${(listing.depositAmount || 0).toFixed(2)}</Text>
-          </View>
           <View style={[styles.priceRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total authorization hold</Text>
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>

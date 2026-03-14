@@ -774,41 +774,41 @@ router.post('/:id/pickup', authenticate,
       );
       const isGiveaway = listingCheck.rows[0]?.listing_type === 'giveaway';
 
-      // Payment is already captured at approve time — no capture needed at pickup
-      if (isLender) {
-        if (isGiveaway) {
-          // Giveaway: pickup = complete. No return step needed.
-          await query(
-            `UPDATE borrow_transactions
-             SET status = 'returned', actual_pickup_at = NOW(), actual_return_at = NOW(), condition_at_pickup = $1
-             WHERE id = $2`,
-            [condition || t.condition_at_pickup, req.params.id]
-          );
+      // Either party can confirm pickup
+      const otherPartyId = isBorrower ? t.lender_id : t.borrower_id;
 
-          // Permanently delist the item (given away)
-          await query(
-            `UPDATE listings SET status = 'given_away', is_available = false WHERE id = $1`,
-            [t.listing_id]
-          );
+      if (isGiveaway) {
+        // Giveaway: pickup = complete. No return step needed.
+        await query(
+          `UPDATE borrow_transactions
+           SET status = 'returned', actual_pickup_at = NOW(), actual_return_at = NOW(), condition_at_pickup = $1
+           WHERE id = $2`,
+          [condition || t.condition_at_pickup, req.params.id]
+        );
 
-          await sendNotification(t.borrower_id, 'giveaway_complete', {
-            itemTitle: t.item_title,
-            transactionId: t.id,
-          });
-        } else {
-          await query(
-            `UPDATE borrow_transactions
-             SET status = 'picked_up', actual_pickup_at = NOW(), condition_at_pickup = $1
-             WHERE id = $2`,
-            [condition || t.condition_at_pickup, req.params.id]
-          );
+        // Permanently delist the item (given away)
+        await query(
+          `UPDATE listings SET status = 'given_away', is_available = false WHERE id = $1`,
+          [t.listing_id]
+        );
 
-          await sendNotification(t.borrower_id, 'pickup_confirmed', {
-            itemTitle: t.item_title,
-            returnDate: t.requested_end_date,
-            transactionId: t.id,
-          });
-        }
+        await sendNotification(otherPartyId, 'giveaway_complete', {
+          itemTitle: t.item_title,
+          transactionId: t.id,
+        });
+      } else {
+        await query(
+          `UPDATE borrow_transactions
+           SET status = 'picked_up', actual_pickup_at = NOW(), condition_at_pickup = $1
+           WHERE id = $2`,
+          [condition || t.condition_at_pickup, req.params.id]
+        );
+
+        await sendNotification(otherPartyId, 'pickup_confirmed', {
+          itemTitle: t.item_title,
+          returnDate: t.requested_end_date,
+          transactionId: t.id,
+        });
       }
 
       res.json({ success: true, isGiveaway });

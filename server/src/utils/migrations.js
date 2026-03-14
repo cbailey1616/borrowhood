@@ -532,6 +532,18 @@ export async function runMigrations() {
       logger.info('Migration complete: users.rating and users.rating_count added');
     }
 
+    // Migration: Convert notifications.type from enum to varchar
+    // so new notification types don't fail silently
+    const typeCol = await query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'notifications' AND column_name = 'type'
+    `);
+    if (typeCol.rows.length > 0 && typeCol.rows[0].data_type === 'USER-DEFINED') {
+      logger.info('Running migration: Convert notifications.type from enum to varchar');
+      await query('ALTER TABLE notifications ALTER COLUMN type TYPE VARCHAR(50) USING type::text');
+      logger.info('Migration complete: notifications.type is now varchar');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

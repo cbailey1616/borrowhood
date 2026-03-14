@@ -216,13 +216,6 @@ export default function FindAccountScreen({ navigation }) {
               If we found a matching account, we sent a login hint to the email on file.
             </Text>
 
-            <View style={styles.hintCard}>
-              <Ionicons name="information-circle-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.hintText}>
-                Signed up with Apple or Google? Try those sign-in options on the Welcome screen.
-              </Text>
-            </View>
-
             <HapticPressable
               style={styles.button}
               onPress={() => navigation.navigate('Login')}

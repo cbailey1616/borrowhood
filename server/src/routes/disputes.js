@@ -213,7 +213,7 @@ router.post('/:id/respond', authenticate,
       await sendNotification(d.claimant_user_id, hasCounter ? 'dispute_counter_received' : 'dispute_response_received', {
         disputeId: req.params.id,
         transactionId: d.transaction_id,
-        respondentName: `${req.user.first_name} ${req.user.last_name}`,
+        respondentName: req.user.display_name || req.user.first_name,
         ...(hasCounter ? { counterAmount } : {}),
       });
 
@@ -294,8 +294,10 @@ router.get('/', authenticate, async (req, res) => {
               d.responded_at, d.created_at, d.resolved_at,
               t.listing_id, l.title as listing_title,
               t.deposit_amount, t.rental_fee,
-              c.id as claimant_id, c.first_name as claimant_first_name, c.last_name as claimant_last_name,
-              r.id as respondent_id, r.first_name as respondent_first_name, r.last_name as respondent_last_name,
+              c.id as claimant_id, COALESCE(c.display_name, c.first_name) as claimant_first_name,
+              CASE WHEN c.display_name IS NOT NULL THEN '' ELSE c.last_name END as claimant_last_name,
+              r.id as respondent_id, COALESCE(r.display_name, r.first_name) as respondent_first_name,
+              CASE WHEN r.display_name IS NOT NULL THEN '' ELSE r.last_name END as respondent_last_name,
               l.community_id
        FROM disputes d
        JOIN borrow_transactions t ON d.transaction_id = t.id
@@ -362,11 +364,14 @@ router.get('/:id', authenticate, async (req, res) => {
               t.rental_fee, t.deposit_amount,
               l.title as listing_title, l.community_id,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as listing_photos,
-              c.id as claimant_id, c.first_name as claimant_first_name, c.last_name as claimant_last_name,
+              c.id as claimant_id, COALESCE(c.display_name, c.first_name) as claimant_first_name,
+              CASE WHEN c.display_name IS NOT NULL THEN '' ELSE c.last_name END as claimant_last_name,
               c.profile_photo_url as claimant_photo,
-              resp.id as respondent_id, resp.first_name as respondent_first_name, resp.last_name as respondent_last_name,
+              resp.id as respondent_id, COALESCE(resp.display_name, resp.first_name) as respondent_first_name,
+              CASE WHEN resp.display_name IS NOT NULL THEN '' ELSE resp.last_name END as respondent_last_name,
               resp.profile_photo_url as respondent_photo,
-              resolver.first_name as resolver_first_name, resolver.last_name as resolver_last_name
+              COALESCE(resolver.display_name, resolver.first_name) as resolver_first_name,
+              CASE WHEN resolver.display_name IS NOT NULL THEN '' ELSE resolver.last_name END as resolver_last_name
        FROM disputes d
        JOIN borrow_transactions t ON d.transaction_id = t.id
        JOIN listings l ON t.listing_id = l.id
@@ -692,7 +697,7 @@ router.post('/:id/request-info', authenticate,
         type: 'info_request',
         target,
         message,
-        by: `${req.user.first_name} ${req.user.last_name}`,
+        by: req.user.display_name || req.user.first_name,
         at: new Date().toISOString(),
       };
 
@@ -739,7 +744,7 @@ router.post('/:id/admin-note', authenticate,
       const note = {
         type: 'note',
         message,
-        by: `${req.user.first_name} ${req.user.last_name}`,
+        by: req.user.display_name || req.user.first_name,
         at: new Date().toISOString(),
       };
 
