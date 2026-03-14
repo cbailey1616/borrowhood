@@ -62,9 +62,7 @@ export default function CreateListingScreen({ navigation, route }) {
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: isVerifiedOrPlus
-      ? ['close_friends', 'neighborhood', 'town']
-      : ['close_friends', 'neighborhood'],
+    visibility: ['close_friends'],
     isFree: true,
     pricePerDay: '',
     requireDeposit: false,
@@ -575,58 +573,46 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
-        <Text style={styles.hint}>Select all that apply</Text>
+        <Text style={styles.hint}>Each level includes the ones above it</Text>
         <View style={styles.options}>
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
+            const scopeOrder = ['close_friends', 'neighborhood', 'town'];
+            const idx = scopeOrder.indexOf(visibility);
             return (
               <HapticPressable
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  const current = formData.visibility;
-                  if (isSelected) {
-                    // Don't allow deselecting if it's the only one
-                    if (current.length > 1) {
-                      updateField('visibility', current.filter(v => v !== visibility));
-                      haptics.selection();
-                    } else {
-                      haptics.warning();
-                      showError({
-                        type: 'validation',
-                        title: 'Visibility Required',
-                        message: 'Your listing needs at least one visibility option so people can find it.',
-                      });
-                    }
-                  } else {
-                    // Must have friends to select close_friends
-                    if (visibility === 'close_friends' && !hasFriends) {
-                      haptics.warning();
-                      setShowAddFriends(true);
-                      return;
-                    }
-                    // Must have a neighborhood to select neighborhood
-                    if (visibility === 'neighborhood' && !communityId) {
-                      haptics.warning();
-                      setShowJoinCommunity(true);
-                      return;
-                    }
-                    // Verification required for town visibility
-                    if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
-                      haptics.warning();
-                      navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                      return;
-                    }
-                    if (ENABLE_PAID_TIERS && visibility === 'town') {
-                      const gate = checkPremiumGate(user, 'town_browse');
-                      if (!gate.passed) {
-                        navigation.push(gate.screen, gate.params);
-                        return;
-                      }
-                    }
-                    updateField('visibility', [...current, visibility]);
-                    haptics.selection();
+                  if (visibility === 'close_friends' && !hasFriends) {
+                    haptics.warning();
+                    setShowAddFriends(true);
+                    return;
                   }
+                  if (visibility === 'neighborhood' && !communityId) {
+                    haptics.warning();
+                    setShowJoinCommunity(true);
+                    return;
+                  }
+                  if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
+                    haptics.warning();
+                    navigation.navigate('IdentityVerification', { source: 'town_browse' });
+                    return;
+                  }
+                  if (ENABLE_PAID_TIERS && visibility === 'town') {
+                    const gate = checkPremiumGate(user, 'town_browse');
+                    if (!gate.passed) {
+                      navigation.push(gate.screen, gate.params);
+                      return;
+                    }
+                  }
+                  if (isSelected) {
+                    if (idx === 0) return; // Can't deselect friends (minimum)
+                    updateField('visibility', scopeOrder.slice(0, idx));
+                  } else {
+                    updateField('visibility', scopeOrder.slice(0, idx + 1));
+                  }
+                  haptics.selection();
                 }}
                 haptic={null}
               >
@@ -649,12 +635,42 @@ export default function CreateListingScreen({ navigation, route }) {
       {!isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
+        {!user?.payoutsEnabled && (
+          <HapticPressable
+            haptic="light"
+            style={styles.payoutHintCard}
+            onPress={() => {
+              if (!user?.isVerified && !isGracePeriodActive) {
+                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+              } else {
+                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+              }
+            }}
+          >
+            <Ionicons name="card-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.payoutHintText}>
+              {!user?.isVerified && !isGracePeriodActive
+                ? 'Verify identity & enable payouts to charge fees'
+                : 'Enable payouts to charge rental fees and deposits'}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          </HapticPressable>
+        )}
         <HapticPressable
           testID="CreateListing.toggle.rentalFee"
           accessibilityLabel="Charge a rental fee"
           accessibilityRole="switch"
-          style={styles.toggle}
+          style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
+            if (!user?.payoutsEnabled) {
+              haptics.warning();
+              if (!user?.isVerified && !isGracePeriodActive) {
+                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+              } else {
+                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+              }
+              return;
+            }
             if (formData.isFree) {
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
@@ -668,12 +684,12 @@ export default function CreateListingScreen({ navigation, route }) {
           haptic={null}
         >
           <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a rental fee</Text>
-          <View style={[styles.switch, !formData.isFree && styles.switchActive]}>
-            <View style={[styles.switchKnob, !formData.isFree && styles.switchKnobActive]} />
+          <View style={[styles.switch, !formData.isFree && user?.payoutsEnabled && styles.switchActive]}>
+            <View style={[styles.switchKnob, !formData.isFree && user?.payoutsEnabled && styles.switchKnobActive]} />
           </View>
         </HapticPressable>
 
-        {!formData.isFree && (
+        {!formData.isFree && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
@@ -694,8 +710,17 @@ export default function CreateListingScreen({ navigation, route }) {
           testID="CreateListing.toggle.deposit"
           accessibilityLabel="Require a deposit"
           accessibilityRole="switch"
-          style={styles.toggle}
+          style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
+            if (!user?.payoutsEnabled) {
+              haptics.warning();
+              if (!user?.isVerified && !isGracePeriodActive) {
+                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+              } else {
+                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+              }
+              return;
+            }
             if (!formData.requireDeposit) {
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
@@ -709,12 +734,12 @@ export default function CreateListingScreen({ navigation, route }) {
           haptic={null}
         >
           <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Require a deposit</Text>
-          <View style={[styles.switch, formData.requireDeposit && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.requireDeposit && styles.switchKnobActive]} />
+          <View style={[styles.switch, formData.requireDeposit && user?.payoutsEnabled && styles.switchActive]}>
+            <View style={[styles.switchKnob, formData.requireDeposit && user?.payoutsEnabled && styles.switchKnobActive]} />
           </View>
         </HapticPressable>
 
-        {formData.requireDeposit && (
+        {formData.requireDeposit && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
@@ -1083,6 +1108,23 @@ const styles = StyleSheet.create({
   },
   toggleTextDisabled: {
     color: COLORS.textSecondary,
+  },
+  toggleDisabled: {
+    opacity: 0.5,
+  },
+  payoutHintCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary + '10',
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  payoutHintText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.primary,
+    flex: 1,
   },
   payoutHint: {
     ...TYPOGRAPHY.caption1,

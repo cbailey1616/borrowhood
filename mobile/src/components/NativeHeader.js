@@ -20,7 +20,7 @@ export default function NativeHeader({
 }) {
   const insets = useSafeAreaInsets();
 
-  // Large title: fades + slides up + collapses height
+  // Large title: fades + slides up
   const largeTitleStyle = useAnimatedStyle(() => {
     if (!scrollY) return { opacity: 1, transform: [{ translateY: 0 }] };
     return {
@@ -43,16 +43,10 @@ export default function NativeHeader({
     };
   });
 
-  // Collapse the green wrapper's bottom padding + content height smoothly
+  // Collapse wrapper using maxHeight only (single layout property for smoother scrolling)
   const wrapperStyle = useAnimatedStyle(() => {
-    if (!scrollY) return { paddingBottom: SPACING.lg };
+    if (!scrollY) return {};
     return {
-      paddingBottom: interpolate(
-        scrollY.value,
-        [0, LARGE_TITLE_THRESHOLD],
-        [SPACING.lg, 0],
-        Extrapolation.CLAMP
-      ),
       maxHeight: interpolate(
         scrollY.value,
         [0, LARGE_TITLE_THRESHOLD],
@@ -64,8 +58,7 @@ export default function NativeHeader({
 
   return (
     <View>
-      {/* Green header wrapper — status bar + large title, seamless */}
-      <Animated.View style={[styles.greenWrapper, { paddingTop: insets.top + 4, overflow: 'hidden' }, wrapperStyle]}>
+      <Animated.View style={[styles.greenWrapper, { paddingTop: insets.top + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, wrapperStyle]}>
         <Animated.View style={largeTitleStyle}>
           {(title || rightElement) && (
             <View style={styles.titleRow}>

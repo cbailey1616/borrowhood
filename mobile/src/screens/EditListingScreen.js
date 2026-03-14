@@ -173,7 +173,18 @@ export default function EditListingScreen({ navigation, route }) {
     const hasRentalFee = !formData.isFree && parseFloat(formData.pricePerDay) > 0;
     if ((hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
       haptics.warning();
-      navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+      showError({
+        title: 'Payout Setup Required',
+        message: 'You need to enable payouts before adding rental fees or deposits.',
+        primaryAction: 'Set Up Payouts',
+        onPrimaryAction: () => {
+          if (!user?.isVerified) {
+            navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+          } else {
+            navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+          }
+        },
+      });
       return;
     }
 
@@ -376,24 +387,30 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
-        <Text style={styles.hint}>Select all that apply</Text>
+        <Text style={styles.hint}>Each level includes the ones above it</Text>
         <View style={styles.options}>
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
+            const scopeOrder = ['close_friends', 'neighborhood', 'town'];
+            const idx = scopeOrder.indexOf(visibility);
             return (
               <HapticPressable
                 key={visibility}
                 haptic="light"
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  const current = formData.visibility;
-                  if (isSelected) {
-                    if (current.length > 1) {
-                      updateField('visibility', current.filter(v => v !== visibility));
-                    }
-                  } else {
-                    updateField('visibility', [...current, visibility]);
+                  if (visibility === 'town' && !user?.isVerified) {
+                    haptics.warning();
+                    navigation.navigate('IdentityVerification', { source: 'town_browse' });
+                    return;
                   }
+                  if (isSelected) {
+                    if (idx === 0) return; // Can't deselect friends (minimum)
+                    updateField('visibility', scopeOrder.slice(0, idx));
+                  } else {
+                    updateField('visibility', scopeOrder.slice(0, idx + 1));
+                  }
+                  haptics.selection();
                 }}
               >
                 <Ionicons
@@ -414,11 +431,41 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Pricing */}
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
+        {!user?.payoutsEnabled && (
+          <HapticPressable
+            haptic="light"
+            style={styles.payoutHintCard}
+            onPress={() => {
+              if (!user?.isVerified) {
+                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+              } else {
+                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+              }
+            }}
+          >
+            <Ionicons name="card-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.payoutHintText}>
+              {!user?.isVerified
+                ? 'Verify identity & enable payouts to charge fees'
+                : 'Enable payouts to charge rental fees and deposits'}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          </HapticPressable>
+        )}
         <HapticPressable
           accessibilityLabel="Charge a rental fee"
           accessibilityRole="switch"
-          style={styles.toggle}
+          style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
+            if (!user?.payoutsEnabled) {
+              haptics.warning();
+              if (!user?.isVerified) {
+                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+              } else {
+                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+              }
+              return;
+            }
             if (formData.isFree) {
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
@@ -432,12 +479,12 @@ export default function EditListingScreen({ navigation, route }) {
           haptic={null}
         >
           <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a rental fee</Text>
-          <View style={[styles.switch, !formData.isFree && styles.switchActive]}>
-            <View style={[styles.switchKnob, !formData.isFree && styles.switchKnobActive]} />
+          <View style={[styles.switch, !formData.isFree && user?.payoutsEnabled && styles.switchActive]}>
+            <View style={[styles.switchKnob, !formData.isFree && user?.payoutsEnabled && styles.switchKnobActive]} />
           </View>
         </HapticPressable>
 
-        {!formData.isFree && (
+        {!formData.isFree && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
@@ -454,8 +501,17 @@ export default function EditListingScreen({ navigation, route }) {
         <HapticPressable
           accessibilityLabel="Require a deposit"
           accessibilityRole="switch"
-          style={styles.toggle}
+          style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
+            if (!user?.payoutsEnabled) {
+              haptics.warning();
+              if (!user?.isVerified) {
+                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
+              } else {
+                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
+              }
+              return;
+            }
             if (!formData.requireDeposit) {
               const gate = checkPremiumGate(user, 'rental_listing');
               if (!gate.passed) {
@@ -469,12 +525,12 @@ export default function EditListingScreen({ navigation, route }) {
           haptic={null}
         >
           <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Require a deposit</Text>
-          <View style={[styles.switch, formData.requireDeposit && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.requireDeposit && styles.switchKnobActive]} />
+          <View style={[styles.switch, formData.requireDeposit && user?.payoutsEnabled && styles.switchActive]}>
+            <View style={[styles.switchKnob, formData.requireDeposit && user?.payoutsEnabled && styles.switchKnobActive]} />
           </View>
         </HapticPressable>
 
-        {formData.requireDeposit && (
+        {formData.requireDeposit && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
             <TextInput
@@ -667,6 +723,23 @@ const styles = StyleSheet.create({
   },
   toggleTextDisabled: {
     color: COLORS.textSecondary,
+  },
+  toggleDisabled: {
+    opacity: 0.5,
+  },
+  payoutHintCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary + '10',
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  payoutHintText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.primary,
+    flex: 1,
   },
   payoutHint: {
     ...TYPOGRAPHY.caption1,

@@ -280,6 +280,30 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
         </HapticPressable>
 
+        {/* Quick message button for active transactions */}
+        {['approved', 'paid', 'picked_up'].includes(transaction.status) && (
+          <HapticPressable
+            haptic="light"
+            style={styles.messageButton}
+            onPress={async () => {
+              try {
+                const conversations = await api.getConversations();
+                const existing = conversations.find(c => c.otherUser?.id === otherPerson.id);
+                if (existing) {
+                  navigation.navigate('Chat', { conversationId: existing.id });
+                } else {
+                  navigation.navigate('Chat', { recipientId: otherPerson.id, listing: null });
+                }
+              } catch {
+                navigation.navigate('Chat', { recipientId: otherPerson.id, listing: null });
+              }
+            }}
+          >
+            <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.messageButtonText}>Message {otherPerson.firstName} to coordinate pickup</Text>
+          </HapticPressable>
+        )}
+
         {/* Dates */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Rental Period</Text>
@@ -301,20 +325,25 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Text style={styles.daysText}>{transaction.rentalDays} days</Text>
         </View>
 
-        {/* Pricing */}
+        {/* Pricing — hidden for free rentals with no money */}
+        {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Details</Text>
           <View style={styles.priceBreakdown}>
+            {(transaction.rentalFee || 0) > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>
                 Rental fee ({transaction.rentalDays} days x ${transaction.dailyRate})
               </Text>
               <Text style={styles.priceValue}>${(transaction.rentalFee || 0).toFixed(2)}</Text>
             </View>
+            )}
+            {(transaction.depositAmount || 0) > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Refundable deposit</Text>
               <Text style={styles.priceValue}>${(transaction.depositAmount || 0).toFixed(2)}</Text>
             </View>
+            )}
             <View style={[styles.priceRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>
@@ -323,6 +352,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </View>
           </View>
         </View>
+        )}
 
         {/* Messages */}
         {transaction.borrowerMessage && (
@@ -374,7 +404,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <View style={styles.returnedBanner}>
             <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
             <Text style={styles.returnedBannerText}>
-              Item returned. This transaction will close automatically on {new Date(new Date(transaction.actualReturnAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} if no dispute is filed.
+              {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0
+                ? 'Item returned. This transaction will close automatically if no dispute is filed.'
+                : 'Item returned. This transaction is complete.'}
             </Text>
           </View>
         )}
@@ -457,7 +489,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Borrower: Submit return + Report Issue */}
+      {/* Borrower: Submit return + Report Issue (Report Issue only for paid transactions) */}
       {transaction.isBorrower && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
           <HapticPressable
@@ -468,6 +500,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           >
             <Text style={styles.approveButtonText}>Return Item</Text>
           </HapticPressable>
+          {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
           <HapticPressable
             haptic="light"
             style={styles.reportIssueButton}
@@ -483,10 +516,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
             <Text style={styles.reportIssueText}>Report an Issue</Text>
           </HapticPressable>
+          )}
         </View>
       )}
 
-      {/* Lender: Confirm return + Report Issue */}
+      {/* Lender: Confirm return + Report Issue (Report Issue only for paid transactions) */}
       {transaction.isLender && transaction.status === 'picked_up' && (
         <View style={styles.footer}>
           <HapticPressable
@@ -500,6 +534,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           >
             <Text style={styles.approveButtonText}>Confirm Return</Text>
           </HapticPressable>
+          {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
           <HapticPressable
             haptic="light"
             style={styles.reportIssueButton}
@@ -515,6 +550,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
             <Text style={styles.reportIssueText}>Report an Issue</Text>
           </HapticPressable>
+          )}
         </View>
       )}
 
@@ -533,10 +569,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Report Issue button — either party can dispute within 7 days of return */}
+      {/* Report Issue button — either party can dispute within 7 days of return (paid transactions only) */}
       {['returned', 'completed'].includes(transaction?.status) &&
         !transaction?.hasDispute &&
         transaction?.actualReturnAt &&
+        ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 &&
         (Date.now() - new Date(transaction.actualReturnAt).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
         <View style={styles.footer}>
           <HapticPressable
@@ -746,6 +783,20 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.headline,
     fontSize: 16,
     color: COLORS.text,
+  },
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary + '10',
+    padding: SPACING.md,
+    marginTop: SPACING.sm,
+    borderRadius: RADIUS.md,
+  },
+  messageButtonText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.primary,
+    flex: 1,
   },
   section: {
     backgroundColor: COLORS.surface,

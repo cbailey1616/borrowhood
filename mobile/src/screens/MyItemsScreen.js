@@ -384,7 +384,7 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
-  const emptyTitle = activeTab === 0 ? 'No items listed' : activeTab === 1 ? 'No rentals yet' : 'No wanted posts yet';
+  const emptyTitle = activeTab === 0 ? 'No items listed' : activeTab === 1 ? 'Nothing borrowed yet' : 'No wanted posts yet';
   const emptySubtitle = activeTab === 0
     ? 'Share your tools with the neighborhood'
     : activeTab === 1
@@ -396,7 +396,7 @@ export default function MyItemsScreen({ navigation }) {
       <NativeHeader title="My Items" scrollY={scrollY}>
         <SegmentedControl
           testID="MyItems.segment"
-          segments={['Listings', 'Rentals', 'Wanted']}
+          segments={['Listings', 'Borrowed', 'Wanted']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}

@@ -12,7 +12,7 @@ import {
   TextInput,
   Pressable,
 } from 'react-native';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -80,9 +80,11 @@ export default function FeedScreen({ navigation }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
 
   const scrollY = useSharedValue(0);
-  const handleScroll = useCallback((event) => {
-    scrollY.value = event.nativeEvent.contentOffset.y;
-  }, []);
+  const handleScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
     try {
@@ -879,7 +881,7 @@ export default function FeedScreen({ navigation }) {
         </View>
       </NativeHeader>
 
-      <FlatList
+      <Animated.FlatList
         ref={listRef}
         data={feed}
         renderItem={renderItem}
@@ -988,6 +990,7 @@ export default function FeedScreen({ navigation }) {
         title="Create"
         actions={createActions}
       />
+
 
       <ActionSheet
         isVisible={activeDropdown === 'type'}
