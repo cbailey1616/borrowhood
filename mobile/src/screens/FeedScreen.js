@@ -893,6 +893,10 @@ export default function FeedScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         bounces
+        removeClippedSubviews
+        windowSize={5}
+        maxToRenderPerBatch={3}
+        updateCellsBatchingPeriod={50}
         style={{ backgroundColor: COLORS.background }}
         refreshControl={
           <RefreshControl

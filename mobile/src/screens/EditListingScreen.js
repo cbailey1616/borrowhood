@@ -39,7 +39,14 @@ export default function EditListingScreen({ navigation, route }) {
     description: listing.description || '',
     condition: listing.condition || 'good',
     categoryId: listing.categoryId || null,
-    visibility: Array.isArray(listing.visibility) ? listing.visibility : [listing.visibility || 'close_friends'],
+    visibility: (() => {
+      // DB stores single widest scope — expand to all included scopes for UI
+      const v = Array.isArray(listing.visibility) ? listing.visibility : [listing.visibility || 'close_friends'];
+      const widest = v.includes('town') ? 'town' : v.includes('neighborhood') ? 'neighborhood' : 'close_friends';
+      if (widest === 'town') return ['close_friends', 'neighborhood', 'town'];
+      if (widest === 'neighborhood') return ['close_friends', 'neighborhood'];
+      return ['close_friends'];
+    })(),
     isFree: listing.isFree ?? true,
     pricePerDay: listing.pricePerDay?.toString() || '',
     requireDeposit: parseFloat(listing.depositAmount) > 0,
@@ -387,28 +394,26 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
-        <Text style={styles.hint}>Each level includes the ones above it</Text>
         <View style={styles.options}>
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
-            const scopeOrder = ['close_friends', 'neighborhood', 'town'];
-            const idx = scopeOrder.indexOf(visibility);
             return (
               <HapticPressable
                 key={visibility}
                 haptic="light"
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  if (visibility === 'town' && !user?.isVerified) {
+                  if (visibility === 'town' && !isSelected && !user?.isVerified) {
                     haptics.warning();
                     navigation.navigate('IdentityVerification', { source: 'town_browse' });
                     return;
                   }
                   if (isSelected) {
-                    if (idx === 0) return; // Can't deselect friends (minimum)
-                    updateField('visibility', scopeOrder.slice(0, idx));
+                    // Must keep at least one selected
+                    if (formData.visibility.length <= 1) return;
+                    updateField('visibility', formData.visibility.filter(v => v !== visibility));
                   } else {
-                    updateField('visibility', scopeOrder.slice(0, idx + 1));
+                    updateField('visibility', [...formData.visibility, visibility]);
                   }
                   haptics.selection();
                 }}

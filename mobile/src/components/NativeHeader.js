@@ -20,7 +20,6 @@ export default function NativeHeader({
 }) {
   const insets = useSafeAreaInsets();
 
-  // Large title: fades + slides up
   const largeTitleStyle = useAnimatedStyle(() => {
     if (!scrollY) return { opacity: 1, transform: [{ translateY: 0 }] };
     return {
@@ -43,7 +42,6 @@ export default function NativeHeader({
     };
   });
 
-  // Collapse wrapper using maxHeight only (single layout property for smoother scrolling)
   const wrapperStyle = useAnimatedStyle(() => {
     if (!scrollY) return {};
     return {

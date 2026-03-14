@@ -16,7 +16,19 @@ const LENDER_STEPS = [
   { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
 ];
 
-function getActiveStep(status) {
+const GIVEAWAY_RECIPIENT_STEPS = [
+  { key: 'requested', icon: 'paper-plane', label: 'Request' },
+  { key: 'approved', icon: 'checkmark-circle', label: 'Accepted' },
+  { key: 'pickup', icon: 'gift', label: 'Picked Up' },
+];
+
+const GIVEAWAY_GIVER_STEPS = [
+  { key: 'requested', icon: 'paper-plane', label: 'Request' },
+  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
+  { key: 'pickup', icon: 'gift', label: 'Given' },
+];
+
+function getActiveStep(status, isGiveaway) {
   switch (status) {
     case 'pending': return 0;
     case 'approved':
@@ -24,15 +36,17 @@ function getActiveStep(status) {
     case 'picked_up': return 2;
     case 'returned':
     case 'return_pending':
-    case 'completed': return 3;
+    case 'completed': return isGiveaway ? 2 : 3;
     default: return -1;
   }
 }
 
-export default function RentalProgress({ status, isBorrower }) {
-  const activeStep = getActiveStep(status);
+export default function RentalProgress({ status, isBorrower, isGiveaway }) {
+  const activeStep = getActiveStep(status, isGiveaway);
   const isCancelled = status === 'cancelled' || status === 'disputed';
-  const steps = isBorrower ? BORROWER_STEPS : LENDER_STEPS;
+  const steps = isGiveaway
+    ? (isBorrower ? GIVEAWAY_RECIPIENT_STEPS : GIVEAWAY_GIVER_STEPS)
+    : (isBorrower ? BORROWER_STEPS : LENDER_STEPS);
 
   const elements = [];
   steps.forEach((step, index) => {

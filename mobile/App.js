@@ -62,15 +62,15 @@ export default function App() {
         >
           <SafeAreaProvider>
             <AuthProvider navigationRef={navigationRef}>
-              <ErrorProvider navigationRef={navigationRef}>
-                <NavigationContainer
-                  ref={navigationRef}
-                  onReady={() => setNavigationRef(navigationRef)}
-                >
+              <NavigationContainer
+                ref={navigationRef}
+                onReady={() => setNavigationRef(navigationRef)}
+              >
+                <ErrorProvider navigationRef={navigationRef}>
                   <RootNavigator />
                   <StatusBar style="light" />
-                </NavigationContainer>
-              </ErrorProvider>
+                </ErrorProvider>
+              </NavigationContainer>
             </AuthProvider>
           </SafeAreaProvider>
         </StripeProvider>

@@ -194,7 +194,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
   }
 
   const otherPerson = transaction.isBorrower ? transaction.lender : transaction.borrower;
-  const roleLabel = transaction.isBorrower ? 'Lender' : 'Borrower';
+  const roleLabel = isGiveaway
+    ? (transaction.isBorrower ? 'Giver' : 'Recipient')
+    : (transaction.isBorrower ? 'Lender' : 'Borrower');
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -251,6 +253,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <RentalProgress
             status={transaction.status}
             isBorrower={transaction.isBorrower}
+            isGiveaway={isGiveaway}
             paymentStatus={transaction.paymentStatus}
           />
         </View>
@@ -300,11 +303,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
             }}
           >
             <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.messageButtonText}>Message {otherPerson.firstName} to coordinate pickup</Text>
+            <Text style={styles.messageButtonText}>Message {otherPerson.firstName} to coordinate {isGiveaway ? 'pickup' : 'details'}</Text>
           </HapticPressable>
         )}
 
-        {/* Dates */}
+        {/* Dates — hidden for giveaways */}
+        {!isGiveaway && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Rental Period</Text>
           <View style={styles.dateRow}>
@@ -324,6 +328,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
           <Text style={styles.daysText}>{transaction.rentalDays} days</Text>
         </View>
+        )}
 
         {/* Pricing — hidden for free rentals with no money */}
         {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
@@ -357,14 +362,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {/* Messages */}
         {transaction.borrowerMessage && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Message from Borrower</Text>
+            <Text style={styles.sectionTitle}>Message from {isGiveaway ? 'Recipient' : 'Borrower'}</Text>
             <Text style={styles.messageText}>{transaction.borrowerMessage}</Text>
           </View>
         )}
 
         {transaction.lenderResponse && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Response from Lender</Text>
+            <Text style={styles.sectionTitle}>Response from {isGiveaway ? 'Giver' : 'Lender'}</Text>
             <Text style={styles.messageText}>{transaction.lenderResponse}</Text>
           </View>
         )}
@@ -391,22 +396,24 @@ export default function TransactionDetailScreen({ route, navigation }) {
           );
         })()}
 
-        {/* Overdue Banner */}
-        {transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (
+        {/* Overdue Banner — not for giveaways */}
+        {!isGiveaway && transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (
           <View style={styles.overdueBanner}>
             <Ionicons name="warning" size={20} color={COLORS.warning} />
             <Text style={styles.overdueText}>This rental is overdue</Text>
           </View>
         )}
 
-        {/* Returned — auto-close info (hide if dispute exists) */}
+        {/* Completed / Returned banner (hide if dispute exists) */}
         {transaction.status === 'returned' && transaction.actualReturnAt && !transaction.hasDispute && (
           <View style={styles.returnedBanner}>
             <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
             <Text style={styles.returnedBannerText}>
-              {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0
-                ? 'Item returned. This transaction will close automatically if no dispute is filed.'
-                : 'Item returned. This transaction is complete.'}
+              {isGiveaway
+                ? 'Giveaway complete! Enjoy your new item.'
+                : ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0
+                  ? 'Item returned. This transaction will close automatically if no dispute is filed.'
+                  : 'Item returned. This transaction is complete.'}
             </Text>
           </View>
         )}

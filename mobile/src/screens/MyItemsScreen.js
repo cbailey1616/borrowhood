@@ -58,8 +58,13 @@ export default function MyItemsScreen({ navigation }) {
         setListings(data);
       } else if (activeTab === 1) {
         const data = await api.getTransactions();
-        // Filter to active only (not completed/cancelled)
-        setRentals(data.filter(t => !['completed', 'cancelled'].includes(t.status)));
+        // Filter to active only (not completed/cancelled/giveaway-returned)
+        setRentals(data.filter(t => {
+          if (['completed', 'cancelled'].includes(t.status)) return false;
+          // Giveaways go straight to 'returned' on pickup — they're done
+          if (t.listingType === 'giveaway' && t.status === 'returned') return false;
+          return true;
+        }));
       } else {
         const data = await api.getMyRequests();
         setRequests(data);
@@ -349,12 +354,14 @@ export default function MyItemsScreen({ navigation }) {
               <Text style={styles.cardTitle} numberOfLines={1}>{item.listing.title}</Text>
               <View style={styles.rentalPartyRow}>
                 <Ionicons
-                  name={item.isBorrower ? 'arrow-down-circle' : 'arrow-up-circle'}
+                  name={item.listingType === 'giveaway' ? 'gift' : item.isBorrower ? 'arrow-down-circle' : 'arrow-up-circle'}
                   size={14}
                   color={item.isBorrower ? COLORS.primary : COLORS.secondary}
                 />
                 <Text style={styles.rentalPartyText}>
-                  {item.isBorrower ? 'Borrowing from' : 'Lending to'}{' '}
+                  {item.listingType === 'giveaway'
+                    ? (item.isBorrower ? 'From' : 'Giving to')
+                    : (item.isBorrower ? 'Borrowing from' : 'Lending to')}{' '}
                   {otherParty.firstName} {otherParty.lastName?.[0]}.
                 </Text>
               </View>

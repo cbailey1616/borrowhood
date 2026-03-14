@@ -162,7 +162,9 @@ export default function RootNavigator() {
           <Stack.Screen
             name="BorrowRequest"
             component={BorrowRequestScreen}
-            options={modalScreenOptions('Request to Borrow')}
+            options={({ route }) => modalScreenOptions(
+              route.params?.listing?.listingType === 'giveaway' ? 'Request Giveaway' : 'Request to Borrow'
+            )}
           />
           <Stack.Screen
             name="EditProfile"

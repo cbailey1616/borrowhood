@@ -573,33 +573,30 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
-        <Text style={styles.hint}>Each level includes the ones above it</Text>
         <View style={styles.options}>
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
-            const scopeOrder = ['close_friends', 'neighborhood', 'town'];
-            const idx = scopeOrder.indexOf(visibility);
             return (
               <HapticPressable
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  if (visibility === 'close_friends' && !hasFriends) {
+                  if (!isSelected && visibility === 'close_friends' && !hasFriends) {
                     haptics.warning();
                     setShowAddFriends(true);
                     return;
                   }
-                  if (visibility === 'neighborhood' && !communityId) {
+                  if (!isSelected && visibility === 'neighborhood' && !communityId) {
                     haptics.warning();
                     setShowJoinCommunity(true);
                     return;
                   }
-                  if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
+                  if (!isSelected && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                     haptics.warning();
                     navigation.navigate('IdentityVerification', { source: 'town_browse' });
                     return;
                   }
-                  if (ENABLE_PAID_TIERS && visibility === 'town') {
+                  if (!isSelected && ENABLE_PAID_TIERS && visibility === 'town') {
                     const gate = checkPremiumGate(user, 'town_browse');
                     if (!gate.passed) {
                       navigation.push(gate.screen, gate.params);
@@ -607,10 +604,11 @@ export default function CreateListingScreen({ navigation, route }) {
                     }
                   }
                   if (isSelected) {
-                    if (idx === 0) return; // Can't deselect friends (minimum)
-                    updateField('visibility', scopeOrder.slice(0, idx));
+                    // Must keep at least one selected
+                    if (formData.visibility.length <= 1) return;
+                    updateField('visibility', formData.visibility.filter(v => v !== visibility));
                   } else {
-                    updateField('visibility', scopeOrder.slice(0, idx + 1));
+                    updateField('visibility', [...formData.visibility, visibility]);
                   }
                   haptics.selection();
                 }}

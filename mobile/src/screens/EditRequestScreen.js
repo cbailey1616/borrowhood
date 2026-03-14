@@ -11,6 +11,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
@@ -30,13 +31,21 @@ const formatDate = (dateStr) => {
 
 export default function EditRequestScreen({ navigation, route }) {
   const { request } = route.params;
+  const { user } = useAuth();
   const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
     type: request.type || 'item',
     title: request.title || '',
     description: request.description || '',
     categoryId: request.categoryId || null,
-    visibility: Array.isArray(request.visibility) ? request.visibility : [request.visibility || 'neighborhood'],
+    visibility: (() => {
+      // DB stores single widest scope — expand to all included scopes for UI
+      const v = Array.isArray(request.visibility) ? request.visibility : [request.visibility || 'neighborhood'];
+      const widest = v.includes('town') ? 'town' : v.includes('neighborhood') ? 'neighborhood' : 'close_friends';
+      if (widest === 'town') return ['close_friends', 'neighborhood', 'town'];
+      if (widest === 'neighborhood') return ['close_friends', 'neighborhood'];
+      return ['close_friends'];
+    })(),
     neededFrom: formatDate(request.neededFrom),
     neededUntil: formatDate(request.neededUntil),
   });
@@ -253,7 +262,6 @@ export default function EditRequestScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <Text style={styles.label}>Who can see this? *</Text>
-        <Text style={styles.hint}>Select all that apply</Text>
         <View style={styles.options}>
           {VISIBILITIES.map((visibility) => {
             const isSelected = formData.visibility.includes(visibility);
@@ -262,14 +270,18 @@ export default function EditRequestScreen({ navigation, route }) {
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  const current = formData.visibility;
-                  if (isSelected) {
-                    if (current.length > 1) {
-                      updateField('visibility', current.filter(v => v !== visibility));
-                    }
-                  } else {
-                    updateField('visibility', [...current, visibility]);
+                  if (!isSelected && visibility === 'town' && !user?.isVerified) {
+                    haptics.warning();
+                    navigation.navigate('IdentityVerification', { source: 'town_browse' });
+                    return;
                   }
+                  if (isSelected) {
+                    if (formData.visibility.length <= 1) return;
+                    updateField('visibility', formData.visibility.filter(v => v !== visibility));
+                  } else {
+                    updateField('visibility', [...formData.visibility, visibility]);
+                  }
+                  haptics.selection();
                 }}
                 haptic="light"
               >

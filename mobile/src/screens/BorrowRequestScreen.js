@@ -7,6 +7,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Alert,
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -124,13 +125,11 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
   const handleSubmit = async () => {
     if (!isGiveaway) {
-      console.log('handleSubmit called, days:', days, 'min:', listing.minDuration, 'max:', listing.maxDuration);
       if (days < listing.minDuration || days > listing.maxDuration) {
-        showError({
-          type: 'validation',
-          title: 'Adjust Your Dates',
-          message: `This item can be borrowed for ${listing.minDuration}–${listing.maxDuration} days. Try picking a shorter or longer window.`,
-        });
+        Alert.alert(
+          'Adjust Your Dates',
+          `This item can be borrowed for ${listing.minDuration}–${listing.maxDuration} days. Try picking a shorter or longer window.`
+        );
         return;
       }
     }
@@ -160,33 +159,24 @@ export default function BorrowRequestScreen({ route, navigation }) {
           customerId: result.customerId,
         });
       } else {
-        // Free rental — request sent, go back
+        // Free rental / giveaway — request sent
         haptics.success();
-        navigation.goBack();
+        showError({
+          type: 'success',
+          title: 'Request Sent!',
+          message: isGiveaway
+            ? `Your request has been sent to ${listing.owner?.firstName || 'the owner'}. They'll be notified right away.`
+            : `Your borrow request has been sent. ${listing.owner?.firstName || 'The owner'} will be notified.`,
+          primaryAction: 'OK',
+          onPrimaryAction: () => navigation.goBack(),
+          onDismiss: () => navigation.goBack(),
+        });
       }
     } catch (error) {
       haptics.error();
-      const msg = error.message?.toLowerCase() || '';
-      if (msg.includes('verification')) {
-        showError({
-          type: 'verification',
-          title: 'Verify Your Identity',
-          message: 'Town listings require identity verification for everyone\'s safety. It only takes a minute.',
-          primaryLabel: 'Verify Now',
-          onPrimaryPress: () => navigation.navigate('IdentityVerification'),
-        });
-      } else if (msg.includes('payment method')) {
-        showError({
-          title: 'Add a Payment Method',
-          message: 'You\'ll need a card on file to request paid rentals. Your card won\'t be charged until the lender approves.',
-          primaryLabel: 'Add Card',
-          onPrimaryPress: () => navigation.navigate('AddPaymentMethod'),
-        });
-      } else {
-        showError({
-          message: error.message || 'Couldn\'t send your request right now. Please check your connection and try again.',
-        });
-      }
+      showError({
+        message: error.message || 'Couldn\'t send your request right now. Please check your connection and try again.',
+      });
     } finally {
       if (navigation.isFocused()) {
         setIsSubmitting(false);

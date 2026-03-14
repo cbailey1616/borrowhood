@@ -313,6 +313,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   status={listing.activeTransaction.status}
                   paymentStatus={listing.activeTransaction.paymentStatus}
                   isBorrower={listing.activeTransaction.isBorrower}
+                  isGiveaway={listing.listingType === 'giveaway'}
                 />
                 <View style={styles.viewTransactionRow}>
                   <Text style={styles.viewTransactionText}>Go to Transaction</Text>
@@ -369,8 +370,8 @@ export default function ListingDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      {/* Footer Action Bar */}
-      {!listing.isOwner && !listing.ownerMasked && (
+      {/* Footer Action Bar — hide for completed giveaways (nothing useful to show) */}
+      {!listing.isOwner && !listing.ownerMasked && !(listing.listingType === 'giveaway' && !listing.isAvailable && !listing.activeTransaction) && (
         <View style={styles.footerWrap}>
           <View style={styles.footerGreen}>
             <HapticPressable

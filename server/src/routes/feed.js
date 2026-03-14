@@ -87,7 +87,8 @@ router.get('/', authenticate, async (req, res) => {
         FROM listings l
         JOIN users u ON l.owner_id = u.id
         LEFT JOIN categories cat ON l.category_id = cat.id
-        WHERE l.status = 'active'`;
+        WHERE l.status = 'active'
+          AND (l.listing_type != 'giveaway' OR l.is_available = true)`;
 
       const listingParams = [];
 
