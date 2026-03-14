@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
@@ -185,6 +186,19 @@ export default function OnboardingScreen({ onComplete }) {
       );
     } catch (error) {
       setGenericErrorSheet({ visible: true, title: 'Error', message: 'Failed to send friend request.' });
+    }
+  };
+
+  // Step 4: Notifications
+  const [notifStatus, setNotifStatus] = useState(null);
+
+  const handleEnableNotifications = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    setNotifStatus(status);
+    if (status === 'granted') {
+      haptics.success();
+      // Brief pause to show the success state
+      setTimeout(() => handleFinish(), 600);
     }
   };
 
@@ -406,21 +420,74 @@ export default function OnboardingScreen({ onComplete }) {
 
       <HapticPressable
         style={styles.primaryButton}
-        onPress={handleFinish}
+        onPress={() => setStep(4)}
         haptic="medium"
       >
         <Text style={styles.primaryButtonText}>
-          {addedFriends.length > 0 ? "Let's Go!" : 'Skip for now'}
+          {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
         </Text>
       </HapticPressable>
     </KeyboardAvoidingView>
+  );
+
+  const renderStep4 = () => (
+    <View style={styles.stepContainer}>
+      <View style={styles.iconContainer}>
+        <Ionicons name="notifications" size={48} color={COLORS.primary} />
+      </View>
+      <Text style={styles.title}>Stay in the Loop</Text>
+      <Text style={styles.subtitle}>
+        Get notified when someone wants to borrow your items, when a request is approved, or when you have a new message.
+      </Text>
+
+      <View style={[styles.cardBox, { padding: SPACING.xl, marginBottom: SPACING.xxl }]}>
+        <View style={styles.notifBenefit}>
+          <Ionicons name="hand-left-outline" size={20} color={COLORS.secondary} />
+          <Text style={styles.notifBenefitText}>Know instantly when someone wants your stuff</Text>
+        </View>
+        <View style={styles.notifBenefit}>
+          <Ionicons name="chatbubble-outline" size={20} color={COLORS.secondary} />
+          <Text style={styles.notifBenefitText}>Never miss a message from a neighbor</Text>
+        </View>
+        <View style={[styles.notifBenefit, { marginBottom: 0 }]}>
+          <Ionicons name="time-outline" size={20} color={COLORS.secondary} />
+          <Text style={styles.notifBenefitText}>Get reminders when items are due back</Text>
+        </View>
+      </View>
+
+      {notifStatus === 'granted' ? (
+        <View style={[styles.primaryButton, { backgroundColor: COLORS.primary }]}>
+          <Ionicons name="checkmark-circle" size={22} color="#fff" style={{ marginRight: SPACING.sm }} />
+          <Text style={styles.primaryButtonText}>Notifications Enabled</Text>
+        </View>
+      ) : (
+        <HapticPressable
+          style={styles.primaryButton}
+          onPress={handleEnableNotifications}
+          haptic="medium"
+        >
+          <Ionicons name="notifications-outline" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
+          <Text style={styles.primaryButtonText}>Enable Notifications</Text>
+        </HapticPressable>
+      )}
+
+      <HapticPressable
+        style={{ paddingVertical: SPACING.md, alignItems: 'center', marginTop: SPACING.sm }}
+        onPress={handleFinish}
+        haptic="light"
+      >
+        <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>
+          {notifStatus === 'granted' ? "Let's go!" : "I'll do this later"}
+        </Text>
+      </HapticPressable>
+    </View>
   );
 
   return (
     <View style={styles.container}>
       {/* Progress indicator */}
       <View style={styles.progress}>
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <View
             key={s}
             style={[
@@ -435,6 +502,7 @@ export default function OnboardingScreen({ onComplete }) {
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
+      {step === 4 && renderStep4()}
 
       <ActionSheet
         isVisible={locationErrorSheet.visible}
@@ -555,7 +623,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     padding: 18,
     borderRadius: RADIUS.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 'auto',
   },
   buttonDisabled: {
@@ -736,5 +806,16 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     ...TYPOGRAPHY.footnote,
     marginTop: SPACING.xl,
+  },
+  notifBenefit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  notifBenefitText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+    flex: 1,
   },
 });

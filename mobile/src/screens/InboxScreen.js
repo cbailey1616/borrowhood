@@ -7,7 +7,9 @@ import {
   RefreshControl,
   Image,
   InteractionManager,
+  Linking,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -52,7 +54,13 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [notifsDenied, setNotifsDenied] = useState(false);
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState(false);
 
+  const checkNotifPermission = useCallback(async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotifsDenied(status !== 'granted');
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -74,9 +82,10 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     useCallback(() => {
       InteractionManager.runAfterInteractions(() => {
         fetchData();
+        checkNotifPermission();
         if (onRead) onRead();
       });
-    }, [fetchData, onRead])
+    }, [fetchData, checkNotifPermission, onRead])
   );
 
   const onRefresh = () => {
@@ -249,6 +258,25 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   return (
     <View style={styles.container}>
       <NativeHeader title="Activity">
+        {notifsDenied && !notifBannerDismissed && (
+          <HapticPressable
+            style={styles.notifBanner}
+            onPress={() => Linking.openSettings()}
+            haptic="light"
+          >
+            <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
+            <Text style={styles.notifBannerText}>
+              Notifications are off — tap to enable in Settings
+            </Text>
+            <HapticPressable
+              onPress={() => setNotifBannerDismissed(true)}
+              haptic="light"
+              style={styles.notifBannerClose}
+            >
+              <Ionicons name="close" size={16} color={COLORS.textMuted} />
+            </HapticPressable>
+          </HapticPressable>
+        )}
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
@@ -489,5 +517,24 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
+  },
+  notifBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warningMuted,
+    borderRadius: RADIUS.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  notifBannerText: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.text,
+    flex: 1,
+  },
+  notifBannerClose: {
+    padding: SPACING.xs,
   },
 });

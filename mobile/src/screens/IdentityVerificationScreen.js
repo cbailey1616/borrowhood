@@ -238,7 +238,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
         <View style={[styles.benefits, styles.cardBox]}>
           <View style={styles.benefitsInner}>
-            <BenefitItem icon="lock-closed" text="Your data is encrypted and secure" />
+            <BenefitItem icon="lock-closed" text="Your ID and personal data are handled by Stripe — never stored by BorrowHood" />
             <BenefitItem icon="people" text="Build trust with your neighbors" />
             <BenefitItem icon="checkmark-circle" text="Required to borrow or lend items" />
           </View>

@@ -141,7 +141,7 @@ export default function AddPaymentMethodScreen({ navigation }) {
 
         <Text style={styles.title}>Add a Card</Text>
         <Text style={styles.subtitle}>
-          Your card details are securely handled by Stripe.
+          BorrowHood never stores your card details. All payment information is handled entirely by Stripe.
         </Text>
 
         <View style={styles.cardFieldWrapper}>

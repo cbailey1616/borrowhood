@@ -49,7 +49,11 @@ export default function usePushNotifications(isAuthenticated, user) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    registerForPushNotifications().then(token => {
+    // Don't auto-request notification permissions during onboarding —
+    // the onboarding flow has a dedicated pre-prompt step
+    const skipRequest = user && !user.onboardingCompleted;
+
+    registerForPushNotifications({ skipRequest }).then(token => {
       if (token) {
         setExpoPushToken(token);
         // Send token to backend
@@ -76,12 +80,12 @@ export default function usePushNotifications(isAuthenticated, user) {
         responseListener.current.remove();
       }
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.onboardingCompleted]);
 
   return { expoPushToken, notification };
 }
 
-async function registerForPushNotifications() {
+async function registerForPushNotifications({ skipRequest = false } = {}) {
   let token;
 
   if (Platform.OS === 'android') {
@@ -102,6 +106,8 @@ async function registerForPushNotifications() {
   let finalStatus = existingStatus;
 
   if (existingStatus !== 'granted') {
+    // If skipRequest is true (during onboarding), don't show the system prompt yet
+    if (skipRequest) return null;
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }

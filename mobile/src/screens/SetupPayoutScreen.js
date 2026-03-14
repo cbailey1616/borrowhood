@@ -264,7 +264,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
       <View style={styles.securityNote}>
         <Ionicons name="lock-closed-outline" size={16} color={COLORS.textSecondary} />
         <Text style={styles.securityText}>
-          Powered by Stripe. Your financial information is encrypted and secure.
+          BorrowHood never stores your financial or banking details. All payment information is handled entirely by Stripe.
         </Text>
       </View>
     </ScrollView>

@@ -322,7 +322,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
         <View style={styles.securityRow}>
           <Ionicons name="lock-closed" size={13} color={COLORS.textMuted} />
           <Text style={styles.securityText}>
-            Card details are securely stored by Stripe. We never see your full card number.
+            BorrowHood never stores your financial information. All payment data is handled entirely by Stripe.
           </Text>
         </View>
 
