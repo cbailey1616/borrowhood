@@ -197,7 +197,7 @@ router.post('/', authenticate,
         RETURNING id`,
         [
           listingId, req.user.id, item.owner_id,
-          isGiveaway ? null : startDate, isGiveaway ? null : endDate,
+          isGiveaway ? new Date().toISOString() : startDate, isGiveaway ? new Date().toISOString() : endDate,
           rentalDays, dailyRate, rentalFee, depositAmount,
           platformFee, lenderPayout, message
         ]
