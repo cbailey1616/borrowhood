@@ -539,7 +539,7 @@ router.delete('/me/friends/:friendId', authenticate, async (req, res) => {
       `SELECT bt.id, bt.stripe_payment_intent_id, bt.listing_id
        FROM borrow_transactions bt
        JOIN listings l ON bt.listing_id = l.id
-       WHERE l.visibility = 'close_friends'
+       WHERE 'close_friends' = ANY(string_to_array(l.visibility, ','))
          AND bt.status IN ('pending', 'approved')
          AND (
            (bt.borrower_id = $1 AND bt.lender_id = $2)
@@ -1069,17 +1069,17 @@ router.get('/:id/listings', authenticate, async (req, res) => {
 
     // close_friends: only if accepted friendship exists
     if (isFriend) {
-      visConditions.push(`l.visibility = 'close_friends'`);
+      visConditions.push(`'close_friends' = ANY(string_to_array(l.visibility, ','))`);
     }
 
     // neighborhood: city match required
     if (userCity && ownerCity && userCity.toLowerCase() === ownerCity.toLowerCase()) {
-      visConditions.push(`l.visibility = 'neighborhood'`);
+      visConditions.push(`'neighborhood' = ANY(string_to_array(l.visibility, ','))`);
     }
 
     // town: city match + verified
     if (canAccessTown && ownerCity && userCity.toLowerCase() === ownerCity.toLowerCase()) {
-      visConditions.push(`l.visibility = 'town'`);
+      visConditions.push(`'town' = ANY(string_to_array(l.visibility, ','))`);
     }
 
     if (visConditions.length === 0) {

@@ -173,16 +173,16 @@ router.get('/suggestions', authenticate, async (req, res) => {
     const visibilityParams = [];
     if (canAccessTown) {
       visibilityClause = `(
-        (l.visibility = 'town' AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        (l.visibility = 'neighborhood' AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
+        ('town' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        ('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${paramIndex + 1}))
       )`;
       visibilityParams.push(userCity, friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 2;
     } else {
       visibilityClause = `(
-        (l.visibility = 'neighborhood' AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 1}))
+        ('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        ('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${paramIndex + 1}))
       )`;
       visibilityParams.push(userCity || '', friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 2;
@@ -329,19 +329,14 @@ router.post('/', authenticate,
       expiresAtValue = expiresInMap[expiresIn] || '1 day';
     }
 
-    // Convert visibility array to single enum value (widest scope)
-    if (Array.isArray(visibility)) {
-      visibility = visibility.includes('town') ? 'town'
-        : visibility.includes('neighborhood') ? 'neighborhood'
-        : 'close_friends';
-    }
-    if (!['close_friends', 'neighborhood', 'town'].includes(visibility)) {
-      visibility = 'neighborhood';
-    }
+    // Store visibility as comma-separated
+    let visArray = Array.isArray(visibility) ? visibility : [visibility || 'close_friends'];
+    visArray = visArray.filter(v => ['close_friends', 'neighborhood', 'town'].includes(v));
+    if (visArray.length === 0) visArray = ['close_friends'];
 
     try {
       // Verification required for town visibility (always enforced)
-      if (visibility === 'town') {
+      if (visArray.includes('town')) {
         const verifyCheck = await query(
           'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
@@ -350,9 +345,11 @@ router.post('/', authenticate,
         const verified = verifyCheck.rows[0]?.is_verified || graceActive;
 
         if (!verified) {
-          visibility = 'neighborhood';
+          visArray = visArray.filter(v => v !== 'town');
+          if (visArray.length === 0) visArray = ['close_friends'];
         }
       }
+      visibility = visArray.join(',');
       // Verify user is member of community (if community specified)
       if (communityId) {
         const memberCheck = await query(
@@ -420,9 +417,10 @@ router.post('/', authenticate,
 
           let recipientIds = [];
 
-          if (visibility === 'close_friends' || visibility === 'neighborhood' || visibility === 'town') {
+          const visParts = visibility.split(',');
+          if (visParts.length > 0) {
             // For close_friends: notify user's accepted friends
-            if (visibility === 'close_friends') {
+            if (visParts.includes('close_friends')) {
               const friends = await query(
                 `SELECT CASE WHEN user_id = $1 THEN friend_id ELSE user_id END as uid
                  FROM friendships WHERE (user_id = $1 OR friend_id = $1) AND status = 'accepted'`,
@@ -432,7 +430,7 @@ router.post('/', authenticate,
             }
 
             // For neighborhood: notify community members
-            if (visibility === 'neighborhood' && communityId) {
+            if (visParts.includes('neighborhood') && communityId) {
               const members = await query(
                 'SELECT user_id FROM community_memberships WHERE community_id = $1 AND user_id != $2',
                 [communityId, req.user.id]
@@ -441,7 +439,7 @@ router.post('/', authenticate,
             }
 
             // For town: notify all users in the same city/state
-            if (visibility === 'town') {
+            if (visParts.includes('town')) {
               const userLocation = await query(
                 'SELECT city, state FROM users WHERE id = $1',
                 [req.user.id]
@@ -556,11 +554,9 @@ router.patch('/:id', authenticate,
         const camelField = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
         let value = req.body[camelField];
         if (value !== undefined) {
-          // Convert visibility array to single enum value
+          // Store visibility as comma-separated
           if (field === 'visibility' && Array.isArray(value)) {
-            value = value.includes('town') ? 'town'
-              : value.includes('neighborhood') ? 'neighborhood'
-              : 'close_friends';
+            value = value.filter(v => ['close_friends', 'neighborhood', 'town'].includes(v)).join(',') || 'close_friends';
           }
           updates.push(`${field} = $${paramIndex++}`);
           values.push(value);

@@ -39,11 +39,9 @@ export default function EditRequestScreen({ navigation, route }) {
     description: request.description || '',
     categoryId: request.categoryId || null,
     visibility: (() => {
-      // DB stores single widest scope — expand to all included scopes for UI
-      const v = Array.isArray(request.visibility) ? request.visibility : [request.visibility || 'neighborhood'];
-      const widest = v.includes('town') ? 'town' : v.includes('neighborhood') ? 'neighborhood' : 'close_friends';
-      if (widest === 'town') return ['close_friends', 'neighborhood', 'town'];
-      if (widest === 'neighborhood') return ['close_friends', 'neighborhood'];
+      // DB stores comma-separated scopes (e.g. 'close_friends,town')
+      if (Array.isArray(request.visibility)) return request.visibility;
+      if (typeof request.visibility === 'string') return request.visibility.split(',').filter(Boolean);
       return ['close_friends'];
     })(),
     neededFrom: formatDate(request.neededFrom),

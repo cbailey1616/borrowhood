@@ -40,11 +40,9 @@ export default function EditListingScreen({ navigation, route }) {
     condition: listing.condition || 'good',
     categoryId: listing.categoryId || null,
     visibility: (() => {
-      // DB stores single widest scope — expand to all included scopes for UI
-      const v = Array.isArray(listing.visibility) ? listing.visibility : [listing.visibility || 'close_friends'];
-      const widest = v.includes('town') ? 'town' : v.includes('neighborhood') ? 'neighborhood' : 'close_friends';
-      if (widest === 'town') return ['close_friends', 'neighborhood', 'town'];
-      if (widest === 'neighborhood') return ['close_friends', 'neighborhood'];
+      // DB stores comma-separated scopes (e.g. 'close_friends,town')
+      if (Array.isArray(listing.visibility)) return listing.visibility;
+      if (typeof listing.visibility === 'string') return listing.visibility.split(',').filter(Boolean);
       return ['close_friends'];
     })(),
     isFree: listing.isFree ?? true,

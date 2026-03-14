@@ -82,9 +82,9 @@ router.get('/', authenticate, async (req, res) => {
     if (canAccessTown) {
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        (l.visibility = 'town' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        (l.visibility = 'neighborhood' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
+        ('town' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 3;
@@ -92,9 +92,9 @@ router.get('/', authenticate, async (req, res) => {
       // Plus but unverified — include town listings for window shopping (will be masked)
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        (l.visibility = 'town' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        (l.visibility = 'neighborhood' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
+        ('town' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 3;
@@ -102,8 +102,8 @@ router.get('/', authenticate, async (req, res) => {
       // User can't access town listings - only show friends and neighborhood
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        (l.visibility = 'neighborhood' AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        (l.visibility = 'close_friends' AND l.owner_id = ANY($${paramIndex + 2}))
+        ('neighborhood' = ANY(string_to_array(l.visibility, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('close_friends' = ANY(string_to_array(l.visibility, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity || '', friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 3;
@@ -249,8 +249,9 @@ router.get('/:id', authenticate, async (req, res) => {
     const l = result.rows[0];
 
     // Town listing visibility check for non-owner viewers
+    const visibilityScopes = l.visibility ? l.visibility.split(',') : ['close_friends'];
     let ownerMasked = false;
-    if (l.visibility === 'town' && l.owner_id !== req.user.id) {
+    if (visibilityScopes.includes('town') && l.owner_id !== req.user.id) {
       const viewerResult = await query(
         'SELECT subscription_tier, is_verified, city, verification_grace_until FROM users WHERE id = $1',
         [req.user.id]
@@ -271,8 +272,8 @@ router.get('/:id', authenticate, async (req, res) => {
       }
     }
 
-    // Visibility check: close_friends listings only visible to owner and friends
-    if (l.visibility === 'close_friends' && l.owner_id !== req.user.id) {
+    // Visibility check: close_friends-only listings visible to owner and friends
+    if (visibilityScopes.includes('close_friends') && !visibilityScopes.includes('neighborhood') && !visibilityScopes.includes('town') && l.owner_id !== req.user.id) {
       const friendship = await query(
         `SELECT 1 FROM friendships
          WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
@@ -485,11 +486,8 @@ router.post('/', authenticate,
         if (visibilityArray.length === 0) visibilityArray.push('close_friends');
       }
 
-      // Store visibility as comma-separated for compatibility, or use first value
-      // For now, use the "widest" visibility for the single column
-      const primaryVisibility = visibilityArray.includes('town') ? 'town'
-        : visibilityArray.includes('neighborhood') ? 'neighborhood'
-        : 'close_friends';
+      // Store visibility as comma-separated (e.g. 'close_friends,town')
+      const primaryVisibility = visibilityArray.join(',');
 
       // Create listing
       const isGiveaway = listingType === 'giveaway';
@@ -673,12 +671,10 @@ router.patch('/:id', authenticate,
         if (req.body[camelField] !== undefined) {
           let value = req.body[camelField];
 
-          // Convert visibility array to single enum value (widest scope)
+          // Store visibility as comma-separated
           if (field === 'visibility' && Array.isArray(value)) {
-            value = value.includes('town') ? 'town'
-              : value.includes('neighborhood') ? 'neighborhood'
-              : 'close_friends';
-            if (!validVisibilities.includes(value)) continue;
+            value = value.filter(v => validVisibilities.includes(v)).join(',');
+            if (!value) continue;
           }
 
           updates.push(`${field} = $${paramIndex++}`);
