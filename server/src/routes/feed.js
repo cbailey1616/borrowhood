@@ -163,6 +163,7 @@ router.get('/', authenticate, async (req, res) => {
           r.needed_until,
           r.expires_at,
           r.created_at,
+          r.visibility,
           u.id as user_id,
           u.first_name,
           u.last_name,
@@ -180,6 +181,20 @@ router.get('/', authenticate, async (req, res) => {
           )`;
 
       const requestParams = [req.user.id];
+
+      // Visibility filtering for requests (same logic as listings)
+      const reqVisConds = [];
+      reqVisConds.push(`r.user_id = $${requestParams.length + 1}`);
+      requestParams.push(req.user.id);
+      reqVisConds.push(`(r.visibility = 'close_friends' AND r.user_id = ANY($${requestParams.length + 1}))`);
+      requestParams.push(friendIds.length > 0 ? friendIds : [null]);
+      reqVisConds.push(`(r.visibility = 'neighborhood' AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
+      requestParams.push(userCity || '');
+      if (canSeeTown) {
+        reqVisConds.push(`(r.visibility = 'town' AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
+        requestParams.push(userCity);
+      }
+      requestQuery += ` AND (${reqVisConds.join(' OR ')})`;
 
       if (search) {
         requestQuery += ` AND (r.title ILIKE $${requestParams.length + 1} OR r.description ILIKE $${requestParams.length + 1})`;
