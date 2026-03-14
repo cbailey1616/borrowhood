@@ -262,6 +262,7 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const r = result.rows[0];
+    console.log('[DEBUG GET request] visibility from DB:', r.visibility);
 
     res.json({
       id: r.id,
@@ -567,10 +568,13 @@ router.patch('/:id', authenticate,
 
       values.push(req.params.id);
 
-      await query(
-        `UPDATE item_requests SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-        values
-      );
+      const sql = `UPDATE item_requests SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+      console.log('[DEBUG PATCH request] SQL:', sql, 'Values:', values);
+      await query(sql, values);
+
+      // Verify what was stored
+      const verify = await query('SELECT visibility FROM item_requests WHERE id = $1', [req.params.id]);
+      console.log('[DEBUG PATCH request] Stored visibility:', verify.rows[0]?.visibility);
 
       res.json({ success: true });
     } catch (err) {

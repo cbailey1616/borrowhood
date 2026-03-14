@@ -668,10 +668,11 @@ router.patch('/:id', authenticate,
 
       if (updates.length > 0) {
         values.push(req.params.id);
-        await query(
-          `UPDATE listings SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-          values
-        );
+        const sql = `UPDATE listings SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+        console.log('[DEBUG PATCH listing] SQL:', sql, 'Values:', values);
+        await query(sql, values);
+        const verify = await query('SELECT visibility FROM listings WHERE id = $1', [req.params.id]);
+        console.log('[DEBUG PATCH listing] Stored visibility:', verify.rows[0]?.visibility);
       }
 
       // Replace listing photos if provided
