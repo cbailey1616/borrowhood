@@ -36,7 +36,17 @@ export async function runMigrations() {
       logger.info('Migration complete: referral columns added');
     }
 
-    // Migration: Make community_id nullable on item_requests (same as listings)
+    // Migration: Make community_id nullable on listings and item_requests
+    const listingCommunityNullable = await query(`
+      SELECT is_nullable FROM information_schema.columns
+      WHERE table_name = 'listings' AND column_name = 'community_id'
+    `);
+    if (listingCommunityNullable.rows[0]?.is_nullable === 'NO') {
+      logger.info('Running migration: Make listings.community_id nullable');
+      await query('ALTER TABLE listings ALTER COLUMN community_id DROP NOT NULL');
+      logger.info('Migration complete: listings.community_id now nullable');
+    }
+
     const reqCommunityNullable = await query(`
       SELECT is_nullable FROM information_schema.columns
       WHERE table_name = 'item_requests' AND column_name = 'community_id'
