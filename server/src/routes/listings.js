@@ -158,7 +158,7 @@ router.get('/', authenticate, async (req, res) => {
         owner: ownerMasked ? {
           id: null,
           firstName: 'Verified',
-          lastName: 'Lender',
+          lastName: 'Owner',
           profilePhotoUrl: null,
           rating: 0,
           ratingCount: 0,
@@ -327,7 +327,7 @@ router.get('/:id', authenticate, async (req, res) => {
       owner: ownerMasked ? {
         id: null,
         firstName: 'Verified',
-        lastName: 'Lender',
+        lastName: 'Owner',
         profilePhotoUrl: null,
         rating: 0,
         ratingCount: 0,

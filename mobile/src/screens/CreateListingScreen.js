@@ -298,7 +298,7 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
-    // Validate that selected visibilities have an actual audience
+    // Check if selected visibilities have an actual audience — warn but don't block
     const hasAudience = data.visibility.some(v => {
       if (v === 'close_friends') return hasFriends;
       if (v === 'neighborhood') return !!communityId;
@@ -306,20 +306,8 @@ export default function CreateListingScreen({ navigation, route }) {
       return false;
     });
     if (!hasAudience) {
-      Keyboard.dismiss();
-      haptics.warning();
-      if (!hasFriends && !communityId) {
-        showError({
-          type: 'validation',
-          title: 'Nobody Can See This Yet',
-          message: 'Add friends or join a neighborhood first so people can find your listing.',
-        });
-      } else if (!hasFriends) {
-        setShowAddFriends(true);
-      } else {
-        setShowJoinCommunity(true);
-      }
-      return;
+      // Still allow listing — it'll become visible once they add friends/join a neighborhood
+      showToast('Tip: Add friends or join a neighborhood so people can find your listing.', 'info');
     }
 
     // Validate rental fee when charging
@@ -328,8 +316,8 @@ export default function CreateListingScreen({ navigation, route }) {
       haptics.warning();
       showError({
         type: 'validation',
-        title: 'Rental Fee Required',
-        message: 'Please enter a rental fee amount.',
+        title: 'Borrow Fee Required',
+        message: 'Please enter a borrow fee amount.',
       });
       return;
     }
@@ -378,7 +366,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       // Show toast after navigating back so it appears on the previous screen
       if (result?.pricingDowngraded) {
-        setTimeout(() => showToast('Your item was listed for free. Upgrade to Plus to charge rental fees.', 'success'), 500);
+        setTimeout(() => showToast('Your item was listed for free. Upgrade to Plus to charge borrow fees.', 'success'), 500);
       }
     } catch (error) {
       const errorMsg = error.message?.toLowerCase() || '';
@@ -423,7 +411,7 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Photos */}
       <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
-        <Text style={styles.hint}>Add up to 10 photos of your item</Text>
+        <Text style={styles.hint}>Add up to 10 photos — these also serve as proof of condition</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
             {formData.photos.map((uri, index) => (
@@ -483,6 +471,9 @@ export default function CreateListingScreen({ navigation, route }) {
           multiline
           numberOfLines={4}
           maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 
@@ -518,7 +509,7 @@ export default function CreateListingScreen({ navigation, route }) {
             haptic={null}
           >
             <Ionicons name="swap-horizontal" size={16} color={!isGiveaway ? '#fff' : COLORS.textSecondary} style={{ marginRight: 4 }} />
-            <Text style={[styles.optionText, !isGiveaway && styles.optionTextActive]}>Lend</Text>
+            <Text style={[styles.optionText, !isGiveaway && styles.optionTextActive]}>Borrow</Text>
           </HapticPressable>
           <HapticPressable
             style={[styles.option, isGiveaway && styles.optionActive]}
@@ -526,7 +517,7 @@ export default function CreateListingScreen({ navigation, route }) {
             haptic={null}
           >
             <Ionicons name="gift" size={16} color={isGiveaway ? '#fff' : COLORS.textSecondary} style={{ marginRight: 4 }} />
-            <Text style={[styles.optionText, isGiveaway && styles.optionTextActive]}>Give Away</Text>
+            <Text style={[styles.optionText, isGiveaway && styles.optionTextActive]}>Free</Text>
           </HapticPressable>
         </View>
         {isGiveaway && (
@@ -645,14 +636,14 @@ export default function CreateListingScreen({ navigation, route }) {
             <Text style={styles.payoutHintText}>
               {!user?.isVerified && !isGracePeriodActive
                 ? 'Verify identity & enable payouts to charge fees'
-                : 'Enable payouts to charge rental fees and deposits'}
+                : 'Enable payouts to charge borrow fees and deposits'}
             </Text>
             <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
           </HapticPressable>
         )}
         <HapticPressable
           testID="CreateListing.toggle.rentalFee"
-          accessibilityLabel="Charge a rental fee"
+          accessibilityLabel="Charge a borrow fee"
           accessibilityRole="switch"
           style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
@@ -677,7 +668,7 @@ export default function CreateListingScreen({ navigation, route }) {
           }}
           haptic={null}
         >
-          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a rental fee</Text>
+          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a borrow fee</Text>
           <View style={[styles.switch, !formData.isFree && user?.payoutsEnabled && styles.switchActive]}>
             <View style={[styles.switchKnob, !formData.isFree && user?.payoutsEnabled && styles.switchKnobActive]} />
           </View>
@@ -754,7 +745,7 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Duration — hidden for giveaways */}
       {!isGiveaway && (
       <View style={styles.section}>
-        <Text style={styles.label}>Rental duration (days)</Text>
+        <Text style={styles.label}>Borrow duration (days)</Text>
         <View style={styles.durationRow}>
           <View style={styles.durationInput}>
             <Text style={styles.durationLabel}>Min</Text>
@@ -792,7 +783,7 @@ export default function CreateListingScreen({ navigation, route }) {
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>{isGiveaway ? 'Give Away Item' : formData.isFree && !formData.requireDeposit ? 'List Item for Free' : 'List Item'}</Text>
+          <Text style={styles.submitButtonText}>{isGiveaway ? 'List Free Item' : formData.isFree && !formData.requireDeposit ? 'List Item for Free' : 'List Item'}</Text>
         )}
       </HapticPressable>
 

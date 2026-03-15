@@ -382,11 +382,11 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
-  const emptyTitle = activeTab === 0 ? 'No items listed' : activeTab === 1 ? 'Nothing borrowed yet' : 'No wanted posts yet';
+  const emptyTitle = activeTab === 0 ? 'No items listed' : activeTab === 1 ? 'Nothing borrowed yet' : 'No ISO posts yet';
   const emptySubtitle = activeTab === 0
     ? 'Share your tools with the neighborhood'
     : activeTab === 1
-    ? 'Your borrows and lends will show up here'
+    ? 'Your borrows will show up here'
     : 'Post what you need and neighbors can offer to help';
 
   return (
@@ -394,7 +394,7 @@ export default function MyItemsScreen({ navigation }) {
       <NativeHeader title="My Items">
         <SegmentedControl
           testID="MyItems.segment"
-          segments={['Listings', 'Borrowed', 'Wanted']}
+          segments={['Listings', 'Borrowed', 'ISO']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
@@ -444,7 +444,7 @@ export default function MyItemsScreen({ navigation }) {
                 >
                   <Ionicons name="add" size={20} color="#fff" />
                   <Text style={styles.addButtonText}>
-                    {activeTab === 0 ? 'List an Item' : 'Post a Wanted'}
+                    {activeTab === 0 ? 'List an Item' : 'Post an ISO'}
                   </Text>
                 </HapticPressable>
               )}

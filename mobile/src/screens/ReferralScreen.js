@@ -53,7 +53,7 @@ export default function ReferralScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Join me on BorrowHood! Use my referral code ${referralCode} when you sign up. Borrow and lend with your neighbors!`,
+        message: `Join me on BorrowHood! Use my referral code ${referralCode} when you sign up. Borrow and share with your neighbors!`,
       });
       haptics.light();
     } catch (error) {

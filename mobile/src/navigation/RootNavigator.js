@@ -163,7 +163,7 @@ export default function RootNavigator() {
             name="BorrowRequest"
             component={BorrowRequestScreen}
             options={({ route }) => modalScreenOptions(
-              route.params?.listing?.listingType === 'giveaway' ? 'Request Giveaway' : 'Request to Borrow'
+              route.params?.listing?.listingType === 'giveaway' ? 'Request Free Item' : 'Request to Borrow'
             )}
           />
           <Stack.Screen
@@ -174,7 +174,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="WantedPosts"
             component={WantedPostsScreen}
-            options={{ ...sharedScreenOptions, title: 'Wanted Items' }}
+            options={{ ...sharedScreenOptions, title: 'ISO Items' }}
           />
           <Stack.Screen
             name="CreateRequest"
@@ -302,7 +302,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="RentalCheckout"
             component={RentalCheckoutScreen}
-            options={modalScreenOptions('Rental Checkout')}
+            options={modalScreenOptions('Borrow Checkout')}
           />
           <Stack.Screen
             name="DamageClaim"

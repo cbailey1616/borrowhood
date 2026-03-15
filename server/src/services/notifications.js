@@ -14,7 +14,7 @@ const NOTIFICATION_TEMPLATES = {
     title: 'Someone Wants Your Item!',
     body: (data) => data.borrowerName
       ? `${data.borrowerName} wants your ${data.itemTitle || 'item'}. Tap to review their request.`
-      : 'Someone wants your giveaway item. Tap to review.',
+      : 'Someone wants your free item. Tap to review.',
   },
   request_approved: {
     title: 'You\'re all set!',
@@ -43,8 +43,8 @@ const NOTIFICATION_TEMPLATES = {
         ? ` Remember to return it by ${new Date(data.returnDate).toLocaleDateString()}.`
         : '';
       return data.itemTitle
-        ? `${data.itemTitle} is now in your hands.${returnBy} Tap to view your rental.`
-        : `Your item is now in your hands.${returnBy} Tap to view your rental.`;
+        ? `${data.itemTitle} is now in your hands.${returnBy} Tap to view details.`
+        : `Your item is now in your hands.${returnBy} Tap to view details.`;
     },
   },
   return_confirmed: {
@@ -63,19 +63,19 @@ const NOTIFICATION_TEMPLATES = {
     title: 'Item is Yours!',
     body: (data) => data.itemTitle
       ? `The handoff for ${data.itemTitle} is complete — it's all yours! Tap to leave a rating.`
-      : 'Your giveaway pickup is complete. Tap to leave a rating.',
+      : 'Your free item pickup is complete. Tap to leave a rating.',
   },
   giveaway_expired: {
     title: 'Request Expired',
     body: (data) => data.itemTitle
       ? `Your request for ${data.itemTitle} expired because the owner didn't respond in time.`
-      : 'Your giveaway request expired because the owner didn\'t respond in time.',
+      : 'Your free item request expired because the owner didn\'t respond in time.',
   },
   giveaway_pickup_expired: {
     title: 'Pickup Expired',
     body: (data) => data.itemTitle
       ? `The pickup window for ${data.itemTitle} has expired. The item has been relisted.`
-      : 'The giveaway pickup window has expired. The item has been relisted.',
+      : 'The free item pickup window has expired. The item has been relisted.',
   },
   return_reminder: {
     title: 'Friendly Reminder',

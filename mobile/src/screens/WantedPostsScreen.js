@@ -123,7 +123,7 @@ export default function WantedPostsScreen({ navigation }) {
         <Ionicons name="search" size={20} color={COLORS.textSecondary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search wanted items..."
+          placeholder="Search ISO items..."
           placeholderTextColor={COLORS.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -153,7 +153,7 @@ export default function WantedPostsScreen({ navigation }) {
           !isLoading && (
             <View style={styles.emptyContainer}>
               <Ionicons name="search-outline" size={64} color={COLORS.gray[700]} />
-              <Text style={styles.emptyTitle}>No wanted posts</Text>
+              <Text style={styles.emptyTitle}>No ISO posts</Text>
               <Text style={styles.emptySubtitle}>
                 {searchQuery
                   ? 'Try adjusting your search'

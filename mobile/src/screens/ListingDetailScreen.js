@@ -97,7 +97,7 @@ export default function ListingDetailScreen({ route, navigation }) {
     haptics.light();
     try {
       const isGiveaway = listing.listingType === 'giveaway';
-      const priceText = isGiveaway ? 'Free Giveaway' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`;
+      const priceText = isGiveaway ? 'Free Item' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`;
       const actionText = isGiveaway ? 'claim this free item' : 'borrow items from your neighbors';
       const message = `Check out "${listing.title}" on Borrowhood!\n\n${priceText}\n\nDownload Borrowhood to ${actionText}.`;
 
@@ -246,7 +246,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               </View>
               <Text style={styles.verifyCardTitle}>Verify to unlock this listing</Text>
               <Text style={styles.verifyCardSubtitle}>
-                Verify your identity to see full details, message the lender, and borrow items across town.
+                Verify your identity to see full details, message the owner, and borrow items across town.
               </Text>
               <View style={styles.verifyCardButton}>
                 <Text style={styles.verifyCardButtonText}>Verify Identity</Text>

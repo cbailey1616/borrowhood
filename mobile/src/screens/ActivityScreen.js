@@ -19,7 +19,7 @@ import { haptics } from '../utils/haptics';
 const TABS = [
   { key: 'all', label: 'All' },
   { key: 'borrower', label: 'Borrowing' },
-  { key: 'lender', label: 'Lending' },
+  { key: 'lender', label: 'Sharing' },
 ];
 
 export default function ActivityScreen({ navigation }) {
@@ -107,7 +107,7 @@ export default function ActivityScreen({ navigation }) {
 
   const renderItem = ({ item, index }) => {
     const otherPerson = item.isBorrower ? item.lender : item.borrower;
-    const roleLabel = item.isBorrower ? 'Borrowing from' : 'Lending to';
+    const roleLabel = item.isBorrower ? 'Borrowing from' : 'Sharing with';
 
     return (
       <AnimatedCard index={index}>

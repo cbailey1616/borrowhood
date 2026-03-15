@@ -33,8 +33,8 @@ import { ENABLE_PAID_TIERS } from '../utils/config';
 const FILTER_OPTIONS = [
   { key: 'all', label: 'All' },
   { key: 'listings', label: 'Borrow' },
-  { key: 'giveaway', label: 'Giveaway' },
-  { key: 'requests', label: 'Wanted' },
+  { key: 'giveaway', label: 'Free' },
+  { key: 'requests', label: 'ISO' },
 ];
 
 const VISIBILITY_OPTIONS = [
@@ -414,7 +414,7 @@ export default function FeedScreen({ navigation }) {
 
   const renderListingItem = (item, index) => {
     const tint = getCardTint(item);
-    const userName = item.ownerMasked ? 'Verified Lender'
+    const userName = item.ownerMasked ? 'Verified Owner'
       : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
     const communityName = item.category || null;
     const isGiveaway = item.listingType === 'giveaway';
@@ -451,7 +451,7 @@ export default function FeedScreen({ navigation }) {
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
                   <Ionicons name="gift" size={10} color="#fff" />
-                  <Text style={styles.tilePillText}>GIVEAWAY</Text>
+                  <Text style={styles.tilePillText}>FREE</Text>
                 </View>
               ) : (
                 <View style={styles.tilePillRow}>
@@ -756,7 +756,7 @@ export default function FeedScreen({ navigation }) {
               <View style={styles.tileTopRow}>
                 <View style={styles.tileTypeLabel}>
                   <Ionicons name="search" size={12} color={tint.accent} />
-                  <Text style={[styles.tileTypeLabelText, { color: tint.accent }]}>WANTED</Text>
+                  <Text style={[styles.tileTypeLabelText, { color: tint.accent }]}>ISO</Text>
                 </View>
                 <Text style={[styles.tileTimeText, { color: COLORS.greenTextMuted }]}>{formatTimeAgo(item.createdAt)}</Text>
               </View>

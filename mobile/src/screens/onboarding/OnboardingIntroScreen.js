@@ -63,7 +63,7 @@ const SLIDES = [
     id: 'share',
     icon: 'construct-outline',
     title: 'Share & Request\nAnything',
-    subtitle: 'List items you\'re happy to lend, or post a request for something you need. Your neighbors might have it.',
+    subtitle: 'List items you\'re happy to share, or post a request for something you need. Your neighbors might have it.',
     miniCards: true,
   },
   {
@@ -177,7 +177,7 @@ function MiniPreviewCards() {
         >
           <View style={styles.wantedBannerLeft}>
             <Text style={{ fontSize: 9 }}>📢</Text>
-            <Text style={styles.wantedBannerLabel}>WANTED</Text>
+            <Text style={styles.wantedBannerLabel}>ISO</Text>
           </View>
           <Text style={styles.wantedBannerDate}>Needed by Mar 10</Text>
         </LinearGradient>

@@ -214,7 +214,7 @@ router.get('/', authenticate, async (req, res) => {
     const maskedUser = {
       id: null,
       firstName: 'Verified',
-      lastName: 'Lender',
+      lastName: 'Owner',
       profilePhotoUrl: null,
       rating: 0,
       ratingCount: 0,

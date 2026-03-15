@@ -11,9 +11,9 @@ import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 const COMPARISON_ROWS = [
-  { feature: 'Lend & borrow from friends & neighbors', free: true, plus: true },
-  { feature: 'Lend & borrow town-wide', free: false, plus: true },
-  { feature: 'Charge rental fees & earn money', free: false, plus: true },
+  { feature: 'Borrow from friends & neighbors', free: true, plus: true },
+  { feature: 'Borrow town-wide', free: false, plus: true },
+  { feature: 'Charge borrow fees & earn money', free: false, plus: true },
   { feature: 'Identity-verified for trust', free: false, plus: true },
 ];
 
@@ -80,7 +80,7 @@ export default function OnboardingPlanScreen({ navigation }) {
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
-          Free lets you lend and borrow from friends and neighbors. Plus opens up your entire town with verified trust.
+          Free lets you borrow from friends and neighbors. Plus opens up your entire town with verified trust.
         </Text>
 
         {/* Plan header row */}
@@ -130,7 +130,7 @@ export default function OnboardingPlanScreen({ navigation }) {
         <View style={styles.plusNote}>
           <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
           <Text style={styles.plusNoteText}>
-            Plus includes identity verification through Stripe so every lender and borrower is trustworthy.
+            Plus includes identity verification through Stripe so every owner and borrower is trustworthy.
           </Text>
         </View>
       </ScrollView>

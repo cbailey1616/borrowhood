@@ -624,7 +624,7 @@ router.post('/:id/return', authenticate,
       // Giveaways are permanent — no return flow
       const listing = await query('SELECT listing_type FROM listings WHERE id = $1', [t.listing_id]);
       if (listing.rows[0]?.listing_type === 'giveaway') {
-        return res.status(400).json({ error: 'Giveaway items cannot be processed through the rental return flow' });
+        return res.status(400).json({ error: 'Free items cannot be processed through the return flow' });
       }
 
       const isLender = t.lender_id === req.user.id;

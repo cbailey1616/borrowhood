@@ -221,8 +221,8 @@ export default function ProfileScreen({ navigation }) {
           />
         </GroupedListSection>
 
-        {/* Rentals & Payments Section */}
-        <GroupedListSection header="Rentals & Payments">
+        {/* Borrowing & Payments Section */}
+        <GroupedListSection header="Borrowing & Payments">
           <GroupedListItem
             icon="receipt-outline"
             title="Transaction History"

@@ -208,14 +208,14 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   const getTitle = () => {
     if (needsRetry) return 'Verification Needs Attention';
     if (source === 'town_browse') return 'Verify to Browse Town-Wide';
-    if (source === 'rental_listing') return 'Verify to List Rentals';
+    if (source === 'rental_listing') return 'Verify to List Items';
     return 'Verify Your Identity';
   };
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
     if (source === 'town_browse') return 'This keeps your community safe and real.';
-    if (source === 'rental_listing') return 'Renters trust verified owners.';
+    if (source === 'rental_listing') return 'Borrowers trust verified owners.';
     return 'To keep our community safe, we verify all members with a valid government ID and selfie.';
   };
 

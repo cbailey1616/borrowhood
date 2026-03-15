@@ -155,8 +155,8 @@ export default function EditListingScreen({ navigation, route }) {
       haptics.warning();
       showError({
         type: 'validation',
-        title: 'Rental Fee Required',
-        message: 'Please enter a rental fee amount.',
+        title: 'Borrow Fee Required',
+        message: 'Please enter a borrow fee amount.',
       });
       return;
     }
@@ -180,7 +180,7 @@ export default function EditListingScreen({ navigation, route }) {
       haptics.warning();
       showError({
         title: 'Payout Setup Required',
-        message: 'You need to enable payouts before adding rental fees or deposits.',
+        message: 'You need to enable payouts before adding borrow fees or deposits.',
         primaryAction: 'Set Up Payouts',
         onPrimaryAction: () => {
           if (!user?.isVerified) {
@@ -227,7 +227,7 @@ export default function EditListingScreen({ navigation, route }) {
       if (error.code === 'PAYOUT_SETUP_REQUIRED' || errorMsg.includes('set up payouts')) {
         showError({
           title: 'Payout Setup Required',
-          message: 'Set up payouts to list items with rental fees or deposits.',
+          message: 'Set up payouts to list items with borrow fees or deposits.',
           primaryAction: 'Set Up Payouts',
           onPrimaryAction: () => navigation.navigate('SetupPayout', { source: 'rental_listing' }),
         });
@@ -235,7 +235,7 @@ export default function EditListingScreen({ navigation, route }) {
         showError({
           type: 'subscription',
           title: 'Verification Required',
-          message: 'Verify your identity to list to the whole town and charge rental fees — just $1.99 one-time.',
+          message: 'Verify your identity to list to the whole town and charge borrow fees — just $1.99 one-time.',
           primaryAction: 'Verify Now',
           onPrimaryAction: () => navigation.navigate('Subscription'),
         });
@@ -449,13 +449,13 @@ export default function EditListingScreen({ navigation, route }) {
             <Text style={styles.payoutHintText}>
               {!user?.isVerified
                 ? 'Verify identity & enable payouts to charge fees'
-                : 'Enable payouts to charge rental fees and deposits'}
+                : 'Enable payouts to charge borrow fees and deposits'}
             </Text>
             <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
           </HapticPressable>
         )}
         <HapticPressable
-          accessibilityLabel="Charge a rental fee"
+          accessibilityLabel="Charge a borrow fee"
           accessibilityRole="switch"
           style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
@@ -480,7 +480,7 @@ export default function EditListingScreen({ navigation, route }) {
           }}
           haptic={null}
         >
-          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a rental fee</Text>
+          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a borrow fee</Text>
           <View style={[styles.switch, !formData.isFree && user?.payoutsEnabled && styles.switchActive]}>
             <View style={[styles.switchKnob, !formData.isFree && user?.payoutsEnabled && styles.switchKnobActive]} />
           </View>
@@ -550,7 +550,7 @@ export default function EditListingScreen({ navigation, route }) {
 
       {/* Duration */}
       <View style={styles.section}>
-        <Text style={styles.label}>Rental duration (days)</Text>
+        <Text style={styles.label}>Borrow duration (days)</Text>
         <View style={styles.durationRow}>
           <View style={styles.durationInput}>
             <Text style={styles.durationLabel}>Min</Text>

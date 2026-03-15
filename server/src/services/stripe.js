@@ -63,7 +63,7 @@ export async function createConnectAccount(email, metadata = {}, individual = {}
     business_type: 'individual',
     business_profile: {
       url: 'https://borrowhood.com',
-      product_description: 'Renting personal items to neighbors via Borrowhood',
+      product_description: 'Sharing personal items with neighbors via Borrowhood',
     },
     metadata,
   };

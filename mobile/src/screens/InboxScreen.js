@@ -323,7 +323,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
               </View>
               <Text style={styles.emptyTitle}>All caught up!</Text>
               <Text style={styles.emptySubtitle}>
-                You'll see rental requests and updates here
+                You'll see borrow requests and updates here
               </Text>
             </View>
           }

@@ -86,7 +86,7 @@ export default function MyCommunityScreen({ navigation }) {
         <Ionicons name="home-outline" size={64} color={COLORS.gray[600]} />
         <Text style={styles.noCommunityTitle}>No Neighborhood Yet</Text>
         <Text style={styles.noCommunityText}>
-          Join or create your neighborhood to borrow from and lend to your neighbors.
+          Join or create your neighborhood to borrow from and share with your neighbors.
         </Text>
         <HapticPressable
           style={styles.joinButton}

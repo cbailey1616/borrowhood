@@ -196,7 +196,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const otherPerson = transaction.isBorrower ? transaction.lender : transaction.borrower;
   const roleLabel = isGiveaway
     ? (transaction.isBorrower ? 'Giver' : 'Recipient')
-    : (transaction.isBorrower ? 'Lender' : 'Borrower');
+    : (transaction.isBorrower ? 'Owner' : 'Borrower');
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -369,7 +369,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
         {transaction.lenderResponse && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Response from {isGiveaway ? 'Giver' : 'Lender'}</Text>
+            <Text style={styles.sectionTitle}>Response from {isGiveaway ? 'Giver' : 'Owner'}</Text>
             <Text style={styles.messageText}>{transaction.lenderResponse}</Text>
           </View>
         )}
@@ -400,7 +400,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {!isGiveaway && transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (
           <View style={styles.overdueBanner}>
             <Ionicons name="warning" size={20} color={COLORS.warning} />
-            <Text style={styles.overdueText}>This rental is overdue</Text>
+            <Text style={styles.overdueText}>This item is overdue</Text>
           </View>
         )}
 
@@ -410,7 +410,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
             <Text style={styles.returnedBannerText}>
               {isGiveaway
-                ? 'Giveaway complete! Enjoy your new item.'
+                ? 'Item received! Enjoy your new item.'
                 : ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0
                   ? 'Item returned. This transaction will close automatically if no dispute is filed.'
                   : 'Item returned. This transaction is complete.'}

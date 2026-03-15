@@ -111,7 +111,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
           />
         </View>
         <Text style={styles.title}>
-          {isComplete ? 'You\'re All Set!' : isPending ? 'Almost There' : 'Get Paid for Lending'}
+          {isComplete ? 'You\'re All Set!' : isPending ? 'Almost There' : 'Get Paid for Sharing'}
         </Text>
         <Text style={styles.subtitle}>
           {isComplete

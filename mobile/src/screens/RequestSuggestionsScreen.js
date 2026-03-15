@@ -55,7 +55,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
             <View style={styles.cardTopRow}>
               <View style={[styles.pill, { backgroundColor: isGiveaway ? '#A03030' : COLORS.primary }]}>
                 <Ionicons name={isGiveaway ? 'gift' : 'swap-horizontal'} size={10} color="#fff" />
-                <Text style={styles.pillText}>{isGiveaway ? 'GIVEAWAY' : 'BORROW'}</Text>
+                <Text style={styles.pillText}>{isGiveaway ? 'FREE' : 'BORROW'}</Text>
               </View>
               {!isGiveaway && (
                 <View style={[styles.pill, { backgroundColor: COLORS.primary }]}>
