@@ -577,6 +577,18 @@ export async function runMigrations() {
       logger.info('Migration complete: item_requests.visibility is now varchar');
     }
 
+    // Migration: Convert borrow_transactions.status from enum to varchar
+    // so account deletion can set 'account_deleted' without enum constraint
+    const borrowStatusType = await query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'borrow_transactions' AND column_name = 'status'
+    `);
+    if (borrowStatusType.rows.length > 0 && borrowStatusType.rows[0].data_type === 'USER-DEFINED') {
+      logger.info('Running migration: Convert borrow_transactions.status from enum to varchar');
+      await query("ALTER TABLE borrow_transactions ALTER COLUMN status TYPE VARCHAR(30) USING status::text");
+      logger.info('Migration complete: borrow_transactions.status is now varchar');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);
