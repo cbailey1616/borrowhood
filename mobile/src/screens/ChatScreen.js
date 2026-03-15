@@ -554,6 +554,9 @@ export default function ChatScreen({ route, navigation }) {
               placeholderTextColor={COLORS.textMuted}
               multiline
               maxLength={2000}
+              autoCapitalize="sentences"
+              autoCorrect={true}
+              spellCheck={true}
             />
             <SendButton
               onPress={handleSend}
@@ -578,6 +581,9 @@ export default function ChatScreen({ route, navigation }) {
             placeholderTextColor={COLORS.textMuted}
             multiline
             maxLength={2000}
+            autoCapitalize="sentences"
+            autoCorrect={true}
+            spellCheck={true}
           />
           <SendButton
             onPress={handleSend}

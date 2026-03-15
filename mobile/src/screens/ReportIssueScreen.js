@@ -244,6 +244,9 @@ export default function ReportIssueScreen({ navigation, route }) {
               multiline
               textAlignVertical="top"
               maxLength={2000}
+              autoCapitalize="sentences"
+              autoCorrect={true}
+              spellCheck={true}
             />
             <Text style={styles.charCount}>{description.length}/2000</Text>
           </View>

@@ -325,6 +325,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           placeholderTextColor={COLORS.textMuted}
           multiline
           maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
         <HapticPressable
           haptic="medium"

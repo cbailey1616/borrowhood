@@ -430,6 +430,9 @@ export default function BorrowRequestScreen({ route, navigation }) {
           multiline
           numberOfLines={4}
           maxLength={500}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 

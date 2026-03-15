@@ -190,6 +190,9 @@ export default function DamageClaimScreen({ navigation, route }) {
               multiline
               textAlignVertical="top"
               maxLength={1000}
+              autoCapitalize="sentences"
+              autoCorrect={true}
+              spellCheck={true}
             />
             <Text style={styles.charCount}>{notes.length}/1000</Text>
           </View>

@@ -318,6 +318,9 @@ export default function EditListingScreen({ navigation, route }) {
           onChangeText={(v) => updateField('title', v)}
           placeholder="e.g., DeWalt Cordless Drill"
           maxLength={255}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 
@@ -332,6 +335,9 @@ export default function EditListingScreen({ navigation, route }) {
           multiline
           numberOfLines={4}
           maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 

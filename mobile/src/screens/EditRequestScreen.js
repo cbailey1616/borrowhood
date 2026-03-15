@@ -177,6 +177,9 @@ export default function EditRequestScreen({ navigation, route }) {
           placeholder="e.g., Power drill, Ladder, Moving boxes"
           placeholderTextColor={COLORS.textSecondary}
           maxLength={255}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 
@@ -192,6 +195,9 @@ export default function EditRequestScreen({ navigation, route }) {
           multiline
           numberOfLines={4}
           maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 

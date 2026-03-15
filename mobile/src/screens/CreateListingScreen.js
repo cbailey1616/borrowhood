@@ -268,10 +268,7 @@ export default function CreateListingScreen({ navigation, route }) {
       if (v === 'town') return user?.isVerified || isGracePeriodActive;
       return false;
     });
-    if (!hasAudience) {
-      // Still allow listing — it'll become visible once they add friends/join a neighborhood
-      showToast('Tip: Add friends or join a neighborhood so people can find your listing.', 'info');
-    }
+    const shouldShowAudienceTip = !hasAudience;
 
     // Validate rental fee when charging
     if (!isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) > 0)) {
@@ -327,8 +324,10 @@ export default function CreateListingScreen({ navigation, route }) {
       haptics.success();
       navigation.goBack();
 
-      // Show toast after navigating back so it appears on the previous screen
-      if (result?.pricingDowngraded) {
+      // Show toasts after navigating back so they appear on the previous screen
+      if (shouldShowAudienceTip) {
+        setTimeout(() => showToast('Tip: Add friends or join a neighborhood so people can find your listing.', 'info'), 500);
+      } else if (result?.pricingDowngraded) {
         setTimeout(() => showToast('Your item was listed for free. Upgrade to Plus to charge borrow fees.', 'success'), 500);
       }
     } catch (error) {
@@ -417,6 +416,9 @@ export default function CreateListingScreen({ navigation, route }) {
           placeholder="e.g., DeWalt Cordless Drill"
           placeholderTextColor={COLORS.textMuted}
           maxLength={255}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
         />
       </View>
 

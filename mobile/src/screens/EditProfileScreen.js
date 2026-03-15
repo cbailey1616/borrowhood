@@ -272,6 +272,9 @@ export default function EditProfileScreen({ navigation }) {
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              autoCapitalize="sentences"
+              autoCorrect={true}
+              spellCheck={true}
             />
           </View>
 
