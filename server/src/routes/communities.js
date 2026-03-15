@@ -277,6 +277,55 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // ============================================
+// PATCH /api/communities/:id
+// Update community details (organizer or app admin)
+// ============================================
+router.patch('/:id', authenticate, async (req, res) => {
+  const { name, description } = req.body;
+
+  try {
+    // Check if caller is an organizer or app admin
+    const membership = await query(
+      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    const isOrganizer = membership.rows.length > 0 && membership.rows[0].role === 'organizer';
+
+    if (!isOrganizer && !req.user.is_admin) {
+      return res.status(403).json({ error: 'Only organizers or admins can edit neighborhood details' });
+    }
+
+    const updates = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name.trim());
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      params.push(description.trim());
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    params.push(req.params.id);
+    await query(
+      `UPDATE communities SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+      params
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update community error:', err);
+    res.status(500).json({ error: 'Failed to update community' });
+  }
+});
+
+// ============================================
 // POST /api/communities/:id/join
 // Join a community
 // ============================================
