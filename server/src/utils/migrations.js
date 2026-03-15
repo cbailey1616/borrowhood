@@ -585,7 +585,12 @@ export async function runMigrations() {
     `);
     if (borrowStatusType.rows.length > 0 && borrowStatusType.rows[0].data_type === 'USER-DEFINED') {
       logger.info('Running migration: Convert borrow_transactions.status from enum to varchar');
+      // Drop partial index that references the enum type before altering column
+      await query("DROP INDEX IF EXISTS idx_transactions_overdue");
       await query("ALTER TABLE borrow_transactions ALTER COLUMN status TYPE VARCHAR(30) USING status::text");
+      // Recreate the index with varchar type
+      await query(`CREATE INDEX IF NOT EXISTS idx_transactions_overdue
+        ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
       logger.info('Migration complete: borrow_transactions.status is now varchar');
     }
 

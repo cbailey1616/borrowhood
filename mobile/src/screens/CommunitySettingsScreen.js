@@ -94,7 +94,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       showToast('Neighborhood updated', 'success');
     } catch (err) {
       haptics.error();
-      showError({ message: err.message || 'Failed to update neighborhood' });
+      showError({ type: 'generic', message: err.message || 'Failed to save changes' });
     } finally {
       setIsSaving(false);
     }
