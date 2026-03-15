@@ -148,14 +148,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       {/* Neighborhood Info */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Neighborhood</Text>
-          {canEdit && !isEditing && (
-            <HapticPressable onPress={() => setIsEditing(true)} haptic="light">
-              <Text style={styles.editLink}>Edit</Text>
-            </HapticPressable>
-          )}
-        </View>
+        <Text style={styles.sectionTitle}>Neighborhood</Text>
 
         {isEditing ? (
           <View style={[styles.cardBox, styles.editCardContent]}>
@@ -259,8 +252,14 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             {community?.description ? (
               <Text style={styles.communityDescription}>{community.description}</Text>
             ) : canEdit ? (
-              <Text style={styles.communityDescriptionEmpty}>No description — tap Edit to add one</Text>
+              <Text style={styles.communityDescriptionEmpty}>No description yet</Text>
             ) : null}
+            {canEdit && (
+              <HapticPressable style={styles.editButton} onPress={() => setIsEditing(true)} haptic="light">
+                <Ionicons name="pencil" size={15} color={COLORS.primary} />
+                <Text style={styles.editButtonText}>Edit Details</Text>
+              </HapticPressable>
+            )}
           </View>
         )}
       </View>
@@ -400,12 +399,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.separator,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
   sectionTitle: {
     ...TYPOGRAPHY.caption,
     fontSize: 13,
@@ -413,11 +406,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  editLink: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.primary,
-    fontWeight: '600',
+    marginBottom: SPACING.md,
   },
   infoCardContent: {
     padding: SPACING.lg,
@@ -434,6 +423,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.primaryMuted,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.borderGreen,
+  },
+  editButtonText: {
+    ...TYPOGRAPHY.body,
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   communityDescriptionEmpty: {
     ...TYPOGRAPHY.footnote,

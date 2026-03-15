@@ -403,7 +403,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderBrown,
   },
   cardUnread: {
-    backgroundColor: COLORS.primary + '08',
+    backgroundColor: COLORS.primaryMuted,
+    borderColor: COLORS.borderGreenStrong,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
   },
   avatarContainer: {
     position: 'relative',
@@ -524,7 +527,7 @@ const styles = StyleSheet.create({
   notifBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.warningMuted,
+    backgroundColor: 'rgba(184, 134, 11, 0.25)',
     borderRadius: RADIUS.sm,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
@@ -534,7 +537,7 @@ const styles = StyleSheet.create({
   },
   notifBannerText: {
     ...TYPOGRAPHY.caption1,
-    color: COLORS.text,
+    color: COLORS.greenText,
     flex: 1,
   },
   notifBannerClose: {

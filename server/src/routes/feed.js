@@ -189,8 +189,10 @@ router.get('/', authenticate, async (req, res) => {
       requestParams.push(req.user.id);
       reqVisConds.push(`('close_friends' = ANY(string_to_array(r.visibility::text, ',')) AND r.user_id = ANY($${requestParams.length + 1}))`);
       requestParams.push(friendIds.length > 0 ? friendIds : [null]);
-      reqVisConds.push(`('neighborhood' = ANY(string_to_array(r.visibility::text, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
-      requestParams.push(userCity || '');
+      if (communityIds.length > 0) {
+        reqVisConds.push(`('neighborhood' = ANY(string_to_array(r.visibility::text, ',')) AND r.community_id = ANY($${requestParams.length + 1}))`);
+        requestParams.push(communityIds);
+      }
       if (canSeeTown) {
         reqVisConds.push(`('town' = ANY(string_to_array(r.visibility::text, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
         requestParams.push(userCity);
