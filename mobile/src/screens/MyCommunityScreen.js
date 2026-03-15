@@ -16,6 +16,20 @@ import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 
+function formatAnnouncementDate(dateStr) {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export default function MyCommunityScreen({ navigation }) {
   const { user } = useAuth();
   const [communities, setCommunities] = useState([]);
@@ -152,19 +166,43 @@ export default function MyCommunityScreen({ navigation }) {
       )}
 
       {/* Community Header */}
-      <View style={styles.header}>
-        {community.imageUrl ? (
-          <Image source={{ uri: community.imageUrl }} style={styles.communityImage} />
-        ) : (
+      {community.bannerUrl ? (
+        <View style={styles.bannerContainer}>
+          <Image source={{ uri: community.bannerUrl }} style={styles.bannerImage} />
+          <View style={styles.bannerOverlay}>
+            <Text style={styles.bannerName}>{community.name}</Text>
+            {community.description && (
+              <Text style={styles.bannerDescription} numberOfLines={2}>{community.description}</Text>
+            )}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.header}>
           <View style={[styles.communityImage, styles.placeholderImage]}>
             <Ionicons name="people" size={32} color={COLORS.gray[500]} />
           </View>
-        )}
-        <Text style={styles.communityName}>{community.name}</Text>
-        {community.description && (
-          <Text style={styles.communityDescription}>{community.description}</Text>
-        )}
-      </View>
+          <Text style={styles.communityName}>{community.name}</Text>
+          {community.description && (
+            <Text style={styles.communityDescription}>{community.description}</Text>
+          )}
+        </View>
+      )}
+
+      {/* Pinned Announcement */}
+      {community.announcement && (
+        <View style={[styles.cardBox, styles.announcementCard]}>
+          <View style={styles.announcementHeader}>
+            <Ionicons name="megaphone-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.announcementLabel}>Pinned</Text>
+          </View>
+          <Text style={styles.announcementText}>{community.announcement}</Text>
+          {community.announcementAt && (
+            <Text style={styles.announcementMeta}>
+              {formatAnnouncementDate(community.announcementAt)}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Stats */}
       <View style={[styles.cardBox, styles.stats]}>
@@ -327,6 +365,70 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
     fontSize: 16,
     color: '#fff',
+  },
+  bannerContainer: {
+    position: 'relative',
+    height: 160,
+    overflow: 'hidden',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.lg,
+    paddingTop: SPACING.xxl,
+    backgroundColor: 'rgba(0,0,0,0)',
+    // Gradient effect via layered shadow
+    backgroundImage: undefined,
+  },
+  bannerName: {
+    ...TYPOGRAPHY.h2,
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  bannerDescription: {
+    ...TYPOGRAPHY.footnote,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  announcementCard: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+    padding: SPACING.lg,
+  },
+  announcementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  announcementLabel: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  announcementText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    lineHeight: 22,
+  },
+  announcementMeta: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    marginTop: SPACING.sm,
   },
   header: {
     alignItems: 'center',

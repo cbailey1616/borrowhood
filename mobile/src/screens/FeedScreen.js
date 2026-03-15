@@ -421,14 +421,14 @@ export default function FeedScreen({ navigation }) {
 
     return (
     <AnimatedCard index={index}>
-      <View style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}>
-        <HapticPressable
-          onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-          haptic="light"
-          scaleDown={0.98}
-          style={styles.tileRow}
-        >
-          {/* Thumbnail */}
+      <HapticPressable
+        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+        haptic="light"
+        scaleDown={0.98}
+        style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}
+      >
+          {/* Thumbnail + Content row */}
+          <View style={styles.tileRow}>
           <View style={[styles.tileThumb, { backgroundColor: tint.bg }]}>
             {item.photoUrl ? (
               <ShimmerImage
@@ -445,7 +445,6 @@ export default function FeedScreen({ navigation }) {
               </View>
             )}
           </View>
-          {/* Content */}
           <View style={styles.tileContent}>
             <View style={styles.tileTopRow}>
               {isGiveaway ? (
@@ -479,10 +478,10 @@ export default function FeedScreen({ navigation }) {
               </Text>
             </View>
           </View>
-        </HapticPressable>
+          </View>
         {/* Inline thread */}
         {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
-      </View>
+      </HapticPressable>
     </AnimatedCard>
     );
   };
@@ -744,14 +743,12 @@ export default function FeedScreen({ navigation }) {
 
     return (
       <AnimatedCard index={index}>
-        <View style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}>
-          <HapticPressable
-            onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-            haptic="light"
-            scaleDown={0.98}
-            style={styles.tileRow}
-          >
-            {/* Content */}
+        <HapticPressable
+          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+          haptic="light"
+          scaleDown={0.98}
+          style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}
+        >
             <View style={styles.tileContent}>
               <View style={styles.tileTopRow}>
                 <View style={styles.tileTypeLabel}>
@@ -769,10 +766,9 @@ export default function FeedScreen({ navigation }) {
                 <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>{userName}</Text>
               </View>
             </View>
-          </HapticPressable>
           {/* Inline thread */}
           {renderInlineThread(item.id, requestDiscussions[item.id], true)}
-        </View>
+        </HapticPressable>
       </AnimatedCard>
     );
   };

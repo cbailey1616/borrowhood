@@ -35,6 +35,9 @@ router.get('/', authenticate, async (req, res) => {
         description: c.description,
         city: c.city,
         state: c.state,
+        bannerUrl: c.banner_url || null,
+        announcement: c.announcement || null,
+        announcementAt: c.announcement_at || null,
         memberCount: parseInt(c.member_count),
         listingCount: parseInt(c.listing_count),
         isMember: true,
@@ -251,6 +254,23 @@ router.get('/:id', authenticate, async (req, res) => {
       [c.id]
     );
 
+    // Get announcement author if set
+    let announcementAuthor = null;
+    if (c.announcement_by) {
+      const authorResult = await query(
+        'SELECT id, first_name, display_name, profile_photo_url FROM users WHERE id = $1',
+        [c.announcement_by]
+      );
+      if (authorResult.rows.length > 0) {
+        const a = authorResult.rows[0];
+        announcementAuthor = {
+          id: a.id,
+          firstName: a.display_name || a.first_name,
+          profilePhotoUrl: a.profile_photo_url,
+        };
+      }
+    }
+
     res.json({
       id: c.id,
       name: c.name,
@@ -258,6 +278,10 @@ router.get('/:id', authenticate, async (req, res) => {
       description: c.description,
       city: c.city,
       state: c.state,
+      bannerUrl: c.banner_url || null,
+      announcement: c.announcement || null,
+      announcementAt: c.announcement_at || null,
+      announcementAuthor,
       memberCount: parseInt(c.member_count),
       listingCount: parseInt(c.listing_count),
       requiresApproval: c.requires_approval,
@@ -281,7 +305,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Update community details (organizer or app admin)
 // ============================================
 router.patch('/:id', authenticate, async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, bannerUrl, announcement } = req.body;
 
   try {
     // Check if caller is an organizer or app admin
@@ -306,6 +330,23 @@ router.patch('/:id', authenticate, async (req, res) => {
     if (description !== undefined) {
       updates.push(`description = $${paramIndex++}`);
       params.push(description.trim());
+    }
+    if (bannerUrl !== undefined) {
+      updates.push(`banner_url = $${paramIndex++}`);
+      params.push(bannerUrl || null);
+    }
+    if (announcement !== undefined) {
+      if (announcement && announcement.trim()) {
+        updates.push(`announcement = $${paramIndex++}`);
+        params.push(announcement.trim());
+        updates.push(`announcement_at = NOW()`);
+        updates.push(`announcement_by = $${paramIndex++}`);
+        params.push(req.user.id);
+      } else {
+        updates.push('announcement = NULL');
+        updates.push('announcement_at = NULL');
+        updates.push('announcement_by = NULL');
+      }
     }
 
     if (updates.length === 0) {

@@ -589,6 +589,20 @@ export async function runMigrations() {
       logger.info('Migration complete: borrow_transactions.status is now varchar');
     }
 
+    // Migration: Add banner and announcement columns to communities
+    const hasBannerUrl = await query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'communities' AND column_name = 'banner_url'
+    `);
+    if (hasBannerUrl.rows.length === 0) {
+      logger.info('Running migration: Add banner and announcement columns to communities');
+      await query('ALTER TABLE communities ADD COLUMN banner_url TEXT');
+      await query('ALTER TABLE communities ADD COLUMN announcement TEXT');
+      await query('ALTER TABLE communities ADD COLUMN announcement_at TIMESTAMPTZ');
+      await query('ALTER TABLE communities ADD COLUMN announcement_by UUID REFERENCES users(id) ON DELETE SET NULL');
+      logger.info('Migration complete: communities banner and announcement columns added');
+    }
+
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

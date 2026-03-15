@@ -198,6 +198,9 @@ const joinCommunity = (id) =>
 const leaveCommunity = (id) =>
   post(`/communities/${id}/leave`);
 
+const updateCommunity = (id, data) =>
+  patch(`/communities/${id}`, data);
+
 const getCommunityMembers = (id, params) =>
   get(`/communities/${id}/members`, params);
 
@@ -773,6 +776,7 @@ export default {
   getCommunity,
   joinCommunity,
   leaveCommunity,
+  updateCommunity,
   getCommunityMembers,
   addCommunityAdmin,
   removeCommunityMember,
