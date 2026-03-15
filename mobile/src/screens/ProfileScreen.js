@@ -291,7 +291,7 @@ export default function ProfileScreen({ navigation }) {
           <GroupedListItem
             icon="help-circle-outline"
             title="Help & Support"
-            onPress={() => Linking.openURL('mailto:support@borrowhood.net')}
+            onPress={() => Linking.openURL('mailto:chris@borrowhood.net')}
           />
           <GroupedListItem
             icon="document-text-outline"

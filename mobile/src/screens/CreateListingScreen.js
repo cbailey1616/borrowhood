@@ -1058,6 +1058,9 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: 10,
     borderRadius: RADIUS.full,

@@ -395,7 +395,7 @@ export default function FeedScreen({ navigation }) {
       onPress: () => navigation.navigate('CreateListing'),
     },
     {
-      label: 'Request an Item',
+      label: 'Post an ISO',
       icon: <Ionicons name="create-outline" size={20} color={COLORS.secondary} />,
       onPress: () => navigation.navigate('CreateRequest'),
     },

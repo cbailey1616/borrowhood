@@ -235,7 +235,7 @@ export default function SubscriptionScreen({ navigation, route }) {
             Your verification is permanent. No recurring charges.
           </Text>
           <Text style={styles.footerText}>
-            Need help? Contact support@borrowhood.net
+            Need help? Contact chris@borrowhood.net
           </Text>
         </View>
       </ScrollView>
@@ -364,7 +364,7 @@ export default function SubscriptionScreen({ navigation, route }) {
           One-time payment. No recurring charges.
         </Text>
         <Text style={styles.footerText}>
-          Need help? Contact support@borrowhood.net
+          Need help? Contact chris@borrowhood.net
         </Text>
       </View>
 
