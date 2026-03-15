@@ -244,9 +244,9 @@ export default function ListingDetailScreen({ route, navigation }) {
               <View style={styles.verifyCardIcon}>
                 <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
               </View>
-              <Text style={styles.verifyCardTitle}>Verify to unlock this listing</Text>
+              <Text style={styles.verifyCardTitle}>This listing is from outside your circle</Text>
               <Text style={styles.verifyCardSubtitle}>
-                Verify your identity to see full details, message the owner, and borrow items across town.
+                To protect everyone in the community, town-wide listings require identity verification before you can see the owner's details, send messages, or request to borrow. Verification is quick and only needs to be done once.
               </Text>
               <View style={styles.verifyCardButton}>
                 <Text style={styles.verifyCardButtonText}>Verify Identity</Text>

@@ -72,8 +72,6 @@ export default function CreateListingScreen({ navigation, route }) {
     photos: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showJoinCommunity, setShowJoinCommunity] = useState(false);
-  const [showAddFriends, setShowAddFriends] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
@@ -81,11 +79,6 @@ export default function CreateListingScreen({ navigation, route }) {
   const [isRelist, setIsRelist] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, categoryId: false });
 
-  useEffect(() => {
-    navigation.setOptions({
-      gestureEnabled: !showJoinCommunity && !showAddFriends,
-    });
-  }, [showJoinCommunity, showAddFriends, navigation]);
 
   // Pre-populate from relist data
   useEffect(() => {
@@ -163,37 +156,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
   // Once async data loads, strip visibilities that have no audience
   // and prompt the user if they have no reachable audience at all
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
-  useEffect(() => {
-    // Only run after initial data fetch completes, not on relist
-    if (isRelist || !dataLoaded) return;
-    const valid = formData.visibility.filter(v => {
-      if (v === 'close_friends') return hasFriends;
-      if (v === 'neighborhood') return !!communityId;
-      if (v === 'town') return user?.isVerified || isGracePeriodActive;
-      return false;
-    });
-    if (valid.length > 0 && valid.length !== formData.visibility.length) {
-      setFormData(prev => ({ ...prev, visibility: valid }));
-    }
-    // If no visibility has an audience, prompt the user immediately
-    if (valid.length === 0 && !initialCheckDone) {
-      setInitialCheckDone(true);
-      // Small delay so the screen finishes rendering first
-      setTimeout(() => {
-        if (!hasFriends && !communityId) {
-          setShowJoinCommunity(true);
-        } else if (!hasFriends) {
-          setShowAddFriends(true);
-        } else if (!communityId) {
-          setShowJoinCommunity(true);
-        }
-      }, 400);
-    } else if (valid.length > 0) {
-      setInitialCheckDone(true);
-    }
-  }, [hasFriends, communityId, dataLoaded]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -568,16 +531,6 @@ export default function CreateListingScreen({ navigation, route }) {
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  if (!isSelected && visibility === 'close_friends' && !hasFriends) {
-                    haptics.warning();
-                    setShowAddFriends(true);
-                    return;
-                  }
-                  if (!isSelected && visibility === 'neighborhood' && !communityId) {
-                    haptics.warning();
-                    setShowJoinCommunity(true);
-                    return;
-                  }
                   if (!isSelected && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                     haptics.warning();
                     navigation.navigate('IdentityVerification', { source: 'town_browse' });
@@ -823,80 +776,6 @@ export default function CreateListingScreen({ navigation, route }) {
       }))}
     />
 
-    {/* Neighborhood Join Overlay */}
-    {showJoinCommunity && (
-      <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <View style={styles.overlayCardInner}>
-            <View style={styles.overlayIconContainer}>
-              <Ionicons name="home" size={32} color={COLORS.primary} />
-            </View>
-            <Text style={styles.overlayTitle}>Join Your Neighborhood</Text>
-            <Text style={styles.overlayText}>
-              You need to join a neighborhood before you can list items. This is how neighbors find your stuff!
-            </Text>
-            <HapticPressable
-              style={styles.overlayButton}
-              onPress={() => {
-                setShowJoinCommunity(false);
-                if (!user?.city) {
-                  // User needs to set location first
-                  navigation.navigate('EditProfile');
-                } else {
-                  navigation.navigate('JoinCommunity');
-                }
-              }}
-              haptic="medium"
-            >
-              <Text style={styles.overlayButtonText}>
-                {!user?.city ? 'Set Your Location' : 'Find Neighborhood'}
-              </Text>
-            </HapticPressable>
-            <HapticPressable
-              style={styles.overlayDismiss}
-              onPress={() => setShowJoinCommunity(false)}
-              haptic="light"
-            >
-              <Text style={styles.overlayDismissText}>Cancel</Text>
-            </HapticPressable>
-          </View>
-        </View>
-      </View>
-    )}
-
-    {/* Add Friends Overlay */}
-    {showAddFriends && (
-      <View style={styles.overlay}>
-        <View style={styles.overlayCard}>
-          <View style={styles.overlayCardInner}>
-            <View style={styles.overlayIconContainer}>
-              <Ionicons name="people" size={32} color={COLORS.primary} />
-            </View>
-            <Text style={styles.overlayTitle}>Add Some Friends</Text>
-            <Text style={styles.overlayText}>
-              You need to add friends before you can list items. Invite people you know or find friends nearby.
-            </Text>
-            <HapticPressable
-              style={styles.overlayButton}
-              onPress={() => {
-                setShowAddFriends(false);
-                navigation.navigate('Friends', { initialTab: 'contacts' });
-              }}
-              haptic="medium"
-            >
-              <Text style={styles.overlayButtonText}>Find Friends</Text>
-            </HapticPressable>
-            <HapticPressable
-              style={styles.overlayDismiss}
-              onPress={() => setShowAddFriends(false)}
-              haptic="light"
-            >
-              <Text style={styles.overlayDismissText}>Cancel</Text>
-            </HapticPressable>
-          </View>
-        </View>
-      </View>
-    )}
 
     </View>
   );
