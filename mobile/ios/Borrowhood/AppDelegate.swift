@@ -22,11 +22,17 @@ public class AppDelegate: ExpoAppDelegate {
     bindReactNativeFactory(factory)
 
 #if os(iOS) || os(tvOS)
+    // Disable the green dev loading banner before React Native starts
+    RCTDevLoadingViewSetEnabled(false)
+
     window = UIWindow(frame: UIScreen.main.bounds)
+    // Set parchment background during JS bundle loading
+    window?.backgroundColor = UIColor(red: 222/255, green: 210/255, blue: 181/255, alpha: 1)
     factory.startReactNative(
       withModuleName: "main",
       in: window,
       launchOptions: launchOptions)
+    window?.rootViewController?.view.backgroundColor = UIColor(red: 222/255, green: 210/255, blue: 181/255, alpha: 1)
 #endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

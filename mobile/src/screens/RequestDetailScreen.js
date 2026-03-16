@@ -197,6 +197,13 @@ export default function RequestDetailScreen({ route, navigation }) {
             )}
           </View>
 
+          {request.status !== 'open' && (
+            <View style={styles.closedBanner}>
+              <Ionicons name="close-circle-outline" size={18} color={COLORS.textMuted} />
+              <Text style={styles.closedBannerText}>This request has been closed</Text>
+            </View>
+          )}
+
           {discussions.length > 0 ? (
             <View style={styles.discussionList}>
               {discussions.map((post) => (
@@ -229,20 +236,22 @@ export default function RequestDetailScreen({ route, navigation }) {
                 </HapticPressable>
               ))}
             </View>
-          ) : (
+          ) : request.status === 'open' ? (
             <Text style={styles.noDiscussions}>
               No responses yet. Be the first to help!
             </Text>
-          )}
+          ) : null}
 
-          <HapticPressable
-            style={styles.respondButton}
-            onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request, autoFocus: true })}
-            haptic="light"
-          >
-            <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.respondButtonText}>Respond in Thread</Text>
-          </HapticPressable>
+          {request.status === 'open' && (
+            <HapticPressable
+              style={styles.respondButton}
+              onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request, autoFocus: true })}
+              haptic="light"
+            >
+              <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.respondButtonText}>Respond in Thread</Text>
+            </HapticPressable>
+          )}
         </View>
 
         {/* Posted date */}
@@ -532,6 +541,20 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.primary,
     marginTop: SPACING.xs,
+  },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.separator,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  closedBannerText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textMuted,
+    fontWeight: '600',
   },
   noDiscussions: {
     ...TYPOGRAPHY.footnote,

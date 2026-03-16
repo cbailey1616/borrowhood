@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Linking,
@@ -43,6 +44,13 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
 
   const [addingFriendId, setAddingFriendId] = useState(null);
   const [errorSheet, setErrorSheet] = useState({ visible: false, title: '', message: '' });
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   useEffect(() => {
     if (joinedCommunityId) {
@@ -85,6 +93,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   }, [searchQuery]);
 
   const handleSyncContacts = async () => {
+    Keyboard.dismiss();
     setIsSyncingContacts(true);
     try {
       const { status, canAskAgain } = await Contacts.requestPermissionsAsync();
@@ -261,9 +270,6 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
       </HapticPressable>
 
       <View style={styles.stepContainer}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="people" size={48} color={COLORS.primary} />
-        </View>
         <Text style={styles.title}>Find Friends</Text>
         <Text style={styles.subtitle}>
           Add friends to share items just with people you know
@@ -358,18 +364,20 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
         )}
       </View>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-        <HapticPressable
-          style={styles.primaryButton}
-          onPress={handleContinue}
-          haptic="medium"
-          testID="Onboarding.Friends.continue"
-        >
-          <Text style={styles.primaryButtonText}>
-            {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
-          </Text>
-        </HapticPressable>
-      </View>
+      {!keyboardVisible && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
+          <HapticPressable
+            style={styles.primaryButton}
+            onPress={handleContinue}
+            haptic="medium"
+            testID="Onboarding.Friends.continue"
+          >
+            <Text style={styles.primaryButtonText}>
+              {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
+            </Text>
+          </HapticPressable>
+        </View>
+      )}
 
       <ActionSheet
         isVisible={errorSheet.visible}
@@ -400,29 +408,18 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     flex: 1,
-    padding: SPACING.xl,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
   },
   title: {
-    ...TYPOGRAPHY.h1,
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   subtitle: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.md,
   },
   actionRow: {
     flexDirection: 'row',
