@@ -736,7 +736,6 @@ router.delete('/account', authenticate, async (req, res) => {
     // 1. Tables referencing borrow_transactions
     await query('DELETE FROM disputes WHERE claimant_user_id = $1 OR respondent_user_id = $1', [userId]);
     await query('DELETE FROM ratings WHERE rater_id = $1 OR ratee_id = $1', [userId]);
-    await query('DELETE FROM notifications WHERE user_id = $1 OR from_user_id = $1', [userId]);
     // 2. Transactions — only hard-delete completed/cancelled ones where user is sole party of interest
     //    Keep account_deleted transactions so the other party retains a record
     await query(
@@ -778,7 +777,9 @@ router.delete('/account', authenticate, async (req, res) => {
     await query('DELETE FROM subscription_history WHERE user_id = $1', [userId]);
     await query('DELETE FROM audit_log WHERE actor_id = $1', [userId]);
     await query('DELETE FROM item_requests WHERE user_id = $1', [userId]);
-    // 7. Clear self-referencing FK and delete or anonymize user
+    // 7. Final cleanup — delete all notifications referencing this user (must be last before user delete)
+    await query('DELETE FROM notifications WHERE user_id = $1 OR from_user_id = $1', [userId]);
+    // Clear self-referencing FK and delete or anonymize user
     await query('UPDATE users SET referred_by = NULL WHERE referred_by = $1', [userId]);
 
     // Check if any account_deleted transactions still reference this user
@@ -808,8 +809,8 @@ router.delete('/account', authenticate, async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete account error:', err.message, err.detail, err.table, err.constraint);
-    res.status(500).json({ error: `Failed to delete account: ${err.detail || err.message}` });
+    console.error('Delete account error:', err.message, err.detail, err.constraint);
+    res.status(500).json({ error: 'Failed to delete account. Please contact support.' });
   }
 });
 
