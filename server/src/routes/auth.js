@@ -765,7 +765,6 @@ router.delete('/account', authenticate, async (req, res) => {
     await query('DELETE FROM message_reactions WHERE user_id = $1', [userId]);
     await query('DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE sender_id = $1)', [userId]);
     await query('DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = $1 OR user2_id = $1)', [userId]);
-    await query('DELETE FROM conversation_participants WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = $1 OR user2_id = $1)', [userId]);
     await query('DELETE FROM conversations WHERE user1_id = $1 OR user2_id = $1', [userId]);
     // 6. Remaining user-referenced tables
     await query('DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1', [userId]);
@@ -811,6 +810,7 @@ router.delete('/account', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Delete account error:', err.message, err.detail, err.constraint);
     res.status(500).json({ error: `Delete failed: ${err.detail || err.message}` });
+    // TODO: revert to generic message once delete is stable
   }
 });
 
