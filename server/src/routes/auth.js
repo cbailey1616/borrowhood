@@ -809,8 +809,7 @@ router.delete('/account', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Delete account error:', err.message, err.detail, err.constraint);
-    res.status(500).json({ error: `Delete failed: ${err.detail || err.message}` });
-    // TODO: revert to generic message once delete is stable
+    res.status(500).json({ error: 'Failed to delete account. Please contact support.' });
   }
 });
 
