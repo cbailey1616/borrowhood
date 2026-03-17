@@ -749,6 +749,7 @@ router.post('/:id/return', authenticate,
           );
           try {
             await sendNotification(t.lender_id, 'payment_failed', {
+              transactionId: t.id,
               body: `We couldn't process your payout for "${t.listing_title || 'a rental'}". Please check your payout settings or contact support.`,
             });
           } catch (notifyErr) {
@@ -770,6 +771,7 @@ router.post('/:id/return', authenticate,
           } catch (refundErr) {
             logger.warn('Deposit refund failed (non-fatal):', refundErr.message);
             sendNotification(t.borrower_id, 'payment_failed', {
+              transactionId: t.id,
               body: `We couldn't refund your deposit for "${t.listing_title || 'a rental'}". Please contact support for assistance.`,
             }).catch(() => {});
           }

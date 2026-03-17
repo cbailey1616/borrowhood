@@ -763,8 +763,8 @@ router.post('/:id/pickup', authenticate,
       const isBorrower = t.borrower_id === req.user.id;
       const isLender = t.lender_id === req.user.id;
 
-      if (!isBorrower && !isLender) {
-        return res.status(403).json({ error: 'Not authorized' });
+      if (!isBorrower) {
+        return res.status(403).json({ error: 'Only the borrower can confirm pickup' });
       }
 
       // Check if this is a giveaway
@@ -774,7 +774,7 @@ router.post('/:id/pickup', authenticate,
       );
       const isGiveaway = listingCheck.rows[0]?.listing_type === 'giveaway';
 
-      // Either party can confirm pickup
+      // Borrower confirms pickup
       const otherPartyId = isBorrower ? t.lender_id : t.borrower_id;
 
       if (isGiveaway) {

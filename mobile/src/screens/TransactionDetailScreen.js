@@ -472,7 +472,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      {['paid', 'approved'].includes(transaction.status) && (
+      {transaction.isBorrower && ['paid', 'approved'].includes(transaction.status) && (
         <View style={styles.footer}>
           <HapticPressable
             haptic="light"

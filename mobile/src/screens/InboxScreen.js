@@ -46,6 +46,7 @@ const NOTIFICATION_ICONS = {
   friend_accepted: 'people',
   referral_joined: 'gift',
   referral_reward: 'trophy',
+  payment_failed: 'card',
 };
 
 export default function InboxScreen({ navigation, badgeCounts, onRead }) {
@@ -158,6 +159,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       nav.navigate('ListingDetail', { id: item.listingId });
     } else if (item.type === 'item_match' && item.requestId) {
       nav.navigate('RequestDetail', { id: item.requestId });
+    } else if (item.type === 'payment_failed') {
+      nav.navigate('SetupPayout');
     } else if (['borrow_request', 'request_approved', 'request_declined', 'pickup_confirmed',
       'return_confirmed', 'payment_confirmed', 'dispute_opened', 'dispute_resolved'].includes(item.type)) {
       navigation.navigate('MyItems');
