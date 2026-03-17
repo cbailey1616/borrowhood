@@ -401,7 +401,7 @@ router.post('/', authenticate,
   body('communityId').optional().isUUID(),
   body('categoryId').optional({ nullable: true }).isUUID(),
   body('isFree').isBoolean(),
-  body('pricePerDay').optional().isFloat({ min: 0 }),
+  body('pricePerDay').optional().isFloat({ min: 5 }).withMessage('Minimum borrow fee is $5/day'),
   body('depositAmount').optional().isFloat({ min: 0 }),
   body('minDuration').optional().isInt({ min: 1, max: 365 }),
   body('maxDuration').optional().isInt({ min: 1, max: 365 }),
@@ -610,10 +610,15 @@ router.patch('/:id', authenticate,
         req.body.visibility = visArray;
       }
 
-      // Require Stripe Connect for deposit or rental fee
-      const updatedDeposit = req.body.depositAmount ?? req.body.deposit_amount;
+      // Enforce minimum price of $5/day
       const updatedPrice = req.body.pricePerDay ?? req.body.price_per_day;
       const updatedIsFree = req.body.isFree ?? req.body.is_free;
+      if (updatedIsFree === false && updatedPrice && parseFloat(updatedPrice) < 5) {
+        return res.status(400).json({ error: 'Minimum borrow fee is $5/day' });
+      }
+
+      // Require Stripe Connect for deposit or rental fee
+      const updatedDeposit = req.body.depositAmount ?? req.body.deposit_amount;
       const hasPaidUpdate = (updatedDeposit && parseFloat(updatedDeposit) > 0) ||
         (updatedIsFree === false && updatedPrice && parseFloat(updatedPrice) > 0);
       if (hasPaidUpdate) {

@@ -108,7 +108,7 @@ router.post('/', authenticate,
   body('description').optional().isLength({ max: 500 }),
   body('listingIds').isArray({ min: 2, max: 10 }),
   body('isFree').isBoolean(),
-  body('pricePerDay').optional().isFloat({ min: 0 }),
+  body('pricePerDay').optional().isFloat({ min: 5 }).withMessage('Minimum borrow fee is $5/day'),
   body('depositAmount').optional().isFloat({ min: 0 }),
   async (req, res) => {
     const errors = validationResult(req);

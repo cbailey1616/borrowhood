@@ -149,14 +149,16 @@ export default function EditListingScreen({ navigation, route }) {
       return;
     }
 
-    // Validate rental fee when charging
-    if (!formData.isFree && !(parseFloat(formData.pricePerDay) > 0)) {
+    // Validate rental fee when charging ($5 minimum to cover processing fees)
+    if (!formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
       Keyboard.dismiss();
       haptics.warning();
       showError({
         type: 'validation',
         title: 'Borrow Fee Required',
-        message: 'Please enter a borrow fee amount.',
+        message: parseFloat(formData.pricePerDay) > 0
+          ? 'Minimum borrow fee is $5/day to cover payment processing costs.'
+          : 'Please enter a borrow fee amount (minimum $5/day).',
       });
       return;
     }
@@ -499,7 +501,7 @@ export default function EditListingScreen({ navigation, route }) {
               style={styles.priceField}
               value={formData.pricePerDay}
               onChangeText={(v) => updateField('pricePerDay', v)}
-              placeholder="0.00"
+              placeholder="5.00"
               placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
