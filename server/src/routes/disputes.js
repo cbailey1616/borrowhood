@@ -623,6 +623,7 @@ async function resolveDisputeInternally({ dispute, outcome, resolvedAmount, note
           await createTransfer({
             amount: transferCents,
             destinationAccountId: connectId,
+            sourcePaymentIntentId: dispute.stripe_payment_intent_id,
             metadata: {
               transactionId: dispute.transaction_id,
               disputeId: dispute.id,

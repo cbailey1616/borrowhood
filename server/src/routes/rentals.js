@@ -730,6 +730,7 @@ router.post('/:id/return', authenticate,
               const transfer = await createTransfer({
                 amount: payoutCents,
                 destinationAccountId: lenderConnectId,
+                sourcePaymentIntentId: t.stripe_payment_intent_id,
                 metadata: { transactionId: t.id, type: 'rental_payout' },
               });
 

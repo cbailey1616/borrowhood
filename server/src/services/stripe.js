@@ -139,14 +139,25 @@ export async function cancelPaymentIntent(paymentIntentId) {
 export async function createTransfer({
   amount, // in cents
   destinationAccountId,
+  sourcePaymentIntentId,
   metadata = {},
 }) {
-  return stripe.transfers.create({
+  const params = {
     amount,
     currency: 'usd',
     destination: destinationAccountId,
     metadata,
-  });
+  };
+
+  // Tie transfer to the source charge so it works even if platform balance hasn't settled
+  if (sourcePaymentIntentId) {
+    const pi = await stripe.paymentIntents.retrieve(sourcePaymentIntentId);
+    if (pi.latest_charge) {
+      params.source_transaction = pi.latest_charge;
+    }
+  }
+
+  return stripe.transfers.create(params);
 }
 
 // ============================================
