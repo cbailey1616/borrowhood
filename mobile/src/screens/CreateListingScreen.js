@@ -77,7 +77,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [removePhotoIndex, setRemovePhotoIndex] = useState(null);
   const [isRelist, setIsRelist] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, categoryId: false });
+  const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, categoryId: false, pricePerDay: false });
 
 
   // Pre-populate from relist data
@@ -272,6 +272,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
     // Validate rental fee when charging
     if (!isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) >= 5)) {
+      setFieldErrors(prev => ({ ...prev, pricePerDay: true }));
       Keyboard.dismiss();
       haptics.warning();
       showError({
@@ -361,6 +362,7 @@ export default function CreateListingScreen({ navigation, route }) {
       keyboardShouldPersistTaps="handled"
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
+      enableResetScrollToCoords={false}
     >
       {/* Request Match Banner */}
       {requestMatch && (
@@ -633,7 +635,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
         {!formData.isFree && user?.payoutsEnabled && (
           <>
-            <View style={styles.priceInput}>
+            <View style={[styles.priceInput, fieldErrors.pricePerDay && styles.fieldError]}>
               <Text style={styles.currency}>$</Text>
               <TextInput
                 testID="CreateListing.input.price"
@@ -647,7 +649,7 @@ export default function CreateListingScreen({ navigation, route }) {
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
-            <Text style={styles.priceHint}>$5 minimum to cover payment processing</Text>
+            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5 minimum to cover payment processing</Text>
           </>
         )}
 

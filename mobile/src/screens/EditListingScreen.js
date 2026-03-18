@@ -32,7 +32,7 @@ export default function EditListingScreen({ navigation, route }) {
   const fieldPositions = useRef({});
 
   const [categories, setCategories] = useState([]);
-  const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false });
+  const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, pricePerDay: false });
 
   const [formData, setFormData] = useState({
     title: listing.title || '',
@@ -151,6 +151,7 @@ export default function EditListingScreen({ navigation, route }) {
 
     // Validate rental fee when charging ($5 minimum to cover processing fees)
     if (!formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
+      setFieldErrors(prev => ({ ...prev, pricePerDay: true }));
       Keyboard.dismiss();
       haptics.warning();
       showError({
@@ -262,6 +263,7 @@ export default function EditListingScreen({ navigation, route }) {
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       keyboardShouldPersistTaps="handled"
+      enableResetScrollToCoords={false}
     >
       {/* Photos */}
       <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
@@ -496,7 +498,7 @@ export default function EditListingScreen({ navigation, route }) {
 
         {!formData.isFree && user?.payoutsEnabled && (
           <>
-            <View style={styles.priceInput}>
+            <View style={[styles.priceInput, fieldErrors.pricePerDay && styles.fieldError]}>
               <Text style={styles.currency}>$</Text>
               <TextInput
                 style={styles.priceField}
@@ -508,7 +510,7 @@ export default function EditListingScreen({ navigation, route }) {
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
-            <Text style={styles.priceHint}>$5 minimum to cover payment processing</Text>
+            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5 minimum to cover payment processing</Text>
           </>
         )}
 
