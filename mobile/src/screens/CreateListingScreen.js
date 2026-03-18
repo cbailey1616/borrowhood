@@ -632,20 +632,23 @@ export default function CreateListingScreen({ navigation, route }) {
         </HapticPressable>
 
         {!formData.isFree && user?.payoutsEnabled && (
-          <View style={styles.priceInput}>
-            <Text style={styles.currency}>$</Text>
-            <TextInput
-              testID="CreateListing.input.price"
-              accessibilityLabel="Price per day"
-              style={styles.priceField}
-              value={formData.pricePerDay}
-              onChangeText={(v) => updateField('pricePerDay', v)}
-              placeholder="5.00"
-              placeholderTextColor={COLORS.textMuted}
-              keyboardType="decimal-pad"
-            />
-            <Text style={styles.priceSuffix}>/day</Text>
-          </View>
+          <>
+            <View style={styles.priceInput}>
+              <Text style={styles.currency}>$</Text>
+              <TextInput
+                testID="CreateListing.input.price"
+                accessibilityLabel="Price per day"
+                style={styles.priceField}
+                value={formData.pricePerDay}
+                onChangeText={(v) => updateField('pricePerDay', v)}
+                placeholder="5.00"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="decimal-pad"
+              />
+              <Text style={styles.priceSuffix}>/day</Text>
+            </View>
+            <Text style={styles.priceHint}>$5 minimum to cover payment processing</Text>
+          </>
         )}
 
         <HapticPressable
@@ -1049,6 +1052,11 @@ const styles = StyleSheet.create({
   priceSuffix: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
+  },
+  priceHint: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
   },
   durationRow: {
     flexDirection: 'row',
