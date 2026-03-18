@@ -277,16 +277,54 @@ router.get('/', authenticate, async (req, res) => {
       },
     }));
 
-    // Combine and sort — give requests a gentle boost so they surface higher
-    // without dominating the feed (treated as if posted 6 hours more recently)
-    const REQUEST_BOOST_MS = 6 * 60 * 60 * 1000;
-    const feed = [...listings, ...requests]
-      .sort((a, b) => {
-        const aTime = new Date(a.createdAt).getTime() + (a.type === 'request' ? REQUEST_BOOST_MS : 0);
-        const bTime = new Date(b.createdAt).getTime() + (b.type === 'request' ? REQUEST_BOOST_MS : 0);
-        return bTime - aTime;
-      })
-      .slice(offset, offset + parseInt(limit));
+    // Feed algorithm: score-based with freshness tiers + randomization
+    // - New listings (< 24h) get top priority
+    // - Recent items (1-7 days) get medium priority
+    // - Older items fill the rest
+    // - Random factor within tiers keeps feed feeling fresh each load
+    // - ISOs get a small boost to stay visible
+    const now = Date.now();
+    const HOUR = 3600000;
+    const DAY = 24 * HOUR;
+
+    const scored = [...listings, ...requests].map(item => {
+      const age = now - new Date(item.createdAt).getTime();
+      const isRequest = item.type === 'request';
+
+      // Base score from recency (exponential decay)
+      let score;
+      if (age < DAY) {
+        // Under 24h: highest tier (score 800-1000)
+        score = 1000 - (age / DAY) * 200;
+      } else if (age < 7 * DAY) {
+        // 1-7 days: medium tier (score 400-800)
+        score = 800 - ((age - DAY) / (6 * DAY)) * 400;
+      } else {
+        // Older: lower tier (score 0-400, decays over 30 days)
+        score = Math.max(0, 400 - ((age - 7 * DAY) / (30 * DAY)) * 400);
+      }
+
+      // New listing bonus: extra push for listings < 12h old
+      if (!isRequest && age < 12 * HOUR) {
+        score += 150;
+      }
+
+      // ISO boost: smaller than before, keeps them visible but not dominant
+      if (isRequest) {
+        score += 50;
+      }
+
+      // Random factor: shuffles items within ~same freshness level
+      // ±75 points keeps it interesting without breaking the tiers
+      score += (Math.random() - 0.5) * 150;
+
+      return { ...item, _score: score };
+    });
+
+    const feed = scored
+      .sort((a, b) => b._score - a._score)
+      .slice(offset, offset + parseInt(limit))
+      .map(({ _score, ...item }) => item);
 
     res.json({
       items: feed,
