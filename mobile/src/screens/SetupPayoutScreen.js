@@ -233,6 +233,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
           style={[styles.setupButton, { backgroundColor: COLORS.secondary }]}
           onPress={async () => {
             try {
+              showError({ type: 'success', title: 'Retrying...', message: 'Looking for pending transfers...' });
               const result = await api.retryTransfers();
               if (result.transferred > 0) {
                 haptics.success();
@@ -243,7 +244,8 @@ export default function SetupPayoutScreen({ navigation, route }) {
                 showError({ message: `${result.failed} transfer(s) couldn't be completed. Please try again later.` });
               }
             } catch (err) {
-              showError({ message: err.message || 'Couldn\'t process transfers right now. Please try again later.' });
+              console.error('Retry transfers error:', err);
+              showError({ type: 'generic', message: err.message || 'Couldn\'t process transfers right now. Please try again later.' });
             }
           }}
         >
