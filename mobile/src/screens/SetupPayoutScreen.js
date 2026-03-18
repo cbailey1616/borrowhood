@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
@@ -207,18 +208,17 @@ export default function SetupPayoutScreen({ navigation, route }) {
               const result = await api.testVerifyConnect();
               if (result.payoutsEnabled) {
                 haptics.success();
-                showError({ type: 'success', title: 'Verified!', message: 'Connect account is now active. Retrying transfers...' });
-                // Retry any failed transfers
+                Alert.alert('Verified!', 'Connect account is now active. Retrying transfers...');
                 const retryResult = await api.retryTransfers();
                 if (retryResult.transferred > 0) {
-                  showError({ type: 'success', title: 'Transfers Complete', message: `${retryResult.transferred} payout(s) transferred to your account.` });
+                  Alert.alert('Transfers Complete', `${retryResult.transferred} payout(s) transferred to your account.`);
                 }
                 loadConnectStatus();
               } else {
-                showError({ message: 'Your verification is still processing. Give it a moment and try again.' });
+                Alert.alert('Still Processing', 'Your verification is still processing. Give it a moment and try again.');
               }
             } catch (err) {
-              showError({ message: err.message || 'Couldn\'t verify your account right now. Please try again in a moment.' });
+              Alert.alert('Error', err.message || 'Couldn\'t verify your account right now. Please try again in a moment.');
             }
           }}
         >
@@ -233,19 +233,21 @@ export default function SetupPayoutScreen({ navigation, route }) {
           style={[styles.setupButton, { backgroundColor: COLORS.secondary }]}
           onPress={async () => {
             try {
-              showError({ type: 'success', title: 'Retrying...', message: 'Looking for pending transfers...' });
               const result = await api.retryTransfers();
               if (result.transferred > 0) {
                 haptics.success();
-                showError({ type: 'success', title: 'Transfers Complete', message: `${result.transferred} payout(s) transferred to your account.` });
+                Alert.alert('Transfers Complete', `${result.transferred} payout(s) transferred to your account.`);
               } else if (result.found === 0) {
-                showError({ type: 'success', title: 'All Caught Up', message: 'No pending transfers to retry.' });
+                haptics.success();
+                Alert.alert('All Caught Up', 'No pending transfers to retry.');
               } else {
-                showError({ message: `${result.failed} transfer(s) couldn't be completed. Please try again later.` });
+                haptics.warning();
+                Alert.alert('Transfer Issue', `${result.failed} transfer(s) couldn't be completed. Please try again later.`);
               }
             } catch (err) {
               console.error('Retry transfers error:', err);
-              showError({ type: 'generic', message: err.message || 'Couldn\'t process transfers right now. Please try again later.' });
+              haptics.error();
+              Alert.alert('Error', err.message || 'Couldn\'t process transfers right now. Please try again later.');
             }
           }}
         >

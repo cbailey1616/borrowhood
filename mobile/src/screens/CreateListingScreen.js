@@ -78,7 +78,13 @@ export default function CreateListingScreen({ navigation, route }) {
   const [removePhotoIndex, setRemovePhotoIndex] = useState(null);
   const [isRelist, setIsRelist] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ title: false, photos: false, categoryId: false, pricePerDay: false });
+  const keyboardOpen = useRef(false);
 
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => { keyboardOpen.current = true; });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => { keyboardOpen.current = false; });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   // Pre-populate from relist data
   useEffect(() => {
@@ -279,7 +285,7 @@ export default function CreateListingScreen({ navigation, route }) {
         type: 'validation',
         title: 'Borrow Fee Required',
         message: parseFloat(data.pricePerDay) > 0
-          ? 'Minimum borrow fee is $5/day to cover payment processing costs.'
+          ? 'Minimum borrow fee is $5/day.'
           : 'Please enter a borrow fee amount (minimum $5/day).',
       });
       return;
@@ -606,6 +612,7 @@ export default function CreateListingScreen({ navigation, route }) {
           accessibilityRole="switch"
           style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
+            if (keyboardOpen.current) { Keyboard.dismiss(); return; }
             if (!user?.payoutsEnabled) {
               haptics.warning();
               if (!user?.isVerified && !isGracePeriodActive) {
@@ -649,7 +656,7 @@ export default function CreateListingScreen({ navigation, route }) {
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
-            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5 minimum to cover payment processing</Text>
+            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5/day minimum</Text>
           </>
         )}
 
@@ -659,6 +666,7 @@ export default function CreateListingScreen({ navigation, route }) {
           accessibilityRole="switch"
           style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
           onPress={() => {
+            if (keyboardOpen.current) { Keyboard.dismiss(); return; }
             if (!user?.payoutsEnabled) {
               haptics.warning();
               if (!user?.isVerified && !isGracePeriodActive) {
