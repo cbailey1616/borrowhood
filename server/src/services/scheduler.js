@@ -136,7 +136,7 @@ async function autoReleaseDeposits() {
     const { cancelPaymentIntent } = await import('../services/stripe.js');
 
     const result = await query(
-      `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount
+      `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount, bt.borrower_id
        FROM borrow_transactions bt
        WHERE bt.status IN ('returned', 'completed')
          AND bt.actual_return_at < NOW() - INTERVAL '7 days'
@@ -153,6 +153,7 @@ async function autoReleaseDeposits() {
           `UPDATE borrow_transactions SET payment_status = 'deposit_released' WHERE id = $1`,
           [t.id]
         );
+        await sendNotification(t.borrower_id, 'deposit_released', { transactionId: t.id });
         logger.info(`Auto-released deposit for transaction ${t.id}`);
       } catch (err) {
         logger.error(`Auto-release deposit failed for txn ${t.id}:`, err);
@@ -161,7 +162,7 @@ async function autoReleaseDeposits() {
 
     // Second pass: lender ghosted — return marked 48+ hours ago but lender never confirmed
     const ghosted = await query(
-      `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount
+      `SELECT bt.id, bt.stripe_payment_intent_id, bt.deposit_amount, bt.borrower_id
        FROM borrow_transactions bt
        WHERE bt.status = 'returned'
          AND bt.actual_return_at < NOW() - INTERVAL '48 hours'
@@ -178,6 +179,7 @@ async function autoReleaseDeposits() {
           `UPDATE borrow_transactions SET payment_status = 'deposit_released' WHERE id = $1`,
           [t.id]
         );
+        await sendNotification(t.borrower_id, 'deposit_released', { transactionId: t.id });
         logger.info(`Auto-released deposit (lender ghosted) for transaction ${t.id}`);
       } catch (err) {
         logger.error(`Auto-release (lender ghosted) failed for txn ${t.id}:`, err);
