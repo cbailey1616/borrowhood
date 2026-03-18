@@ -6,8 +6,11 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
-
+import * as Notifications from 'expo-notifications';
+import { Ionicons } from '../components/Icon';
+import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -50,10 +53,17 @@ export default function NotificationSettingsScreen() {
   const [preferences, setPreferences] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [notifsDenied, setNotifsDenied] = useState(false);
 
   useEffect(() => {
     fetchPreferences();
+    checkNotifPermission();
   }, []);
+
+  const checkNotifPermission = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotifsDenied(status !== 'granted');
+  };
 
   const fetchPreferences = async () => {
     try {
@@ -104,6 +114,21 @@ export default function NotificationSettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {notifsDenied && (
+        <View style={styles.section}>
+          <HapticPressable
+            style={styles.notifBanner}
+            onPress={() => Linking.openSettings()}
+            haptic="light"
+          >
+            <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
+            <Text style={styles.notifBannerText}>
+              Notifications are off — tap to enable in Settings
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          </HapticPressable>
+        </View>
+      )}
       {NOTIFICATION_SETTINGS.map((category, index) => (
         <View key={category.category} style={styles.section}>
           <Text style={styles.sectionTitle}>{category.category}</Text>
@@ -194,6 +219,22 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  notifBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warningMuted,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.warning + '30',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.sm,
+  },
+  notifBannerText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
+    flex: 1,
   },
   footerText: {
     ...TYPOGRAPHY.footnote,

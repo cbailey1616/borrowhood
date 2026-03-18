@@ -33,7 +33,7 @@ const STATUS_COLORS = {
 
 export default function MyItemsScreen({ navigation }) {
   const { showError } = useError();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [listings, setListings] = useState([]);
   const [requests, setRequests] = useState([]);
   const [rentals, setRentals] = useState([]);

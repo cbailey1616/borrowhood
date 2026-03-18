@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  Alert,
+  Modal,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
@@ -26,6 +26,11 @@ export default function SetupPayoutScreen({ navigation, route }) {
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [connectStatus, setConnectStatus] = useState(null);
+  const [dialog, setDialog] = useState(null);
+
+  const showDialog = (icon, title, message, isError = false) => {
+    setDialog({ icon, title, message, isError });
+  };
 
   useEffect(() => {
     // Redirect if user hasn't completed prior gate steps
@@ -97,6 +102,7 @@ export default function SetupPayoutScreen({ navigation, route }) {
   }
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Gate Stepper */}
       {source === 'rental_listing' && totalSteps && (
@@ -208,17 +214,17 @@ export default function SetupPayoutScreen({ navigation, route }) {
               const result = await api.testVerifyConnect();
               if (result.payoutsEnabled) {
                 haptics.success();
-                Alert.alert('Verified!', 'Connect account is now active. Retrying transfers...');
+                showDialog('checkmark-circle', 'Verified!', 'Connect account is now active. Retrying transfers...');
                 const retryResult = await api.retryTransfers();
                 if (retryResult.transferred > 0) {
-                  Alert.alert('Transfers Complete', `${retryResult.transferred} payout(s) transferred to your account.`);
+                  showDialog('checkmark-circle', 'Transfers Complete', `${retryResult.transferred} payout(s) transferred to your account.`);
                 }
                 loadConnectStatus();
               } else {
-                Alert.alert('Still Processing', 'Your verification is still processing. Give it a moment and try again.');
+                showDialog('time-outline', 'Still Processing', 'Your verification is still processing. Give it a moment and try again.');
               }
             } catch (err) {
-              Alert.alert('Error', err.message || 'Couldn\'t verify your account right now. Please try again in a moment.');
+              showDialog('alert-circle', 'Error', err.message || 'Couldn\'t verify your account right now. Please try again in a moment.', true);
             }
           }}
         >
@@ -236,18 +242,18 @@ export default function SetupPayoutScreen({ navigation, route }) {
               const result = await api.retryTransfers();
               if (result.transferred > 0) {
                 haptics.success();
-                Alert.alert('Transfers Complete', `${result.transferred} payout(s) transferred to your account.`);
+                showDialog('checkmark-circle', 'Transfers Complete', `${result.transferred} payout(s) transferred to your account.`);
               } else if (result.found === 0) {
                 haptics.success();
-                Alert.alert('All Caught Up', 'No pending transfers to retry.');
+                showDialog('checkmark-circle', 'All Caught Up', 'No pending transfers to retry.');
               } else {
                 haptics.warning();
-                Alert.alert('Transfer Issue', `${result.failed} transfer(s) couldn't be completed. Please try again later.`);
+                showDialog('alert-circle', 'Transfer Issue', `${result.failed} transfer(s) couldn't be completed. Please try again later.`, true);
               }
             } catch (err) {
               console.error('Retry transfers error:', err);
               haptics.error();
-              Alert.alert('Error', err.message || 'Couldn\'t process transfers right now. Please try again later.');
+              showDialog('alert-circle', 'Error', err.message || 'Couldn\'t process transfers right now. Please try again later.', true);
             }
           }}
         >
@@ -272,6 +278,27 @@ export default function SetupPayoutScreen({ navigation, route }) {
         </Text>
       </View>
     </ScrollView>
+      {dialog && (
+        <Modal transparent animationType="fade" visible>
+          <View style={styles.dialogOverlay}>
+            <View style={styles.dialogCard}>
+              <View style={[styles.dialogIcon, dialog.isError && styles.dialogIconError]}>
+                <Ionicons name={dialog.icon} size={28} color={dialog.isError ? COLORS.danger : COLORS.primary} />
+              </View>
+              <Text style={styles.dialogTitle}>{dialog.title}</Text>
+              <Text style={styles.dialogMessage}>{dialog.message}</Text>
+              <HapticPressable
+                style={[styles.dialogButton, dialog.isError && styles.dialogButtonError]}
+                onPress={() => setDialog(null)}
+                haptic="light"
+              >
+                <Text style={styles.dialogButtonText}>OK</Text>
+              </HapticPressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -440,5 +467,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  dialogOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  dialogCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderBrown,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  dialogIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  dialogIconError: {
+    backgroundColor: COLORS.dangerMuted,
+  },
+  dialogTitle: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+    textAlign: 'center',
+  },
+  dialogMessage: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.xl,
+  },
+  dialogButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xxl,
+    borderRadius: RADIUS.md,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  dialogButtonError: {
+    backgroundColor: COLORS.danger,
+  },
+  dialogButtonText: {
+    ...TYPOGRAPHY.button,
+    color: '#fff',
   },
 });

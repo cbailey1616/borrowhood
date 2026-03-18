@@ -374,7 +374,9 @@ export default function FeedScreen({ navigation }) {
     ? 'Listings'
     : activeFilters.length === 1
       ? FILTER_OPTIONS.find(o => o.key === activeFilters[0])?.label
-      : `${activeFilters.length} Types`;
+      : activeFilters.length === 2
+        ? activeFilters.map(k => FILTER_OPTIONS.find(o => o.key === k)?.label).join(' & ')
+        : 'All Types';
 
   const visibilityChipLabel = visibilityFilters.length === 0
     ? 'Visibility'
@@ -828,7 +830,6 @@ export default function FeedScreen({ navigation }) {
               </Text>
               <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
             </HapticPressable>
-            {activeFilters.length > 0 && <View style={styles.filterDot} />}
           </View>
 
           <View style={styles.chipWrapper}>
@@ -845,7 +846,6 @@ export default function FeedScreen({ navigation }) {
               </Text>
               <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
             </HapticPressable>
-            {visibilityFilters.length > 0 && <View style={styles.filterDot} />}
           </View>
 
           {categories.length > 0 && (
@@ -863,7 +863,6 @@ export default function FeedScreen({ navigation }) {
                 </Text>
                 <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
               </HapticPressable>
-              {categoryFilters.length > 0 && <View style={styles.filterDot} />}
             </View>
           )}
         </View>
@@ -884,7 +883,7 @@ export default function FeedScreen({ navigation }) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.textSecondary}
+            tintColor={COLORS.primary}
             colors={[COLORS.primary]}
           />
         }
@@ -1208,17 +1207,6 @@ const styles = StyleSheet.create({
   dropdownChipTextActive: {
     color: '#fff',
     fontWeight: '600',
-  },
-  filterDot: {
-    position: 'absolute',
-    top: -3,
-    right: -3,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.danger,
-    borderWidth: 1.5,
-    borderColor: COLORS.background,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

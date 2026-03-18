@@ -56,7 +56,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
-  const [notifBannerDismissed, setNotifBannerDismissed] = useState(false);
+
 
   const checkNotifPermission = useCallback(async () => {
     const { status } = await Notifications.getPermissionsAsync();
@@ -264,25 +264,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   return (
     <View style={styles.container}>
       <NativeHeader title="Activity">
-        {notifsDenied && !notifBannerDismissed && (
-          <HapticPressable
-            style={styles.notifBanner}
-            onPress={() => Linking.openSettings()}
-            haptic="light"
-          >
-            <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
-            <Text style={styles.notifBannerText}>
-              Notifications are off — tap to enable in Settings
-            </Text>
-            <HapticPressable
-              onPress={() => setNotifBannerDismissed(true)}
-              haptic="light"
-              style={styles.notifBannerClose}
-            >
-              <Ionicons name="close" size={16} color={COLORS.textMuted} />
-            </HapticPressable>
-          </HapticPressable>
-        )}
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
@@ -309,14 +290,29 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
             />
           }
           ListHeaderComponent={
-            unreadCount > 0 ? (
-              <View style={styles.markAllBar}>
-                <Text style={styles.markAllLabel}>{unreadCount} unread</Text>
-                <HapticPressable onPress={handleMarkAllRead} haptic="light">
-                  <Text style={styles.markAllBtn}>Mark all read</Text>
+            <>
+              {notifsDenied && (
+                <HapticPressable
+                  style={styles.notifBannerInline}
+                  onPress={() => Linking.openSettings()}
+                  haptic="light"
+                >
+                  <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
+                  <Text style={styles.notifBannerInlineText}>
+                    Notifications are off — tap to enable
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
                 </HapticPressable>
-              </View>
-            ) : null
+              )}
+              {unreadCount > 0 && (
+                <View style={styles.markAllBar}>
+                  <Text style={styles.markAllLabel}>{unreadCount} unread</Text>
+                  <HapticPressable onPress={handleMarkAllRead} haptic="light">
+                    <Text style={styles.markAllBtn}>Mark all read</Text>
+                  </HapticPressable>
+                </View>
+              )}
+            </>
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -527,23 +523,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
   },
-  notifBanner: {
+  notifBannerInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(184, 134, 11, 0.25)',
-    borderRadius: RADIUS.sm,
-    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.warningMuted,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.warning + '30',
+    paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
     gap: SPACING.sm,
   },
-  notifBannerText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.greenText,
+  notifBannerInlineText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
     flex: 1,
-  },
-  notifBannerClose: {
-    padding: SPACING.xs,
   },
 });

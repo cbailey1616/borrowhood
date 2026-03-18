@@ -158,7 +158,7 @@ export default function EditListingScreen({ navigation, route }) {
         type: 'validation',
         title: 'Borrow Fee Required',
         message: parseFloat(formData.pricePerDay) > 0
-          ? 'Minimum borrow fee is $5/day to cover payment processing costs.'
+          ? 'Minimum borrow fee is $5/day.'
           : 'Please enter a borrow fee amount (minimum $5/day).',
       });
       return;
@@ -510,7 +510,7 @@ export default function EditListingScreen({ navigation, route }) {
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
-            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5 minimum to cover payment processing</Text>
+            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5/day minimum</Text>
           </>
         )}
 
