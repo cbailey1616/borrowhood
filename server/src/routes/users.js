@@ -887,12 +887,13 @@ router.post('/me/retry-transfers', authenticate, async (req, res) => {
 
     // Find completed/returned transactions where lender wasn't paid
     const txns = await query(
-      `SELECT id, lender_payout, payment_intent_id
+      `SELECT id, lender_payout, stripe_payment_intent_id
        FROM borrow_transactions
        WHERE lender_id = $1
          AND status IN ('completed', 'returned', 'return_pending')
          AND lender_payout > 0
-         AND (stripe_transfer_id IS NULL OR stripe_transfer_id = '')`,
+         AND (stripe_transfer_id IS NULL OR stripe_transfer_id = '')
+         AND stripe_payment_intent_id IS NOT NULL`,
       [req.user.id]
     );
 
@@ -902,16 +903,25 @@ router.post('/me/retry-transfers', authenticate, async (req, res) => {
     for (const txn of txns.rows) {
       try {
         const amountCents = Math.round(parseFloat(txn.lender_payout) * 100);
-        const transfer = await stripe.transfers.create({
+
+        // Get charge ID from payment intent for source_transaction
+        const params = {
           amount: amountCents,
           currency: 'usd',
           destination: connectId,
-          transfer_group: txn.id,
           metadata: { transactionId: txn.id },
-        });
+        };
+        if (txn.stripe_payment_intent_id) {
+          const pi = await stripe.paymentIntents.retrieve(txn.stripe_payment_intent_id);
+          if (pi.latest_charge) {
+            params.source_transaction = pi.latest_charge;
+          }
+        }
+
+        const transfer = await stripe.transfers.create(params);
 
         await query(
-          'UPDATE borrow_transactions SET stripe_transfer_id = $1 WHERE id = $2',
+          `UPDATE borrow_transactions SET stripe_transfer_id = $1, payment_status = 'completed' WHERE id = $2`,
           [transfer.id, txn.id]
         );
 
