@@ -47,6 +47,9 @@ router.get('/', authenticate, async (req, res) => {
         totalRentals: 0,
         activeRentals: 0,
         averagePerRental: 0,
+        totalRentalIncome: 0,
+        totalPlatformFees: 0,
+        totalStripeFees: 0,
       },
       recentTransactions: [],
       payouts: [],
@@ -107,6 +110,8 @@ router.get('/', authenticate, async (req, res) => {
       const statsResult = await query(
         `SELECT
            COALESCE(SUM(lender_payout), 0)::numeric as total_earned,
+           COALESCE(SUM(rental_fee), 0)::numeric as total_rental_income,
+           COALESCE(SUM(platform_fee), 0)::numeric as total_platform_fees,
            COUNT(*) as total_rentals
          FROM borrow_transactions
          WHERE lender_id = $1
@@ -116,12 +121,19 @@ router.get('/', authenticate, async (req, res) => {
 
       const totalEarned = parseFloat(statsResult.rows[0]?.total_earned) || 0;
       const totalRentals = parseInt(statsResult.rows[0]?.total_rentals) || 0;
+      const totalRentalIncome = parseFloat(statsResult.rows[0]?.total_rental_income) || 0;
+      const totalPlatformFees = parseFloat(statsResult.rows[0]?.total_platform_fees) || 0;
+      // Stripe charges 2.9% + $0.30 per transaction on the total charge
+      const totalStripeFees = totalRentals * 0.30 + totalRentalIncome * 0.029;
 
       response.stats = {
         totalEarned,
         totalRentals,
         activeRentals: 0,
         averagePerRental: totalRentals > 0 ? totalEarned / totalRentals : 0,
+        totalRentalIncome,
+        totalPlatformFees,
+        totalStripeFees: Math.round(totalStripeFees * 100) / 100,
       };
     } catch (err) {
       console.error('Get earnings stats error:', err.message);

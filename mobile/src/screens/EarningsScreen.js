@@ -160,6 +160,30 @@ export default function EarningsScreen({ navigation }) {
           </HapticPressable>
         )}
 
+        {/* Fee Breakdown */}
+        {(stats?.totalRentals || 0) > 0 && (
+          <View style={[styles.feeBreakdown, styles.cardBox]}>
+            <View style={styles.feeRow}>
+              <Text style={styles.feeLabel}>Rental Income</Text>
+              <Text style={styles.feeValue}>{formatCurrency(stats?.totalRentalIncome)}</Text>
+            </View>
+            <View style={styles.feeSeparator} />
+            <View style={styles.feeRow}>
+              <Text style={styles.feeLabel}>Platform Fee (3%)</Text>
+              <Text style={styles.feeDeduction}>-{formatCurrency(stats?.totalPlatformFees)}</Text>
+            </View>
+            <View style={styles.feeRow}>
+              <Text style={styles.feeLabel}>Payment Processing</Text>
+              <Text style={styles.feeDeduction}>-{formatCurrency(stats?.totalStripeFees)}</Text>
+            </View>
+            <View style={styles.feeSeparator} />
+            <View style={styles.feeRow}>
+              <Text style={styles.feeLabelBold}>Your Earnings</Text>
+              <Text style={styles.feeValueBold}>{formatCurrency(stats?.totalEarned)}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={[styles.statCard, styles.cardBox]}>
@@ -357,6 +381,43 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  feeBreakdown: {
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+  },
+  feeLabel: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
+  },
+  feeLabelBold: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  feeValue: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.text,
+  },
+  feeValueBold: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.secondary,
+  },
+  feeDeduction: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.danger,
+  },
+  feeSeparator: {
+    height: 1,
+    backgroundColor: COLORS.separator,
+    marginVertical: SPACING.sm,
   },
   statsRow: {
     flexDirection: 'row',
