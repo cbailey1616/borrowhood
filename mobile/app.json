@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.borrowhood.app",
-      "buildNumber": "200",
+      "buildNumber": "204",
       "infoPlist": {
         "NSCameraUsageDescription": "Borrowhood needs camera access to take photos of items you want to share with your neighbors.",
         "NSPhotoLibraryUsageDescription": "Borrowhood needs photo library access to select photos of items you want to share.",
@@ -27,7 +27,6 @@
         "NSFaceIDUsageDescription": "Allow Borrowhood to use Face ID for secure and quick sign-in.",
         "NSMicrophoneUsageDescription": "Borrowhood needs microphone access for video recordings of items you want to share.",
         "NSContactsUsageDescription": "Borrowhood uses your contacts to help you find friends who are already on the app.",
-        "NSUserTrackingUsageDescription": "This helps us improve your experience and show relevant items in your neighborhood.",
         "UIBackgroundModes": [
           "remote-notification"
         ],

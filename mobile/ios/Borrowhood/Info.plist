@@ -34,7 +34,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>198</string>
+    <string>204</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -64,8 +64,6 @@
     <string>Borrowhood needs microphone access for video recordings of items you want to share.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Allow Borrowhood to access your photos to share items with your neighbors.</string>
-    <key>NSUserTrackingUsageDescription</key>
-    <string>This helps us improve your experience and show relevant items in your neighborhood.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UIBackgroundModes</key>
