@@ -8,13 +8,13 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 # Copy package files
-COPY server/package*.json ./
+COPY package*.json ./
 
 # Install production dependencies
 RUN npm ci --omit=dev
 
 # Copy application code
-COPY server/ .
+COPY . .
 
 # Make start script executable
 RUN chmod +x start.sh
