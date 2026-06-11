@@ -1,4 +1,7 @@
 appId: com.borrowhood.app
+# Discover flows in subdirectories (Maestro only scans the top level otherwise)
+flows:
+  - "flows/**"
 tags:
   - all
 env:

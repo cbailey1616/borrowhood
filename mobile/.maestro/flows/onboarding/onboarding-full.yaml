@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Onboarding flow: Full path with interactions
 # Welcome -> Location -> Join Neighborhood -> Add Friend -> Free Plan -> Complete
@@ -14,8 +16,9 @@ appId: com.borrowhood.app
 - waitForAnimationToEnd
 
 # If location permission dialog appears, allow it
-- tapOn: "Allow While Using App"
-  optional: true
+- tapOn:
+    text: "Allow While Using App"
+    optional: true
 
 # Wait for neighborhoods to load
 - extendedWaitUntil:
@@ -45,4 +48,5 @@ appId: com.borrowhood.app
     id: "Onboarding.Complete.startExploring"
 
 # Should land on main feed
-- assertVisible: "Feed"
+- assertVisible:
+    id: "Feed.searchBar"

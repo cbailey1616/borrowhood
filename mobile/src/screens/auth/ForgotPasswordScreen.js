@@ -352,6 +352,10 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                       placeholder="At least 8 characters"
                       placeholderTextColor={COLORS.textMuted}
                       secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      textContentType="none"
                       autoFocus
                     />
                     <HapticPressable
@@ -382,6 +386,10 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     placeholder="Re-enter your password"
                     placeholderTextColor={COLORS.textMuted}
                     secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="off"
+                    textContentType="none"
                   />
                 </View>
 

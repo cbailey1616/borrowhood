@@ -1,16 +1,19 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Flow: Plus user initiates identity verification, then skips
 # Verifies verify button, Stripe Identity sheet launch, and skip option
 
-- runFlow: flows/auth/login-plus.yaml
+- runFlow: ../auth/login-plus.yaml
 
 # Navigate to Profile tab
 - tapOn: "Profile"
 - waitForAnimationToEnd
 
 # Navigate to Identity Verification screen
-- tapOn: "Identity Verification"
+- tapOn:
+    id: "Profile.verifyBanner"
 - waitForAnimationToEnd
 
 # Assert verify button is visible

@@ -1,8 +1,11 @@
-appId: com.borrowhood.mobile
+appId: com.borrowhood.app
 name: "Send a Message"
+tags:
+  - needs-fixtures
 ---
 - launchApp
-- tapOn: "Inbox"
+- tapOn:
+    id: "TabBar.Activity"
 - tapOn: "Messages"
 - tapOn:
     index: 0

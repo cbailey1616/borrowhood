@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Onboarding resume test: Start flow, kill app, verify resume at correct step
 

@@ -5,6 +5,7 @@ appId: com.borrowhood.app
 
 - launchApp:
     clearState: true
+    clearKeychain: true
 
 - tapOn:
     id: "Welcome.input.email"
@@ -17,4 +18,5 @@ appId: com.borrowhood.app
 - tapOn:
     id: "Welcome.button.signIn"
 
-- assertVisible: "Feed"
+- assertVisible:
+    id: "Feed.searchBar"

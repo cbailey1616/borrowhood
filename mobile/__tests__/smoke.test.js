@@ -305,8 +305,9 @@ describe('CreateListing', () => {
     fireEvent.changeText(titleInput, 'My Power Drill');
     fireEvent.changeText(getByTestId('CreateListing.input.description'), 'DeWalt 20V cordless drill');
 
-    // Submit button should exist and say "List Item"
-    const submitBtn = getByText('List Item');
+    // Submit button should exist; label is "List Item" / "List Item for Free"
+    // / "List Free Item" depending on free + deposit state (default is free).
+    const submitBtn = getByText(/^List /);
     expect(submitBtn).toBeTruthy();
   });
 });
@@ -333,7 +334,7 @@ describe('CreateRequest', () => {
     });
   });
 
-  it('should fill form fields and show validation on submit without category', async () => {
+  it('should show validation on submit without a title', async () => {
     const CreateRequestScreen = require('../src/screens/CreateRequestScreen').default;
 
     const { getByPlaceholderText, getByText } = render(
@@ -344,18 +345,12 @@ describe('CreateRequest', () => {
       expect(getByPlaceholderText(/Power drill/)).toBeTruthy();
     });
 
-    fireEvent.changeText(getByPlaceholderText(/Power drill/), 'Camping Stove');
-    fireEvent.changeText(
-      getByPlaceholderText(/Add more details/),
-      'Need a portable camping stove for the weekend'
-    );
-
-    // Submit without selecting a category triggers validation
+    // Title is the only required field (Category is optional). Submit with an
+    // empty title and validation should fire.
     await act(async () => {
       fireEvent.press(getByText('Post Request'));
     });
 
-    // Validation should fire (categoryId is required)
     expect(mockShowError).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'validation',

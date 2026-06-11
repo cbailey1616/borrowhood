@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
+import CategoryIcon from '../components/CategoryIcon';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -513,10 +514,9 @@ export default function CreateListingScreen({ navigation, route }) {
           >
             {formData.categoryId ? (
               <View style={styles.dropdownSelected}>
-                <Ionicons
-                  name={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
-                  size={18}
-                  color={COLORS.primary}
+                <CategoryIcon
+                  icon={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
+                  size={22}
                 />
                 <Text style={styles.dropdownSelectedText}>
                   {categories.find(c => c.id === formData.categoryId)?.name}
@@ -785,7 +785,7 @@ export default function CreateListingScreen({ navigation, route }) {
       title="Select Category"
       actions={categories.map(cat => ({
         label: cat.name,
-        icon: cat.icon || 'pricetag-outline',
+        icon: <CategoryIcon icon={cat.icon || 'pricetag-outline'} size={28} />,
         onPress: () => {
           updateField('categoryId', cat.id);
           haptics.selection();

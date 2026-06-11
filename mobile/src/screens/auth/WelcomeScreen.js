@@ -177,6 +177,10 @@ export default function WelcomeScreen({ navigation }) {
                       placeholder="Enter your password"
                       placeholderTextColor={COLORS.textMuted}
                       secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="password"
+                      textContentType="password"
                       testID="Welcome.input.password"
                       accessibilityLabel="Password"
                     />

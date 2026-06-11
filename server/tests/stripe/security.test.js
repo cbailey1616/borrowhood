@@ -30,6 +30,7 @@ describe('Security', () => {
       { path: '/api/subscriptions', module: '../../src/routes/subscriptions.js' },
       { path: '/api/identity', module: '../../src/routes/identity.js' },
       { path: '/api/rentals', module: '../../src/routes/rentals.js' },
+      { path: '/api/transactions', module: '../../src/routes/transactions.js' },
       { path: '/api/users', module: '../../src/routes/users.js' },
       { path: '/webhooks', module: '../../src/routes/webhooks.js' },
     );
@@ -301,7 +302,7 @@ describe('Security', () => {
   describe('Rental input validation', () => {
     it('should reject missing listingId', async () => {
       const res = await request(app)
-        .post('/api/rentals/request')
+        .post('/api/transactions')
         .set('Authorization', `Bearer ${userB.token}`)
         .send({
           startDate: new Date().toISOString(),
@@ -313,7 +314,7 @@ describe('Security', () => {
 
     it('should reject invalid date format', async () => {
       const res = await request(app)
-        .post('/api/rentals/request')
+        .post('/api/transactions')
         .set('Authorization', `Bearer ${userB.token}`)
         .send({
           listingId: '00000000-0000-0000-0000-000000000000',
@@ -326,7 +327,7 @@ describe('Security', () => {
 
     it('should reject message exceeding max length', async () => {
       const res = await request(app)
-        .post('/api/rentals/request')
+        .post('/api/transactions')
         .set('Authorization', `Bearer ${userB.token}`)
         .send({
           listingId: '00000000-0000-0000-0000-000000000000',

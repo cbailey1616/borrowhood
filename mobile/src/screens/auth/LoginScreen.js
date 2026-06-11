@@ -86,6 +86,10 @@ export default function LoginScreen({ navigation }) {
                   placeholder="Enter your password"
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="password"
+                  textContentType="password"
                 />
                 <HapticPressable
                   onPress={() => setShowPassword(!showPassword)}

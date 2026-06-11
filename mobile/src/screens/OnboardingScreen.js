@@ -14,6 +14,7 @@ import {
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
@@ -212,7 +213,7 @@ export default function OnboardingScreen({ onComplete }) {
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="location" size={48} color={COLORS.primary} />
+        <HeroIcon icon="location" size={76} colors={['#5AA9F0', '#2E5FC0']} />
       </View>
       <Text style={styles.title}>Where are you located?</Text>
       <Text style={styles.subtitle}>
@@ -274,7 +275,7 @@ export default function OnboardingScreen({ onComplete }) {
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="home" size={48} color={COLORS.primary} />
+        <HeroIcon icon="home" size={76} colors={['#3E8E5A', '#1C5230']} />
       </View>
       <Text style={styles.title}>Join a Neighborhood</Text>
       <Text style={styles.subtitle}>
@@ -353,7 +354,7 @@ export default function OnboardingScreen({ onComplete }) {
       {searchQuery.length < 2 && (
         <>
           <View style={styles.iconContainer}>
-            <Ionicons name="people" size={48} color={COLORS.primary} />
+            <HeroIcon icon="people" size={76} colors={['#9B7BE8', '#5B3FB0']} />
           </View>
           <Text style={styles.title}>Find Friends</Text>
           <Text style={styles.subtitle}>
@@ -438,7 +439,7 @@ export default function OnboardingScreen({ onComplete }) {
   const renderStep4 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="notifications" size={48} color={COLORS.primary} />
+        <HeroIcon icon="notifications" size={76} colors={['#F0A93E', '#C0392B']} />
       </View>
       <Text style={styles.title}>Stay in the Loop</Text>
       <Text style={styles.subtitle}>
@@ -564,10 +565,6 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',

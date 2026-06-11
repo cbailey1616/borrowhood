@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Flow: Listing Detail - view, save, and verify borrow button
 # Opens the first listing in the feed and interacts with detail screen

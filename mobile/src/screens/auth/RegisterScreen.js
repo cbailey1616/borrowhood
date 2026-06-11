@@ -173,6 +173,10 @@ export default function RegisterScreen({ navigation }) {
                     placeholder="At least 8 characters"
                     placeholderTextColor={COLORS.textMuted}
                     secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="off"
+                    textContentType="none"
                     testID="Register.input.password"
                     accessibilityLabel="Password"
                   />
@@ -197,6 +201,10 @@ export default function RegisterScreen({ navigation }) {
                   placeholder="Re-enter your password"
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="off"
+                  textContentType="none"
                   testID="Register.input.confirmPassword"
                   accessibilityLabel="Confirm password"
                 />

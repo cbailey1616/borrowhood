@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import HeroIcon from '../components/HeroIcon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -189,7 +190,9 @@ export default function LendingCirclesScreen({ navigation }) {
 
         {circles.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>⭕</Text>
+            <View style={{ marginBottom: 16 }}>
+              <HeroIcon icon="people" size={84} colors={['#9B7BE8', '#5B3FB0']} />
+            </View>
             <Text style={styles.emptyTitle}>No Circles Yet</Text>
             <Text style={styles.emptyText}>
               Create a lending circle to share items with a trusted group of friends or neighbors.

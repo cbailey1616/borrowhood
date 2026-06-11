@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
+import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -182,7 +183,7 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.form}>
           {isVerified && (
             <View style={styles.verifiedBanner}>
-              <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+              <VerifiedBadge size={26} glow />
               <View style={{ flex: 1 }}>
                 <Text style={styles.verifiedBannerTitle}>Identity Verified</Text>
                 <Text style={styles.verifiedBannerText}>

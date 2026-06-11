@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Flow: Rental Fee Gate - subscription wall for free users
 # Free users cannot charge a rental fee; toggling it should show the subscription gate
@@ -8,6 +10,7 @@ appId: com.borrowhood.app
 # Navigate to create listing
 - tapOn:
     id: "Feed.button.create"
+- waitForAnimationToEnd
 
 # ActionSheet appears - tap "List an Item"
 - tapOn: "List an Item"

@@ -1,10 +1,12 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Gate Journey: Abandon and Resume
 # Validates that abandoning a gate flow (going back) and retrying resumes
 # at the correct step. Free user starts the town gate, abandons, then retries.
 
-- runFlow: flows/auth/login-free.yaml
+- runFlow: ../auth/login-free.yaml
 
 # --- First attempt: trigger the gate ---
 
@@ -34,7 +36,8 @@ appId: com.borrowhood.app
 - waitForAnimationToEnd
 
 # Assert we returned to the feed
-- assertVisible: "Feed"
+- assertVisible:
+    id: "Feed.searchBar"
 
 # --- Second attempt: retry the same gate ---
 

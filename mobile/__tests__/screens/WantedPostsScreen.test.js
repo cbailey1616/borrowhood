@@ -22,7 +22,7 @@ describe('WantedPostsScreen', () => {
   it('shows empty state', async () => {
     const Screen = require('../../src/screens/WantedPostsScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('No wanted posts');
+    await findByText('No ISO posts');
   });
 
   it('displays request cards', async () => {

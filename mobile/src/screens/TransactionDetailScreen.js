@@ -187,8 +187,15 @@ export default function TransactionDetailScreen({ route, navigation }) {
   if (!transaction) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Transaction not found</Text>
-        {fetchError && <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>{fetchError}</Text>}
+        <Ionicons name="receipt-outline" size={48} color={COLORS.textMuted} style={{ marginBottom: SPACING.md }} />
+        <Text style={styles.errorTitle}>Transaction Not Available</Text>
+        <Text style={styles.errorSubtext}>This transaction may have been removed or is no longer accessible.</Text>
+        <HapticPressable
+          style={styles.errorButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.errorButtonText}>Go Back</Text>
+        </HapticPressable>
       </View>
     );
   }
@@ -284,7 +291,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </HapticPressable>
 
         {/* Quick message button for active transactions */}
-        {['approved', 'paid', 'picked_up'].includes(transaction.status) && (
+        {['pending', 'approved', 'paid', 'picked_up'].includes(transaction.status) && (
           <HapticPressable
             haptic="light"
             style={styles.messageButton}
@@ -712,9 +719,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  errorText: {
+  errorTitle: {
+    ...TYPOGRAPHY.title3,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  errorSubtext: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.xxl,
+    marginBottom: SPACING.xl,
+  },
+  errorButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md,
+  },
+  errorButtonText: {
+    ...TYPOGRAPHY.body,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   listingCard: {
     flexDirection: 'row',

@@ -57,6 +57,11 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       onLongPress={onLongPress}
       style={styles.tabButton}
       scaleDown={1}
+      testID={`TabBar.${route.name}`}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+      accessibilityLabel={label}
+      accessibilityValue={badge > 0 ? { text: `${badge} new` } : undefined}
     >
       <Animated.View style={[styles.iconContainer, isFocused && styles.iconContainerActive, animatedStyle]}>
         <Ionicons

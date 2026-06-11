@@ -94,8 +94,9 @@ describe('premiumGate with paid tiers disabled', () => {
     expect(result.screen).toBe('IdentityVerification');
   });
 
-  it('rental_listing passes when user is verified and has Connect', () => {
-    const userWithConnect = { ...freeUser, isVerified: true, hasConnectAccount: true };
+  it('rental_listing passes when user is verified and payouts are enabled', () => {
+    // The gate keys off user.payoutsEnabled (synced from Stripe Connect status).
+    const userWithConnect = { ...freeUser, isVerified: true, payoutsEnabled: true };
     const result = checkPremiumGate(userWithConnect, 'rental_listing');
     expect(result.passed).toBe(true);
   });

@@ -28,8 +28,8 @@ describe('CreateRequestScreen', () => {
     const CreateRequestScreen = require('../../src/screens/CreateRequestScreen').default;
     const { getByPlaceholderText, getByText } = render(<CreateRequestScreen navigation={mockNavigation} />);
     await waitFor(() => { expect(getByPlaceholderText(/Power drill/)).toBeTruthy(); });
-    fireEvent.changeText(getByPlaceholderText(/Power drill/), 'Camping Stove');
-    fireEvent.changeText(getByPlaceholderText(/Add more details/), 'Need for weekend');
+    // Title is the required field (Category is optional). Submit with an empty
+    // title and validation should fire.
     await act(async () => { fireEvent.press(getByText('Post Request')); });
     expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ type: 'validation' }));
   });

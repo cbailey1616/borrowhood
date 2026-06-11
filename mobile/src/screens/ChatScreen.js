@@ -552,6 +552,7 @@ export default function ChatScreen({ route, navigation }) {
               onChangeText={setNewMessage}
               placeholder="Type a message..."
               placeholderTextColor={COLORS.textMuted}
+              testID="Chat.input.message"
               multiline
               maxLength={2000}
               autoCapitalize="sentences"

@@ -1,8 +1,11 @@
-appId: com.borrowhood.mobile
+appId: com.borrowhood.app
 name: "Read All Notifications"
+tags:
+  - needs-fixtures
 ---
 - launchApp
-- tapOn: "Inbox"
+- tapOn:
+    id: "TabBar.Activity"
 - tapOn:
     id: "Inbox.button.notifications"
 - assertVisible: "Notifications"

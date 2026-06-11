@@ -14,11 +14,13 @@ import {
   Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import SearchBar from '../../components/SearchBar';
-import OnboardingProgress from '../../components/OnboardingProgress';
+import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import ActionSheet from '../../components/ActionSheet';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
@@ -259,7 +261,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
       style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <OnboardingProgress currentStep={3} />
+      <OnboardingProgressBar step={3} total={4} />
 
       <HapticPressable
         style={styles.backButton}
@@ -269,7 +271,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
         <Ionicons name="chevron-back" size={24} color={COLORS.text} />
       </HapticPressable>
 
-      <View style={styles.stepContainer}>
+      <Animated.View style={styles.stepContainer} entering={FadeInDown.duration(500).springify().damping(18)}>
         <Text style={styles.title}>Find Friends</Text>
         <Text style={styles.subtitle}>
           Add friends to share items just with people you know
@@ -362,19 +364,26 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
             }
           />
         )}
-      </View>
+      </Animated.View>
 
       {!keyboardVisible && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
           <HapticPressable
-            style={styles.primaryButton}
             onPress={handleContinue}
             haptic="medium"
             testID="Onboarding.Friends.continue"
           >
-            <Text style={styles.primaryButtonText}>
-              {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
-            </Text>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>
+                {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
+              </Text>
+              {addedFriends.length > 0 && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+            </LinearGradient>
           </HapticPressable>
         </View>
       )}
@@ -560,10 +569,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
-    padding: 18,
-    borderRadius: RADIUS.md,
+    flexDirection: 'row',
+    padding: 17,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    shadowColor: COLORS.primaryDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   primaryButtonText: {
     ...TYPOGRAPHY.headline,

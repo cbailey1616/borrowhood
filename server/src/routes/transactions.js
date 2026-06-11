@@ -205,6 +205,45 @@ router.post('/', authenticate,
 
       const transactionId = result.rows[0].id;
 
+      // If the borrower included a message, auto-create a DM conversation so the
+      // lender can reply immediately (instead of the message being trapped on the transaction)
+      if (message && message.trim()) {
+        try {
+          // Find existing conversation between these users, or create one
+          let conversationId;
+          const existingConv = await query(
+            `SELECT id FROM conversations
+             WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
+             ORDER BY created_at ASC LIMIT 1`,
+            [req.user.id, item.owner_id]
+          );
+
+          if (existingConv.rows.length > 0) {
+            conversationId = existingConv.rows[0].id;
+            // Update listing context if the conversation doesn't have one
+            await query(
+              'UPDATE conversations SET listing_id = $1 WHERE id = $2 AND listing_id IS NULL',
+              [listingId, conversationId]
+            );
+          } else {
+            const newConv = await query(
+              'INSERT INTO conversations (user1_id, user2_id, listing_id) VALUES ($1, $2, $3) RETURNING id',
+              [req.user.id, item.owner_id, listingId]
+            );
+            conversationId = newConv.rows[0].id;
+          }
+
+          // Insert the borrower's message as the first DM
+          await query(
+            'INSERT INTO messages (conversation_id, sender_id, content) VALUES ($1, $2, $3)',
+            [conversationId, req.user.id, message.trim()]
+          );
+        } catch (msgErr) {
+          // Non-critical — log but don't fail the transaction
+          console.error('Failed to create DM from borrow request message:', msgErr);
+        }
+      }
+
       // Free rental / giveaway (no fee + no deposit, or below Stripe minimum) — no payment needed
       if (totalChargeCents < 50) {
         // Notify owner immediately — no payment step to wait for

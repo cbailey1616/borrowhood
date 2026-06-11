@@ -10,5 +10,5 @@ describe('ActivityScreen', () => {
   it('shows empty state', async () => { const S = require('../../src/screens/ActivityScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText(/No activity/i); });
   it('renders All tab', async () => { const S = require('../../src/screens/ActivityScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText('All'); });
   it('renders Borrowing tab', async () => { const S = require('../../src/screens/ActivityScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText('Borrowing'); });
-  it('renders Lending tab', async () => { const S = require('../../src/screens/ActivityScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText('Lending'); });
+  it('renders Sharing tab', async () => { const S = require('../../src/screens/ActivityScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText('Sharing'); });
 });

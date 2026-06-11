@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Flow: Damage Claim - UI validation test
 # Navigates to a returned transaction and verifies damage claim form elements
@@ -7,7 +9,8 @@ appId: com.borrowhood.app
 - runFlow: ../auth/login-verified.yaml
 
 # Navigate to Inbox tab
-- tapOn: "Inbox"
+- tapOn:
+    id: "TabBar.Activity"
 
 # Tap Activity segment
 - tapOn:

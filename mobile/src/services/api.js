@@ -673,8 +673,9 @@ const getVerificationStatus = () =>
   get('/identity/status');
 
 // Rentals
-const createRentalRequest = (data) =>
-  post('/rentals/request', data);
+// NOTE: rental/borrow requests are created via createTransaction (POST /transactions),
+// which creates the manual-capture PaymentIntent. The old /rentals/request endpoint
+// was removed (it never created a PI and was unused).
 
 const approveRental = (id, response) =>
   post(`/rentals/${id}/approve`, { response });
@@ -910,7 +911,6 @@ export default {
   createVerificationSession,
   getVerificationStatus,
   // Rentals
-  createRentalRequest,
   approveRental,
   declineRental,
   confirmRentalPayment,

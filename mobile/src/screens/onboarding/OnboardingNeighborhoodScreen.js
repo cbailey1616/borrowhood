@@ -11,11 +11,14 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { Ionicons } from '../../components/Icon';
+import HeroIcon from '../../components/HeroIcon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
-import OnboardingProgress from '../../components/OnboardingProgress';
+import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
@@ -278,19 +281,21 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
       style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <OnboardingProgress currentStep={2} />
+      <OnboardingProgressBar step={2} total={4} />
 
-      <HapticPressable
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-        haptic="light"
-      >
-        <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-      </HapticPressable>
+      {navigation.canGoBack() && (
+        <HapticPressable
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          haptic="light"
+        >
+          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+        </HapticPressable>
+      )}
 
-      <View style={styles.stepContainer}>
+      <Animated.View style={styles.stepContainer} entering={FadeInDown.duration(500).springify().damping(18)}>
         <View style={styles.iconContainer}>
-          <Ionicons name="home" size={48} color={COLORS.primary} />
+          <HeroIcon icon="home" size={76} colors={['#3E8E5A', '#1C5230']} />
         </View>
         <Text style={styles.title}>Join a Neighborhood</Text>
         <Text style={styles.subtitle}>
@@ -411,7 +416,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
             )}
           </>
         )}
-      </View>
+      </Animated.View>
 
       {showNeighborhoods && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
@@ -421,14 +426,44 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
             </Text>
           )}
           <HapticPressable
-            style={styles.primaryButton}
             onPress={handleContinue}
             haptic="medium"
             testID="Onboarding.Neighborhood.continue"
           >
-            <Text style={styles.primaryButtonText}>
-              {!isSkipping ? 'Continue' : showSkipWarning ? 'Skip anyway' : 'Skip for now'}
-            </Text>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>
+                {!isSkipping ? 'Continue' : showSkipWarning ? 'Skip anyway' : 'Skip for now'}
+              </Text>
+              {!isSkipping && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+            </LinearGradient>
+          </HapticPressable>
+        </View>
+      )}
+
+      {showLocationForm && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
+          <HapticPressable
+            onPress={() => {
+              haptics.light();
+              api.updateOnboardingStep(2).catch(() => {});
+              navigation.navigate('OnboardingFriends', { joinedCommunityId: null });
+            }}
+            haptic="light"
+            testID="Onboarding.Neighborhood.skip"
+          >
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Skip for now</Text>
+            </LinearGradient>
           </HapticPressable>
         </View>
       )}
@@ -549,10 +584,6 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -624,6 +655,16 @@ const styles = StyleSheet.create({
   saveLocationText: {
     ...TYPOGRAPHY.button,
     color: '#fff',
+  },
+  skipLink: {
+    alignSelf: 'center',
+    paddingVertical: SPACING.md,
+    marginTop: SPACING.xs,
+  },
+  skipLinkText: {
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '600',
+    color: COLORS.textMuted,
   },
   buttonDisabled: { opacity: 0.5 },
   loader: { marginTop: SPACING.xxl },
@@ -725,10 +766,17 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
-    padding: 18,
-    borderRadius: RADIUS.md,
+    flexDirection: 'row',
+    padding: 17,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    shadowColor: COLORS.primaryDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   primaryButtonText: {
     ...TYPOGRAPHY.headline,

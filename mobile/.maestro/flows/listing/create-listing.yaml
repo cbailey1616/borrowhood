@@ -9,15 +9,23 @@ appId: com.borrowhood.app
 # Navigate to create listing
 - tapOn:
     id: "Feed.button.create"
+- waitForAnimationToEnd
 
 # ActionSheet appears - tap "List an Item"
 - tapOn: "List an Item"
 
 # --- Empty submit validation ---
+- scrollUntilVisible:
+    element:
+      id: "CreateListing.button.submit"
+    direction: DOWN
 - tapOn:
     id: "CreateListing.button.submit"
 
-- assertVisible: "Missing Fields"
+# Invalid submit keeps us on the form and scrolls to the first error field,
+# so the Title input (top of form) is what's visible — assert that.
+- assertVisible:
+    id: "CreateListing.input.title"
 
 - takeScreenshot: create-listing-empty-validation
 
@@ -32,6 +40,10 @@ appId: com.borrowhood.app
 - inputText: "Test listing created by Maestro"
 
 # --- Attempt submit without photo or category ---
+- scrollUntilVisible:
+    element:
+      id: "CreateListing.button.submit"
+    direction: DOWN
 - tapOn:
     id: "CreateListing.button.submit"
 

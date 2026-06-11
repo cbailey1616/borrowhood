@@ -1,5 +1,7 @@
-appId: com.borrowhood.mobile
+appId: com.borrowhood.app
 name: "View and Copy Referral Code"
+tags:
+  - obsolete
 ---
 - launchApp
 - tapOn: "Profile"

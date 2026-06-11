@@ -1,10 +1,12 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Gate Journey: Plus+Verified user -> CreateListing -> Rental Fee Toggle -> SetupPayout (step 3)
 # Validates that a user who already has Plus subscription and verified identity
 # skips steps 1-2 of the gate and lands directly on SetupPayout (step 3).
 
-- runFlow: flows/auth/login-verified.yaml
+- runFlow: ../auth/login-verified.yaml
 
 # Navigate to CreateListing screen
 - tapOn:

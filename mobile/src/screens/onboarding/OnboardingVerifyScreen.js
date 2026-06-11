@@ -7,10 +7,13 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { presentIdentityVerificationSheet } from '@stripe/stripe-identity-react-native';
 import { Ionicons } from '../../components/Icon';
+import VerifiedBadge from '../../components/VerifiedBadge';
 import HapticPressable from '../../components/HapticPressable';
-import OnboardingProgress from '../../components/OnboardingProgress';
+import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import { haptics } from '../../utils/haptics';
@@ -93,7 +96,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
   if (isChecking) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
-        <OnboardingProgress currentStep={4} />
+        <OnboardingProgressBar step={4} total={4} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
@@ -105,7 +108,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
   if (alreadyVerified) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
-        <OnboardingProgress currentStep={4} />
+        <OnboardingProgressBar step={4} total={4} />
         <HapticPressable
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -116,7 +119,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
 
         <View style={styles.content}>
           <View style={styles.successCircle}>
-            <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+            <VerifiedBadge size={84} glow />
           </View>
           <Text style={styles.title}>Already Verified</Text>
           <Text style={styles.subtitle}>
@@ -125,12 +128,16 @@ export default function OnboardingVerifyScreen({ navigation }) {
         </View>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-          <HapticPressable
-            style={styles.primaryButton}
-            onPress={goToComplete}
-            haptic="medium"
-          >
-            <Text style={styles.primaryButtonText}>Continue</Text>
+          <HapticPressable onPress={goToComplete} haptic="medium">
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </LinearGradient>
           </HapticPressable>
         </View>
       </View>
@@ -139,7 +146,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
-      <OnboardingProgress currentStep={4} />
+      <OnboardingProgressBar step={4} total={4} />
 
       <HapticPressable
         style={styles.backButton}
@@ -151,7 +158,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+          <VerifiedBadge size={76} glow />
         </View>
 
         <Text style={styles.title}>Verify Your Identity</Text>
@@ -202,20 +209,22 @@ export default function OnboardingVerifyScreen({ navigation }) {
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-        <HapticPressable
-          style={[styles.verifyButton, isStarting && styles.buttonDisabled]}
-          onPress={handleVerify}
-          disabled={isStarting}
-          haptic="medium"
-        >
-          {isStarting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
-              <Text style={styles.verifyButtonText}>Verify with ID</Text>
-            </>
-          )}
+        <HapticPressable onPress={handleVerify} disabled={isStarting} haptic="medium">
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.verifyButton, isStarting && styles.buttonDisabled]}
+          >
+            {isStarting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
+                <Text style={styles.verifyButtonText}>Verify with ID</Text>
+              </>
+            )}
+          </LinearGradient>
         </HapticPressable>
 
         <HapticPressable
@@ -266,19 +275,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xl,
   },
   successCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: COLORS.primary + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xl,
@@ -388,12 +389,16 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   verifyButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 18,
-    borderRadius: RADIUS.md,
+    paddingVertical: 17,
+    borderRadius: RADIUS.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.primaryDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -404,10 +409,17 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 18,
-    borderRadius: RADIUS.md,
+    flexDirection: 'row',
+    paddingVertical: 17,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    shadowColor: COLORS.primaryDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   primaryButtonText: {
     ...TYPOGRAPHY.headline,

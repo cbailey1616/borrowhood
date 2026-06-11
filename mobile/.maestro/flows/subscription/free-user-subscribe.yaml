@@ -1,9 +1,11 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Flow: Free user navigates to subscription and attempts to subscribe
 # Verifies plan selector, plan toggling, and PaymentSheet launch
 
-- runFlow: flows/auth/login-free.yaml
+- runFlow: ../auth/login-free.yaml
 
 # Navigate to Profile tab
 - tapOn: "Profile"

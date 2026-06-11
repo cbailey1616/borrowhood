@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
+import CategoryIcon from '../components/CategoryIcon';
 import * as ImagePicker from 'expo-image-picker';
 import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
@@ -382,11 +383,7 @@ export default function EditListingScreen({ navigation, route }) {
                       haptics.selection();
                     }}
                   >
-                    <Ionicons
-                      name={cat.icon || 'pricetag-outline'}
-                      size={16}
-                      color={isSelected ? '#fff' : COLORS.textSecondary}
-                    />
+                    <CategoryIcon icon={cat.icon || 'pricetag-outline'} size={18} />
                     <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
                       {cat.name}
                     </Text>

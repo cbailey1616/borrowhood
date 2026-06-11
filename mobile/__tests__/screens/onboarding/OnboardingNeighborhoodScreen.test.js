@@ -38,13 +38,13 @@ describe('OnboardingNeighborhoodScreen', () => {
     });
   });
 
-  it('renders city and state inputs when location denied', async () => {
+  it('renders manual location input when location denied', async () => {
     Location.requestForegroundPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
     const Screen = require('../../../src/screens/onboarding/OnboardingNeighborhoodScreen').default;
     const result = render(<Screen navigation={mockNavigation} />);
+    // Manual entry is now a single combined "City, State" field.
     await waitFor(() => {
       expect(result.getByTestId('Onboarding.Neighborhood.cityInput')).toBeTruthy();
-      expect(result.getByTestId('Onboarding.Neighborhood.stateInput')).toBeTruthy();
     });
   });
 

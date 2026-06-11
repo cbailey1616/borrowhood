@@ -135,6 +135,15 @@ jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
   addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
+  setBadgeCountAsync: jest.fn().mockResolvedValue(true),
+  scheduleNotificationAsync: jest.fn().mockResolvedValue('notif-id'),
+  cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  dismissAllNotificationsAsync: jest.fn().mockResolvedValue(undefined),
+  dismissNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  getPresentedNotificationsAsync: jest.fn().mockResolvedValue([]),
+  setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
+  AndroidImportance: { DEFAULT: 3, HIGH: 4, MAX: 5 },
 }));
 
 jest.mock('expo-device', () => ({

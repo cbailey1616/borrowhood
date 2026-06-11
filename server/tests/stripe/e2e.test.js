@@ -36,6 +36,7 @@ describe('E2E Flows', () => {
       { path: '/api/identity', module: '../../src/routes/identity.js' },
       { path: '/api/payments', module: '../../src/routes/payments.js' },
       { path: '/api/rentals', module: '../../src/routes/rentals.js' },
+      { path: '/api/transactions', module: '../../src/routes/transactions.js' },
       { path: '/api/users', module: '../../src/routes/users.js' },
       { path: '/webhooks', module: '../../src/routes/webhooks.js' },
     );
@@ -271,8 +272,8 @@ describe('E2E Flows', () => {
         status: 'verified',
       });
 
-      // Set up borrower
-      borrower = await createFullUser({ subscriptionTier: 'free' });
+      // Set up borrower (verified — paid rentals require borrower identity verification)
+      borrower = await createFullUser({ subscriptionTier: 'free', isVerified: true, status: 'verified' });
 
       // Create rental listing
       listingId = await createTestListing(lender.userId, {
@@ -285,12 +286,12 @@ describe('E2E Flows', () => {
       });
     });
 
-    it('Step 1: Borrower requests rental', async () => {
+    it('Step 1: Borrower requests rental — POST /transactions creates the manual-capture PI', async () => {
       const startDate = new Date(Date.now() + 86400000).toISOString();
       const endDate = new Date(Date.now() + 86400000 * 4).toISOString(); // 3 days
 
       const res = await request(app)
-        .post('/api/rentals/request')
+        .post('/api/transactions')
         .set('Authorization', `Bearer ${borrower.token}`)
         .send({
           listingId,
@@ -300,31 +301,21 @@ describe('E2E Flows', () => {
         });
 
       expect(res.status).toBe(201);
-      transactionId = res.body.transactionId;
-      expect(res.body.rentalDays).toBe(3);
-      expect(res.body.rentalFee).toBe(60); // $20 * 3
-      expect(res.body.depositAmount).toBe(100);
-      expect(res.body.totalAmount).toBe(160);
-    });
+      transactionId = res.body.id;
+      expect(res.body.clientSecret).toBeDefined();
 
-    it('Step 2: Lender approves → creates manual-capture PI', async () => {
-      const res = await request(app)
-        .post(`/api/rentals/${transactionId}/approve`)
-        .set('Authorization', `Bearer ${lender.token}`)
-        .send({ response: 'Happy to lend it!' });
-
-      expect(res.status).toBe(200);
-      paymentIntentId = res.body.paymentIntentId;
-      expect(res.body.totalAmount).toBe(16000); // $160 in cents
-
-      // Verify PI on Stripe
+      // PI is created and stored at request time
+      const row = await query('SELECT stripe_payment_intent_id FROM borrow_transactions WHERE id = $1', [transactionId]);
+      paymentIntentId = row.rows[0].stripe_payment_intent_id;
       const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
       expect(pi.capture_method).toBe('manual');
+      // Canonical /transactions charge = rental + deposit ($60 + $100 = $160).
+      // NB: the 3% borrower service fee is only computed by the (unused)
+      // /rentals/request endpoint, NOT by /transactions — see project memory.
       expect(pi.amount).toBe(16000);
     });
 
-    it('Step 3: Borrower confirms payment → authorization hold', async () => {
-      // Simulate PaymentSheet completion by confirming the PI on Stripe
+    it('Step 2: Borrower authorizes the hold via PaymentSheet', async () => {
       const pmList = await stripe.paymentMethods.list({
         customer: borrower.customerId,
         type: 'card',
@@ -333,28 +324,42 @@ describe('E2E Flows', () => {
         payment_method: pmList.data[0].id,
       });
 
-      // Let the endpoint detect the PI status and update DB accordingly
       const res = await request(app)
         .post(`/api/rentals/${transactionId}/confirm-payment`)
         .set('Authorization', `Bearer ${borrower.token}`);
 
       expect(res.status).toBe(200);
+      expect(res.body.status).toBe('authorized');
     });
 
-    it('Step 4: Lender confirms pickup → captures payment', async () => {
+    it('Step 3: Lender approves → captures the authorization hold', async () => {
+      const res = await request(app)
+        .post(`/api/rentals/${transactionId}/approve`)
+        .set('Authorization', `Bearer ${lender.token}`)
+        .send({ response: 'Happy to lend it!' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      // Approval captures the hold and moves the request to 'paid'
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      expect(pi.status).toBe('succeeded');
+      const txn = await query('SELECT status FROM borrow_transactions WHERE id = $1', [transactionId]);
+      expect(txn.rows[0].status).toBe('paid');
+    });
+
+    it('Step 4: Lender confirms pickup', async () => {
       const res = await request(app)
         .post(`/api/rentals/${transactionId}/pickup`)
         .set('Authorization', `Bearer ${lender.token}`)
         .send({ condition: 'like_new' });
 
       expect(res.status).toBe(200);
-
-      // Verify PI captured on Stripe
-      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-      expect(pi.status).toBe('succeeded');
+      const txn = await query('SELECT status FROM borrow_transactions WHERE id = $1', [transactionId]);
+      expect(txn.rows[0].status).toBe('picked_up');
     });
 
-    it('Step 5: Lender confirms clean return → deposit refund + payout', async () => {
+    it('Step 5: Lender confirms clean return → deposit released', async () => {
       const res = await request(app)
         .post(`/api/rentals/${transactionId}/return`)
         .set('Authorization', `Bearer ${lender.token}`)
@@ -363,17 +368,15 @@ describe('E2E Flows', () => {
       expect(res.status).toBe(200);
       expect(res.body.conditionDegraded).toBe(false);
 
-      // Verify transaction completed
       const txn = await query(
-        'SELECT status, payment_status, stripe_transfer_id FROM borrow_transactions WHERE id = $1',
+        'SELECT status, payment_status FROM borrow_transactions WHERE id = $1',
         [transactionId]
       );
       expect(txn.rows[0].status).toBe('returned');
-      expect(txn.rows[0].payment_status).toBe('completed');
+      expect(txn.rows[0].payment_status).toBe('deposit_released');
 
-      // Verify listing is available again
       const listing = await query(
-        'SELECT is_available, times_borrowed FROM listings WHERE id = $1',
+        'SELECT is_available FROM listings WHERE id = $1',
         [listingId]
       );
       expect(listing.rows[0].is_available).toBe(true);
@@ -394,7 +397,7 @@ describe('E2E Flows', () => {
         status: 'verified',
       });
 
-      borrower = await createFullUser();
+      borrower = await createFullUser({ isVerified: true, status: 'verified' });
 
       listingId = await createTestListing(lender.userId, {
         title: 'Fragile Art Print',
@@ -405,41 +408,40 @@ describe('E2E Flows', () => {
       });
     });
 
-    it('should complete request → approve → pay → pickup flow', async () => {
+    it('should complete request → authorize → approve → pickup', async () => {
       const startDate = new Date(Date.now() + 86400000).toISOString();
       const endDate = new Date(Date.now() + 86400000 * 3).toISOString();
 
-      // Request
+      // Request via the canonical endpoint (creates the manual-capture PI)
       const reqRes = await request(app)
-        .post('/api/rentals/request')
+        .post('/api/transactions')
         .set('Authorization', `Bearer ${borrower.token}`)
         .send({ listingId, startDate, endDate });
-      transactionId = reqRes.body.transactionId;
+      transactionId = reqRes.body.id;
 
-      // Approve
-      const approveRes = await request(app)
-        .post(`/api/rentals/${transactionId}/approve`)
-        .set('Authorization', `Bearer ${lender.token}`);
-
-      // Pay (simulate PaymentSheet completion)
-      const pmList = await stripe.paymentMethods.list({
-        customer: borrower.customerId,
-        type: 'card',
-      });
-      await stripe.paymentIntents.confirm(approveRes.body.paymentIntentId, {
+      // Borrower authorizes the hold
+      const row = await query('SELECT stripe_payment_intent_id FROM borrow_transactions WHERE id = $1', [transactionId]);
+      const pmList = await stripe.paymentMethods.list({ customer: borrower.customerId, type: 'card' });
+      await stripe.paymentIntents.confirm(row.rows[0].stripe_payment_intent_id, {
         payment_method: pmList.data[0].id,
       });
-
-      // Confirm payment via endpoint (updates DB status)
       await request(app)
         .post(`/api/rentals/${transactionId}/confirm-payment`)
         .set('Authorization', `Bearer ${borrower.token}`);
 
-      // Pickup
+      // Lender approves (captures) then confirms pickup
       await request(app)
+        .post(`/api/rentals/${transactionId}/approve`)
+        .set('Authorization', `Bearer ${lender.token}`)
+        .send({ response: 'Ready' });
+      const res = await request(app)
         .post(`/api/rentals/${transactionId}/pickup`)
         .set('Authorization', `Bearer ${lender.token}`)
         .send({ condition: 'like_new' });
+
+      expect(res.status).toBe(200);
+      const txn = await query('SELECT status FROM borrow_transactions WHERE id = $1', [transactionId]);
+      expect(txn.rows[0].status).toBe('picked_up');
     });
 
     it('should detect condition degradation on return', async () => {
@@ -451,7 +453,7 @@ describe('E2E Flows', () => {
       expect(res.body.conditionDegraded).toBe(true);
     });
 
-    it('should process damage claim and adjust deposit', async () => {
+    it('should open a damage-claim dispute against the deposit', async () => {
       const res = await request(app)
         .post(`/api/rentals/${transactionId}/damage-claim`)
         .set('Authorization', `Bearer ${lender.token}`)
@@ -462,15 +464,15 @@ describe('E2E Flows', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.claimAmount).toBe(7500);
-      expect(res.body.depositRefunded).toBe(12500); // $200 - $75 = $125 back
+      expect(res.body.disputeId).toBeDefined();
+      expect(res.body.status).toBe('awaitingResponse');
 
-      // Verify final state
+      // Damage claim opens a dispute; the transaction is now disputed
       const txn = await query(
-        'SELECT status, payment_status, damage_claim_amount_cents FROM borrow_transactions WHERE id = $1',
+        'SELECT status, damage_claim_amount_cents FROM borrow_transactions WHERE id = $1',
         [transactionId]
       );
-      expect(txn.rows[0].payment_status).toBe('damage_claimed');
+      expect(txn.rows[0].status).toBe('disputed');
       expect(txn.rows[0].damage_claim_amount_cents).toBe(7500);
     });
   });
@@ -491,7 +493,7 @@ describe('E2E Flows', () => {
       const connect = await createTestConnectAccount(lender.userId, lender.email);
       lender.connectAccountId = connect.id;
 
-      borrower = await createFullUser();
+      borrower = await createFullUser({ isVerified: true, status: 'verified' });
 
       listingId = await createTestListing(lender.userId, {
         title: 'Power Tool Set',

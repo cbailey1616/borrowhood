@@ -35,16 +35,18 @@ describe('CreateListingScreen', () => {
     fireEvent.changeText(getByTestId('CreateListing.input.description'), 'DeWalt 20V cordless drill');
   });
 
+  // Default listing is free (isFree: true), so the submit button reads
+  // "List Item for Free"; giveaways read "List Free Item". Match the family.
   it('submit button exists', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
     const { getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
-    expect(getByText('List Item')).toBeTruthy();
+    expect(getByText(/^List /)).toBeTruthy();
   });
 
   it('validates required fields on submit', async () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
-    const { getByTestId, getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
-    await act(async () => { fireEvent.press(getByText('List Item')); });
+    const { getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
+    await act(async () => { fireEvent.press(getByText(/^List /)); });
     expect(mockShowError).toHaveBeenCalled();
   });
 

@@ -170,9 +170,23 @@ async function registerUser(user) {
 }
 
 async function promoteUser(userId, { subscriptionTier, status }) {
+  // Mark onboarding complete + set a location so login lands on a populated
+  // Feed (not the onboarding flow). Without this, RootNavigator routes test
+  // users into onboarding and flows asserting "Feed" fail.
+  // The app reads `is_verified` (not `status`) for verification gating and the
+  // rank badge, so set it in lockstep with a 'verified' status.
+  const isVerified = status === 'verified';
   await query(
-    'UPDATE users SET subscription_tier = $1, status = $2 WHERE id = $3',
-    [subscriptionTier, status, userId]
+    `UPDATE users
+       SET subscription_tier = $1,
+           status = $2,
+           is_verified = $3,
+           verified_at = CASE WHEN $3 THEN COALESCE(verified_at, now()) ELSE verified_at END,
+           onboarding_completed = true,
+           city = COALESCE(NULLIF(city, ''), 'San Francisco'),
+           state = COALESCE(NULLIF(state, ''), 'CA')
+     WHERE id = $4`,
+    [subscriptionTier, status, isVerified, userId]
   );
 }
 

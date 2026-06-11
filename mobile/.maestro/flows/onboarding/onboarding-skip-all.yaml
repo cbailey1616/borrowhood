@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Onboarding flow: Skip all optional steps
 # Welcome -> Neighborhood (skip) -> Friends (skip) -> Plan (free) -> Complete
@@ -28,4 +30,5 @@ appId: com.borrowhood.app
     id: "Onboarding.Complete.startExploring"
 
 # Should land on main feed
-- assertVisible: "Feed"
+- assertVisible:
+    id: "Feed.searchBar"

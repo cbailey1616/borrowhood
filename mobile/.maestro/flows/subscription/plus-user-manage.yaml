@@ -1,9 +1,11 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Flow: Plus user views their active subscription
 # Verifies active status, plan info, and cancel button visibility
 
-- runFlow: flows/auth/login-plus.yaml
+- runFlow: ../auth/login-plus.yaml
 
 # Navigate to Profile tab
 - tapOn: "Profile"

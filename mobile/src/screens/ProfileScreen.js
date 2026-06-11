@@ -185,6 +185,8 @@ export default function ProfileScreen({ navigation }) {
             style={styles.verifyBanner}
             onPress={() => navigation.navigate('IdentityVerification', { source: 'profile' })}
             haptic="medium"
+            testID="Profile.verifyBanner"
+            accessibilityLabel="Verify Your Identity"
           >
             <View style={styles.verifyBannerIcon}>
               <Ionicons name="shield-outline" size={22} color={COLORS.warning} />

@@ -5,13 +5,14 @@ appId: com.borrowhood.app
 # --- Test 1: Empty form submission ---
 - launchApp:
     clearState: true
+    clearKeychain: true
 
 - takeScreenshot: "login-01-welcome-screen"
 
 - tapOn:
     id: "Welcome.button.signIn"
 
-- assertVisible: "Missing Information"
+- assertVisible: "Please enter your email and password."
 
 - takeScreenshot: "login-02-empty-form-error"
 
@@ -31,8 +32,7 @@ appId: com.borrowhood.app
     id: "Welcome.button.signIn"
 
 - assertVisible:
-    text: ".*[Ii]nvalid.*|.*[Ee]rror.*|.*[Ii]ncorrect.*"
-    regex: true
+    text: ".*[Nn]o account.*|.*[Ii]ncorrect.*|.*[Ee]rror.*"
 
 - takeScreenshot: "login-03-wrong-credentials-error"
 
@@ -53,6 +53,7 @@ appId: com.borrowhood.app
 - tapOn:
     id: "Welcome.button.signIn"
 
-- assertVisible: "Feed"
+- assertVisible:
+    id: "Feed.searchBar"
 
 - takeScreenshot: "login-05-successful-login"

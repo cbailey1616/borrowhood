@@ -1,9 +1,11 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Flow: Free user triggers the town gate upgrade overlay
 # Verifies visibility filter gates "My Town" behind Plus subscription
 
-- runFlow: flows/auth/login-free.yaml
+- runFlow: ../auth/login-free.yaml
 
 # Tap visibility chip to open visibility ActionSheet
 - tapOn:

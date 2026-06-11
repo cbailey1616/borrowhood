@@ -256,8 +256,13 @@ export async function cleanupTestUser(userId) {
     } catch (e) { /* already deleted */ }
   }
 
-  // Clean up DB
+  // Clean up DB — delete rows that reference this user's transactions first
+  // (notifications/disputes/ratings FK borrow_transactions without ON DELETE CASCADE).
   await query('DELETE FROM subscription_history WHERE user_id = $1', [userId]);
+  const txnFilter = '(SELECT id FROM borrow_transactions WHERE borrower_id = $1 OR lender_id = $1)';
+  await query(`DELETE FROM notifications WHERE transaction_id IN ${txnFilter}`, [userId]);
+  await query(`DELETE FROM ratings WHERE transaction_id IN ${txnFilter}`, [userId]);
+  await query(`DELETE FROM disputes WHERE transaction_id IN ${txnFilter}`, [userId]);
   await query('DELETE FROM borrow_transactions WHERE borrower_id = $1 OR lender_id = $1', [userId]);
   await query('DELETE FROM listings WHERE owner_id = $1', [userId]);
   await query('DELETE FROM users WHERE id = $1', [userId]);

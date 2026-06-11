@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { Ionicons } from '../../components/Icon';
+import HeroIcon from '../../components/HeroIcon';
 import HapticPressable from '../../components/HapticPressable';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -73,9 +76,9 @@ export default function OnboardingCompleteScreen() {
         colors={[COLORS.primary, COLORS.primaryLight, COLORS.warning, '#fff']}
       />
 
-      <View style={styles.content}>
+      <Animated.View style={styles.content} entering={FadeInDown.duration(550).springify().damping(16)}>
         <View style={styles.checkContainer}>
-          <Ionicons name="checkmark-circle" size={80} color={COLORS.primary} />
+          <HeroIcon icon="checkmark" size={92} glow />
         </View>
 
         <Text style={styles.title}>You're All Set!</Text>
@@ -97,19 +100,26 @@ export default function OnboardingCompleteScreen() {
             <Text style={styles.founderText}>Neighborhood Founder</Text>
           </View>
         )}
-      </View>
+      </Animated.View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
-          style={styles.primaryButton}
           onPress={handleStartExploring}
           disabled={isCompleting}
           haptic="success"
           testID="Onboarding.Complete.startExploring"
         >
-          <Text style={styles.primaryButtonText}>
-            {isCompleting ? 'Setting up...' : 'Start Exploring'}
-          </Text>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryButton}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isCompleting ? 'Setting up...' : 'Start Exploring'}
+            </Text>
+            {!isCompleting && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+          </LinearGradient>
         </HapticPressable>
       </View>
     </View>
@@ -161,10 +171,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
-    padding: 18,
-    borderRadius: RADIUS.md,
+    flexDirection: 'row',
+    padding: 17,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    shadowColor: COLORS.primaryDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   primaryButtonText: {
     ...TYPOGRAPHY.headline,

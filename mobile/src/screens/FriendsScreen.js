@@ -516,6 +516,7 @@ export default function FriendsScreen({ navigation, route }) {
               style={styles.searchInput}
               placeholder={activeTab === 'friends' ? "Search friends..." : "Search by name..."}
               placeholderTextColor={COLORS.textMuted}
+              testID="Friends.search.input"
               value={search}
               onChangeText={setSearch}
               autoFocus={activeTab === 'search'}

@@ -1,8 +1,11 @@
-appId: com.borrowhood.mobile
+appId: com.borrowhood.app
 name: "Open a Dispute"
+tags:
+  - needs-fixtures
 ---
 - launchApp
-- tapOn: "Inbox"
+- tapOn:
+    id: "TabBar.Activity"
 - tapOn: "Activity"
 - tapOn:
     index: 0

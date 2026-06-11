@@ -1,5 +1,7 @@
-appId: com.borrowhood.mobile
+appId: com.borrowhood.app
 name: "Add and Remove Friend"
+tags:
+  - needs-fixtures
 ---
 - launchApp
 - tapOn: "Profile"

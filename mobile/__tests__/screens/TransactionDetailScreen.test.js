@@ -64,7 +64,9 @@ describe('TransactionDetailScreen', () => {
 
   it('displays other party info', async () => {
     const TransactionDetailScreen = require('../../src/screens/TransactionDetailScreen').default;
-    const { findByText } = render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);
-    await findByText(/Alice/);
+    const { findAllByText } = render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);
+    // "Alice" appears in both the counterparty card and the activity copy.
+    const matches = await findAllByText(/Alice/);
+    expect(matches.length).toBeGreaterThan(0);
   });
 });

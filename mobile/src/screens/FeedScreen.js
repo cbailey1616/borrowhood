@@ -13,6 +13,8 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import CategoryIcon from '../components/CategoryIcon';
+import HeroIcon from '../components/HeroIcon';
 import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import SearchBar from '../components/SearchBar';
@@ -43,6 +45,28 @@ const VISIBILITY_OPTIONS = [
   { key: 'neighborhood', label: 'My Neighborhood' },
   { key: 'town', label: 'My Town' },
 ];
+
+// === Feed redesign palette ===
+// Lighter, calmer cards instead of the near-black tiles — but kept in the
+// app's warm Parchment & Ink family (reuses the shared COLORS tokens) so the
+// Feed sits cohesively next to the other screens. The dark-green header stays
+// as a brand anchor; green/amber are accents, not the whole card fill.
+const FEED = {
+  bg: COLORS.background,        // parchment background, same as every other screen
+  card: COLORS.card,            // lightest parchment — card surface used app-wide
+  cardBorder: COLORS.border,    // warm tan hairline (keeps cards from blurring into bg)
+  body: COLORS.textSecondary,   // forest-green ink for descriptions
+  meta: COLORS.textMuted,       // muted green for time / owner
+  thread: COLORS.surface,       // recessed parchment for the comment area
+  threadDeep: COLORS.surfaceElevated, // nested reply inset
+};
+
+// Accent per card type — pill fill + a soft tint for the thumbnail backdrop.
+const CARD_ACCENTS = {
+  borrow:   { pill: '#2D5A27', soft: 'rgba(45, 90, 39, 0.10)' },   // green
+  giveaway: { pill: '#B26A1F', soft: 'rgba(178, 106, 31, 0.10)' }, // warm amber for FREE
+  wanted:   { pill: '#C28A2C', soft: 'rgba(194, 138, 44, 0.12)' }, // gold for ISO
+};
 
 export default function FeedScreen({ navigation }) {
   const { user, refreshUser, isGracePeriodActive } = useAuth();
@@ -393,33 +417,30 @@ export default function FeedScreen({ navigation }) {
   const createActions = [
     {
       label: 'List an Item',
+      testID: 'Feed.create.listing',
       icon: <Ionicons name="cube-outline" size={20} color={COLORS.primary} />,
       onPress: () => navigation.navigate('CreateListing'),
     },
     {
       label: 'Post an ISO',
+      testID: 'Feed.create.request',
       icon: <Ionicons name="create-outline" size={20} color={COLORS.secondary} />,
       onPress: () => navigation.navigate('CreateRequest'),
     },
   ];
 
-  // Color config per card type
-  const CARD_TINTS = {
-    borrow: { bg: COLORS.greenBg, accent: '#2D5A27', border: '#2D5A2730' },
-    giveaway: { bg: COLORS.greenBg, accent: '#A03030', border: '#0F241530' },
-    wanted: { bg: '#3A2A0A', accent: '#D4A03C', border: '#D4A03C30' },
-  };
-  const getCardTint = (item) =>
-    item.type === 'request' ? CARD_TINTS.wanted
-      : item.listingType === 'giveaway' ? CARD_TINTS.giveaway
-      : CARD_TINTS.borrow;
+  // Accent per card type (see CARD_ACCENTS at module top)
+  const getCardAccent = (item) =>
+    item.type === 'request' ? CARD_ACCENTS.wanted
+      : item.listingType === 'giveaway' ? CARD_ACCENTS.giveaway
+      : CARD_ACCENTS.borrow;
 
   const renderListingItem = (item, index) => {
-    const tint = getCardTint(item);
+    const accent = getCardAccent(item);
     const userName = item.ownerMasked ? 'Verified Owner'
       : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
-    const communityName = item.category || null;
     const isGiveaway = item.listingType === 'giveaway';
+    const priceLabel = isGiveaway ? null : (item.isFree ? 'Free' : `$${item.pricePerDay}/day`);
 
     return (
     <AnimatedCard index={index}>
@@ -427,11 +448,12 @@ export default function FeedScreen({ navigation }) {
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
         haptic="light"
         scaleDown={0.98}
-        style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}
+        style={styles.tile}
+        testID="FeedCard"
       >
           {/* Thumbnail + Content row */}
           <View style={styles.tileRow}>
-          <View style={[styles.tileThumb, { backgroundColor: tint.bg }]}>
+          <View style={[styles.tileThumb, { backgroundColor: accent.soft }]}>
             {item.photoUrl ? (
               <ShimmerImage
                 source={{ uri: item.photoUrl }}
@@ -439,7 +461,7 @@ export default function FeedScreen({ navigation }) {
                 sharedTransitionTag={`listing-photo-${item.id}`}
               />
             ) : (
-              <Ionicons name="image-outline" size={28} color={tint.accent + '40'} />
+              <Ionicons name="image-outline" size={26} color={accent.pill + '55'} />
             )}
             {item.ownerMasked && (
               <View style={styles.tileLockOverlay}>
@@ -450,34 +472,30 @@ export default function FeedScreen({ navigation }) {
           <View style={styles.tileContent}>
             <View style={styles.tileTopRow}>
               {isGiveaway ? (
-                <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
+                <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
                   <Ionicons name="gift" size={10} color="#fff" />
                   <Text style={styles.tilePillText}>FREE</Text>
                 </View>
               ) : (
-                <View style={styles.tilePillRow}>
-                  <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? tint.accent : COLORS.textMuted }]}>
-                    <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
-                    <Text style={styles.tilePillText}>{item.isAvailable ? 'BORROW' : 'BORROWED'}</Text>
-                  </View>
-                  <View style={[styles.tileTypePill, { backgroundColor: tint.accent }]}>
-                    <Text style={styles.tilePillText}>
-                      {item.isFree ? 'Free' : `$${item.pricePerDay}/day`}
-                    </Text>
-                  </View>
+                <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? accent.pill : COLORS.textMuted }]}>
+                  <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
+                  <Text style={styles.tilePillText}>{item.isAvailable ? 'BORROW' : 'OUT'}</Text>
                 </View>
               )}
-              <Text style={[styles.tileTimeText, { color: COLORS.greenTextMuted }]}>{formatTimeAgo(item.createdAt)}</Text>
+              <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
-            <Text style={[styles.tileTitle, { color: '#fff' }]} numberOfLines={1}>{item.title}</Text>
+            <Text style={styles.tileTitle} numberOfLines={1}>{item.title}</Text>
             {item.description ? (
-              <Text style={[styles.tileDesc, { color: COLORS.greenText }]} numberOfLines={2}>{item.description}</Text>
+              <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
             ) : null}
             <View style={styles.tileFooterRow}>
               {!item.ownerMasked && <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={12} />}
-              <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>
+              <Text style={styles.tileFooterText} numberOfLines={1}>
                 {userName}
               </Text>
+              {priceLabel ? (
+                <Text style={[styles.tilePrice, { color: accent.pill }]}>{priceLabel}</Text>
+              ) : null}
             </View>
           </View>
           </View>
@@ -740,7 +758,7 @@ export default function FeedScreen({ navigation }) {
   };
 
   const renderRequestItem = (item, index) => {
-    const tint = CARD_TINTS.wanted;
+    const accent = CARD_ACCENTS.wanted;
     const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
@@ -749,23 +767,23 @@ export default function FeedScreen({ navigation }) {
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"
           scaleDown={0.98}
-          style={[styles.tile, { backgroundColor: tint.bg, borderColor: tint.accent + '30' }]}
+          style={styles.tile}
         >
             <View style={styles.tileContent}>
               <View style={styles.tileTopRow}>
-                <View style={styles.tileTypeLabel}>
-                  <Ionicons name="search" size={12} color={tint.accent} />
-                  <Text style={[styles.tileTypeLabelText, { color: tint.accent }]}>ISO</Text>
+                <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
+                  <Ionicons name="search" size={10} color="#fff" />
+                  <Text style={styles.tilePillText}>ISO</Text>
                 </View>
-                <Text style={[styles.tileTimeText, { color: COLORS.greenTextMuted }]}>{formatTimeAgo(item.createdAt)}</Text>
+                <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
               </View>
-              <Text style={[styles.tileTitle, { color: '#fff' }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.tileTitle} numberOfLines={1}>{item.title}</Text>
               {item.description ? (
-                <Text style={[styles.tileDesc, { color: COLORS.greenText }]} numberOfLines={2}>{item.description}</Text>
+                <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
               ) : null}
               <View style={styles.tileFooterRow}>
                 <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={12} />
-                <Text style={[styles.tileFooterText, { color: COLORS.greenTextMuted }]} numberOfLines={1}>{userName}</Text>
+                <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
               </View>
             </View>
           {/* Inline thread */}
@@ -878,7 +896,7 @@ export default function FeedScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         bounces
-        style={{ backgroundColor: COLORS.background }}
+        style={{ backgroundColor: FEED.bg }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -948,9 +966,7 @@ export default function FeedScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconWrap}>
-              <Ionicons name={user?.city ? 'cube-outline' : 'navigate-outline'} size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 16 }} />
-              <Ionicons name="arrow-forward-outline" size={20} color={COLORS.primary} style={{ position: 'absolute', bottom: 18, right: 14, opacity: 0.6 }} />
-              <Ionicons name="person-outline" size={24} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, left: 20, opacity: 0.8 }} />
+              <HeroIcon icon={user?.city ? 'cube' : 'navigate'} size={88} />
             </View>
             <Text style={styles.emptyTitle}>{user?.city ? 'Your hood is quiet' : 'Add your location'}</Text>
             <Text style={styles.emptySubtitle}>
@@ -1054,7 +1070,7 @@ export default function FeedScreen({ navigation }) {
             label: cat.name,
             icon: categoryFilters.includes(cat.id)
               ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name={cat.icon || 'pricetag-outline'} size={20} color={COLORS.textMuted} />,
+              : <CategoryIcon icon={cat.icon || 'pricetag-outline'} size={26} />,
             onPress: () => {
               const allCatIds = categories.map(c => c.id);
               toggleFilter(cat.id, allCatIds, setCategoryFilters);
@@ -1146,7 +1162,7 @@ export default function FeedScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: FEED.bg,
   },
   skeletonContainer: {
     padding: SPACING.lg,
@@ -1346,7 +1362,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    backgroundColor: COLORS.card,
+    borderColor: FEED.cardBorder,
+    backgroundColor: FEED.card,
     marginBottom: SPACING.md,
   },
   tileRow: {
@@ -1424,7 +1441,7 @@ const styles = StyleSheet.create({
   },
   tileTimeText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
+    color: FEED.meta,
   },
   tileTitle: {
     ...TYPOGRAPHY.headline,
@@ -1433,7 +1450,7 @@ const styles = StyleSheet.create({
   },
   tileDesc: {
     ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
+    color: FEED.body,
     marginBottom: SPACING.xs,
     lineHeight: 17,
   },
@@ -1444,7 +1461,13 @@ const styles = StyleSheet.create({
   },
   tileFooterText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
+    color: FEED.meta,
+    flex: 1,
+  },
+  tilePrice: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '700',
+    marginLeft: SPACING.sm,
   },
   card: {
     marginBottom: SPACING.lg,
@@ -1660,7 +1683,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.sm,
     paddingTop: SPACING.sm,
-    backgroundColor: COLORS.card,
+    backgroundColor: FEED.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: FEED.cardBorder,
     borderBottomLeftRadius: RADIUS.lg,
     borderBottomRightRadius: RADIUS.lg,
   },
@@ -1679,11 +1704,11 @@ const styles = StyleSheet.create({
   },
   threadPost: {
     marginBottom: SPACING.sm,
-    backgroundColor: COLORS.surface,
+    backgroundColor: FEED.thread,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.separator,
+    borderColor: FEED.cardBorder,
   },
   threadPostRow: {
     flexDirection: 'row',
@@ -1710,11 +1735,11 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     marginLeft: 36,
     marginTop: SPACING.sm,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: FEED.threadDeep,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.separator,
+    borderColor: FEED.cardBorder,
   },
   threadReplyAvatar: {
     width: 20,
@@ -1761,8 +1786,10 @@ const styles = StyleSheet.create({
   },
   threadInput: {
     flex: 1,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: FEED.thread,
     borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: FEED.cardBorder,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     ...TYPOGRAPHY.caption1,
@@ -1935,10 +1962,6 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },

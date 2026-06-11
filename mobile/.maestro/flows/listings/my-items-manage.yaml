@@ -1,5 +1,7 @@
-appId: com.borrowhood.mobile
+appId: com.borrowhood.app
 name: "Manage My Items"
+tags:
+  - needs-fixtures
 ---
 - launchApp
 - tapOn: "My Items"
@@ -24,8 +26,9 @@ name: "Manage My Items"
 - assertVisible: "Maestro Test Item"
 - tapOn: "Maestro Test Item"
 - tapOn: "Edit"
-- clearInput:
+- tapOn:
     id: "CreateListing.input.title"
+- eraseText
 - inputText: "Updated Maestro Item"
 - tapOn: "Save"
 - assertVisible: "Updated Maestro Item"

@@ -33,7 +33,9 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
         headerShown: false,
         gestureEnabled: false,
         contentStyle: { backgroundColor: COLORS.background },
-        animation: 'slide_from_right',
+        // Smooth cross-fade between steps; paired with each screen's on-mount
+        // content entrance, the flow reads as fluid rather than a hard push.
+        animation: 'fade',
       }}
     >
       <Stack.Screen

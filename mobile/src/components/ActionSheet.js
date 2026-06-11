@@ -78,6 +78,8 @@ export default function ActionSheet({
                   key={index}
                   onPress={() => handleAction(action)}
                   haptic={null}
+                  testID={action.testID}
+                  accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
                   style={[
                     styles.actionButton,
                     action.destructive && styles.destructiveButton,

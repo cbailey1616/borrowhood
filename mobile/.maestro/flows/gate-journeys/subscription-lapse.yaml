@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - obsolete
 ---
 # Gate Journey: Subscription Lapse (Past-Due User)
 # Validates that a past-due user sees the warning banner and has features blocked.
@@ -8,7 +10,7 @@ appId: com.borrowhood.app
 # set maestro-plus@borrowhood.test as past_due before running this flow.
 # Without this seed state, the past-due assertions will not pass.
 
-- runFlow: flows/auth/login-plus.yaml
+- runFlow: ../auth/login-plus.yaml
 
 # --- Navigate to Profile -> Subscription ---
 

@@ -1,4 +1,6 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Flow: Rental Lifecycle - verify approve/decline buttons on pending request
 # Opens a pending borrow request as the item owner
@@ -7,7 +9,8 @@ appId: com.borrowhood.app
 - runFlow: ../auth/login-verified.yaml
 
 # Navigate to Inbox tab
-- tapOn: "Inbox"
+- tapOn:
+    id: "TabBar.Activity"
 
 # Tap Activity segment
 - tapOn:

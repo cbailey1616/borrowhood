@@ -35,9 +35,20 @@ describe('MyItemsScreen', () => {
     expect(segment).toBeTruthy();
   });
 
+  // Screen opens on the "Borrowed" tab (index 1) by design; the segments are
+  // ['Listings', 'Borrowed', 'ISO']. Tests select the tab under test explicitly
+  // via the per-segment testIDs exposed by SegmentedControl.
+  const selectTab = async (utils, index) => {
+    const segment = await utils.findByTestId(`MyItems.segment.${index}`);
+    await act(async () => {
+      fireEvent.press(segment);
+    });
+  };
+
   it('items tab calls api.getMyListings', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
-    render(<MyItemsScreen navigation={mockNavigation} />);
+    const utils = render(<MyItemsScreen navigation={mockNavigation} />);
+    await selectTab(utils, 0);
     await waitFor(() => {
       expect(api.getMyListings).toHaveBeenCalled();
     });
@@ -50,24 +61,23 @@ describe('MyItemsScreen', () => {
       timesBorrowed: 2, pendingRequests: 0,
     }]);
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
-    const { findByText } = render(<MyItemsScreen navigation={mockNavigation} />);
-    await findByText('My Drill');
+    const utils = render(<MyItemsScreen navigation={mockNavigation} />);
+    await selectTab(utils, 0);
+    await utils.findByText('My Drill');
   });
 
   it('empty items state renders', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
-    const { findByText } = render(<MyItemsScreen navigation={mockNavigation} />);
-    await findByText(/no items/i);
+    const utils = render(<MyItemsScreen navigation={mockNavigation} />);
+    await selectTab(utils, 0);
+    await utils.findByText(/no items/i);
   });
 
   it('requests tab calls api.getMyRequests', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
-    const { findByText } = render(<MyItemsScreen navigation={mockNavigation} />);
-    // Switch to Wanted tab (index 2)
-    const requestsTab = await findByText('Wanted');
-    await act(async () => {
-      fireEvent.press(requestsTab);
-    });
+    const utils = render(<MyItemsScreen navigation={mockNavigation} />);
+    // Switch to ISO tab (index 2)
+    await selectTab(utils, 2);
     await waitFor(() => {
       expect(api.getMyRequests).toHaveBeenCalled();
     });
@@ -79,11 +89,8 @@ describe('MyItemsScreen', () => {
       category: { name: 'Tools' }, status: 'open', createdAt: new Date().toISOString(),
     }]);
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
-    const { findByText } = render(<MyItemsScreen navigation={mockNavigation} />);
-    const requestsTab = await findByText('Wanted');
-    await act(async () => {
-      fireEvent.press(requestsTab);
-    });
-    await findByText('Need a ladder');
+    const utils = render(<MyItemsScreen navigation={mockNavigation} />);
+    await selectTab(utils, 2);
+    await utils.findByText('Need a ladder');
   });
 });

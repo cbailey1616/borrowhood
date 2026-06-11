@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import HeroIcon from '../components/HeroIcon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
@@ -195,7 +196,9 @@ export default function BundlesScreen({ navigation }) {
         />
       ) : (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📦</Text>
+          <View style={{ marginBottom: 16 }}>
+            <HeroIcon icon="cube" size={84} colors={['#E8A23D', '#C0763A']} />
+          </View>
           <Text style={styles.emptyTitle}>
             {activeTab === 'browse' ? 'No Bundles Available' : 'No Bundles Yet'}
           </Text>

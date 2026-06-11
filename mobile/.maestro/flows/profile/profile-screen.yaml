@@ -12,13 +12,13 @@ appId: com.borrowhood.app
 - assertVisible:
     id: "Profile.header.name"
 
-# Assert subscription menu item is visible
-- assertVisible:
-    id: "Profile.menu.subscription"
-
 - takeScreenshot: profile-screen-loaded
 
 # Tap sign out
+- scrollUntilVisible:
+    element:
+      id: "Profile.menu.signOut"
+    direction: DOWN
 - tapOn:
     id: "Profile.menu.signOut"
 
@@ -28,6 +28,6 @@ appId: com.borrowhood.app
 - takeScreenshot: profile-sign-out-action-sheet
 
 # Dismiss the ActionSheet - tap Keep/Cancel to stay signed in
-- tapOn: "Keep"
+- tapOn: "Cancel"
 
 - takeScreenshot: profile-after-dismiss

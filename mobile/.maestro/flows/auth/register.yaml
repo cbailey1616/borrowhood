@@ -1,12 +1,16 @@
 appId: com.borrowhood.app
+tags:
+  - needs-fixtures
 ---
 # Registration test: fills form with unique email and verifies navigation
 
 - launchApp:
     clearState: true
+    clearKeychain: true
 
 - tapOn:
     id: "Welcome.link.createAccount"
+- waitForAnimationToEnd
 
 - takeScreenshot: "register-01-register-screen"
 
@@ -38,8 +42,6 @@ appId: com.borrowhood.app
     id: "Register.button.createAccount"
 
 # Verify navigation to verification screen
-- assertVisible:
-    text: ".*[Vv]erif.*"
-    regex: true
+- assertVisible: "Welcome to BorrowHood"
 
 - takeScreenshot: "register-03-verification-screen"
