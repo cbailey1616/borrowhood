@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.borderBrown,
   },
   // Image

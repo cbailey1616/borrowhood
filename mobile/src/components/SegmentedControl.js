@@ -29,7 +29,7 @@ export default function SegmentedControl({
   const indicatorStyle = useAnimatedStyle(() => {
     const width = containerWidth.value / segmentCount;
     return {
-      width: width - 4,
+      width: Math.max(0, width - 4),
       transform: [
         {
           translateX: withSpring(
@@ -64,6 +64,7 @@ export default function SegmentedControl({
           testID={testID ? `${testID}.${index}` : undefined}
           accessibilityLabel={segment}
           accessibilityRole="tab"
+          accessibilityState={{ selected: selectedIndex === index }}
         >
           <Text
             style={[
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.md,
     padding: 2,
     position: 'relative',
   },
@@ -91,8 +92,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     bottom: 2,
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.sm - 2,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md - 2,
     zIndex: 0,
   },
   segment: {
@@ -100,6 +101,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SPACING.sm,
+    minHeight: 44,
     zIndex: 1,
   },
   segmentText: {
@@ -108,7 +110,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   segmentTextActive: {
-    color: '#fff',
+    color: COLORS.primary,
     fontWeight: '700',
   },
 });

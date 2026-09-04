@@ -26,7 +26,7 @@ export default function SearchBar({
   const placeholderColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
 
   return (
-    <View style={[styles.container, style]} testID={testID} accessibilityLabel={accessibilityLabel || placeholder} accessibilityRole="search">
+    <View style={[styles.container, dark && styles.darkContainer, style]} testID={testID} accessibilityLabel={accessibilityLabel || placeholder} accessibilityRole="search">
       <Ionicons
         name="search"
         size={17}
@@ -48,7 +48,7 @@ export default function SearchBar({
         onSubmitEditing={onSubmitEditing}
       />
       {value && value.length > 0 ? (
-        <HapticPressable onPress={handleClear} haptic="light" style={styles.clearButton}>
+        <HapticPressable onPress={handleClear} haptic="light" style={styles.clearButton} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
           <Ionicons name="close-circle-sharp" size={18} color={iconColor} />
         </HapticPressable>
       ) : null}
@@ -60,12 +60,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
-    height: 36,
+    minHeight: 48,
     borderWidth: 1,
-    borderColor: COLORS.borderBrownStrong,
+    borderColor: COLORS.borderLight,
+  },
+  darkContainer: {
+    backgroundColor: COLORS.greenSurface,
+    borderColor: COLORS.greenBorder,
   },
   icon: {
     marginRight: SPACING.sm,
@@ -74,7 +78,8 @@ const styles = StyleSheet.create({
     flex: 1,
     ...TYPOGRAPHY.body,
     padding: 0,
-    height: '100%',
+    minHeight: 48,
+    paddingVertical: SPACING.sm,
   },
   clearButton: {
     marginLeft: SPACING.sm,
