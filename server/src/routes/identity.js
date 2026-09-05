@@ -18,7 +18,7 @@ const router = Router();
 router.post('/verify', authenticate, async (req, res) => {
   try {
     const userResult = await query(
-      'SELECT stripe_customer_id, email, first_name, last_name, is_verified FROM users WHERE id = $1',
+      'SELECT stripe_customer_id, email, first_name, last_name, is_verified, stripe_identity_session_id FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -48,7 +48,13 @@ router.post('/verify', authenticate, async (req, res) => {
     }
 
     // Create verification session with document + selfie
-    const session = await stripe.identity.verificationSessions.create({
+    // Resume the same check if the member returns to an unfinished flow.
+    const previousSessionId = userResult.rows[0].stripe_identity_session_id;
+    let session = previousSessionId ? await getIdentityVerificationSession(previousSessionId) : null;
+    if (session?.status === 'verified') {
+      return res.status(409).json({ error: 'Verification is complete. Refresh your verification status.' });
+    }
+    if (!session || session.status === 'canceled') session = await stripe.identity.verificationSessions.create({
       type: 'document',
       metadata: {
         customer_id: customerId,
@@ -62,7 +68,7 @@ router.post('/verify', authenticate, async (req, res) => {
           allowed_types: ['driving_license', 'id_card', 'passport'],
         },
       },
-    });
+    }, { idempotencyKey: `identity-${req.user.id}-${previousSessionId || 'initial'}` });
 
     // Store session ID and update verification status
     await query(
@@ -165,7 +171,7 @@ router.get('/status', authenticate, async (req, res) => {
 
         const graceActive = user.verification_grace_until && new Date(user.verification_grace_until) > new Date();
         return res.json({
-          verified: stripeStatus === 'verified' || (stripeStatus === 'processing' && graceActive),
+          verified: stripeStatus === 'verified',
           status: verificationStatus,
           verifiedAt: user.verified_at,
           lastError: session.last_error?.reason || null,

@@ -1,3 +1,7 @@
+// Keep legacy payments available in source, disabled for the free launch.
+export const ENABLE_PAYMENTS = false;
+export const REQUIRE_IDENTITY_VERIFICATION = false;
+
 // API Configuration
 // In production, use environment variables or app config
 // API URL - uses production URL, override with DEV_API_URL for local testing

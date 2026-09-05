@@ -20,7 +20,7 @@ import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
+import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS, ENABLE_PAYMENTS } from '../utils/config';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout, refreshUser } = useAuth();
@@ -193,7 +193,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={styles.verifyBannerText}>
               <Text style={styles.verifyBannerTitle}>Verify Your Identity</Text>
-              <Text style={styles.verifyBannerSubtitle}>Required to borrow or lend items</Text>
+              <Text style={styles.verifyBannerSubtitle}>Optional · Free during launch</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </HapticPressable>
@@ -224,22 +224,26 @@ export default function ProfileScreen({ navigation }) {
         </GroupedListSection>
 
         {/* Borrowing & Payments Section */}
-        <GroupedListSection header="Borrowing & Payments">
+        <GroupedListSection header="Borrowing">
           <GroupedListItem
             icon="receipt-outline"
             title="Transaction History"
             onPress={() => navigation.navigate('TransactionHistory')}
           />
+          {ENABLE_PAYMENTS && (
           <GroupedListItem
             icon="cash-outline"
             title="Earnings"
             onPress={() => navigation.navigate('Earnings')}
           />
+          )}
+          {ENABLE_PAYMENTS && (
           <GroupedListItem
             icon="card-outline"
             title="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}
           />
+          )}
           <GroupedListItem
             icon="flag-outline"
             title="Disputes"

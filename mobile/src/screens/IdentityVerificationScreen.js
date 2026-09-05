@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS } from '../utils/config';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -38,7 +39,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           hasAutoChained.current = true;
           if (source === 'onboarding') {
             navigation.navigate('OnboardingComplete');
-          } else if (source === 'rental_listing') {
+          } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
             navigation.replace('SetupPayout', { source, totalSteps });
           } else if (source === 'town_browse') {
             navigation.popToTop();
@@ -117,7 +118,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     const handleVerifiedDone = () => {
       if (source === 'onboarding') {
         navigation.navigate('OnboardingComplete');
-      } else if (source === 'rental_listing') {
+      } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
         navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
         navigation.popToTop();
@@ -147,7 +148,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
             haptic="light"
           >
             <Text style={styles.primaryButtonText}>
-              {source === 'rental_listing' ? 'Continue' : 'Done'}
+              {ENABLE_PAYMENTS && source === 'rental_listing' ? 'Continue' : 'Done'}
             </Text>
           </HapticPressable>
         </View>
@@ -160,7 +161,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     const handleContinue = () => {
       if (source === 'onboarding') {
         navigation.navigate('OnboardingComplete');
-      } else if (source === 'rental_listing') {
+      } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
         navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
         navigation.popToTop();
@@ -182,10 +183,10 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your submission is being reviewed — you have temporary access while we confirm your identity.
+            Your submission is being reviewed. You can keep browsing and borrowing while you wait.
           </Text>
           <Text style={styles.graceNotice}>
-            Temporary access expires in ~6 hours. We'll notify you once verification is complete.
+            Your verified identity badge will appear once verification is complete.
           </Text>
           <HapticPressable
             style={styles.primaryButton}
@@ -193,7 +194,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
             haptic="light"
           >
             <Text style={styles.primaryButtonText}>
-              {source === 'rental_listing' ? 'Continue' : 'Start Exploring'}
+              {ENABLE_PAYMENTS && source === 'rental_listing' ? 'Continue' : 'Start Exploring'}
             </Text>
           </HapticPressable>
         </View>
@@ -207,16 +208,16 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   // Context-aware title/subtitle
   const getTitle = () => {
     if (needsRetry) return 'Verification Needs Attention';
-    if (source === 'town_browse') return 'Verify to Browse Town-Wide';
-    if (source === 'rental_listing') return 'Verify to List Items';
+    if (source === 'town_browse') return 'Verify Your Identity';
+    if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Verify to List Items';
     return 'Verify Your Identity';
   };
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'This keeps your community safe and real.';
-    if (source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'To keep our community safe, we verify all members with a valid government ID and selfie.';
+    if (source === 'town_browse') return 'Optional identity verification helps neighbors get to know who they are sharing with. Free during launch.';
+    if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
+    return 'Add a verified identity badge with a government ID and selfie. This is optional and Borrowhood covers the cost during launch.';
   };
 
   return (
@@ -238,9 +239,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
         <View style={[styles.benefits, styles.cardBox]}>
           <View style={styles.benefitsInner}>
-            <BenefitItem icon="lock-closed" text="Your ID and personal data are handled by Stripe — never stored by BorrowHood" />
+            <BenefitItem icon="lock-closed" text="Your ID images are handled by Stripe. Borrowhood receives verification results and identity details." />
             <BenefitItem icon="people" text="Build trust with your neighbors" />
-            <BenefitItem icon="checkmark-circle" text="Required to borrow or lend items" />
+            <BenefitItem icon="checkmark-circle" text="Optional — browsing and borrowing stay free" />
           </View>
         </View>
 

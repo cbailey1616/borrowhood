@@ -1,3 +1,5 @@
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
+import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified, requireAdmin, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -622,7 +624,7 @@ router.get('/me/connect-status', authenticate, async (req, res) => {
 // POST /api/users/me/connect-account
 // Create a Stripe Connect account
 // ============================================
-router.post('/me/connect-account', authenticate, requireVerified, async (req, res) => {
+router.post('/me/connect-account', authenticate, requirePaymentsEnabled, requireVerified, async (req, res) => {
   try {
     // Check if user already has a Connect account
     const existing = await query(
@@ -687,7 +689,7 @@ router.post('/me/connect-account', authenticate, requireVerified, async (req, re
 // POST /api/users/me/connect-onboarding
 // Get Stripe Connect onboarding link
 // ============================================
-router.post('/me/connect-onboarding', authenticate, requireVerified,
+router.post('/me/connect-onboarding', authenticate, requirePaymentsEnabled, requireVerified,
   body('returnUrl').optional().isURL(),
   async (req, res) => {
     const { returnUrl } = req.body;
@@ -804,7 +806,7 @@ router.get('/me/connect-balance', authenticate, async (req, res) => {
 // POST /api/users/me/connect-test-verify (TEST MODE ONLY)
 // Force-verify Connect account in Stripe test mode
 // ============================================
-router.post('/me/connect-test-verify', authenticate, async (req, res) => {
+router.post('/me/connect-test-verify', authenticate, requirePaymentsEnabled, async (req, res) => {
   try {
     // Only allow in test mode
     if (!process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) {
@@ -1058,7 +1060,7 @@ router.get('/:id/listings', authenticate, async (req, res) => {
     const userCity = userResult.rows[0]?.city;
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = isVerified && userCity;
+    const canAccessTown = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
 
     const friendsResult = await query(
       `SELECT 1 FROM friendships
@@ -1100,7 +1102,7 @@ router.get('/:id/listings', authenticate, async (req, res) => {
       `SELECT l.id, l.title, l.condition, l.is_free, l.price_per_day,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
        FROM listings l
-       WHERE l.owner_id = $1 AND l.status = 'active'
+       WHERE l.owner_id = $1 AND l.status = 'active' ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
          AND (${visConditions.join(' OR ')})
        ORDER BY l.created_at DESC
        LIMIT 20`,

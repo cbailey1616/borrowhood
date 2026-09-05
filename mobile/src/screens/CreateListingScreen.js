@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -272,13 +273,13 @@ export default function CreateListingScreen({ navigation, route }) {
     const hasAudience = data.visibility.some(v => {
       if (v === 'close_friends') return hasFriends;
       if (v === 'neighborhood') return !!communityId;
-      if (v === 'town') return user?.isVerified || isGracePeriodActive;
+      if (v === 'town') return !!user?.city;
       return false;
     });
     const shouldShowAudienceTip = !hasAudience;
 
     // Validate rental fee when charging
-    if (!isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) >= 5)) {
+    if (ENABLE_PAYMENTS && !isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) >= 5)) {
       setFieldErrors(prev => ({ ...prev, pricePerDay: true }));
       Keyboard.dismiss();
       haptics.warning();
@@ -300,7 +301,7 @@ export default function CreateListingScreen({ navigation, route }) {
     // Safety net: require payout setup for listings with deposit or rental fee
     const hasDeposit = !isGiveaway && data.requireDeposit && parseFloat(data.depositAmount) > 0;
     const hasRentalFee = !isGiveaway && !data.isFree && parseFloat(data.pricePerDay) > 0;
-    if ((hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
+    if (ENABLE_PAYMENTS && (hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
       haptics.warning();
       navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
       return;
@@ -319,9 +320,9 @@ export default function CreateListingScreen({ navigation, route }) {
         condition: data.condition,
         categoryId: data.categoryId || undefined,
         visibility: data.visibility, // Send as array
-        isFree: isGiveaway ? true : data.isFree,
-        pricePerDay: (isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
-        depositAmount: (isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
+        isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
+        pricePerDay: (!ENABLE_PAYMENTS || isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
+        depositAmount: (!ENABLE_PAYMENTS || isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
         minDuration: isGiveaway ? undefined : parseInt(data.minDuration) || 1,
         maxDuration: isGiveaway ? undefined : parseInt(data.maxDuration) || 14,
         listingType: isGiveaway ? 'giveaway' : 'lend',
@@ -543,7 +544,7 @@ export default function CreateListingScreen({ navigation, route }) {
                 key={visibility}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  if (!isSelected && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
+                  if (REQUIRE_IDENTITY_VERIFICATION && !isSelected && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                     haptics.warning();
                     navigation.navigate('IdentityVerification', { source: 'town_browse' });
                     return;
@@ -581,8 +582,8 @@ export default function CreateListingScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Pricing — hidden for giveaways */}
-      {!isGiveaway && (
+      {/* Pricing — hidden for the free launch */}
+      {ENABLE_PAYMENTS && !isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
         {!user?.payoutsEnabled && (

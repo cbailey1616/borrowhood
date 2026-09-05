@@ -19,7 +19,7 @@ const STEP_TO_ROUTE = {
   1: 'OnboardingIntro',
   2: 'OnboardingNeighborhood',
   3: 'OnboardingFriends',
-  4: ENABLE_PAID_TIERS ? 'OnboardingPlan' : 'OnboardingVerify',
+  4: ENABLE_PAID_TIERS ? 'OnboardingPlan' : 'OnboardingComplete',
   5: 'OnboardingComplete',
 };
 

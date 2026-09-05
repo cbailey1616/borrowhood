@@ -165,7 +165,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     try {
       await api.cancelRental(id);
       haptics.success();
-      showToast('Request cancelled. Any payment hold has been released.', 'success');
+      showToast('Request cancelled.', 'success');
       navigation.goBack();
     } catch (error) {
       haptics.error();
@@ -659,7 +659,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         isVisible={cancelSheetVisible}
         onClose={() => setCancelSheetVisible(false)}
         title="Cancel Request"
-        message="Are you sure? Any payment hold will be released immediately."
+        message="Are you sure you want to cancel this request?"
         actions={[
           {
             label: 'Cancel Request',
