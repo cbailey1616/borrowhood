@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -48,6 +49,9 @@ router.post('/', authenticate,
       }
 
       const item = listing.rows[0];
+      if (!ENABLE_PAYMENTS && (!item.is_free || Number(item.price_per_day) > 0 || Number(item.deposit_amount) > 0)) {
+        return res.status(409).json({ code: 'LISTING_REQUIRES_UPDATE', error: 'The owner must update this listing to free borrowing with no deposit before you can request it.' });
+      }
       const isGiveaway = item.listing_type === 'giveaway';
 
       // Giveaways don't need dates
@@ -84,7 +88,7 @@ router.post('/', authenticate,
           }
         }
 
-        if (!borrowerVerified) {
+        if (REQUIRE_IDENTITY_VERIFICATION && !borrowerVerified) {
           return res.status(403).json({
             error: isPaidRental
               ? 'Identity verification required for paid rentals'
@@ -97,7 +101,7 @@ router.post('/', authenticate,
         if (item.visibility === 'town') {
           if (!borrower.city || !item.lender_city || borrower.city.toLowerCase() !== item.lender_city.toLowerCase()) {
             return res.status(403).json({
-              error: 'This item is only available to verified users in the same town',
+              error: 'This item is only available to users in the same town',
               code: 'TOWN_MISMATCH',
             });
           }

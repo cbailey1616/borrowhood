@@ -189,7 +189,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
       await api.updateOnboardingStep(3);
     } catch (e) {}
     if (!ENABLE_PAID_TIERS) {
-      navigation.navigate('OnboardingVerify');
+      navigation.navigate('OnboardingComplete');
     } else {
       navigation.navigate('OnboardingPlan');
     }

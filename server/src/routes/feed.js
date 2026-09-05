@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -24,7 +25,7 @@ router.get('/', authenticate, async (req, res) => {
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
     // Verification always required for town access; tier checks only when paid tiers enabled
     const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
-    const canSeeTownUnmasked = isVerified && userCity;
+    const canSeeTownUnmasked = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
     const canSeeTown = !!userCity; // Anyone with a city can browse town (owner info masked if not verified)
 
     // Parse visibility filter
@@ -88,6 +89,7 @@ router.get('/', authenticate, async (req, res) => {
         JOIN users u ON l.owner_id = u.id
         LEFT JOIN categories cat ON l.category_id = cat.id
         WHERE l.status = 'active'
+          ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
           AND (l.listing_type != 'giveaway' OR l.is_available = true)`;
 
       const listingParams = [];

@@ -1,3 +1,4 @@
+import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
 import crypto from 'crypto';
 import { query } from '../utils/db.js';
@@ -14,7 +15,7 @@ const MAX_AMOUNT_CENTS = 999900; // $9,999.00
 // POST /api/payments/create-payment-intent
 // Create a PaymentIntent and return PaymentSheet credentials
 // ============================================
-router.post('/create-payment-intent', authenticate, async (req, res) => {
+router.post('/create-payment-intent', authenticate, requirePaymentsEnabled, async (req, res) => {
   const { amount, description, metadata = {} } = req.body;
 
   // Validate amount server-side

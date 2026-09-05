@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -151,7 +152,7 @@ export default function EditListingScreen({ navigation, route }) {
     }
 
     // Validate rental fee when charging ($5 minimum to cover processing fees)
-    if (!formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
+    if (ENABLE_PAYMENTS && !formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
       setFieldErrors(prev => ({ ...prev, pricePerDay: true }));
       Keyboard.dismiss();
       haptics.warning();
@@ -166,7 +167,7 @@ export default function EditListingScreen({ navigation, route }) {
     }
 
     // Validate deposit amount when deposit is required
-    if (formData.requireDeposit && !(parseFloat(formData.depositAmount) > 0)) {
+    if (ENABLE_PAYMENTS && formData.requireDeposit && !(parseFloat(formData.depositAmount) > 0)) {
       Keyboard.dismiss();
       haptics.warning();
       showError({
@@ -180,7 +181,7 @@ export default function EditListingScreen({ navigation, route }) {
     // Safety net: require payout setup for listings with deposit or rental fee
     const hasDeposit = formData.requireDeposit && parseFloat(formData.depositAmount) > 0;
     const hasRentalFee = !formData.isFree && parseFloat(formData.pricePerDay) > 0;
-    if ((hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
+    if (ENABLE_PAYMENTS && (hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
       haptics.warning();
       showError({
         title: 'Payout Setup Required',
@@ -215,9 +216,9 @@ export default function EditListingScreen({ navigation, route }) {
         condition: formData.condition,
         categoryId: formData.categoryId || undefined,
         visibility: formData.visibility,
-        isFree: formData.isFree,
-        pricePerDay: formData.isFree ? undefined : parseFloat(formData.pricePerDay) || 0,
-        depositAmount: formData.requireDeposit ? parseFloat(formData.depositAmount) || 0 : 0,
+        isFree: !ENABLE_PAYMENTS || formData.isFree,
+        pricePerDay: !ENABLE_PAYMENTS || formData.isFree ? null : parseFloat(formData.pricePerDay) || 0,
+        depositAmount: ENABLE_PAYMENTS && formData.requireDeposit ? parseFloat(formData.depositAmount) || 0 : 0,
         minDuration: parseInt(formData.minDuration) || 1,
         maxDuration: parseInt(formData.maxDuration) || 14,
         photos: allPhotos,
@@ -407,7 +408,7 @@ export default function EditListingScreen({ navigation, route }) {
                 haptic="light"
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => {
-                  if (visibility === 'town' && !isSelected && !user?.isVerified) {
+                  if (REQUIRE_IDENTITY_VERIFICATION && visibility === 'town' && !isSelected && !user?.isVerified) {
                     haptics.warning();
                     navigation.navigate('IdentityVerification', { source: 'town_browse' });
                     return;
@@ -437,8 +438,11 @@ export default function EditListingScreen({ navigation, route }) {
         </View>
       </View>
 
+      {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (
+        <Text style={styles.label}>Saving makes this item free to borrow, with no deposit.</Text>
+      )}
       {/* Pricing */}
-      <View style={styles.section}>
+      {ENABLE_PAYMENTS && <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
         {!user?.payoutsEnabled && (
           <HapticPressable
@@ -556,7 +560,7 @@ export default function EditListingScreen({ navigation, route }) {
             />
           </View>
         )}
-      </View>
+      </View>}
 
       {/* Duration */}
       <View style={styles.section}>

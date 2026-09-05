@@ -1,3 +1,4 @@
+import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -52,7 +53,7 @@ router.get('/', authenticate, async (req, res) => {
 // POST /api/payment-methods
 // Create SetupIntent for saving a new card
 // ============================================
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, requirePaymentsEnabled, async (req, res) => {
   try {
     const result = await query(
       'SELECT email, stripe_customer_id FROM users WHERE id = $1',

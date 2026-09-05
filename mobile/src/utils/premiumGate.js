@@ -1,4 +1,4 @@
-import { ENABLE_PAID_TIERS } from './config';
+import { ENABLE_PAYMENTS, ENABLE_PAID_TIERS } from './config';
 
 /**
  * Checks premium feature requirements and returns the next screen to navigate to.
@@ -7,6 +7,7 @@ import { ENABLE_PAID_TIERS } from './config';
  * @returns {{ passed: boolean, screen?: string, params?: object, completedSteps: number, totalSteps: number }}
  */
 export function checkPremiumGate(user, source) {
+  if (!ENABLE_PAYMENTS) return { passed: true, completedSteps: 0, totalSteps: 0 };
   if (!ENABLE_PAID_TIERS) {
     const isVerified = user?.isVerified;
     const payoutsEnabled = user?.payoutsEnabled;

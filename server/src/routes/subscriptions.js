@@ -1,3 +1,4 @@
+import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
 import crypto from 'crypto';
 import { query } from '../utils/db.js';
@@ -108,7 +109,7 @@ router.get('/current', authenticate, async (req, res) => {
 // POST /api/subscriptions/verify-payment
 // Create one-time PaymentIntent for $1.99 verification fee
 // ============================================
-router.post('/verify-payment', authenticate, async (req, res) => {
+router.post('/verify-payment', authenticate, requirePaymentsEnabled, async (req, res) => {
   try {
     const user = await query(
       `SELECT email, stripe_customer_id, subscription_tier FROM users WHERE id = $1`,

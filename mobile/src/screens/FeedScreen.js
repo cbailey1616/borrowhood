@@ -46,26 +46,17 @@ const VISIBILITY_OPTIONS = [
   { key: 'town', label: 'My Town' },
 ];
 
-// === Feed redesign palette ===
-// Lighter, calmer cards instead of the near-black tiles — but kept in the
-// app's warm Parchment & Ink family (reuses the shared COLORS tokens) so the
-// Feed sits cohesively next to the other screens. The dark-green header stays
-// as a brand anchor; green/amber are accents, not the whole card fill.
+// Feed surfaces follow the shared app theme.
 const FEED = {
-  bg: COLORS.background,        // parchment background, same as every other screen
-  card: COLORS.card,            // lightest parchment — card surface used app-wide
-  cardBorder: COLORS.border,    // warm tan hairline (keeps cards from blurring into bg)
-  body: COLORS.textSecondary,   // forest-green ink for descriptions
-  meta: COLORS.textMuted,       // muted green for time / owner
-  thread: COLORS.surface,       // recessed parchment for the comment area
-  threadDeep: COLORS.surfaceElevated, // nested reply inset
+  bg: COLORS.background, card: COLORS.card, cardBorder: COLORS.borderLight,
+  body: COLORS.textSecondary, meta: COLORS.textMuted,
+  thread: COLORS.gray[50], threadDeep: COLORS.surfaceElevated,
 };
 
-// Accent per card type — pill fill + a soft tint for the thumbnail backdrop.
 const CARD_ACCENTS = {
-  borrow:   { pill: '#2D5A27', soft: 'rgba(45, 90, 39, 0.10)' },   // green
-  giveaway: { pill: '#B26A1F', soft: 'rgba(178, 106, 31, 0.10)' }, // warm amber for FREE
-  wanted:   { pill: '#C28A2C', soft: 'rgba(194, 138, 44, 0.12)' }, // gold for ISO
+  borrow: { pill: COLORS.primary, soft: COLORS.primaryMuted },
+  giveaway: { pill: COLORS.accent, soft: COLORS.accentMuted },
+  wanted: { pill: COLORS.warning, soft: COLORS.warningMuted },
 };
 
 export default function FeedScreen({ navigation }) {
@@ -484,7 +475,7 @@ export default function FeedScreen({ navigation }) {
               )}
               <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
-            <Text style={styles.tileTitle} numberOfLines={1}>{item.title}</Text>
+            <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
             {item.description ? (
               <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
             ) : null}
@@ -777,7 +768,7 @@ export default function FeedScreen({ navigation }) {
                 </View>
                 <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
               </View>
-              <Text style={styles.tileTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
               {item.description ? (
                 <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
               ) : null}
@@ -815,18 +806,17 @@ export default function FeedScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <NativeHeader
-        title=""
+        title="Borrowhood"
       >
         <View style={styles.searchRow}>
           <SearchBar
             value={search}
             onChangeText={setSearch}
-            placeholder="Search..."
+            placeholder="What do you need?"
             onSubmitEditing={handleSearch}
             testID="Feed.searchBar"
             accessibilityLabel="Search items"
             style={styles.headerSearchBar}
-            dark
           />
           <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create new listing" accessibilityRole="button" style={styles.addButton}>
             <Ionicons name="add" size={22} color="#fff" />
@@ -846,7 +836,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
                 {typeChipLabel}
               </Text>
-              <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
+              <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
             </HapticPressable>
           </View>
 
@@ -862,7 +852,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
                 {visibilityChipLabel}
               </Text>
-              <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
+              <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
             </HapticPressable>
           </View>
 
@@ -879,7 +869,7 @@ export default function FeedScreen({ navigation }) {
                 <Text numberOfLines={1} style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive, { flexShrink: 1 }]}>
                   {categoryChipLabel}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} />
+                <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
               </HapticPressable>
             </View>
           )}
@@ -1175,16 +1165,16 @@ const styles = StyleSheet.create({
   },
   headerSearchBar: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: COLORS.surfaceElevated,
+    borderColor: COLORS.borderLight,
   },
   addButton: {
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
     borderRadius: RADIUS.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: COLORS.primary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1193,11 +1183,13 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   filterChipsRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: SPACING.sm,
   },
   chipWrapper: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 90,
   },
   dropdownChip: {
     flexDirection: 'row',
@@ -1205,20 +1197,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: SPACING.sm,
+    minHeight: 44,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: COLORS.borderLight,
   },
   dropdownChipActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
   dropdownChipText: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
+    color: COLORS.textSecondary,
   },
   dropdownChipTextActive: {
     color: '#fff',
@@ -1226,7 +1219,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(44, 24, 16, 0.85)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,
@@ -1350,8 +1343,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
     paddingBottom: 160,
   },
   gridRow: {
@@ -1364,13 +1357,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: FEED.cardBorder,
     backgroundColor: FEED.card,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   tileRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
   },
   tileThumb: {
-    width: 110,
+    width: '100%',
+    aspectRatio: 1.7,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1406,8 +1400,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tileContent: {
-    flex: 1,
-    padding: SPACING.md,
+    padding: SPACING.lg,
     justifyContent: 'center',
   },
   tileTopRow: {
@@ -1444,17 +1437,18 @@ const styles = StyleSheet.create({
     color: FEED.meta,
   },
   tileTitle: {
-    ...TYPOGRAPHY.headline,
+    ...TYPOGRAPHY.h2,
     color: COLORS.text,
     marginBottom: 2,
   },
   tileDesc: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.bodySmall,
     color: FEED.body,
     marginBottom: SPACING.xs,
-    lineHeight: 17,
+    lineHeight: 21,
   },
   tileFooterRow: {
+    marginTop: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -1465,7 +1459,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tilePrice: {
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.headline,
     fontWeight: '700',
     marginLeft: SPACING.sm,
   },

@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.borderBrown,
   },
   sectionFooter: {
@@ -152,14 +152,14 @@ const styles = StyleSheet.create({
   itemInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: SPACING.lg,
-    minHeight: 44,
+    minHeight: 56,
   },
   iconBox: {
     width: 30,
     height: 30,
-    borderRadius: 7,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.md,

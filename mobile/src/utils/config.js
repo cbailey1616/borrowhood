@@ -1,3 +1,7 @@
+// Keep legacy payments available in source, disabled for the free launch.
+export const ENABLE_PAYMENTS = false;
+export const REQUIRE_IDENTITY_VERIFICATION = false;
+
 // API Configuration
 // In production, use environment variables or app config
 // API URL - uses production URL, override with DEV_API_URL for local testing
@@ -56,64 +60,38 @@ export const TRANSACTION_STATUS_LABELS = {
   disputed: 'Disputed',
 };
 
+// Neutral surfaces keep photography and actions in focus. Existing token names
+// remain stable so every screen inherits the same visual language.
 export const COLORS = {
-  // Parchment & Ink theme with forest green accents
-  primary: '#2D5A27',
-  primaryDark: '#1E4A1A',
-  primaryLight: '#4A7C44',
-  primaryMuted: 'rgba(45, 90, 39, 0.12)',
-  secondary: '#4A7C44',
-  secondaryMuted: 'rgba(74, 124, 68, 0.12)',
-  accent: '#8B4513',
-  accentMuted: 'rgba(139, 69, 19, 0.08)',
-  warning: '#B8860B',
-  warningMuted: 'rgba(184, 134, 11, 0.12)',
-  danger: '#A03030',
-  dangerMuted: 'rgba(160, 48, 48, 0.12)',
-  success: '#2D5A27',
-  // Backgrounds (toasted parchment)
-  background: '#DED2B5',
-  surface: '#D8CBA9',
-  surfaceElevated: '#D2C5A3',
-  card: '#E8DCBF',
-  cardHover: '#E2D5B5',
-  // Text colors (forest green ink)
-  text: '#1B3318',
-  textSecondary: '#3D5A38',
-  textMuted: '#6B8A66',
-  // Green accent block colors (for pricing cards, CTAs, profile hero, banners)
-  greenBg: '#0F2415',
-  greenSurface: '#162E1C',
-  greenText: '#E0E5E1',
-  greenTextMuted: '#8A9A8D',
-  greenBorder: 'rgba(74, 124, 89, 0.35)',
-  greenSeparator: 'rgba(122, 141, 125, 0.25)',
-  // Border system — key to preventing "everything blurs together"
-  border: '#B8A07A',
-  borderLight: '#C4B493',
-  borderGreen: 'rgba(45, 90, 39, 0.25)',
-  borderGreenStrong: 'rgba(45, 90, 39, 0.4)',
-  borderBrown: 'rgba(139, 69, 19, 0.2)',
-  borderBrownStrong: 'rgba(139, 69, 19, 0.35)',
-  // Gray scale (parchment to forest green)
+  primary: '#087F68', primaryDark: '#056451', primaryLight: '#229781',
+  primaryMuted: '#E5F4EF', secondary: '#087F68', secondaryMuted: '#E5F4EF',
+  accent: '#425CC7', accentMuted: '#EDF0FC',
+  warning: '#946200', warningMuted: '#FFF4DB',
+  danger: '#C43943', dangerMuted: '#FDECEF', success: '#087F68',
+  background: '#F5F7F8', surface: '#FFFFFF', surfaceElevated: '#EDF1F3',
+  card: '#FFFFFF', cardHover: '#F8FAFB',
+  text: '#18252B', textSecondary: '#52616A', textMuted: '#697780',
+  greenBg: '#102F2B', greenSurface: '#1B4039',
+  greenText: '#F5FAF8', greenTextMuted: '#BACEC8',
+  greenBorder: 'rgba(186, 206, 200, 0.20)',
+  greenSeparator: 'rgba(186, 206, 200, 0.16)',
+  border: '#DFE6E9', borderLight: '#EDF1F3',
+  borderGreen: 'rgba(8, 127, 104, 0.18)',
+  borderGreenStrong: 'rgba(8, 127, 104, 0.32)',
+  // Compatibility aliases for screens that previously used brown dividers.
+  borderBrown: '#E5EAED', borderBrownStrong: '#D5DEE2',
   gray: {
-    50: '#E8DCBF', 100: '#DED2B5', 200: '#D4C5A9', 300: '#C4B493',
-    400: '#9CAA97', 500: '#6B8A66', 600: '#4A6B44', 700: '#3D5A38',
-    800: '#2A4226', 900: '#1B3318',
+    50: '#F8FAFB', 100: '#F1F4F6', 200: '#E5EAED', 300: '#CCD6DC',
+    400: '#94A3AD', 500: '#697780', 600: '#52616A', 700: '#3A4A53',
+    800: '#293840', 900: '#18252B',
   },
-  // Overlay
-  overlay: 'rgba(27, 51, 24, 0.7)',
-  overlayLight: 'rgba(27, 51, 24, 0.4)',
-  // Materials — translucency levels for blur card backgrounds
+  overlay: 'rgba(16, 29, 35, 0.65)', overlayLight: 'rgba(16, 29, 35, 0.35)',
   materials: {
-    ultraThin: 'rgba(222, 210, 181, 0.35)',
-    thin: 'rgba(222, 210, 181, 0.50)',
-    regular: 'rgba(222, 210, 181, 0.65)',
-    thick: 'rgba(222, 210, 181, 0.80)',
-    ultraThick: 'rgba(222, 210, 181, 0.90)',
+    ultraThin: 'rgba(255, 255, 255, 0.35)', thin: 'rgba(255, 255, 255, 0.50)',
+    regular: 'rgba(255, 255, 255, 0.65)', thick: 'rgba(255, 255, 255, 0.85)',
+    ultraThick: 'rgba(255, 255, 255, 0.95)',
   },
-  // iOS-style thin divider
-  separator: 'rgba(139, 69, 19, 0.15)',
+  separator: '#E5EAED',
 };
 
 // Design tokens for consistency
@@ -138,23 +116,23 @@ export const RADIUS = {
 
 export const SHADOWS = {
   sm: {
-    shadowColor: '#2C1810',
+    shadowColor: '#18252B',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 2,
   },
   md: {
-    shadowColor: '#2C1810',
+    shadowColor: '#18252B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#2C1810',
+    shadowColor: '#18252B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 8,
   },
@@ -171,10 +149,10 @@ export const TYPOGRAPHY = {
   h1: { fontSize: 28, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.8 },
   h2: { fontSize: 22, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: -0.6 },
   h3: { fontSize: 18, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
-  body: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
-  bodySmall: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
-  caption: { fontSize: 11, fontFamily: 'DMSans_500Medium', fontWeight: '500', letterSpacing: 0.3 },
-  button: { fontSize: 15, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
+  body: { fontSize: 16, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
+  bodySmall: { fontSize: 14, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
+  caption: { fontSize: 12, fontFamily: 'DMSans_500Medium', fontWeight: '500', letterSpacing: 0.3 },
+  button: { fontSize: 16, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
 };
 
 // Animation presets

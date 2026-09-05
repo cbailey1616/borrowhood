@@ -20,7 +20,7 @@ import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
+import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS, ENABLE_PAYMENTS } from '../utils/config';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout, refreshUser } = useAuth();
@@ -193,7 +193,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={styles.verifyBannerText}>
               <Text style={styles.verifyBannerTitle}>Verify Your Identity</Text>
-              <Text style={styles.verifyBannerSubtitle}>Required to borrow or lend items</Text>
+              <Text style={styles.verifyBannerSubtitle}>Optional · Free during launch</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </HapticPressable>
@@ -224,22 +224,26 @@ export default function ProfileScreen({ navigation }) {
         </GroupedListSection>
 
         {/* Borrowing & Payments Section */}
-        <GroupedListSection header="Borrowing & Payments">
+        <GroupedListSection header="Borrowing">
           <GroupedListItem
             icon="receipt-outline"
             title="Transaction History"
             onPress={() => navigation.navigate('TransactionHistory')}
           />
+          {ENABLE_PAYMENTS && (
           <GroupedListItem
             icon="cash-outline"
             title="Earnings"
             onPress={() => navigation.navigate('Earnings')}
           />
+          )}
+          {ENABLE_PAYMENTS && (
           <GroupedListItem
             icon="card-outline"
             title="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethods')}
           />
+          )}
           <GroupedListItem
             icon="flag-outline"
             title="Disputes"
@@ -404,13 +408,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xxl,
+    paddingBottom: 120,
   },
   header: {
     marginBottom: SPACING.md,
-    backgroundColor: COLORS.greenBg,
-    borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
   },
@@ -426,13 +430,13 @@ const styles = StyleSheet.create({
   avatar: {
     width: 88,
     height: 88,
-    borderRadius: 28,
+    borderRadius: 44,
     backgroundColor: COLORS.gray[700],
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 22,
+    borderRadius: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -447,7 +451,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.greenBg,
+    borderColor: COLORS.card,
     zIndex: 10,
   },
   headerInfo: {
@@ -455,18 +459,18 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.greenText,
+    color: COLORS.text,
   },
   email: {
     ...TYPOGRAPHY.subheadline,
-    color: COLORS.greenTextMuted,
+    color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   verifyBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.warningMuted,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: 'rgba(184, 134, 11, 0.3)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,

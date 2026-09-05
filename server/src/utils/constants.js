@@ -1,3 +1,6 @@
+export const ENABLE_PAYMENTS = process.env.ENABLE_PAYMENTS === 'true';
+export const REQUIRE_IDENTITY_VERIFICATION = false;
+
 // Centralized fee constants — used across transactions, rentals, and disputes
 export const PLATFORM_FEE_PERCENT = 0.03;          // 3% platform fee from lender
 export const BORROWER_SERVICE_FEE_PERCENT = 0.03;   // 3% service fee from borrower

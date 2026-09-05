@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StripeProvider } from '@stripe/stripe-react-native';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts,
@@ -17,7 +17,7 @@ import { ErrorProvider } from './src/context/ErrorContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { setNavigationRef } from './src/hooks/usePushNotifications';
 import ErrorBoundary from './src/components/ErrorBoundary';
-import { STRIPE_PUBLISHABLE_KEY } from './src/utils/config';
+import { COLORS, STRIPE_PUBLISHABLE_KEY } from './src/utils/config';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,6 +35,14 @@ if (STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')) {
 }
 
 const navigationRef = createNavigationContainerRef();
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: COLORS.primary, background: COLORS.background, card: COLORS.surface,
+    text: COLORS.text, border: COLORS.border, notification: COLORS.danger,
+  },
+};
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -53,7 +61,7 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#DED2B5' }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <ErrorBoundary>
         <StripeProvider
           publishableKey={STRIPE_PUBLISHABLE_KEY}
@@ -63,12 +71,13 @@ export default function App() {
           <SafeAreaProvider>
             <AuthProvider navigationRef={navigationRef}>
               <NavigationContainer
+                theme={navigationTheme}
                 ref={navigationRef}
                 onReady={() => setNavigationRef(navigationRef)}
               >
                 <ErrorProvider navigationRef={navigationRef}>
                   <RootNavigator />
-                  <StatusBar style="light" />
+                  <StatusBar style="dark" />
                 </ErrorProvider>
               </NavigationContainer>
             </AuthProvider>

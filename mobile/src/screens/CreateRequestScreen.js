@@ -1,3 +1,4 @@
+import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -178,7 +179,7 @@ export default function CreateRequestScreen({ navigation }) {
     const defaultVis = [];
     defaultVis.push('close_friends');
     if (communityId) defaultVis.push('neighborhood');
-    if (user?.isVerified || isGracePeriodActive) defaultVis.push('town');
+    if (user?.city) defaultVis.push('town');
     updateField('visibility', defaultVis);
   }, [communityId]);
 
@@ -433,7 +434,7 @@ export default function CreateRequestScreen({ navigation }) {
                     }
                   } else {
                     // Verification required for town visibility
-                    if (visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
+                    if (REQUIRE_IDENTITY_VERIFICATION && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
                       haptics.warning();
                       navigation.navigate('IdentityVerification', { source: 'town_browse' });
                       return;

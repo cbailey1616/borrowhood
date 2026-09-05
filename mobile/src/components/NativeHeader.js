@@ -56,7 +56,7 @@ export default function NativeHeader({
 
   return (
     <View>
-      <Animated.View style={[styles.greenWrapper, { paddingTop: insets.top + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, wrapperStyle]}>
+      <Animated.View style={[styles.headerWrapper, { paddingTop: insets.top + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, wrapperStyle]}>
         <Animated.View style={largeTitleStyle}>
           {(title || rightElement) && (
             <View style={styles.titleRow}>
@@ -72,17 +72,18 @@ export default function NativeHeader({
 }
 
 const styles = StyleSheet.create({
-  greenWrapper: {
-    backgroundColor: COLORS.greenBg,
-    paddingHorizontal: SPACING.lg,
+  headerWrapper: {
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.xl,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: SPACING.md,
   },
   largeTitle: {
     ...TYPOGRAPHY.largeTitle,
-    color: '#fff',
+    color: COLORS.text,
   },
 });

@@ -47,7 +47,7 @@ const SLIDES = [
     cards: [
       { icon: 'people', grad: ['#46A06A', '#1C5230'], label: 'Close Friends', description: 'People you know & trust', tintBorder: 'rgba(45,90,39,0.27)' },
       { icon: 'home', grad: ['#E8A23D', '#C0763A'], label: 'Neighborhood', description: 'Neighbors in your city', tintBorder: 'rgba(184,134,11,0.27)' },
-      { icon: 'business', grad: ['#5AA9F0', '#2E5FC0'], label: 'Town', description: 'ID-verified members via Stripe', tintBorder: 'rgba(70,130,180,0.27)' },
+      { icon: 'business', grad: ['#5AA9F0', '#2E5FC0'], label: 'Town', description: 'Discover sharing across your town', tintBorder: 'rgba(70,130,180,0.27)' },
     ],
   },
   {
@@ -63,11 +63,11 @@ const SLIDES = [
     icon: 'shield-checkmark',
     grad: ['#4ABE7B', '#1E7A48'],
     title: 'Borrow with\nConfidence',
-    subtitle: 'Every rental is protected with secure payments, deposits, and built-in dispute resolution.',
+    subtitle: 'Borrow for free, agree on pickup, and return items on time. Get to know the people you share with.',
     cards: [
-      { icon: 'card', grad: ['#46A06A', '#1C5230'], label: 'Secure Payments', description: 'Powered by Stripe', tintBorder: 'rgba(45,90,39,0.27)' },
-      { icon: 'shield-checkmark', grad: ['#E8A23D', '#C0763A'], label: 'Deposit Holds', description: 'Released after safe return', tintBorder: 'rgba(184,134,11,0.27)' },
-      { icon: 'finger-print', grad: ['#5AA9F0', '#2E5FC0'], label: 'ID Verification', description: 'Town members verified by Stripe Identity', tintBorder: 'rgba(70,130,180,0.27)' },
+      { icon: 'heart', grad: ['#46A06A', '#1C5230'], label: 'Free Sharing', description: 'No fees or deposits', tintBorder: 'rgba(45,90,39,0.27)' },
+      { icon: 'shield-checkmark', grad: ['#E8A23D', '#C0763A'], label: 'Ratings & Reviews', description: 'Learn from past exchanges', tintBorder: 'rgba(184,134,11,0.27)' },
+      { icon: 'finger-print', grad: ['#5AA9F0', '#2E5FC0'], label: 'ID Verification', description: 'Optional identity badge, free during launch', tintBorder: 'rgba(70,130,180,0.27)' },
       { icon: 'chatbubbles', grad: ['#46A06A', '#1C5230'], label: 'Dispute Support', description: 'Fair resolution process', tintBorder: 'rgba(45,90,39,0.27)' },
     ],
   },

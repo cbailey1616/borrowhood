@@ -1,3 +1,5 @@
+import { freeListingOnly } from '../middleware/freeLaunch.js';
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -28,7 +30,7 @@ router.get('/', authenticate, async (req, res) => {
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
     // Verification always required for town access; tier checks only when paid tiers enabled
     const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
-    const canAccessTown = isVerified && userCity;
+    const canAccessTown = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
     const canBrowseTown = ENABLE_PAID_TIERS ? (isPlusOrVerified && userCity) : canAccessTown;
 
     const friendsResult = await query(
@@ -38,6 +40,7 @@ router.get('/', authenticate, async (req, res) => {
     const friendIds = friendsResult.rows.map(f => f.friend_id);
 
     let whereConditions = [`l.status = 'active'`, `l.is_available = true`];
+    if (!ENABLE_PAYMENTS) whereConditions.push('l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0');
     let selectExtra = '';
     let params = [];
     let paramIndex = 1;
@@ -234,7 +237,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = await query(
       `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
-              u.status as owner_status, c.name as category_name
+              u.status as owner_status, u.city as owner_city, c.name as category_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id
        LEFT JOIN categories c ON l.category_id = c.id
@@ -262,12 +265,12 @@ router.get('/:id', authenticate, async (req, res) => {
       const viewerGraceActive = viewer?.verification_grace_until && new Date(viewer.verification_grace_until) > new Date();
       const viewerVerified = viewer?.is_verified || viewerGraceActive;
 
-      if (!viewerCity) {
+      if (!viewerCity || !l.owner_city || viewerCity.toLowerCase() !== l.owner_city.toLowerCase()) {
         // No city set — can't determine if same town
         return res.status(404).json({ error: 'Listing not found' });
       }
       // Verification always required for town listing details
-      if (!viewerVerified) {
+      if (REQUIRE_IDENTITY_VERIFICATION && !viewerVerified) {
         ownerMasked = true;
       }
     }
@@ -394,7 +397,7 @@ router.post('/analyze-image', authenticate,
 // POST /api/listings
 // Create a new listing
 // ============================================
-router.post('/', authenticate,
+router.post('/', authenticate, freeListingOnly,
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
   body('condition').isIn(['like_new', 'good', 'fair', 'worn']),
@@ -444,7 +447,7 @@ router.post('/', authenticate,
       }
 
       // Town visibility requires verification
-      if (visibilityArray.includes('town')) {
+      if (REQUIRE_IDENTITY_VERIFICATION && visibilityArray.includes('town')) {
         const verifyCheck = await query(
           'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]
@@ -565,7 +568,7 @@ router.post('/', authenticate,
 // PATCH /api/listings/:id
 // Update listing
 // ============================================
-router.patch('/:id', authenticate,
+router.patch('/:id', authenticate, freeListingOnly,
   async (req, res) => {
     try {
       // Verify ownership
@@ -595,7 +598,7 @@ router.patch('/:id', authenticate,
         visArray = visArray.filter(v => ['close_friends', 'neighborhood', 'town'].includes(v));
 
         // Town requires verification
-        if (visArray.includes('town')) {
+        if (REQUIRE_IDENTITY_VERIFICATION && visArray.includes('town')) {
           const verifyCheck = await query(
             'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
             [req.user.id]

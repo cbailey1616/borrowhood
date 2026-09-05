@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -154,7 +155,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
     const userCity = userResult.rows[0]?.city;
     const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
     const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = isVerified && userCity;
+    const canAccessTown = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
 
     const friendsResult = await query(
       'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
@@ -206,7 +207,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
         (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
       FROM listings l
       JOIN users u ON l.owner_id = u.id
-      WHERE l.status = 'active'
+      WHERE l.status = 'active' ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
         AND l.owner_id != $${paramIndex}
         AND (${likeClauses.join(' OR ')})
         AND ${visibilityClause}
@@ -336,7 +337,7 @@ router.post('/', authenticate,
 
     try {
       // Town requires verification
-      if (visArray.includes('town')) {
+      if (REQUIRE_IDENTITY_VERIFICATION && visArray.includes('town')) {
         const verifyCheck = await query(
           'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
           [req.user.id]

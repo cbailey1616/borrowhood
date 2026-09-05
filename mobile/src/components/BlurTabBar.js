@@ -133,7 +133,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
     return (
       <View style={styles.container}>
         <View style={styles.separator} />
-        <BlurView intensity={80} tint="default" style={styles.blur}>
+        <BlurView intensity={80} tint="light" style={styles.blur}>
           <View style={styles.blurOverlay}>{content}</View>
         </BlurView>
       </View>
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     right: 0,
   },
   separator: {
-    height: 1.5,
-    backgroundColor: COLORS.borderBrown,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.separator,
   },
   blur: {
     overflow: 'hidden',
@@ -183,23 +183,23 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 36,
+    width: 48,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 18,
   },
   iconContainerActive: {
     backgroundColor: COLORS.primaryMuted,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
-    marginTop: 2,
+    marginTop: 4,
   },
   badge: {
     position: 'absolute',
     top: -4,
     right: -8,
-    backgroundColor: '#E53935',
+    backgroundColor: COLORS.danger,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
 });

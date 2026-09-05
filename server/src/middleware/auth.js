@@ -1,3 +1,4 @@
+import { ENABLE_PAYMENTS } from '../utils/constants.js';
 import jwt from 'jsonwebtoken';
 import { query } from '../utils/db.js';
 
@@ -78,7 +79,7 @@ export async function requireVerified(req, res, next) {
 }
 
 // TODO: Set to true to re-enable paid subscription tiers
-const ENABLE_PAID_TIERS = process.env.ENABLE_PAID_TIERS === 'true';
+const ENABLE_PAID_TIERS = ENABLE_PAYMENTS && process.env.ENABLE_PAID_TIERS === 'true';
 export { ENABLE_PAID_TIERS };
 
 // Require active Plus subscription
