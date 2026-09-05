@@ -64,7 +64,7 @@ export default function CreateListingScreen({ navigation, route }) {
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: ['close_friends'],
+    visibility: user?.city ? ['town'] : ['close_friends'],
     isFree: true,
     pricePerDay: '',
     requireDeposit: false,
@@ -74,6 +74,7 @@ export default function CreateListingScreen({ navigation, route }) {
     photos: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
@@ -239,9 +240,9 @@ export default function CreateListingScreen({ navigation, route }) {
     const data = overrideData || formData;
 
     const errors = {
-      title: !data.title.trim(),
+      title: data.title.trim().length < 3,
       photos: data.photos.length === 0,
-      categoryId: !isGiveaway && !data.categoryId,
+      categoryId: false,
     };
 
     if (errors.title || errors.photos || errors.categoryId) {
@@ -259,7 +260,7 @@ export default function CreateListingScreen({ navigation, route }) {
       // Build a specific message listing what's missing
       const missing = [];
       if (errors.photos) missing.push('photos');
-      if (errors.title) missing.push('a title');
+      if (errors.title) missing.push('a title with at least 3 characters');
       if (errors.categoryId) missing.push('a category');
       showError({
         type: 'validation',
@@ -434,48 +435,6 @@ export default function CreateListingScreen({ navigation, route }) {
         />
       </View>
 
-      {/* Description */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          testID="CreateListing.input.description"
-          accessibilityLabel="Listing description"
-          style={[styles.input, styles.textArea]}
-          value={formData.description}
-          onChangeText={(v) => updateField('description', v)}
-          placeholder="Add details about your item..."
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          numberOfLines={4}
-          maxLength={2000}
-          autoCapitalize="sentences"
-          autoCorrect={true}
-          spellCheck={true}
-        />
-      </View>
-
-      {/* Condition */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Condition *</Text>
-        <View style={styles.options}>
-          {CONDITIONS.map((condition) => (
-            <HapticPressable
-              key={condition}
-              style={[styles.option, formData.condition === condition && styles.optionActive]}
-              onPress={() => {
-                updateField('condition', condition);
-                haptics.selection();
-              }}
-              haptic={null}
-            >
-              <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
-                {CONDITION_LABELS[condition]}
-              </Text>
-            </HapticPressable>
-          ))}
-        </View>
-      </View>
-
       {/* Listing Type */}
       <View style={styles.section}>
         <Text style={styles.label}>Listing Type</Text>
@@ -501,35 +460,6 @@ export default function CreateListingScreen({ navigation, route }) {
           <Text style={[styles.hint, { marginTop: SPACING.sm }]}>
             This item will be given away permanently — no return expected.
           </Text>
-        )}
-      </View>
-
-      {/* Category */}
-      <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category{!isGiveaway ? ' *' : ''}</Text>
-        {categories.length > 0 ? (
-          <HapticPressable
-            haptic="light"
-            style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
-            onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
-          >
-            {formData.categoryId ? (
-              <View style={styles.dropdownSelected}>
-                <CategoryIcon
-                  icon={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
-                  size={22}
-                />
-                <Text style={styles.dropdownSelectedText}>
-                  {categories.find(c => c.id === formData.categoryId)?.name}
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.dropdownPlaceholder}>Select a category</Text>
-            )}
-            <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-          </HapticPressable>
-        ) : (
-          <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>Loading categories...</Text>
         )}
       </View>
 
@@ -741,6 +671,83 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
       )}
 
+      <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(value => !value)} style={{ minHeight: 48, paddingVertical: 16 }}>
+        <Text style={styles.label}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Condition: {CONDITION_LABELS[formData.condition]}. Check this matches your item.</Text>
+      </HapticPressable>
+      {showDetails && <View>
+      {/* Category */}
+      <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
+        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category{!isGiveaway ? ' *' : ''}</Text>
+        {categories.length > 0 ? (
+          <HapticPressable
+            haptic="light"
+            style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
+            onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
+          >
+            {formData.categoryId ? (
+              <View style={styles.dropdownSelected}>
+                <CategoryIcon
+                  icon={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
+                  size={22}
+                />
+                <Text style={styles.dropdownSelectedText}>
+                  {categories.find(c => c.id === formData.categoryId)?.name}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.dropdownPlaceholder}>Select a category</Text>
+            )}
+            <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+        ) : (
+          <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>Loading categories...</Text>
+        )}
+      </View>
+
+      {/* Description */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          testID="CreateListing.input.description"
+          accessibilityLabel="Listing description"
+          style={[styles.input, styles.textArea]}
+          value={formData.description}
+          onChangeText={(v) => updateField('description', v)}
+          placeholder="Add details about your item..."
+          placeholderTextColor={COLORS.textMuted}
+          multiline
+          numberOfLines={4}
+          maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
+        />
+      </View>
+
+      {/* Condition */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Condition</Text>
+        <View style={styles.options}>
+          {CONDITIONS.map((condition) => (
+            <HapticPressable
+              key={condition}
+              style={[styles.option, formData.condition === condition && styles.optionActive]}
+              onPress={() => {
+                updateField('condition', condition);
+                haptics.selection();
+              }}
+              haptic={null}
+            >
+              <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
+                {CONDITION_LABELS[condition]}
+              </Text>
+            </HapticPressable>
+          ))}
+        </View>
+      </View>
+
+      </View>}
       {/* Submit */}
       <HapticPressable
         testID="CreateListing.button.submit"

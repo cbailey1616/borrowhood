@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Modal } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Ionicons } from './Icon';
 import VerifiedBadge from './VerifiedBadge';
 import HapticPressable from './HapticPressable';
@@ -10,7 +10,7 @@ const TIERS = [
   { key: 'squire', label: 'Squire', min: 0, max: 2, icon: 'shield-outline', color: '#637581', description: 'New to the Borrowhood' },
   { key: 'archer', label: 'Archer', min: 3, max: 10, icon: 'navigate-outline', color: '#637581', description: 'Learning the ropes' },
   { key: 'outlaw', label: 'Outlaw', min: 11, max: 30, icon: 'flag-outline', color: '#087F68', description: 'Active member of the crew' },
-  { key: 'ranger', label: 'Sherwood Ranger', min: 31, max: 75, icon: 'leaf-outline', color: '#087F68', description: 'Trusted community veteran' },
+  { key: 'ranger', label: 'Sherwood Ranger', min: 31, max: 75, icon: 'leaf-outline', color: '#087F68', description: 'Experienced community member' },
   { key: 'robin', label: 'Robin', min: 76, max: Infinity, icon: 'ribbon-outline', color: '#946B28', description: 'Legendary Borrowhood member' },
 ];
 
@@ -49,25 +49,14 @@ export default function UserBadges({
         {isVerified && (
           <View style={[styles.badge, styles.verifiedBadge, compact && styles.badgeCompact]}>
             <VerifiedBadge size={iconSize} />
-            {!compact && <Text style={[styles.badgeText, { fontSize, color: COLORS.primary }]}>Verified</Text>}
+            {!compact && <Text style={[styles.badgeText, { fontSize, color: COLORS.primary }]}>Verified identity</Text>}
           </View>
         )}
 
-        <View style={[styles.badge, { backgroundColor: tier.color + '20' }, compact && styles.badgeCompact]}>
-          <TierIcon tier={tier} size={iconSize} />
-          {!compact && <Text style={[styles.badgeText, { fontSize, color: tier.color }]}>{tier.label}</Text>}
-          {!compact && (
-            <HapticPressable
-              onPress={() => setShowLegend(true)}
-              haptic="light"
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-              testID="UserBadges.info"
-              accessibilityLabel="View rank legend"
-            >
-              <Ionicons name="information-circle-outline" size={iconSize} color={tier.color} style={{ opacity: 0.7 }} />
-            </HapticPressable>
-          )}
-        </View>
+        <Text style={{ fontSize, color: COLORS.textSecondary }}>{totalTransactions} completed {totalTransactions === 1 ? 'exchange' : 'exchanges'}</Text>
+        {!compact && <HapticPressable onPress={() => setShowLegend(true)} accessibilityRole="button" accessibilityLabel="View community ranks" style={{ minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' }}>
+          <Text style={{ fontSize: 12, color: COLORS.textMuted }}>{tier.label} · About ranks</Text>
+        </HapticPressable>}
       </View>
 
       <Modal
@@ -81,9 +70,9 @@ export default function UserBadges({
           onPress={() => setShowLegend(false)}
           haptic="light"
         >
-          <View style={styles.legendCard}>
+          <ScrollView style={[styles.legendCard, { maxHeight: '85%' }]} contentContainerStyle={{ paddingBottom: 24 }}>
             <Text style={styles.legendTitle}>Borrowhood Ranks</Text>
-            <Text style={styles.legendSubtitle}>Level up by borrowing and lending</Text>
+            <Text style={styles.legendSubtitle}>Ranks reflect activity, not identity or safety checks. Reviews and completed exchanges offer more context.</Text>
 
             {TIERS.map((t) => {
               const isCurrent = t.key === tier.key;
@@ -117,7 +106,7 @@ export default function UserBadges({
             >
               <Text style={styles.legendCloseText}>Got it</Text>
             </HapticPressable>
-          </View>
+          </ScrollView>
         </HapticPressable>
       </Modal>
     </>
@@ -137,6 +126,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,

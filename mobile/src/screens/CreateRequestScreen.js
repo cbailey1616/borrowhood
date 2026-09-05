@@ -33,12 +33,12 @@ const EXPIRATION_OPTIONS = [
   { value: 'custom', label: 'Custom' },
 ];
 
-export default function CreateRequestScreen({ navigation }) {
+export default function CreateRequestScreen({ navigation, route }) {
   const { user, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
   const [formData, setFormData] = useState({
     type: 'item',
-    title: '',
+    title: route?.params?.initialTitle || '',
     description: '',
     categoryId: null,
     visibility: ['close_friends'],

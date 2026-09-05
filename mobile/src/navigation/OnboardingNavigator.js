@@ -1,10 +1,10 @@
+import OnboardingTownScreen from '../screens/onboarding/OnboardingTownScreen';
 import { Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HapticPressable from '../components/HapticPressable';
 import { COLORS, ENABLE_PAID_TIERS } from '../utils/config';
 
 import OnboardingIntroScreen from '../screens/onboarding/OnboardingIntroScreen';
-import OnboardingNeighborhoodScreen from '../screens/onboarding/OnboardingNeighborhoodScreen';
 import OnboardingFriendsScreen from '../screens/onboarding/OnboardingFriendsScreen';
 import OnboardingPlanScreen from '../screens/onboarding/OnboardingPlanScreen';
 import OnboardingVerifyScreen from '../screens/onboarding/OnboardingVerifyScreen';
@@ -18,9 +18,9 @@ const Stack = createNativeStackNavigator();
 const STEP_TO_ROUTE = {
   1: 'OnboardingIntro',
   2: 'OnboardingNeighborhood',
-  3: 'OnboardingFriends',
-  4: ENABLE_PAID_TIERS ? 'OnboardingPlan' : 'OnboardingComplete',
-  5: 'OnboardingComplete',
+  3: 'OnboardingNeighborhood',
+  4: 'OnboardingNeighborhood',
+  5: 'OnboardingNeighborhood',
 };
 
 export default function OnboardingNavigator({ initialStep = 1 }) {
@@ -45,7 +45,7 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
       />
       <Stack.Screen
         name="OnboardingNeighborhood"
-        component={OnboardingNeighborhoodScreen}
+        component={OnboardingTownScreen}
       />
       <Stack.Screen
         name="OnboardingFriends"

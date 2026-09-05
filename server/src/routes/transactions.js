@@ -532,7 +532,7 @@ router.post('/:id/approve', authenticate,
       if (!t.stripe_payment_intent_id) {
         await query(
           `UPDATE borrow_transactions
-           SET status = 'paid', lender_response = $1, payment_status = 'none'
+           SET status = 'paid', accepted_at = COALESCE(accepted_at, NOW()), lender_response = $1, payment_status = 'none'
            WHERE id = $2`,
           [response, req.params.id]
         );
@@ -579,7 +579,7 @@ router.post('/:id/approve', authenticate,
 
       await query(
         `UPDATE borrow_transactions
-         SET status = 'paid', lender_response = $1, payment_status = 'captured'
+         SET status = 'paid', accepted_at = COALESCE(accepted_at, NOW()), lender_response = $1, payment_status = 'captured'
          WHERE id = $2`,
         [response, req.params.id]
       );

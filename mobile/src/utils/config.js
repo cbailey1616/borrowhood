@@ -60,7 +60,7 @@ export const TRANSACTION_STATUS_LABELS = {
   disputed: 'Disputed',
 };
 
-// Neutral surfaces keep photography and actions in focus. Existing token names
+// Warm parchment surfaces keep photography and actions in focus. Existing token names
 // remain stable so every screen inherits the same visual language.
 export const COLORS = {
   primary: '#087F68', primaryDark: '#056451', primaryLight: '#229781',
@@ -68,30 +68,30 @@ export const COLORS = {
   accent: '#425CC7', accentMuted: '#EDF0FC',
   warning: '#946200', warningMuted: '#FFF4DB',
   danger: '#C43943', dangerMuted: '#FDECEF', success: '#087F68',
-  background: '#F5F7F8', surface: '#FFFFFF', surfaceElevated: '#EDF1F3',
-  card: '#FFFFFF', cardHover: '#F8FAFB',
-  text: '#18252B', textSecondary: '#52616A', textMuted: '#697780',
+  background: '#F3EBDD', surface: '#FBF6EC', surfaceElevated: '#EDE2D0',
+  card: '#FBF6EC', cardHover: '#F8F1E5',
+  text: '#292D28', textSecondary: '#5F6359', textMuted: '#62665A',
   greenBg: '#102F2B', greenSurface: '#1B4039',
   greenText: '#F5FAF8', greenTextMuted: '#BACEC8',
   greenBorder: 'rgba(186, 206, 200, 0.20)',
   greenSeparator: 'rgba(186, 206, 200, 0.16)',
-  border: '#DFE6E9', borderLight: '#EDF1F3',
+  border: '#DCCFBA', borderLight: '#EDE2D0',
   borderGreen: 'rgba(8, 127, 104, 0.18)',
   borderGreenStrong: 'rgba(8, 127, 104, 0.32)',
   // Compatibility aliases for screens that previously used brown dividers.
-  borderBrown: '#E5EAED', borderBrownStrong: '#D5DEE2',
+  borderBrown: '#E5D9C6', borderBrownStrong: '#D5C5AC',
   gray: {
-    50: '#F8FAFB', 100: '#F1F4F6', 200: '#E5EAED', 300: '#CCD6DC',
-    400: '#94A3AD', 500: '#697780', 600: '#52616A', 700: '#3A4A53',
-    800: '#293840', 900: '#18252B',
+    50: '#F8F1E5', 100: '#F0E7D8', 200: '#E5D9C6', 300: '#D4C7B2',
+    400: '#9C9C8B', 500: '#62665A', 600: '#5F6359', 700: '#464E42',
+    800: '#343D32', 900: '#292D28',
   },
   overlay: 'rgba(16, 29, 35, 0.65)', overlayLight: 'rgba(16, 29, 35, 0.35)',
   materials: {
-    ultraThin: 'rgba(255, 255, 255, 0.35)', thin: 'rgba(255, 255, 255, 0.50)',
-    regular: 'rgba(255, 255, 255, 0.65)', thick: 'rgba(255, 255, 255, 0.85)',
-    ultraThick: 'rgba(255, 255, 255, 0.95)',
+    ultraThin: 'rgba(251, 246, 236, 0.35)', thin: 'rgba(251, 246, 236, 0.50)',
+    regular: 'rgba(251, 246, 236, 0.65)', thick: 'rgba(251, 246, 236, 0.85)',
+    ultraThick: 'rgba(251, 246, 236, 0.95)',
   },
-  separator: '#E5EAED',
+  separator: '#E5D9C6',
 };
 
 // Design tokens for consistency
@@ -116,21 +116,21 @@ export const RADIUS = {
 
 export const SHADOWS = {
   sm: {
-    shadowColor: '#18252B',
+    shadowColor: '#292D28',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 2,
   },
   md: {
-    shadowColor: '#18252B',
+    shadowColor: '#292D28',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#18252B',
+    shadowColor: '#292D28',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,

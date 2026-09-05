@@ -85,8 +85,8 @@ router.get('/', authenticate, async (req, res) => {
     if (canAccessTown) {
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}::text) AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}::text) AND u.city IS NOT NULL) OR
         ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
@@ -95,8 +95,8 @@ router.get('/', authenticate, async (req, res) => {
       // Plus but unverified — include town listings for window shopping (will be masked)
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}::text) AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}::text) AND u.city IS NOT NULL) OR
         ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
@@ -105,7 +105,7 @@ router.get('/', authenticate, async (req, res) => {
       // User can't access town listings - only show friends and neighborhood
       whereConditions.push(`(
         l.owner_id = $${paramIndex} OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}::text) AND u.city IS NOT NULL) OR
         ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
       )`);
       params.push(req.user.id, userCity || '', friendIds.length > 0 ? friendIds : [null]);

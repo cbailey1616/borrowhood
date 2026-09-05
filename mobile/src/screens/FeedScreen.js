@@ -94,15 +94,23 @@ export default function FeedScreen({ navigation }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
 
 
-  const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
+  const [feedError, setFeedError] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const feedRequest = useRef(0);
+  const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
+  const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
+    const requestId = ++feedRequest.current;
+    setFeedError(false);
+    setIsFetching(true);
     try {
       const params = { page: pageNum, limit: 20 };
-      if (search) params.search = search;
-      if (activeFilters.length > 0) params.type = activeFilters.join(',');
-      if (visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
-      if (categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
+      if (!clear && search.trim()) params.search = search.trim();
+      if (!clear && activeFilters.length > 0) params.type = activeFilters.join(',');
+      if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
+      if (!clear && categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
 
       const data = await api.getFeed(params);
+      if (requestId !== feedRequest.current) return;
 
       if (append) {
         setFeed(prev => [...prev, ...data.items]);
@@ -112,8 +120,12 @@ export default function FeedScreen({ navigation }) {
       setHasMore(data.hasMore);
       setPage(pageNum);
     } catch (error) {
-      console.error('Failed to fetch feed:', error);
+      if (requestId !== feedRequest.current) return;
+      setFeedError(true);
+      if (!append) setFeed([]);
     } finally {
+      if (requestId !== feedRequest.current) return;
+      setIsFetching(false);
       setIsInitialLoad(false);
       setIsRefreshing(false);
       setIsLoadingMore(false);
@@ -176,6 +188,11 @@ export default function FeedScreen({ navigation }) {
       fetchFeed(1, false);
     }
   }, [activeFilters, visibilityFilters, categoryFilters]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchFeed(1, false), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -332,7 +349,6 @@ export default function FeedScreen({ navigation }) {
 
   const handleClearSearch = useCallback(() => {
     setSearch('');
-    fetchFeed(1, false);
   }, []);
 
   const formatTimeAgo = (dateString) => {
@@ -953,24 +969,25 @@ export default function FeedScreen({ navigation }) {
             </View>
           )
         }
-        ListEmptyComponent={
+        ListEmptyComponent={isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> :
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconWrap}>
-              <HeroIcon icon={user?.city ? 'cube' : 'navigate'} size={88} />
-            </View>
-            <Text style={styles.emptyTitle}>{user?.city ? 'Your hood is quiet' : 'Add your location'}</Text>
-            <Text style={styles.emptySubtitle}>
-              {user?.city
-                ? 'Be the first to list a tool or post a request in your neighborhood!'
-                : 'Set your city so we can show items from neighbors near you.'}
-            </Text>
-            <HapticPressable
-              style={styles.emptyButton}
-              onPress={() => user?.city ? navigation.navigate('CreateListing') : navigation.navigate('EditProfile')}
-              haptic="medium"
-            >
-              <Text style={styles.emptyButtonText}>{user?.city ? 'List an Item' : 'Go to Settings'}</Text>
+            <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'cube-outline' : 'location-outline'} size={72} />
+            <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Start sharing in your town' : 'Choose your town'}</Text>
+            <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'List something you can lend, or invite a neighbor to get things started.' : 'Add your town to discover items nearby.'}</Text>
+            <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
+              if (feedError) return fetchFeed(1, false);
+              if (!user?.city) return navigation.navigate('EditProfile');
+              if (hasFilters) {
+                setSearch(''); setActiveFilters([]); setVisibilityFilters([]); setCategoryFilters([]);
+                return fetchFeed(1, false, true);
+              }
+              navigation.navigate('CreateListing');
+            }}>
+              <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'List an item'}</Text>
             </HapticPressable>
+            {!feedError && user?.city && <HapticPressable accessibilityRole="button" style={{ minHeight: 48, padding: 14, justifyContent: 'center' }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}>
+              <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '600' }}>{hasFilters ? 'Request an item' : 'Invite a neighbor'}</Text>
+            </HapticPressable>}
           </View>
         }
       />

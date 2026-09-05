@@ -7,6 +7,9 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    // Retain approval history for aggregate conversion measurements.
+    await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ');
+
 
     // Migration: Add status column to friendships for friend request flow
     const hasStatus = await query(`

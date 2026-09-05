@@ -54,6 +54,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
 
@@ -71,8 +72,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       ]);
       setNotifications(notifData?.notifications || []);
       setConversations(convData || []);
+      setLoadError(false);
     } catch (error) {
-      console.error('Failed to fetch inbox data:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -81,7 +83,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   useFocusEffect(
     useCallback(() => {
-      InteractionManager.runAfterInteractions(() => {
+      const task = InteractionManager.runAfterInteractions(() => {
         fetchData();
         checkNotifPermission();
         if (onRead) onRead();
@@ -89,6 +91,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         Notifications.setBadgeCountAsync(0).catch(() => {});
         Notifications.dismissAllNotificationsAsync().catch(() => {});
       });
+      const timer = setInterval(fetchData, 10000);
+      return () => { task.cancel(); clearInterval(timer); };
     }, [fetchData, checkNotifPermission, onRead])
   );
 
@@ -346,9 +350,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
                 <Ionicons name="chatbubbles-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 20 }} />
                 <Ionicons name="pencil-outline" size={20} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 20, opacity: 0.6 }} />
               </View>
-              <Text style={styles.emptyTitle}>No messages yet</Text>
+              <Text style={styles.emptyTitle}>{loadError ? 'Couldn’t load messages' : 'No messages yet'}</Text>
               <Text style={styles.emptySubtitle}>
-                Start a conversation by messaging someone about their item
+                {loadError ? 'Check your connection and pull down to retry.' : 'Message a neighbor from an item or exchange to get started.'}
               </Text>
             </View>
           }
@@ -436,7 +440,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#E53935',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,

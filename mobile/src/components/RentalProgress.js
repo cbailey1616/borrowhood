@@ -3,27 +3,27 @@ import { Ionicons } from './Icon';
 import { COLORS, SPACING } from '../utils/config';
 
 const BORROWER_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Request' },
-  { key: 'approved', icon: 'checkmark-circle', label: 'Accepted' },
-  { key: 'pickup', icon: 'cube', label: 'Pickup' },
-  { key: 'returned', icon: 'arrow-undo', label: 'Return' },
+  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
+  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
+  { key: 'pickup', icon: 'cube', label: 'Picked up' },
+  { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
 ];
 
 const LENDER_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Request' },
+  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
   { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
   { key: 'pickup', icon: 'cube', label: 'Picked Up' },
   { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
 ];
 
 const GIVEAWAY_RECIPIENT_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Request' },
-  { key: 'approved', icon: 'checkmark-circle', label: 'Accepted' },
+  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
+  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
   { key: 'pickup', icon: 'gift', label: 'Picked Up' },
 ];
 
 const GIVEAWAY_GIVER_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Request' },
+  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
   { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
   { key: 'pickup', icon: 'gift', label: 'Given' },
 ];
@@ -107,7 +107,7 @@ export default function RentalProgress({ status, isBorrower, isGiveaway }) {
                 isActive && !isCancelled && styles.labelActive,
                 isCancelled && isActive && styles.labelCancelled,
               ]}
-              numberOfLines={1}
+
             >
               {step.label}
             </Text>
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   connector: {
     flex: 1,
     height: 2,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.border,
   },
   connectorComplete: {
     backgroundColor: COLORS.primary,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: CIRCLE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.border,
   },
   circleComplete: {
     backgroundColor: COLORS.primary,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0,
     shadowRadius: 6,
     elevation: 4,
   },
@@ -160,12 +160,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.danger,
     shadowColor: COLORS.danger,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0,
     shadowRadius: 6,
     elevation: 4,
   },
   circleFuture: {
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.borderLight,
   },
   labelsRow: {
     flexDirection: 'row',
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 12,
     color: COLORS.gray[500],
   },
   labelComplete: {

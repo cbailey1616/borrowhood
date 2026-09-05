@@ -223,6 +223,7 @@ export default function ProfileScreen({ navigation }) {
           />
         </GroupedListSection>
 
+        {user?.isAdmin && <GroupedListSection header="Admin"><GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} /></GroupedListSection>}
         {/* Borrowing & Payments Section */}
         <GroupedListSection header="Borrowing">
           <GroupedListItem

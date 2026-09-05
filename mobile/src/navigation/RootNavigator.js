@@ -1,3 +1,4 @@
+import InsightsScreen from '../screens/InsightsScreen';
 import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -134,6 +135,7 @@ export default function RootNavigator() {
             component={ListingDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Item Details' }}
           />
+          <Stack.Screen name="Insights" component={InsightsScreen} options={{ title: 'App insights' }} />
           <Stack.Screen
             name="TransactionDetail"
             component={TransactionDetailScreen}

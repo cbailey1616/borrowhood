@@ -743,6 +743,7 @@ const getReferralStatus = () => get('/referrals/status');
 const claimReferralReward = () => post('/referrals/claim');
 
 export default {
+  getFunnelInsights: (days = 30) => get(`/insights/funnel?days=${days}`),
   setAuthToken,
   // Auth
   login,

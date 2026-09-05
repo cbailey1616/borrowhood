@@ -1,3 +1,4 @@
+import insightsRoutes from './routes/insights.js';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -252,6 +253,7 @@ app.use('/api/identity', identityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/insights', insightsRoutes);
 app.use('/api/earnings', earningsRoutes);
 app.use('/webhooks', webhookRoutes);
 

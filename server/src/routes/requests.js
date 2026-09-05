@@ -174,15 +174,15 @@ router.get('/suggestions', authenticate, async (req, res) => {
     const visibilityParams = [];
     if (canAccessTown) {
       visibilityClause = `(
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex}::text) AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex}::text) AND u.city IS NOT NULL) OR
         ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 1}))
       )`;
       visibilityParams.push(userCity, friendIds.length > 0 ? friendIds : [null]);
       paramIndex += 2;
     } else {
       visibilityClause = `(
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
+        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex}::text) AND u.city IS NOT NULL) OR
         ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 1}))
       )`;
       visibilityParams.push(userCity || '', friendIds.length > 0 ? friendIds : [null]);

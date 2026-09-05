@@ -1,12 +1,14 @@
+import { mergeMessages } from '../../mobile/src/utils/chatMessages.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
 vi.mock('../src/utils/constants.js', () => ({ ENABLE_PAYMENTS: false, REQUIRE_IDENTITY_VERIFICATION: false, PLATFORM_FEE_PERCENT: 0.03 }));
 vi.mock('../src/utils/db.js', () => ({ query: vi.fn() }));
-vi.mock('../src/middleware/auth.js', () => ({
+vi.mock('../src/middleware/auth.js', async (importOriginal) => ({
+  requireAdmin: (await importOriginal()).requireAdmin,
   ENABLE_PAID_TIERS: false,
-  authenticate: (req, res, next) => { req.user = { id: 'borrower', first_name: 'Chris' }; next(); },
+  authenticate: (req, res, next) => { req.user = { id: 'borrower', first_name: 'Chris', is_admin: req.headers['x-test-admin'] === 'true' }; next(); },
   requireVerified: (req, res, next) => next(),
 }));
 vi.mock('../src/services/notifications.js', () => ({ sendNotification: vi.fn() }));
@@ -22,9 +24,11 @@ import { freeListingOnly, requirePaymentsEnabled } from '../src/middleware/freeL
 import transactions from '../src/routes/transactions.js';
 import listings from '../src/routes/listings.js';
 import identity from '../src/routes/identity.js';
+import insights from '../src/routes/insights.js';
+import { borrowGuidance } from '../../mobile/src/utils/borrowStatus.js';
 
 const app = express(); app.use(express.json());
-app.use('/identity', identity); app.use('/transactions', transactions); app.use('/listings', listings);
+app.use('/insights', insights); app.use('/identity', identity); app.use('/transactions', transactions); app.use('/listings', listings);
 app.post('/charge', requirePaymentsEnabled, (req, res) => res.sendStatus(204));
 app.post('/validate-listing', freeListingOnly, (req, res) => res.sendStatus(204));
 const listingId = '6f9028a4-5105-4aa6-b62a-9f4465b966b8';
@@ -79,3 +83,55 @@ describe('free launch', () => {
     expect(stripe.identity.verificationSessions.create).not.toHaveBeenCalled();
     expect(createPaymentIntent).not.toHaveBeenCalled();
   });
+
+describe('first-borrow improvements', () => {
+  it('restricts aggregate insights to administrators', async () => {
+    expect((await request(app).get('/insights/funnel')).status).toBe(403);
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('rejects unbounded reporting periods', async () => {
+    expect((await request(app).get('/insights/funnel?days=9999').set('x-test-admin', 'true')).status).toBe(400);
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('reports cohorts without inventing rates for empty denominators', async () => {
+    query.mockResolvedValueOnce({ rows: [{ signups: 0, onboarded: 0, first_listers: 0, first_requesters: 0, requests: 0, accepted: 0, returned: 0 }] });
+    const result = await request(app).get('/insights/funnel').set('x-test-admin', 'true');
+    expect(result.status).toBe(200); expect(result.body.acceptanceRate).toBeNull();
+    expect(result.body.onboardingRate).toBeNull();
+    expect(query.mock.calls[0][1]).toEqual([30]);
+  });
+  it('calculates acceptance and signup completion from their own denominators', async () => {
+    query.mockResolvedValueOnce({ rows: [{ signups: 10, onboarded: 8, first_listers: 4, first_requesters: 5, requests: 20, accepted: 15, returned: 9 }] });
+    const result = await request(app).get('/insights/funnel').set('x-test-admin', 'true');
+    expect(result.body.onboardingRate).toBe(80); expect(result.body.acceptanceRate).toBe(75); expect(result.body.returnRate).toBe(60);
+  });
+  it('gives each side appropriate pending-request guidance', () => {
+    expect(borrowGuidance({ status: 'pending', isBorrower: true }).title).toBe('Waiting for the owner');
+    expect(borrowGuidance({ status: 'pending', isBorrower: false }).title).toBe('Review this request');
+  });
+  it('does not describe a pending return as completed', () => {
+    expect(borrowGuidance({ status: 'return_pending' }).detail).toContain('awaiting confirmation');
+  });
+  it('does not ask for a giveaway back after pickup', () => {
+    expect(borrowGuidance({ status: 'picked_up', isGiveaway: true }).title).toBe('Pickup confirmed');
+  });
+  it('prioritizes an active dispute over a completed-looking status', () => {
+    expect(borrowGuidance({ status: 'returned', hasDispute: true }).title).toBe('An issue is being reviewed');
+  });
+});
+
+describe('chat refresh reconciliation', () => {
+  const first = { id: 'a', content: 'Hello', createdAt: '2026-09-05T12:00:00Z', isRead: false };
+  const sent = { id: 'b', content: 'Pickup at noon?', createdAt: '2026-09-05T12:01:00Z' };
+  it('retains a send acknowledged after a poll began', () => {
+    expect(mergeMessages([first, sent], [first]).map(m => m.id)).toEqual(['a', 'b']);
+  });
+  it('deduplicates sends that arrive again in the server snapshot', () => {
+    expect(mergeMessages([first, sent], [first, sent])).toHaveLength(2);
+  });
+  it('applies read receipts and deletions without changing chronological order', () => {
+    const result = mergeMessages([sent, first], [{ ...first, isRead: true, isDeleted: true }]);
+    expect(result[0]).toMatchObject({ id: 'a', isRead: true, isDeleted: true });
+    expect(result[1].id).toBe('b');
+  });
+});
