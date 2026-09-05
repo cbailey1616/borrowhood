@@ -20,7 +20,8 @@ import Animated, {
   Easing,
   useDerivedValue,
 } from 'react-native-reanimated';
-import { Ionicons } from '../../components/Icon';
+import { Ionicons, outlineIcon } from '../../components/Icon';
+import HeroIcon from '../../components/HeroIcon';
 import HapticPressable from '../../components/HapticPressable';
 import { haptics } from '../../utils/haptics';
 import api from '../../services/api';
@@ -33,7 +34,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDES = [
   {
     id: 'welcome',
-    icon: 'navigate', emoji: '🏹',
+    icon: 'swap-horizontal',
     grad: ['#3E8E5A', '#1C5230'],
     title: 'Welcome to\nBorrowhood',
     subtitle: 'Your neighborhood sharing community. Why buy when you can borrow from people you trust?',
@@ -76,39 +77,19 @@ const SLIDES = [
 // ── Hero emblem — gradient disc with a gentle float + scroll-linked scale ──
 
 function HeroEmblem({ slide, index, scrollX }) {
-  const float = useSharedValue(0);
-  useEffect(() => {
-    float.value = withRepeat(
-      withDelay(index * 120, withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.sin) })),
-      -1,
-      true
-    );
-  }, []);
-
   const style = useAnimatedStyle(() => {
     const input = [(index - 1) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 1) * SCREEN_WIDTH];
     // scroll-linked: scale up at center, fall away to the sides
     const scale = interpolate(scrollX.value, input, [0.6, 1, 0.6], Extrapolation.CLAMP);
     // parallax: hero drifts opposite the swipe a touch
     const translateX = interpolate(scrollX.value, input, [40, 0, -40], Extrapolation.CLAMP);
-    const floatY = interpolate(float.value, [0, 1], [-5, 5]);
-    return { transform: [{ translateX }, { scale }, { translateY: floatY }] };
+
+    return { transform: [{ translateX }, { scale }] };
   });
 
   return (
     <Animated.View style={[styles.heroWrap, style]}>
-      <View style={styles.heroGlow} />
-      <LinearGradient
-        colors={slide.grad}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={styles.heroDisc}
-      >
-        <View style={styles.heroGloss} />
-        {slide.emoji
-          ? <Text style={styles.heroEmoji}>{slide.emoji}</Text>
-          : <Ionicons name={slide.icon} size={44} color="#fff" />}
-      </LinearGradient>
+      <HeroIcon icon={slide.icon} size={88} />
     </Animated.View>
   );
 }
@@ -128,19 +109,18 @@ function Dot({ index, scrollX }) {
 // ── Feature / preview cards (unchanged content, theme styling) ──────
 
 // Small gradient tile with a white glyph — shared by feature + preview cards.
-function GradientTile({ icon, grad, style }) {
+function FeatureTile({ icon, style }) {
   return (
-    <LinearGradient colors={grad} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={style}>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '42%', backgroundColor: 'rgba(255,255,255,0.16)' }} />
-      <Ionicons name={icon} size={style === styles.miniCardIcon ? 20 : 18} color="#fff" />
-    </LinearGradient>
+    <View style={[style, { backgroundColor: COLORS.primaryMuted }]}>
+      <Ionicons name={outlineIcon(icon)} size={style === styles.miniCardIcon ? 20 : 18} color={COLORS.primary} />
+    </View>
   );
 }
 
 function FeatureCard({ icon, grad, label, description, tintBorder }) {
   return (
-    <View style={[styles.featureCard, { borderColor: tintBorder }]}>
-      <GradientTile icon={icon} grad={grad} style={styles.featureIcon} />
+    <View style={styles.featureCard}>
+      <FeatureTile icon={icon} grad={grad} style={styles.featureIcon} />
       <View style={styles.featureText}>
         <Text style={styles.featureLabel}>{label}</Text>
         <Text style={styles.featureDescription}>{description}</Text>
@@ -154,7 +134,7 @@ function MiniPreviewCards() {
     <View style={styles.miniCardsContainer}>
       {/* A listing (kitchen) */}
       <View style={styles.miniCard}>
-        <GradientTile icon="restaurant" grad={['#FF8A65', '#D8434E']} style={styles.miniCardIcon} />
+        <FeatureTile icon="restaurant" grad={['#FF8A65', '#D8434E']} style={styles.miniCardIcon} />
         <View style={styles.miniCardText}>
           <Text style={styles.miniCardTitle}>Stand Mixer</Text>
           <Text style={styles.miniCardSubtitle}>Maria K. · 0.2 mi</Text>
@@ -173,7 +153,7 @@ function MiniPreviewCards() {
           <Text style={styles.wantedBannerDate}>Needed by Mar 10</Text>
         </LinearGradient>
         <View style={styles.wantedContent}>
-          <GradientTile icon="tv" grad={['#9B7BE8', '#5B3FB0']} style={styles.miniCardIcon} />
+          <FeatureTile icon="tv" grad={['#9B7BE8', '#5B3FB0']} style={styles.miniCardIcon} />
           <View style={styles.miniCardText}>
             <Text style={styles.miniCardTitle}>Need a Projector</Text>
             <Text style={styles.miniCardSubtitle}>Dave R. · 2h ago</Text>
@@ -270,15 +250,10 @@ export default function OnboardingIntroScreen({ navigation }) {
         </View>
 
         <HapticPressable onPress={handleContinue} haptic="medium">
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.continueButton}
-          >
+          <View style={[styles.continueButton, { backgroundColor: COLORS.primary }]}>
             <Animated.Text style={[styles.continueText, ctaStyle]}>Continue</Animated.Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </LinearGradient>
+          </View>
         </HapticPressable>
       </View>
     </View>
@@ -295,16 +270,6 @@ const styles = StyleSheet.create({
 
   // Hero emblem
   heroWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.xl },
-  heroGlow: {
-    position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: COLORS.primary, opacity: 0.12,
-  },
-  heroDisc: {
-    width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  heroGloss: { position: 'absolute', top: 0, left: 0, right: 0, height: 40, backgroundColor: 'rgba(255,255,255,0.18)' },
-  heroEmoji: { fontSize: 46 },
 
   slideTitle: {
     fontSize: 30, fontWeight: '700', letterSpacing: -0.8, color: COLORS.text,
@@ -318,7 +283,7 @@ const styles = StyleSheet.create({
   cardsContainer: { width: '100%', marginTop: SPACING.sm },
   featureCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface,
-    borderRadius: 12, borderWidth: 1.5, padding: 11, paddingHorizontal: 14, marginBottom: 8,
+    borderRadius: 14, borderWidth: 1, borderColor: COLORS.borderLight, padding: 11, paddingHorizontal: 14, marginBottom: 8,
   },
   featureIcon: {
     width: 36, height: 36, borderRadius: 10, overflow: 'hidden',
@@ -361,7 +326,7 @@ const styles = StyleSheet.create({
   dot: { height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
   continueButton: {
     flexDirection: 'row', borderRadius: RADIUS.lg, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm,
-    shadowColor: COLORS.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
+    shadowColor: COLORS.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 5,
   },
   continueText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

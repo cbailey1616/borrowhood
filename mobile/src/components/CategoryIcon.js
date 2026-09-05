@@ -1,16 +1,16 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Ionicons } from './Icon';
+import { Ionicons, outlineIcon } from './Icon';
 import { COLORS } from '../utils/config';
 
 export default function CategoryIcon({ icon, size = 40, radius }) {
   return (
     <View style={{
-      width: size, height: size, borderRadius: radius ?? size * 0.3,
+      width: size, height: size, borderRadius: radius ?? size * 0.25,
       backgroundColor: COLORS.primaryMuted,
       alignItems: 'center', justifyContent: 'center',
     }}>
-      <Ionicons name={icon || 'pricetag-outline'} size={size * 0.5} color={COLORS.primary} />
+      <Ionicons name={outlineIcon(icon)} size={size * 0.5} color={COLORS.primary} />
     </View>
   );
 }
