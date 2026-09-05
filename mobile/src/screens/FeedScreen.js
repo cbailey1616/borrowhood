@@ -434,7 +434,7 @@ export default function FeedScreen({ navigation }) {
     const priceLabel = isGiveaway ? null : (item.isFree ? 'Free' : `$${item.pricePerDay}/day`);
 
     return (
-    <AnimatedCard index={index}>
+    <AnimatedCard index={index} style={styles.tileShadow}>
       <HapticPressable
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
         haptic="light"
@@ -753,7 +753,7 @@ export default function FeedScreen({ navigation }) {
     const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
-      <AnimatedCard index={index}>
+      <AnimatedCard index={index} style={styles.tileShadow}>
         <HapticPressable
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"
@@ -1351,13 +1351,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.md,
   },
+  tileShadow: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.sm,
+  },
   tile: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: FEED.cardBorder,
     backgroundColor: FEED.card,
-    marginBottom: SPACING.xl,
   },
   tileRow: {
     flexDirection: 'column',

@@ -74,6 +74,8 @@ export default function NativeHeader({
 const styles = StyleSheet.create({
   headerWrapper: {
     backgroundColor: COLORS.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
     paddingHorizontal: SPACING.xl,
   },
   titleRow: {

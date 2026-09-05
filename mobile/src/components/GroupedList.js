@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../utils/config';
 import HapticPressable from './HapticPressable';
 
 export function GroupedListSection({ header, footer, children }) {
@@ -11,6 +11,7 @@ export function GroupedListSection({ header, footer, children }) {
       {header ? (
         <Text style={styles.sectionHeader}>{header.toUpperCase()}</Text>
       ) : null}
+      <View style={styles.sectionShadow}>
       <View style={styles.sectionContent}>
         {childArray.map((child, index) =>
           React.cloneElement(child, {
@@ -19,6 +20,7 @@ export function GroupedListSection({ header, footer, children }) {
           })
         )}
       </View>
+      </View>
       {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
     </View>
   );
@@ -26,7 +28,7 @@ export function GroupedListSection({ header, footer, children }) {
 
 export function GroupedListItem({
   icon,
-  iconColor = COLORS.primary,
+  iconColor = COLORS.textSecondary,
   iconBg,
   title,
   subtitle,
@@ -59,7 +61,7 @@ export function GroupedListItem({
           <View
             style={[
               styles.iconBox,
-              { backgroundColor: iconBg || (destructive ? COLORS.dangerMuted : COLORS.primaryMuted) },
+              { backgroundColor: iconBg || (destructive ? COLORS.dangerMuted : 'transparent') },
             ]}
           >
             <Ionicons name={icon} size={18} color={destructive ? COLORS.danger : iconColor} />
@@ -124,6 +126,11 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     marginLeft: SPACING.lg,
     letterSpacing: 0.5,
+  },
+  sectionShadow: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    ...SHADOWS.sm,
   },
   sectionContent: {
     backgroundColor: COLORS.surface,
