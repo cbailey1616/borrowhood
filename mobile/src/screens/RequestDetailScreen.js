@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '../components/Icon';
@@ -25,6 +26,8 @@ export default function RequestDetailScreen({ route, navigation }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [showHaveThisSheet, setShowHaveThisSheet] = useState(false);
+  const [offers, setOffers] = useState([]);
+  const [offerError, setOfferError] = useState(false);
   const [discussions, setDiscussions] = useState([]);
   const [discussionCount, setDiscussionCount] = useState(0);
 
@@ -32,8 +35,21 @@ export default function RequestDetailScreen({ route, navigation }) {
     useCallback(() => {
       fetchRequest();
       fetchDiscussions();
+      fetchOffers();
     }, [id])
   );
+
+  const fetchOffers = async () => {
+    try { setOffers(await api.getRequestOffers(id)); setOfferError(false); }
+    catch { setOfferError(true); }
+  };
+  const withdraw = item => Alert.alert('Withdraw this offer?', 'The requester will lose this offer’s access. An already-approved exchange remains accessible.', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Withdraw', style: 'destructive', onPress: async () => {
+      try { await api.withdrawOffer(id, item.id); await fetchOffers(); }
+      catch { Alert.alert('Could not withdraw offer', 'Please try again.'); }
+    } },
+  ]);
 
   const fetchRequest = async () => {
     try {
@@ -249,9 +265,21 @@ export default function RequestDetailScreen({ route, navigation }) {
               haptic="light"
             >
               <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.respondButtonText}>Respond in Thread</Text>
+              <Text style={styles.respondButtonText}>Ask a question in the shared thread</Text>
             </HapticPressable>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Private offers</Text>
+          <Text style={styles.noDiscussions}>Only you and the other person can see each offer. No other inventory is shared.</Text>
+          {offerError && <HapticPressable onPress={fetchOffers} style={styles.respondButton}><Text>Could not load offers. Tap to retry.</Text></HapticPressable>}
+          {offers.map(item => <View key={item.id}>
+            <HapticPressable style={styles.respondButton} onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
+              <Ionicons name="lock-closed" size={18} /><Text style={styles.respondButtonText}>{item.title}</Text>
+            </HapticPressable>
+            {item.isOwn && <HapticPressable style={styles.respondButton} onPress={() => withdraw(item)}><Text style={styles.respondButtonText}>Withdraw offer</Text></HapticPressable>}
+          </View>)}
         </View>
 
         {/* Posted date */}
@@ -265,11 +293,11 @@ export default function RequestDetailScreen({ route, navigation }) {
         <View style={styles.footer}>
           <HapticPressable
             style={styles.haveThisButton}
-            onPress={() => setShowHaveThisSheet(true)}
+            onPress={() => navigation.navigate('OfferItem', { request })}
             haptic="medium"
           >
             <Ionicons name="hand-right-outline" size={20} color="#fff" />
-            <Text style={styles.haveThisButtonText}>I Can Help</Text>
+            <Text style={styles.haveThisButtonText}>Offer an item privately</Text>
           </HapticPressable>
         </View>
       )}
@@ -316,7 +344,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             },
           },
           {
-            label: 'Post My Item',
+            label: 'Offer a new item privately',
             icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
             onPress: () => {
               setShowHaveThisSheet(false);
@@ -629,3 +657,4 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
   },
 });
+import { ThemedAlert as Alert } from "../components/ThemedAlert";

@@ -123,7 +123,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
           </View>
           <Text style={styles.title}>Already Verified</Text>
           <Text style={styles.subtitle}>
-            Your identity has been verified. You're all set to borrow, lend, and browse town-wide listings.
+            Your identity has been verified. You can use town-wide requests and see items explicitly shared with your town. Private inventories stay private.
           </Text>
         </View>
 
@@ -163,39 +163,39 @@ export default function OnboardingVerifyScreen({ navigation }) {
 
         <Text style={styles.title}>Verify Your Identity</Text>
         <Text style={styles.subtitle}>
-          ID verification is required to unlock town-level access and complete rentals on BorrowHood.
+          Start with friends and your neighborhood now. Complete ID verification when you want to use town-wide requests and sharing. Borrowhood covers verification during launch.
         </Text>
 
         {/* What you can do without verification */}
         <View style={styles.tierCard}>
           <View style={styles.tierHeader}>
-            <Text style={styles.tierEmoji}>🏘️</Text>
+            <Ionicons name="people" size={28} color={COLORS.primary} />
             <View style={styles.tierHeaderText}>
               <Text style={styles.tierTitle}>Without Verification</Text>
-              <Text style={styles.tierScope}>Friends & Neighborhood only</Text>
+              <Text style={styles.tierScope}>Friends and neighborhood</Text>
             </View>
             <View style={styles.freeBadge}>
               <Text style={styles.freeBadgeText}>NOW</Text>
             </View>
           </View>
-          <Text style={styles.tierDescription}>Browse listings from friends and neighbors, send messages, and add friends.</Text>
+          <Text style={styles.tierDescription}>Keep a private inventory, connect with accepted friends, and see items shared with your neighborhood.</Text>
         </View>
 
         {/* What verification unlocks */}
         <View style={[styles.tierCard, styles.tierCardHighlight]}>
           <View style={styles.tierHeader}>
-            <Text style={styles.tierEmoji}>🏛️</Text>
+            <Ionicons name="home" size={28} color={COLORS.primary} />
             <View style={styles.tierHeaderText}>
-              <Text style={[styles.tierTitle, { color: COLORS.greenText }]}>With Verification</Text>
-              <Text style={[styles.tierScope, { color: COLORS.greenTextMuted }]}>Full town-wide access</Text>
+              <Text style={[styles.tierTitle, { color: COLORS.primary }]}>With Verification</Text>
+              <Text style={[styles.tierScope, { color: COLORS.textSecondary }]}>Town requests and opt-in sharing</Text>
             </View>
             <View style={styles.verifiedBadge}>
               <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
             </View>
           </View>
           <View style={styles.unlocksList}>
-            <UnlockItem text="Browse & connect with your entire town" />
-            <UnlockItem text="Borrow and lend items with secure payments" />
+            <UnlockItem text="Ask your town for what you need" />
+            <UnlockItem text="Offer one item privately, not your whole inventory" />
             <UnlockItem text="Build trust with a verified badge" />
           </View>
         </View>
@@ -203,7 +203,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
         <View style={styles.trustRow}>
           <Ionicons name="lock-closed" size={14} color={COLORS.textMuted} />
           <Text style={styles.trustText}>
-            Powered by Stripe. Your data is encrypted and never shared.
+            Stripe handles your ID images. Borrowhood receives verification results and identity details; your ID images are not shown to neighbors.
           </Text>
         </View>
       </View>
@@ -308,8 +308,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   tierCardHighlight: {
-    backgroundColor: COLORS.greenBg,
-    borderColor: COLORS.greenBorder,
+    backgroundColor: COLORS.primaryMuted,
+    borderColor: COLORS.borderGreen,
   },
   tierHeader: {
     flexDirection: 'row',
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   },
   unlockText: {
     ...TYPOGRAPHY.caption1,
-    color: COLORS.greenText,
+    color: COLORS.primary,
     flex: 1,
   },
   trustRow: {

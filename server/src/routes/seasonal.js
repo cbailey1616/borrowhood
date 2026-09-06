@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -34,6 +35,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
          FROM listings l
          JOIN users u ON l.owner_id = u.id
          WHERE l.status = 'active'
+           AND ${listingAccessSql('l', '$1', { discovery: true })}
            AND l.owner_id != $1
            AND (${cat.keywords.map((_, i) => `l.title ILIKE $${i + 2}`).join(' OR ')})
          ORDER BY l.created_at DESC
@@ -95,6 +97,7 @@ router.get('/featured', authenticate, async (req, res) => {
       `SELECT COUNT(*) as count
        FROM listings l
        WHERE l.status = 'active'
+         AND ${listingAccessSql('l', '$1', { discovery: true })}
          AND l.owner_id != $1
          AND (${cat.keywords.map((_, i) => `l.title ILIKE $${i + 2}`).join(' OR ')})`,
       [req.user.id, ...cat.keywords.map(k => `%${k}%`)]

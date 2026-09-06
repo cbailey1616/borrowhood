@@ -15,6 +15,7 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
@@ -32,6 +33,7 @@ import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from
 const { width } = Dimensions.get('window');
 
 export default function ListingDetailScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { id } = route.params;
   const { user } = useAuth();
   const { showToast, showError } = useError();
@@ -154,7 +156,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: SPACING.lg }}>
         {/* Photo Gallery */}
         <ScrollView
           horizontal
@@ -244,7 +246,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               <View style={styles.verifyCardIcon}>
                 <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
               </View>
-              <Text style={styles.verifyCardTitle}>This listing is from outside your circle</Text>
+              <Text style={styles.verifyCardTitle}>This listing is outside your neighborhood</Text>
               <Text style={styles.verifyCardSubtitle}>
                 To protect everyone in the community, town-wide listings require identity verification before you can see the owner's details, send messages, or request to borrow. Verification is quick and only needs to be done once.
               </Text>
@@ -275,32 +277,10 @@ export default function ListingDetailScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* Pricing */}
-          <View style={styles.pricingCard} testID="ListingDetail.price" accessibilityLabel="Pricing details">
-            {listing.listingType === 'giveaway' ? (
-              <View style={[styles.priceRow, { marginBottom: 0 }]}>
-                <Text style={styles.priceLabel}>Price</Text>
-                <Text style={[styles.priceValue, { color: COLORS.greenText, fontWeight: '700' }]}>
-                  Free — Yours to Keep
-                </Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>Rental fee</Text>
-                  <Text style={[styles.priceValue, listing.isFree && { color: COLORS.greenText, fontWeight: '700' }]}>
-                    {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
-                  </Text>
-                </View>
-                {listing.depositAmount > 0 && (
-                  <View style={[styles.priceRow, { marginBottom: 0 }]}>
-                    <Text style={styles.priceLabel}>Refundable deposit</Text>
-                    <Text style={styles.priceValue}>${listing.depositAmount}</Text>
-                  </View>
-                )}
-              </>
-            )}
-          </View>
+          {/* Borrowhood's current release has no rental fees or deposits. */}
+          <Text style={styles.freeNote}>
+            {listing.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow'}
+          </Text>
 
           {/* Active Transaction Status */}
           {listing.activeTransaction && (
@@ -355,14 +335,12 @@ export default function ListingDetailScreen({ route, navigation }) {
                   />
                   {listing.owner.ratingCount > 0 && (
                     <Text style={styles.ownerTransactions}>
-                      {listing.owner.ratingCount} review{listing.owner.ratingCount !== 1 ? 's' : ''}
+                      {Number(listing.owner.rating || 0).toFixed(1)} ★ · {listing.owner.ratingCount} review{listing.owner.ratingCount !== 1 ? 's' : ''}
                     </Text>
                   )}
-                  <Text style={styles.ownerTransactions}>
-                    {listing.owner.totalTransactions} transaction{listing.owner.totalTransactions !== 1 ? 's' : ''}
-                  </Text>
+
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
+                <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} style={{ alignSelf: 'center' }} />
               </View>
             </HapticPressable>
           </>
@@ -372,10 +350,17 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {/* Footer Action Bar — hide for completed giveaways (nothing useful to show) */}
       {!listing.isOwner && !listing.ownerMasked && !(listing.listingType === 'giveaway' && !listing.isAvailable && !listing.activeTransaction) && (
-        <View style={styles.footerWrap}>
-          <View style={styles.footerGreen}>
+        <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
+          {!listing.isAvailable && !listing.activeTransaction && (
+            <Text style={styles.availabilityHint}>Not available to borrow right now</Text>
+          )}
+          <View style={styles.footerActions}>
             <HapticPressable
               style={[styles.messageButton, messageLoading && { opacity: 0.5 }]}
+              testID="ListingDetail.button.message"
+              accessibilityRole="button"
+              accessibilityLabel="Message owner"
+              accessibilityState={{ disabled: messageLoading, busy: messageLoading }}
               disabled={messageLoading}
               onPress={async () => {
                 setMessageLoading(true);
@@ -413,7 +398,10 @@ export default function ListingDetailScreen({ route, navigation }) {
               }}
               haptic="light"
             >
-              <Ionicons name="chatbubble" size={20} color={COLORS.greenText} />
+              <Ionicons name="chatbubble" size={20} color={COLORS.primary} />
+              <Text style={styles.messageButtonText}>
+                {messageLoading ? 'Opening…' : !listing.isAvailable && !listing.activeTransaction ? 'Message owner' : 'Message'}
+              </Text>
             </HapticPressable>
             {listing.isAvailable && !listing.activeTransaction && (
               <HapticPressable
@@ -443,8 +431,8 @@ export default function ListingDetailScreen({ route, navigation }) {
       )}
 
       {listing.isOwner && (
-        <View style={styles.footerWrap}>
-          <View style={styles.footerGreen}>
+        <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
+          <View style={styles.footerActions}>
             <HapticPressable
               style={styles.deleteButton}
               onPress={() => setDeleteSheetVisible(true)}
@@ -608,12 +596,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
+  freeNote: { ...TYPOGRAPHY.footnote, color: COLORS.primary, marginBottom: SPACING.md },
   pricingCard: {
-    backgroundColor: COLORS.greenBg,
+    backgroundColor: COLORS.primaryMuted,
     padding: SPACING.xl,
     marginBottom: SPACING.xl,
     borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
   },
@@ -625,11 +614,11 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     ...TYPOGRAPHY.body,
-    color: COLORS.greenTextMuted,
+    color: COLORS.textSecondary,
   },
   priceValue: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   transactionCard: {
     padding: SPACING.lg,
@@ -670,11 +659,12 @@ const styles = StyleSheet.create({
   },
   ownerCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: SPACING.lg,
     gap: SPACING.md,
   },
   ownerAvatar: {
+    flexShrink: 0,
     width: 48,
     height: 48,
     borderRadius: 14,
@@ -739,6 +729,7 @@ const styles = StyleSheet.create({
   },
   ownerInfo: {
     flex: 1,
+    minWidth: 0,
   },
   ownerName: {
     ...TYPOGRAPHY.headline,
@@ -760,23 +751,26 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   footerWrap: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    flexShrink: 0,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
   },
-  footerGreen: {
+  scrollContent: {
+    flex: 1,
+  },
+  availabilityHint: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+  },
+  footerActions: {
     flexDirection: 'row',
-    backgroundColor: COLORS.greenBg,
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-    gap: SPACING.md,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1.5,
-    borderRightWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    alignItems: 'center',
+    padding: SPACING.md,
+    gap: SPACING.sm,
   },
   footer: {
     flexDirection: 'row',
@@ -790,21 +784,33 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.separator,
   },
   messageButton: {
-    width: 52,
-    height: 52,
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: 52,
+    padding: SPACING.sm,
+    gap: SPACING.xs,
     borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  messageButtonText: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '600',
+    color: COLORS.primary,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
   borrowButton: {
-    flex: 1,
+    flex: 2,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.secondary,
-    paddingVertical: SPACING.lg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.md,
     gap: SPACING.sm,
   },
@@ -855,15 +861,17 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
     alignItems: 'center',
     justifyContent: 'center',
   },
   editButton: {
-    backgroundColor: COLORS.greenSurface,
+    backgroundColor: COLORS.primary,
   },
   borrowButtonText: {
     color: '#fff',
     ...TYPOGRAPHY.headline,
+    textAlign: 'center',
+    flexShrink: 1,
   },
 });

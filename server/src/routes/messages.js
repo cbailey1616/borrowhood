@@ -1,10 +1,23 @@
+import { listingAccessSql } from '../utils/sharingPolicy.js';
+import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
+import { deliverMessage } from '../services/chatDelivery.js';
 import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
+
+router.get('/capabilities', authenticate, async (req, res) => {
+  try {
+    const schema = await query(`SELECT COUNT(*)::int AS count FROM information_schema.columns
+      WHERE table_schema = current_schema() AND table_name = 'messages'
+      AND column_name IN ('client_request_id', 'client_request_hash')`);
+    const index = await query("SELECT to_regclass('idx_messages_client_request') AS ready");
+    res.json({ idempotentMessages: schema.rows[0]?.count === 2 && !!index.rows[0]?.ready });
+  } catch { res.json({ idempotentMessages: false }); }
+});
 
 // ============================================
 // GET /api/messages/conversations
@@ -44,7 +57,7 @@ router.get('/conversations', authenticate, async (req, res) => {
        FROM conversations c
        JOIN users u1 ON c.user1_id = u1.id
        JOIN users u2 ON c.user2_id = u2.id
-       LEFT JOIN listings l ON c.listing_id = l.id
+       LEFT JOIN listings l ON c.listing_id = l.id AND ${listingAccessSql('l', '$1')}
        LEFT JOIN LATERAL (
          SELECT content, created_at, sender_id, deleted_at, image_url
          FROM messages
@@ -59,7 +72,7 @@ router.get('/conversations', authenticate, async (req, res) => {
 
     res.json(result.rows.map(c => ({
       id: c.id,
-      listing: c.listing_id ? {
+      listing: c.listing_title ? {
         id: c.listing_id,
         title: c.listing_title,
         photoUrl: c.listing_photo,
@@ -116,8 +129,8 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
       const listingResult = await query(
         `SELECT l.id, l.title,
                 (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
-         FROM listings l WHERE l.id = $1`,
-        [conv.listing_id]
+         FROM listings l WHERE l.id = $1 AND ${listingAccessSql('l', '$2')}`,
+        [conv.listing_id, req.user.id]
       );
       if (listingResult.rows.length > 0) {
         listing = {
@@ -196,13 +209,14 @@ router.post('/', authenticate,
   body('content').optional().trim().isLength({ min: 1, max: 2000 }),
   body('imageUrl').optional().isString(),
   body('listingId').optional().isUUID(),
+  body('clientRequestId').optional().isUUID(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { recipientId, content, imageUrl, listingId } = req.body;
+    const { recipientId, content, imageUrl, listingId, clientRequestId } = req.body;
 
     if (!content && !imageUrl) {
       return res.status(400).json({ error: 'Message must have content or an image' });
@@ -213,41 +227,19 @@ router.post('/', authenticate,
     }
 
     try {
-      // Find or create conversation
-      let conversationId;
-
-      // Find existing conversation between these two users (regardless of listing)
-      const existingConv = await query(
-        `SELECT id FROM conversations
-         WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
-         ORDER BY created_at ASC LIMIT 1`,
-        [req.user.id, recipientId]
-      );
-
-      if (existingConv.rows.length > 0) {
-        conversationId = existingConv.rows[0].id;
-        // Update listing context if provided and conversation doesn't have one
-        if (listingId) {
-          await query(
-            'UPDATE conversations SET listing_id = $1 WHERE id = $2 AND listing_id IS NULL',
-            [listingId, conversationId]
-          );
-        }
-      } else {
-        // Create new conversation
-        const newConv = await query(
-          'INSERT INTO conversations (user1_id, user2_id, listing_id) VALUES ($1, $2, $3) RETURNING id',
-          [req.user.id, recipientId, listingId || null]
-        );
-        conversationId = newConv.rows[0].id;
+      if (listingId) {
+        // Attaching an item to a chat must not grant either participant access.
+        const access = await Promise.all([
+          canViewListing(listingId, req.user.id), canViewListing(listingId, recipientId),
+        ]);
+        if (access.some(allowed => !allowed)) return res.status(404).json({ error: 'Listing not found' });
       }
+      const message = await withTransaction(client => deliverMessage(client, {
+        senderId: req.user.id, recipientId, content, imageUrl, listingId, clientRequestId,
+      }));
+      const conversationId = message.conversation_id;
 
-      // Insert message
-      const messageResult = await query(
-        'INSERT INTO messages (conversation_id, sender_id, content, image_url) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
-        [conversationId, req.user.id, content || null, imageUrl || null]
-      );
-
+      if (!message.replayed) {
       // Get sender name for notification
       const sender = await query(
         'SELECT first_name, display_name FROM users WHERE id = $1',
@@ -265,18 +257,19 @@ router.post('/', authenticate,
           conversationId,
         },
         { fromUserId: req.user.id }
-      );
+      ).catch(err => console.error('Message notification failed:', err.message));
+      }
 
-      res.status(201).json({
-        id: messageResult.rows[0].id,
+      res.status(message.replayed ? 200 : 201).json({
+        id: message.id,
         conversationId,
         content: content || null,
         imageUrl: imageUrl || null,
-        createdAt: messageResult.rows[0].created_at,
+        createdAt: message.created_at,
       });
     } catch (err) {
       console.error('Send message error:', err);
-      res.status(500).json({ error: 'Failed to send message' });
+      res.status(err.status === 409 ? 409 : 500).json({ error: err.status === 409 ? err.message : 'Failed to send message' });
     }
   }
 );

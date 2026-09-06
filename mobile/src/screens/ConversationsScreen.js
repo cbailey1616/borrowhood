@@ -8,6 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -133,7 +134,7 @@ export default function ConversationsScreen({ navigation, onRead }) {
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={64} color={COLORS.gray[700]} />
+              <HeroIcon icon="chatbubbles-outline" size={80} />
               <Text style={styles.emptyTitle}>No messages yet</Text>
               <Text style={styles.emptySubtitle}>
                 Start a conversation by messaging someone about an item

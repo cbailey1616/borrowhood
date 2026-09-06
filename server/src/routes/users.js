@@ -1052,71 +1052,8 @@ router.get('/:id/listings', authenticate, async (req, res) => {
       })));
     }
 
-    // Other user's listings — apply visibility filtering
-    const userResult = await query(
-      'SELECT city, is_verified, subscription_tier, verification_grace_until FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    const userCity = userResult.rows[0]?.city;
-    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
-    const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
-
-    const friendsResult = await query(
-      `SELECT 1 FROM friendships
-       WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
-       AND status = 'accepted'`,
-      [req.user.id, profileOwnerId]
-    );
-    const isFriend = friendsResult.rows.length > 0;
-
-    // Get profile owner's city for neighborhood/town matching
-    const ownerResult = await query('SELECT city FROM users WHERE id = $1', [profileOwnerId]);
-    const ownerCity = ownerResult.rows[0]?.city;
-
-    // Build visibility conditions
-    const visConditions = [];
-    const params = [profileOwnerId];
-    let paramIndex = 2;
-
-    // close_friends: only if accepted friendship exists
-    if (isFriend) {
-      visConditions.push(`'close_friends' = ANY(string_to_array(l.visibility::text, ','))`);
-    }
-
-    // neighborhood: city match required
-    if (userCity && ownerCity && userCity.toLowerCase() === ownerCity.toLowerCase()) {
-      visConditions.push(`'neighborhood' = ANY(string_to_array(l.visibility::text, ','))`);
-    }
-
-    // town: city match + verified
-    if (canAccessTown && ownerCity && userCity.toLowerCase() === ownerCity.toLowerCase()) {
-      visConditions.push(`'town' = ANY(string_to_array(l.visibility::text, ','))`);
-    }
-
-    if (visConditions.length === 0) {
-      return res.json([]);
-    }
-
-    const result = await query(
-      `SELECT l.id, l.title, l.condition, l.is_free, l.price_per_day,
-              (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
-       FROM listings l
-       WHERE l.owner_id = $1 AND l.status = 'active' ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
-         AND (${visConditions.join(' OR ')})
-       ORDER BY l.created_at DESC
-       LIMIT 20`,
-      params
-    );
-
-    res.json(result.rows.map(l => ({
-      id: l.id,
-      title: l.title,
-      condition: l.condition,
-      isFree: l.is_free,
-      pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
-      photoUrl: l.photo_url,
-    })));
+    // Profiles are reputation pages, not an inventory directory.
+    return res.json([]);
   } catch (err) {
     console.error('Get user listings error:', err);
     res.status(500).json({ error: 'Failed to get listings' });

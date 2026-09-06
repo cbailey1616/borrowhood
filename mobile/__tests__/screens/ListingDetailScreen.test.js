@@ -38,6 +38,14 @@ describe('ListingDetailScreen', () => {
     await findByText('Camping Tent');
   });
 
+  it('shows free borrowing without a rental-fee or pricing card', async () => {
+    const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
+    const { findByText, queryByText, queryByTestId } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
+    await findByText('Free to borrow');
+    expect(queryByText('Rental fee')).toBeNull();
+    expect(queryByTestId('ListingDetail.price')).toBeNull();
+  });
+
   it('displays owner info', async () => {
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
     const { findByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
@@ -74,5 +82,39 @@ describe('ListingDetailScreen', () => {
     const { findByText, queryByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
     await findByText('Camping Tent');
     expect(queryByText('Request to Borrow')).toBeNull();
+  });
+
+  it('explains unavailable items and keeps a labeled message action', async () => {
+    api.getListing.mockResolvedValue({ ...mockListing, isAvailable: false });
+    api.getConversations.mockResolvedValue([]);
+    const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
+    const { findByText, getByLabelText, queryByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
+    await findByText('Not available to borrow right now');
+    expect(queryByText('Request to Borrow')).toBeNull();
+    expect(queryByText('Message owner')).toBeTruthy();
+    await act(async () => { fireEvent.press(getByLabelText('Message owner')); });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({
+      recipientId: 'user-2', listingId: 'listing-1',
+    }));
+  });
+
+  it('keeps active requests actionable even when an item is unavailable', async () => {
+    api.getListing.mockResolvedValue({ ...mockListing, isAvailable: false, activeTransaction: { id: 'request-1' } });
+    const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
+    const { findByText, queryByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
+    const requestButton = await findByText('View Request');
+    expect(queryByText('Not available to borrow right now')).toBeNull();
+    expect(queryByText('Message')).toBeTruthy();
+    await act(async () => { fireEvent.press(requestButton); });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'request-1' });
+  });
+
+  it('does not restore the action bar for completed giveaways', async () => {
+    api.getListing.mockResolvedValue({ ...mockListing, listingType: 'giveaway', isAvailable: false });
+    const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
+    const { findByText, queryByTestId } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
+    await findByText('Camping Tent');
+    expect(queryByTestId('ListingDetail.button.message')).toBeNull();
+    expect(queryByTestId('ListingDetail.button.borrow')).toBeNull();
   });
 });

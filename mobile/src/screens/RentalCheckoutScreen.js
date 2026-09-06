@@ -362,9 +362,9 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     marginBottom: SPACING.lg,
-    backgroundColor: COLORS.greenBg,
+    backgroundColor: COLORS.primaryMuted,
     borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
   },
@@ -379,24 +379,24 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     ...TYPOGRAPHY.body,
-    color: COLORS.greenTextMuted,
+    color: COLORS.textSecondary,
   },
   summaryAmountLabel: {
     ...TYPOGRAPHY.body,
-    color: COLORS.greenText,
+    color: COLORS.primary,
     fontWeight: '600',
   },
   summaryValue: {
     ...TYPOGRAPHY.body,
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   summaryAmount: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   summaryDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: COLORS.greenSeparator,
+    backgroundColor: COLORS.separator,
   },
   cardBox: {
     backgroundColor: COLORS.card,

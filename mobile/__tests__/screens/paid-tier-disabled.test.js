@@ -148,14 +148,15 @@ describe('CreateListingScreen — no subscription gate on town', () => {
   it('allows selecting town visibility without subscription prompt', async () => {
     api.getCategories.mockResolvedValue([]);
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
-    const { getByText } = render(
+    const { getByText, getByLabelText } = render(
       <CreateListingScreen navigation={mockNavigation} route={{ params: {} }} />
     );
+    fireEvent.press(getByLabelText('Change who can see this item'));
     await waitFor(() => {
-      expect(getByText('My Town')).toBeTruthy();
+      expect(getByText('Town')).toBeTruthy();
     });
     // Pressing town should NOT trigger navigation to Subscription screen
-    fireEvent.press(getByText('My Town'));
+    fireEvent.press(getByText('Town'));
     expect(mockNavigation.push).not.toHaveBeenCalledWith(
       'Subscription',
       expect.anything()

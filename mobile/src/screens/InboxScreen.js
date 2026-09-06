@@ -8,10 +8,12 @@ import {
   Image,
   InteractionManager,
   Linking,
+  Platform,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
 import SegmentedControl from '../components/SegmentedControl';
@@ -54,11 +56,13 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
 
 
   const checkNotifPermission = useCallback(async () => {
+    if (Platform.OS === 'web') return;
     const { status } = await Notifications.getPermissionsAsync();
     setNotifsDenied(status !== 'granted');
   }, []);
@@ -71,8 +75,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       ]);
       setNotifications(notifData?.notifications || []);
       setConversations(convData || []);
+      setLoadError(false);
     } catch (error) {
-      console.error('Failed to fetch inbox data:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -81,7 +86,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   useFocusEffect(
     useCallback(() => {
-      InteractionManager.runAfterInteractions(() => {
+      const task = InteractionManager.runAfterInteractions(() => {
         fetchData();
         checkNotifPermission();
         if (onRead) onRead();
@@ -89,6 +94,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         Notifications.setBadgeCountAsync(0).catch(() => {});
         Notifications.dismissAllNotificationsAsync().catch(() => {});
       });
+      const timer = setInterval(fetchData, 10000);
+      return () => { task.cancel(); clearInterval(timer); };
     }, [fetchData, checkNotifPermission, onRead])
   );
 
@@ -144,7 +151,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         nav.navigate('Chat', { conversationId: item.conversationId });
       } else {
         // Fallback for notifications without conversationId - switch to Messages tab
-        setActiveTab(1);
+        setActiveTab(0);
       }
       return;
     } else if (item.type === 'friend_request' || item.type === 'friend_accepted') {
@@ -250,7 +257,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <NativeHeader title="Activity" />
+        <NativeHeader title="Inbox" />
         <View style={styles.skeletonContainer}>
           <SkeletonListItem />
           <SkeletonListItem />
@@ -263,12 +270,12 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Activity">
+      <NativeHeader title="Inbox">
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
-            `Activity${badgeCounts?.notifications > 0 ? ` (${badgeCounts.notifications})` : ''}`,
             `Messages${badgeCounts?.messages > 0 ? ` (${badgeCounts.messages})` : ''}`,
+            `Activity${badgeCounts?.notifications > 0 ? ` (${badgeCounts.notifications})` : ''}`,
           ]}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
@@ -276,7 +283,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         />
       </NativeHeader>
 
-      {activeTab === 0 ? (
+      {activeTab === 1 ? (
         <FlatList
           data={notifications}
           renderItem={renderNotification}
@@ -316,10 +323,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconWrap}>
-                <Ionicons name="notifications-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 22 }} />
-                <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 18, opacity: 0.6 }} />
-              </View>
+              <HeroIcon icon="notifications" size={80} />
               <Text style={styles.emptyTitle}>All caught up!</Text>
               <Text style={styles.emptySubtitle}>
                 You'll see borrow requests and updates here
@@ -342,13 +346,10 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconWrap}>
-                <Ionicons name="chatbubbles-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 14, left: 20 }} />
-                <Ionicons name="pencil-outline" size={20} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 20, opacity: 0.6 }} />
-              </View>
-              <Text style={styles.emptyTitle}>No messages yet</Text>
+              <HeroIcon icon="chatbubble" size={80} />
+              <Text style={styles.emptyTitle}>{loadError ? 'Couldn’t load messages' : 'No messages yet'}</Text>
               <Text style={styles.emptySubtitle}>
-                Start a conversation by messaging someone about their item
+                {loadError ? 'Check your connection and pull down to retry.' : 'Message a neighbor from an item or exchange to get started.'}
               </Text>
             </View>
           }
@@ -436,7 +437,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#E53935',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -502,14 +503,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
-  },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,

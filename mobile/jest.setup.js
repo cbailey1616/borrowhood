@@ -3,6 +3,12 @@
  * Jest Setup - Mocks for React Native, Expo, and app-level modules
  */
 
+// Expo installs this as a lazy global. Resolve it while Jest is executing a
+// setup module, before Jest 30 inspects globals outside a module's scope.
+for (const name of ['__ExpoImportMetaRegistry', 'structuredClone', 'TextDecoder', 'TextDecoderStream', 'TextEncoderStream', 'URL', 'URLSearchParams']) {
+  void globalThis[name];
+}
+
 // Silence console output in tests
 jest.spyOn(console, 'log').mockImplementation(() => {});
 jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -336,6 +342,7 @@ jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 // ============================================
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
+  UNSTABLE_usePreventRemove: jest.fn(),
   useNavigation: () => ({
     navigate: jest.fn(),
     goBack: jest.fn(),
@@ -396,6 +403,7 @@ jest.mock('./src/services/api', () => ({
     analyzeListingImage: jest.fn(),
     // Transactions
     getTransactions: jest.fn().mockResolvedValue([]),
+    getMessageCapabilities: jest.fn().mockResolvedValue({ idempotentMessages: false }),
     getTransaction: jest.fn(),
     createTransaction: jest.fn(),
     approveTransaction: jest.fn(),
@@ -422,6 +430,11 @@ jest.mock('./src/services/api', () => ({
     createRequest: jest.fn(),
     updateRequest: jest.fn(),
     deleteRequest: jest.fn(),
+    offerItem: jest.fn(),
+    getRequestOffers: jest.fn().mockResolvedValue([]),
+    withdrawOffer: jest.fn(),
+    getCircles: jest.fn().mockResolvedValue([]),
+    getCircle: jest.fn(),
     // Saved
     getSavedListings: jest.fn().mockResolvedValue([]),
     saveListing: jest.fn(),
@@ -450,6 +463,7 @@ jest.mock('./src/services/api', () => ({
     resolveDispute: jest.fn().mockResolvedValue({ success: true }),
     // Discussions
     getDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
+    getRequestDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
     // Referrals
     getReferralCode: jest.fn().mockResolvedValue({ referralCode: '' }),
     getReferralStatus: jest.fn().mockResolvedValue({ referralCount: 0, eligible: false, rewardClaimed: false }),

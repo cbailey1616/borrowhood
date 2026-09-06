@@ -13,6 +13,7 @@ import {
 import * as Contacts from 'expo-contacts';
 import * as SMS from 'expo-sms';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import api from '../services/api';
@@ -621,8 +622,8 @@ export default function FriendsScreen({ navigation, route }) {
           ListEmptyComponent={
             !isLoading && (
               <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color={COLORS.gray[700]} />
-                <Text style={styles.emptyTitle}>No close friends yet</Text>
+                <HeroIcon icon="people-outline" size={80} />
+                <Text style={styles.emptyTitle}>No friends yet</Text>
                 <Text style={styles.emptySubtitle}>
                   Use the options above to find and invite friends
                 </Text>
@@ -686,7 +687,7 @@ export default function FriendsScreen({ navigation, route }) {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="mail-outline" size={64} color={COLORS.gray[700]} />
+              <HeroIcon icon="mail-outline" size={80} />
               <Text style={styles.emptyTitle}>No pending requests</Text>
               <Text style={styles.emptySubtitle}>
                 When someone sends you a friend request, it will appear here
@@ -700,7 +701,7 @@ export default function FriendsScreen({ navigation, route }) {
         <>
           {contactsPermission !== null && contactsPermission !== 'granted' ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="lock-closed-outline" size={64} color={COLORS.gray[700]} />
+              <HeroIcon icon="lock-closed-outline" size={80} />
               <Text style={styles.emptyTitle}>Contacts Access Needed</Text>
               <Text style={styles.emptySubtitle}>
                 Allow access to your contacts to find friends on Borrowhood and invite others
@@ -746,7 +747,7 @@ export default function FriendsScreen({ navigation, route }) {
               }
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="people-outline" size={64} color={COLORS.gray[700]} />
+                  <HeroIcon icon="people-outline" size={80} />
                   <Text style={styles.emptyTitle}>No contacts found</Text>
                   <Text style={styles.emptySubtitle}>
                     We couldn't find any contacts with phone numbers. You may need to grant full contacts access in Settings.
@@ -773,7 +774,7 @@ export default function FriendsScreen({ navigation, route }) {
                 <ActivityIndicator size="large" color={COLORS.primary} />
               ) : search.length < 2 ? (
                 <>
-                  <Ionicons name="search-outline" size={64} color={COLORS.gray[700]} />
+                  <HeroIcon icon="search-outline" size={80} />
                   <Text style={styles.emptyTitle}>Search for people</Text>
                   <Text style={styles.emptySubtitle}>
                     Enter at least 2 characters to search
@@ -781,7 +782,7 @@ export default function FriendsScreen({ navigation, route }) {
                 </>
               ) : (
                 <>
-                  <Ionicons name="person-outline" size={64} color={COLORS.gray[700]} />
+                  <HeroIcon icon="person-outline" size={80} />
                   <Text style={styles.emptyTitle}>No results found</Text>
                   <Text style={styles.emptySubtitle}>
                     Try a different search term
@@ -797,7 +798,7 @@ export default function FriendsScreen({ navigation, route }) {
         isVisible={removeFriendSheetVisible}
         onClose={() => setRemoveFriendSheetVisible(false)}
         title="Remove Friend"
-        message={`Remove ${selectedFriend?.firstName} from your close friends?`}
+        message={`Remove ${selectedFriend?.firstName} from your friends?`}
         actions={[
           {
             label: 'Remove',

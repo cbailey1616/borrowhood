@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '999' }));
 
 const mockLogout = jest.fn();
 const mockUser = {
@@ -38,14 +39,14 @@ describe('ProfileScreen', () => {
   it('shows verified badge when user.isVerified', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('Verified')).toBeTruthy();
+    expect(getByText('Verified identity')).toBeTruthy();
   });
 
   it('shows tier badge based on transaction count', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
     // User with 5 transactions = Archer tier (3-10)
-    expect(getByText('Archer')).toBeTruthy();
+    expect(getByText('Archer · About ranks')).toBeTruthy();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false
@@ -69,11 +70,10 @@ describe('ProfileScreen', () => {
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Friends');
   });
 
-  it('Payment Methods menu item navigates', () => {
+  it('keeps payment setup out of the free launch', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    fireEvent.press(getByText('Payment Methods'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('PaymentMethods');
+    const { queryByText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(queryByText('Payment Methods')).toBeNull();
   });
 
   it('Sign Out shows confirmation ActionSheet', () => {
@@ -93,6 +93,6 @@ describe('ProfileScreen', () => {
   it('displays version number', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText(/v1\.0\.0/)).toBeTruthy();
+    expect(getByText('Borrowhood 1.0.0 · Build 999')).toBeTruthy();
   });
 });

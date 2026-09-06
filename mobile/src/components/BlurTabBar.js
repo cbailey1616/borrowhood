@@ -8,7 +8,7 @@ import Animated, {
   withSpring,
   withSequence,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './Icon';
 import { COLORS, ANIMATION } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
@@ -16,16 +16,16 @@ import HapticPressable from './HapticPressable';
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
   Saved: { active: 'heart', inactive: 'heart-outline' },
-  MyItems: { active: 'cube', inactive: 'cube-outline' },
-  Activity: { active: 'notifications', inactive: 'notifications-outline' },
+  MyItems: { active: 'basket', inactive: 'basket-outline' },
+  Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
 };
 
 const TAB_LABELS = {
-  Feed: 'Feed',
+  Feed: 'Home',
   Saved: 'Saved',
   MyItems: 'My Items',
-  Activity: 'Activity',
+  Activity: 'Inbox',
   Profile: 'Profile',
 };
 
@@ -66,7 +66,9 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       <Animated.View style={[styles.iconContainer, isFocused && styles.iconContainerActive, animatedStyle]}>
         <Ionicons
           name={iconName}
-          size={24}
+          size={26}
+          illustrated
+          selected={isFocused}
           color={isFocused ? COLORS.primary : COLORS.textSecondary}
         />
         {badge > 0 && (
@@ -78,6 +80,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       <Text
         style={[
           styles.label,
+          isFocused && { fontWeight: '600' },
           { color: isFocused ? COLORS.primary : COLORS.textSecondary },
         ]}
       >

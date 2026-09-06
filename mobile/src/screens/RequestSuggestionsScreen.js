@@ -7,9 +7,10 @@ import ShimmerImage from '../components/ShimmerImage';
 import { haptics } from '../utils/haptics';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
+import { deleteDraft } from '../utils/draftStorage';
 
 const RequestSuggestionsScreen = ({ navigation, route }) => {
-  const { requestData, requestTitle, suggestions } = route.params;
+  const { requestData, requestTitle, suggestions, draftScope } = route.params;
   const { showToast, showError } = useError();
   const [isPosting, setIsPosting] = useState(false);
 
@@ -17,6 +18,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
     setIsPosting(true);
     try {
       await api.createRequest(requestData);
+      if (draftScope) await deleteDraft(draftScope).catch(() => showToast('Request posted. The saved draft could not be cleared.', 'info'));
       haptics.success();
       showToast('Your request has been posted!', 'success');
       navigation.popToTop();
@@ -60,7 +62,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
               {!isGiveaway && (
                 <View style={[styles.pill, { backgroundColor: COLORS.primary }]}>
                   <Text style={styles.pillText}>
-                    {item.isFree ? 'Free' : `$${item.pricePerDay}/day`}
+                    {item.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow'}
                   </Text>
                 </View>
               )}

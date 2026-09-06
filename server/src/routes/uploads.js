@@ -52,7 +52,7 @@ router.post('/presigned-url', authenticate,
     try {
       // Generate unique filename
       const extension = contentType.split('/')[1].replace('jpeg', 'jpg');
-      const filename = `${uuidv4()}.${extension}`;
+      const filename = `${category === 'listings' ? 'private-listing-' + req.user.id + '-' : ''}${uuidv4()}.${extension}`;
       const key = `${category}/${req.user.id}/${filename}`;
 
       // Dev mode: use local file storage
@@ -124,7 +124,7 @@ router.post('/presigned-urls', authenticate,
       const results = await Promise.all(
         files.map(async (file) => {
           const extension = file.contentType.split('/')[1].replace('jpeg', 'jpg');
-          const filename = `${uuidv4()}.${extension}`;
+          const filename = `${category === 'listings' ? 'private-listing-' + req.user.id + '-' : ''}${uuidv4()}.${extension}`;
           const key = `${category}/${req.user.id}/${filename}`;
 
           // Dev mode: use local file storage
@@ -184,11 +184,27 @@ router.put('/local/:filename', authenticate, async (req, res) => {
 
   try {
     const filename = req.params.filename;
+    if (path.basename(filename) !== filename || !/^[a-zA-Z0-9-]+\.(jpg|png|webp|heic)$/.test(filename)) {
+      return res.status(400).json({ error: 'Invalid upload filename' });
+    }
+    if (filename.startsWith('private-listing-') && !filename.startsWith(`private-listing-${req.user.id}-`)) {
+      return res.sendStatus(403);
+    }
     const filePath = path.join(LOCAL_UPLOADS_DIR, filename);
 
     const chunks = [];
-    req.on('data', chunk => chunks.push(chunk));
+    let bytes = 0;
+    let rejected = false;
+    req.on('data', chunk => {
+      bytes += chunk.length;
+      if (bytes > MAX_FILE_SIZE) {
+        if (!rejected) res.status(413).json({ error: 'File is too large' });
+        rejected = true;
+        chunks.length = 0;
+      } else if (!rejected) chunks.push(chunk);
+    });
     req.on('end', () => {
+      if (rejected) return;
       const buffer = Buffer.concat(chunks);
       fs.writeFileSync(filePath, buffer);
       res.json({ success: true });

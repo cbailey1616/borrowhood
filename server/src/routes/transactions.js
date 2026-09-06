@@ -1,3 +1,4 @@
+import { canViewListing } from '../services/listingAccess.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
@@ -35,6 +36,7 @@ router.post('/', authenticate,
     const { listingId, startDate, endDate, message } = req.body;
 
     try {
+      if (!await canViewListing(listingId, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
       // Get listing details with lender's city
       const listing = await query(
         `SELECT l.*, u.stripe_connect_account_id as lender_stripe_id, u.city as lender_city
@@ -60,81 +62,6 @@ router.post('/', authenticate,
       }
 
       const isPaidRental = !isGiveaway && parseFloat(item.price_per_day) > 0;
-
-      // Verification always required for town-level borrowing
-      if (isPaidRental || item.visibility === 'town') {
-        const borrowerInfo = await query(
-          'SELECT is_verified, city, subscription_tier, verification_grace_until FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const borrower = borrowerInfo.rows[0];
-        const tier = borrower?.subscription_tier || 'free';
-
-        // Verification required for paid rentals and town-level items
-        const borrowerGraceActive = borrower?.verification_grace_until && new Date(borrower.verification_grace_until) > new Date();
-        const borrowerVerified = borrower?.is_verified || borrowerGraceActive;
-
-        // Tier enforcement only when paid tiers enabled
-        if (ENABLE_PAID_TIERS) {
-          const borrowerPlusOrVerified = tier === 'plus' || borrowerVerified;
-          if (!borrowerPlusOrVerified) {
-            return res.status(403).json({
-              error: isPaidRental
-                ? 'Plus subscription required for paid rentals'
-                : 'Plus subscription required to borrow from town listings',
-              code: 'PLUS_REQUIRED',
-              requiredTier: 'plus',
-            });
-          }
-        }
-
-        if (REQUIRE_IDENTITY_VERIFICATION && !borrowerVerified) {
-          return res.status(403).json({
-            error: isPaidRental
-              ? 'Identity verification required for paid rentals'
-              : 'Identity verification required to borrow from town listings',
-            code: 'VERIFICATION_REQUIRED',
-          });
-        }
-
-        // City matching for town-level listings
-        if (item.visibility === 'town') {
-          if (!borrower.city || !item.lender_city || borrower.city.toLowerCase() !== item.lender_city.toLowerCase()) {
-            return res.status(403).json({
-              error: 'This item is only available to users in the same town',
-              code: 'TOWN_MISMATCH',
-            });
-          }
-        }
-      }
-
-      // Neighborhood listings require the borrower to be in the same city
-      if (item.visibility === 'neighborhood') {
-        const borrowerCity = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
-        const bCity = borrowerCity.rows[0]?.city;
-        if (!bCity || !item.lender_city || bCity.toLowerCase() !== item.lender_city.toLowerCase()) {
-          return res.status(403).json({
-            error: 'This item is only available to neighbors',
-            code: 'NEIGHBORHOOD_MISMATCH',
-          });
-        }
-      }
-
-      // Close friends listings require an accepted friendship
-      if (item.visibility === 'close_friends') {
-        const friendship = await query(
-          `SELECT 1 FROM friendships
-           WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
-           AND status = 'accepted'`,
-          [req.user.id, item.owner_id]
-        );
-        if (friendship.rows.length === 0) {
-          return res.status(403).json({
-            error: 'This item is only available to close friends',
-            code: 'FRIENDSHIP_REQUIRED',
-          });
-        }
-      }
 
       if (item.owner_id === req.user.id) {
         return res.status(400).json({ error: 'Cannot borrow your own item' });
@@ -532,7 +459,7 @@ router.post('/:id/approve', authenticate,
       if (!t.stripe_payment_intent_id) {
         await query(
           `UPDATE borrow_transactions
-           SET status = 'paid', lender_response = $1, payment_status = 'none'
+           SET status = 'paid', accepted_at = COALESCE(accepted_at, NOW()), lender_response = $1, payment_status = 'none'
            WHERE id = $2`,
           [response, req.params.id]
         );
@@ -579,7 +506,7 @@ router.post('/:id/approve', authenticate,
 
       await query(
         `UPDATE borrow_transactions
-         SET status = 'paid', lender_response = $1, payment_status = 'captured'
+         SET status = 'paid', accepted_at = COALESCE(accepted_at, NOW()), lender_response = $1, payment_status = 'captured'
          WHERE id = $2`,
         [response, req.params.id]
       );

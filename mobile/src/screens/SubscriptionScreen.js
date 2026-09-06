@@ -11,7 +11,8 @@ import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAYMENTS } from '../utils/config';
+import IdentityVerificationScreen from './IdentityVerificationScreen';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
@@ -49,7 +50,12 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export default function SubscriptionScreen({ navigation, route }) {
+// Preserve old route links without showing an obsolete checkout during launch.
+export default function SubscriptionScreen(props) {
+  return ENABLE_PAYMENTS ? <PaidSubscriptionScreen {...props} /> : <IdentityVerificationScreen {...props} />;
+}
+
+function PaidSubscriptionScreen({ navigation, route }) {
   const source = route?.params?.source || 'generic';
   const totalSteps = route?.params?.totalSteps;
   const { user, refreshUser } = useAuth();

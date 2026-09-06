@@ -1,4 +1,6 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
+import { COLORS } from '../../src/utils/config';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -26,15 +28,72 @@ jest.mock('../../src/context/ErrorContext', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   api.getFeed.mockResolvedValue({ items: [], hasMore: false });
+  api.getSavedListings.mockResolvedValue([]);
+  api.saveListing.mockResolvedValue({ saved: true });
+  api.unsaveListing.mockResolvedValue({ saved: false });
   api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools', slug: 'tools-hardware' }]);
   api.getBadgeCount.mockResolvedValue({ messages: 0, notifications: 0, actions: 0, total: 0 });
 });
 
 describe('FeedScreen', () => {
-  it('renders feed items from api.getFeed', async () => {
+  it('saves and unsaves from a listing card without opening its detail page', async () => {
+    const item = { id: 'ladder', type: 'listing', title: 'Ladder', user: { id: 'owner', firstName: 'Robin', lastName: '' }, createdAt: new Date().toISOString() };
+    let savedItems = [];
+    api.getFeed.mockResolvedValue({ items: [item], hasMore: false });
+    api.getSavedListings.mockImplementation(async () => savedItems);
+    api.saveListing.mockImplementation(async () => { savedItems = [item]; return { saved: true }; });
+    api.unsaveListing.mockImplementation(async () => { savedItems = []; return { saved: false }; });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const { findByLabelText } = render(<Screen navigation={mockNavigation} />);
+    const stopPropagation = jest.fn();
+    fireEvent.press(await findByLabelText('Save Ladder'), { stopPropagation });
+    const unsave = await findByLabelText('Unsave Ladder');
+    expect(api.saveListing).toHaveBeenCalledWith('ladder');
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    fireEvent.press(unsave, { stopPropagation });
+    await findByLabelText('Save Ladder');
+    expect(api.unsaveListing).toHaveBeenCalledWith('ladder');
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('gives requests a sage note treatment while listings stay parchment', async () => {
+    const author = { id: 'neighbor', firstName: 'Robin', lastName: '', isVerified: false };
+    api.getFeed.mockResolvedValue({ items: [
+      { id: 'note', type: 'request', title: 'Could use a ladder', user: author, createdAt: new Date().toISOString() },
+      { id: 'item', type: 'listing', title: 'Garden tools', user: author, isFree: true, isAvailable: true, createdAt: new Date().toISOString() },
+    ], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const { findByText, getByTestId, queryByText, getAllByText } = render(<Screen navigation={mockNavigation} />);
+    await findByText('Neighbor request');
+    expect(queryByText('REQUEST')).toBeNull();
+    const style = id => StyleSheet.flatten(getByTestId(id).props.style);
+    expect(style('Feed.request.note').backgroundColor).toBe(COLORS.requestSurface);
+    expect(style('Feed.thread.note').backgroundColor).toBe(COLORS.requestSurface);
+    expect(style('FeedCard').backgroundColor).toBe(COLORS.card);
+    expect(style('Feed.thread.item').backgroundColor).toBe(COLORS.card);
+    expect(style('Feed.request.note').borderRadius).toBe(style('FeedCard').borderRadius);
+    expect(getAllByText('No comments yet')).toHaveLength(2);
+    fireEvent.press(getByTestId('Feed.request.note'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'note' });
+  });
+
+  it.each([['listing', true], ['listing', false], ['request', true], ['request', undefined]])('shows identity badge only for verified %s authors (%s)', async (type, isVerified) => {
+    api.getFeed.mockResolvedValue({ items: [{
+      id: 'badge-test', type, title: 'Badge test item', isFree: true,
+      user: { id: 'other', firstName: 'Bob', lastName: '', isVerified },
+      createdAt: new Date().toISOString(),
+    }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const { findByText, queryByLabelText } = render(<Screen navigation={mockNavigation} />);
+    await findByText('Badge test item');
+    expect(Boolean(queryByLabelText('Verified identity'))).toBe(isVerified === true);
+  });
+
+  it('starts with requests rather than inventory browsing', async () => {
     api.getFeed.mockResolvedValue({
       items: [{
-        id: 'listing-1', type: 'listing', title: 'Power Drill', isFree: true, pricePerDay: 0,
+        id: 'request-1', type: 'request', title: 'Power Drill', isFree: true, pricePerDay: 0,
         condition: 'good', visibility: 'close_friends',
         user: { id: 'user-2', firstName: 'Bob', lastName: 'Smith', profilePhotoUrl: null, isVerified: false, totalTransactions: 0 },
         photoUrl: 'https://test.com/photo.jpg', createdAt: new Date().toISOString(),
@@ -44,13 +103,13 @@ describe('FeedScreen', () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
     await findByText('Power Drill');
-    expect(api.getFeed).toHaveBeenCalled();
+    expect(api.getFeed).toHaveBeenCalledWith(expect.objectContaining({ type: 'requests' }));
   });
 
   it('empty feed shows empty state', async () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
-    await findByText('Your hood is quiet');
+    await findByText('Ask your town for what you need');
   });
 
   it('search bar renders', async () => {

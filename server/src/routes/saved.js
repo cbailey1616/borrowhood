@@ -1,3 +1,5 @@
+import { listingAccessSql } from '../utils/sharingPolicy.js';
+import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -10,45 +12,8 @@ const router = Router();
 // ============================================
 router.get('/', authenticate, async (req, res) => {
   try {
-    // Get user's visibility context for filtering
-    const userResult = await query(
-      'SELECT city, is_verified, verification_grace_until FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    const userCity = userResult.rows[0]?.city;
-    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
-    const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = isVerified && userCity;
-
-    const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
-      [req.user.id]
-    );
-    const friendIds = friendsResult.rows.map(f => f.friend_id);
-
-    // Build visibility filter — silently exclude listings user no longer has access to
-    let visibilityClause;
     const params = [req.user.id];
-    let paramIndex = 2;
-
-    if (canAccessTown) {
-      visibilityClause = `(
-        l.owner_id = $1 OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex})) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}) AND u.city IS NOT NULL) OR
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}) AND u.city IS NOT NULL)
-      )`;
-      params.push(friendIds.length > 0 ? friendIds : [null], userCity);
-      paramIndex += 2;
-    } else {
-      visibilityClause = `(
-        l.owner_id = $1 OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex})) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${paramIndex + 1}) AND u.city IS NOT NULL)
-      )`;
-      params.push(friendIds.length > 0 ? friendIds : [null], userCity || '');
-      paramIndex += 2;
-    }
+    const visibilityClause = listingAccessSql('l', '$1');
 
     const result = await query(
       `SELECT
@@ -113,6 +78,7 @@ router.post('/:listingId', authenticate, async (req, res) => {
   const { listingId } = req.params;
 
   try {
+    if (!await canViewListing(listingId, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
     // Check listing exists
     const listing = await query(
       'SELECT id FROM listings WHERE id = $1 AND status = $2',

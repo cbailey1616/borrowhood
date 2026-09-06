@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../utils/config';
 import HapticPressable from './HapticPressable';
 
@@ -9,7 +9,7 @@ export function GroupedListSection({ header, footer, children }) {
   return (
     <View style={styles.section}>
       {header ? (
-        <Text style={styles.sectionHeader}>{header.toUpperCase()}</Text>
+        <Text style={styles.sectionHeader}>{header}</Text>
       ) : null}
       <View style={styles.sectionShadow}>
       <View style={styles.sectionContent}>
@@ -64,7 +64,7 @@ export function GroupedListItem({
               { backgroundColor: iconBg || (destructive ? COLORS.dangerMuted : 'transparent') },
             ]}
           >
-            <Ionicons name={icon} size={18} color={destructive ? COLORS.danger : iconColor} />
+            <Ionicons name={icon} size={20} color={destructive ? COLORS.danger : iconColor} illustrated={!destructive && iconColor === COLORS.textSecondary} />
           </View>
         ) : null}
         <View style={styles.itemContent}>
@@ -121,11 +121,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   sectionHeader: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '500',
     color: COLORS.textMuted,
     marginBottom: SPACING.sm,
     marginLeft: SPACING.lg,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   sectionShadow: {
     backgroundColor: COLORS.surface,
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.borderBrown,
   },
   sectionFooter: {

@@ -21,7 +21,6 @@ export default function UserProfileScreen({ route, navigation }) {
   const { id } = route.params;
   const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
-  const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFriend, setIsFriend] = useState(false);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
@@ -31,7 +30,6 @@ export default function UserProfileScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchUser();
-    fetchListings();
     checkFriendStatus();
   }, [id]);
 
@@ -43,15 +41,6 @@ export default function UserProfileScreen({ route, navigation }) {
       console.error('Failed to fetch user:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchListings = async () => {
-    try {
-      const data = await api.getUserListings(id);
-      setListings(data);
-    } catch (error) {
-      console.error('Failed to fetch listings:', error);
     }
   };
 
@@ -131,6 +120,7 @@ export default function UserProfileScreen({ route, navigation }) {
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
 
           <UserBadges
+            centered
             isVerified={user.isVerified}
             totalTransactions={user.totalTransactions || 0}
             size="medium"
@@ -196,37 +186,8 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Items */}
         <View style={styles.ratingsSection}>
-          <Text style={styles.sectionTitle}>Items ({listings.length})</Text>
-          {listings.length === 0 ? (
-            <View style={styles.emptyRatings}>
-              <Ionicons name="cube-outline" size={32} color={COLORS.textMuted} />
-              <Text style={styles.emptyText}>No items listed yet</Text>
-            </View>
-          ) : (
-            <View style={styles.listingsGrid}>
-              {listings.map((listing) => (
-                <HapticPressable
-                  key={listing.id}
-                  haptic="light"
-                  style={styles.listingCard}
-                  onPress={() => navigation.navigate('ListingDetail', { id: listing.id })}
-                >
-                  <ShimmerImage
-                    source={{ uri: listing.photoUrl || 'https://via.placeholder.com/150' }}
-                    style={styles.listingImage}
-                  />
-                  <View style={styles.listingInfo}>
-                    <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
-                    <Text style={styles.listingPrice}>
-                      {listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`}
-                    </Text>
-                  </View>
-                </HapticPressable>
-              ))}
-            </View>
-          )}
+          <Text style={styles.emptyText}>An item shared with you never gives access to this member’s full inventory.</Text>
         </View>
       </ScrollView>
 
@@ -234,7 +195,7 @@ export default function UserProfileScreen({ route, navigation }) {
         isVisible={removeFriendSheetVisible}
         onClose={() => setRemoveFriendSheetVisible(false)}
         title="Remove Friend"
-        message={`Remove ${user.firstName} from your close friends?`}
+        message={`Remove ${user.firstName} from your friends?`}
         actions={[
           {
             label: 'Remove',
@@ -289,6 +250,7 @@ const styles = StyleSheet.create({
   name: {
     ...TYPOGRAPHY.h1,
     fontSize: 24,
+    textAlign: 'center',
     color: COLORS.text,
   },
   metaRow: {

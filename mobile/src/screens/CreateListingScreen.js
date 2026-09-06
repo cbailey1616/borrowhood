@@ -1,5 +1,8 @@
+import SharingPicker from '../components/SharingPicker';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import useFormDraft from '../hooks/useFormDraft';
+import DraftStatus from '../components/DraftStatus';
 import {
   View,
   Text,
@@ -56,15 +59,14 @@ export default function CreateListingScreen({ navigation, route }) {
   const requestMatch = route?.params?.requestMatch;
   const requestMatchId = requestMatch?.id || null;
 
-  const [listingType, setListingType] = useState('lend'); // 'lend' or 'giveaway'
-  const isGiveaway = listingType === 'giveaway';
-
-  const [formData, setFormData] = useState({
+  const [formData, setFormData, draft] = useFormDraft(user?.id ? `${user.id}.item.${requestMatchId || route?.params?.relistFrom?.id || 'new'}` : null, {
+    listingType: 'lend',
     title: '',
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: ['close_friends'],
+    visibility: ['private'],
+    circleId: null,
     isFree: true,
     pricePerDay: '',
     requireDeposit: false,
@@ -73,7 +75,11 @@ export default function CreateListingScreen({ navigation, route }) {
     maxDuration: '14',
     photos: [],
   });
+  const listingType = formData.listingType;
+  const isGiveaway = listingType === 'giveaway';
+  const setListingType = value => setFormData(prev => ({ ...prev, listingType: value }));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [hasFriends, setHasFriends] = useState(false);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
@@ -90,6 +96,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
   // Pre-populate from relist data
   useEffect(() => {
+    if (!draft.ready || draft.restored) return;
     const relistFrom = route?.params?.relistFrom;
     if (relistFrom) {
       setIsRelist(true);
@@ -99,7 +106,8 @@ export default function CreateListingScreen({ navigation, route }) {
         description: relistFrom.description || '',
         condition: relistFrom.condition || 'good',
         categoryId: relistFrom.categoryId || null,
-        visibility: Array.isArray(relistFrom.visibility) ? relistFrom.visibility : [relistFrom.visibility || 'close_friends'],
+        visibility: ['private'],
+        circleId: null,
         isFree: relistFrom.isFree ?? true,
         pricePerDay: relistFrom.pricePerDay?.toString() || '',
         depositAmount: relistFrom.depositAmount?.toString() || '',
@@ -108,11 +116,11 @@ export default function CreateListingScreen({ navigation, route }) {
         photos: [], // Photos left empty — originals are S3 URLs
       }));
     }
-  }, [route?.params?.relistFrom]);
+  }, [route?.params?.relistFrom, draft.ready, draft.restored]);
 
   // Pre-populate from request match ("I Can Help" flow)
   useEffect(() => {
-    if (requestMatch) {
+    if (requestMatch && draft.ready && !draft.restored) {
       setFormData(prev => ({
         ...prev,
         title: requestMatch.title || '',
@@ -120,7 +128,7 @@ export default function CreateListingScreen({ navigation, route }) {
         categoryId: requestMatch.categoryId || null,
       }));
     }
-  }, [requestMatch]);
+  }, [requestMatch, draft.ready, draft.restored]);
 
   // Fetch user's community and friends on mount
   useEffect(() => {
@@ -236,12 +244,13 @@ export default function CreateListingScreen({ navigation, route }) {
   };
 
   const handleSubmit = async (overrideData) => {
+    if (!draft.ready || isSubmitting) return;
     const data = overrideData || formData;
 
     const errors = {
-      title: !data.title.trim(),
+      title: data.title.trim().length < 3,
       photos: data.photos.length === 0,
-      categoryId: !isGiveaway && !data.categoryId,
+      categoryId: false,
     };
 
     if (errors.title || errors.photos || errors.categoryId) {
@@ -259,7 +268,7 @@ export default function CreateListingScreen({ navigation, route }) {
       // Build a specific message listing what's missing
       const missing = [];
       if (errors.photos) missing.push('photos');
-      if (errors.title) missing.push('a title');
+      if (errors.title) missing.push('a title with at least 3 characters');
       if (errors.categoryId) missing.push('a category');
       showError({
         type: 'validation',
@@ -276,7 +285,7 @@ export default function CreateListingScreen({ navigation, route }) {
       if (v === 'town') return !!user?.city;
       return false;
     });
-    const shouldShowAudienceTip = !hasAudience;
+    const shouldShowAudienceTip = !hasAudience && !data.visibility.includes('private') && !requestMatchId;
 
     // Validate rental fee when charging
     if (ENABLE_PAYMENTS && !isGiveaway && !data.isFree && !(parseFloat(data.pricePerDay) >= 5)) {
@@ -319,7 +328,9 @@ export default function CreateListingScreen({ navigation, route }) {
         description: data.description.trim() || undefined,
         condition: data.condition,
         categoryId: data.categoryId || undefined,
-        visibility: data.visibility, // Send as array
+        visibility: requestMatchId ? ['private'] : data.visibility,
+        sharingConfirmed: true,
+        circleId: data.circleId || undefined,
         isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
         pricePerDay: (!ENABLE_PAYMENTS || isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
         depositAmount: (!ENABLE_PAYMENTS || isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
@@ -333,6 +344,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       Keyboard.dismiss();
       haptics.success();
+      await draft.clear().catch(() => showToast('Item saved. The local draft could not be cleared.', 'info'));
       navigation.goBack();
 
       // Show toasts after navigating back so they appear on the previous screen
@@ -348,7 +360,7 @@ export default function CreateListingScreen({ navigation, route }) {
         haptics.error();
         showError({
           type: 'network',
-          message: 'Your listing couldn\'t be uploaded. Please check your connection and try again — your progress is saved.',
+          message: 'Your item couldn\'t be uploaded. Check your connection and try again. Your entries are still in this form.',
         });
       } else {
         haptics.error();
@@ -384,6 +396,8 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Photos */}
       <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
+        <DraftStatus draft={draft} allowDiscard />
+        {draft.restored && formData.photos.length > 0 && <Text style={styles.hint}>Check restored photos before posting. If a preview is missing, remove it and choose the photo again.</Text>}
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos — these also serve as proof of condition</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
@@ -434,67 +448,31 @@ export default function CreateListingScreen({ navigation, route }) {
         />
       </View>
 
-      {/* Description */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          testID="CreateListing.input.description"
-          accessibilityLabel="Listing description"
-          style={[styles.input, styles.textArea]}
-          value={formData.description}
-          onChangeText={(v) => updateField('description', v)}
-          placeholder="Add details about your item..."
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          numberOfLines={4}
-          maxLength={2000}
-          autoCapitalize="sentences"
-          autoCorrect={true}
-          spellCheck={true}
-        />
-      </View>
-
-      {/* Condition */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Condition *</Text>
-        <View style={styles.options}>
-          {CONDITIONS.map((condition) => (
-            <HapticPressable
-              key={condition}
-              style={[styles.option, formData.condition === condition && styles.optionActive]}
-              onPress={() => {
-                updateField('condition', condition);
-                haptics.selection();
-              }}
-              haptic={null}
-            >
-              <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
-                {CONDITION_LABELS[condition]}
-              </Text>
-            </HapticPressable>
-          ))}
-        </View>
-      </View>
-
       {/* Listing Type */}
       <View style={styles.section}>
-        <Text style={styles.label}>Listing Type</Text>
+        <Text style={styles.label}>What would you like to do?</Text>
         <View style={styles.options}>
           <HapticPressable
-            style={[styles.option, !isGiveaway && styles.optionActive]}
+            style={[styles.typeChoice, !isGiveaway && styles.typeChoiceSelected]}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: !isGiveaway }}
             onPress={() => { setListingType('lend'); haptics.selection(); }}
             haptic={null}
           >
-            <Ionicons name="swap-horizontal" size={16} color={!isGiveaway ? '#fff' : COLORS.textSecondary} style={{ marginRight: 4 }} />
-            <Text style={[styles.optionText, !isGiveaway && styles.optionTextActive]}>Borrow</Text>
+            <Ionicons name="basket" size={36} illustrated />
+            <Text style={styles.typeTitle}>Lend</Text>
+            <Text style={styles.typeHint}>They return it</Text>
           </HapticPressable>
           <HapticPressable
-            style={[styles.option, isGiveaway && styles.optionActive]}
+            style={[styles.typeChoice, isGiveaway && styles.typeChoiceSelected]}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: isGiveaway }}
             onPress={() => { setListingType('giveaway'); haptics.selection(); }}
             haptic={null}
           >
-            <Ionicons name="gift" size={16} color={isGiveaway ? '#fff' : COLORS.textSecondary} style={{ marginRight: 4 }} />
-            <Text style={[styles.optionText, isGiveaway && styles.optionTextActive]}>Free</Text>
+            <Ionicons name="gift" size={36} illustrated />
+            <Text style={styles.typeTitle}>Give away</Text>
+            <Text style={styles.typeHint}>They keep it</Text>
           </HapticPressable>
         </View>
         {isGiveaway && (
@@ -504,82 +482,16 @@ export default function CreateListingScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* Category */}
-      <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category{!isGiveaway ? ' *' : ''}</Text>
-        {categories.length > 0 ? (
-          <HapticPressable
-            haptic="light"
-            style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
-            onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
-          >
-            {formData.categoryId ? (
-              <View style={styles.dropdownSelected}>
-                <CategoryIcon
-                  icon={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
-                  size={22}
-                />
-                <Text style={styles.dropdownSelectedText}>
-                  {categories.find(c => c.id === formData.categoryId)?.name}
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.dropdownPlaceholder}>Select a category</Text>
-            )}
-            <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
-          </HapticPressable>
-        ) : (
-          <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>Loading categories...</Text>
-        )}
-      </View>
-
-      {/* Visibility */}
       <View style={styles.section}>
-        <Text style={styles.label}>Who can see this? *</Text>
-        <View style={styles.options}>
-          {VISIBILITIES.map((visibility) => {
-            const isSelected = formData.visibility.includes(visibility);
-            return (
-              <HapticPressable
-                key={visibility}
-                style={[styles.option, isSelected && styles.optionActive]}
-                onPress={() => {
-                  if (REQUIRE_IDENTITY_VERIFICATION && !isSelected && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
-                    haptics.warning();
-                    navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                    return;
-                  }
-                  if (!isSelected && ENABLE_PAID_TIERS && visibility === 'town') {
-                    const gate = checkPremiumGate(user, 'town_browse');
-                    if (!gate.passed) {
-                      navigation.push(gate.screen, gate.params);
-                      return;
-                    }
-                  }
-                  if (isSelected) {
-                    // Must keep at least one selected
-                    if (formData.visibility.length <= 1) return;
-                    updateField('visibility', formData.visibility.filter(v => v !== visibility));
-                  } else {
-                    updateField('visibility', [...formData.visibility, visibility]);
-                  }
-                  haptics.selection();
-                }}
-                haptic={null}
-              >
-                <Ionicons
-                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                  size={18}
-                  color={isSelected ? "#fff" : COLORS.textSecondary}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
-                  {VISIBILITY_LABELS[visibility]}
-                </Text>
-              </HapticPressable>
-            );
-          })}
-        </View>
+
+        {requestMatchId ? <Text style={styles.hint}>Private offer: only this requester can see this item for up to 14 days while their request is open. Your other items stay private.</Text> : (
+        <SharingPicker value={formData.visibility} circleId={formData.circleId}
+          neighborhoodAvailable={Boolean(communityId)}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          verified={Boolean(user?.isVerified)}
+          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
+          onChange={sharing => setFormData(previous => ({ ...previous, ...sharing }))} />
+        )}
       </View>
 
       {/* Pricing — hidden for the free launch */}
@@ -714,7 +626,7 @@ export default function CreateListingScreen({ navigation, route }) {
       )}
 
       {/* Duration — hidden for giveaways */}
-      {!isGiveaway && (
+      {!isGiveaway && showDetails && (
       <View style={styles.section}>
         <Text style={styles.label}>Borrow duration (days)</Text>
         <View style={styles.durationRow}>
@@ -741,6 +653,83 @@ export default function CreateListingScreen({ navigation, route }) {
       </View>
       )}
 
+      <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(value => !value)} style={{ minHeight: 48, paddingVertical: 16 }}>
+        <Text style={styles.label}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Condition: {CONDITION_LABELS[formData.condition]}. Check this matches your item.</Text>
+      </HapticPressable>
+      {showDetails && <View>
+      {/* Category */}
+      <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
+        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category (optional)</Text>
+        {categories.length > 0 ? (
+          <HapticPressable
+            haptic="light"
+            style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
+            onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
+          >
+            {formData.categoryId ? (
+              <View style={styles.dropdownSelected}>
+                <CategoryIcon
+                  icon={categories.find(c => c.id === formData.categoryId)?.icon || 'pricetag-outline'}
+                  size={22}
+                />
+                <Text style={styles.dropdownSelectedText}>
+                  {categories.find(c => c.id === formData.categoryId)?.name}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.dropdownPlaceholder}>Select a category</Text>
+            )}
+            <Ionicons name="chevron-down" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+        ) : (
+          <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>Loading categories...</Text>
+        )}
+      </View>
+
+      {/* Description */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          testID="CreateListing.input.description"
+          accessibilityLabel="Listing description"
+          style={[styles.input, styles.textArea]}
+          value={formData.description}
+          onChangeText={(v) => updateField('description', v)}
+          placeholder="Add details about your item..."
+          placeholderTextColor={COLORS.textMuted}
+          multiline
+          numberOfLines={4}
+          maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
+        />
+      </View>
+
+      {/* Condition */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Condition</Text>
+        <View style={styles.options}>
+          {CONDITIONS.map((condition) => (
+            <HapticPressable
+              key={condition}
+              style={[styles.option, formData.condition === condition && styles.optionActive]}
+              onPress={() => {
+                updateField('condition', condition);
+                haptics.selection();
+              }}
+              haptic={null}
+            >
+              <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
+                {CONDITION_LABELS[condition]}
+              </Text>
+            </HapticPressable>
+          ))}
+        </View>
+      </View>
+
+      </View>}
       {/* Submit */}
       <HapticPressable
         testID="CreateListing.button.submit"
@@ -748,13 +737,13 @@ export default function CreateListingScreen({ navigation, route }) {
         accessibilityRole="button"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={() => handleSubmit()}
-        disabled={isSubmitting}
+        disabled={isSubmitting || !draft.ready}
         haptic="medium"
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>{isGiveaway ? 'List Free Item' : formData.isFree && !formData.requireDeposit ? 'List Item for Free' : 'List Item'}</Text>
+          <Text style={styles.submitButtonText}>{requestMatchId ? 'Send private offer' : formData.visibility.includes('private') ? 'Save to my inventory' : 'Save shared item'}</Text>
         )}
       </HapticPressable>
 
@@ -800,6 +789,10 @@ export default function CreateListingScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  typeChoice: { flexGrow: 1, flexBasis: 130, padding: SPACING.lg, gap: 6, alignItems: 'center', borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 2, borderColor: COLORS.border },
+  typeChoiceSelected: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
+  typeTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  typeHint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

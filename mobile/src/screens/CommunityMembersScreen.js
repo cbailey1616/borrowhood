@@ -6,7 +6,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
-  Alert,
+
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -244,3 +244,4 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 });
+import { ThemedAlert as Alert } from "../components/ThemedAlert";

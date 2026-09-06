@@ -35,9 +35,7 @@ describe('MyItemsScreen', () => {
     expect(segment).toBeTruthy();
   });
 
-  // Screen opens on the "Borrowed" tab (index 1) by design; the segments are
-  // ['Listings', 'Borrowed', 'ISO']. Tests select the tab under test explicitly
-  // via the per-segment testIDs exposed by SegmentedControl.
+  // My Items opens the owner's inventory, with exchanges and requests secondary.
   const selectTab = async (utils, index) => {
     const segment = await utils.findByTestId(`MyItems.segment.${index}`);
     await act(async () => {
@@ -45,10 +43,10 @@ describe('MyItemsScreen', () => {
     });
   };
 
-  it('items tab calls api.getMyListings', async () => {
+  it('opens own inventory without requiring a tab switch', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
-    await selectTab(utils, 0);
+    expect(utils.getByTestId('MyItems.segment.0').props.accessibilityState.selected).toBe(true);
     await waitFor(() => {
       expect(api.getMyListings).toHaveBeenCalled();
     });
@@ -70,7 +68,7 @@ describe('MyItemsScreen', () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
     await selectTab(utils, 0);
-    await utils.findByText(/no items/i);
+    await utils.findByText('Your private inventory starts here');
   });
 
   it('requests tab calls api.getMyRequests', async () => {

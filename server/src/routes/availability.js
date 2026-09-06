@@ -1,3 +1,4 @@
+import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -13,50 +14,7 @@ router.get('/:listingId/availability', authenticate, async (req, res) => {
   const { startDate, endDate } = req.query;
 
   try {
-    // Visibility gate — check requester has access to this listing
-    const listingCheck = await query(
-      `SELECT l.visibility, l.owner_id, u.city as owner_city
-       FROM listings l JOIN users u ON l.owner_id = u.id
-       WHERE l.id = $1`,
-      [req.params.listingId]
-    );
-
-    if (listingCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Listing not found' });
-    }
-
-    const listing = listingCheck.rows[0];
-
-    if (listing.owner_id !== req.user.id) {
-      if (listing.visibility === 'close_friends') {
-        const friendship = await query(
-          `SELECT 1 FROM friendships
-           WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
-           AND status = 'accepted'`,
-          [req.user.id, listing.owner_id]
-        );
-        if (friendship.rows.length === 0) {
-          return res.status(403).json({ error: 'This item is only available to close friends', code: 'FRIENDSHIP_REQUIRED' });
-        }
-      } else if (listing.visibility === 'neighborhood') {
-        const viewerCity = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
-        const vCity = viewerCity.rows[0]?.city;
-        if (!vCity || !listing.owner_city || vCity.toLowerCase() !== listing.owner_city.toLowerCase()) {
-          return res.status(403).json({ error: 'This item is only available to neighbors', code: 'NEIGHBORHOOD_MISMATCH' });
-        }
-      } else if (listing.visibility === 'town') {
-        const viewerResult = await query(
-          'SELECT city, is_verified, verification_grace_until FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const viewer = viewerResult.rows[0];
-        const graceActive = viewer?.verification_grace_until && new Date(viewer.verification_grace_until) > new Date();
-        const viewerVerified = viewer?.is_verified || graceActive;
-        if (!viewerVerified || !viewer?.city || !listing.owner_city || viewer.city.toLowerCase() !== listing.owner_city.toLowerCase()) {
-          return res.status(403).json({ error: 'This item is only available to verified users in the same town', code: 'TOWN_MISMATCH' });
-        }
-      }
-    }
+    if (!await canViewListing(req.params.listingId, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
 
     // Default to next 60 days if not specified
     const start = startDate || new Date().toISOString().split('T')[0];
@@ -92,12 +50,12 @@ router.get('/:listingId/availability', authenticate, async (req, res) => {
       blocked: blockedDates.rows.map(d => ({
         startDate: d.start_date,
         endDate: d.end_date,
-        note: d.note,
+        note: null,
       })),
       booked: bookedDates.rows.map(d => ({
         startDate: d.start_date,
         endDate: d.end_date,
-        borrowerName: d.borrower_name,
+        borrowerName: null,
       })),
     });
   } catch (err) {
@@ -193,6 +151,7 @@ router.get('/:listingId/check-availability', authenticate, async (req, res) => {
   }
 
   try {
+    if (!await canViewListing(req.params.listingId, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
     // Check for blocked dates
     const blocked = await query(
       `SELECT 1 FROM listing_availability

@@ -1,3 +1,5 @@
+import SharingPicker from '../components/SharingPicker';
+import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -41,12 +43,9 @@ export default function EditListingScreen({ navigation, route }) {
     description: listing.description || '',
     condition: listing.condition || 'good',
     categoryId: listing.categoryId || null,
-    visibility: (() => {
-      // DB stores comma-separated scopes (e.g. 'close_friends,town')
-      if (Array.isArray(listing.visibility)) return listing.visibility;
-      if (typeof listing.visibility === 'string') return listing.visibility.split(',').filter(Boolean);
-      return ['close_friends'];
-    })(),
+    visibility: listing.sharingReviewRequired ? ['private'] : (Array.isArray(listing.visibility) ? listing.visibility : (listing.visibility || 'private').split(',')),
+    circleId: listing.circleId || null,
+    communityId: listing.communityId || null,
     isFree: listing.isFree ?? true,
     pricePerDay: listing.pricePerDay?.toString() || '',
     requireDeposit: parseFloat(listing.depositAmount) > 0,
@@ -58,6 +57,7 @@ export default function EditListingScreen({ navigation, route }) {
   const [newPhotos, setNewPhotos] = useState([]); // Local URIs of newly added photos
   const [removedPhotos, setRemovedPhotos] = useState([]); // URLs of removed photos
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const finishSaving = useUnsavedChanges(navigation, { formData, newPhotos, removedPhotos });
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -70,6 +70,13 @@ export default function EditListingScreen({ navigation, route }) {
     };
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (formData.communityId) return;
+    api.getCommunities({ member: true }).then(communities => {
+      if (communities?.[0]?.id) updateField('communityId', communities[0].id);
+    }).catch(() => {});
+  }, [formData.communityId]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -216,6 +223,9 @@ export default function EditListingScreen({ navigation, route }) {
         condition: formData.condition,
         categoryId: formData.categoryId || undefined,
         visibility: formData.visibility,
+        sharingConfirmed: true,
+        circleId: formData.circleId || undefined,
+        communityId: formData.communityId || undefined,
         isFree: !ENABLE_PAYMENTS || formData.isFree,
         pricePerDay: !ENABLE_PAYMENTS || formData.isFree ? null : parseFloat(formData.pricePerDay) || 0,
         depositAmount: ENABLE_PAYMENTS && formData.requireDeposit ? parseFloat(formData.depositAmount) || 0 : 0,
@@ -225,7 +235,7 @@ export default function EditListingScreen({ navigation, route }) {
       });
 
       haptics.success();
-      navigation.goBack();
+      finishSaving();
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';
@@ -240,7 +250,7 @@ export default function EditListingScreen({ navigation, route }) {
         showError({
           type: 'subscription',
           title: 'Verification Required',
-          message: 'Verify your identity to list to the whole town and charge borrow fees — just $1.99 one-time.',
+          message: 'Verify your identity before choosing to share this item town-wide. Your other inventory stays private.',
           primaryAction: 'Verify Now',
           onPrimaryAction: () => navigation.navigate('Subscription'),
         });
@@ -396,46 +406,16 @@ export default function EditListingScreen({ navigation, route }) {
         </View>
       )}
 
-      {/* Visibility */}
       <View style={styles.section}>
-        <Text style={styles.label}>Who can see this? *</Text>
-        <View style={styles.options}>
-          {VISIBILITIES.map((visibility) => {
-            const isSelected = formData.visibility.includes(visibility);
-            return (
-              <HapticPressable
-                key={visibility}
-                haptic="light"
-                style={[styles.option, isSelected && styles.optionActive]}
-                onPress={() => {
-                  if (REQUIRE_IDENTITY_VERIFICATION && visibility === 'town' && !isSelected && !user?.isVerified) {
-                    haptics.warning();
-                    navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                    return;
-                  }
-                  if (isSelected) {
-                    // Must keep at least one selected
-                    if (formData.visibility.length <= 1) return;
-                    updateField('visibility', formData.visibility.filter(v => v !== visibility));
-                  } else {
-                    updateField('visibility', [...formData.visibility, visibility]);
-                  }
-                  haptics.selection();
-                }}
-              >
-                <Ionicons
-                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                  size={18}
-                  color={isSelected ? "#fff" : COLORS.textSecondary}
-                  style={{ marginRight: SPACING.xs + 2 }}
-                />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
-                  {VISIBILITY_LABELS[visibility]}
-                </Text>
-              </HapticPressable>
-            );
-          })}
-        </View>
+        {listing.sharingReviewRequired && <Text style={styles.label}>This item is private until you review its audience.</Text>}
+
+        <SharingPicker value={formData.visibility} circleId={formData.circleId}
+          neighborhoodAvailable={Boolean(formData.communityId)}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          verified={Boolean(user?.isVerified)}
+          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
+          onChange={sharing => setFormData(previous => ({ ...previous, ...sharing }))} />
+
       </View>
 
       {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (

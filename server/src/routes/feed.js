@@ -1,3 +1,4 @@
+import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
@@ -14,37 +15,7 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Get user info for visibility filtering
-    const userResult = await query(
-      'SELECT city, subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    const userCity = userResult.rows[0]?.city;
-    const userTier = userResult.rows[0]?.subscription_tier || 'free';
-    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
-    const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    // Verification always required for town access; tier checks only when paid tiers enabled
-    const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
-    const canSeeTownUnmasked = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
-    const canSeeTown = !!userCity; // Anyone with a city can browse town (owner info masked if not verified)
-
-    // Parse visibility filter
     const visibilityFilters = visibility ? visibility.split(',') : [];
-
-    // Get user's friends for visibility filtering
-    const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
-      [req.user.id]
-    );
-    const friendIds = friendsResult.rows.map(f => f.friend_id);
-
-    // Get user's communities for neighborhood visibility filtering
-    const communityResult = await query(
-      'SELECT community_id FROM community_memberships WHERE user_id = $1',
-      [req.user.id]
-    );
-    const communityIds = communityResult.rows.map(c => c.community_id);
-
     let listingsResult = { rows: [] };
     let requestsResult = { rows: [] };
 
@@ -67,6 +38,8 @@ router.get('/', authenticate, async (req, res) => {
           l.condition,
           l.is_free,
           l.is_available,
+          EXISTS (SELECT 1 FROM borrow_transactions t WHERE t.listing_id = l.id
+            AND t.status IN ('picked_up', 'return_pending')) as is_borrowed,
           l.price_per_day,
           l.created_at,
           u.id as user_id,
@@ -76,7 +49,7 @@ router.get('/', authenticate, async (req, res) => {
           u.profile_photo_url,
           u.lender_rating as rating,
           u.lender_rating_count as rating_count,
-          u.status,
+          u.is_verified,
           u.total_transactions,
           l.owner_id,
           l.listing_type,
@@ -112,51 +85,14 @@ router.get('/', authenticate, async (req, res) => {
         listingParams.push(categoryId);
       }
 
-      // Visibility filtering
-      if (visibilityFilters.length > 0) {
-        const visConds = [];
-        // Always show own listings
-        visConds.push(`l.owner_id = $${listingParams.length + 1}`);
-        listingParams.push(req.user.id);
-
-        if (visibilityFilters.includes('close_friends')) {
-          visConds.push(`('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${listingParams.length + 1}))`);
-          listingParams.push(friendIds.length > 0 ? friendIds : [null]);
-        }
-        if (visibilityFilters.includes('neighborhood')) {
-          if (userCity) {
-            visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
-            listingParams.push(userCity);
-          } else if (communityIds.length > 0) {
-            visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND l.community_id = ANY($${listingParams.length + 1}))`);
-            listingParams.push(communityIds);
-          }
-        }
-        if (visibilityFilters.includes('town') && canSeeTown) {
-          visConds.push(`('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
-          listingParams.push(userCity);
-        }
-        listingQuery += ` AND (${visConds.join(' OR ')})`;
-      } else {
-        // No visibility filter — show everything user has access to
-        const visConds = [];
-        visConds.push(`l.owner_id = $${listingParams.length + 1}`);
-        listingParams.push(req.user.id);
-        visConds.push(`('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${listingParams.length + 1}))`);
-        listingParams.push(friendIds.length > 0 ? friendIds : [null]);
-        if (userCity) {
-          visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
-          listingParams.push(userCity);
-        } else if (communityIds.length > 0) {
-          visConds.push(`('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND l.community_id = ANY($${listingParams.length + 1}))`);
-          listingParams.push(communityIds);
-        }
-        if (canSeeTown) {
-          visConds.push(`('town' = ANY(string_to_array(l.visibility::text, ',')) AND LOWER(u.city) = LOWER($${listingParams.length + 1}) AND u.city IS NOT NULL)`);
-          listingParams.push(userCity);
-        }
-        listingQuery += ` AND (${visConds.join(' OR ')})`;
+      listingQuery += ' AND ' + listingAccessSql('l', '$' + (listingParams.length + 1), { discovery: true });
+      listingParams.push(req.user.id);
+      if (visibilityFilters.length) {
+        listingQuery += " AND string_to_array(l.visibility::text, ',') && $" + (listingParams.length + 1) + '::text[]';
+        listingParams.push(visibilityFilters);
       }
+      // Private inventory belongs in My Items, not the discovery feed.
+      listingQuery += " AND l.privacy_version = 1 AND l.visibility != 'private'";
 
       listingQuery += ` ORDER BY l.created_at DESC LIMIT $${listingParams.length + 1}`;
       listingParams.push(parseInt(limit) * 2);
@@ -181,7 +117,8 @@ router.get('/', authenticate, async (req, res) => {
           u.first_name,
           u.last_name,
           u.display_name,
-          u.profile_photo_url
+          u.profile_photo_url,
+          u.is_verified
         FROM item_requests r
         JOIN users u ON r.user_id = u.id
         WHERE r.status = 'open'
@@ -195,24 +132,11 @@ router.get('/', authenticate, async (req, res) => {
 
       const requestParams = [req.user.id];
 
-      // Visibility filtering for requests (same logic as listings)
-      const reqVisConds = [];
-      reqVisConds.push(`r.user_id = $${requestParams.length + 1}`);
-      requestParams.push(req.user.id);
-      reqVisConds.push(`('close_friends' = ANY(string_to_array(r.visibility::text, ',')) AND r.user_id = ANY($${requestParams.length + 1}))`);
-      requestParams.push(friendIds.length > 0 ? friendIds : [null]);
-      if (userCity) {
-        reqVisConds.push(`('neighborhood' = ANY(string_to_array(r.visibility::text, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
-        requestParams.push(userCity);
-      } else if (communityIds.length > 0) {
-        reqVisConds.push(`('neighborhood' = ANY(string_to_array(r.visibility::text, ',')) AND r.community_id = ANY($${requestParams.length + 1}))`);
-        requestParams.push(communityIds);
+      requestQuery += ' AND ' + requestAccessSql('r', '$1');
+      if (visibilityFilters.length) {
+        requestQuery += " AND string_to_array(r.visibility::text, ',') && $" + (requestParams.length + 1) + '::text[]';
+        requestParams.push(visibilityFilters);
       }
-      if (canSeeTown) {
-        reqVisConds.push(`('town' = ANY(string_to_array(r.visibility::text, ',')) AND LOWER(u.city) = LOWER($${requestParams.length + 1}) AND u.city IS NOT NULL)`);
-        requestParams.push(userCity);
-      }
-      requestQuery += ` AND (${reqVisConds.join(' OR ')})`;
 
       if (search) {
         requestQuery += ` AND (r.title ILIKE $${requestParams.length + 1} OR r.description ILIKE $${requestParams.length + 1})`;
@@ -226,7 +150,7 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     // Determine if we need to mask owner info on town listings
-    const needsMasking = canSeeTown && !canSeeTownUnmasked;
+    const needsMasking = false;
 
     const maskedUser = {
       id: null,
@@ -253,6 +177,7 @@ router.get('/', authenticate, async (req, res) => {
         isFree: l.is_free,
         listingType: l.listing_type || 'lend',
         isAvailable: l.is_available,
+        isBorrowed: l.is_borrowed === true,
         pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
         photoUrl: l.photo_url,
         category: l.category_name || null,
@@ -265,7 +190,7 @@ router.get('/', authenticate, async (req, res) => {
           profilePhotoUrl: l.profile_photo_url,
           rating: parseFloat(l.rating) || 0,
           ratingCount: l.rating_count,
-          isVerified: l.status === 'verified',
+          isVerified: l.is_verified === true,
           totalTransactions: l.total_transactions,
         },
         owner: {
@@ -289,6 +214,7 @@ router.get('/', authenticate, async (req, res) => {
         firstName: r.display_name || r.first_name,
         lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: r.profile_photo_url,
+        isVerified: r.is_verified === true,
       },
     }));
 

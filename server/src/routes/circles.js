@@ -1,3 +1,4 @@
+import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -13,11 +14,11 @@ const router = Router();
 router.get('/', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT lc.*, lcm.role,
+      `SELECT lc.*, lcm.role, lcm.status as membership_status,
               (SELECT COUNT(*) FROM lending_circle_members WHERE circle_id = lc.id AND status = 'active') as member_count
        FROM lending_circles lc
        JOIN lending_circle_members lcm ON lc.id = lcm.circle_id
-       WHERE lcm.user_id = $1 AND lcm.status = 'active'
+       WHERE lcm.user_id = $1 AND lcm.status IN ('active', 'pending')
        ORDER BY lc.created_at DESC`,
       [req.user.id]
     );
@@ -31,6 +32,8 @@ router.get('/', authenticate, async (req, res) => {
       requireDeposit: c.require_deposit,
       memberCount: parseInt(c.member_count),
       role: c.role,
+      isMember: c.membership_status === 'active',
+      isInvited: c.membership_status === 'pending',
       createdAt: c.created_at,
     })));
   } catch (err) {
@@ -83,10 +86,10 @@ router.get('/:id', authenticate, async (req, res) => {
               COALESCE(u.display_name, u.first_name) as owner_first_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id
-       WHERE l.circle_id = $1 AND l.status = 'active'
+       WHERE l.circle_id = $1 AND l.status = 'active' AND ${listingAccessSql('l', '$2', { discovery: true })}
        ORDER BY l.created_at DESC
        LIMIT 20`,
-      [req.params.id]
+      [req.params.id, req.user.id]
     );
 
     res.json({

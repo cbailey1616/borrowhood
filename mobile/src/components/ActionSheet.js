@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
+import { Ionicons } from './Icon';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -65,7 +66,10 @@ export default function ActionSheet({
           style={[styles.sheetContainer, { paddingBottom: bottomPad }]}
         >
           <View style={styles.sheetCard}>
-            <View style={styles.grabHandle} />
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Close menu"
+              onPress={handleCancel} style={styles.closeControl}>
+              <Ionicons name="close" size={20} color={COLORS.primary} />
+            </HapticPressable>
             {title ? (
               <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
@@ -116,12 +120,17 @@ export default function ActionSheet({
 }
 
 const styles = StyleSheet.create({
+  closeControl: {
+    alignSelf: 'flex-end', width: 44, height: 44, marginTop: SPACING.sm,
+    borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated,
+    alignItems: 'center', justifyContent: 'center',
+  },
   modalContainer: {
     flex: 1,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: COLORS.overlay,
   },
   sheetContainer: {
     position: 'absolute',
@@ -175,10 +184,15 @@ const styles = StyleSheet.create({
   },
   actionIcon: {
     marginRight: SPACING.md,
+    minWidth: 40,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionText: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
+    flexShrink: 1,
   },
   destructiveButton: {
     justifyContent: 'center',

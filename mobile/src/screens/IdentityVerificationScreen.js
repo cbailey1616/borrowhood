@@ -140,7 +140,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Identity Verified</Text>
           <Text style={styles.subtitle}>
-            Your identity has been verified. You can now borrow and lend items in your community.
+            You can now use town-wide requests and see items explicitly shared with your town. Private inventories stay private, and owners still approve each exchange.
           </Text>
           <HapticPressable
             style={styles.primaryButton}
@@ -183,7 +183,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your submission is being reviewed. You can keep browsing and borrowing while you wait.
+            Your submission is being reviewed. You can keep using your private inventory and items shared with friends or your neighborhood while you wait. Town-wide access begins after verification is complete.
           </Text>
           <Text style={styles.graceNotice}>
             Your verified identity badge will appear once verification is complete.
@@ -215,9 +215,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'Optional identity verification helps neighbors get to know who they are sharing with. Free during launch.';
+    if (source === 'town_browse') return 'Complete ID verification to use town-wide requests and sharing. It never unlocks anyone’s private inventory. Borrowhood covers verification during launch.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'Add a verified identity badge with a government ID and selfie. This is optional and Borrowhood covers the cost during launch.';
+    return 'Verify with a government ID and selfie when you are ready to use town-wide requests and sharing. You can start with friends and your neighborhood without verifying. Borrowhood covers the cost during launch.';
   };
 
   return (
@@ -241,7 +241,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           <View style={styles.benefitsInner}>
             <BenefitItem icon="lock-closed" text="Your ID images are handled by Stripe. Borrowhood receives verification results and identity details." />
             <BenefitItem icon="people" text="Build trust with your neighbors" />
-            <BenefitItem icon="checkmark-circle" text="Optional — browsing and borrowing stay free" />
+            <BenefitItem icon="checkmark-circle" text="No rental fees or deposits. Owners choose what to share." />
           </View>
         </View>
 

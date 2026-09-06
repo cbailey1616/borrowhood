@@ -65,6 +65,9 @@ export default function OnboardingPlanScreen({ navigation }) {
     navigation.navigate('OnboardingSubscription', { source: 'onboarding', totalSteps: 2 });
   };
 
+  // Do not flash legacy plan prices while the resume redirect is pending.
+  if (!ENABLE_PAID_TIERS) return <View style={styles.container} />;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
       <OnboardingProgress currentStep={4} />

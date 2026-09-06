@@ -73,9 +73,7 @@ export default function NativeHeader({
 
 const styles = StyleSheet.create({
   headerWrapper: {
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.separator,
+    backgroundColor: COLORS.background,
     paddingHorizontal: SPACING.xl,
   },
   titleRow: {
@@ -87,5 +85,6 @@ const styles = StyleSheet.create({
   largeTitle: {
     ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,
+    flexShrink: 1,
   },
 });

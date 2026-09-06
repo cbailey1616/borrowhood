@@ -1,3 +1,5 @@
+import { protectMediaResponses, servePrivatePhoto, blockPublicListingPhoto, assertPrivatePhotoStorage } from './services/privatePhotos.js';
+import insightsRoutes from './routes/insights.js';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -112,8 +114,11 @@ app.use('/webhooks/stripe', express.raw({ type: 'application/json' }));
 // Parse JSON for all other routes
 app.use(express.json({ limit: '10mb' }));
 
+app.use('/api', protectMediaResponses);
+app.get('/api/private-photos/:token', servePrivatePhoto);
+
 // Serve uploaded files (for local development without S3)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', blockPublicListingPhoto, express.static(path.join(__dirname, '../uploads')));
 
 // Remove helmet CSP for admin pages (they use inline scripts/styles)
 app.use('/admin', (req, res, next) => {
@@ -252,6 +257,7 @@ app.use('/api/identity', identityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/insights', insightsRoutes);
 app.use('/api/earnings', earningsRoutes);
 app.use('/webhooks', webhookRoutes);
 
@@ -277,9 +283,12 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 // Run migrations before starting server
-runMigrations().then(() => {
+runMigrations().then(assertPrivatePhotoStorage).then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Borrowhood server running on port ${PORT}`);
     startScheduler();
   });
+}).catch(error => {
+  logger.error('Server startup blocked by migration/storage readiness check', { message: error.message });
+  process.exit(1);
 });

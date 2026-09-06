@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import {
   View,
   Text,
@@ -52,6 +53,7 @@ export default function EditRequestScreen({ navigation, route }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ title: false, categoryId: false });
   const [showCategorySheet, setShowCategorySheet] = useState(false);
+  const finishSaving = useUnsavedChanges(navigation, formData);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -116,7 +118,7 @@ export default function EditRequestScreen({ navigation, route }) {
       await api.updateRequest(request.id, data);
 
       haptics.success();
-      navigation.goBack();
+      finishSaving();
     } catch (error) {
       showError({
         message: error.message || 'Couldn\'t save your changes right now. Please check your connection and try again.',

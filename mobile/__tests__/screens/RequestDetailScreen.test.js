@@ -45,10 +45,12 @@ describe('RequestDetailScreen', () => {
     await findByText(/Alice/);
   });
 
-  it('non-owner sees Respond in Thread button', async () => {
+  it('non-owner can offer one item privately', async () => {
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText(/Respond in Thread/i);
+    const offer = await findByText('Offer an item privately');
+    fireEvent.press(offer);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('OfferItem', expect.anything());
   });
 
   it('owner sees edit and close buttons', async () => {

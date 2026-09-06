@@ -1,3 +1,7 @@
+import { mergeMessages } from '../utils/chatMessages';
+import { useIsFocused } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -11,6 +15,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -20,10 +25,14 @@ import Animated, {
   FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
+import * as Crypto from 'expo-crypto';
+import useFormDraft from '../hooks/useFormDraft';
+import DraftStatus from '../components/DraftStatus';
+import ChatExchangeCard from '../components/ChatExchangeCard';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import EmojiReactionPicker from '../components/EmojiReactionPicker';
@@ -32,7 +41,7 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
-function SendButton({ onPress, disabled }) {
+function SendButton({ onPress, disabled, loading }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -42,7 +51,7 @@ function SendButton({ onPress, disabled }) {
     haptics.light();
     scale.value = withSequence(
       withSpring(0.85, ANIMATION.spring.stiff),
-      withSpring(1, ANIMATION.spring.bouncy)
+      withSpring(1, ANIMATION.spring.stiff)
     );
     onPress();
   }, [onPress]);
@@ -53,20 +62,38 @@ function SendButton({ onPress, disabled }) {
       onPress={handlePress}
       disabled={disabled}
       haptic={null}
+      accessibilityRole="button"
+      accessibilityLabel="Send message"
     >
       <Animated.View style={animStyle}>
-        <Ionicons name="send" size={20} color="#fff" />
+        {loading ? <ActivityIndicator color="white" /> : <Ionicons name="arrow-up" size={22} color="#fff" />}
       </Animated.View>
     </HapticPressable>
   );
 }
 
 export default function ChatScreen({ route, navigation }) {
-  const { conversationId, recipientId, listingId, listing: passedListing } = route.params;
+  const { conversationId, recipientId, listingId, listing: passedListing } = route.params || {};
+  const isFocused = useIsFocused();
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  const nearBottom = useRef(true);
+  const sending = useRef(false);
+  const [chatError, setChatError] = useState('');
   const { user } = useAuth();
   const [conversation, setConversation] = useState(null);
+  const [hasExchange, setHasExchange] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const draftTarget = recipientId || conversation?.otherUser?.id;
+  const [composer, setComposer, draft] = useFormDraft(user?.id && draftTarget ? `${user.id}.chat.${draftTarget}` : null, { text: '', pending: null });
+  const newMessage = composer.text;
+  const setNewMessage = text => setComposer(current => ({ ...current, text }));
+  const [safeRetries, setSafeRetries] = useState(false);
+  useEffect(() => {
+    let active = true;
+    api.getMessageCapabilities().then(data => { if (active) setSafeRetries(data.idempotentMessages === true); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
@@ -77,15 +104,20 @@ export default function ChatScreen({ route, navigation }) {
   const [emojiPickerPos, setEmojiPickerPos] = useState(null);
   const flatListRef = useRef(null);
   const messageRefs = useRef({});
+  const knownMessageIds = useRef(new Set());
+  const [showNewMessages, setShowNewMessages] = useState(false);
+  useEffect(() => { knownMessageIds.current = new Set(messages.map(message => message.id)); }, [messages]);
 
   useEffect(() => {
+    if (!isFocused) return;
     if (conversationId) {
       fetchMessages();
       // Poll for new messages every 5 seconds
       const interval = setInterval(() => {
         if (conversationId) {
           api.getConversation(conversationId).then(data => {
-            setMessages(data.messages);
+            if (!nearBottom.current && (data.messages || []).some(message => !knownMessageIds.current.has(message.id))) setShowNewMessages(true);
+            setMessages(prev => mergeMessages(prev, data.messages || []));
           }).catch(() => {});
         }
       }, 5000);
@@ -100,7 +132,7 @@ export default function ChatScreen({ route, navigation }) {
         });
       }
     }
-  }, [conversationId]);
+  }, [conversationId, isFocused]);
 
   useEffect(() => {
     // Update header with other user's name
@@ -115,60 +147,68 @@ export default function ChatScreen({ route, navigation }) {
     try {
       const data = await api.getConversation(conversationId);
       setConversation(data.conversation);
-      setMessages(data.messages);
+      setMessages(prev => mergeMessages(prev, data.messages || []));
+      setChatError('');
     } catch (error) {
-      console.error('Failed to fetch messages:', error);
+      setChatError('Couldn’t refresh messages. Check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSend = async () => {
-    if (!newMessage.trim() || isSending) return;
-
-    const messageContent = newMessage.trim();
-    setNewMessage('');
+  const deliver = async pending => {
+    if (sending.current || !draft.ready) return;
+    sending.current = true;
+    setChatError('');
     setIsSending(true);
-
-    // Determine recipient
-    const recipient = recipientId || conversation?.otherUser?.id;
-    if (!recipient) {
-      console.error('No recipient specified');
-      setIsSending(false);
-      return;
-    }
-
     try {
-      const result = await api.sendMessage({
-        recipientId: recipient,
-        content: messageContent,
-        listingId: listingId || conversation?.listing?.id,
-      });
-
+      setComposer(current => ({ ...current, pending }));
+      // Persist the immutable attempt before sending; retries keep the same ID.
+      if (!(await draft.retry())) throw new Error('draft-storage');
+      const result = await api.sendMessage(pending.payload);
+      setComposer(current => ({ ...current, pending: null, text: pending.payload.content && current.text.trim() === pending.payload.content ? '' : current.text }));
+      await draft.retry();
+      if (!conversationId && result.conversationId) navigation.setParams({ conversationId: result.conversationId });
+      nearBottom.current = true;
       // Add message to list
       const newMsg = {
         id: result.id,
         senderId: user.id,
-        content: messageContent,
+        content: pending.payload.content || null,
+        imageUrl: pending.payload.imageUrl,
         isOwnMessage: true,
         isRead: false,
-        createdAt: result.createdAt,
+        createdAt: result.createdAt || new Date().toISOString(),
       };
-      setMessages(prev => [...prev, newMsg]);
+      setMessages(prev => mergeMessages(prev, [newMsg]));
 
       // Scroll to bottom
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      console.error('Failed to send message:', error);
-      // Restore message on error
-      setNewMessage(messageContent);
+      setChatError(error.message === 'draft-storage' ? 'Couldn’t save this send attempt on your device. Nothing was sent.' : 'Send not confirmed. Your message is kept here until you check or retry.');
       haptics.error();
     } finally {
+      sending.current = false;
       setIsSending(false);
     }
   };
+
+  const handleSend = () => {
+    if (!newMessage.trim() || sending.current || isUploading || composer.pending || !draft.ready) return;
+    const recipient = recipientId || conversation?.otherUser?.id;
+    if (!recipient) return setChatError('Couldn’t identify the recipient. Reopen this conversation.');
+    return deliver({ retryable: safeRetries, payload: {
+      recipientId: recipient, content: newMessage.trim(), listingId: listingId || conversation?.listing?.id,
+      ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
+    } });
+  };
+
+  const dismissPending = () => Alert.alert('Stop tracking this send?', 'This does not unsend anything. Check the conversation first: the message may already have arrived.', [
+    { text: 'Keep it here', style: 'cancel' },
+    { text: 'I checked — clear it', onPress: () => setComposer(current => ({ ...current, pending: null })) },
+  ]);
 
   const formatTime = (date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -218,7 +258,11 @@ export default function ChatScreen({ route, navigation }) {
     haptics.light();
   }, []);
 
-  const handlePickImage = useCallback(async () => {
+  const handlePickImage = async () => {
+    if (isUploading || sending.current || composer.pending || !draft.ready) return;
+    setIsUploading(true);
+    setChatError('');
+    try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
@@ -231,33 +275,18 @@ export default function ChatScreen({ route, navigation }) {
     const recipient = recipientId || conversation?.otherUser?.id;
     if (!recipient) return;
 
-    setIsUploading(true);
-    try {
       const imageUrl = await api.uploadImage(uri, 'messages');
-      const apiResult = await api.sendMessage({
-        recipientId: recipient,
-        imageUrl,
-        listingId: listingId || conversation?.listing?.id,
-      });
-
-      const newMsg = {
-        id: apiResult.id,
-        senderId: user.id,
-        content: null,
-        imageUrl,
-        isOwnMessage: true,
-        isRead: false,
-        createdAt: apiResult.createdAt,
-      };
-      setMessages(prev => [...prev, newMsg]);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      await deliver({ retryable: safeRetries, payload: {
+        recipientId: recipient, imageUrl, listingId: listingId || conversation?.listing?.id,
+        ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
+      } });
     } catch (error) {
-      console.error('Failed to send image:', error);
+      setChatError('The photo could not be uploaded. Please choose it again.');
       haptics.error();
     } finally {
       setIsUploading(false);
     }
-  }, [recipientId, conversation, listingId, user.id]);
+  };
 
   const handleEmojiSelect = useCallback(async (emoji) => {
     const message = emojiPickerMessage;
@@ -413,12 +442,7 @@ export default function ChatScreen({ route, navigation }) {
               item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
             ]}
           >
-            {!item.isOwnMessage && (
-              <Image
-                source={{ uri: otherUser?.profilePhotoUrl || 'https://via.placeholder.com/32' }}
-                style={styles.messageAvatar}
-              />
-            )}
+            {!item.isOwnMessage && (otherUser?.profilePhotoUrl ? <Image source={{ uri: otherUser.profilePhotoUrl }} style={styles.messageAvatar} /> : <View style={[styles.messageAvatar, { backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' }]}><Ionicons name="person-outline" size={16} color={COLORS.textSecondary} /></View>)}
             {item.isDeleted ? (
               <View style={[styles.messageBubble, styles.deletedMessage]}>
                 <Text style={styles.deletedMessageText}>This message was deleted</Text>
@@ -446,7 +470,7 @@ export default function ChatScreen({ route, navigation }) {
                   <Ionicons
                     name={item.isRead ? 'checkmark-done' : 'checkmark'}
                     size={14}
-                    color={item.isRead ? '#fff' : 'rgba(255,255,255,0.6)'}
+                    color={item.isRead ? COLORS.primary : COLORS.textMuted}
                     style={styles.readReceipt}
                   />
                 </View>
@@ -491,19 +515,16 @@ export default function ChatScreen({ route, navigation }) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
       {/* Listing Context Header */}
-      {conversation?.listing && (
+      {conversation?.listing && !hasExchange && (
         <HapticPressable
           style={styles.listingHeader}
           onPress={() => navigation.navigate('ListingDetail', { id: conversation.listing.id })}
           haptic="light"
         >
-          <Image
-            source={{ uri: conversation.listing.photoUrl || 'https://via.placeholder.com/40' }}
-            style={styles.listingImage}
-          />
+          {(conversation.listing.photoUrl || conversation.listing.photos?.[0]) ? <Image source={{ uri: conversation.listing.photoUrl || conversation.listing.photos[0] }} style={styles.listingImage} /> : <View style={[styles.listingImage, { backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' }]}><Ionicons name="cube-outline" size={20} color={COLORS.primary} /></View>}
           <View style={styles.listingInfo}>
             <Text style={styles.listingLabel}>Chatting about</Text>
             <Text style={styles.listingTitle} numberOfLines={1}>
@@ -515,6 +536,7 @@ export default function ChatScreen({ route, navigation }) {
       )}
 
       {/* Messages List */}
+      <ChatExchangeCard userId={user.id} otherId={recipientId || conversation?.otherUser?.id} listingId={listingId || conversation?.listing?.id} navigation={navigation} focused={isFocused} onActiveChange={setHasExchange} />
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -524,74 +546,38 @@ export default function ChatScreen({ route, navigation }) {
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={() => { setEmojiPickerMessage(null); setEmojiPickerPos(null); }}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => { nearBottom.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 100; }}
+        scrollEventThrottle={100}
+        onContentSizeChange={() => { if (nearBottom.current) flatListRef.current?.scrollToEnd({ animated: false }); }}
         ListEmptyComponent={
           <View style={styles.emptyMessages}>
-            <Ionicons name="chatbubble-outline" size={48} color={COLORS.gray[700]} />
-            <Text style={styles.emptyText}>
-              Start the conversation!
-            </Text>
+            <HeroIcon icon="chatbubble-outline" size={80} />
+<Text style={styles.emptyText}>Say hello and arrange the details here.</Text>
           </View>
         }
       />
 
-      {/* Input Bar with Blur Background */}
-      {Platform.OS === 'ios' ? (
-        <BlurView intensity={80} tint="light" style={styles.inputBlur}>
-          <View style={styles.inputInner}>
-            <HapticPressable onPress={handlePickImage} haptic="light" disabled={isUploading}>
-              <Ionicons
-                name={isUploading ? 'hourglass-outline' : 'image-outline'}
-                size={24}
-                color={isUploading ? COLORS.textMuted : COLORS.primary}
-              />
-            </HapticPressable>
-            <TextInput
-              style={styles.input}
-              value={newMessage}
-              onChangeText={setNewMessage}
-              placeholder="Type a message..."
-              placeholderTextColor={COLORS.textMuted}
-              testID="Chat.input.message"
-              multiline
-              maxLength={2000}
-              autoCapitalize="sentences"
-              autoCorrect={true}
-              spellCheck={true}
-            />
-            <SendButton
-              onPress={handleSend}
-              disabled={!newMessage.trim() || isSending}
-            />
-          </View>
-        </BlurView>
-      ) : (
-        <View style={styles.inputContainer}>
-          <HapticPressable onPress={handlePickImage} haptic="light" disabled={isUploading}>
-            <Ionicons
-              name={isUploading ? 'hourglass-outline' : 'image-outline'}
-              size={24}
-              color={isUploading ? COLORS.textMuted : COLORS.primary}
-            />
-          </HapticPressable>
-          <TextInput
-            style={styles.input}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Type a message..."
-            placeholderTextColor={COLORS.textMuted}
-            multiline
-            maxLength={2000}
-            autoCapitalize="sentences"
-            autoCorrect={true}
-            spellCheck={true}
-          />
-          <SendButton
-            onPress={handleSend}
-            disabled={!newMessage.trim() || isSending}
-          />
+      {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>New messages ↓</Text></HapticPressable>}
+      {!!chatError && <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: COLORS.warningMuted }}>
+        <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{chatError}</Text>
+        {!!conversationId && <HapticPressable accessibilityRole="button" onPress={fetchMessages} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Refresh conversation</Text></HapticPressable>}
+      </View>}
+      {!!composer.pending && !isSending && <View style={{ paddingHorizontal: 16, backgroundColor: COLORS.warningMuted }}>
+        <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 13, paddingTop: 8 }}>Unconfirmed {composer.pending.payload.imageUrl ? 'photo' : 'message'}{composer.pending.payload.content ? `: ${composer.pending.payload.content.slice(0, 90)}` : ''}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
+          {composer.pending.retryable && safeRetries && <HapticPressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => deliver(composer.pending)}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Retry send</Text></HapticPressable>}
+          <HapticPressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={dismissPending}><Text style={{ color: COLORS.textSecondary }}>Clear after checking</Text></HapticPressable>
         </View>
-      )}
+        {!composer.pending.retryable && <Text style={{ color: COLORS.textSecondary, fontSize: 12, paddingBottom: 8 }}>Check the conversation before sending again. Safe retries need the updated server.</Text>}
+      </View>}
+      {(draft.error || draft.restored) && <DraftStatus draft={draft} />}
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }} onPress={handlePickImage} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
+          {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="add-outline" size={26} color={COLORS.primary} />}
+        </HapticPressable>
+        <TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Message…" placeholderTextColor={COLORS.textMuted} testID="Chat.input.message" accessibilityLabel="Message" multiline maxLength={2000} autoCapitalize="sentences" />
+        <SendButton onPress={handleSend} loading={isSending} disabled={!newMessage.trim() || isSending || isUploading || !!composer.pending || !draft.ready} />
+      </View>
       {/* Emoji Reaction Picker Overlay */}
       {emojiPickerMessage && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -651,7 +637,7 @@ const styles = StyleSheet.create({
   listingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.surface,
     padding: SPACING.md,
     gap: SPACING.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -692,9 +678,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    backgroundColor: 'transparent',
   },
   dateText: {
     ...TYPOGRAPHY.caption1,
@@ -720,18 +704,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray[700],
   },
   messageBubble: {
-    maxWidth: '75%',
+    maxWidth: '84%',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.xl,
   },
   ownMessage: {
-    backgroundColor: COLORS.primary,
-    borderBottomRightRadius: SPACING.xs,
+    backgroundColor: COLORS.chatOwn,
+    borderBottomRightRadius: SPACING.sm,
   },
   otherMessage: {
     backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: SPACING.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderBrown,
+    borderBottomLeftRadius: SPACING.sm,
   },
   deletedMessage: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -771,17 +757,17 @@ const styles = StyleSheet.create({
   },
   messageText: {
     ...TYPOGRAPHY.subheadline,
-    lineHeight: 21,
+    lineHeight: 23,
   },
   ownMessageText: {
-    color: '#fff',
+    color: COLORS.chatOwnText,
   },
   otherMessageText: {
     color: COLORS.text,
   },
   messageTime: {
     ...TYPOGRAPHY.caption1,
-    fontSize: 10,
+    fontSize: 11,
     marginTop: SPACING.xs,
   },
   ownMessageMeta: {
@@ -792,7 +778,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   ownMessageTime: {
-    color: 'rgba(255,255,255,0.6)',
+    color: COLORS.textSecondary,
   },
   readReceipt: {
     marginLeft: 2,
@@ -853,7 +839,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.gray[300],
   },
   messageContainer: {
   },
@@ -906,3 +892,4 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 });
+import { ThemedAlert as Alert } from "../components/ThemedAlert";

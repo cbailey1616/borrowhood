@@ -1,3 +1,6 @@
+import { ownedPhotoReferences, readOwnedPhoto } from '../services/privatePhotos.js';
+import { listingAccessSql } from '../utils/sharingPolicy.js';
+import { canViewListing, canViewRequest, validateSharing, offerListing } from '../services/listingAccess.js';
 import { freeListingOnly } from '../middleware/freeLaunch.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
@@ -18,46 +21,11 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Get user's location, verified city, and subscription tier
-    const userResult = await query(
-      'SELECT location, city, state, subscription_tier, is_verified, verification_grace_until FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    const userLocation = userResult.rows[0]?.location;
-    const userCity = userResult.rows[0]?.city;
-    const userTier = userResult.rows[0]?.subscription_tier || 'free';
-    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
-    const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    // Verification always required for town access; tier checks only when paid tiers enabled
-    const isPlusOrVerified = !ENABLE_PAID_TIERS || userTier === 'plus' || isVerified;
-    const canAccessTown = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
-    const canBrowseTown = ENABLE_PAID_TIERS ? (isPlusOrVerified && userCity) : canAccessTown;
-
-    const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
-      [req.user.id]
-    );
-    const friendIds = friendsResult.rows.map(f => f.friend_id);
-
     let whereConditions = [`l.status = 'active'`, `l.is_available = true`];
     if (!ENABLE_PAYMENTS) whereConditions.push('l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0');
     let selectExtra = '';
     let params = [];
     let paramIndex = 1;
-
-    // Add distance calculation if user has location
-    if (userLocation) {
-      selectExtra = `, ST_Distance(u.location, $${paramIndex}::geography) / 1609.34 as distance_miles`;
-      params.push(userLocation);
-      paramIndex++;
-
-      // Filter by max distance if specified
-      if (maxDistance) {
-        whereConditions.push(`ST_DWithin(u.location, $${paramIndex}::geography, $${paramIndex + 1})`);
-        params.push(userLocation, parseFloat(maxDistance) * 1609.34); // miles to meters
-        paramIndex += 2;
-      }
-    }
 
     // Community filter
     if (communityId) {
@@ -77,40 +45,8 @@ router.get('/', authenticate, async (req, res) => {
       params.push(search);
     }
 
-    // Visibility rules:
-    // - Own listings: always visible
-    // - close_friends: visible if owner is in user's friends list
-    // - neighborhood: visible if owner is in the same city
-    // - town: visible only if user has Explorer+ subscription, is verified, and owner is in same city
-    if (canAccessTown) {
-      whereConditions.push(`(
-        l.owner_id = $${paramIndex} OR
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
-      )`);
-      params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
-      paramIndex += 3;
-    } else if (canBrowseTown) {
-      // Plus but unverified — include town listings for window shopping (will be masked)
-      whereConditions.push(`(
-        l.owner_id = $${paramIndex} OR
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
-      )`);
-      params.push(req.user.id, userCity, friendIds.length > 0 ? friendIds : [null]);
-      paramIndex += 3;
-    } else {
-      // User can't access town listings - only show friends and neighborhood
-      whereConditions.push(`(
-        l.owner_id = $${paramIndex} OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex + 1} AND u.city IS NOT NULL) OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 2}))
-      )`);
-      params.push(req.user.id, userCity || '', friendIds.length > 0 ? friendIds : [null]);
-      paramIndex += 3;
-    }
+    whereConditions.push(listingAccessSql('l', '$' + paramIndex++, { discovery: true }));
+    params.push(req.user.id);
 
     // Don't show user's own listings in browse
     whereConditions.push(`l.owner_id != $${paramIndex++}`);
@@ -119,12 +55,12 @@ router.get('/', authenticate, async (req, res) => {
     params.push(limit, offset);
 
     // Order by distance if available, otherwise by date
-    const orderBy = userLocation ? 'distance_miles ASC NULLS LAST, l.created_at DESC' : 'l.created_at DESC';
+    const orderBy = 'l.created_at DESC';
 
     const result = await query(
       `SELECT l.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.city as owner_city,
-              u.total_transactions, u.status as owner_status,
+              u.total_transactions, u.is_verified as owner_verified,
               cat.name as category_name,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
               ${selectExtra}
@@ -137,7 +73,7 @@ router.get('/', authenticate, async (req, res) => {
       params
     );
 
-    const needsMasking = canBrowseTown && !canAccessTown;
+    const needsMasking = false;
 
     res.json(result.rows.map(l => {
       const isTownListing = l.visibility === 'town' && l.owner_id !== req.user.id;
@@ -154,7 +90,9 @@ router.get('/', authenticate, async (req, res) => {
         minDuration: l.min_duration,
         maxDuration: l.max_duration,
         listingType: l.listing_type || 'lend',
-        visibility: l.visibility,
+        visibility: l.privacy_version === 1 ? l.visibility : 'private',
+        sharingReviewRequired: l.privacy_version !== 1,
+        circleId: l.circle_id,
         photoUrl: l.photo_url,
         category: l.category_name,
         distanceMiles: l.distance_miles ? parseFloat(l.distance_miles).toFixed(1) : null,
@@ -177,7 +115,7 @@ router.get('/', authenticate, async (req, res) => {
           ratingCount: l.rating_count,
           city: l.owner_city,
           totalTransactions: l.total_transactions || 0,
-          isVerified: l.owner_status === 'verified',
+          isVerified: l.owner_verified === true,
         },
         createdAt: l.created_at,
         ...(ownerMasked && { ownerMasked: true }),
@@ -198,7 +136,11 @@ router.get('/mine', authenticate, async (req, res) => {
     const result = await query(
       `SELECT l.*,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
-              (SELECT COUNT(*) FROM borrow_transactions WHERE listing_id = l.id AND status = 'pending') as pending_requests
+              (SELECT COUNT(*) FROM borrow_transactions WHERE listing_id = l.id AND status = 'pending') as pending_requests,
+              (SELECT COUNT(*) FROM listing_shares ss JOIN item_requests sr ON sr.id = ss.request_id
+                WHERE ss.listing_id = l.id AND ss.revoked_at IS NULL AND ss.expires_at > NOW()
+                  AND sr.status = 'open' AND (sr.expires_at IS NULL OR sr.expires_at > NOW())
+                  AND (sr.needed_until IS NULL OR sr.needed_until >= CURRENT_DATE)) as active_offers
        FROM listings l
        WHERE l.owner_id = $1 AND l.status != 'deleted'
        ORDER BY l.created_at DESC`,
@@ -220,6 +162,11 @@ router.get('/mine', authenticate, async (req, res) => {
       timesBorrowed: l.times_borrowed,
       totalEarnings: parseFloat(l.total_earnings),
       pendingRequests: parseInt(l.pending_requests),
+      activeOffers: parseInt(l.active_offers) || 0,
+      visibility: l.privacy_version === 1 ? l.visibility : 'private',
+      sharingReviewRequired: l.privacy_version !== 1,
+      circleId: l.circle_id,
+      communityId: l.community_id,
       createdAt: l.created_at,
     })));
   } catch (err) {
@@ -234,10 +181,11 @@ router.get('/mine', authenticate, async (req, res) => {
 // ============================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
+    if (!await canViewListing(req.params.id, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
     const result = await query(
       `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
-              u.status as owner_status, u.city as owner_city, c.name as category_name
+              u.is_verified as owner_verified, u.city as owner_city, c.name as category_name
        FROM listings l
        JOIN users u ON l.owner_id = u.id
        LEFT JOIN categories c ON l.category_id = c.id
@@ -251,42 +199,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     const l = result.rows[0];
 
-    // Town listing visibility check for non-owner viewers
-    const visibilityScopes = l.visibility ? l.visibility.split(',') : ['close_friends'];
-    let ownerMasked = false;
-    if (visibilityScopes.includes('town') && l.owner_id !== req.user.id) {
-      const viewerResult = await query(
-        'SELECT subscription_tier, is_verified, city, verification_grace_until FROM users WHERE id = $1',
-        [req.user.id]
-      );
-      const viewer = viewerResult.rows[0];
-      const viewerTier = viewer?.subscription_tier || 'free';
-      const viewerCity = viewer?.city;
-      const viewerGraceActive = viewer?.verification_grace_until && new Date(viewer.verification_grace_until) > new Date();
-      const viewerVerified = viewer?.is_verified || viewerGraceActive;
-
-      if (!viewerCity || !l.owner_city || viewerCity.toLowerCase() !== l.owner_city.toLowerCase()) {
-        // No city set — can't determine if same town
-        return res.status(404).json({ error: 'Listing not found' });
-      }
-      // Verification always required for town listing details
-      if (REQUIRE_IDENTITY_VERIFICATION && !viewerVerified) {
-        ownerMasked = true;
-      }
-    }
-
-    // Visibility check: close_friends-only listings visible to owner and friends
-    if (visibilityScopes.includes('close_friends') && !visibilityScopes.includes('neighborhood') && !visibilityScopes.includes('town') && l.owner_id !== req.user.id) {
-      const friendship = await query(
-        `SELECT 1 FROM friendships
-         WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
-         AND status = 'accepted'`,
-        [req.user.id, l.owner_id]
-      );
-      if (friendship.rows.length === 0) {
-        return res.status(404).json({ error: 'Listing not found' });
-      }
-    }
+    const ownerMasked = false;
 
     // Get photos
     const photos = await query(
@@ -320,7 +233,10 @@ router.get('/:id', authenticate, async (req, res) => {
       depositAmount: parseFloat(l.deposit_amount),
       minDuration: l.min_duration,
       maxDuration: l.max_duration,
-      visibility: l.visibility,
+      visibility: l.privacy_version === 1 ? l.visibility : 'private',
+        sharingReviewRequired: l.privacy_version !== 1,
+        circleId: l.circle_id,
+      communityId: l.community_id,
       isAvailable: l.is_available,
       status: l.status,
       photos: photos.rows.map(p => p.url),
@@ -344,7 +260,7 @@ router.get('/:id', authenticate, async (req, res) => {
         rating: parseFloat(l.rating) || 0,
         ratingCount: l.rating_count,
         totalTransactions: l.total_transactions || 0,
-        isVerified: l.owner_status === 'verified',
+        isVerified: l.owner_verified === true,
       },
       ownerMasked,
       isOwner: l.owner_id === req.user.id,
@@ -379,7 +295,8 @@ router.post('/analyze-image', authenticate,
     const { imageUrl } = req.body;
 
     try {
-      const result = await analyzeItemImage(imageUrl);
+      const image = await readOwnedPhoto(imageUrl, req.user.id);
+      const result = await analyzeItemImage(image);
 
       if (result.error) {
         return res.status(422).json({ error: result.error });
@@ -408,9 +325,10 @@ router.post('/', authenticate, freeListingOnly,
   body('depositAmount').optional().isFloat({ min: 0 }),
   body('minDuration').optional().isInt({ min: 1, max: 365 }),
   body('maxDuration').optional().isInt({ min: 1, max: 365 }),
-  body('visibility').isArray({ min: 1 }),
-  body('visibility.*').isIn(['close_friends', 'neighborhood', 'town']),
-  body('requestMatchId').optional().isUUID(),
+  body('visibility').optional().isArray({ min: 1 }),
+  body('visibility.*').isIn(['private', 'close_friends', 'neighborhood', 'circle', 'town']),
+  body('circleId').optional({ nullable: true }).isUUID(),
+  body('requestMatchId').optional({ nullable: true }).isUUID(),
   body('photos').isArray({ min: 1, max: 10 }),
   async (req, res) => {
     const errors = validationResult(req);
@@ -428,9 +346,16 @@ router.post('/', authenticate, freeListingOnly,
     let pricePerDay = listingType === 'giveaway' ? null : _pricePerDay;
 
     // Normalize visibility to array
-    let visibilityArray = Array.isArray(visibility) ? [...visibility] : [visibility];
+    let visibilityArray;
 
     try {
+      const sharing = await validateSharing(req.body, req.user.id);
+      if (sharing.error) return res.status(400).json({ error: sharing.error });
+      visibilityArray = sharing.scopes;
+      if (requestMatchId && !await canViewRequest(requestMatchId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
+      let storedPhotos = photos || [];
+      try { storedPhotos = await ownedPhotoReferences(storedPhotos, req.user.id); }
+      catch { return res.status(400).json({ error: 'Use photos uploaded for your own items.' }); }
       // Require Stripe Connect for listings with rental fees or deposits
       const hasPaidComponent = (!isFree && pricePerDay > 0) || (depositAmount && depositAmount > 0);
       if (hasPaidComponent) {
@@ -443,19 +368,6 @@ router.post('/', authenticate, freeListingOnly,
             error: 'Please set up payouts before listing items with rental fees or deposits.',
             code: 'PAYOUT_SETUP_REQUIRED'
           });
-        }
-      }
-
-      // Town visibility requires verification
-      if (REQUIRE_IDENTITY_VERIFICATION && visibilityArray.includes('town')) {
-        const verifyCheck = await query(
-          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
-        if (!verifyCheck.rows[0]?.is_verified && !graceActive) {
-          visibilityArray = visibilityArray.filter(v => v !== 'town');
-          if (visibilityArray.length === 0) visibilityArray.push('close_friends');
         }
       }
 
@@ -486,14 +398,14 @@ router.post('/', authenticate, freeListingOnly,
       const result = await query(
         `INSERT INTO listings (
           owner_id, community_id, category_id, title, description, condition,
-          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type, privacy_version, circle_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1, $14)
         RETURNING id`,
         [
           req.user.id, communityId || null, categoryId || null, title, description, condition,
           isFree, isFree ? null : pricePerDay, isGiveaway ? 0 : (depositAmount || 0),
           isGiveaway ? null : (minDuration || 1), isGiveaway ? null : (maxDuration || 14),
-          primaryVisibility, listingType
+          primaryVisibility, listingType, sharing.circleId
         ]
       );
 
@@ -504,10 +416,12 @@ router.post('/', authenticate, freeListingOnly,
         for (let i = 0; i < photos.length; i++) {
           await query(
             'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
-            [listingId, photos[i], i]
+            [listingId, storedPhotos[i], i]
           );
         }
       }
+
+      if (requestMatchId) await offerListing(requestMatchId, listingId, req.user.id);
 
       // Direct request match notification (from "I Have This" flow)
       if (requestMatchId) {
@@ -541,6 +455,7 @@ router.post('/', authenticate, freeListingOnly,
           ) : { rows: [] };
 
           for (const match of matchingRequests.rows) {
+            if (!await canViewListing(listingId, match.user_id, { discovery: true })) continue;
             await sendNotification(
               match.user_id,
               'item_match',
@@ -571,9 +486,13 @@ router.post('/', authenticate, freeListingOnly,
 router.patch('/:id', authenticate, freeListingOnly,
   async (req, res) => {
     try {
+      if (Array.isArray(req.body.photos)) {
+        try { req.body.photos = await ownedPhotoReferences(req.body.photos, req.user.id); }
+        catch { return res.status(400).json({ error: 'Use photos uploaded for your own items.' }); }
+      }
       // Verify ownership
       const listing = await query(
-        'SELECT owner_id FROM listings WHERE id = $1',
+        'SELECT owner_id, community_id FROM listings WHERE id = $1',
         [req.params.id]
       );
 
@@ -590,27 +509,17 @@ router.patch('/:id', authenticate, freeListingOnly,
         'deposit_amount', 'min_duration', 'max_duration', 'visibility', 'status'
       ];
       const validStatuses = ['active', 'paused'];
-      const validVisibilities = ['close_friends', 'neighborhood', 'town'];
+      const validVisibilities = ['private', 'close_friends', 'neighborhood', 'circle', 'town'];
 
-      // Validate visibility on update
-      if (req.body.visibility) {
-        let visArray = Array.isArray(req.body.visibility) ? [...req.body.visibility] : [req.body.visibility];
-        visArray = visArray.filter(v => ['close_friends', 'neighborhood', 'town'].includes(v));
-
-        // Town requires verification
-        if (REQUIRE_IDENTITY_VERIFICATION && visArray.includes('town')) {
-          const verifyCheck = await query(
-            'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
-            [req.user.id]
-          );
-          const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
-          if (!verifyCheck.rows[0]?.is_verified && !graceActive) {
-            visArray = visArray.filter(v => v !== 'town');
-          }
-        }
-
-        if (visArray.length === 0) visArray.push('close_friends');
-        req.body.visibility = visArray;
+      let sharing;
+      if (req.body.visibility !== undefined) {
+        // Editing uses the item's stored neighborhood, never an unvalidated replacement.
+        sharing = await validateSharing({
+          ...req.body,
+          communityId: req.body.communityId || listing.rows[0].community_id,
+        }, req.user.id);
+        if (sharing.error) return res.status(400).json({ error: sharing.error });
+        req.body.visibility = sharing.scopes;
       }
 
       // Enforce minimum price of $5/day
@@ -665,6 +574,14 @@ router.patch('/:id', authenticate, freeListingOnly,
           updates.push(`${field} = $${paramIndex++}`);
           values.push(value);
         }
+      }
+
+      if (sharing) {
+        updates.push('privacy_version = 1');
+        updates.push('circle_id = $' + paramIndex++);
+        values.push(sharing.circleId);
+        updates.push('community_id = $' + paramIndex++);
+        values.push(sharing.communityId);
       }
 
       // Handle photo updates separately (not a column on listings table)

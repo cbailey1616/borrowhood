@@ -16,20 +16,6 @@ import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 
-function formatAnnouncementDate(dateStr) {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 export default function MyCommunityScreen({ navigation }) {
   const { user } = useAuth();
   const [communities, setCommunities] = useState([]);
@@ -118,6 +104,7 @@ export default function MyCommunityScreen({ navigation }) {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={{ paddingBottom: SPACING.xxl }}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -165,44 +152,26 @@ export default function MyCommunityScreen({ navigation }) {
         </View>
       )}
 
-      {/* Community Header */}
+      <View style={styles.heroCard}>
+      {/* Keep the name on parchment, never competing with a photo. */}
       {community.bannerUrl ? (
         <View style={styles.bannerContainer}>
           <Image source={{ uri: community.bannerUrl }} style={styles.bannerImage} />
-          <View style={styles.bannerOverlay}>
-            <Text style={styles.bannerName}>{community.name}</Text>
-            {community.description && (
-              <Text style={styles.bannerDescription} numberOfLines={2}>{community.description}</Text>
-            )}
-          </View>
         </View>
       ) : (
         <View style={styles.header}>
           <View style={[styles.communityImage, styles.placeholderImage]}>
-            <Ionicons name="people" size={32} color={COLORS.gray[500]} />
+            <Ionicons name="home" size={48} illustrated />
           </View>
-          <Text style={styles.communityName}>{community.name}</Text>
-          {community.description && (
-            <Text style={styles.communityDescription}>{community.description}</Text>
-          )}
         </View>
       )}
 
-      {/* Pinned Announcement */}
-      {community.announcement && (
-        <View style={[styles.cardBox, styles.announcementCard]}>
-          <View style={styles.announcementHeader}>
-            <Ionicons name="megaphone-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.announcementLabel}>Pinned</Text>
-          </View>
-          <Text style={styles.announcementText}>{community.announcement}</Text>
-          {community.announcementAt && (
-            <Text style={styles.announcementMeta}>
-              {formatAnnouncementDate(community.announcementAt)}
-            </Text>
-          )}
-        </View>
-      )}
+      <View style={styles.heroCopy}>
+        <Text style={styles.eyebrow}>A little closer to home</Text>
+        <Text style={styles.communityName}>{community.name}</Text>
+        {!!community.description && <Text style={styles.communityDescription}>{community.description}</Text>}
+      </View>
+      </View>
 
       {/* Stats */}
       <View style={[styles.cardBox, styles.stats]}>
@@ -232,8 +201,8 @@ export default function MyCommunityScreen({ navigation }) {
             <Text style={styles.seeAll}>See All</Text>
           </HapticPressable>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.membersList}>
-          {members.slice(0, 10).map((member) => (
+        <View style={styles.neighborList}>
+          {members.slice(0, 5).map((member) => (
             <HapticPressable
               key={member.id}
               style={styles.memberCard}
@@ -241,22 +210,18 @@ export default function MyCommunityScreen({ navigation }) {
               haptic="light"
             >
               <View style={styles.memberAvatarContainer}>
-                <Image
-                  source={{ uri: member.profilePhotoUrl || 'https://via.placeholder.com/60' }}
-                  style={styles.memberAvatar}
-                />
-                {member.role === 'organizer' && (
-                  <View style={styles.modBadge}>
-                    <Ionicons name="shield-checkmark" size={12} color="#fff" />
-                  </View>
-                )}
+                {member.profilePhotoUrl ? <Image source={{ uri: member.profilePhotoUrl }} style={styles.memberAvatar} />
+                  : <View style={[styles.memberAvatar, styles.placeholderImage]}><Ionicons name="person" size={30} illustrated /></View>}
               </View>
-              <Text style={styles.memberName} numberOfLines={1}>
-                {member.firstName}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.memberName} numberOfLines={2}>{member.displayName || member.firstName}</Text>
+                <Text style={styles.memberRole}>{member.role === 'organizer' ? 'Neighborhood organizer' : 'Neighbor'}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
             </HapticPressable>
           ))}
-        </ScrollView>
+          {members.length === 0 && <Text style={styles.memberRole}>Make yourself at home. Invite a neighbor to get started.</Text>}
+        </View>
       </View>
 
       {/* Actions */}
@@ -287,6 +252,11 @@ export default function MyCommunityScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  heroCard: { margin: SPACING.lg, backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+  heroCopy: { padding: SPACING.lg },
+  eyebrow: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  neighborList: { backgroundColor: COLORS.surface, padding: SPACING.md, borderRadius: RADIUS.lg, gap: SPACING.md, borderWidth: 1, borderColor: COLORS.borderLight },
+  memberRole: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: 3 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -449,7 +419,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   communityName: {
-    ...TYPOGRAPHY.h2,
+    ...TYPOGRAPHY.largeTitle,
+    fontSize: 26,
     color: COLORS.text,
     marginTop: SPACING.md,
   },
@@ -457,7 +428,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: 'center',
     marginTop: SPACING.sm,
     lineHeight: 20,
   },
@@ -468,7 +438,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderBrown,
   },
   stats: {
-    marginTop: 1,
+    marginHorizontal: SPACING.lg,
   },
   statsInner: {
     flexDirection: 'row',
@@ -517,9 +487,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
   },
   memberCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: SPACING.lg,
-    width: 70,
+    gap: SPACING.md,
+    minHeight: 64,
   },
   memberAvatarContainer: {
     position: 'relative',
@@ -528,7 +499,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 18,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.primaryMuted,
   },
   modBadge: {
     position: 'absolute',
@@ -544,10 +515,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.surface,
   },
   memberName: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs + 2,
-    textAlign: 'center',
+    ...TYPOGRAPHY.headline,
+    color: COLORS.text,
   },
   actionButton: {
     flexDirection: 'row',

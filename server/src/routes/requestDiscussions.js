@@ -1,3 +1,4 @@
+import { canViewRequest } from '../services/listingAccess.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -15,6 +16,7 @@ router.get('/:requestId/discussions', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
+    if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
       `SELECT d.id, d.content, d.reply_count, d.created_at, d.updated_at,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
@@ -66,6 +68,7 @@ router.get('/:requestId/discussions/:postId/replies', authenticate, async (req, 
   const offset = (page - 1) * limit;
 
   try {
+    if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
       `SELECT d.id, d.content, d.created_at, d.updated_at,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
@@ -115,6 +118,7 @@ router.post('/:requestId/discussions', authenticate,
     const { requestId } = req.params;
 
     try {
+    if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
       // Verify request exists
       const requestResult = await query(
         'SELECT id, user_id, title FROM item_requests WHERE id = $1 AND status = $2',
@@ -233,6 +237,7 @@ router.delete('/:requestId/discussions/:postId', authenticate, async (req, res) 
   const { requestId, postId } = req.params;
 
   try {
+    if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     // Get the post and request info
     const result = await query(
       `SELECT d.user_id as post_user_id, r.user_id as request_owner_id

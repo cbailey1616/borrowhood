@@ -23,30 +23,31 @@ describe('CreateListingScreen', () => {
 
   it('renders form with title and description inputs', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
-    const { getByTestId } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
+    const { getByTestId, getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
     expect(getByTestId('CreateListing.input.title')).toBeTruthy();
+    fireEvent.press(getByText('Add optional details'));
     expect(getByTestId('CreateListing.input.description')).toBeTruthy();
   });
 
   it('title and description accept text', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
-    const { getByTestId } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
+    const { getByTestId, getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
     fireEvent.changeText(getByTestId('CreateListing.input.title'), 'My Power Drill');
+    fireEvent.press(getByText('Add optional details'));
     fireEvent.changeText(getByTestId('CreateListing.input.description'), 'DeWalt 20V cordless drill');
   });
 
-  // Default listing is free (isFree: true), so the submit button reads
-  // "List Item for Free"; giveaways read "List Free Item". Match the family.
-  it('submit button exists', () => {
+  it('defaults to saving a private inventory item', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
     const { getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
-    expect(getByText(/^List /)).toBeTruthy();
+    expect(getByText('Save to my inventory')).toBeTruthy();
   });
 
   it('validates required fields on submit', async () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
-    const { getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
-    await act(async () => { fireEvent.press(getByText(/^List /)); });
+    const { getByText, getByTestId } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
+    await waitFor(() => expect(getByTestId('CreateListing.button.submit')).not.toBeDisabled());
+    await act(async () => { fireEvent.press(getByText('Save to my inventory')); });
     expect(mockShowError).toHaveBeenCalled();
   });
 
@@ -56,9 +57,10 @@ describe('CreateListingScreen', () => {
     expect(getByTestId('CreateListing.button.addPhoto')).toBeTruthy();
   });
 
-  it('renders rental fee toggle', () => {
+  it('does not show rental fee or deposit controls during the free launch', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
-    const { getByTestId } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
-    expect(getByTestId('CreateListing.toggle.rentalFee')).toBeTruthy();
+    const { queryByTestId } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
+    expect(queryByTestId('CreateListing.toggle.rentalFee')).toBeNull();
+    expect(queryByTestId('CreateListing.toggle.deposit')).toBeNull();
   });
 });

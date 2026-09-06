@@ -15,6 +15,7 @@ import {
 import { AuthProvider } from './src/context/AuthContext';
 import { ErrorProvider } from './src/context/ErrorContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import ThemedAlertHost from './src/components/ThemedAlert';
 import { setNavigationRef } from './src/hooks/usePushNotifications';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { COLORS, STRIPE_PUBLISHABLE_KEY } from './src/utils/config';
@@ -77,6 +78,7 @@ export default function App() {
               >
                 <ErrorProvider navigationRef={navigationRef}>
                   <RootNavigator />
+                  <ThemedAlertHost />
                   <StatusBar style="dark" />
                 </ErrorProvider>
               </NavigationContainer>

@@ -398,7 +398,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
       {(dispute.isOrganizer || dispute.isAdmin) && dispute.transaction && (
         <View style={[styles.cardBox, styles.section]}>
           <View style={styles.sectionContent}>
-            <Text style={styles.sectionTitle}>Transaction Details</Text>
+            <Text style={styles.sectionTitle}>Borrow details</Text>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Rental Fee</Text>
               <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.rentalFee)}</Text>

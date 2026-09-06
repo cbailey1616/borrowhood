@@ -14,6 +14,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
+import VerifiedBadge from '../components/VerifiedBadge';
+import useSavedListings from '../hooks/useSavedListings';
+import { useError } from '../context/ErrorContext';
 import HeroIcon from '../components/HeroIcon';
 import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -35,15 +38,15 @@ import { ENABLE_PAID_TIERS } from '../utils/config';
 const FILTER_OPTIONS = [
   { key: 'all', label: 'All' },
   { key: 'listings', label: 'Borrow' },
-  { key: 'giveaway', label: 'Free' },
-  { key: 'requests', label: 'ISO' },
+  { key: 'giveaway', label: 'Giveaways' },
+  { key: 'requests', label: 'Requests' },
 ];
 
 const VISIBILITY_OPTIONS = [
   { key: 'all', label: 'All' },
-  { key: 'close_friends', label: 'My Friends' },
-  { key: 'neighborhood', label: 'My Neighborhood' },
-  { key: 'town', label: 'My Town' },
+  { key: 'close_friends', label: 'Friends' },
+  { key: 'neighborhood', label: 'Neighborhood' },
+  { key: 'town', label: 'Town' },
 ];
 
 // Feed surfaces follow the shared app theme.
@@ -61,6 +64,8 @@ const CARD_ACCENTS = {
 
 export default function FeedScreen({ navigation }) {
   const { user, refreshUser, isGracePeriodActive } = useAuth();
+  const { showToast, showError } = useError();
+  const saved = useSavedListings(navigation, user?.id, { showToast, showError });
   const [feed, setFeed] = useState([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -68,7 +73,7 @@ export default function FeedScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeFilters, setActiveFilters] = useState([]);
+  const [activeFilters, setActiveFilters] = useState(['requests']);
   const [visibilityFilters, setVisibilityFilters] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryFilters, setCategoryFilters] = useState([]);
@@ -94,15 +99,23 @@ export default function FeedScreen({ navigation }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
 
 
-  const fetchFeed = useCallback(async (pageNum = 1, append = false) => {
+  const [feedError, setFeedError] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const feedRequest = useRef(0);
+  const hasFilters = !!search.trim() || (activeFilters.length > 0 && !(activeFilters.length === 1 && activeFilters[0] === 'requests')) || visibilityFilters.length > 0 || categoryFilters.length > 0;
+  const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
+    const requestId = ++feedRequest.current;
+    setFeedError(false);
+    setIsFetching(true);
     try {
       const params = { page: pageNum, limit: 20 };
-      if (search) params.search = search;
-      if (activeFilters.length > 0) params.type = activeFilters.join(',');
-      if (visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
-      if (categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
+      if (!clear && search.trim()) params.search = search.trim();
+      if (!clear && activeFilters.length > 0) params.type = activeFilters.join(',');
+      if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
+      if (!clear && categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
 
       const data = await api.getFeed(params);
+      if (requestId !== feedRequest.current) return;
 
       if (append) {
         setFeed(prev => [...prev, ...data.items]);
@@ -112,8 +125,12 @@ export default function FeedScreen({ navigation }) {
       setHasMore(data.hasMore);
       setPage(pageNum);
     } catch (error) {
-      console.error('Failed to fetch feed:', error);
+      if (requestId !== feedRequest.current) return;
+      setFeedError(true);
+      if (!append) setFeed([]);
     } finally {
+      if (requestId !== feedRequest.current) return;
+      setIsFetching(false);
       setIsInitialLoad(false);
       setIsRefreshing(false);
       setIsLoadingMore(false);
@@ -176,6 +193,11 @@ export default function FeedScreen({ navigation }) {
       fetchFeed(1, false);
     }
   }, [activeFilters, visibilityFilters, categoryFilters]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchFeed(1, false), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -250,6 +272,7 @@ export default function FeedScreen({ navigation }) {
 
   const onRefresh = () => {
     setIsRefreshing(true);
+    saved.refresh();
     setRequestDiscussions({});
     setListingDiscussions({});
     fetchFeed(1, false);
@@ -332,7 +355,6 @@ export default function FeedScreen({ navigation }) {
 
   const handleClearSearch = useCallback(() => {
     setSearch('');
-    fetchFeed(1, false);
   }, []);
 
   const formatTimeAgo = (dateString) => {
@@ -361,11 +383,9 @@ export default function FeedScreen({ navigation }) {
   }, [fetchFeed]);
 
   const handleTownToggle = () => {
-    // TODO: Restore subscription gate when re-enabling paid tiers (ENABLE_PAID_TIERS)
-    if (ENABLE_PAID_TIERS && user?.subscriptionTier !== 'plus' && !user?.isVerified && !isGracePeriodActive) {
+    if (!user?.isVerified) {
       setActiveDropdown(null);
-      // Delay so the ActionSheet portal closes before the overlay renders
-      setTimeout(() => setShowUpgradePrompt(true), 350);
+      navigation.navigate('IdentityVerification', { source: 'town_browse' });
       return;
     }
     toggleFilter('town', visibilityKeys, setVisibilityFilters);
@@ -409,13 +429,13 @@ export default function FeedScreen({ navigation }) {
     {
       label: 'List an Item',
       testID: 'Feed.create.listing',
-      icon: <Ionicons name="cube-outline" size={20} color={COLORS.primary} />,
+      icon: <Ionicons name="basket" size={32} illustrated />,
       onPress: () => navigation.navigate('CreateListing'),
     },
     {
-      label: 'Post an ISO',
+      label: 'Ask for something',
       testID: 'Feed.create.request',
-      icon: <Ionicons name="create-outline" size={20} color={COLORS.secondary} />,
+      icon: <Ionicons name="request-note" size={32} illustrated />,
       onPress: () => navigation.navigate('CreateRequest'),
     },
   ];
@@ -459,18 +479,33 @@ export default function FeedScreen({ navigation }) {
                 <Ionicons name="lock-closed" size={16} color="#fff" />
               </View>
             )}
+            {!item.ownerMasked && (
+              <HapticPressable
+                testID={`Feed.save.${item.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
+                accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
+                disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
+                onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
+                style={styles.tileSaveButton}
+              >
+                {saved.status === 'loading' || saved.pendingIds.has(item.id)
+                  ? <ActivityIndicator size="small" color={COLORS.primary} />
+                  : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={saved.status === 'ready' && saved.savedIds.has(item.id)} color={COLORS.primary} />}
+              </HapticPressable>
+            )}
           </View>
           <View style={styles.tileContent}>
             <View style={styles.tileTopRow}>
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
                   <Ionicons name="gift" size={10} color="#fff" />
-                  <Text style={styles.tilePillText}>FREE</Text>
+                  <Text style={styles.tilePillText}>GIVEAWAY</Text>
                 </View>
               ) : (
                 <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? accent.pill : COLORS.textMuted }]}>
                   <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
-                  <Text style={styles.tilePillText}>{item.isAvailable ? 'BORROW' : 'OUT'}</Text>
+                  <Text style={styles.tilePillText}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Available' : 'Unavailable'}</Text>
                 </View>
               )}
               <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
@@ -480,10 +515,11 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
             ) : null}
             <View style={styles.tileFooterRow}>
-              {!item.ownerMasked && <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={12} />}
+              {!item.ownerMasked && <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />}
               <Text style={styles.tileFooterText} numberOfLines={1}>
                 {userName}
               </Text>
+              {!item.ownerMasked && item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
               {priceLabel ? (
                 <Text style={[styles.tilePrice, { color: accent.pill }]}>{priceLabel}</Text>
               ) : null}
@@ -591,7 +627,7 @@ export default function FeedScreen({ navigation }) {
       : { listingId: itemId, listing: feedItem };
 
     return (
-      <View style={styles.threadContainer}>
+      <View testID={`Feed.thread.${itemId}`} style={[styles.threadContainer, isRequest && styles.requestThread]}>
         <Pressable
           onPress={() => {
             haptics.light();
@@ -749,7 +785,6 @@ export default function FeedScreen({ navigation }) {
   };
 
   const renderRequestItem = (item, index) => {
-    const accent = CARD_ACCENTS.wanted;
     const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
@@ -758,13 +793,14 @@ export default function FeedScreen({ navigation }) {
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"
           scaleDown={0.98}
-          style={styles.tile}
+          style={[styles.tile, styles.requestTile]}
+          testID={`Feed.request.${item.id}`}
         >
             <View style={styles.tileContent}>
-              <View style={styles.tileTopRow}>
-                <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
-                  <Ionicons name="search" size={10} color="#fff" />
-                  <Text style={styles.tilePillText}>ISO</Text>
+              <View style={[styles.tileTopRow, styles.requestTopRow]}>
+                <View style={styles.requestLabel}>
+                  <Ionicons name="request-note" size={26} illustrated />
+                  <Text style={styles.requestLabelText}>Neighbor request</Text>
                 </View>
                 <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
               </View>
@@ -773,8 +809,9 @@ export default function FeedScreen({ navigation }) {
                 <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
               ) : null}
               <View style={styles.tileFooterRow}>
-                <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={12} />
+                <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
                 <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
+                {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
               </View>
             </View>
           {/* Inline thread */}
@@ -953,24 +990,25 @@ export default function FeedScreen({ navigation }) {
             </View>
           )
         }
-        ListEmptyComponent={
+        ListEmptyComponent={isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> :
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconWrap}>
-              <HeroIcon icon={user?.city ? 'cube' : 'navigate'} size={88} />
-            </View>
-            <Text style={styles.emptyTitle}>{user?.city ? 'Your hood is quiet' : 'Add your location'}</Text>
-            <Text style={styles.emptySubtitle}>
-              {user?.city
-                ? 'Be the first to list a tool or post a request in your neighborhood!'
-                : 'Set your city so we can show items from neighbors near you.'}
-            </Text>
-            <HapticPressable
-              style={styles.emptyButton}
-              onPress={() => user?.city ? navigation.navigate('CreateListing') : navigation.navigate('EditProfile')}
-              haptic="medium"
-            >
-              <Text style={styles.emptyButtonText}>{user?.city ? 'List an Item' : 'Go to Settings'}</Text>
+            <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
+            <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
+            <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post a request. Owners can privately offer an item without exposing their belongings.' : 'Add your town to discover items nearby.'}</Text>
+            <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
+              if (feedError) return fetchFeed(1, false);
+              if (!user?.city) return navigation.navigate('EditProfile');
+              if (hasFilters) {
+                setSearch(''); setActiveFilters([]); setVisibilityFilters([]); setCategoryFilters([]);
+                return fetchFeed(1, false, true);
+              }
+              navigation.navigate('CreateRequest');
+            }}>
+              <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
             </HapticPressable>
+            {!feedError && user?.city && <HapticPressable accessibilityRole="button" style={{ minHeight: 48, padding: 14, justifyContent: 'center' }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}>
+              <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '600' }}>{hasFilters ? 'Request an item' : 'Invite a neighbor'}</Text>
+            </HapticPressable>}
           </View>
         }
       />
@@ -1084,12 +1122,12 @@ export default function FeedScreen({ navigation }) {
             },
           },
           {
-            label: 'Post My Item',
+            label: 'Offer an item',
             icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
             onPress: () => {
               const req = selectedRequest;
               setSelectedRequest(null);
-              navigation.navigate('CreateListing', { requestMatch: req });
+              navigation.navigate('OfferItem', { request: req });
             },
           },
         ]}
@@ -1105,7 +1143,7 @@ export default function FeedScreen({ navigation }) {
               </View>
               <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
               <Text style={styles.overlayText}>
-                Verified members can browse items from everyone in {user?.city || 'your town'}.
+                Verified members can see requests and items explicitly shared in {user?.city || 'your town'}.
               </Text>
               <View style={styles.upgradeFeatures}>
                 <View style={styles.upgradeFeature}>
@@ -1114,7 +1152,7 @@ export default function FeedScreen({ navigation }) {
                 </View>
                 <View style={styles.upgradeFeature}>
                   <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
-                  <Text style={styles.upgradeFeatureText}>Borrow from anyone in town</Text>
+                  <Text style={styles.upgradeFeatureText}>Ask your town without sharing your inventory</Text>
                 </View>
                 <View style={styles.upgradeFeature}>
                   <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
@@ -1165,7 +1203,7 @@ const styles = StyleSheet.create({
   },
   headerSearchBar: {
     flex: 1,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.surface,
     borderColor: COLORS.borderLight,
   },
   addButton: {
@@ -1200,8 +1238,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     minHeight: 44,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
+    backgroundColor: COLORS.surface,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.borderLight,
   },
   dropdownChipActive: {
@@ -1360,9 +1398,30 @@ const styles = StyleSheet.create({
   tile: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: FEED.cardBorder,
     backgroundColor: FEED.card,
+  },
+  requestTile: {
+    backgroundColor: COLORS.requestSurface,
+    borderColor: COLORS.borderGreen,
+  },
+  requestTopRow: {
+    flexWrap: 'wrap',
+    columnGap: SPACING.md,
+    rowGap: SPACING.xs,
+  },
+  requestLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    flexShrink: 1,
+  },
+  requestLabelText: {
+    ...TYPOGRAPHY.footnote,
+    fontWeight: '600',
+    color: COLORS.primary,
+    flexShrink: 1,
   },
   tileRow: {
     flexDirection: 'column',
@@ -1380,6 +1439,20 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
+  },
+  tileSaveButton: {
+    position: 'absolute',
+    top: SPACING.md,
+    right: SPACING.md,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
   tileLockOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1400,9 +1473,9 @@ const styles = StyleSheet.create({
   },
   tilePillText: {
     ...TYPOGRAPHY.caption,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   tileContent: {
     padding: SPACING.lg,
@@ -1461,23 +1534,23 @@ const styles = StyleSheet.create({
   tileFooterText: {
     ...TYPOGRAPHY.caption,
     color: FEED.meta,
-    flex: 1,
+    flexShrink: 1,
   },
   tilePrice: {
     ...TYPOGRAPHY.headline,
     fontWeight: '700',
-    marginLeft: SPACING.sm,
+    marginLeft: 'auto',
   },
   card: {
     marginBottom: SPACING.lg,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
     ...SHADOWS.md,
   },
   cardGiveaway: {
-    borderColor: '#8B451340',
+    borderColor: COLORS.borderBrown,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1485,7 +1558,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: SPACING.lg,
     paddingBottom: SPACING.md,
-    backgroundColor: COLORS.greenBg,
+    backgroundColor: COLORS.primaryMuted,
   },
   userInfo: {
     flexDirection: 'row',
@@ -1496,9 +1569,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: COLORS.greenSurface,
+    backgroundColor: COLORS.surfaceElevated,
     borderWidth: 2,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
   },
   avatarPlaceholder: {
     alignItems: 'center',
@@ -1521,11 +1594,11 @@ const styles = StyleSheet.create({
   userName: {
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   timeAgo: {
     ...TYPOGRAPHY.caption1,
-    color: COLORS.greenTextMuted,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   typeBadge: {
@@ -1537,13 +1610,13 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs + 1,
     borderRadius: RADIUS.full,
     borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
   },
   requestCard: {
     marginBottom: SPACING.lg,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D4A03C40',
+    borderColor: COLORS.border,
     backgroundColor: COLORS.card,
     ...Platform.select({
       ios: {
@@ -1688,6 +1761,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: RADIUS.lg,
     borderBottomRightRadius: RADIUS.lg,
   },
+  requestThread: {
+    backgroundColor: COLORS.requestSurface,
+    borderTopColor: COLORS.borderGreen,
+  },
   threadHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1706,8 +1783,6 @@ const styles = StyleSheet.create({
     backgroundColor: FEED.thread,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: FEED.cardBorder,
   },
   threadPostRow: {
     flexDirection: 'row',
@@ -1737,8 +1812,6 @@ const styles = StyleSheet.create({
     backgroundColor: FEED.threadDeep,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: FEED.cardBorder,
   },
   threadReplyAvatar: {
     width: 20,
@@ -1822,7 +1895,7 @@ const styles = StyleSheet.create({
   },
   typeBadgeText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   borrowedBadge: {
     backgroundColor: 'transparent',
@@ -1845,13 +1918,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   ribbonGiveaway: {
-    backgroundColor: '#8B4513',
+    backgroundColor: COLORS.accent,
   },
   ribbonFreeBorrow: {
-    backgroundColor: '#2D5A27',
+    backgroundColor: COLORS.primary,
   },
   ribbonPaid: {
-    backgroundColor: '#2D5A27',
+    backgroundColor: COLORS.primary,
   },
   ribbonText: {
     ...TYPOGRAPHY.caption1,
@@ -1862,13 +1935,13 @@ const styles = StyleSheet.create({
   cardBody: {
     padding: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.greenSeparator,
-    backgroundColor: COLORS.greenBg,
+    borderTopColor: COLORS.separator,
+    backgroundColor: COLORS.primaryMuted,
   },
   cardTitle: {
     ...TYPOGRAPHY.h3,
     fontWeight: '700',
-    color: COLORS.greenText,
+    color: COLORS.primary,
     marginBottom: SPACING.sm,
     letterSpacing: -0.3,
   },
@@ -1879,27 +1952,27 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   conditionBadge: {
-    backgroundColor: COLORS.greenSurface,
+    backgroundColor: COLORS.surfaceElevated,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.sm,
     borderWidth: 1,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
   },
   conditionText: {
     ...TYPOGRAPHY.caption1,
     fontWeight: '500',
-    color: COLORS.greenTextMuted,
+    color: COLORS.textSecondary,
   },
   freeLabel: {
     ...TYPOGRAPHY.body,
     fontWeight: '700',
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   priceLabel: {
     ...TYPOGRAPHY.body,
     fontWeight: '700',
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   dateRow: {
     flexDirection: 'row',
@@ -1914,10 +1987,10 @@ const styles = StyleSheet.create({
   cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.greenSurface,
+    backgroundColor: COLORS.surfaceElevated,
     paddingVertical: SPACING.xs,
     borderTopWidth: 1,
-    borderTopColor: COLORS.greenSeparator,
+    borderTopColor: COLORS.separator,
   },
   actionButton: {
     flex: 1,
@@ -1930,12 +2003,12 @@ const styles = StyleSheet.create({
   actionDivider: {
     width: 1,
     height: 20,
-    backgroundColor: COLORS.greenSeparator,
+    backgroundColor: COLORS.separator,
   },
   actionText: {
     ...TYPOGRAPHY.subheadline,
     fontWeight: '600',
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   verifyUnlockBanner: {
     flexDirection: 'row',

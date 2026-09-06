@@ -43,7 +43,7 @@ export default function MainNavigator() {
       <Tab.Screen
         name="Feed"
         component={FeedScreen}
-        options={{ title: 'Feed' }}
+        options={{ title: 'Home' }}
       />
       <Tab.Screen
         name="Saved"
@@ -57,7 +57,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen
         name="Activity"
-        options={{ title: 'Activity' }}
+        options={{ title: 'Inbox' }}
         listeners={{
           tabPress: () => {
             setTimeout(fetchBadgeCount, 1000);

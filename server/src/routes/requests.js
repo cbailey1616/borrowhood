@@ -1,3 +1,5 @@
+import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
+import { canViewRequest, offerListing } from '../services/listingAccess.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
@@ -16,28 +18,15 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Get user's communities
-    const communitiesResult = await query(
-      'SELECT community_id FROM community_memberships WHERE user_id = $1',
-      [req.user.id]
-    );
-    const communityIds = communitiesResult.rows.map(c => c.community_id);
-
-    if (communityIds.length === 0) {
-      return res.json([]);
-    }
-
     let whereConditions = [`r.status = 'open'`, `(r.expires_at IS NULL OR r.expires_at > NOW())`, `(r.needed_until IS NULL OR r.needed_until >= CURRENT_DATE)`];
     let params = [];
     let paramIndex = 1;
 
-    // Filter by user's communities or specific community
+    whereConditions.push(requestAccessSql('r', '$' + paramIndex++));
+    params.push(req.user.id);
     if (communityId) {
-      whereConditions.push(`r.community_id = $${paramIndex++}`);
+      whereConditions.push('r.community_id = $' + paramIndex++);
       params.push(communityId);
-    } else {
-      whereConditions.push(`r.community_id = ANY($${paramIndex++})`);
-      params.push(communityIds);
     }
 
     // Category filter
@@ -59,7 +48,7 @@ router.get('/', authenticate, async (req, res) => {
     params.push(limit, offset);
 
     const result = await query(
-      `SELECT r.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
+      `SELECT r.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.is_verified,
               c.name as category_name
        FROM item_requests r
        JOIN users u ON r.user_id = u.id
@@ -85,6 +74,7 @@ router.get('/', authenticate, async (req, res) => {
         firstName: r.display_name || r.first_name,
         lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: r.profile_photo_url,
+        isVerified: r.is_verified === true,
       },
       createdAt: r.created_at,
     })));
@@ -147,47 +137,14 @@ router.get('/suggestions', authenticate, async (req, res) => {
       return res.json({ suggestions: [] });
     }
 
-    // Get user's visibility context
-    const userResult = await query(
-      'SELECT city, is_verified, subscription_tier, verification_grace_until FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    const userCity = userResult.rows[0]?.city;
-    const graceActive = userResult.rows[0]?.verification_grace_until && new Date(userResult.rows[0].verification_grace_until) > new Date();
-    const isVerified = userResult.rows[0]?.is_verified || graceActive;
-    const canAccessTown = (!REQUIRE_IDENTITY_VERIFICATION || isVerified) && userCity;
-
-    const friendsResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = \'accepted\'',
-      [req.user.id]
-    );
-    const friendIds = friendsResult.rows.map(f => f.friend_id);
-
     // Search listings matching any keyword in title or description
     const likeClauses = words.map((_, i) => `(l.title ILIKE $${i + 1} OR l.description ILIKE $${i + 1})`);
     const likeParams = words.map(w => `%${w}%`);
 
     let paramIndex = likeParams.length + 1;
 
-    // Build visibility filter (same rules as feed)
-    let visibilityClause;
-    const visibilityParams = [];
-    if (canAccessTown) {
-      visibilityClause = `(
-        ('town' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 1}))
-      )`;
-      visibilityParams.push(userCity, friendIds.length > 0 ? friendIds : [null]);
-      paramIndex += 2;
-    } else {
-      visibilityClause = `(
-        ('neighborhood' = ANY(string_to_array(l.visibility::text, ',')) AND u.city = $${paramIndex} AND u.city IS NOT NULL) OR
-        ('close_friends' = ANY(string_to_array(l.visibility::text, ',')) AND l.owner_id = ANY($${paramIndex + 1}))
-      )`;
-      visibilityParams.push(userCity || '', friendIds.length > 0 ? friendIds : [null]);
-      paramIndex += 2;
-    }
+    const visibilityClause = listingAccessSql('l', '$' + paramIndex++, { discovery: true });
+    const visibilityParams = [req.user.id];
 
     const suggestions = await query(
       `SELECT
@@ -247,6 +204,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
 // ============================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
+    if (!await canViewRequest(req.params.id, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
       `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
@@ -336,18 +294,13 @@ router.post('/', authenticate,
     if (visArray.length === 0) visArray = ['close_friends'];
 
     try {
-      // Town requires verification
-      if (REQUIRE_IDENTITY_VERIFICATION && visArray.includes('town')) {
-        const verifyCheck = await query(
-          'SELECT is_verified, verification_grace_until FROM users WHERE id = $1',
-          [req.user.id]
-        );
-        const graceActive = verifyCheck.rows[0]?.verification_grace_until && new Date(verifyCheck.rows[0].verification_grace_until) > new Date();
-        if (!verifyCheck.rows[0]?.is_verified && !graceActive) {
-          visArray = visArray.filter(v => v !== 'town');
-          if (visArray.length === 0) visArray = ['close_friends'];
+      if (visArray.includes('town')) {
+        const verified = await query('SELECT is_verified, city, state FROM users WHERE id = $1', [req.user.id]);
+        if (!verified.rows[0]?.is_verified || !verified.rows[0]?.city || !verified.rows[0]?.state) {
+          return res.status(403).json({ error: 'Verify your identity and town before posting a town request.' });
         }
       }
+      if (visArray.includes('neighborhood') && !communityId) return res.status(400).json({ error: 'Choose a group for this request.' });
       visibility = visArray.join(',');
       // Verify user is member of community (if community specified)
       if (communityId) {
@@ -454,6 +407,11 @@ router.post('/', authenticate,
           }
 
           if (recipientIds.length > 0) {
+            const permitted = await query(`SELECT recipients.id FROM users recipients
+              WHERE recipients.id = ANY($1::uuid[]) AND EXISTS (
+                SELECT 1 FROM item_requests r WHERE r.id = $2 AND ${requestAccessSql('r', 'recipients.id')}
+              )`, [[...new Set(recipientIds)], requestId]);
+            recipientIds = permitted.rows.map(row => row.id);
             await sendBulkNotification(
               recipientIds,
               'new_request',
@@ -540,6 +498,18 @@ router.patch('/:id', authenticate,
         return res.status(403).json({ error: 'Not authorized' });
       }
 
+      if (req.body.visibility !== undefined) {
+        const scopes = req.body.visibility;
+        if (!Array.isArray(scopes) || !scopes.length || scopes.some(v => !['close_friends', 'neighborhood', 'town'].includes(v))) {
+          return res.status(400).json({ error: 'Choose a valid request audience.' });
+        }
+        if (scopes.includes('town')) {
+          const verified = await query('SELECT is_verified, city, state FROM users WHERE id = $1', [req.user.id]);
+          if (!verified.rows[0]?.is_verified || !verified.rows[0]?.city || !verified.rows[0]?.state) {
+            return res.status(403).json({ error: 'Verify your identity and town before sharing this request town-wide.' });
+          }
+        }
+      }
       const allowedFields = [
         'title', 'description', 'category_id', 'needed_from',
         'needed_until', 'visibility', 'status', 'type'
@@ -603,6 +573,43 @@ router.delete('/:id', authenticate, async (req, res) => {
     console.error('Delete request error:', err);
     res.status(500).json({ error: 'Failed to delete request' });
   }
+});
+
+
+router.post('/:id/offers', authenticate, body('listingId').isUUID(), async (req, res) => {
+  if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Choose an item to offer.' });
+  try {
+    const recipientId = await offerListing(req.params.id, req.body.listingId, req.user.id);
+    await sendNotification(recipientId, 'item_match', {
+      itemTitle: 'A privately offered item', requestTitle: 'your request', listingId: req.body.listingId, requestId: req.params.id,
+    }, { fromUserId: req.user.id, listingId: req.body.listingId, requestId: req.params.id }).catch(() => {});
+    res.status(201).json({ success: true });
+  } catch (error) {
+    res.status(404).json({ error: 'Request or available item not found.' });
+  }
+});
+
+router.get('/:id/offers', authenticate, async (req, res) => {
+  try {
+    if (!await canViewRequest(req.params.id, req.user.id)) return res.status(404).json({ error: 'Request not found' });
+    const result = await query(`SELECT l.id, l.title, l.owner_id, ss.expires_at
+      FROM listing_shares ss JOIN listings l ON l.id = ss.listing_id
+      WHERE ss.request_id = $1 AND (ss.user_id = $2 OR l.owner_id = $2)
+        AND ss.revoked_at IS NULL AND ss.expires_at > NOW()
+        AND ${listingAccessSql('l', '$2')}
+      ORDER BY ss.created_at DESC`, [req.params.id, req.user.id]);
+    res.json(result.rows.map(item => ({ id: item.id, title: item.title,
+      isOwn: item.owner_id === req.user.id, expiresAt: item.expires_at })));
+  } catch { res.status(500).json({ error: 'Could not load private offers.' }); }
+});
+
+router.delete('/:id/offers/:listingId', authenticate, async (req, res) => {
+  try {
+    await query(`UPDATE listing_shares ss SET revoked_at = NOW()
+      FROM listings l WHERE l.id = ss.listing_id AND l.owner_id = $1
+        AND ss.listing_id = $2 AND ss.request_id = $3`, [req.user.id, req.params.listingId, req.params.id]);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not withdraw offer.' }); }
 });
 
 export default router;

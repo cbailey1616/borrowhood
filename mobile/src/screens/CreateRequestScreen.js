@@ -1,5 +1,9 @@
 import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import useFormDraft from '../hooks/useFormDraft';
+import DraftStatus from '../components/DraftStatus';
+import { localDate, requestDatePreset, requestAudienceProblem } from '../utils/requestForm';
 import {
   View,
   Text,
@@ -33,29 +37,37 @@ const EXPIRATION_OPTIONS = [
   { value: 'custom', label: 'Custom' },
 ];
 
-export default function CreateRequestScreen({ navigation }) {
+export default function CreateRequestScreen({ navigation, route }) {
   const { user, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
-  const [formData, setFormData] = useState({
+  const draftScope = user?.id ? `${user.id}.request.new` : null;
+  const [formData, setFormData, draft] = useFormDraft(draftScope, {
     type: 'item',
-    title: '',
+    title: route?.params?.initialTitle || '',
     description: '',
     categoryId: null,
     visibility: ['close_friends'],
     neededFrom: '',
     neededUntil: '',
-    expiresIn: '1d',
+    expiresIn: '1w',
+    customExpiry: new Date(Date.now() + 86400000).toISOString(),
   });
+  const [showDetails, setShowDetails] = useState(false);
+  const [rangePicker, setRangePicker] = useState(null);
+  const [friends, setFriends] = useState({ loading: true, count: 0, error: false });
+  const loadFriends = useCallback(async () => {
+    setFriends(prev => ({ ...prev, loading: true }));
+    try { const data = await api.getFriends(); setFriends({ loading: false, count: data.length, error: false }); }
+    catch { setFriends({ loading: false, count: 0, error: true }); }
+  }, []);
+  useFocusEffect(useCallback(() => { loadFriends(); }, [loadFriends]));
+  const audienceProblem = requestAudienceProblem(formData.visibility, friends, Boolean(user?.isVerified && user?.city));
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ title: false, categoryId: false });
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [customExpiryDate, setCustomExpiryDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d;
-  });
+  const customExpiryDate = new Date(formData.customExpiry);
   const [communityId, setCommunityId] = useState(undefined); // undefined = loading, null = no community
 
   useEffect(() => {
@@ -89,20 +101,12 @@ export default function CreateRequestScreen({ navigation }) {
     }
   };
 
-  // Simple date input - in production, use a date picker
-  const formatDateInput = (text, field) => {
-    const cleaned = text.replace(/[^0-9]/g, '');
-    let formatted = cleaned;
-    if (cleaned.length > 4) {
-      formatted = cleaned.slice(0, 4) + '-' + cleaned.slice(4);
-    }
-    if (cleaned.length > 6) {
-      formatted = cleaned.slice(0, 4) + '-' + cleaned.slice(4, 6) + '-' + cleaned.slice(6, 8);
-    }
-    updateField(field, formatted);
-  };
-
   const handleSubmit = async () => {
+    if (audienceProblem || !draft.ready || isSubmitting) return;
+    if ((formData.expiresIn === 'custom' && customExpiryDate <= new Date()) || (formData.neededUntil && formData.neededUntil < localDate(new Date()))) {
+      setShowDetails(true);
+      return showError({ message: 'This draft’s dates have passed. Choose new dates before posting.' });
+    }
     const errors = {
       title: !formData.title.trim(),
     };
@@ -145,6 +149,7 @@ export default function CreateRequestScreen({ navigation }) {
         if (suggestions && suggestions.length > 0) {
           haptics.success();
           navigation.replace('RequestSuggestions', {
+            draftScope,
             requestData,
             requestTitle: formData.title.trim(),
             suggestions,
@@ -156,6 +161,7 @@ export default function CreateRequestScreen({ navigation }) {
       }
 
       await api.createRequest(requestData);
+      await draft.clear().catch(() => showToast('Request posted. The local draft could not be cleared.', 'info'));
       haptics.success();
       showToast('Your request has been posted!', 'success');
       navigation.goBack();
@@ -173,15 +179,11 @@ export default function CreateRequestScreen({ navigation }) {
     ? ALL_VISIBILITIES
     : ALL_VISIBILITIES.filter(v => v !== 'neighborhood');
 
-  // Default visibility to highest available level
+  // A town request advertises a need, never the requester's inventory.
   useEffect(() => {
-    if (communityId === undefined) return; // still loading
-    const defaultVis = [];
-    defaultVis.push('close_friends');
-    if (communityId) defaultVis.push('neighborhood');
-    if (user?.city) defaultVis.push('town');
-    updateField('visibility', defaultVis);
-  }, [communityId]);
+    if (communityId === undefined || !draft.ready || draft.restored) return;
+    updateField('visibility', user?.isVerified && user?.city ? ['town'] : ['close_friends']);
+  }, [communityId, draft.ready, draft.restored]);
 
   // Loading state while checking community
   if (communityId === undefined) {
@@ -202,7 +204,8 @@ export default function CreateRequestScreen({ navigation }) {
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
     >
       {/* Neighborhood hint when user has no community */}
-      {communityId === null && (
+      <DraftStatus draft={draft} allowDiscard />
+      {showDetails && communityId === null && (
         <HapticPressable
           style={styles.communityHint}
           onPress={() => navigation.navigate('JoinCommunity')}
@@ -217,6 +220,7 @@ export default function CreateRequestScreen({ navigation }) {
       )}
 
       {/* Type Toggle */}
+      {showDetails &&
       <View style={styles.section}>
         <Text style={styles.label}>Type</Text>
         <View style={styles.options}>
@@ -245,7 +249,7 @@ export default function CreateRequestScreen({ navigation }) {
             );
           })}
         </View>
-      </View>
+      </View>}
 
       {/* Title */}
       <View style={styles.section}>
@@ -266,6 +270,10 @@ export default function CreateRequestScreen({ navigation }) {
       </View>
 
       {/* Description */}
+      <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(!showDetails)} style={{ minHeight: 48, justifyContent: 'center' }}>
+        <Text style={{ color: COLORS.primary }}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
+      </HapticPressable>
+      {showDetails && <>
       <View style={styles.section}>
         <Text style={styles.label}>Details (optional)</Text>
         <TextInput
@@ -311,39 +319,43 @@ export default function CreateRequestScreen({ navigation }) {
       )}
 
       {/* Date Range */}
+      </>}
       <View style={styles.section}>
         <Text style={styles.label}>When do you need it?</Text>
-        <Text style={styles.hint}>Optional - helps neighbors know your timeline</Text>
+        <View style={styles.options}>
+          {[['today', 'Today'], ['weekend', 'This weekend']].map(([key, label]) => <HapticPressable key={key} style={styles.option} onPress={() => setFormData(prev => ({ ...prev, ...requestDatePreset(key) }))}><Text style={styles.optionText}>{label}</Text></HapticPressable>)}
+          <HapticPressable style={styles.option} onPress={() => setRangePicker('neededFrom')}><Text style={styles.optionText}>Choose dates</Text></HapticPressable>
+          <HapticPressable style={styles.option} onPress={() => setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' }))}><Text style={styles.optionText}>Flexible</Text></HapticPressable>
+        </View>
 
         <View style={styles.dateRow}>
           <View style={styles.dateInput}>
             <Text style={styles.dateLabel}>From</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.neededFrom}
-              onChangeText={(t) => formatDateInput(t, 'neededFrom')}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.textSecondary}
-              keyboardType="number-pad"
-              maxLength={10}
-            />
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Choose needed from date" style={styles.input} onPress={() => setRangePicker('neededFrom')}><Text style={{ color: COLORS.text }}>{formData.neededFrom ? new Date(`${formData.neededFrom}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Any day'}</Text></HapticPressable>
           </View>
           <View style={styles.dateInput}>
             <Text style={styles.dateLabel}>Until</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.neededUntil}
-              onChangeText={(t) => formatDateInput(t, 'neededUntil')}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.textSecondary}
-              keyboardType="number-pad"
-              maxLength={10}
-            />
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Choose needed until date" style={styles.input} onPress={() => setRangePicker('neededUntil')}><Text style={{ color: COLORS.text }}>{formData.neededUntil ? new Date(`${formData.neededUntil}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Flexible'}</Text></HapticPressable>
           </View>
         </View>
+        {rangePicker && <View style={styles.datePickerCard}><DateTimePicker
+          value={formData[rangePicker] ? new Date(`${formData[rangePicker]}T12:00:00`) : new Date()}
+          minimumDate={rangePicker === 'neededUntil' && formData.neededFrom ? new Date(`${formData.neededFrom}T00:00:00`) : new Date()}
+          mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          themeVariant="light"
+          textColor={COLORS.text}
+          accentColor={COLORS.primary}
+          style={styles.datePicker}
+          onChange={(event, date) => {
+            if (date) setFormData(prev => ({ ...prev, [rangePicker]: localDate(date), ...(rangePicker === 'neededFrom' && prev.neededUntil && prev.neededUntil < localDate(date) ? { neededUntil: localDate(date) } : {}) }));
+            if (Platform.OS !== 'ios') setRangePicker(null);
+          }} />
+          <HapticPressable onPress={() => setRangePicker(null)} style={styles.inlineDateDone}><Text style={styles.inlineDateDoneText}>Done</Text></HapticPressable></View>}
       </View>
 
       {/* Expires After */}
+      <Text style={styles.hint}>{formData.expiresIn === 'never' ? 'Visible until you close it.' : formData.expiresIn === 'custom' ? `Visible until ${customExpiryDate.toLocaleDateString()}.` : `Visible for ${EXPIRATION_OPTIONS.find(opt => opt.value === formData.expiresIn)?.label.toLowerCase() || 'your chosen time'}.`} Change this in optional details.</Text>
+      {showDetails &&
       <View style={styles.section}>
         <Text style={styles.label}>Expires after</Text>
         <Text style={styles.hint}>Request will be hidden from the feed after this time</Text>
@@ -390,29 +402,35 @@ export default function CreateRequestScreen({ navigation }) {
               <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
             </HapticPressable>
             {showDatePicker && (
+              <View style={styles.datePickerCard}>
               <DateTimePicker
                 value={customExpiryDate}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                themeVariant="light"
+                textColor={COLORS.text}
+                accentColor={COLORS.primary}
+                style={styles.datePicker}
                 minimumDate={new Date()}
                 onChange={(event, date) => {
                   if (Platform.OS === 'android') setShowDatePicker(false);
-                  if (date) setCustomExpiryDate(date);
+                  if (date) updateField('customExpiry', date.toISOString());
                 }}
               />
-            )}
-            {Platform.OS === 'ios' && showDatePicker && (
+            {Platform.OS === 'ios' && (
               <HapticPressable
-                style={styles.datePickerDone}
+                style={styles.inlineDateDone}
                 onPress={() => setShowDatePicker(false)}
                 haptic="light"
               >
-                <Text style={styles.datePickerDoneText}>Done</Text>
+                <Text style={styles.inlineDateDoneText}>Done</Text>
               </HapticPressable>
+            )}
+              </View>
             )}
           </View>
         )}
-      </View>
+      </View>}
 
       {/* Visibility */}
       <View style={styles.section}>
@@ -434,7 +452,7 @@ export default function CreateRequestScreen({ navigation }) {
                     }
                   } else {
                     // Verification required for town visibility
-                    if (REQUIRE_IDENTITY_VERIFICATION && visibility === 'town' && !user?.isVerified && !isGracePeriodActive) {
+                    if (visibility === 'town' && !user?.isVerified) {
                       haptics.warning();
                       navigation.navigate('IdentityVerification', { source: 'town_browse' });
                       return;
@@ -467,6 +485,14 @@ export default function CreateRequestScreen({ navigation }) {
       </View>
 
       {/* Info */}
+      {!!audienceProblem && <View style={styles.infoCard}>
+        <View style={{ flex: 1 }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{audienceProblem}</Text>
+          {friends.error ? <HapticPressable onPress={loadFriends} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary }}>Try again</Text></HapticPressable> : !friends.loading && <>
+            <HapticPressable onPress={() => navigation.navigate('Friends')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary }}>Invite someone</Text></HapticPressable>
+            {!user?.isVerified && <HapticPressable onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary }}>Verify to ask your town · free</Text></HapticPressable>}
+          </>}
+        </View>
+      </View>}
       <View style={styles.infoCard}>
         <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
         <Text style={styles.infoText}>
@@ -476,9 +502,13 @@ export default function CreateRequestScreen({ navigation }) {
 
       {/* Submit */}
       <HapticPressable
+        testID="CreateRequest.button.submit"
+        accessibilityLabel="Post request"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || Boolean(audienceProblem) || !draft.ready}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isSubmitting || Boolean(audienceProblem) || !draft.ready }}
         haptic="medium"
       >
         {isSubmitting ? (
@@ -572,12 +602,31 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.text,
   },
-  datePickerDone: {
-    alignSelf: 'flex-end',
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
+  datePickerCard: {
+    marginTop: SPACING.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.sm,
+    paddingTop: SPACING.xs,
   },
-  datePickerDoneText: {
+  datePicker: {
+    alignSelf: 'stretch',
+    backgroundColor: COLORS.surface,
+  },
+  inlineDateDone: {
+    alignSelf: 'flex-end',
+    minHeight: 44,
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: SPACING.xs,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryMuted,
+  },
+  inlineDateDoneText: {
     ...TYPOGRAPHY.headline,
     color: COLORS.primary,
   },

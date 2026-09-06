@@ -12,6 +12,7 @@ import {
 import ShimmerImage from '../components/ShimmerImage';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
 import SegmentedControl from '../components/SegmentedControl';
@@ -33,16 +34,18 @@ const STATUS_COLORS = {
 
 export default function MyItemsScreen({ navigation }) {
   const { showError } = useError();
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(0);
   const [listings, setListings] = useState([]);
   const [requests, setRequests] = useState([]);
   const [rentals, setRentals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const swipeableRefs = useRef({});
 
 
   const fetchData = useCallback(async () => {
+    setLoadError(false);
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
@@ -61,7 +64,7 @@ export default function MyItemsScreen({ navigation }) {
         setRequests(data);
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -181,6 +184,14 @@ export default function MyItemsScreen({ navigation }) {
             </View>
 
             <View style={styles.cardFooter}>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
+                {item.sharingReviewRequired ? 'Private · review sharing' :
+                  (item.visibility || 'private').includes('town') ? 'Shared with town' :
+                  (item.visibility || 'private').includes('neighborhood') ? 'Shared with neighborhood' :
+                  (item.visibility || 'private').includes('circle') ? 'Sharing needs review' :
+                  (item.visibility || 'private').includes('close_friends') ? 'Shared with friends' : 'Private'}
+                {item.activeOffers > 0 ? ` · ${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''}
+              </Text>
               <View style={[
                 styles.statusBadge,
                 { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.warningMuted }
@@ -382,11 +393,11 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
-  const emptyTitle = activeTab === 0 ? 'No items listed' : activeTab === 1 ? 'Nothing borrowed yet' : 'No ISO posts yet';
+  const emptyTitle = activeTab === 0 ? 'Your private inventory starts here' : activeTab === 1 ? 'No exchanges yet' : 'No requests yet';
   const emptySubtitle = activeTab === 0
-    ? 'Share your tools with the neighborhood'
+    ? 'Add an item for yourself. Choose who sees it when you’re ready to share.'
     : activeTab === 1
-    ? 'Your borrows will show up here'
+    ? 'Things you lend and borrow will show up here.'
     : 'Post what you need and neighbors can offer to help';
 
   return (
@@ -394,12 +405,14 @@ export default function MyItemsScreen({ navigation }) {
       <NativeHeader title="My Items">
         <SegmentedControl
           testID="MyItems.segment"
-          segments={['Listings', 'Borrowed', 'ISO']}
+          segments={['My items', 'Exchanges', 'Requests']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
         />
       </NativeHeader>
+
+      {loadError && <View style={{ padding: 16, backgroundColor: COLORS.warningMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Try again</Text></HapticPressable></View>}
 
       <FlatList
         data={data}
@@ -414,26 +427,9 @@ export default function MyItemsScreen({ navigation }) {
           />
         }
         ListEmptyComponent={
-          !isLoading && (
+          !isLoading && !loadError && (
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconWrap}>
-                {activeTab === 0 ? (
-                  <>
-                    <Ionicons name="cube-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 16, left: 18 }} />
-                    <Ionicons name="add-circle-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 16, right: 18, opacity: 0.7 }} />
-                  </>
-                ) : activeTab === 1 ? (
-                  <>
-                    <Ionicons name="swap-horizontal-outline" size={30} color={COLORS.primary} style={{ position: 'absolute', top: 16 }} />
-                    <Ionicons name="time-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, opacity: 0.6 }} />
-                  </>
-                ) : (
-                  <>
-                    <Ionicons name="search-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 16, left: 20 }} />
-                    <Ionicons name="megaphone-outline" size={22} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, right: 18, opacity: 0.7 }} />
-                  </>
-                )}
-              </View>
+              <HeroIcon icon={activeTab === 0 ? 'basket' : activeTab === 1 ? 'swap-horizontal' : 'search'} size={80} />
               <Text style={styles.emptyTitle}>{emptyTitle}</Text>
               <Text style={styles.emptySubtitle}>{emptySubtitle}</Text>
               {activeTab !== 1 && (
@@ -444,7 +440,7 @@ export default function MyItemsScreen({ navigation }) {
                 >
                   <Ionicons name="add" size={20} color="#fff" />
                   <Text style={styles.addButtonText}>
-                    {activeTab === 0 ? 'List an Item' : 'Post an ISO'}
+                    {activeTab === 0 ? 'Add an item' : 'Ask for something'}
                   </Text>
                 </HapticPressable>
               )}
@@ -460,7 +456,7 @@ export default function MyItemsScreen({ navigation }) {
             >
               <Ionicons name="add-circle" size={24} color={COLORS.primary} />
               <Text style={styles.headerButtonText}>
-                {activeTab === 0 ? 'List a new item' : 'Post a new wanted'}
+                {activeTab === 0 ? 'Add an item' : 'Post a request'}
               </Text>
             </HapticPressable>
           )
@@ -705,14 +701,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 64,
-  },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,

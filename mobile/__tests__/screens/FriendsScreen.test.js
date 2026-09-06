@@ -16,7 +16,7 @@ describe('FriendsScreen', () => {
   it('shows empty friends state', async () => {
     const Screen = require('../../src/screens/FriendsScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText('No close friends yet');
+    await findByText('No friends yet');
   });
   it('displays friend list', async () => {
     api.getFriends.mockResolvedValue([{ id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null }]);

@@ -1,3 +1,5 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
@@ -40,6 +42,7 @@ async function dismissRelatedNotifications(transactionId) {
 }
 
 export default function TransactionDetailScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
@@ -78,7 +81,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       setFetchError(null);
     } catch (error) {
       console.error('Failed to fetch transaction:', error);
-      setFetchError(`${error.message} (status: ${error.status || 'network'}, id: ${id})`);
+      setFetchError('Could not load this exchange. Check your connection and try again.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -188,8 +191,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="receipt-outline" size={48} color={COLORS.textMuted} style={{ marginBottom: SPACING.md }} />
-        <Text style={styles.errorTitle}>Transaction Not Available</Text>
-        <Text style={styles.errorSubtext}>This transaction may have been removed or is no longer accessible.</Text>
+        <Text style={styles.errorTitle}>Borrow details unavailable</Text>
+        <Text style={styles.errorSubtext}>This exchange may have been removed or is no longer accessible.</Text>
         <HapticPressable
           style={styles.errorButton}
           onPress={() => navigation.goBack()}
@@ -200,6 +203,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     );
   }
 
+  const nextStep = borrowGuidance({ ...transaction, isGiveaway });
   const otherPerson = transaction.isBorrower ? transaction.lender : transaction.borrower;
   const roleLabel = isGiveaway
     ? (transaction.isBorrower ? 'Giver' : 'Recipient')
@@ -255,6 +259,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
         </HapticPressable>
 
+        <View style={{ marginHorizontal: 16, marginVertical: 12, padding: 18, borderRadius: 16, backgroundColor: COLORS.primaryMuted }} accessibilityLiveRegion="polite">
+          <Text style={{ fontSize: 20, fontWeight: '600', color: COLORS.text, marginBottom: 6 }}>{nextStep.title}</Text>
+          <Text style={{ fontSize: 15, lineHeight: 22, color: COLORS.textSecondary }}>{nextStep.detail}</Text>
+        </View>
         {/* Progress Tracker */}
         <View style={styles.statusCard}>
           <RentalProgress
@@ -302,10 +310,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
                 if (existing) {
                   navigation.navigate('Chat', { conversationId: existing.id });
                 } else {
-                  navigation.navigate('Chat', { recipientId: otherPerson.id, listing: null });
+                  navigation.navigate('Chat', { recipientId: otherPerson.id, listing: transaction.listing });
                 }
               } catch {
-                navigation.navigate('Chat', { recipientId: otherPerson.id, listing: null });
+                navigation.navigate('Chat', { recipientId: otherPerson.id, listing: transaction.listing });
               }
             }}
           >
@@ -317,7 +325,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {/* Dates — hidden for giveaways */}
         {!isGiveaway && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rental Period</Text>
+            <Text style={styles.sectionTitle}>Borrowing dates</Text>
           <View style={styles.dateRow}>
             <View style={styles.dateItem}>
               <Text style={styles.dateLabel}>Start</Text>
@@ -428,7 +436,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
       {/* Actions */}
       {transaction.isLender && transaction.status === 'pending' && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             testID="Transaction.button.decline"
             accessibilityLabel="Decline request"
@@ -459,8 +467,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
       )}
 
       {/* Borrower: Cancel request before pickup */}
-      {transaction.isBorrower && ['pending', 'approved', 'paid'].includes(transaction.status) && (
-        <View style={styles.footer}>
+      {transaction.isBorrower && transaction.status === 'pending' && (
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             testID="Transaction.button.cancel"
             accessibilityLabel="Cancel request"
@@ -480,7 +488,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       )}
 
       {transaction.isBorrower && ['paid', 'approved'].includes(transaction.status) && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             haptic="light"
             style={styles.declineButton}
@@ -505,7 +513,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
       {/* Borrower: Submit return + Report Issue (Report Issue only for paid transactions) */}
       {transaction.isBorrower && transaction.status === 'picked_up' && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             haptic="medium"
             style={styles.approveButton}
@@ -535,8 +543,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
       )}
 
       {/* Lender: Confirm return + Report Issue (Report Issue only for paid transactions) */}
-      {transaction.isLender && transaction.status === 'picked_up' && (
-        <View style={styles.footer}>
+      {transaction.isLender && ['picked_up', 'return_pending'].includes(transaction.status) && (
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             testID="Transaction.button.confirmReturn"
             accessibilityLabel="Confirm return"
@@ -571,7 +579,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       {/* Lender: Confirm return & release deposit when borrower already reported */}
       {transaction.isLender && transaction.status === 'returned' &&
         transaction.paymentStatus === 'authorized' && !transaction.hasDispute && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             haptic="medium"
             style={styles.approveButton}
@@ -589,7 +597,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         transaction?.actualReturnAt &&
         ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 &&
         (Date.now() - new Date(transaction.actualReturnAt).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             testID="Transaction.button.reportIssue"
             accessibilityLabel="Report an issue"

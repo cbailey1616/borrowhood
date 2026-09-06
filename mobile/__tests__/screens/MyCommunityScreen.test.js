@@ -7,6 +7,16 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getCommunities.mockResolvedValue([]); api.getCommunityMembers.mockResolvedValue([]); });
 describe('MyCommunityScreen', () => {
+  it('hides legacy pinned announcements and uses member display names', async () => {
+    api.getCommunities.mockResolvedValue([{ id: 'c', name: 'Our neighborhood', announcement: 'Old pinned note' }]);
+    api.getCommunityMembers.mockResolvedValue([{ id: 'u', displayName: 'Friendly Neighbor', firstName: 'LEGAL NAME', role: 'organizer' }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const { findByText, queryByText } = render(<Screen navigation={mockNavigation} />);
+    await findByText('Friendly Neighbor');
+    expect(queryByText('Old pinned note')).toBeNull();
+    expect(queryByText('Pinned')).toBeNull();
+    expect(queryByText('Neighborhood organizer')).toBeTruthy();
+  });
   it('fetches communities on mount', async () => {
     const Screen = require('../../src/screens/MyCommunityScreen').default;
     render(<Screen navigation={mockNavigation} />);
@@ -29,6 +39,6 @@ describe('MyCommunityScreen', () => {
     api.getCommunityMembers.mockResolvedValue([]);
     const Screen = require('../../src/screens/MyCommunityScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText(/Invite/i);
+    await findByText('Invite Neighbors');
   });
 });

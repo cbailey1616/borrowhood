@@ -17,6 +17,7 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
 import NativeHeader from '../components/NativeHeader';
@@ -170,10 +171,7 @@ export default function SavedScreen({ navigation }) {
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconWrap}>
-                <Ionicons name="bookmark-outline" size={28} color={COLORS.primary} style={{ position: 'absolute', top: 16, right: 22 }} />
-                <Ionicons name="heart-outline" size={32} color={COLORS.primary} style={{ position: 'absolute', bottom: 14, left: 18, opacity: 0.7 }} />
-              </View>
+              <HeroIcon icon="heart" size={80} />
               <Text style={styles.emptyTitle}>Nothing saved yet</Text>
               <Text style={styles.emptySubtitle}>
                 Tap the heart on any listing to save it here
@@ -312,14 +310,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 64,
-  },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,

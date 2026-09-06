@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -14,14 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
-import BlurCard from '../../components/BlurCard';
+import WoodlandIllustration from '../../components/WoodlandIllustration';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import useBiometrics from '../../hooks/useBiometrics';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
-
-const logo = require('../../../assets/logo.png');
 
 export default function WelcomeScreen({ navigation }) {
   const { login } = useAuth();
@@ -128,7 +125,9 @@ export default function WelcomeScreen({ navigation }) {
         >
           <View style={styles.content}>
             <View style={styles.logoContainer}>
-              <Image source={logo} style={styles.logo} resizeMode="contain" />
+              <Text style={styles.wordmark}>Borrowhood</Text>
+              <WoodlandIllustration scene="neighborhood" width={218} />
+              <Text style={styles.welcomeLine}>Good things are closer than you think.</Text>
             </View>
 
             {/* Biometric Login Button */}
@@ -279,13 +278,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: SPACING.xxl + SPACING.lg,
+    paddingTop: SPACING.xl,
+    marginBottom: SPACING.xl,
   },
-  logo: {
-    width: 403,
-    height: 144,
-    tintColor: COLORS.primary,
-  },
+  wordmark: { ...TYPOGRAPHY.h1, color: COLORS.primary, marginBottom: SPACING.sm },
+  welcomeLine: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
   biometricButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -305,7 +302,7 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.borderBrown,
   },
   form: {

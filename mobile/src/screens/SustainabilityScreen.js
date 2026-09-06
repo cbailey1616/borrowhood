@@ -10,6 +10,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config'
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import AnimatedCard from '../components/AnimatedCard';
+import Icon from '../components/Icon';
 
 export default function SustainabilityScreen() {
   const [stats, setStats] = useState(null);
@@ -47,7 +48,7 @@ export default function SustainabilityScreen() {
   const StatCard = ({ icon, value, label, sublabel, index }) => (
     <AnimatedCard index={index} style={styles.statCardWrapper}>
       <View style={[styles.cardBox, styles.statCard]}>
-        <Text style={styles.statIcon}>{icon}</Text>
+        <Icon name={icon} size={36} illustrated style={styles.statIcon} />
         <Text style={styles.statValue}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
         {sublabel && <Text style={styles.statSublabel}>{sublabel}</Text>}
@@ -57,7 +58,7 @@ export default function SustainabilityScreen() {
 
   const ImpactRow = ({ icon, label, value, unit }) => (
     <View style={styles.impactRow}>
-      <Text style={styles.impactIcon}>{icon}</Text>
+      <Icon name={icon} size={24} illustrated style={styles.impactIcon} />
       <Text style={styles.impactLabel}>{label}</Text>
       <View style={styles.impactValueContainer}>
         <Text style={styles.impactValue}>{value}</Text>
@@ -78,25 +79,25 @@ export default function SustainabilityScreen() {
       <View style={styles.statsGrid}>
         <StatCard
           index={0}
-          icon="🔄"
+          icon="swap-horizontal"
           value={stats?.totalBorrows || 0}
           label="Items Borrowed"
         />
         <StatCard
           index={1}
-          icon="🤝"
+          icon="basket"
           value={stats?.totalLends || 0}
           label="Items Lent"
         />
         <StatCard
           index={2}
-          icon="💰"
+          icon="wallet"
           value={`$${(stats?.moneySavedCents / 100 || 0).toFixed(0)}`}
           label="Money Saved"
         />
         <StatCard
           index={3}
-          icon="🌍"
+          icon="leaf"
           value={`${(stats?.co2SavedKg || 0).toFixed(1)}kg`}
           label="CO₂ Saved"
         />
@@ -107,21 +108,21 @@ export default function SustainabilityScreen() {
         <AnimatedCard index={4}>
           <View style={[styles.cardBox, styles.impactCard]}>
             <ImpactRow
-              icon="🌲"
+              icon="rank-ranger"
               label="Trees equivalent"
               value={((stats?.co2SavedKg || 0) / 21).toFixed(1)}
               unit="trees/year"
             />
             <View style={styles.impactDivider} />
             <ImpactRow
-              icon="🚗"
+              icon="navigate"
               label="Car miles avoided"
               value={((stats?.co2SavedKg || 0) * 2.5).toFixed(0)}
               unit="miles"
             />
             <View style={styles.impactDivider} />
             <ImpactRow
-              icon="🗑️"
+              icon="trash"
               label="Waste prevented"
               value={((stats?.wastePreventedKg || 0)).toFixed(1)}
               unit="kg"
@@ -171,12 +172,7 @@ export default function SustainabilityScreen() {
         <Text style={styles.sectionTitle}>Your Rank</Text>
         <AnimatedCard index={6}>
           <View style={[styles.cardBox, styles.rankCard]}>
-            <Text style={styles.rankEmoji}>
-              {stats?.totalLends >= 50 ? '🏆' :
-               stats?.totalLends >= 20 ? '🥇' :
-               stats?.totalLends >= 10 ? '🥈' :
-               stats?.totalLends >= 5 ? '🥉' : '🌱'}
-            </Text>
+            <Icon name={stats?.totalLends >= 20 ? 'rank-ranger' : stats?.totalLends >= 5 ? 'leaf' : 'rank-squire'} size={52} illustrated style={styles.rankArt} />
             <Text style={styles.rankTitle}>
               {stats?.totalLends >= 50 ? 'Sustainability Champion' :
                stats?.totalLends >= 20 ? 'Eco Warrior' :
@@ -271,7 +267,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
   },
   statIcon: {
-    fontSize: 32,
     marginBottom: SPACING.sm,
   },
   statValue: {
@@ -311,8 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   impactIcon: {
-    fontSize: 20,
-    width: 32,
+    marginRight: SPACING.sm,
   },
   impactLabel: {
     flex: 1,
@@ -373,8 +367,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: RADIUS.lg,
   },
-  rankEmoji: {
-    fontSize: 48,
+  rankArt: {
     marginBottom: SPACING.md,
   },
   rankTitle: {

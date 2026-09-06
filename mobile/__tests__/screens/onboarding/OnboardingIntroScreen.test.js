@@ -1,33 +1,34 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import api from '../../../src/services/api';
+import Screen from '../../../src/screens/onboarding/OnboardingIntroScreen';
 
-const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const navigation = { navigate: jest.fn() };
+beforeEach(() => {
+  jest.clearAllMocks();
+  api.updateOnboardingStep.mockResolvedValue({});
+});
 
-beforeEach(() => jest.clearAllMocks());
-
-describe('OnboardingIntroScreen', () => {
-  it('renders welcome slide', () => {
-    const Screen = require('../../../src/screens/onboarding/OnboardingIntroScreen').default;
-    const { getByText } = render(<Screen navigation={mockNavigation} />);
-    expect(getByText(/Welcome to/)).toBeTruthy();
+describe('private-first onboarding', () => {
+  it('explains explicit sharing and free exchanges without a payment step', () => {
+    const { getByText, queryByText } = render(<Screen navigation={navigation} />);
+    expect(getByText('Private until you share')).toBeTruthy();
+    expect(getByText(/Only you can see your things until you choose/)).toBeTruthy();
+    expect(getByText(/No fees, deposits, or payment setup/)).toBeTruthy();
+    expect(getByText(/Private items stay private/)).toBeTruthy();
+    expect(queryByText(/Choose Your Plan/)).toBeNull();
   });
-
-  it('renders Borrowhood in title', () => {
-    const Screen = require('../../../src/screens/onboarding/OnboardingIntroScreen').default;
-    const { getByText } = render(<Screen navigation={mockNavigation} />);
-    expect(getByText(/Borrowhood/)).toBeTruthy();
+  it('saves progress and goes straight to town setup', async () => {
+    const { getByLabelText } = render(<Screen navigation={navigation} />);
+    fireEvent.press(getByLabelText('Choose your town'));
+    await waitFor(() => expect(navigation.navigate).toHaveBeenCalledWith('OnboardingNeighborhood'));
+    expect(api.updateOnboardingStep).toHaveBeenCalledWith(2);
   });
-
-  it('renders continue button', () => {
-    const Screen = require('../../../src/screens/onboarding/OnboardingIntroScreen').default;
-    const { getByText } = render(<Screen navigation={mockNavigation} />);
-    expect(getByText(/Continue/)).toBeTruthy();
-  });
-
-  it('renders dot indicators', () => {
-    const Screen = require('../../../src/screens/onboarding/OnboardingIntroScreen').default;
-    const { UNSAFE_root } = render(<Screen navigation={mockNavigation} />);
-    // 4 slides = 4 dots
-    expect(UNSAFE_root).toBeTruthy();
+  it('keeps the user on the screen with a retryable error if saving fails', async () => {
+    api.updateOnboardingStep.mockRejectedValueOnce(new Error('offline'));
+    const { getByLabelText, findByText } = render(<Screen navigation={navigation} />);
+    fireEvent.press(getByLabelText('Choose your town'));
+    await findByText('Could not save your progress. Please try again.');
+    expect(navigation.navigate).not.toHaveBeenCalled();
   });
 });

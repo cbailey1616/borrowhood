@@ -34,7 +34,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const [editDescription, setEditDescription] = useState('');
   const [editBannerUrl, setEditBannerUrl] = useState(null);
   const [selectedBannerPhoto, setSelectedBannerPhoto] = useState(null);
-  const [editAnnouncement, setEditAnnouncement] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -51,7 +50,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       setEditName(data.name || '');
       setEditDescription(data.description || '');
       setEditBannerUrl(data.bannerUrl || null);
-      setEditAnnouncement(data.announcement || '');
     } catch (error) {
       console.error('Failed to fetch community:', error);
     } finally {
@@ -79,14 +77,12 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         name: editName.trim(),
         description: editDescription.trim(),
         bannerUrl: bannerUrl || null,
-        announcement: editAnnouncement.trim() || null,
       });
       setCommunity(prev => ({
         ...prev,
         name: editName.trim(),
         description: editDescription.trim(),
         bannerUrl: bannerUrl || null,
-        announcement: editAnnouncement.trim() || null,
       }));
       setSelectedBannerPhoto(null);
       setIsEditing(false);
@@ -105,7 +101,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
     setEditDescription(community?.description || '');
     setEditBannerUrl(community?.bannerUrl || null);
     setSelectedBannerPhoto(null);
-    setEditAnnouncement(community?.announcement || '');
     setIsEditing(false);
   };
 
@@ -199,29 +194,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={4}
-              maxLength={1000}
-              autoCapitalize="sentences"
-              autoCorrect={true}
-              spellCheck={true}
-            />
-
-            {/* Announcement */}
-            <View style={styles.announcementFieldHeader}>
-              <Text style={styles.fieldLabel}>Pinned Announcement</Text>
-              {editAnnouncement.trim() ? (
-                <HapticPressable onPress={() => setEditAnnouncement('')} haptic="light">
-                  <Text style={styles.clearAnnouncementText}>Clear</Text>
-                </HapticPressable>
-              ) : null}
-            </View>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={editAnnouncement}
-              onChangeText={setEditAnnouncement}
-              placeholder="Post an announcement visible to all members..."
-              placeholderTextColor={COLORS.textMuted}
-              multiline
-              numberOfLines={3}
               maxLength={1000}
               autoCapitalize="sentences"
               autoCorrect={true}

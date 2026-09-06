@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     bottom: 2,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.primaryMuted,
     borderRadius: RADIUS.md - 2,
     zIndex: 0,
   },
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
   },
   segmentTextActive: {
     color: COLORS.primary,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

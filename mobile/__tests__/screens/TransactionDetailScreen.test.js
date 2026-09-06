@@ -40,8 +40,10 @@ describe('TransactionDetailScreen', () => {
   it('displays status via RentalProgress steps', async () => {
     const TransactionDetailScreen = require('../../src/screens/TransactionDetailScreen').default;
     const { findByText } = render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);
-    // RentalProgress renders step labels: Request, Accepted, Pickup, Return
-    await findByText('Request');
+    await findByText('Requested');
+    await findByText('Approved');
+    await findByText('Picked up');
+    await findByText('Returned');
   });
 
   it('lender sees approve/decline buttons for pending requests', async () => {

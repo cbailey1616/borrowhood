@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.borderBrown,
   },
   inner: {

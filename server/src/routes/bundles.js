@@ -1,3 +1,4 @@
+import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -17,6 +18,9 @@ router.get('/', authenticate, async (req, res) => {
        FROM bundles b
        JOIN users u ON b.owner_id = u.id
        WHERE b.status = 'active' AND b.owner_id != $1
+         AND EXISTS (SELECT 1 FROM bundle_items bi WHERE bi.bundle_id = b.id)
+         AND NOT EXISTS (SELECT 1 FROM bundle_items bi JOIN listings l ON l.id = bi.listing_id
+           WHERE bi.bundle_id = b.id AND NOT ${listingAccessSql('l', '$1', { discovery: true })})
        ORDER BY b.created_at DESC`,
       [req.user.id]
     );

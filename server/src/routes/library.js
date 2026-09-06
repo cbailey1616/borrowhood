@@ -1,3 +1,5 @@
+import { listingAccessSql } from '../utils/sharingPolicy.js';
+import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
@@ -33,9 +35,9 @@ router.get('/', authenticate, async (req, res) => {
        FROM community_library_items cli
        JOIN listings l ON cli.listing_id = l.id
        LEFT JOIN users u ON cli.donated_by = u.id
-       WHERE cli.community_id = $1 AND l.status = 'active'
+       WHERE cli.community_id = $1 AND l.status = 'active' AND ${listingAccessSql('l', '$2', { discovery: true })}
        ORDER BY cli.donation_date DESC`,
-      [communityId]
+      [communityId, req.user.id]
     );
 
     res.json(result.rows.map(i => ({
@@ -134,6 +136,7 @@ router.post('/:itemId/checkout', authenticate,
     const { returnDate } = req.body;
 
     try {
+      if (!await canViewListing(req.params.itemId, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
       // Get library item
       const item = await query(
         `SELECT cli.*, l.id as listing_id

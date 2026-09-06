@@ -340,6 +340,10 @@ const getRequests = (params) =>
 const getMyRequests = () =>
   get('/requests/mine');
 
+const offerItem = (requestId, listingId) => post(`/requests/${requestId}/offers`, { listingId });
+const getRequestOffers = (id) => get(`/requests/${id}/offers`);
+const withdrawOffer = (requestId, listingId) => del(`/requests/${requestId}/offers/${listingId}`);
+
 const getRequest = (id) =>
   get(`/requests/${id}`);
 
@@ -370,6 +374,7 @@ const getConversations = () =>
 const getConversation = (id, params) =>
   get(`/messages/conversations/${id}`, params);
 
+const getMessageCapabilities = () => get('/messages/capabilities');
 const sendMessage = (data) =>
   post('/messages', data);
 
@@ -743,6 +748,7 @@ const getReferralStatus = () => get('/referrals/status');
 const claimReferralReward = () => post('/referrals/claim');
 
 export default {
+  getFunnelInsights: (days = 30) => get(`/insights/funnel?days=${days}`),
   setAuthToken,
   // Auth
   login,
@@ -825,6 +831,9 @@ export default {
   getRequests,
   getMyRequests,
   getRequest,
+  offerItem,
+  getRequestOffers,
+  withdrawOffer,
   createRequest,
   updateRequest,
   deleteRequest,
@@ -835,6 +844,7 @@ export default {
   getConversations,
   getConversation,
   sendMessage,
+  getMessageCapabilities,
   markConversationRead,
   deleteMessage,
   reactToMessage,

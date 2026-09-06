@@ -7,7 +7,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
-  Alert,
+
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -229,11 +229,11 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Borrow from anyone in town</Text>
+                <Text style={styles.promptBenefitText}>Request items shared with you</Text>
               </View>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Charge rental fees</Text>
+                <Text style={styles.promptBenefitText}>Keep your inventory private</Text>
               </View>
             </View>
 
@@ -289,7 +289,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <View style={styles.promptBenefits}>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
-                <Text style={styles.promptBenefitText}>Borrow from anyone in your town</Text>
+                <Text style={styles.promptBenefitText}>Request items explicitly shared with you</Text>
               </View>
               <View style={styles.promptBenefit}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
@@ -348,7 +348,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       {/* Dates — hidden for giveaways */}
       {!isGiveaway && (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Rental Period</Text>
+        <Text style={styles.sectionTitle}>Borrow dates</Text>
         <Text style={styles.hint}>
           {listing.minDuration}-{listing.maxDuration} days allowed
         </Text>
@@ -460,10 +460,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
         </View>
-        <Text style={styles.depositNote}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Ionicons name="information-circle-outline" size={14} color={COLORS.gray[400]} />
-          {' '}Deposit is refunded when you return the item in good condition
-        </Text>
+          <Text style={[styles.depositNote, { flex: 1 }]}>Deposit is refunded when you return the item in good condition</Text>
+        </View>
       </View>
       )}
 
@@ -723,9 +723,9 @@ const styles = StyleSheet.create({
   },
   pricingCard: {
     padding: SPACING.lg,
-    backgroundColor: COLORS.greenBg,
+    backgroundColor: COLORS.primaryMuted,
     borderWidth: 1.5,
-    borderColor: COLORS.greenBorder,
+    borderColor: COLORS.borderGreen,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
   },
@@ -737,30 +737,30 @@ const styles = StyleSheet.create({
   priceLabel: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
-    color: COLORS.greenTextMuted,
+    color: COLORS.textSecondary,
   },
   priceValue: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   totalRow: {
     marginTop: SPACING.sm,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.greenSeparator,
+    borderTopColor: COLORS.separator,
     marginBottom: 0,
   },
   totalLabel: {
     ...TYPOGRAPHY.headline,
     fontSize: 16,
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   totalValue: {
     ...TYPOGRAPHY.h3,
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.greenText,
+    color: COLORS.primary,
   },
   depositNote: {
     ...TYPOGRAPHY.caption1,
@@ -790,3 +790,4 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xxl,
   },
 });
+import { ThemedAlert as Alert } from "../components/ThemedAlert";

@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from './HapticPressable';
 
@@ -60,9 +60,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.lg,
     minHeight: 48,
     borderWidth: 1,
     borderColor: COLORS.borderLight,

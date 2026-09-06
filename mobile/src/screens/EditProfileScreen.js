@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import {
   View,
   Text,
@@ -41,6 +42,7 @@ export default function EditProfileScreen({ navigation }) {
     longitude: user?.longitude || null,
   });
 
+  const finishSaving = useUnsavedChanges(navigation, { formData, selectedPhoto });
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -147,7 +149,7 @@ export default function EditProfileScreen({ navigation }) {
       await api.updateProfile(profileData);
       if (refreshUser) await refreshUser();
       haptics.success();
-      navigation.goBack();
+      finishSaving();
     } catch (error) {
       haptics.error();
       showError({

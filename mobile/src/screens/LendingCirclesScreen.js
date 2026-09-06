@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import HeroIcon from '../components/HeroIcon';
+import { Ionicons } from '../components/Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -106,12 +107,12 @@ export default function LendingCirclesScreen({ navigation }) {
     <AnimatedCard index={index}>
       <HapticPressable
         style={styles.circleCardPressable}
-        onPress={() => navigation.navigate('CircleDetail', { circleId: circle.id })}
+        onPress={circle.isMember ? () => navigation.navigate('CircleDetail', { circleId: circle.id }) : undefined}
         haptic="light"
       >
         <View style={[styles.cardBox, styles.circleCard]}>
           <View style={styles.circleHeader}>
-            <Text style={styles.circleIcon}>⭕</Text>
+            <Ionicons name="people" size={28} color={COLORS.primary} />
             <View style={styles.circleInfo}>
               <Text style={styles.circleName}>{circle.name}</Text>
               <Text style={styles.circleMembers}>{circle.memberCount} members</Text>

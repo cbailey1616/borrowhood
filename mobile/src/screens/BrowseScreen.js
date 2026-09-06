@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import VerifiedBadge from '../components/VerifiedBadge';
 import {
   View,
   Text,
@@ -133,6 +134,7 @@ export default function BrowseScreen({ navigation }) {
                 <Text style={styles.ownerName} numberOfLines={1}>
                   {item.owner.firstName} {item.owner.lastName[0]}.
                 </Text>
+                {item.owner.isVerified === true && <VerifiedBadge size={16} interactive />}
                 {item.owner.rating > 0 && (
                   <View style={styles.rating}>
                     <Text style={styles.star}>★</Text>
@@ -164,9 +166,12 @@ export default function BrowseScreen({ navigation }) {
               </View>
             )}
             <View style={styles.requesterInfo}>
-              <Text style={styles.requesterName}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={[styles.requesterName, { flexShrink: 1 }]} numberOfLines={1}>
                 {item.requester.firstName} {item.requester.lastName[0]}.
               </Text>
+              {item.requester.isVerified === true && <VerifiedBadge size={16} interactive />}
+              </View>
               <Text style={styles.requestTime}>
                 {new Date(item.createdAt).toLocaleDateString()}
               </Text>

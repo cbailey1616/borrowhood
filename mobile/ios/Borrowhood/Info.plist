@@ -34,7 +34,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>205</string>
+    <string>211</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -48,6 +48,8 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Allow Borrowhood to connect to your Mac for live UI previews during development.</string>
     <key>NSCameraUsageDescription</key>
     <string>Allow Borrowhood to access your camera to take photos of items you want to share.</string>
     <key>NSContactsUsageDescription</key>

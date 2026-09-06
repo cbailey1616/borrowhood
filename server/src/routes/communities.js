@@ -19,7 +19,7 @@ router.get('/', authenticate, async (req, res) => {
         `SELECT c.*,
                 m.role,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
-                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
                 true as is_member
          FROM communities c
          JOIN community_memberships m ON m.community_id = c.id AND m.user_id = $1
@@ -79,7 +79,7 @@ router.get('/', authenticate, async (req, res) => {
     const result = await query(
       `SELECT c.*,
               (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
-              (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+              (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
               EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
        FROM communities c
        WHERE ${whereConditions.join(' AND ')}
@@ -134,7 +134,7 @@ router.get('/nearby', authenticate, async (req, res) => {
         `SELECT c.*,
                 ST_Distance(c.center::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) / 1609.34 as distance_miles,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
-                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
                 EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $4) as is_member
          FROM communities c
          WHERE c.is_active = true
@@ -158,7 +158,7 @@ router.get('/nearby', authenticate, async (req, res) => {
         `SELECT c.*,
                 0 as distance_miles,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
-                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
                 EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
          FROM communities c
          WHERE c.is_active = true AND LOWER(c.city) = LOWER($1)
@@ -191,7 +191,7 @@ router.get('/nearby', authenticate, async (req, res) => {
       const fallback = await query(
         `SELECT c.*,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
-                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count,
+                (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
                 EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
          FROM communities c
          WHERE c.is_active = true AND LOWER(c.city) = LOWER($1)
@@ -227,7 +227,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = await query(
       `SELECT c.*,
               (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
-              (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active') as listing_count
+              (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count
        FROM communities c
        WHERE c.id::text = $1 OR c.slug = $1`,
       [req.params.id]

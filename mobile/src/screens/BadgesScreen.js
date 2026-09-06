@@ -13,6 +13,7 @@ import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 
 import AnimatedCard from '../components/AnimatedCard';
+import Icon from '../components/Icon';
 
 export default function BadgesScreen({ navigation }) {
   const [myBadges, setMyBadges] = useState([]);
@@ -56,9 +57,7 @@ export default function BadgesScreen({ navigation }) {
   const BadgeCard = ({ badge, earned, index }) => (
     <AnimatedCard index={index} style={styles.badgeCardWrapper}>
       <View style={[styles.cardBox, styles.badgeCard, !earned && styles.badgeCardLocked]}>
-        <Text style={[styles.badgeIcon, !earned && styles.badgeIconLocked]}>
-          {badge.icon}
-        </Text>
+        <Icon name={badge.icon || 'gift'} size={40} illustrated={!!earned} style={[styles.badgeIcon, !earned && styles.badgeIconLocked]} />
         <Text style={[styles.badgeName, !earned && styles.badgeNameLocked]}>
           {badge.name}
         </Text>
@@ -85,7 +84,7 @@ export default function BadgesScreen({ navigation }) {
         haptic="light"
       >
         <Text style={[styles.rank, rank <= 3 && styles.rankTop]}>
-          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+          {`#${rank}`}
         </Text>
         <Image
           source={{ uri: user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
@@ -287,7 +286,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   badgeIcon: {
-    fontSize: 40,
     marginBottom: SPACING.sm,
   },
   badgeIconLocked: {

@@ -2,6 +2,26 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 
 describe('Icon', () => {
+  it('warms object icons without recoloring white controls or warnings', () => {
+    const { usesWarmIllustration } = require('../../../src/components/Icon');
+    expect(usesWarmIllustration('cube-outline', '#42594C')).toBe(true);
+    expect(usesWarmIllustration('create-outline', '#42594C')).toBe(true);
+    expect(usesWarmIllustration('home', '#fff')).toBe(false);
+    expect(usesWarmIllustration('trash', '#B54242')).toBe(false);
+    expect(usesWarmIllustration('close', '#42594C')).toBe(false);
+  });
+
+  it('does not import stock icon libraries in application source', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const scan = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+      const file = path.join(dir, entry.name);
+      return entry.isDirectory() ? scan(file) : /\.[jt]sx?$/.test(file) ? [file] : [];
+    });
+    for (const file of scan(path.resolve(__dirname, '../../../src'))) {
+      expect(fs.readFileSync(file, 'utf8')).not.toMatch(/(?:from\s*|require\s*\(\s*)['"](?:@expo\/vector-icons|react-native-vector-icons|expo-symbols)/);
+    }
+  });
   beforeEach(() => jest.clearAllMocks());
 
   it('re-exports Ionicons as default and named export', () => {

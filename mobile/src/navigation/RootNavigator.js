@@ -1,8 +1,11 @@
+import OfferItemScreen from '../screens/OfferItemScreen';
+import InsightsScreen from '../screens/InsightsScreen';
 import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, Modal, Text, TextInput, StyleSheet } from 'react-native';
 import HapticPressable from '../components/HapticPressable';
+import { ModalHeader } from '../components/ModalControls';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
@@ -61,6 +64,8 @@ const sharedScreenOptions = {
     backgroundColor: COLORS.background,
   },
   headerShadowVisible: false,
+  gestureEnabled: true,
+  headerBackTitleVisible: false,
   headerTintColor: COLORS.primary,
   headerTitleStyle: {
     fontWeight: '600',
@@ -74,7 +79,8 @@ const modalScreenOptions = (title) => ({
   ...sharedScreenOptions,
   title,
   presentation: 'modal',
-  sheetGrabberVisible: true,
+  gestureEnabled: true,
+  header: () => <ModalHeader title={title} />,
 });
 
 export default function RootNavigator() {
@@ -129,15 +135,17 @@ export default function RootNavigator() {
       ) : (
         <>
           <Stack.Screen name="Main" component={MainNavigator} />
+          <Stack.Screen name="OfferItem" component={OfferItemScreen} options={modalScreenOptions("Private offer")} />
           <Stack.Screen
             name="ListingDetail"
             component={ListingDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Item Details' }}
           />
+          <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
           <Stack.Screen
             name="TransactionDetail"
             component={TransactionDetailScreen}
-            options={{ ...sharedScreenOptions, title: 'Transaction' }}
+            options={{ ...sharedScreenOptions, title: 'Borrow details' }}
           />
           <Stack.Screen
             name="UserProfile"
@@ -152,12 +160,12 @@ export default function RootNavigator() {
           <Stack.Screen
             name="CreateListing"
             component={CreateListingScreen}
-            options={modalScreenOptions('List an Item')}
+            options={modalScreenOptions('Add an item')}
           />
           <Stack.Screen
             name="EditListing"
             component={EditListingScreen}
-            options={modalScreenOptions('Edit Listing')}
+            options={modalScreenOptions('Edit item')}
           />
           <Stack.Screen
             name="BorrowRequest"
@@ -174,7 +182,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="WantedPosts"
             component={WantedPostsScreen}
-            options={{ ...sharedScreenOptions, title: 'ISO Items' }}
+            options={{ ...sharedScreenOptions, title: 'Requests' }}
           />
           <Stack.Screen
             name="CreateRequest"
@@ -184,7 +192,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="RequestSuggestions"
             component={RequestSuggestionsScreen}
-            options={{ ...sharedScreenOptions, title: 'Suggestions', headerShown: false }}
+            options={modalScreenOptions('Suggestions')}
           />
           <Stack.Screen
             name="RequestDetail"
@@ -229,7 +237,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="NotificationSettings"
             component={NotificationSettingsScreen}
-            options={modalScreenOptions('Notification Settings')}
+            options={{ ...sharedScreenOptions, title: 'Notification Settings' }}
           />
           <Stack.Screen
             name="Disputes"
@@ -239,7 +247,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="SetupPayout"
             component={SetupPayoutScreen}
-            options={modalScreenOptions('Payout Settings')}
+            options={{ ...sharedScreenOptions, title: 'Payout Settings' }}
           />
           <Stack.Screen
             name="ListingDiscussion"
@@ -252,7 +260,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Subscription"
             component={SubscriptionScreen}
-            options={modalScreenOptions('Subscription')}
+            options={modalScreenOptions('Verification')}
           />
           <Stack.Screen
             name="Bundles"
@@ -329,7 +337,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="TransactionHistory"
             component={TransactionHistoryScreen}
-            options={{ ...sharedScreenOptions, title: 'Transaction History' }}
+            options={{ ...sharedScreenOptions, title: 'Past exchanges' }}
           />
           <Stack.Screen
             name="ChangePassword"

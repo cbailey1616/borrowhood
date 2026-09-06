@@ -29,15 +29,17 @@ describe('UserProfileScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText(/Add Friend/i);
   });
-  it('shows items section', async () => {
+  it('shows reputation without exposing the full inventory', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText(/Items \(/);
+    const { findByText, queryByText } = render(<Screen navigation={mockNavigation} route={route} />);
+    await findByText(/never gives access to this member’s full inventory/);
+    expect(queryByText(/Items \(/)).toBeNull();
+    expect(api.getUserListings).not.toHaveBeenCalled();
   });
   it('displays tier badge based on transaction count', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     // User with 15 transactions = Outlaw tier (11-30)
-    await findByText('Outlaw');
+    await findByText('Outlaw · About ranks');
   });
 });

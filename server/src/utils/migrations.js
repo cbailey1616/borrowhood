@@ -1,4 +1,4 @@
-import { query } from './db.js';
+import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
 
 /**
@@ -7,6 +7,9 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    // Retain approval history for aggregate conversion measurements.
+    await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ');
+
 
     // Migration: Add status column to friendships for friend request flow
     const hasStatus = await query(`
@@ -585,12 +588,20 @@ export async function runMigrations() {
     `);
     if (borrowStatusType.rows.length > 0 && borrowStatusType.rows[0].data_type === 'USER-DEFINED') {
       logger.info('Running migration: Convert borrow_transactions.status from enum to varchar');
-      // Drop partial index that references the enum type before altering column
-      await query("DROP INDEX IF EXISTS idx_transactions_overdue");
-      await query("ALTER TABLE borrow_transactions ALTER COLUMN status TYPE VARCHAR(30) USING status::text");
-      // Recreate the index with varchar type
-      await query(`CREATE INDEX IF NOT EXISTS idx_transactions_overdue
-        ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
+      // Both checked-in baselines may have enum-dependent partial indexes.
+      // Keep their removal, conversion and restoration atomic: an error must
+      // not leave a partially changed schema or silently remove an index.
+      await withTransaction(async client => {
+        await client.query('DROP INDEX IF EXISTS idx_transactions_overdue');
+        await client.query('DROP INDEX IF EXISTS idx_transactions_due');
+        await client.query('ALTER TABLE borrow_transactions ALTER COLUMN status DROP DEFAULT');
+        await client.query('ALTER TABLE borrow_transactions ALTER COLUMN status TYPE VARCHAR(30) USING status::text');
+        await client.query("ALTER TABLE borrow_transactions ALTER COLUMN status SET DEFAULT 'pending'");
+        await client.query(`CREATE INDEX idx_transactions_overdue
+          ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
+        await client.query(`CREATE INDEX idx_transactions_due
+          ON borrow_transactions(requested_end_date) WHERE status = 'picked_up'`);
+      });
       logger.info('Migration complete: borrow_transactions.status is now varchar');
     }
 
@@ -607,6 +618,28 @@ export async function runMigrations() {
       await query('ALTER TABLE communities ADD COLUMN announcement_by UUID REFERENCES users(id) ON DELETE SET NULL');
       logger.info('Migration complete: communities banner and announcement columns added');
     }
+
+    // Privacy v1: legacy inventory is NOT silently republished under new rules.
+    // Owners retain access and explicitly reconfirm audiences when editing.
+    await query(`ALTER TABLE listings ADD COLUMN IF NOT EXISTS privacy_version INTEGER NOT NULL DEFAULT 0`);
+    await query(`ALTER TABLE listings ALTER COLUMN visibility SET DEFAULT 'private'`);
+    await query(`CREATE TABLE IF NOT EXISTS listing_shares (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      request_id UUID NOT NULL REFERENCES item_requests(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (listing_id, user_id, request_id)
+    )`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_listing_shares_access ON listing_shares (listing_id, user_id)`);
+
+    // Safe chat retries: nullable columns keep older clients compatible.
+    await query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_request_id UUID');
+    await query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_request_hash VARCHAR(64)');
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_request
+      ON messages (sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
 
     logger.info('Migrations check complete');
   } catch (err) {

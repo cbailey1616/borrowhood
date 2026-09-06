@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Modal } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Ionicons } from './Icon';
 import VerifiedBadge from './VerifiedBadge';
 import HapticPressable from './HapticPressable';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-// Borrowhood's ranks retain their names with a restrained, readable icon family.
+// Original woodland emblems, with activity thresholds kept separate from identity.
 const TIERS = [
-  { key: 'squire', label: 'Squire', min: 0, max: 2, icon: 'shield-outline', color: '#637581', description: 'New to the Borrowhood' },
-  { key: 'archer', label: 'Archer', min: 3, max: 10, icon: 'navigate-outline', color: '#637581', description: 'Learning the ropes' },
-  { key: 'outlaw', label: 'Outlaw', min: 11, max: 30, icon: 'flag-outline', color: '#087F68', description: 'Active member of the crew' },
-  { key: 'ranger', label: 'Sherwood Ranger', min: 31, max: 75, icon: 'leaf-outline', color: '#087F68', description: 'Trusted community veteran' },
-  { key: 'robin', label: 'Robin', min: 76, max: Infinity, icon: 'ribbon-outline', color: '#946B28', description: 'Legendary Borrowhood member' },
+  { key: 'squire', label: 'Squire', min: 0, max: 2, icon: 'rank-squire', color: '#756044', description: 'New to the Borrowhood' },
+  { key: 'archer', label: 'Archer', min: 3, max: 10, icon: 'rank-archer', color: '#756044', description: 'Learning the ropes' },
+  { key: 'outlaw', label: 'Outlaw', min: 11, max: 30, icon: 'rank-outlaw', color: '#42594C', description: 'Active member of the crew' },
+  { key: 'ranger', label: 'Sherwood Ranger', min: 31, max: 75, icon: 'rank-ranger', color: '#42594C', description: 'Experienced community member' },
+  { key: 'robin', label: 'Robin', min: 76, max: Infinity, icon: 'rank-robin', color: '#946B28', description: 'Legendary Borrowhood member' },
 ];
 
 export function getTier(totalTransactions) {
@@ -19,11 +19,8 @@ export function getTier(totalTransactions) {
 }
 
 export function RankEmblem({ tier, size = 16 }) {
-  const large = size >= 26;
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', borderRadius: size * 0.25, backgroundColor: large ? tier.color + '10' : 'transparent' }}>
-      <Ionicons name={tier.icon} size={large ? size * 0.58 : size} color={tier.color} />
-    </View>
+    <Ionicons name={tier.icon} size={size} illustrated accessibilityLabel={`${tier.label} rank`} />
   );
 }
 
@@ -37,6 +34,7 @@ export default function UserBadges({
   totalTransactions = 0,
   size = 'medium',
   compact = false,
+  centered = false,
 }) {
   const [showLegend, setShowLegend] = useState(false);
   const tier = getTier(totalTransactions);
@@ -45,29 +43,19 @@ export default function UserBadges({
 
   return (
     <>
-      <View style={[styles.container, compact && styles.containerCompact]}>
+      <View style={[styles.container, centered && styles.containerCentered, compact && styles.containerCompact]}>
         {isVerified && (
           <View style={[styles.badge, styles.verifiedBadge, compact && styles.badgeCompact]}>
-            <VerifiedBadge size={iconSize} />
-            {!compact && <Text style={[styles.badgeText, { fontSize, color: COLORS.primary }]}>Verified</Text>}
+            <VerifiedBadge size={iconSize} interactive />
+            {!compact && <Text style={[styles.badgeText, { fontSize, color: COLORS.primary }]}>Verified identity</Text>}
           </View>
         )}
 
-        <View style={[styles.badge, { backgroundColor: tier.color + '20' }, compact && styles.badgeCompact]}>
-          <TierIcon tier={tier} size={iconSize} />
-          {!compact && <Text style={[styles.badgeText, { fontSize, color: tier.color }]}>{tier.label}</Text>}
-          {!compact && (
-            <HapticPressable
-              onPress={() => setShowLegend(true)}
-              haptic="light"
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-              testID="UserBadges.info"
-              accessibilityLabel="View rank legend"
-            >
-              <Ionicons name="information-circle-outline" size={iconSize} color={tier.color} style={{ opacity: 0.7 }} />
-            </HapticPressable>
-          )}
-        </View>
+        <Text style={[styles.exchangeText, { fontSize }, centered && styles.centeredText]}>{totalTransactions} completed {totalTransactions === 1 ? 'exchange' : 'exchanges'}</Text>
+        {!compact && <HapticPressable onPress={() => setShowLegend(true)} accessibilityRole="button" accessibilityLabel="View community ranks" style={styles.rankButton}>
+          <RankEmblem tier={tier} size={22} />
+          <Text style={styles.rankText}>{tier.label} · About ranks</Text>
+        </HapticPressable>}
       </View>
 
       <Modal
@@ -81,9 +69,9 @@ export default function UserBadges({
           onPress={() => setShowLegend(false)}
           haptic="light"
         >
-          <View style={styles.legendCard}>
+          <ScrollView style={[styles.legendCard, { maxHeight: '85%' }]} contentContainerStyle={{ paddingBottom: 24 }}>
             <Text style={styles.legendTitle}>Borrowhood Ranks</Text>
-            <Text style={styles.legendSubtitle}>Level up by borrowing and lending</Text>
+            <Text style={styles.legendSubtitle}>Ranks reflect activity, not identity or safety checks. Reviews and completed exchanges offer more context.</Text>
 
             {TIERS.map((t) => {
               const isCurrent = t.key === tier.key;
@@ -117,7 +105,7 @@ export default function UserBadges({
             >
               <Text style={styles.legendCloseText}>Got it</Text>
             </HapticPressable>
-          </View>
+          </ScrollView>
         </HapticPressable>
       </Modal>
     </>
@@ -126,16 +114,41 @@ export default function UserBadges({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'flex-start',
+    maxWidth: '100%',
+    gap: 6,
     marginTop: 8,
   },
+  containerCentered: {
+    alignItems: 'center',
+  },
+  centeredText: {
+    textAlign: 'center',
+  },
+  exchangeText: {
+    color: COLORS.textSecondary,
+  },
+  rankButton: {
+    minHeight: 44,
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rankText: {
+    flexShrink: 1,
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
   containerCompact: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     marginTop: 0,
     gap: 4,
   },
   badge: {
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -152,11 +165,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '20',
   },
   badgeText: {
+    flexShrink: 1,
     fontWeight: '600',
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.xl,

@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
 import OnboardingProgress from '../../components/OnboardingProgress';
+import WoodlandIllustration from '../../components/WoodlandIllustration';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
@@ -25,11 +26,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
 
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <WoodlandIllustration scene="neighborhood" width={260} />
         </View>
 
         <Text style={styles.title}>Welcome to BorrowHood</Text>

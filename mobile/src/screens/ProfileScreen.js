@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Application from 'expo-application';
+import appConfig from '../../app.json';
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
@@ -145,6 +147,12 @@ export default function ProfileScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {__DEV__ && (
+          <View style={styles.previewBanner} testID="Profile.localPreview">
+            <Text style={styles.previewTitle}>Local preview · UI 05</Text>
+            <Text style={styles.previewDescription}>Private inventory, clearer requests & saved drafts</Text>
+          </View>
+        )}
         {/* Profile Header */}
         <View style={styles.header}>
           <View style={styles.headerInner}>
@@ -223,11 +231,12 @@ export default function ProfileScreen({ navigation }) {
           />
         </GroupedListSection>
 
+        {user?.isAdmin && <GroupedListSection header="Admin"><GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} /></GroupedListSection>}
         {/* Borrowing & Payments Section */}
         <GroupedListSection header="Borrowing">
           <GroupedListItem
             icon="receipt-outline"
-            title="Transaction History"
+            title="Past exchanges"
             onPress={() => navigation.navigate('TransactionHistory')}
           />
           {ENABLE_PAYMENTS && (
@@ -327,7 +336,7 @@ export default function ProfileScreen({ navigation }) {
           />
         </GroupedListSection>
 
-        <Text style={styles.version}>Borrowhood v1.0.0</Text>
+        <Text style={styles.version}>Borrowhood {Application.nativeApplicationVersion || appConfig.expo.version} · {Application.nativeBuildVersion ? `Build ${Application.nativeBuildVersion}` : 'Local preview'}</Text>
       </ScrollView>
 
       {/* Photo Action Sheet */}
@@ -398,6 +407,14 @@ export default function ProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  previewBanner: {
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  previewTitle: { ...TYPOGRAPHY.subheadline, fontWeight: '700', color: COLORS.primaryDark },
+  previewDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 2 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

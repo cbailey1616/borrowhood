@@ -7,20 +7,13 @@ const anthropic = new Anthropic({
 
 /**
  * Analyze an image of an item and extract listing details
- * @param {string} imageUrl - URL of the image to analyze
+ * @param {{imageBuffer: Buffer, contentType: string}} image - Authorized image bytes
  * @returns {Promise<{title: string, description: string, condition: string, category?: string}>}
  */
-export async function analyzeItemImage(imageUrl) {
+export async function analyzeItemImage({ imageBuffer, contentType }) {
   try {
-    // Fetch the image and convert to base64
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error('Failed to fetch image');
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer();
+    // The route authorizes ownership and reads private storage before calling us.
     const base64Image = Buffer.from(imageBuffer).toString('base64');
-    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',

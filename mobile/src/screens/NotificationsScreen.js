@@ -7,6 +7,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
+import HeroIcon from '../components/HeroIcon';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
@@ -198,7 +199,7 @@ export default function NotificationsScreen({ navigation }) {
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-off-outline" size={64} color={COLORS.gray[300]} />
+              <HeroIcon icon="notifications-off-outline" size={80} />
               <Text style={styles.emptyTitle}>No notifications</Text>
               <Text style={styles.emptySubtitle}>
                 You'll be notified about borrow requests and updates

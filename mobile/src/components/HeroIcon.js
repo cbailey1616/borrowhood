@@ -1,16 +1,17 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Ionicons, outlineIcon } from './Icon';
-import { COLORS, SHADOWS } from '../utils/config';
+import { FriendlyIcon } from './Icon';
+import WoodlandIllustration from './WoodlandIllustration';
 
-// Two quiet surfaces give empty states depth without glossy emblems.
+const SCENES = { home: 'neighborhood', people: 'neighborhood', basket: 'sharing', cube: 'sharing', heart: 'saved', chatbubble: 'messages', chatbubbles: 'messages', notifications: 'caughtUp' };
+
+// One friendly object keeps empty states calm and easy to recognize.
 export default function HeroIcon({ icon = 'swap-horizontal', size = 84 }) {
+  const scene = SCENES[String(icon).replace(/-outline$/, '')];
+  if (scene && size >= 72) return <WoodlandIllustration scene={scene} width={size * 2} />;
   return (
-    <View style={{ width: size + 16, height: size + 16, alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ position: 'absolute', width: size, height: size, borderRadius: size * 0.27, backgroundColor: COLORS.primaryMuted, transform: [{ translateY: 5 }, { translateX: -4 }] }} />
-      <View style={{ width: size, height: size, borderRadius: size * 0.27, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.borderLight, alignItems: 'center', justifyContent: 'center', ...SHADOWS.md }}>
-        <Ionicons name={outlineIcon(icon)} size={size * 0.44} color={COLORS.primary} />
-      </View>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <FriendlyIcon name={icon} size={size * 0.8} illustrated />
     </View>
   );
 }
