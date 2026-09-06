@@ -22,7 +22,8 @@ try {
   // Reconstruct the checked-in PostGIS baseline. This does not claim parity with
   // production's current schema. Skip the historical demo-password data change.
   const dir = new URL('../migrations/', import.meta.url);
-  const files = (await readdir(dir)).filter(file => /^\d{3}_.*\.sql$/.test(file) && !file.startsWith('011_')).sort();
+  // Reproduce the production upgrade path: 010_social_auth.sql was not run.
+  const files = (await readdir(dir)).filter(file => /^\d{3}_.*\.sql$/.test(file) && !file.startsWith('010_') && !file.startsWith('011_')).sort();
   for (const file of files) {
     console.log(`Rehearsing ${file}`);
     await client.query(await readFile(new URL(file, dir), 'utf8'));
@@ -30,8 +31,8 @@ try {
   const owner = '10000000-0000-4000-8000-000000000001';
   const neighbor = '10000000-0000-4000-8000-000000000002';
   for (const [id, name] of [[owner, 'Owner'], [neighbor, 'Neighbor']]) {
-    await client.query(`INSERT INTO users (id, email, first_name, last_name, city, state)
-      VALUES ($1, $2, $3, 'Test', 'Upton', 'MA')`, [id, `${name}@example.invalid`, name]);
+    await client.query(`INSERT INTO users (id, email, first_name, last_name, city, state, password_hash)
+      VALUES ($1, $2, $3, 'Test', 'Upton', 'MA', 'local-fixture-no-login')`, [id, `${name}@example.invalid`, name]);
   }
   const legacy = (await client.query(`INSERT INTO listings (owner_id, title, condition, is_free, visibility)
     VALUES ($1, 'Legacy test item', 'good', true, 'town') RETURNING id`, [owner])).rows[0].id;
@@ -45,6 +46,10 @@ try {
   const { runMigrations } = await import('../src/utils/migrations.js');
   await runMigrations();
   assert.equal(errors.length, 0, 'Runtime migrations logged errors.');
+  const socialColumns = await client.query(`SELECT column_name, is_nullable FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name IN ('apple_id', 'google_id', 'password_hash') ORDER BY column_name`);
+  assert.deepEqual(socialColumns.rows, ['apple_id', 'google_id', 'password_hash'].map(column_name => ({ column_name, is_nullable: 'YES' })));
+  console.log('Passed: legacy production social-auth columns and passwordless-account upgrade.');
   await client.query('UPDATE users SET is_verified = true');
   const result = await client.query(`SELECT privacy_version,
     ${listingAccessSql('l', '$2')} AS owner_access,

@@ -195,6 +195,7 @@ for (const provider of ['google', 'apple']) {
       });
     } catch (err) {
       const status = err.status || (err.code === '23505' ? 409 : 500);
+      if (status >= 500) console.error('Social sign-in failed', { provider, code: err.code || err.name || 'UNKNOWN' });
       res.status(status).json({ error: err.status ? err.message : 'Couldn’t finish signing in. Please try again.', code: err.status ? err.code : undefined });
     }
   });

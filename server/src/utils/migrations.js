@@ -7,6 +7,14 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    // Older production installations run startup migrations without the numbered
+    // SQL files. Social sign-in needs these columns even when password reset
+    // columns already exist and its older migration guard is skipped.
+    await withTransaction(async client => {
+      await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_id VARCHAR(255) UNIQUE');
+      await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE');
+      await client.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
+    });
     await query(`CREATE TABLE IF NOT EXISTS user_blocks (user_id UUID REFERENCES users(id) ON DELETE CASCADE, blocked_id UUID REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(user_id, blocked_id), CHECK(user_id != blocked_id))`);
     await query(`CREATE TABLE IF NOT EXISTS safety_reports (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), reporter_id UUID REFERENCES users(id), reported_id UUID REFERENCES users(id), reason TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
     // A displayed offline price is separate from Stripe rental amounts.
