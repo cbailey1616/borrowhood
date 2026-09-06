@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { directFeeLabel } from '../utils/directFee';
 import {
   View,
   Text,
@@ -73,7 +74,7 @@ export default function FeedScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeFilters, setActiveFilters] = useState(['requests']);
+  const [activeFilters, setActiveFilters] = useState([]);
   const [visibilityFilters, setVisibilityFilters] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryFilters, setCategoryFilters] = useState([]);
@@ -102,7 +103,7 @@ export default function FeedScreen({ navigation }) {
   const [feedError, setFeedError] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const feedRequest = useRef(0);
-  const hasFilters = !!search.trim() || (activeFilters.length > 0 && !(activeFilters.length === 1 && activeFilters[0] === 'requests')) || visibilityFilters.length > 0 || categoryFilters.length > 0;
+  const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
   const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
     const requestId = ++feedRequest.current;
     setFeedError(false);
@@ -451,7 +452,7 @@ export default function FeedScreen({ navigation }) {
     const userName = item.ownerMasked ? 'Verified Owner'
       : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
     const isGiveaway = item.listingType === 'giveaway';
-    const priceLabel = isGiveaway ? null : (item.isFree ? 'Free' : `$${item.pricePerDay}/day`);
+    const priceLabel = isGiveaway ? null : (directFeeLabel(item) || (item.isFree ? 'Free' : `$${item.pricePerDay}/day`));
 
     return (
     <AnimatedCard index={index} style={styles.tileShadow}>

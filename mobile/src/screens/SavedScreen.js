@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { directFeeLabel } from '../utils/directFee';
 import {
   View,
   Text,
@@ -122,7 +123,7 @@ export default function SavedScreen({ navigation }) {
         <View style={styles.cardInfo}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           <View style={styles.cardRow}>
-            {item.isFree ? (
+            {item.directFee ? <Text style={styles.price}>{directFeeLabel(item)}</Text> : item.isFree ? (
               <Text style={styles.freeTag}>Free</Text>
             ) : (
               <Text style={styles.price}>${item.pricePerDay}/day</Text>

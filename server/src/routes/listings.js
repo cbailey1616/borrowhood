@@ -1,4 +1,5 @@
 import { ownedPhotoReferences, readOwnedPhoto } from '../services/privatePhotos.js';
+import { normalizeDirectFee } from '../utils/directFee.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { canViewListing, canViewRequest, validateSharing, offerListing } from '../services/listingAccess.js';
 import { freeListingOnly } from '../middleware/freeLaunch.js';
@@ -85,6 +86,7 @@ router.get('/', authenticate, async (req, res) => {
         description: l.description,
         condition: l.condition,
         isFree: l.is_free,
+      directFee: l.direct_fee || null,
         pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
         depositAmount: parseFloat(l.deposit_amount),
         minDuration: l.min_duration,
@@ -153,6 +155,7 @@ router.get('/mine', authenticate, async (req, res) => {
       condition: l.condition,
       categoryId: l.category_id,
       isFree: l.is_free,
+      directFee: l.direct_fee || null,
       listingType: l.listing_type || 'lend',
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
@@ -228,6 +231,7 @@ router.get('/:id', authenticate, async (req, res) => {
       description: l.description,
       condition: l.condition,
       isFree: l.is_free,
+      directFee: l.direct_fee || null,
       listingType: l.listing_type || 'lend',
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
@@ -344,6 +348,9 @@ router.post('/', authenticate, freeListingOnly,
     const listingType = _listingType === 'giveaway' ? 'giveaway' : 'lend';
     let isFree = listingType === 'giveaway' ? true : _isFree;
     let pricePerDay = listingType === 'giveaway' ? null : _pricePerDay;
+    let directFee;
+    try { directFee = normalizeDirectFee(req.body.directFee, listingType); }
+    catch (error) { return res.status(400).json({ error: error.message }); }
 
     // Normalize visibility to array
     let visibilityArray;
@@ -398,14 +405,14 @@ router.post('/', authenticate, freeListingOnly,
       const result = await query(
         `INSERT INTO listings (
           owner_id, community_id, category_id, title, description, condition,
-          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type, privacy_version, circle_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1, $14)
+          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type, privacy_version, circle_id, direct_fee
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1, $14, $15)
         RETURNING id`,
         [
           req.user.id, communityId || null, categoryId || null, title, description, condition,
           isFree, isFree ? null : pricePerDay, isGiveaway ? 0 : (depositAmount || 0),
           isGiveaway ? null : (minDuration || 1), isGiveaway ? null : (maxDuration || 14),
-          primaryVisibility, listingType, sharing.circleId
+          primaryVisibility, listingType, sharing.circleId, directFee
         ]
       );
 
@@ -492,7 +499,7 @@ router.patch('/:id', authenticate, freeListingOnly,
       }
       // Verify ownership
       const listing = await query(
-        'SELECT owner_id, community_id FROM listings WHERE id = $1',
+        'SELECT owner_id, community_id, listing_type FROM listings WHERE id = $1',
         [req.params.id]
       );
 
@@ -504,7 +511,12 @@ router.patch('/:id', authenticate, freeListingOnly,
         return res.status(403).json({ error: 'Not authorized' });
       }
 
+      if (req.body.directFee !== undefined) {
+        try { req.body.directFee = normalizeDirectFee(req.body.directFee, listing.rows[0].listing_type); }
+        catch (error) { return res.status(400).json({ error: error.message }); }
+      }
       const allowedFields = [
+        'direct_fee',
         'title', 'description', 'condition', 'category_id', 'is_free', 'price_per_day',
         'deposit_amount', 'min_duration', 'max_duration', 'visibility', 'status'
       ];

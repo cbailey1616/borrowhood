@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { directFeeLabel } from '../utils/directFee';
 import {
   View,
   Text,
@@ -99,7 +100,7 @@ export default function ListingDetailScreen({ route, navigation }) {
     haptics.light();
     try {
       const isGiveaway = listing.listingType === 'giveaway';
-      const priceText = isGiveaway ? 'Free Item' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`;
+      const priceText = directFeeLabel(listing) || (isGiveaway ? 'Free Item' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`);
       const actionText = isGiveaway ? 'claim this free item' : 'borrow items from your neighbors';
       const message = `Check out "${listing.title}" on Borrowhood!\n\n${priceText}\n\nDownload Borrowhood to ${actionText}.`;
 
@@ -279,8 +280,9 @@ export default function ListingDetailScreen({ route, navigation }) {
 
           {/* Borrowhood's current release has no rental fees or deposits. */}
           <Text style={styles.freeNote}>
-            {listing.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow'}
+            {directFeeLabel(listing) || (listing.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow')}
           </Text>
+          {listing.directFee && <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>Arrange payment directly with your neighbor. Borrowhood does not collect or process this fee.</Text>}
 
           {/* Active Transaction Status */}
           {listing.activeTransaction && (

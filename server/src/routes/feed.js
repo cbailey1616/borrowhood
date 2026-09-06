@@ -37,6 +37,7 @@ router.get('/', authenticate, async (req, res) => {
           l.description,
           l.condition,
           l.is_free,
+          l.direct_fee,
           l.is_available,
           EXISTS (SELECT 1 FROM borrow_transactions t WHERE t.listing_id = l.id
             AND t.status IN ('picked_up', 'return_pending')) as is_borrowed,
@@ -73,7 +74,7 @@ router.get('/', authenticate, async (req, res) => {
       }
 
       if (wantFreeOnly) {
-        listingQuery += ` AND l.is_free = true`;
+        listingQuery += ` AND l.is_free = true AND l.direct_fee IS NULL`;
       } else if (wantGiveawayOnly) {
         listingQuery += ` AND l.listing_type = 'giveaway'`;
       } else if (wantBorrowOnly) {
@@ -175,6 +176,7 @@ router.get('/', authenticate, async (req, res) => {
         description: l.description,
         condition: l.condition,
         isFree: l.is_free,
+      directFee: l.direct_fee || null,
         listingType: l.listing_type || 'lend',
         isAvailable: l.is_available,
         isBorrowed: l.is_borrowed === true,

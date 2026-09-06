@@ -120,6 +120,7 @@ const DRAWINGS = {
   'checkmark-done': () => p('M2 16L8 22L22 8M14 20L18 24L30 12'),
   'checkmark-circle': c => circle(16, 16, 13, panel(c)) + p('M9 16L14 21L23 11'),
   checkbox: c => rect(3, 3, 26, 26, 6, panel(c)) + p('M9 16L14 21L23 11'),
+  square: c => rect(3, 3, 26, 26, 6, panel(c)),
   'close-circle': c => circle(16, 16, 13, panel(c)) + p('M11 11L21 21M11 21L21 11'),
   'add-circle': c => circle(16, 16, 13, panel(c)) + p('M16 9V23M9 16H23'),
   'arrow-up-circle': c => circle(16, 16, 13, panel(c)) + p('M16 24V8M10 14L16 8L22 14'),

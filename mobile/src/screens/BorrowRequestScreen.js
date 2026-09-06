@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { directFeeLabel } from '../utils/directFee';
 import {
   View,
   Text,
@@ -436,6 +437,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
         />
       </View>
 
+      {listing.directFee && <View style={styles.section}>
+        <Text style={{ color: COLORS.text }}>{directFeeLabel(listing)}</Text>
+        <Text style={{ color: COLORS.textSecondary }}>Agree on payment directly with your neighbor before pickup. Borrowhood does not collect or process this fee.</Text>
+      </View>}
       {/* Pricing — hidden for giveaways and free rentals */}
       {!isGiveaway && total > 0 && (
       <View style={styles.section}>

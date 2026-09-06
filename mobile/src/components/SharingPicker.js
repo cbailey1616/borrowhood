@@ -12,7 +12,7 @@ const audiences = [
   ['town', 'Town', 'Verified people in your town can see this item.', 'location'],
 ];
 
-export default function SharingPicker({ value = ['private'], onChange, verified, onVerify,
+export default function SharingPicker({ value = ['private'], onChange, verified, onVerify, request = false,
   neighborhoodAvailable = true, onJoinNeighborhood }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -30,40 +30,35 @@ export default function SharingPicker({ value = ['private'], onChange, verified,
     }
     if (value.includes(scope)) {
       const remaining = value.filter(item => item !== scope && item !== 'private');
+      if (request && !remaining.length) return;
       onChange({ visibility: remaining.length ? remaining : ['private'], circleId: null });
       return;
     }
     if (scope === 'town' && !verified) return onVerify?.();
-    const label = audiences.find(a => a[0] === scope)[1];
-    Alert.alert(`Share this item with ${label}?`,
-      'This shares only this item, never your full inventory or pickup address. People who can see it may save screenshots.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Use this audience', onPress: () => {
-          onChange({ visibility: [...value.filter(item => item !== 'private'), scope], circleId: null });
-        } },
-      ]);
+    onChange({ visibility: [...value.filter(item => item !== 'private'), scope], circleId: null });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Who can see this item?</Text>
+      <Text style={styles.title}>{request ? 'Who can see this request?' : 'Who can see this item?'}</Text>
+      <Text style={styles.hint}>{request ? 'Select all that apply. Share what you need, not your belongings.' : 'Select all that apply. Only this item is shared—not your inventory or pickup address. People who can see it may save screenshots.'}</Text>
       <HapticPressable accessibilityRole="button" accessibilityLabel="Change who can see this item" accessibilityState={{ expanded }}
         style={styles.option} onPress={() => setExpanded(!expanded)}>
         <Ionicons name={value.includes('private') ? 'lock-closed' : 'people'} size={24} color={COLORS.primary} />
         <View style={styles.copy}><Text style={styles.label}>{value.includes('private') ? 'Only me' : `Visible to ${value.map(scope => audiences.find(a => a[0] === scope)?.[1] || 'Sharing needs review').join(' and ')}`}</Text>
-          <Text style={styles.hint}>Sharing this item never shares the rest.</Text></View>
+          <Text style={styles.hint}>{request ? 'Your inventory stays private.' : 'Sharing this item never shares the rest.'}</Text></View>
         <Text style={{ color: COLORS.primary }}>{expanded ? 'Done' : 'Change'}</Text>
       </HapticPressable>
-      {expanded && audiences.map(([scope, title, hint, icon]) => (
+      {expanded && audiences.filter(([scope]) => !request || scope !== 'private').map(([scope, title, hint, icon]) => (
         <HapticPressable key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
           accessibilityLabel={title} style={[styles.option, value.includes(scope) && styles.selected]}
           onPress={() => confirm(scope)}>
           <Ionicons name={icon} size={24} color={COLORS.primary} />
           <View style={styles.copy}>
             <Text style={styles.label}>{title}</Text>
-            <Text style={styles.hint}>{hint}</Text>
+            <Text style={styles.hint}>{request ? hint.replace('item', 'request') : hint}</Text>
           </View>
-          {value.includes(scope) && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+          <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         </HapticPressable>
       ))}
     </View>

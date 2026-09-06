@@ -90,7 +90,7 @@ describe('FeedScreen', () => {
     expect(Boolean(queryByLabelText('Verified identity'))).toBe(isVerified === true);
   });
 
-  it('starts with requests rather than inventory browsing', async () => {
+  it('starts with all permitted listings and requests', async () => {
     api.getFeed.mockResolvedValue({
       items: [{
         id: 'request-1', type: 'request', title: 'Power Drill', isFree: true, pricePerDay: 0,
@@ -103,7 +103,7 @@ describe('FeedScreen', () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
     await findByText('Power Drill');
-    expect(api.getFeed).toHaveBeenCalledWith(expect.objectContaining({ type: 'requests' }));
+    expect(api.getFeed).toHaveBeenCalledWith({ page: 1, limit: 20 });
   });
 
   it('empty feed shows empty state', async () => {

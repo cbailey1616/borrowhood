@@ -9,11 +9,9 @@ beforeEach(() => { jest.clearAllMocks(); });
 afterEach(() => jest.restoreAllMocks());
 
 it('adds an audience without replacing existing selections', () => {
-  const alert = jest.spyOn(Alert, 'alert');
   const { getByLabelText } = render(<SharingPicker value={['close_friends']} onChange={onChange} verified />);
   fireEvent.press(getByLabelText('Change who can see this item'));
   fireEvent.press(getByLabelText('Town'));
-  act(() => alert.mock.calls[0][2].find(action => action.text === 'Use this audience').onPress());
   expect(onChange).toHaveBeenCalledWith({ visibility: ['close_friends', 'town'], circleId: null });
 });
 
@@ -32,14 +30,26 @@ it('defaults to private and does not publish on mount', () => {
   expect(onChange).not.toHaveBeenCalled();
 });
 
-it('requires confirmation before selecting an accepted-friends audience', () => {
-  const alert = jest.spyOn(Alert, 'alert');
+it('selects friends directly without a blocking popup', () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   const { getByLabelText } = render(<SharingPicker onChange={onChange} />);
   fireEvent.press(getByLabelText('Change who can see this item'));
   fireEvent.press(getByLabelText('Friends'));
-  expect(onChange).not.toHaveBeenCalled();
-  act(() => alert.mock.calls[0][2].find(action => action.text === 'Use this audience').onPress());
+  expect(alert).not.toHaveBeenCalled();
   expect(onChange).toHaveBeenCalledWith({ visibility: ['close_friends'], circleId: null });
+});
+
+it('keeps all three checked when selected sequentially', () => {
+  function Form() {
+    const [value, setValue] = React.useState(['private']);
+    return <SharingPicker value={value} verified onChange={next => setValue(next.visibility)} />;
+  }
+  const { getByLabelText } = render(<Form />);
+  fireEvent.press(getByLabelText('Change who can see this item'));
+  ['Friends', 'Neighborhood', 'Town'].forEach(label => fireEvent.press(getByLabelText(label)));
+  ['Friends', 'Neighborhood', 'Town'].forEach(label =>
+    expect(getByLabelText(label).props.accessibilityState.checked).toBe(true));
+  expect(getByLabelText('Only me').props.accessibilityState.checked).toBe(false);
 });
 
 it('routes unverified users to verification instead of selecting town sharing', () => {

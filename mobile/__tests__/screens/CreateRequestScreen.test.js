@@ -58,6 +58,7 @@ describe('CreateRequestScreen', () => {
     const Screen = require('../../src/screens/CreateRequestScreen').default;
     const { findByText, getByLabelText, queryByPlaceholderText } = render(<Screen navigation={mockNavigation} />);
     await findByText('Today');
+    fireEvent.press(await findByText('Choose dates'));
     expect(getByLabelText('Choose needed from date')).toBeTruthy();
     expect(queryByPlaceholderText('YYYY-MM-DD')).toBeNull();
     expect(queryByPlaceholderText(/Add more details/)).toBeNull();

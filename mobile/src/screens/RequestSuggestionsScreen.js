@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { directFeeLabel } from '../utils/directFee';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -62,7 +63,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
               {!isGiveaway && (
                 <View style={[styles.pill, { backgroundColor: COLORS.primary }]}>
                   <Text style={styles.pillText}>
-                    {item.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow'}
+                    {directFeeLabel(item) || (item.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow')}
                   </Text>
                 </View>
               )}

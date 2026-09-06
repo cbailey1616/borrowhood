@@ -7,6 +7,8 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    // A displayed offline price is separate from Stripe rental amounts.
+    await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS direct_fee JSONB');
     // Retain approval history for aggregate conversion measurements.
     await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ');
 

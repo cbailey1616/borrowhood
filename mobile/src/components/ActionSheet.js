@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, Modal, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, Modal, StyleSheet, Pressable, Platform } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -19,11 +19,27 @@ export default function ActionSheet({
   multiSelect = false,
 }) {
   const insets = useSafeAreaInsets();
+  const [closing, setClosing] = useState(false);
+  const pending = useRef(null);
+  const finishDismiss = useCallback(() => {
+    const callback = pending.current;
+    pending.current = null;
+    callback?.();
+  }, []);
+  useEffect(() => { if (!isVisible) setClosing(false); }, [isVisible]);
+  useEffect(() => {
+    if (closing && Platform.OS !== 'ios') finishDismiss();
+  }, [closing, finishDismiss]);
+  const dismiss = useCallback(callback => {
+    if (pending.current || closing) return;
+    pending.current = callback;
+    setClosing(true);
+  }, [closing]);
 
   const handleCancel = useCallback(() => {
     haptics.light();
-    onClose?.();
-  }, [onClose]);
+    dismiss(() => onClose?.());
+  }, [onClose, dismiss]);
 
   const handleAction = useCallback(
     (action) => {
@@ -32,19 +48,21 @@ export default function ActionSheet({
       } else {
         haptics.light();
       }
-      action.onPress?.();
-      if (!multiSelect) {
+      if (multiSelect) action.onPress?.();
+      else dismiss(() => {
+        action.onPress?.();
         onClose?.();
-      }
+      });
     },
-    [multiSelect, onClose]
+    [multiSelect, onClose, dismiss]
   );
 
   const bottomPad = (insets.bottom || 34) + SPACING.sm;
 
   return (
     <Modal
-      visible={isVisible}
+      visible={isVisible && !closing}
+      onDismiss={finishDismiss}
       transparent
       animationType="none"
       statusBarTranslucent

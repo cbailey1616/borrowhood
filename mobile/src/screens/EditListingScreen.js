@@ -1,5 +1,7 @@
 import SharingPicker from '../components/SharingPicker';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
+import DirectFeePicker from '../components/DirectFeePicker';
+import { directFeePayload } from '../utils/directFee';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -47,6 +49,8 @@ export default function EditListingScreen({ navigation, route }) {
     circleId: listing.circleId || null,
     communityId: listing.communityId || null,
     isFree: listing.isFree ?? true,
+    chargeFee: Boolean(listing.directFee),
+    directFeeAmount: listing.directFee?.amount?.toString() || '',
     pricePerDay: listing.pricePerDay?.toString() || '',
     requireDeposit: parseFloat(listing.depositAmount) > 0,
     depositAmount: listing.depositAmount?.toString() || '',
@@ -158,6 +162,9 @@ export default function EditListingScreen({ navigation, route }) {
       return;
     }
 
+    let directFee;
+    try { directFee = directFeePayload(listing.listingType !== 'giveaway' && formData.chargeFee, formData.directFeeAmount, listing.directFee?.unit || 'day'); }
+    catch (error) { showError({ message: error.message }); return; }
     // Validate rental fee when charging ($5 minimum to cover processing fees)
     if (ENABLE_PAYMENTS && !formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
       setFieldErrors(prev => ({ ...prev, pricePerDay: true }));
@@ -224,6 +231,7 @@ export default function EditListingScreen({ navigation, route }) {
         categoryId: formData.categoryId || undefined,
         visibility: formData.visibility,
         sharingConfirmed: true,
+        directFee,
         circleId: formData.circleId || undefined,
         communityId: formData.communityId || undefined,
         isFree: !ENABLE_PAYMENTS || formData.isFree,
@@ -418,6 +426,8 @@ export default function EditListingScreen({ navigation, route }) {
 
       </View>
 
+      {listing.listingType !== 'giveaway' && <DirectFeePicker enabled={formData.chargeFee} amount={formData.directFeeAmount}
+        onToggle={value => updateField('chargeFee', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
       {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (
         <Text style={styles.label}>Saving makes this item free to borrow, with no deposit.</Text>
       )}

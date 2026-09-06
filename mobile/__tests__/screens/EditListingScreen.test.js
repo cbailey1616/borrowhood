@@ -25,7 +25,7 @@ describe('EditListingScreen', () => {
   it('save calls api.updateListing', async () => {
     const EditListingScreen = require('../../src/screens/EditListingScreen').default;
     const { getByText } = render(<EditListingScreen navigation={mockNavigation} route={route} />);
-    await act(async () => { fireEvent.press(getByText(/Save/i)); });
+    await act(async () => { fireEvent.press(getByText('Save Changes')); });
     expect(api.updateListing).toHaveBeenCalled();
   });
 
@@ -33,7 +33,7 @@ describe('EditListingScreen', () => {
     const route2 = { params: { listing: { ...listing, title: '' } } };
     const EditListingScreen = require('../../src/screens/EditListingScreen').default;
     const { getByText, getByDisplayValue } = render(<EditListingScreen navigation={mockNavigation} route={route2} />);
-    await act(async () => { fireEvent.press(getByText(/Save/i)); });
+    await act(async () => { fireEvent.press(getByText('Save Changes')); });
     expect(mockShowError).toHaveBeenCalled();
   });
 

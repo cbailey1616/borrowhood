@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import useFormDraft from '../hooks/useFormDraft';
 import DraftStatus from '../components/DraftStatus';
+import SharingPicker from '../components/SharingPicker';
 import { localDate, requestDatePreset, requestAudienceProblem } from '../utils/requestForm';
 import {
   View,
@@ -220,9 +221,8 @@ export default function CreateRequestScreen({ navigation, route }) {
       )}
 
       {/* Type Toggle */}
-      {showDetails &&
       <View style={styles.section}>
-        <Text style={styles.label}>Type</Text>
+        <Text style={styles.label}>What do you need?</Text>
         <View style={styles.options}>
           {[
             { value: 'item', label: 'Item', icon: 'cube-outline' },
@@ -232,35 +232,37 @@ export default function CreateRequestScreen({ navigation, route }) {
             return (
               <HapticPressable
                 key={opt.value}
-                style={[styles.option, isSelected && styles.optionActive]}
+                style={[styles.typeChoice, isSelected && styles.typeChoiceSelected]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isSelected }}
                 onPress={() => updateField('type', opt.value)}
                 haptic="light"
               >
                 <Ionicons
                   name={opt.icon}
-                  size={16}
-                  color={isSelected ? '#fff' : COLORS.textSecondary}
-                  style={{ marginRight: SPACING.xs }}
+                  size={36}
+                  color={COLORS.primary}
+                  illustrated
                 />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                <Text style={styles.typeTitle}>
                   {opt.label}
                 </Text>
               </HapticPressable>
             );
           })}
         </View>
-      </View>}
+      </View>
 
       {/* Title */}
       <View style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
-          {formData.type === 'service' ? 'What service do you need? *' : 'What are you looking for? *'}
+          {formData.type === 'service' ? 'What do you need help with? *' : 'What would you like to borrow? *'}
         </Text>
         <TextInput
           style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
-          placeholder="e.g., Power drill, Ladder, Moving boxes"
+          placeholder={formData.type === 'service' ? 'e.g., Help moving a sofa, Lawn mowing' : 'e.g., Power drill, Ladder, Moving boxes'}
           placeholderTextColor={COLORS.textSecondary}
           maxLength={255}
           autoCapitalize="sentences"
@@ -325,10 +327,10 @@ export default function CreateRequestScreen({ navigation, route }) {
         <View style={styles.options}>
           {[['today', 'Today'], ['weekend', 'This weekend']].map(([key, label]) => <HapticPressable key={key} style={styles.option} onPress={() => setFormData(prev => ({ ...prev, ...requestDatePreset(key) }))}><Text style={styles.optionText}>{label}</Text></HapticPressable>)}
           <HapticPressable style={styles.option} onPress={() => setRangePicker('neededFrom')}><Text style={styles.optionText}>Choose dates</Text></HapticPressable>
-          <HapticPressable style={styles.option} onPress={() => setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' }))}><Text style={styles.optionText}>Flexible</Text></HapticPressable>
+          <HapticPressable accessibilityRole="button" accessibilityState={{ selected: !formData.neededFrom && !formData.neededUntil }} style={[styles.option, !formData.neededFrom && !formData.neededUntil && styles.optionActive]} onPress={() => { setRangePicker(null); setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' })); }}><Text style={[styles.optionText, !formData.neededFrom && !formData.neededUntil && styles.optionTextActive]}>Flexible</Text></HapticPressable>
         </View>
 
-        <View style={styles.dateRow}>
+        {(rangePicker || formData.neededFrom || formData.neededUntil) ? <View style={styles.dateRow}>
           <View style={styles.dateInput}>
             <Text style={styles.dateLabel}>From</Text>
             <HapticPressable accessibilityRole="button" accessibilityLabel="Choose needed from date" style={styles.input} onPress={() => setRangePicker('neededFrom')}><Text style={{ color: COLORS.text }}>{formData.neededFrom ? new Date(`${formData.neededFrom}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Any day'}</Text></HapticPressable>
@@ -337,7 +339,7 @@ export default function CreateRequestScreen({ navigation, route }) {
             <Text style={styles.dateLabel}>Until</Text>
             <HapticPressable accessibilityRole="button" accessibilityLabel="Choose needed until date" style={styles.input} onPress={() => setRangePicker('neededUntil')}><Text style={{ color: COLORS.text }}>{formData.neededUntil ? new Date(`${formData.neededUntil}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Flexible'}</Text></HapticPressable>
           </View>
-        </View>
+        </View> : null}
         {rangePicker && <View style={styles.datePickerCard}><DateTimePicker
           value={formData[rangePicker] ? new Date(`${formData[rangePicker]}T12:00:00`) : new Date()}
           minimumDate={rangePicker === 'neededUntil' && formData.neededFrom ? new Date(`${formData.neededFrom}T00:00:00`) : new Date()}
@@ -434,54 +436,10 @@ export default function CreateRequestScreen({ navigation, route }) {
 
       {/* Visibility */}
       <View style={styles.section}>
-        <Text style={styles.label}>Who can see this? *</Text>
-        <Text style={styles.hint}>Select all that apply</Text>
-        <View style={styles.options}>
-          {availableVisibilities.map((visibility) => {
-            const isSelected = formData.visibility.includes(visibility);
-            return (
-              <HapticPressable
-                key={visibility}
-                style={[styles.option, isSelected && styles.optionActive]}
-                onPress={() => {
-                  const current = formData.visibility;
-                  if (isSelected) {
-                    // Don't allow deselecting if it's the only one
-                    if (current.length > 1) {
-                      updateField('visibility', current.filter(v => v !== visibility));
-                    }
-                  } else {
-                    // Verification required for town visibility
-                    if (visibility === 'town' && !user?.isVerified) {
-                      haptics.warning();
-                      navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                      return;
-                    }
-                    if (ENABLE_PAID_TIERS && visibility === 'town') {
-                      const gate = checkPremiumGate(user, 'town_browse');
-                      if (!gate.passed) {
-                        navigation.push(gate.screen, gate.params);
-                        return;
-                      }
-                    }
-                    updateField('visibility', [...current, visibility]);
-                  }
-                }}
-                haptic="light"
-              >
-                <Ionicons
-                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                  size={18}
-                  color={isSelected ? "#fff" : COLORS.textSecondary}
-                  style={{ marginRight: SPACING.xs + 2 }}
-                />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
-                  {VISIBILITY_LABELS[visibility]}
-                </Text>
-              </HapticPressable>
-            );
-          })}
-        </View>
+        <SharingPicker request value={formData.visibility} onChange={next => updateField('visibility', next.visibility)}
+          verified={Boolean(user?.isVerified)} neighborhoodAvailable={Boolean(communityId)}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
       </View>
 
       {/* Info */}
@@ -538,6 +496,9 @@ export default function CreateRequestScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  typeChoice: { flexGrow: 1, flexBasis: 130, padding: SPACING.lg, gap: 6, alignItems: 'center', borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 2, borderColor: COLORS.border },
+  typeChoiceSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryMuted },
+  typeTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

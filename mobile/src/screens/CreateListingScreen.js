@@ -1,4 +1,6 @@
 import SharingPicker from '../components/SharingPicker';
+import DirectFeePicker from '../components/DirectFeePicker';
+import { directFeePayload } from '../utils/directFee';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useFormDraft from '../hooks/useFormDraft';
@@ -65,9 +67,11 @@ export default function CreateListingScreen({ navigation, route }) {
     description: '',
     condition: 'good',
     categoryId: null,
-    visibility: ['private'],
+    visibility: requestMatchId ? ['private'] : ['close_friends'],
     circleId: null,
     isFree: true,
+    chargeFee: false,
+    directFeeAmount: '',
     pricePerDay: '',
     requireDeposit: false,
     depositAmount: '',
@@ -173,6 +177,14 @@ export default function CreateListingScreen({ navigation, route }) {
   // Once async data loads, strip visibilities that have no audience
   // and prompt the user if they have no reachable audience at all
   const [dataLoaded, setDataLoaded] = useState(false);
+  const sharingChosen = useRef(false);
+  useEffect(() => {
+    // Never widen restored drafts, relists, private offers, or a user's choice.
+    if (!dataLoaded || !draft.ready || draft.restored || requestMatchId || route?.params?.relistFrom || sharingChosen.current) return;
+    const scope = user?.isVerified && user?.city && user?.state ? 'town' : communityId ? 'neighborhood' : 'close_friends';
+    setFormData(previous => ({ ...previous, visibility: [scope] }));
+    sharingChosen.current = true;
+  }, [dataLoaded, draft.ready, draft.restored, requestMatchId, communityId, user?.isVerified, user?.city, user?.state]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -246,6 +258,9 @@ export default function CreateListingScreen({ navigation, route }) {
   const handleSubmit = async (overrideData) => {
     if (!draft.ready || isSubmitting) return;
     const data = overrideData || formData;
+    let directFee;
+    try { directFee = directFeePayload(!isGiveaway && data.chargeFee, data.directFeeAmount); }
+    catch (error) { showError({ message: error.message }); return; }
 
     const errors = {
       title: data.title.trim().length < 3,
@@ -330,6 +345,7 @@ export default function CreateListingScreen({ navigation, route }) {
         categoryId: data.categoryId || undefined,
         visibility: requestMatchId ? ['private'] : data.visibility,
         sharingConfirmed: true,
+        directFee,
         circleId: data.circleId || undefined,
         isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
         pricePerDay: (!ENABLE_PAYMENTS || isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
@@ -490,11 +506,13 @@ export default function CreateListingScreen({ navigation, route }) {
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
           verified={Boolean(user?.isVerified)}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
-          onChange={sharing => setFormData(previous => ({ ...previous, ...sharing }))} />
+          onChange={sharing => { sharingChosen.current = true; setFormData(previous => ({ ...previous, ...sharing })); }} />
         )}
       </View>
 
       {/* Pricing — hidden for the free launch */}
+      {!isGiveaway && <DirectFeePicker enabled={Boolean(formData.chargeFee)} amount={formData.directFeeAmount || ''}
+        onToggle={value => updateField('chargeFee', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
       {ENABLE_PAYMENTS && !isGiveaway && (
       <View style={styles.section}>
         <Text style={styles.label}>Pricing</Text>
