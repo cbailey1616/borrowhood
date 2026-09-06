@@ -60,3 +60,15 @@ describe('RequestDetailScreen', () => {
     await findByText(/Edit/i);
   });
 });
+
+it('explains hidden Town identity without fetching private discussions or offers', async () => {
+  api.getRequest.mockResolvedValue({ ...mockRequest, ownerMasked: true, previewOnly: true, requester: { id: null, firstName: 'Town', lastName: 'neighbor' } });
+  const Screen = require('../../src/screens/RequestDetailScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'req-1' } }} />);
+  await screen.findByText('Need a Camera');
+  expect(api.getRequestDiscussions).not.toHaveBeenCalled();
+  expect(api.getRequestOffers).not.toHaveBeenCalled();
+  expect(screen.queryByText('Offer an item privately')).toBeNull();
+  fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
+});

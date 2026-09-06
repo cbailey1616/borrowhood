@@ -16,43 +16,28 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const NOTIFICATION_SETTINGS = [
-  {
-    category: 'Borrowing',
-    settings: [
-      { key: 'borrow_request', label: 'Borrow Requests', description: 'When someone wants to borrow your item' },
-      { key: 'request_response', label: 'Request Responses', description: 'When your borrow request is approved or declined' },
-      { key: 'return_reminder', label: 'Return Reminders', description: 'Reminders before items are due back' },
-    ],
-  },
-  {
-    category: 'Transactions',
-    settings: [
-      { key: 'payment_updates', label: 'Payment Updates', description: 'Payment confirmations and receipts' },
-      { key: 'pickup_return', label: 'Pickup & Return', description: 'When items are picked up or returned' },
-    ],
-  },
-  {
-    category: 'Community',
-    settings: [
-      { key: 'new_message', label: 'Messages', description: 'New messages from other users' },
-      { key: 'item_match', label: 'Item Matches', description: 'When someone lists an item you requested' },
-      { key: 'new_request', label: 'Request Posts', description: 'When someone posts a new request' },
-      { key: 'community_updates', label: 'Community Updates', description: 'News and updates from your community' },
-    ],
-  },
-  {
-    category: 'Push Notifications',
-    settings: [
-      { key: 'push_enabled', label: 'Enable Push Notifications', description: 'Receive notifications on your device' },
-      { key: 'push_sound', label: 'Notification Sound', description: 'Play sound for notifications' },
-    ],
-  },
+  { category: 'On your phone', settings: [
+    { key: 'push_enabled', label: 'Push notifications', description: 'Updates when you’re away from the app' },
+    { key: 'push_sound', label: 'Sound', description: 'A sound with each notification' },
+  ]},
+  { category: 'Your activity', settings: [
+    { key: 'new_message', label: 'Messages', description: 'Private messages from your neighbors' },
+    { key: 'borrow_updates', label: 'Borrowing & lending', description: 'Requests, cancellations, pickups and returns' },
+    { key: 'return_reminder', label: 'Return reminders', description: 'A reminder when an item is due back' },
+    { key: 'post_replies', label: 'Replies to your posts', description: 'Questions and responses on items and requests' },
+  ]},
+  { category: 'Your neighborhood', settings: [
+    { key: 'community_updates', label: 'Friends & neighbors', description: 'Friend requests and neighborhood invitations' },
+    { key: 'item_match', label: 'Matches for your requests', description: 'When an item you’re looking for becomes available' },
+  ]},
 ];
 
 export default function NotificationSettingsScreen() {
   const [preferences, setPreferences] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
 
   useEffect(() => {
@@ -67,11 +52,12 @@ export default function NotificationSettingsScreen() {
 
   const fetchPreferences = async () => {
     try {
-      const data = await api.getNotificationPreferences?.() || getDefaultPreferences();
+      const data = await api.getNotificationPreferences();
       setPreferences(data);
+      setLoadError(false);
     } catch (error) {
       console.error('Failed to fetch notification preferences:', error);
-      setPreferences(getDefaultPreferences());
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +74,8 @@ export default function NotificationSettingsScreen() {
   };
 
   const handleToggle = async (key, value) => {
+    if (isSaving) return;
+    setSaveError(false);
     const newPreferences = { ...preferences, [key]: value };
     setPreferences(newPreferences);
 
@@ -98,6 +86,7 @@ export default function NotificationSettingsScreen() {
     } catch (error) {
       // Revert on error
       setPreferences(preferences);
+      setSaveError(true);
       haptics.error();
     } finally {
       setIsSaving(false);
@@ -114,6 +103,8 @@ export default function NotificationSettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {loadError ? <HapticPressable accessibilityRole="button" onPress={fetchPreferences} style={styles.section}><Text style={styles.settingLabel}>Couldn’t load settings. Tap to try again.</Text></HapticPressable> : null}
+      {saveError && <Text accessibilityRole="alert" style={styles.footerText}>Couldn’t save that change. Please try again.</Text>}
       {notifsDenied && (
         <View style={styles.section}>
           <HapticPressable
@@ -129,7 +120,7 @@ export default function NotificationSettingsScreen() {
           </HapticPressable>
         </View>
       )}
-      {NOTIFICATION_SETTINGS.map((category, index) => (
+      {!loadError && NOTIFICATION_SETTINGS.map((category, index) => (
         <View key={category.category} style={styles.section}>
           <Text style={styles.sectionTitle}>{category.category}</Text>
           <View style={[styles.cardBox, styles.settingsGroup]}>
@@ -146,6 +137,8 @@ export default function NotificationSettingsScreen() {
                   <Text style={styles.settingDescription}>{setting.description}</Text>
                 </View>
                 <Switch
+                  accessibilityLabel={setting.label}
+                  disabled={isSaving || (setting.key !== 'push_enabled' && preferences.push_enabled === false)}
                   value={preferences[setting.key] ?? true}
                   onValueChange={(value) => handleToggle(setting.key, value)}
                   trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
@@ -159,7 +152,7 @@ export default function NotificationSettingsScreen() {
       ))}
 
       <Text style={styles.footerText}>
-        You can also manage notification permissions in your device settings.
+        These settings control push notifications. Your messages and activity stay in the app.
       </Text>
     </ScrollView>
   );

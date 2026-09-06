@@ -13,12 +13,10 @@ it('requires explicit confirmation and treats closing as cancellation', () => {
   ]));
   expect(getByText('Only this item is shared.')).toBeTruthy();
   fireEvent.press(getByLabelText('Close menu'));
-  fireEvent(UNSAFE_getByType(Modal), 'dismiss');
   expect(cancel).toHaveBeenCalledTimes(1);
   expect(confirm).not.toHaveBeenCalled();
   expect(queryByText('Share this item?')).toBeNull();
   act(() => ThemedAlert.alert('Ready?', '', [{ text: 'Confirm', onPress: confirm }]));
   fireEvent.press(getByText('Confirm'));
-  fireEvent(UNSAFE_getByType(Modal), 'dismiss');
   expect(confirm).toHaveBeenCalledTimes(1);
 });

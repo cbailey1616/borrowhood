@@ -47,11 +47,11 @@ describe('CreateRequestScreen', () => {
     api.getFriends.mockResolvedValue([]);
     const Screen = require('../../src/screens/CreateRequestScreen').default;
     const { findByText, getByTestId, getByPlaceholderText } = render(<Screen navigation={mockNavigation} />);
-    await findByText(/Nobody else would see/);
+    await findByText('Choose who can see your request');
     fireEvent.changeText(getByPlaceholderText(/Power drill/), 'A drill');
     expect(getByTestId('CreateRequest.button.submit')).toBeDisabled();
     expect(api.createRequest).not.toHaveBeenCalled();
-    expect(await findByText('Invite someone')).toBeTruthy();
+    expect(await findByText('Choose who can see your request')).toBeTruthy();
   });
 
   it('shows date presets without requiring typed date strings or optional details', async () => {

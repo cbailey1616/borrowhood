@@ -10,19 +10,16 @@ jest.mock('../../../src/context/ErrorContext', () => ({
 }));
 
 describe('ActionSheet', () => {
-  it('waits for native dismissal before navigating and ignores repeated taps', () => {
+  it('removes the iOS touch layer before navigating and closes once', () => {
     const ActionSheet = require('../../../src/components/ActionSheet').default;
-    const navigate = jest.fn();
     const close = jest.fn();
-    const { getByText, UNSAFE_getByType } = render(<ActionSheet isVisible
-      onClose={close} actions={[{ label: 'Create listing', onPress: navigate }]} />);
-    fireEvent.press(getByText('Create listing'));
-    expect(navigate).not.toHaveBeenCalled();
-    expect(UNSAFE_getByType(Modal).props.visible).toBe(false);
-    fireEvent(UNSAFE_getByType(Modal), 'dismiss');
-    fireEvent(UNSAFE_getByType(Modal), 'dismiss');
+    const navigate = jest.fn(() => expect(screen.queryByText('Create listing')).toBeNull());
+    const screen = render(<ActionSheet isVisible onClose={close}
+      actions={[{ label: 'Create listing', onPress: navigate }]} />);
+    fireEvent.press(screen.getByText('Create listing'));
     expect(navigate).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
+    expect(screen.UNSAFE_queryByType(Modal)).toBeNull();
   });
   beforeEach(() => jest.clearAllMocks());
 

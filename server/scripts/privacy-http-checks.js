@@ -106,6 +106,20 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     await call('get', itemPath, unverified, undefined, 404);
     await call('get', photoPath(unverified), null, undefined, 404);
     await call('get', `/api/transactions/${exchange.id}`, unverified, undefined, 404);
+    await client.query('UPDATE users SET is_verified = true WHERE id = $1', [owner]);
+    const preview = await call('post', '/api/listings', owner, { ...body, visibility: ['town'], sharingConfirmed: true, townPreviewEnabled: true }, 201);
+    const previewDetail = await call('get', `/api/listings/${preview.id}`, unverified);
+    assert.equal(previewDetail.ownerMasked, true);
+    assert.equal(JSON.stringify(previewDetail).includes(owner), false);
+    const previewPhoto = new URL(previewDetail.photos[0].url || previewDetail.photos[0]).pathname;
+    const photoToken = previewPhoto.split('/').pop();
+    assert.equal(jwt.decode(photoToken).src, undefined);
+    assert.ok(jwt.decode(photoToken).enc);
+    await call('get', previewPhoto);
+    await call('patch', `/api/listings/${preview.id}`, owner, { visibility: ['private'], townPreviewEnabled: false });
+    // Reuse the same previously-issued photo URL after the owner stops sharing.
+    await call('get', previewPhoto, null, undefined, 404);
+
     await client.query("UPDATE borrow_transactions SET status = 'disputed' WHERE id = $1", [exchange.id]);
     await call('get', photoPath(neighbor));
     // Pre-pickup cancellation: both participants, both API aliases, retries,

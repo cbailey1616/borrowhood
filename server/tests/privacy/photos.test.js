@@ -26,7 +26,10 @@ describe('protected photo delivery', () => {
   it('binds a temporary display URL to one viewer and one image', () => {
     const url = privatePhotoUrl(source, id);
     const payload = jwt.verify(url.split('/api/private-photos/')[1], process.env.JWT_SECRET, { audience: 'listing-photo', subject: id });
-    expect(payload.src).toBe(source);
+    expect(payload.src).toBeUndefined();
+    expect(payload.enc).toEqual(expect.any(String));
+    expect(JSON.stringify(payload)).not.toContain(source);
+    expect(originalPhotoUrl(url, id)).toBe(source);
     expect(payload.exp - payload.iat).toBe(3600);
     expect(originalPhotoUrl(url, id)).toBe(source);
     expect(() => originalPhotoUrl(url, 'someone-else')).toThrow();

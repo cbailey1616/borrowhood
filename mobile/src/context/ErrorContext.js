@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
   Dimensions,
   Platform,
 } from 'react-native';
@@ -18,6 +17,7 @@ import Animated, {
   SlideOutUp,
   runOnJS,
 } from 'react-native-reanimated';
+import PopupLayer from '../components/PopupLayer';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -149,19 +149,8 @@ function Toast({ toast, onRemove }) {
 
 export function ErrorProvider({ children, navigationRef }) {
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const pendingAction = useRef(null);
   const [toasts, setToasts] = useState([]);
-
-  useEffect(() => {
-    if (error) {
-      setShowModal(true);
-    } else if (showModal) {
-      // Error was cleared — allow fade-out animation then force unmount Modal
-      // (onDismiss is unreliable on iOS and can leave an invisible Modal blocking touches)
-      const timer = setTimeout(() => setShowModal(false), 350);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
 
   // Auto-dismiss error modal on navigation change (e.g. swipe back)
   // so it never blocks touches on the underlying screen
@@ -231,48 +220,23 @@ export function ErrorProvider({ children, navigationRef }) {
     }, 3000);
   }, [removeToast]);
 
-  const dismissError = useCallback(() => {
-    if (error?.onDismiss) {
-      error.onDismiss();
-    }
-    setError(null);
-  }, [error]);
+  const finishDismiss = useCallback(() => {
+    const action = pendingAction.current; pendingAction.current = null; action?.();
+  }, []);
+  const closeError = useCallback(action => { pendingAction.current = action; setError(null); }, []);
+  useEffect(() => { if (!error && Platform.OS !== 'ios') finishDismiss(); }, [error, finishDismiss]);
+  const dismissError = useCallback(() => closeError(error?.onDismiss), [error, closeError]);
 
   const handlePrimaryPress = useCallback(() => {
-    if (error?.onPrimaryPress) {
-      error.onPrimaryPress();
-    }
-
-    // Handle default navigation actions
-    if (navigationRef?.current) {
-      switch (error?.type) {
-        case 'auth':
-          navigationRef.current.navigate('Auth');
-          break;
-        case 'verification':
-          navigationRef.current.navigate('VerifyIdentity');
-          break;
-        case 'subscription':
-          navigationRef.current.navigate('Subscription');
-          break;
-        case 'community':
-          navigationRef.current.navigate('JoinCommunity');
-          break;
-        case 'notFound':
-          navigationRef.current.goBack();
-          break;
-      }
-    }
-
-    setError(null);
-  }, [error, navigationRef]);
-
-  const handleSecondaryPress = useCallback(() => {
-    if (error?.onSecondaryPress) {
-      error.onSecondaryPress();
-    }
-    setError(null);
-  }, [error]);
+    closeError(() => {
+      if (error?.onPrimaryPress) return error.onPrimaryPress();
+      if (!navigationRef?.current) return;
+      const routes = { auth: 'Auth', verification: 'IdentityVerification', subscription: 'Subscription', community: 'JoinCommunity' };
+      if (routes[error?.type]) navigationRef.current.navigate(routes[error.type]);
+      else if (error?.type === 'notFound') navigationRef.current.goBack();
+    });
+  }, [error, navigationRef, closeError]);
+  const handleSecondaryPress = useCallback(() => closeError(error?.onSecondaryPress), [error, closeError]);
 
   const getIconColor = () => {
     if (error?.type === 'success') return COLORS.secondary;
@@ -285,13 +249,10 @@ export function ErrorProvider({ children, navigationRef }) {
       {children}
 
       {/* Error Modal with Blur Backdrop */}
-      {showModal && (
-      <Modal
+      <PopupLayer
         visible={!!error}
-        transparent
-        animationType="fade"
         onRequestClose={dismissError}
-        onDismiss={() => { /* handled by useEffect timeout fallback */ }}
+        onDismiss={finishDismiss}
       >
         <View style={styles.overlay}>
           {Platform.OS === 'ios' ? (
@@ -344,8 +305,7 @@ export function ErrorProvider({ children, navigationRef }) {
             </HapticPressable>
           </Animated.View>
         </View>
-      </Modal>
-      )}
+      </PopupLayer>
 
       {/* Toast Messages with Reanimated Entering/Exiting */}
       <View style={styles.toastContainer} pointerEvents="box-none">

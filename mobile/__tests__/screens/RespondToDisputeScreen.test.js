@@ -46,7 +46,6 @@ describe('RespondToDisputeScreen', () => {
     // Step 2: Press confirm in ActionSheet - use last match (ActionSheet action)
     const buttons = getAllByText('Submit Decline');
     await act(async () => { fireEvent.press(buttons[buttons.length - 1]); });
-    await act(async () => { UNSAFE_getAllByType(Modal).forEach(modal => fireEvent(modal, 'dismiss')); });
     expect(api.respondToDispute).toHaveBeenCalled();
     jest.useRealTimers();
   });

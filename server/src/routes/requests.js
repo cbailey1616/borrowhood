@@ -1,3 +1,4 @@
+import { townPreviewSql, canPreviewTownPost, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { canViewRequest, offerListing } from '../services/listingAccess.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
@@ -22,7 +23,8 @@ router.get('/', authenticate, async (req, res) => {
     let params = [];
     let paramIndex = 1;
 
-    whereConditions.push(requestAccessSql('r', '$' + paramIndex++));
+    const fullAccess = requestAccessSql('r', '$' + paramIndex);
+    whereConditions.push('(' + fullAccess + ' OR ' + townPreviewSql('r', 'user_id', '$' + paramIndex++) + ')');
     params.push(req.user.id);
     if (communityId) {
       whereConditions.push('r.community_id = $' + paramIndex++);
@@ -48,7 +50,7 @@ router.get('/', authenticate, async (req, res) => {
     params.push(limit, offset);
 
     const result = await query(
-      `SELECT r.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.is_verified,
+      `SELECT ${fullAccess} AS full_access, r.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.is_verified,
               c.name as category_name
        FROM item_requests r
        JOIN users u ON r.user_id = u.id
@@ -59,7 +61,7 @@ router.get('/', authenticate, async (req, res) => {
       params
     );
 
-    res.json(result.rows.map(r => ({
+    res.json(result.rows.map(r => r.full_access === false ? townRequestPreview(r) : ({
       id: r.id,
       title: r.title,
       description: r.description,
@@ -206,7 +208,8 @@ router.get('/suggestions', authenticate, async (req, res) => {
 // ============================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
-    if (!await canViewRequest(req.params.id, req.user.id)) return res.status(404).json({ error: 'Request not found' });
+    const fullAccess = await canViewRequest(req.params.id, req.user.id);
+    if (!fullAccess && !await canPreviewTownPost(req.params.id, req.user.id, 'request')) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
       `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
@@ -223,6 +226,7 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const r = result.rows[0];
+    if (!fullAccess) return res.json(townRequestPreview(r));
 
     res.json({
       id: r.id,
@@ -302,7 +306,7 @@ router.post('/', authenticate,
           return res.status(403).json({ error: 'Verify your identity and town before posting a town request.' });
         }
       }
-      if (visArray.includes('neighborhood') && !communityId) return res.status(400).json({ error: 'Choose a group for this request.' });
+      if (visArray.includes('neighborhood') && !communityId) return res.status(400).json({ error: 'Join or create a neighborhood for this request.' });
       visibility = visArray.join(',');
       // Verify user is member of community (if community specified)
       if (communityId) {
@@ -360,6 +364,9 @@ router.post('/', authenticate,
       }
 
       const requestId = result.rows[0].id;
+      if (req.body.townPreviewEnabled === true && visibility.split(',').includes('town')) {
+        await query('UPDATE item_requests SET town_preview_enabled=true WHERE id=$1', [requestId]);
+      }
       res.status(201).json({ id: requestId });
 
       // Fire-and-forget: notify relevant users about the new request
@@ -488,7 +495,7 @@ router.patch('/:id', authenticate,
     try {
       // Verify ownership
       const request = await query(
-        'SELECT user_id FROM item_requests WHERE id = $1',
+        'SELECT user_id, community_id FROM item_requests WHERE id = $1',
         [req.params.id]
       );
 
@@ -512,8 +519,16 @@ router.patch('/:id', authenticate,
           }
         }
       }
+      const selectedScopes = req.body.visibility;
+      if (selectedScopes?.includes('neighborhood') || req.body.communityId !== undefined) {
+        const communityId = req.body.communityId || request.rows[0].community_id;
+        if (!communityId) return res.status(400).json({ error: 'Join or create a neighborhood first.' });
+        const member = await query('SELECT 1 FROM community_memberships WHERE user_id=$1 AND community_id=$2', [req.user.id,communityId]);
+        if (!member.rows.length) return res.status(403).json({ error: 'Choose a neighborhood you belong to.' });
+        req.body.communityId = communityId;
+      }
       const allowedFields = [
-        'title', 'description', 'category_id', 'needed_from',
+        'community_id', 'title', 'description', 'category_id', 'needed_from',
         'needed_until', 'visibility', 'status', 'type'
       ];
 
@@ -537,6 +552,11 @@ router.patch('/:id', authenticate,
       if (updates.length === 0) {
         return res.status(400).json({ error: 'No updates provided' });
       }
+      if (req.body.visibility !== undefined) {
+        updates.push('town_preview_enabled = $' + paramIndex++);
+        values.push(req.body.visibility.includes('town') && req.body.townPreviewEnabled === true);
+      }
+
 
       values.push(req.params.id);
 

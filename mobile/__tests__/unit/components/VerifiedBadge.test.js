@@ -16,7 +16,6 @@ it('explains verification and invites an unverified viewer without opening the c
   expect(stopPropagation).toHaveBeenCalled();
   expect(getByText(/This person’s identity has been verified/)).toBeTruthy();
   fireEvent.press(getByText('Build town trust · Get verified'));
-  fireEvent(UNSAFE_getByType(Modal), 'dismiss');
   expect(mockNavigate).toHaveBeenCalledWith('IdentityVerification', { source: 'identity_badge' });
 });
 

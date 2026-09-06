@@ -69,14 +69,26 @@ it('offers the same friends, neighborhood, and town choices used elsewhere', () 
   expect(queryByLabelText('A group')).toBeNull();
 });
 
-it('helps people join before selecting an unavailable neighborhood', () => {
-  const alert = jest.spyOn(Alert, 'alert');
-  const onJoinNeighborhood = jest.fn();
-  const { getByLabelText } = render(<SharingPicker onChange={onChange}
-    neighborhoodAvailable={false} onJoinNeighborhood={onJoinNeighborhood} />);
-  fireEvent.press(getByLabelText('Change who can see this item'));
-  fireEvent.press(getByLabelText('Neighborhood'));
+it.each(['Join a neighborhood', 'Create a neighborhood'])('opens %s after removing the local prompt', label => {
+  const join = jest.fn(); const create = jest.fn();
+  const screen = render(<SharingPicker onChange={onChange} neighborhoodAvailable={false}
+    onJoinNeighborhood={join} onCreateNeighborhood={create} />);
+  fireEvent.press(screen.getByLabelText('Change who can see this item'));
+  fireEvent.press(screen.getByLabelText('Neighborhood'));
+  expect(screen.getByText('Find your neighborhood')).toBeTruthy();
   expect(onChange).not.toHaveBeenCalled();
-  act(() => alert.mock.calls[0][2].find(action => action.text === 'Find my neighborhood').onPress());
-  expect(onJoinNeighborhood).toHaveBeenCalled();
+  fireEvent.press(screen.getByText(label));
+  expect(label.startsWith('Join') ? join : create).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Find your neighborhood')).toBeNull();
+});
+
+it('dismissing the neighborhood prompt leaves the selection alone and can reopen', () => {
+  const screen = render(<SharingPicker onChange={onChange} neighborhoodAvailable={false} />);
+  fireEvent.press(screen.getByLabelText('Change who can see this item'));
+  for (let i = 0; i < 3; i++) {
+    fireEvent.press(screen.getByLabelText('Neighborhood'));
+    fireEvent.press(screen.getByText('Not now'));
+    expect(screen.queryByText('Find your neighborhood')).toBeNull();
+  }
+  expect(onChange).not.toHaveBeenCalled();
 });

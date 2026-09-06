@@ -74,11 +74,10 @@ describe('Feature flag', () => {
 // premiumGate bypassed for free users
 // ============================================
 describe('premiumGate with paid tiers disabled', () => {
-  it('town_browse requires verification for unverified user', () => {
+  it('town_browse allows previews for an unverified user', () => {
     const result = checkPremiumGate(freeUser, 'town_browse');
-    // Unverified users must verify even without paid tiers
-    expect(result.passed).toBe(false);
-    expect(result.screen).toBe('IdentityVerification');
+    expect(result.passed).toBe(true);
+    expect(result.screen).toBeUndefined();
   });
 
   it('town_browse passes for verified free user', () => {

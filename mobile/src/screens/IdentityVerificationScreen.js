@@ -183,7 +183,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your submission is being reviewed. You can keep using your private inventory and items shared with friends or your neighborhood while you wait. Town-wide access begins after verification is complete.
+            Your ID check is being reviewed. Keep browsing Town while you wait. Once verified, you can see who’s sharing and post to Town too.
           </Text>
           <Text style={styles.graceNotice}>
             Your verified identity badge will appear once verification is complete.
@@ -208,16 +208,16 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   // Context-aware title/subtitle
   const getTitle = () => {
     if (needsRetry) return 'Verification Needs Attention';
-    if (source === 'town_browse') return 'Verify Your Identity';
+    if (source === 'town_browse') return 'Build town trust. Get verified.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Verify to List Items';
     return 'Verify Your Identity';
   };
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'Complete ID verification to use town-wide requests and sharing. It never unlocks anyone’s private inventory. Borrowhood covers verification during launch.';
+    if (source === 'town_browse') return 'Browse Town listings. Get verified to see who’s sharing and post to Town too. A quick ID and selfie check adds a little reassurance before you share. Borrowhood covers the cost during launch.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'Verify with a government ID and selfie when you are ready to use town-wide requests and sharing. You can start with friends and your neighborhood without verifying. Borrowhood covers the cost during launch.';
+    return 'Browse Town listings. Get verified to see who’s sharing and post to Town too. You can already share with friends and your neighborhood. Borrowhood covers the ID and selfie check during launch.';
   };
 
   return (

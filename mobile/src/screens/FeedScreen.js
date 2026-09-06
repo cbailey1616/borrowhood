@@ -1,3 +1,4 @@
+import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { directFeeLabel } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
@@ -160,8 +161,8 @@ export default function FeedScreen({ navigation }) {
     if (feed.length === 0) return;
 
     const fetchDiscussions = async () => {
-      const requestItems = feed.filter(item => item.type === 'request' && !requestDiscussions[item.id]);
-      const listingItems = feed.filter(item => item.type === 'listing' && !listingDiscussions[item.id]);
+      const requestItems = feed.filter(item => item.type === 'request' && !item.ownerMasked && !requestDiscussions[item.id]);
+      const listingItems = feed.filter(item => item.type === 'listing' && !item.ownerMasked && !listingDiscussions[item.id]);
 
       const reqResults = await Promise.allSettled(
         requestItems.slice(0, 10).map(item =>
@@ -401,11 +402,6 @@ export default function FeedScreen({ navigation }) {
   }, [fetchFeed]);
 
   const handleTownToggle = () => {
-    if (!user?.isVerified) {
-      setActiveDropdown(null);
-      navigation.navigate('IdentityVerification', { source: 'town_browse' });
-      return;
-    }
     toggleFilter('town', visibilityKeys, setVisibilityFilters);
   };
 
@@ -492,11 +488,6 @@ export default function FeedScreen({ navigation }) {
             ) : (
               <Ionicons name="image-outline" size={26} color={accent.pill + '55'} />
             )}
-            {item.ownerMasked && (
-              <View style={styles.tileLockOverlay}>
-                <Ionicons name="lock-closed" size={16} color="#fff" />
-              </View>
-            )}
             {!item.ownerMasked && (
               <HapticPressable
                 testID={`Feed.save.${item.id}`}
@@ -533,11 +524,11 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
             ) : null}
             <View style={styles.tileFooterRow}>
-              {!item.ownerMasked && <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />}
-              <Text style={styles.tileFooterText} numberOfLines={1}>
-                {userName}
-              </Text>
-              {!item.ownerMasked && item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+              {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
+                <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
+                <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
+                {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+              </>}
               {priceLabel ? (
                 <Text style={[styles.tilePrice, { color: accent.pill }]}>{priceLabel}</Text>
               ) : null}
@@ -831,13 +822,15 @@ export default function FeedScreen({ navigation }) {
                 <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
               ) : null}
               <View style={styles.tileFooterRow}>
-                <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
-                <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
-                {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
+                  <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
+                  <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
+                  {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                </>}
               </View>
             </View>
           {/* Inline thread */}
-          {renderInlineThread(item.id, requestDiscussions[item.id], true)}
+          {!item.ownerMasked && renderInlineThread(item.id, requestDiscussions[item.id], true)}
         </HapticPressable>
       </AnimatedCard>
     );

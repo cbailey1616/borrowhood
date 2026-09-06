@@ -1,3 +1,4 @@
+import { townPreviewSql, canPreviewTownPost, townListingPreview } from '../services/townPreview.js';
 import { ownedPhotoReferences, readOwnedPhoto } from '../services/privatePhotos.js';
 import { normalizeDirectFee } from '../utils/directFee.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
@@ -46,7 +47,9 @@ router.get('/', authenticate, async (req, res) => {
       params.push(search);
     }
 
-    whereConditions.push(listingAccessSql('l', '$' + paramIndex++, { discovery: true }));
+    const fullAccess = listingAccessSql('l', '$' + paramIndex, { discovery: true });
+    selectExtra = `, ${fullAccess} AS full_access`;
+    whereConditions.push('(' + fullAccess + ' OR ' + townPreviewSql('l', 'owner_id', '$' + paramIndex++, { listing: true }) + ')');
     params.push(req.user.id);
 
     // Don't show user's own listings in browse
@@ -77,6 +80,7 @@ router.get('/', authenticate, async (req, res) => {
     const needsMasking = false;
 
     res.json(result.rows.map(l => {
+      if (l.full_access === false) return townListingPreview(l);
       const isTownListing = l.visibility === 'town' && l.owner_id !== req.user.id;
       const ownerMasked = needsMasking && isTownListing;
 
@@ -184,7 +188,8 @@ router.get('/mine', authenticate, async (req, res) => {
 // ============================================
 router.get('/:id', authenticate, async (req, res) => {
   try {
-    if (!await canViewListing(req.params.id, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
+    const fullAccess = await canViewListing(req.params.id, req.user.id);
+    if (!fullAccess && !await canPreviewTownPost(req.params.id, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
     const result = await query(
       `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
@@ -209,6 +214,8 @@ router.get('/:id', authenticate, async (req, res) => {
       'SELECT url FROM listing_photos WHERE listing_id = $1 ORDER BY sort_order',
       [l.id]
     );
+
+    if (!fullAccess) return res.json(townListingPreview(l, photos.rows.map(p => p.url)));
 
     // Check if the current user has an active transaction for this listing
     const activeTransaction = await query(
@@ -417,6 +424,9 @@ router.post('/', authenticate, freeListingOnly,
       );
 
       const listingId = result.rows[0].id;
+      if (req.body.townPreviewEnabled === true && visibilityArray.includes('town')) {
+        await query('UPDATE listings SET town_preview_enabled=true WHERE id=$1', [listingId]);
+      }
 
       // Add photos (if any)
       if (photos && photos.length > 0) {
@@ -589,6 +599,8 @@ router.patch('/:id', authenticate, freeListingOnly,
       }
 
       if (sharing) {
+        updates.push('town_preview_enabled = $' + paramIndex++);
+        values.push(sharing.scopes.includes('town') && req.body.townPreviewEnabled === true);
         updates.push('privacy_version = 1');
         updates.push('circle_id = $' + paramIndex++);
         values.push(sharing.circleId);

@@ -1,3 +1,4 @@
+import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { directFeeLabel } from '../utils/directFee';
 import {
@@ -231,31 +232,10 @@ export default function ListingDetailScreen({ route, navigation }) {
           )}
 
           {listing.ownerMasked ? (
-            /* Unverified user viewing a town listing — show verify prompt only */
-            <HapticPressable
-              style={styles.verifyCard}
-              onPress={() => {
-                const gate = checkPremiumGate(user, 'town_browse');
-                if (!gate.passed) {
-                  navigation.navigate(gate.screen, gate.params);
-                } else {
-                  navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                }
-              }}
-              haptic="medium"
-            >
-              <View style={styles.verifyCardIcon}>
-                <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
-              </View>
-              <Text style={styles.verifyCardTitle}>This listing is outside your neighborhood</Text>
-              <Text style={styles.verifyCardSubtitle}>
-                To protect everyone in the community, town-wide listings require identity verification before you can see the owner's details, send messages, or request to borrow. Verification is quick and only needs to be done once.
-              </Text>
-              <View style={styles.verifyCardButton}>
-                <Text style={styles.verifyCardButtonText}>Verify Identity</Text>
-                <Ionicons name="chevron-forward" size={16} color="#fff" />
-              </View>
-            </HapticPressable>
+            <>
+              {listing.description && <View style={styles.descriptionBlock}><Text style={styles.description}>{listing.description}</Text></View>}
+              <TownIdentityPrompt onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
+            </>
           ) : (
           <>
           <View style={styles.badges}>

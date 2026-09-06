@@ -278,6 +278,7 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('react-native-screens', () => ({
   enableScreens: jest.fn(),
+  FullWindowOverlay: require('react-native').View,
 }));
 
 jest.mock('@gorhom/bottom-sheet', () => {

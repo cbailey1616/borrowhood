@@ -1,3 +1,4 @@
+import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useCallback } from 'react';
 import {
   View,
@@ -34,8 +35,6 @@ export default function RequestDetailScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetchRequest();
-      fetchDiscussions();
-      fetchOffers();
     }, [id])
   );
 
@@ -55,6 +54,8 @@ export default function RequestDetailScreen({ route, navigation }) {
     try {
       const data = await api.getRequest(id);
       setRequest(data);
+      if (!data.ownerMasked) { fetchDiscussions(); fetchOffers(); }
+      else { setDiscussions([]); setOffers([]); }
     } catch (error) {
       console.error('Failed to fetch request:', error);
     } finally {
@@ -173,6 +174,7 @@ export default function RequestDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {request.ownerMasked ? <TownIdentityPrompt onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
         {/* Requester */}
         <HapticPressable
           style={styles.requesterCard}
@@ -286,10 +288,11 @@ export default function RequestDetailScreen({ route, navigation }) {
         <Text style={styles.postedDate}>
           Posted {new Date(request.createdAt).toLocaleDateString()}
         </Text>
+        </>}
       </ScrollView>
 
       {/* Action Buttons */}
-      {!request.isOwner && request.status === 'open' && (
+      {!request.ownerMasked && !request.isOwner && request.status === 'open' && (
         <View style={styles.footer}>
           <HapticPressable
             style={styles.haveThisButton}

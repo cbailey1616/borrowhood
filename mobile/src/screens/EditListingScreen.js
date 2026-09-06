@@ -1,9 +1,10 @@
+import { useFocusEffect } from '@react-navigation/native';
 import SharingPicker from '../components/SharingPicker';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import DirectFeePicker from '../components/DirectFeePicker';
 import { directFeePayload } from '../utils/directFee';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -75,12 +76,13 @@ export default function EditListingScreen({ navigation, route }) {
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (formData.communityId) return;
+  useFocusEffect(useCallback(() => {
+    let active = true;
     api.getCommunities({ member: true }).then(communities => {
-      if (communities?.[0]?.id) updateField('communityId', communities[0].id);
+      if (active) setFormData(previous => ({ ...previous, communityId: communities?.[0]?.id || null }));
     }).catch(() => {});
-  }, [formData.communityId]);
+    return () => { active = false; };
+  }, []));
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -231,6 +233,7 @@ export default function EditListingScreen({ navigation, route }) {
         categoryId: formData.categoryId || undefined,
         visibility: formData.visibility,
         sharingConfirmed: true,
+        townPreviewEnabled: true,
         directFee,
         circleId: formData.circleId || undefined,
         communityId: formData.communityId || undefined,
@@ -420,6 +423,7 @@ export default function EditListingScreen({ navigation, route }) {
         <SharingPicker value={formData.visibility} circleId={formData.circleId}
           neighborhoodAvailable={Boolean(formData.communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
           verified={Boolean(user?.isVerified)}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
           onChange={sharing => setFormData(previous => ({ ...previous, ...sharing }))} />

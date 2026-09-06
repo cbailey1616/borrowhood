@@ -152,3 +152,21 @@ describe('FeedScreen', () => {
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDetail', expect.objectContaining({ id: 'listing-1' }));
   });
 });
+
+it('lets an unverified member select Town and makes hidden identities explicit', async () => {
+  mockUser.isVerified = false;
+  try {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'preview', type: 'listing', title: 'Town ladder', ownerMasked: true, previewOnly: true, user: { id: null, firstName: 'Town', lastName: 'neighbor' }, createdAt: new Date().toISOString() }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Town ladder');
+    fireEvent.press(screen.getByLabelText('Filter by visibility'));
+    fireEvent.press(screen.getByLabelText('Town'));
+    expect(mockNavigation.navigate).not.toHaveBeenCalledWith('IdentityVerification', expect.anything());
+    expect(screen.getByText('Identity hidden · Get verified')).toBeTruthy();
+    expect(api.getDiscussions).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByLabelText('Close menu'));
+    fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
+  } finally { mockUser.isVerified = true; }
+});

@@ -181,7 +181,7 @@ export default function NotificationsScreen({ navigation }) {
         <View style={styles.header}>
           <Text style={styles.unreadLabel}>{unreadCount} unread</Text>
           <HapticPressable
-            onPress={() => setShowMarkAllSheet(true)}
+            onPress={handleMarkAllRead}
             haptic="light"
           >
             <Text style={styles.markAllRead}>Mark all read</Text>

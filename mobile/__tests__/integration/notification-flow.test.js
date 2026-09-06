@@ -97,7 +97,7 @@ describe('Notification Flow Integration', () => {
     await act(async () => {
       fireEvent.press(markAll);
     });
-    // The button opens an ActionSheet, the actual api call happens when confirming the ActionSheet
-    expect(api.markAllNotificationsRead).not.toHaveBeenCalled();
+    // Marking activity read is a simple, immediate action.
+    expect(api.markAllNotificationsRead).toHaveBeenCalledTimes(1);
   });
 });

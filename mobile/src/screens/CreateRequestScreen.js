@@ -71,20 +71,16 @@ export default function CreateRequestScreen({ navigation, route }) {
   const customExpiryDate = new Date(formData.customExpiry);
   const [communityId, setCommunityId] = useState(undefined); // undefined = loading, null = no community
 
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    api.getCommunities({ member: true }).then(communities => {
+      if (active) setCommunityId(communities?.[0]?.id || null);
+    }).catch(() => { if (active) setCommunityId(null); });
+    return () => { active = false; };
+  }, []));
+
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const communities = await api.getCommunities({ member: true });
-        if (communities && communities.length > 0) {
-          setCommunityId(communities[0].id);
-        } else {
-          setCommunityId(null);
-        }
-      } catch (err) {
-        console.log('Failed to fetch communities:', err);
-        setCommunityId(null);
-      }
-
       try {
         const cats = await api.getCategories();
         setCategories(cats || []);
@@ -131,6 +127,7 @@ export default function CreateRequestScreen({ navigation, route }) {
         type: formData.type,
         categoryId: formData.categoryId,
         visibility: formData.visibility,
+        townPreviewEnabled: true,
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
         neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
         communityId: communityId,
@@ -437,25 +434,13 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Visibility */}
       <View style={styles.section}>
         <SharingPicker request value={formData.visibility} onChange={next => updateField('visibility', next.visibility)}
+          audienceProblem={audienceProblem} audienceLoading={friends.loading}
+          friendsAvailable={friends.count > 0} onInviteFriends={() => navigation.navigate('Friends')}
+          onRetryAudience={friends.error ? loadFriends : undefined}
           verified={Boolean(user?.isVerified)} neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
-      </View>
-
-      {/* Info */}
-      {!!audienceProblem && <View style={styles.infoCard}>
-        <View style={{ flex: 1 }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{audienceProblem}</Text>
-          {friends.error ? <HapticPressable onPress={loadFriends} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary }}>Try again</Text></HapticPressable> : !friends.loading && <>
-            <HapticPressable onPress={() => navigation.navigate('Friends')} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary }}>Invite someone</Text></HapticPressable>
-            {!user?.isVerified && <HapticPressable onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary }}>Verify to ask your town · free</Text></HapticPressable>}
-          </>}
-        </View>
-      </View>}
-      <View style={styles.infoCard}>
-        <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
-        <Text style={styles.infoText}>
-          When someone lists an item matching your request, you'll be notified automatically.
-        </Text>
       </View>
 
       {/* Submit */}

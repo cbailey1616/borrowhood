@@ -1,4 +1,6 @@
 import jwt from 'jsonwebtoken';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import { townPreviewSql } from './townPreview.js';
 import { S3Client, GetObjectCommand, GetPublicAccessBlockCommand } from '@aws-sdk/client-s3';
 import { query } from '../utils/db.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
@@ -11,10 +13,26 @@ const region = process.env.AWS_REGION || 'us-east-1';
 const s3 = new S3Client({ region });
 const localRoot = path.resolve(fileURLToPath(new URL('../../uploads/', import.meta.url)));
 const origin = () => (process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
+const photoKey = () => createHash('sha256').update('borrowhood-photo-v2:').update(process.env.JWT_SECRET).digest();
+function encryptSource(source) {
+  const nonce = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', photoKey(), nonce);
+  const ciphertext = Buffer.concat([cipher.update(source, 'utf8'), cipher.final()]);
+  return Buffer.concat([nonce, cipher.getAuthTag(), ciphertext]).toString('base64url');
+}
+function decryptSource(data) {
+  // Existing signed URLs remain usable until their one-hour expiry.
+  if (data.src) return data.src;
+  const bytes = Buffer.from(data.enc, 'base64url');
+  const decipher = createDecipheriv('aes-256-gcm', photoKey(), bytes.subarray(0, 12));
+  decipher.setAuthTag(bytes.subarray(12, 28));
+  return Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString('utf8');
+}
 
 export function privatePhotoUrl(url, userId) {
   if (!url) return null;
-  const token = jwt.sign({ src: url }, process.env.JWT_SECRET, {
+  // Storage paths contain uploader IDs. Signing alone does not hide those IDs.
+  const token = jwt.sign({ enc: encryptSource(url) }, process.env.JWT_SECRET, {
     algorithm: 'HS256', subject: userId, audience: 'listing-photo', expiresIn: '1h',
   });
   return `${origin()}/api/private-photos/${token}`;
@@ -25,7 +43,7 @@ export function originalPhotoUrl(url, userId) {
   if (!url.includes('/api/private-photos/')) return url;
   const token = url.split('/api/private-photos/')[1];
   const data = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'], audience: 'listing-photo', subject: userId });
-  return data.src;
+  return decryptSource(data);
 }
 
 export async function ownedPhotoReferences(photos, userId) {
@@ -94,6 +112,7 @@ export function protectMediaResponses(req, res, next) {
 export async function servePrivatePhoto(req, res) {
   try {
     const data = jwt.verify(req.params.token, process.env.JWT_SECRET, { algorithms: ['HS256'], audience: 'listing-photo' });
+    data.src = decryptSource(data);
     const viewer = await query(`SELECT id FROM users WHERE id = $1 AND status != 'suspended'
       AND (token_invalidated_at IS NULL OR token_invalidated_at <= to_timestamp($2))`, [data.sub, data.iat]);
     if (!viewer.rows.length) return res.sendStatus(404);
@@ -101,7 +120,7 @@ export async function servePrivatePhoto(req, res) {
     const allowed = reference.rows.length ? await query(`SELECT 1 FROM listing_photos p JOIN listings l ON l.id = p.listing_id
       JOIN users viewer ON viewer.id = $2 WHERE p.url = $1 AND viewer.status != 'suspended'
         AND (viewer.token_invalidated_at IS NULL OR viewer.token_invalidated_at <= to_timestamp($3))
-        AND ${listingAccessSql('l', '$2')} LIMIT 1`, [data.src, data.sub, data.iat]) : await query(`
+        AND (${listingAccessSql('l', '$2')} OR ${townPreviewSql('l', 'owner_id', '$2', { listing: true })}) LIMIT 1`, [data.src, data.sub, data.iat]) : await query(`
       SELECT 1 FROM users WHERE profile_photo_url = $1
       UNION ALL SELECT 1 FROM messages m JOIN conversations c ON c.id = m.conversation_id
         WHERE m.image_url = $1 AND m.deleted_at IS NULL AND (c.user1_id = $2 OR c.user2_id = $2)

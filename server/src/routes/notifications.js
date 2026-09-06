@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 
+import { ACTIVITY_SQL, normalizedPreferences, validPreferenceKeys } from '../services/notificationPreferences.js';
+
 const router = Router();
 
 // ============================================
@@ -13,7 +15,7 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    let whereClause = 'n.user_id = $1';
+    let whereClause = `n.user_id = $1 AND ${ACTIVITY_SQL}`;
     if (unreadOnly === 'true') {
       whereClause += ' AND n.is_read = false';
     }
@@ -32,7 +34,7 @@ router.get('/', authenticate, async (req, res) => {
 
     // Get unread count
     const unreadCount = await query(
-      'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+      `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false AND ${ACTIVITY_SQL}`,
       [req.user.id]
     );
 
@@ -81,7 +83,7 @@ router.get('/badge-count', authenticate, async (req, res) => {
         [userId]
       ),
       query(
-        'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+        `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false AND ${ACTIVITY_SQL}`,
         [userId]
       ),
       query(
@@ -172,29 +174,33 @@ router.put('/push-token', authenticate, async (req, res) => {
 // PATCH /api/notifications/preferences
 // Update notification preferences
 // ============================================
-router.patch('/preferences', authenticate, async (req, res) => {
-  const { email, push } = req.body;
-
+router.get('/preferences', authenticate, async (req, res) => {
   try {
-    const current = await query(
-      'SELECT notification_preferences FROM users WHERE id = $1',
-      [req.user.id]
-    );
+    const result = await query('SELECT notification_preferences FROM users WHERE id = $1', [req.user.id]);
+    res.json(normalizedPreferences(result.rows[0]?.notification_preferences || {}));
+  } catch (err) {
+    console.error('Get notification preferences error:', err);
+    res.status(500).json({ error: 'Could not load notification settings' });
+  }
+});
 
-    const prefs = current.rows[0].notification_preferences || {};
-
-    if (email !== undefined) prefs.email = email;
-    if (push !== undefined) prefs.push = push;
-
-    await query(
-      'UPDATE users SET notification_preferences = $1 WHERE id = $2',
-      [JSON.stringify(prefs), req.user.id]
-    );
-
-    res.json({ success: true, preferences: prefs });
+router.patch('/preferences', authenticate, async (req, res) => {
+  const prefs = req.body;
+  if (!prefs || Array.isArray(prefs) || Object.entries(prefs).some(([key,value]) => !validPreferenceKeys.has(key) || typeof value !== 'boolean')) {
+    return res.status(400).json({ error: 'Choose valid notification settings' });
+  }
+  // Keep the older master switch in sync; merge atomically so rapid toggles
+  // cannot overwrite another preference saved in parallel.
+  if (prefs.push_enabled !== undefined) prefs.push = prefs.push_enabled;
+  else if (prefs.push !== undefined) prefs.push_enabled = prefs.push;
+  try {
+    const result = await query(`UPDATE users SET notification_preferences =
+      COALESCE(notification_preferences, '{}'::jsonb) || $1::jsonb WHERE id = $2 RETURNING notification_preferences`,
+      [JSON.stringify(prefs), req.user.id]);
+    res.json({ success: true, preferences: normalizedPreferences(result.rows[0].notification_preferences) });
   } catch (err) {
     console.error('Update preferences error:', err);
-    res.status(500).json({ error: 'Failed to update preferences' });
+    res.status(500).json({ error: 'Could not save notification settings' });
   }
 });
 

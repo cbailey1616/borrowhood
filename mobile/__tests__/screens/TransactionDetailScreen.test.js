@@ -81,12 +81,10 @@ describe('TransactionDetailScreen', () => {
     fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
     expect(api.cancelRental).not.toHaveBeenCalled();
     expect(screen.getByText('Cancel this borrow?')).toBeTruthy();
-    const modal = screen.UNSAFE_getAllByType(Modal).find(node => node.props.visible);
     fireEvent.press(screen.getByTestId('Transaction.confirmCancel'));
-    await act(async () => fireEvent(modal, 'dismiss'));
-    expect(api.cancelRental).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.cancelRental).toHaveBeenCalledTimes(1));
     expect(api.cancelRental).toHaveBeenCalledWith('txn-1');
-    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockNavigation.goBack).toHaveBeenCalledTimes(1));
   });
 
   it('keeps the borrow when the confirmation is dismissed', async () => {
@@ -94,9 +92,7 @@ describe('TransactionDetailScreen', () => {
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
-    const modal = screen.UNSAFE_getAllByType(Modal).find(node => node.props.visible);
     fireEvent.press(screen.getByText('Keep borrow'));
-    fireEvent(modal, 'dismiss');
     expect(api.cancelRental).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
   });

@@ -161,43 +161,10 @@ export default function OnboardingVerifyScreen({ navigation }) {
           <VerifiedBadge size={76} glow />
         </View>
 
-        <Text style={styles.title}>Verify Your Identity</Text>
-        <Text style={styles.subtitle}>
-          Start with friends and your neighborhood now. Complete ID verification when you want to use town-wide requests and sharing. Borrowhood covers verification during launch.
-        </Text>
-
-        {/* What you can do without verification */}
-        <View style={styles.tierCard}>
-          <View style={styles.tierHeader}>
-            <Ionicons name="people" size={28} color={COLORS.primary} />
-            <View style={styles.tierHeaderText}>
-              <Text style={styles.tierTitle}>Without Verification</Text>
-              <Text style={styles.tierScope}>Friends and neighborhood</Text>
-            </View>
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeBadgeText}>NOW</Text>
-            </View>
-          </View>
-          <Text style={styles.tierDescription}>Keep a private inventory, connect with accepted friends, and see items shared with your neighborhood.</Text>
-        </View>
-
-        {/* What verification unlocks */}
+        <Text style={styles.title}>Build town trust. Get verified.</Text>
+        <Text style={styles.subtitle}>See who’s posting in Town and let neighbors know your identity has been checked. A little reassurance before you share.</Text>
         <View style={[styles.tierCard, styles.tierCardHighlight]}>
-          <View style={styles.tierHeader}>
-            <Ionicons name="home" size={28} color={COLORS.primary} />
-            <View style={styles.tierHeaderText}>
-              <Text style={[styles.tierTitle, { color: COLORS.primary }]}>With Verification</Text>
-              <Text style={[styles.tierScope, { color: COLORS.textSecondary }]}>Town requests and opt-in sharing</Text>
-            </View>
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
-            </View>
-          </View>
-          <View style={styles.unlocksList}>
-            <UnlockItem text="Ask your town for what you need" />
-            <UnlockItem text="Offer one item privately, not your whole inventory" />
-            <UnlockItem text="Build trust with a verified badge" />
-          </View>
+          <Text style={styles.tierDescription}>Browse Town listings. Get verified to see who’s sharing.</Text>
         </View>
 
         <View style={styles.trustRow}>
@@ -221,7 +188,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
             ) : (
               <>
                 <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
-                <Text style={styles.verifyButtonText}>Verify with ID</Text>
+                <Text style={styles.verifyButtonText}>Get verified</Text>
               </>
             )}
           </LinearGradient>
@@ -232,7 +199,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
           onPress={goToComplete}
           haptic="light"
         >
-          <Text style={styles.skipButtonText}>I'll do this later</Text>
+          <Text style={styles.skipButtonText}>Explore first</Text>
         </HapticPressable>
       </View>
     </View>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Modal, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import PopupLayer from './PopupLayer';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -60,12 +61,9 @@ export default function ActionSheet({
   const bottomPad = (insets.bottom || 34) + SPACING.sm;
 
   return (
-    <Modal
+    <PopupLayer
       visible={isVisible && !closing}
       onDismiss={finishDismiss}
-      transparent
-      animationType="none"
-      statusBarTranslucent
       onRequestClose={handleCancel}
     >
       <View style={styles.modalContainer}>
@@ -133,7 +131,7 @@ export default function ActionSheet({
           </HapticPressable>
         </Animated.View>
       </View>
-    </Modal>
+    </PopupLayer>
   );
 }
 

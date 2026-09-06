@@ -59,8 +59,8 @@ describe('GET /api/notifications', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.notifications).toBeDefined();
-    expect(res.body.notifications.length).toBeGreaterThanOrEqual(3);
-    expect(res.body.unreadCount).toBeGreaterThanOrEqual(3);
+    expect(res.body.notifications.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.unreadCount).toBeGreaterThanOrEqual(2);
 
     const notif = res.body.notifications[0];
     expect(notif.id).toBeDefined();
@@ -122,7 +122,7 @@ describe('GET /api/notifications/badge-count', () => {
     expect(typeof res.body.notifications).toBe('number');
     expect(typeof res.body.actions).toBe('number');
     expect(typeof res.body.total).toBe('number');
-    expect(res.body.notifications).toBeGreaterThanOrEqual(3);
+    expect(res.body.notifications).toBeGreaterThanOrEqual(2);
     expect(res.body.total).toBe(res.body.messages + res.body.notifications + res.body.actions);
   });
 });
@@ -233,5 +233,34 @@ describe('PATCH /api/notifications/preferences', () => {
     expect(res.body.preferences.email).toBe(true);
     // push should still be true from previous update
     expect(res.body.preferences.push).toBe(true);
+  });
+});
+
+describe('Current notification controls', () => {
+  it('hides duplicate message alerts and keeps the activity badge consistent', async () => {
+    const res = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`);
+    expect(res.body.notifications.every(n => n.type !== 'new_message')).toBe(true);
+    const badges = await request(app).get('/api/notifications/badge-count').set('Authorization', `Bearer ${userA.token}`);
+    expect(badges.body.notifications).toBe(res.body.unreadCount);
+  });
+  it('persists grouped preferences, master push and sound', async () => {
+    await request(app).patch('/api/notifications/preferences').set('Authorization', `Bearer ${userA.token}`)
+      .send({ new_message: false, borrow_updates: false, push_enabled: false, push_sound: false }).expect(200);
+    const res = await request(app).get('/api/notifications/preferences').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    expect(res.body).toMatchObject({ new_message: false, borrow_updates: false, push_enabled: false, push_sound: false });
+  });
+  it('rejects unknown keys and non-boolean toggles', async () => {
+    for (const body of [{ new_message: 'false' }, { invalid: true }]) {
+      await request(app).patch('/api/notifications/preferences').set('Authorization', `Bearer ${userA.token}`).send(body).expect(400);
+    }
+  });
+  it('uses saved category controls for actual push delivery', async () => {
+    const { shouldSendPush } = await import('../src/services/notificationPreferences.js');
+    expect(shouldSendPush('request_approved', { borrow_updates: false })).toBe(false);
+    expect(shouldSendPush('listing_comment', { post_replies: false })).toBe(false);
+    expect(shouldSendPush('friend_request', { community_updates: false })).toBe(false);
+    expect(shouldSendPush('new_message', { push_enabled: false })).toBe(false);
+    expect(shouldSendPush('new_message', { new_message: true })).toBe(true);
+    expect(shouldSendPush('request_approved', { request_response: false })).toBe(false);
   });
 });

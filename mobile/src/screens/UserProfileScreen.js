@@ -12,6 +12,7 @@ import ShimmerImage from '../components/ShimmerImage';
 import HapticPressable from '../components/HapticPressable';
 import UserBadges from '../components/UserBadges';
 import ActionSheet from '../components/ActionSheet';
+import UserSafetyActions from '../components/UserSafetyActions';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
@@ -25,10 +26,12 @@ export default function UserProfileScreen({ route, navigation }) {
   const [isFriend, setIsFriend] = useState(false);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
   const [removeFriendSheetVisible, setRemoveFriendSheetVisible] = useState(false);
+  const [messagesBlocked, setMessagesBlocked] = useState(false);
 
   const isOwnProfile = String(currentUser?.id) === String(id);
 
   useEffect(() => {
+    setMessagesBlocked(false);
     fetchUser();
     checkFriendStatus();
   }, [id]);
@@ -113,6 +116,9 @@ export default function UserProfileScreen({ route, navigation }) {
       <ScrollView style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
+          {!isOwnProfile && <View style={{ alignSelf: 'flex-end' }}>
+            <UserSafetyActions key={id} userId={id} name={user.firstName} label="More" onBlockChange={setMessagesBlocked} />
+          </View>}
           <Image
             source={{ uri: user.profilePhotoUrl || 'https://via.placeholder.com/100' }}
             style={styles.avatar}
@@ -179,9 +185,11 @@ export default function UserProfileScreen({ route, navigation }) {
               haptic="light"
               style={styles.messageButton}
               onPress={handleMessage}
+              disabled={messagesBlocked}
+              accessibilityState={{ disabled: messagesBlocked }}
             >
               <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.messageButtonText}>Message</Text>
+              <Text style={styles.messageButtonText}>{messagesBlocked ? 'Blocked' : 'Message'}</Text>
             </HapticPressable>
           </View>
         )}

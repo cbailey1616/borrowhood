@@ -17,26 +17,25 @@ describe('OnboardingVerifyScreen', () => {
   it('renders verify title after status check', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Verify Your Identity');
+    await findByText('Build town trust. Get verified.');
   });
 
-  it('shows Verify with ID button', async () => {
+  it('shows Get verified button', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Verify with ID');
+    await findByText('Get verified');
   });
 
   it('shows skip button', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText("I'll do this later");
+    await findByText("Explore first");
   });
 
-  it('displays tier comparison cards', async () => {
+  it('explains optional verification in one simple card', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Without Verification');
-    await findByText('With Verification');
+    await findByText('Browse Town listings. Get verified to see who’s sharing.');
   });
 
   it('shows already verified state when user is verified', async () => {
@@ -49,7 +48,7 @@ describe('OnboardingVerifyScreen', () => {
   it('skip navigates to OnboardingComplete', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    const skipBtn = await findByText("I'll do this later");
+    const skipBtn = await findByText("Explore first");
     await act(async () => { fireEvent.press(skipBtn); });
     expect(mockNavigation.navigate).toHaveBeenCalledWith('OnboardingComplete');
   });

@@ -78,7 +78,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         api.getConversations(),
         api.getTransactions(),
       ]);
-      setNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute')));
+      setNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute') && !['new_message', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(n.type)));
       setConversations(convData || []);
       setActiveBorrows((transactions || []).filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
       setLoadError(false);
@@ -149,6 +149,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         setNotifications(prev =>
           prev.map(n => n.id === item.id ? { ...n, isRead: true } : n)
         );
+        onRead?.();
       } catch (e) {}
     }
 
@@ -164,8 +165,18 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       nav.navigate('Friends');
     } else if (item.type === 'new_request' && item.requestId) {
       nav.navigate('RequestDetail', { id: item.requestId });
+    } else if (item.type === 'join_request') {
+      nav.navigate('CommunityMembers');
+    } else if (item.type === 'join_approved') {
+      nav.navigate('MyCommunity');
+    } else if (item.type === 'request_comment' && item.requestId) {
+      nav.navigate('RequestDetail', { id: item.requestId });
+    } else if (['listing_comment', 'discussion_reply'].includes(item.type) && item.listingId) {
+      nav.navigate('ListingDiscussion', { listingId: item.listingId });
+    } else if (['new_rating', 'rating_received'].includes(item.type) && !item.transactionId) {
+      nav.navigate('UserProfile', { id: user?.id });
     } else if (item.disputeId) {
-      nav.navigate('DisputeDetail', { id: item.disputeId });
+      return;
     } else if (item.transactionId) {
       nav.navigate('TransactionDetail', { id: item.transactionId });
     } else if (item.listingId) {
@@ -330,9 +341,9 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <HeroIcon icon="notifications" size={80} />
-              <Text style={styles.emptyTitle}>All caught up!</Text>
+              <Text style={styles.emptyTitle}>{loadError ? 'Couldn’t load activity' : 'All caught up!'}</Text>
               <Text style={styles.emptySubtitle}>
-                You'll see borrow requests and updates here
+                {loadError ? 'Check your connection and pull down to retry.' : 'Requests, replies and pickup updates will appear here.'}
               </Text>
             </View>
           }

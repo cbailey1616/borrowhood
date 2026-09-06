@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import SharingPicker from '../components/SharingPicker';
+import { useFocusEffect } from '@react-navigation/native';
+import { useState, useEffect, useCallback } from 'react';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import {
   View,
@@ -34,6 +36,12 @@ const formatDate = (dateStr) => {
 export default function EditRequestScreen({ navigation, route }) {
   const { request } = route.params;
   const { user } = useAuth();
+  const [communityId, setCommunityId] = useState(null);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    api.getCommunities({ member: true }).then(rows => { if (active) setCommunityId(rows?.[0]?.id || null); }).catch(() => {});
+    return () => { active = false; };
+  }, []));
   const { showError } = useError();
   const [formData, setFormData] = useState({
     type: request.type || 'item',
@@ -111,6 +119,8 @@ export default function EditRequestScreen({ navigation, route }) {
         type: formData.type,
         categoryId: formData.categoryId,
         visibility: formData.visibility,
+        townPreviewEnabled: true,
+        communityId: communityId || undefined,
         neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
         neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
       };
@@ -264,45 +274,12 @@ export default function EditRequestScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Visibility */}
       <View style={styles.section}>
-        <Text style={styles.label}>Who can see this? *</Text>
-        <View style={styles.options}>
-          {VISIBILITIES.map((visibility) => {
-            const isSelected = formData.visibility.includes(visibility);
-            return (
-              <HapticPressable
-                key={visibility}
-                style={[styles.option, isSelected && styles.optionActive]}
-                onPress={() => {
-                  if (!isSelected && visibility === 'town' && !user?.isVerified) {
-                    haptics.warning();
-                    navigation.navigate('IdentityVerification', { source: 'town_browse' });
-                    return;
-                  }
-                  if (isSelected) {
-                    if (formData.visibility.length <= 1) return;
-                    updateField('visibility', formData.visibility.filter(v => v !== visibility));
-                  } else {
-                    updateField('visibility', [...formData.visibility, visibility]);
-                  }
-                  haptics.selection();
-                }}
-                haptic="light"
-              >
-                <Ionicons
-                  name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                  size={18}
-                  color={isSelected ? "#fff" : COLORS.textSecondary}
-                  style={{ marginRight: SPACING.xs + 2 }}
-                />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
-                  {VISIBILITY_LABELS[visibility]}
-                </Text>
-              </HapticPressable>
-            );
-          })}
-        </View>
+        <SharingPicker request value={formData.visibility} onChange={next => updateField('visibility', next.visibility)}
+          verified={Boolean(user?.isVerified)} neighborhoodAvailable={Boolean(communityId)}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
+          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
       </View>
 
       {/* Submit */}

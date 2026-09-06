@@ -47,9 +47,7 @@ export default function CreateListingScreen({ navigation, route }) {
       const fetchCommunity = async () => {
         try {
           const communities = await api.getCommunities({ member: true });
-          if (communities && communities.length > 0) {
-            setCommunityId(communities[0].id);
-          }
+          setCommunityId(communities?.[0]?.id || null);
         } catch (e) {}
       };
       fetchCommunity();
@@ -346,6 +344,7 @@ export default function CreateListingScreen({ navigation, route }) {
         categoryId: data.categoryId || undefined,
         visibility: requestMatchId ? ['private'] : data.visibility,
         sharingConfirmed: true,
+        townPreviewEnabled: true,
         directFee,
         circleId: data.circleId || undefined,
         isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
@@ -507,6 +506,7 @@ export default function CreateListingScreen({ navigation, route }) {
         <SharingPicker value={formData.visibility} circleId={formData.circleId}
           neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
           verified={Boolean(user?.isVerified)}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
           onChange={sharing => { sharingChosen.current = true; setFormData(previous => ({ ...previous, ...sharing })); }} />

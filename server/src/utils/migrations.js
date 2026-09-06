@@ -17,6 +17,8 @@ export async function runMigrations() {
     });
     await query(`CREATE TABLE IF NOT EXISTS user_blocks (user_id UUID REFERENCES users(id) ON DELETE CASCADE, blocked_id UUID REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(user_id, blocked_id), CHECK(user_id != blocked_id))`);
     await query(`CREATE TABLE IF NOT EXISTS safety_reports (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), reporter_id UUID REFERENCES users(id), reported_id UUID REFERENCES users(id), reason TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
+    await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     // A displayed offline price is separate from Stripe rental amounts.
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS direct_fee JSONB');
     await query(`CREATE TABLE IF NOT EXISTS feed_events (

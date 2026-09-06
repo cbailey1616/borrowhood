@@ -118,3 +118,14 @@ describe('ListingDetailScreen', () => {
     expect(queryByTestId('ListingDetail.button.borrow')).toBeNull();
   });
 });
+
+it('lets a Town preview show the item while protecting profile and contact actions', async () => {
+  api.getListing.mockResolvedValue({ ...mockListing, ownerMasked: true, previewOnly: true, owner: { id: null, firstName: 'Town', lastName: 'neighbor' } });
+  const Screen = require('../../src/screens/ListingDetailScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'listing-1' } }} />);
+  await screen.findByText(mockListing.title);
+  expect(screen.queryByTestId('ListingDetail.button.save')).toBeNull();
+  fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
+  expect(mockNavigation.navigate).not.toHaveBeenCalledWith('UserProfile', expect.anything());
+});

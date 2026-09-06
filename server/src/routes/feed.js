@@ -1,3 +1,4 @@
+import { townPreviewSql, canPreviewTownPost, townListingPreview, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
@@ -16,7 +17,8 @@ router.post('/events', authenticate, async (req, res) => {
   }
   try {
     for (const event of events) {
-      const allowed = event.type === 'listing' ? await canViewListing(event.id, req.user.id, { discovery: true }) : await canViewRequest(event.id, req.user.id);
+      let allowed = event.type === 'listing' ? await canViewListing(event.id, req.user.id, { discovery: true }) : await canViewRequest(event.id, req.user.id);
+      if (!allowed) allowed = await canPreviewTownPost(event.id, req.user.id, event.type);
       if (!allowed) continue;
       const owner = await query(event.type === 'listing' ? 'SELECT owner_id AS id FROM listings WHERE id=$1' : 'SELECT user_id AS id FROM item_requests WHERE id=$1', [event.id]);
       const countClick = event.event === 'click' && owner.rows[0]?.id !== req.user.id;
@@ -112,7 +114,9 @@ router.get('/', authenticate, async (req, res) => {
         listingParams.push(categoryId);
       }
 
-      listingQuery += ' AND ' + listingAccessSql('l', '$' + (listingParams.length + 1), { discovery: true });
+      const fullAccess = listingAccessSql('l', '$' + (listingParams.length + 1), { discovery: true });
+      listingQuery = listingQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
+      listingQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('l', 'owner_id', '$' + (listingParams.length + 1), { listing: true }) + ')';
       listingParams.push(req.user.id);
       if (visibilityFilters.length) {
         listingQuery += " AND string_to_array(l.visibility::text, ',') && $" + (listingParams.length + 1) + '::text[]';
@@ -158,7 +162,9 @@ router.get('/', authenticate, async (req, res) => {
 
       const requestParams = [req.user.id];
 
-      requestQuery += ' AND ' + requestAccessSql('r', '$1');
+      const fullAccess = requestAccessSql('r', '$1');
+      requestQuery = requestQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
+      requestQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('r', 'user_id', '$1') + ')';
       if (visibilityFilters.length) {
         requestQuery += " AND string_to_array(r.visibility::text, ',') && $" + (requestParams.length + 1) + '::text[]';
         requestParams.push(visibilityFilters);
@@ -190,6 +196,7 @@ router.get('/', authenticate, async (req, res) => {
 
     // Combine and sort by created_at
     const listings = listingsResult.rows.map(l => {
+      if (l.full_access === false) return townListingPreview(l);
       const isTownListing = (l.listing_visibility || '').split(',').includes('town') && l.owner_id !== req.user.id;
       const ownerMasked = needsMasking && isTownListing;
 
@@ -226,7 +233,7 @@ router.get('/', authenticate, async (req, res) => {
       };
     });
 
-    const requests = requestsResult.rows.map(r => ({
+    const requests = requestsResult.rows.map(r => r.full_access === false ? townRequestPreview(r, true) : ({
       id: r.id,
       type: 'request',
       title: r.title,

@@ -21,14 +21,14 @@ import { haptics } from '../utils/haptics';
 
 const NEEDS_LOCATION_MESSAGE = 'Set your location in your profile to discover neighborhoods nearby.';
 
-export default function JoinCommunityScreen({ navigation }) {
+export default function JoinCommunityScreen({ navigation, route }) {
   const { user, refreshUser } = useAuth();
   const { showError } = useError();
   const [neighborhoods, setNeighborhoods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [joiningId, setJoiningId] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(Boolean(route?.params?.create));
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);

@@ -7,7 +7,8 @@ export default function DirectFeePicker({ enabled, amount, onToggle, onAmountCha
     <View style={styles.row}>
       <Text style={styles.label}>Charge a fee</Text>
       <Switch accessibilityLabel="Charge a fee" value={enabled} onValueChange={onToggle}
-        trackColor={{ false: COLORS.border, true: COLORS.primary }} />
+        trackColor={{ false: COLORS.illustration.mist, true: COLORS.primary }}
+        ios_backgroundColor={COLORS.illustration.mist} thumbColor={COLORS.surface} />
     </View>
     {enabled && <>
       <Text style={styles.label}>Price per day ($)</Text>

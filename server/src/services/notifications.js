@@ -1,5 +1,6 @@
 import { query } from '../utils/db.js';
 import logger from '../utils/logger.js';
+import { shouldSendPush } from './notificationPreferences.js';
 
 // Notification types and their templates
 const NOTIFICATION_TEMPLATES = {
@@ -220,7 +221,7 @@ const NOTIFICATION_TEMPLATES = {
   friend_request: {
     title: 'New Friend Request',
     body: (data) => data.fromName
-      ? `${data.fromName} wants to connect with you on BorrowHood. Tap to respond.`
+      ? `${data.fromName} wants to connect with you on Borrowhood. Tap to respond.`
       : 'You have a new friend request. Tap to respond.',
   },
   friend_accepted: {
@@ -246,8 +247,8 @@ const NOTIFICATION_TEMPLATES = {
   referral_joined: {
     title: 'Your friend joined!',
     body: (data) => data.friendName
-      ? `${data.friendName} just joined BorrowHood thanks to you! Keep sharing to unlock free Plus.`
-      : 'Someone just joined using your referral code! Keep sharing to unlock free Plus.',
+      ? `${data.friendName} just joined Borrowhood thanks to you! Thanks for helping your neighborhood grow.`
+      : 'Someone just joined using your referral code! Thanks for helping your neighborhood grow.',
   },
   referral_reward: {
     title: 'You earned free Plus!',
@@ -305,7 +306,7 @@ export async function sendNotification(userId, type, data, options = {}) {
       const prefs = notification_preferences || {};
 
       // Send push notification if enabled and token exists
-      if (push_token && prefs.push !== false && prefs[type] !== false) {
+      if (push_token && shouldSendPush(type, prefs)) {
         // Get unread count for app icon badge
         const unreadResult = await query(
           'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
@@ -313,7 +314,7 @@ export async function sendNotification(userId, type, data, options = {}) {
         );
         const badge = parseInt(unreadResult.rows[0].count) || 1;
 
-        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data }, badge });
+        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data }, badge, sound: prefs.push_sound !== false });
       }
     }
 
@@ -328,7 +329,7 @@ export async function sendNotification(userId, type, data, options = {}) {
  * Send push notification via Expo Push Service
  * Borrowhood uses React Native with Expo, so we use Expo's push service
  */
-async function sendPushNotification(pushToken, { title, body, data, badge }) {
+async function sendPushNotification(pushToken, { title, body, data, badge, sound = true }) {
   try {
     // Validate Expo push token format
     if (!pushToken.startsWith('ExponentPushToken[')) {
@@ -338,7 +339,7 @@ async function sendPushNotification(pushToken, { title, body, data, badge }) {
 
     const message = {
       to: pushToken,
-      sound: 'default',
+      ...(sound ? { sound: 'default' } : {}),
       title,
       body,
       data,
