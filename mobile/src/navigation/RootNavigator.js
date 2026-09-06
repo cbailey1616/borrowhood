@@ -214,7 +214,9 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Friends"
             component={FriendsScreen}
-            options={{ ...sharedScreenOptions, title: 'Friends' }}
+            options={({ route }) => route.params?.fromPosting
+              ? modalScreenOptions('Friends')
+              : { ...sharedScreenOptions, title: 'Friends' }}
           />
           <Stack.Screen
             name="PaymentMethods"
@@ -267,7 +269,9 @@ export default function RootNavigator() {
           <Stack.Screen
             name="JoinCommunity"
             component={JoinCommunityScreen}
-            options={{ ...sharedScreenOptions, title: 'Find Your Neighborhood' }}
+            options={({ route }) => route.params?.fromPosting
+              ? modalScreenOptions('Find your neighborhood')
+              : { ...sharedScreenOptions, title: 'Find Your Neighborhood' }}
           />
           <Stack.Screen
             name="InviteMembers"

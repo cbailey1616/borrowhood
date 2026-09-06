@@ -277,8 +277,8 @@ export default function EditRequestScreen({ navigation, route }) {
       <View style={styles.section}>
         <SharingPicker request value={formData.visibility} onChange={next => updateField('visibility', next.visibility)}
           verified={Boolean(user?.isVerified)} neighborhoodAvailable={Boolean(communityId)}
-          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
-          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
       </View>
 

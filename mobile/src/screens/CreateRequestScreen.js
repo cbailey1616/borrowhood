@@ -206,7 +206,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       {showDetails && communityId === null && (
         <HapticPressable
           style={styles.communityHint}
-          onPress={() => navigation.navigate('JoinCommunity')}
+          onPress={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           haptic="light"
         >
           <Ionicons name="home-outline" size={18} color={COLORS.primary} />
@@ -435,11 +435,11 @@ export default function CreateRequestScreen({ navigation, route }) {
       <View style={styles.section}>
         <SharingPicker request value={formData.visibility} onChange={next => updateField('visibility', next.visibility)}
           audienceProblem={audienceProblem} audienceLoading={friends.loading}
-          friendsAvailable={friends.count > 0} onInviteFriends={() => navigation.navigate('Friends')}
+          friendsAvailable={friends.count > 0} onInviteFriends={() => navigation.navigate('Friends', { fromPosting: true })}
           onRetryAudience={friends.error ? loadFriends : undefined}
           verified={Boolean(user?.isVerified)} neighborhoodAvailable={Boolean(communityId)}
-          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
-          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
       </View>
 

@@ -505,8 +505,8 @@ export default function CreateListingScreen({ navigation, route }) {
         {requestMatchId ? <Text style={styles.hint}>Private offer: only this requester can see this item for up to 14 days while their request is open. Your other items stay private.</Text> : (
         <SharingPicker value={formData.visibility} circleId={formData.circleId}
           neighborhoodAvailable={Boolean(communityId)}
-          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
-          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
           verified={Boolean(user?.isVerified)}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
           onChange={sharing => { sharingChosen.current = true; setFormData(previous => ({ ...previous, ...sharing })); }} />

@@ -422,8 +422,8 @@ export default function EditListingScreen({ navigation, route }) {
 
         <SharingPicker value={formData.visibility} circleId={formData.circleId}
           neighborhoodAvailable={Boolean(formData.communityId)}
-          onJoinNeighborhood={() => navigation.navigate('JoinCommunity')}
-          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true })}
+          onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
           verified={Boolean(user?.isVerified)}
           onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
           onChange={sharing => setFormData(previous => ({ ...previous, ...sharing }))} />
