@@ -25,7 +25,7 @@ try {
   await client.query('BEGIN');
   await client.query("SET LOCAL search_path TO pg_temp; SET LOCAL statement_timeout = '5s'");
   await client.query(`
-    CREATE TEMP TABLE users (id text, is_verified boolean, city text, state text);
+    CREATE TEMP TABLE users (id text, is_verified boolean, city text, state text, status text DEFAULT 'pending');
     CREATE TEMP TABLE listings (id text, owner_id text, visibility text, privacy_version integer, status text, circle_id text, community_id text);
     CREATE TEMP TABLE friendships (user_id text, friend_id text, status text);
     CREATE TEMP TABLE lending_circle_members (circle_id text, user_id text, status text);
@@ -33,7 +33,7 @@ try {
     CREATE TEMP TABLE item_requests (id text, user_id text, visibility text, community_id text, status text, expires_at timestamptz, needed_until date);
     CREATE TEMP TABLE listing_shares (listing_id text, user_id text, request_id text, revoked_at timestamptz, expires_at timestamptz);
     CREATE TEMP TABLE borrow_transactions (listing_id text, borrower_id text, status text);
-    INSERT INTO users VALUES ('owner', true, 'Upton', 'MA'), ('neighbor', true, ' upton ', 'ma'),
+    INSERT INTO users (id, is_verified, city, state) VALUES ('owner', true, 'Upton', 'MA'), ('neighbor', true, ' upton ', 'ma'),
       ('friend', false, 'Upton', 'MA'), ('outsider', true, 'Upton', 'NY');
     INSERT INTO listings (id, owner_id, visibility, privacy_version, status, circle_id) VALUES ('private', 'owner', 'private', 1, 'active', NULL),
       ('friends', 'owner', 'close_friends', 1, 'active', NULL),
@@ -57,6 +57,12 @@ try {
   await checkItem('town', 'neighbor', true);
   await checkItem('town', 'friend', false);
   await checkItem('town', 'outsider', false);
+  await client.query("UPDATE users SET is_verified = false WHERE id = 'owner'");
+  await checkItem('town', 'neighbor', true);
+  await checkItem('town', 'friend', false);
+  await client.query("UPDATE users SET status = 'suspended' WHERE id = 'owner'");
+  await checkItem('town', 'neighbor', false);
+  await client.query("UPDATE users SET is_verified = true, status = 'pending' WHERE id = 'owner'");
   await client.query("INSERT INTO friendships VALUES ('friend', 'owner', 'pending')");
   await checkItem('friends', 'friend', false);
   await client.query("UPDATE friendships SET status = 'accepted'");

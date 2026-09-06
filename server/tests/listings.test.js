@@ -154,7 +154,7 @@ describe('POST /api/listings', () => {
     createdListingIds.push(res.body.id);
   });
 
-  it('should reject town sharing by an unverified free user', async () => {
+  it('should create a town listing for an unverified free user', async () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
@@ -168,11 +168,11 @@ describe('POST /api/listings', () => {
         photos: [photo(freeUser)],
       });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Verify your identity');
+    expect(res.status).toBe(201);
+    createdListingIds.push(res.body.id);
   });
 
-  it('should reject town visibility without verification', async () => {
+  it('should create a town listing without verification or a paid plan', async () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${plusUser.token}`)
@@ -183,11 +183,11 @@ describe('POST /api/listings', () => {
         categoryId,
         isFree: true,
         visibility: ['town'],
-        photos: [photo(freeUser)],
+        photos: [photo(plusUser)],
       });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Verify your identity');
+    expect(res.status).toBe(201);
+    createdListingIds.push(res.body.id);
   });
 
   it('should create town listing for verified Plus user', async () => {

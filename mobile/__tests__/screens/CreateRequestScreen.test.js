@@ -9,9 +9,27 @@ const mockShowError = jest.fn();
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: jest.fn() }) }));
 
-beforeEach(() => { jest.clearAllMocks(); mockUser.isVerified = true; api.getFriends.mockResolvedValue([{ id: 'friend-1' }]); api.getCommunities.mockResolvedValue([]); api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools', slug: 'tools-hardware' }]); api.createRequest.mockResolvedValue({ id: 'req-1' }); });
+beforeEach(() => { jest.clearAllMocks(); mockUser.isVerified = true; delete mockUser.city; delete mockUser.state; api.getFriends.mockResolvedValue([{ id: 'friend-1' }]); api.getCommunities.mockResolvedValue([]); api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools', slug: 'tools-hardware' }]); api.createRequest.mockResolvedValue({ id: 'req-1' }); });
 
 describe('CreateRequestScreen', () => {
+  it('lets an unverified member with no friends post a Town request', async () => {
+    mockUser.isVerified = false;
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    api.getFriends.mockResolvedValue([]);
+    api.searchListingSuggestions = jest.fn().mockResolvedValue({ suggestions: [] });
+    const Screen = require('../../src/screens/CreateRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Visible to Town');
+    fireEvent.changeText(screen.getByPlaceholderText(/Power drill/), 'A ladder for the weekend');
+    await waitFor(() => expect(screen.getByTestId('CreateRequest.button.submit')).not.toBeDisabled());
+    fireEvent.press(screen.getByTestId('CreateRequest.button.submit'));
+    await waitFor(() => expect(api.createRequest).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'A ladder for the weekend', visibility: ['town'], townPreviewEnabled: true,
+    })));
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(mockShowError).not.toHaveBeenCalled();
+  });
+
   it('renders title input', async () => {
     const CreateRequestScreen = require('../../src/screens/CreateRequestScreen').default;
     const { findByPlaceholderText } = render(<CreateRequestScreen navigation={mockNavigation} />);

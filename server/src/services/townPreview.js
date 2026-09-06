@@ -8,7 +8,6 @@ export function townPreviewSql(alias, ownerColumn, viewer, { listing = false } =
     ${listing ? `AND ${alias}.privacy_version = 1 AND ${alias}.status = 'active'` : `AND ${alias}.status = 'open' AND (${alias}.expires_at IS NULL OR ${alias}.expires_at > NOW()) AND (${alias}.needed_until IS NULL OR ${alias}.needed_until >= CURRENT_DATE)`}
     AND EXISTS (SELECT 1 FROM users pv JOIN users po ON po.id = ${alias}.${ownerColumn}
       WHERE pv.id = ${viewer} AND pv.status != 'suspended' AND po.status != 'suspended'
-      AND po.is_verified = true
       AND NULLIF(TRIM(pv.city), '') IS NOT NULL AND NULLIF(TRIM(pv.state), '') IS NOT NULL
       AND LOWER(TRIM(pv.city)) = LOWER(TRIM(po.city))
       AND LOWER(TRIM(pv.state)) = LOWER(TRIM(po.state))))`;

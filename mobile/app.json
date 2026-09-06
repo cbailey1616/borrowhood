@@ -10,7 +10,7 @@
     "splash": {
       "image": "./src/assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#DED2B5"
+      "backgroundColor": "#F3EBDD"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -48,7 +48,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#4A7C59"
+        "backgroundColor": "#F3EBDD"
       },
       "package": "com.borrowhood.app",
       "versionCode": 3,
@@ -105,7 +105,16 @@
         }
       ],
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F3EBDD",
+          "image": "./src/assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "extra": {
       "eas": {

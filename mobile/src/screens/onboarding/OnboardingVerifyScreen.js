@@ -123,7 +123,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
           </View>
           <Text style={styles.title}>Already Verified</Text>
           <Text style={styles.subtitle}>
-            Your identity has been verified. You can use town-wide requests and see items explicitly shared with your town. Private inventories stay private.
+            Your identity has been verified. You can now see who’s sharing in Town, and your profile has a verified badge. Private inventories stay private.
           </Text>
         </View>
 

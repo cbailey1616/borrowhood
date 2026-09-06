@@ -180,10 +180,10 @@ export default function CreateListingScreen({ navigation, route }) {
   useEffect(() => {
     // Never widen restored drafts, relists, private offers, or a user's choice.
     if (!dataLoaded || !draft.ready || draft.restored || requestMatchId || route?.params?.relistFrom || sharingChosen.current) return;
-    const scope = user?.isVerified && user?.city && user?.state ? 'town' : communityId ? 'neighborhood' : 'close_friends';
+    const scope = user?.city?.trim() && user?.state?.trim() ? 'town' : communityId ? 'neighborhood' : 'close_friends';
     setFormData(previous => ({ ...previous, visibility: [scope] }));
     sharingChosen.current = true;
-  }, [dataLoaded, draft.ready, draft.restored, requestMatchId, communityId, user?.isVerified, user?.city, user?.state]);
+  }, [dataLoaded, draft.ready, draft.restored, requestMatchId, communityId, user?.city, user?.state]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -507,8 +507,6 @@ export default function CreateListingScreen({ navigation, route }) {
           neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
-          verified={Boolean(user?.isVerified)}
-          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
           onChange={sharing => { sharingChosen.current = true; setFormData(previous => ({ ...previous, ...sharing })); }} />
         )}
       </View>

@@ -12,7 +12,7 @@ const audiences = [
   ['town', 'Town', 'Town members can preview this item. Only verified members can see your profile.', 'location'],
 ];
 
-export default function SharingPicker({ value = ['private'], onChange, verified, onVerify, request = false,
+export default function SharingPicker({ value = ['private'], onChange, request = false,
   neighborhoodAvailable = true, onJoinNeighborhood, onCreateNeighborhood,
   friendsAvailable = true, onInviteFriends, audienceProblem, audienceLoading = false, onRetryAudience }) {
   const [expanded, setExpanded] = useState(false);
@@ -34,7 +34,6 @@ export default function SharingPicker({ value = ['private'], onChange, verified,
       onChange({ visibility: remaining.length ? remaining : ['private'], circleId: null });
       return;
     }
-    if (scope === 'town' && !verified) return onVerify?.();
     onChange({ visibility: [...value.filter(item => item !== 'private'), scope], circleId: null });
   };
 
@@ -61,7 +60,6 @@ export default function SharingPicker({ value = ['private'], onChange, verified,
             <Text style={styles.label}>{title}</Text>
             <Text style={styles.hint}>{scope === 'close_friends' && !friendsAvailable ? 'Invite a friend to share with them.'
               : scope === 'neighborhood' && !neighborhoodAvailable ? 'Join or create a neighborhood.'
-              : scope === 'town' && !verified ? 'Get verified to share with your town.'
               : request ? hint.replace('item', 'request') : hint}</Text>
           </View>
           <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />

@@ -34,7 +34,8 @@ export function audienceSql(alias, ownerColumn, viewer, { circle = false, town =
         AND so.user_id = ${owner})) OR
     ${town ? `(${scope('town')} AND EXISTS (
       SELECT 1 FROM users sv JOIN users so ON so.id = ${owner}
-      WHERE sv.id = ${viewer} AND sv.is_verified = true AND so.is_verified = true
+      WHERE sv.id = ${viewer} AND sv.is_verified = true
+        AND sv.status != 'suspended' AND so.status != 'suspended'
         AND NULLIF(TRIM(sv.city), '') IS NOT NULL AND NULLIF(TRIM(sv.state), '') IS NOT NULL
         AND LOWER(TRIM(sv.city)) = LOWER(TRIM(so.city))
         AND LOWER(TRIM(sv.state)) = LOWER(TRIM(so.state))))` : 'false'}

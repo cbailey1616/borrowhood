@@ -11,6 +11,7 @@ jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showErro
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUser.isVerified = true;
   delete mockUser.city;
   delete mockUser.state;
   api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools', slug: 'tools-hardware' }]);
@@ -22,7 +23,8 @@ beforeEach(() => {
 
 describe('CreateListingScreen', () => {
   const route = { params: {} };
-  it('defaults a new verified-town listing to town', async () => {
+  it.each([true, false])('defaults a new listing to Town with isVerified=%s', async isVerified => {
+    mockUser.isVerified = isVerified;
     mockUser.city = 'Upton'; mockUser.state = 'MA';
     const Screen = require('../../src/screens/CreateListingScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);

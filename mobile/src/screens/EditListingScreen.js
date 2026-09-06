@@ -261,7 +261,7 @@ export default function EditListingScreen({ navigation, route }) {
         showError({
           type: 'subscription',
           title: 'Verification Required',
-          message: 'Verify your identity before choosing to share this item town-wide. Your other inventory stays private.',
+          message: error.message || 'This action requires identity verification.',
           primaryAction: 'Verify Now',
           onPrimaryAction: () => navigation.navigate('Subscription'),
         });
@@ -424,8 +424,6 @@ export default function EditListingScreen({ navigation, route }) {
           neighborhoodAvailable={Boolean(formData.communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
-          verified={Boolean(user?.isVerified)}
-          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })}
           onChange={sharing => setFormData(previous => ({ ...previous, ...sharing }))} />
 
       </View>

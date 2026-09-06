@@ -211,7 +211,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const fullAccess = await canViewRequest(req.params.id, req.user.id);
     if (!fullAccess && !await canPreviewTownPost(req.params.id, req.user.id, 'request')) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
-      `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
+      `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.is_verified,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               c.name as category_name
        FROM item_requests r
@@ -241,6 +241,7 @@ router.get('/:id', authenticate, async (req, res) => {
       categoryId: r.category_id,
       requester: {
         id: r.user_id,
+        isVerified: r.is_verified === true,
         firstName: r.display_name || r.first_name,
         lastName: r.display_name ? '' : (r.last_name ? r.last_name.charAt(0) + '.' : ''),
         profilePhotoUrl: r.profile_photo_url,
@@ -301,9 +302,9 @@ router.post('/', authenticate,
 
     try {
       if (visArray.includes('town')) {
-        const verified = await query('SELECT is_verified, city, state FROM users WHERE id = $1', [req.user.id]);
-        if (!verified.rows[0]?.is_verified || !verified.rows[0]?.city || !verified.rows[0]?.state) {
-          return res.status(403).json({ error: 'Verify your identity and town before posting a town request.' });
+        const town = await query('SELECT city, state FROM users WHERE id = $1', [req.user.id]);
+        if (!town.rows[0]?.city?.trim() || !town.rows[0]?.state?.trim()) {
+          return res.status(400).json({ error: 'Add your town and state to your profile before posting to Town.' });
         }
       }
       if (visArray.includes('neighborhood') && !communityId) return res.status(400).json({ error: 'Join or create a neighborhood for this request.' });
@@ -513,9 +514,9 @@ router.patch('/:id', authenticate,
           return res.status(400).json({ error: 'Choose a valid request audience.' });
         }
         if (scopes.includes('town')) {
-          const verified = await query('SELECT is_verified, city, state FROM users WHERE id = $1', [req.user.id]);
-          if (!verified.rows[0]?.is_verified || !verified.rows[0]?.city || !verified.rows[0]?.state) {
-            return res.status(403).json({ error: 'Verify your identity and town before sharing this request town-wide.' });
+          const town = await query('SELECT city, state FROM users WHERE id = $1', [req.user.id]);
+          if (!town.rows[0]?.city?.trim() || !town.rows[0]?.state?.trim()) {
+            return res.status(400).json({ error: 'Add your town and state to your profile before posting to Town.' });
           }
         }
       }

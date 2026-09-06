@@ -52,12 +52,12 @@ it('keeps all three checked when selected sequentially', () => {
   expect(getByLabelText('Only me').props.accessibilityState.checked).toBe(false);
 });
 
-it('routes unverified users to verification instead of selecting town sharing', () => {
+it('lets unverified users select Town without opening verification', () => {
   const { getByLabelText } = render(<SharingPicker onChange={onChange} onVerify={onVerify} verified={false} />);
   fireEvent.press(getByLabelText('Change who can see this item'));
   fireEvent.press(getByLabelText('Town'));
-  expect(onVerify).toHaveBeenCalled();
-  expect(onChange).not.toHaveBeenCalled();
+  expect(onVerify).not.toHaveBeenCalled();
+  expect(onChange).toHaveBeenCalledWith({ visibility: ['town'], circleId: null });
 });
 
 it('offers the same friends, neighborhood, and town choices used elsewhere', () => {

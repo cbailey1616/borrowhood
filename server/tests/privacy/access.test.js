@@ -54,9 +54,12 @@ describe('private-first policy', () => {
     expect((await validateSharing({ visibility: ['town'] }, viewer)).error).toMatch(/confirm/);
     expect(query).not.toHaveBeenCalled();
   });
-  it('requires actual verification for explicit town opt-in', async () => {
-    expect((await validateSharing({ visibility: ['town'], sharingConfirmed: true }, viewer)).error).toMatch(/Verify/);
-    expect(query.mock.calls[0][0]).toContain('is_verified = true');
+  it('requires a town and state, but not verification, for explicit town opt-in', async () => {
+    const body = { visibility: ['town'], sharingConfirmed: true };
+    expect((await validateSharing(body, viewer)).error).toMatch(/town and state/);
+    expect(query.mock.calls[0][0]).not.toContain('is_verified');
+    query.mockResolvedValueOnce({ rows: [{ id: viewer }] });
+    expect((await validateSharing(body, viewer)).scopes).toEqual(['town']);
   });
   it('rejects group sharing without selecting an active group', async () => {
     expect((await validateSharing({ visibility: ['circle'], sharingConfirmed: true }, viewer)).error).toMatch(/Choose/);

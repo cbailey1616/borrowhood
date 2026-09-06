@@ -183,7 +183,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your ID check is being reviewed. Keep browsing Town while you wait. Once verified, you can see who’s sharing and post to Town too.
+            Your ID check is being reviewed. Keep browsing and posting to Town while you wait. Once verified, you can see who’s sharing.
           </Text>
           <Text style={styles.graceNotice}>
             Your verified identity badge will appear once verification is complete.
@@ -215,9 +215,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'Browse Town listings. Get verified to see who’s sharing and post to Town too. A quick ID and selfie check adds a little reassurance before you share. Borrowhood covers the cost during launch.';
+    if (source === 'town_browse') return 'Browse and post to Town anytime. Get verified to see who’s sharing and add a verified badge to your profile. Borrowhood covers the ID and selfie check during launch.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'Browse Town listings. Get verified to see who’s sharing and post to Town too. You can already share with friends and your neighborhood. Borrowhood covers the ID and selfie check during launch.';
+    return 'Browse and post to Town anytime. Get verified to see who’s sharing and add a verified badge to your profile. Borrowhood covers the ID and selfie check during launch.';
   };
 
   return (

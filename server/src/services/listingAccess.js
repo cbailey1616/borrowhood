@@ -21,9 +21,9 @@ export async function validateSharing(body, userId) {
     return { error: 'Please review and confirm who can see this item in the latest app.' };
   }
   if (scopes.includes('town')) {
-    const verified = await query(`SELECT id FROM users WHERE id = $1 AND is_verified = true
+    const town = await query(`SELECT id FROM users WHERE id = $1 AND status != 'suspended'
       AND NULLIF(TRIM(city), '') IS NOT NULL AND NULLIF(TRIM(state), '') IS NOT NULL`, [userId]);
-    if (!verified.rows.length) return { error: 'Verify your identity and town before sharing town-wide.' };
+    if (!town.rows.length) return { error: 'Add your town and state to your profile before posting to Town.' };
   }
   if (scopes.includes('neighborhood')) {
     if (!body.communityId) return { error: 'Join a neighborhood before sharing with neighbors.' };

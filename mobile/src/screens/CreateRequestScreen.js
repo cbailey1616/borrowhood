@@ -62,7 +62,7 @@ export default function CreateRequestScreen({ navigation, route }) {
     catch { setFriends({ loading: false, count: 0, error: true }); }
   }, []);
   useFocusEffect(useCallback(() => { loadFriends(); }, [loadFriends]));
-  const audienceProblem = requestAudienceProblem(formData.visibility, friends, Boolean(user?.isVerified && user?.city));
+  const audienceProblem = requestAudienceProblem(formData.visibility, friends);
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ title: false, categoryId: false });
@@ -180,8 +180,8 @@ export default function CreateRequestScreen({ navigation, route }) {
   // A town request advertises a need, never the requester's inventory.
   useEffect(() => {
     if (communityId === undefined || !draft.ready || draft.restored) return;
-    updateField('visibility', user?.isVerified && user?.city ? ['town'] : ['close_friends']);
-  }, [communityId, draft.ready, draft.restored]);
+    updateField('visibility', user?.city?.trim() && user?.state?.trim() ? ['town'] : communityId ? ['neighborhood'] : ['close_friends']);
+  }, [communityId, draft.ready, draft.restored, user?.city, user?.state]);
 
   // Loading state while checking community
   if (communityId === undefined) {
@@ -437,10 +437,9 @@ export default function CreateRequestScreen({ navigation, route }) {
           audienceProblem={audienceProblem} audienceLoading={friends.loading}
           friendsAvailable={friends.count > 0} onInviteFriends={() => navigation.navigate('Friends', { fromPosting: true })}
           onRetryAudience={friends.error ? loadFriends : undefined}
-          verified={Boolean(user?.isVerified)} neighborhoodAvailable={Boolean(communityId)}
+          neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
-          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
-          onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
+          onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })} />
       </View>
 
       {/* Submit */}
