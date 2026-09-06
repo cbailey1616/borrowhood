@@ -1,156 +1,71 @@
-# Borrowhood CI/CD Pipeline
-name: Deploy
+# Railway deploys the connected main branch; startup owns idempotent migrations.
+# CI never uses production credentials or replays the initial schema on production.
+name: Borrowhood checks
 
 on:
   push:
-    branches:
-      - main
-      - staging
+    branches: [main, staging]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
-  # Run tests
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4-alpine
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: borrowhood_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+  server:
+    name: Server, auth and privacy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: server/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./server
-        run: npm ci
-
-      - name: Run migrations
-        working-directory: ./server
-        env:
-          DATABASE_URL: postgres://test:test@localhost:5432/borrowhood_test
+      - name: Install disposable database tools
         run: |
-          for f in migrations/0*.sql; do
-            echo "Running $f..."
-            psql $DATABASE_URL -f "$f"
-          done
-
-      - name: Run tests
-        working-directory: ./server
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-16-postgis-3
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+      - name: Check server JavaScript syntax
+        working-directory: server
+        run: find src scripts -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Test current API, migrations, auth and privacy
+        working-directory: server
         env:
-          DATABASE_URL: postgres://test:test@localhost:5432/borrowhood_test
-          JWT_SECRET: test-secret-key
-          STRIPE_SECRET_KEY: sk_test_placeholder  # SWITCH TO LIVE KEYS ONLY FOR APP STORE RELEASE
+          PRIVACY_PG_BIN: /usr/lib/postgresql/16/bin
         run: npm test
 
-  # Lint and type check
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-
+  mobile:
+    name: Mobile regression and iOS bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./server
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install mobile dependencies
+        working-directory: mobile
         run: npm ci
-
-      # Add ESLint if configured
-      # - name: Run ESLint
-      #   working-directory: ./server
-      #   run: npm run lint
-
-  # Deploy to staging
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [test, lint]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/staging'
-    environment: staging
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway (Staging)
-        working-directory: ./server
+      - name: Test every mobile suite, including smoke tests
+        working-directory: mobile
+        run: npm run test:full -- --watch=false
+      - name: Export production iOS JavaScript
+        working-directory: mobile
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
-        run: railway up --service borrowhood-api-staging
-
-  # Deploy to production
-  deploy-production:
-    name: Deploy to Production
-    needs: [test, lint]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway (Production)
-        working-directory: ./server
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
-        run: railway up --service borrowhood-api
-
-  # Run database migrations in production
-  migrate-production:
-    name: Run Migrations
-    needs: deploy-production
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          for f in server/migrations/0*.sql; do
-            echo "Running $f..."
-            psql $DATABASE_URL -f "$f" || true
-          done
+          CI: '1'
+        run: npx expo export --platform ios --output-dir /tmp/borrowhood-ci-ios

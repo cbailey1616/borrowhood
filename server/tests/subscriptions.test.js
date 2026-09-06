@@ -1,180 +1,48 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+// Current free-launch contract; retired recurring checkout is not expected.
+import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
-import express from 'express';
-import jwt from 'jsonwebtoken';
 import { query } from '../src/utils/db.js';
-
-// Create a test app instance
-const createTestApp = async () => {
-  const app = express();
-  app.use(express.json());
-
-  const { default: subscriptionRoutes } = await import('../src/routes/subscriptions.js');
-  app.use('/api/subscriptions', subscriptionRoutes);
-  return app;
-};
-
-describe('Subscriptions API', () => {
-  let app;
-  let testUserId;
-  let authToken;
-
-  beforeAll(async () => {
-    app = await createTestApp();
-
-    // Create test user
-    const userResult = await query(
-      `INSERT INTO users (email, password_hash, first_name, last_name, status, subscription_tier)
-       VALUES ('sub-test@test.com', 'hash', 'Test', 'User', 'verified', 'free')
-       ON CONFLICT (email) DO UPDATE SET subscription_tier = 'free'
-       RETURNING id`
-    );
-    testUserId = userResult.rows[0].id;
-
-    // Generate a real JWT for the test user
-    authToken = jwt.sign({ userId: testUserId }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  });
-
-  afterAll(async () => {
-    await query('DELETE FROM subscription_history WHERE user_id = $1', [testUserId]);
-    await query('DELETE FROM users WHERE id = $1', [testUserId]);
-  });
-
-  describe('GET /api/subscriptions/tiers', () => {
-    it('should return all subscription tiers', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/tiers')
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThanOrEqual(2);
-
-      const freeTier = response.body.find(t => t.tier === 'free');
-      expect(freeTier).toBeDefined();
-      expect(freeTier.priceCents).toBe(0);
-      expect(freeTier.features).toBeDefined();
-    });
-
-    it('should include plus tier', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/tiers')
-        .set('Authorization', `Bearer ${authToken}`);
-
-      const plusTier = response.body.find(t => t.tier === 'plus');
-      expect(plusTier).toBeDefined();
-      expect(plusTier.priceCents).toBe(100);
-    });
-  });
-
-  describe('GET /api/subscriptions/current', () => {
-    it('should return user current subscription', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/current')
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('tier');
-      expect(response.body.tier).toBe('free');
-    });
-
-    it('should indicate subscription is active', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/current')
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.body).toHaveProperty('isActive');
-      expect(response.body.isActive).toBe(true);
-    });
-  });
-
-  describe('GET /api/subscriptions/access-check', () => {
-    it('should allow free tier default access', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/access-check')
-        .query({ feature: 'friends' })
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.hasAccess).toBe(true);
-    });
-
-    it('should deny free tier access to town feature', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/access-check')
-        .query({ feature: 'town' })
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.hasAccess).toBe(false);
-      expect(response.body.upgradeRequired).toBe(true);
-    });
-
-    it('should deny free tier access to rentals feature', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/access-check')
-        .query({ feature: 'rentals' })
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.hasAccess).toBe(false);
-      expect(response.body.requiredTier).toBe('plus');
-    });
-  });
-
-  describe('POST /api/subscriptions/subscribe', () => {
-    it('should create subscription for authenticated user', async () => {
-      const response = await request(app)
-        .post('/api/subscriptions/subscribe')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ plan: 'monthly' });
-
-      // Subscribe endpoint returns PaymentSheet credentials
-      expect(response.status).toBe(200);
-      expect(response.body.clientSecret).toBeDefined();
-      expect(response.body.customerId).toBeDefined();
-    });
-  });
-
-  describe('POST /api/subscriptions/cancel', () => {
-    it('should reject cancel without active subscription', async () => {
-      // Create a fresh user with no subscription
-      const freshResult = await query(
-        `INSERT INTO users (email, password_hash, first_name, last_name, status, subscription_tier)
-         VALUES ('sub-cancel-test@test.com', 'hash', 'Cancel', 'User', 'verified', 'free')
-         RETURNING id`
-      );
-      const freshToken = jwt.sign({ userId: freshResult.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-      const response = await request(app)
-        .post('/api/subscriptions/cancel')
-        .set('Authorization', `Bearer ${freshToken}`);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No active subscription');
-
-      // Cleanup
-      await query('DELETE FROM users WHERE id = $1', [freshResult.rows[0].id]);
-    });
-  });
+import { createTestUser, createTestApp, cleanupTestUser } from './helpers/stripe.js';
+let app, member;
+beforeAll(async () => {
+  app = await createTestApp({ path: '/api/subscriptions', module: '../../src/routes/subscriptions.js' });
+  member = await createTestUser({ email: 'subscription-contract@borrowhood.test' });
 });
-
-describe('Subscription Tier Access Logic', () => {
-  it('free tier should not access town features', () => {
-    const tier = 'free';
-    const canAccessTown = tier === 'plus';
-    const canCharge = tier === 'plus';
-
-    expect(canAccessTown).toBe(false);
-    expect(canCharge).toBe(false);
+afterAll(async () => { if (member) await cleanupTestUser(member.userId); });
+const get = path => request(app).get('/api/subscriptions' + path).set('Authorization', `Bearer ${member.token}`);
+describe('Free launch and retained subscription history', () => {
+  it('requires authentication', async () => {
+    expect((await request(app).get('/api/subscriptions/current')).status).toBe(401);
   });
-
-  it('plus tier should access all features', () => {
-    const tier = 'plus';
-    const canAccessTown = tier === 'plus';
-    const canCharge = tier === 'plus';
-
-    expect(canAccessTown).toBe(true);
-    expect(canCharge).toBe(true);
+  it('does not invent an active paid subscription for a free member', async () => {
+    const res = await get('/current');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ tier: 'free', priceCents: 0, isActive: false });
+  });
+  it('keeps the legacy free and one-time verification tier metadata readable', async () => {
+    const res = await get('/tiers');
+    expect(res.status).toBe(200);
+    expect(res.body.find(t => t.tier === 'free')).toMatchObject({ priceCents: 0 });
+    expect(res.body.find(t => t.tier === 'plus')).toMatchObject({ priceCents: 199, priceDisplay: '$1.99 one-time' });
+  });
+  it('allows friends without a paid plan', async () => {
+    expect((await get('/access-check?feature=friends')).body).toMatchObject({ canAccess: true, upgradeRequired: false });
+  });
+  it.each(['town','rentals'])('requires identity, not a subscription, for legacy %s access', async feature => {
+    const res = await get('/access-check?feature=' + feature);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ canAccess: false, nextStep: 'identity', upgradeRequired: false, isSubscribed: true });
+  });
+  it('unlocks town for a verified free member', async () => {
+    await query('UPDATE users SET is_verified=true WHERE id=$1', [member.userId]);
+    expect((await get('/access-check?feature=town')).body).toMatchObject({ canAccess: true, nextStep: null, upgradeRequired: false });
+  });
+  it('blocks verification payment initiation while payments are disabled', async () => {
+    const res = await request(app).post('/api/subscriptions/verify-payment').set('Authorization', `Bearer ${member.token}`);
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('PAYMENTS_DISABLED');
+  });
+  it.each(['subscribe','cancel'])('does not restore removed recurring %s routes', async endpoint => {
+    expect((await request(app).post('/api/subscriptions/' + endpoint).set('Authorization', `Bearer ${member.token}`)).status).toBe(404);
   });
 });

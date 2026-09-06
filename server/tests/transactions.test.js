@@ -36,7 +36,7 @@ describe('Transactions API', () => {
     // Create test users
     const borrowerResult = await query(
       `INSERT INTO users (email, password_hash, first_name, last_name, status, subscription_tier, is_verified)
-       VALUES ('borrower-txn@test.com', 'hash', 'Test', 'Borrower', 'verified', 'plus', true)
+       VALUES ('borrower-txn@test.com', 'hash', 'Test', 'Borrower', 'verified', 'free', true)
        RETURNING id`
     );
     testUserId = borrowerResult.rows[0].id;
@@ -53,17 +53,20 @@ describe('Transactions API', () => {
 
     // Create test listing
     const listingResult = await query(
-      `INSERT INTO listings (owner_id, community_id, title, condition, price_per_day, deposit_amount)
-       VALUES ($1, $2, 'Test Tool', 'good', 10.00, 50.00)
+      `INSERT INTO listings (owner_id, community_id, title, condition, is_free, price_per_day, deposit_amount, visibility, privacy_version)
+       VALUES ($1, $2, 'Test Tool', 'good', true, 0, 0, 'close_friends', 1)
        RETURNING id`,
       [testLenderId, testCommunityId]
     );
     testListingId = listingResult.rows[0].id;
+    await query("INSERT INTO friendships(user_id, friend_id, status) VALUES($1,$2,'accepted')", [testUserId,testLenderId]);
   });
 
   afterAll(async () => {
+    await query('DELETE FROM notifications WHERE user_id IN ($1,$2) OR from_user_id IN ($1,$2)', [testUserId,testLenderId]);
     await query('DELETE FROM borrow_transactions WHERE borrower_id = $1', [testUserId]);
     await query('DELETE FROM listings WHERE id = $1', [testListingId]);
+    await query('DELETE FROM friendships WHERE user_id IN ($1,$2) OR friend_id IN ($1,$2)', [testUserId,testLenderId]);
     await query('DELETE FROM users WHERE id IN ($1, $2)', [testUserId, testLenderId]);
     await query('DELETE FROM communities WHERE id = $1', [testCommunityId]);
   });
@@ -87,6 +90,8 @@ describe('Transactions API', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('id');
+      expect(response.body.freeRental).toBe(true);
+      expect(response.body.clientSecret).toBeUndefined();
     });
 
     it('should reject invalid listing ID', async () => {
@@ -131,31 +136,5 @@ describe('Transactions API', () => {
 
       expect(response.status).toBe(404);
     });
-  });
-});
-
-describe('Transaction Pricing', () => {
-  it('should calculate platform fee correctly', () => {
-    const rentalFee = 100;
-    const platformFeePercent = 0.02;
-    const platformFee = rentalFee * platformFeePercent;
-
-    expect(platformFee).toBe(2);
-  });
-
-  it('should calculate lender payout correctly', () => {
-    const rentalFee = 100;
-    const platformFee = 2;
-    const lenderPayout = rentalFee - platformFee;
-
-    expect(lenderPayout).toBe(98);
-  });
-
-  it('should calculate rental days correctly', () => {
-    const start = new Date('2024-01-01');
-    const end = new Date('2024-01-05');
-    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-
-    expect(days).toBe(4);
   });
 });

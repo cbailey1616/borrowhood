@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "vitest run",
+    "test": "npm run test:privacy && npm run test:privacy:local -- --suite",
     "test:privacy": "vitest run --config vitest.privacy.config.js",
     "test:privacy:postgres": "node scripts/test-privacy-postgres.js",
     "test:privacy:local": "node scripts/run-privacy-local.js",
