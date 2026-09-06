@@ -28,6 +28,12 @@ const NOTIFICATION_TEMPLATES = {
       ? `${data.itemTitle} isn't available right now. Tap to browse similar items nearby.`
       : 'This item isn\'t available right now. Tap to browse similar items nearby.',
   },
+  borrow_cancelled: {
+    title: 'Borrow cancelled',
+    body: data => data.itemTitle
+      ? `The pickup for ${data.itemTitle} was cancelled. No pickup is expected.`
+      : 'This borrow was cancelled. No pickup is expected.',
+  },
 
   // Transaction flow
   payment_confirmed: {

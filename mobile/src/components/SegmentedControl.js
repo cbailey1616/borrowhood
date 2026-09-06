@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,7 +21,7 @@ export default function SegmentedControl({
 
   const onLayout = useCallback(
     (e) => {
-      containerWidth.value = e.nativeEvent.layout.width;
+      containerWidth.value = Math.max(0, e.nativeEvent.layout.width - 6);
     },
     []
   );
@@ -29,11 +29,11 @@ export default function SegmentedControl({
   const indicatorStyle = useAnimatedStyle(() => {
     const width = containerWidth.value / segmentCount;
     return {
-      width: Math.max(0, width - 4),
+      width: Math.max(0, width),
       transform: [
         {
           translateX: withSpring(
-            selectedIndex * width + 2,
+            selectedIndex * width,
             ANIMATION.spring.default
           ),
         },
@@ -84,15 +84,20 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '80',
     borderRadius: RADIUS.md,
     padding: 2,
     position: 'relative',
   },
   indicator: {
     position: 'absolute',
+    left: 2,
     top: 2,
     bottom: 2,
     backgroundColor: COLORS.primaryMuted,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '70',
     borderRadius: RADIUS.md - 2,
     zIndex: 0,
   },

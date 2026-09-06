@@ -133,7 +133,8 @@ export default function WelcomeScreen({ navigation }) {
             <View style={styles.logoContainer}>
               <Text style={styles.wordmark}>Borrowhood</Text>
               <WoodlandIllustration scene="neighborhood" width={218} />
-              <Text style={styles.welcomeLine}>Good things are closer than you think.</Text>
+              <Text accessibilityRole="header" style={styles.authTitle}>{pendingLink ? 'Connect your account' : showEmail ? 'Welcome back' : 'Sign up or sign in'}</Text>
+              {!showEmail && <Text style={styles.welcomeLine}>Apple and Google work for both.</Text>}
             </View>
 
             {/* Biometric Login Button */}
@@ -154,13 +155,16 @@ export default function WelcomeScreen({ navigation }) {
               </HapticPressable>
             )}
 
-            <SocialSignInButtons disabled={isLoading} onBusyChange={setSocialBusy} onLinkRequired={link => { setPendingLink(link); setShowEmail(true); }} />
+            <SocialSignInButtons disabled={isLoading} onBusyChange={busy => {
+              setSocialBusy(busy);
+              if (busy) { setPendingLink(null); setShowEmail(false); setPassword(''); setLoginError(null); }
+            }} onLinkRequired={link => { setPendingLink(link); setShowEmail(true); }} />
             <HapticPressable onPress={() => { setShowEmail(!showEmail); setPendingLink(null); }} disabled={socialBusy || isLoading} style={styles.forgotPassword} accessibilityRole="button" accessibilityState={{ expanded: showEmail }}>
-              <Text style={styles.forgotPasswordText}>{showEmail ? 'Hide email sign-in' : 'Use email instead'}</Text>
+              <Text style={styles.forgotPasswordText}>{showEmail ? 'Use Apple or Google instead' : 'Sign in with email'}</Text>
             </HapticPressable>
             {showEmail && <View style={styles.formCard}>
               <View style={styles.form}>
-                {!!pendingLink && <Text style={styles.welcomeLine}>Sign in once with your password to connect {pendingLink.provider === 'apple' ? 'Apple' : 'Google'} to your existing account.</Text>}
+                {!!pendingLink && <Text style={styles.welcomeLine}>Enter your Borrowhood password once to connect {pendingLink.provider === 'apple' ? 'Apple' : 'Google'}. Next time, just tap Continue with {pendingLink.provider === 'apple' ? 'Apple' : 'Google'}.</Text>}
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Email</Text>
                   <TextInput
@@ -219,13 +223,13 @@ export default function WelcomeScreen({ navigation }) {
                   disabled={isLoading || socialBusy}
                   haptic="medium"
                   testID="Welcome.button.signIn"
-                  accessibilityLabel="Sign in"
+                  accessibilityLabel={pendingLink ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} and sign in` : 'Sign in'}
                   accessibilityRole="button"
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
                   ) : (
-                    <Text style={styles.loginButtonText}>{pendingLink ? 'Sign in & connect' : 'Sign In'}</Text>
+                    <Text style={styles.loginButtonText}>{pendingLink ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} & sign in` : 'Sign In'}</Text>
                   )}
                 </HapticPressable>
 
@@ -239,16 +243,18 @@ export default function WelcomeScreen({ navigation }) {
               </View>
             </View>}
 
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>New here?</Text>
+              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account with email" accessibilityRole="link" style={styles.createAccountLink}>
+                <Text style={styles.footerLink}>Create an account with email</Text>
+              </HapticPressable>
+            </View>
+
             <Text style={styles.terms}>By continuing, you agree to our{' '}
               <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>Terms</Text> and{' '}
               <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>Privacy Policy</Text>.
             </Text>
 
-            <View style={styles.footer}>
-              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account with email" accessibilityRole="link">
-                <Text style={styles.footerLink}>Create an account with email</Text>
-              </HapticPressable>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -299,6 +305,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   wordmark: { ...TYPOGRAPHY.h1, color: COLORS.primary, marginBottom: SPACING.sm },
+  authTitle: { ...TYPOGRAPHY.h2, color: COLORS.text, textAlign: 'center', marginTop: SPACING.md, marginBottom: SPACING.sm },
   welcomeLine: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
   biometricButton: {
     alignItems: 'center',
@@ -403,11 +410,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: SPACING.xxl,
-    paddingVertical: SPACING.xl,
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
+  createAccountLink: { minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.sm },
   footerText: {
     color: COLORS.textSecondary,
     ...TYPOGRAPHY.subheadline,

@@ -68,6 +68,7 @@ describe('Requests API', () => {
   });
 
   afterAll(async () => {
+    await query('DELETE FROM notifications WHERE user_id IN ($1, $2) OR from_user_id IN ($1, $2)', [testUserId, testOtherUserId]);
     await query('DELETE FROM item_requests WHERE user_id IN ($1, $2)', [testUserId, testOtherUserId]);
     await query('DELETE FROM community_memberships WHERE user_id IN ($1, $2)', [testUserId, testOtherUserId]);
     await query('DELETE FROM users WHERE id IN ($1, $2)', [testUserId, testOtherUserId]);

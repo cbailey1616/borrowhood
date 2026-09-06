@@ -122,6 +122,7 @@ jest.mock('expo-image-picker', () => ({
 }));
 
 jest.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
   getCurrentPositionAsync: jest.fn().mockResolvedValue({ coords: { latitude: 42.36, longitude: -71.06 } }),
   reverseGeocodeAsync: jest.fn().mockResolvedValue([{ city: 'Boston', region: 'MA' }]),
@@ -129,10 +130,18 @@ jest.mock('expo-location', () => ({
 }));
 
 jest.mock('expo-contacts', () => ({
+  getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'undetermined' }),
   requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
   getContactsAsync: jest.fn().mockResolvedValue({ data: [] }),
   Fields: { PhoneNumbers: 'phoneNumbers' },
 }));
+
+jest.mock('@react-native-picker/picker', () => {
+  const React = require('react');
+  const Picker = props => React.createElement('Picker', props, props.children);
+  Picker.Item = props => React.createElement('PickerItem', props);
+  return { Picker };
+});
 
 jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
@@ -333,7 +342,7 @@ jest.mock('expo-apple-authentication', () => ({
   signInAsync: jest.fn().mockImplementation(async options => ({ identityToken: 'apple-token', state: options.state, fullName: { givenName: 'Chris' } })),
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
   AppleAuthenticationButtonType: { CONTINUE: 2 },
-  AppleAuthenticationButtonStyle: { BLACK: 0 },
+  AppleAuthenticationButtonStyle: { BLACK: 0, WHITE_OUTLINE: 2 },
   AppleAuthenticationButton: require('react-native').Pressable,
 }));
 

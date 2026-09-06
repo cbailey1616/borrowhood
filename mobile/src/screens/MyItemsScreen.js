@@ -442,7 +442,7 @@ export default function MyItemsScreen({ navigation }) {
               onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
               haptic="light"
             >
-              <Ionicons name="add-circle" size={24} color={COLORS.primary} />
+              <Ionicons name="add-circle" size={24} color={COLORS.background} />
               <Text style={styles.headerButtonText}>
                 {activeTab === 0 ? 'Add an item' : 'Post a request'}
               </Text>
@@ -471,18 +471,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primaryMuted,
+    backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,
     borderRadius: RADIUS.md,
     marginBottom: SPACING.lg,
     gap: SPACING.sm,
     borderWidth: 1,
-    borderColor: COLORS.primaryMuted,
+    borderColor: COLORS.primary,
     borderStyle: 'solid',
   },
   headerButtonText: {
     ...TYPOGRAPHY.headline,
-    color: COLORS.primary,
+    color: COLORS.background,
   },
   card: {
     flexDirection: 'row',

@@ -108,6 +108,73 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     await call('get', `/api/transactions/${exchange.id}`, unverified, undefined, 404);
     await client.query("UPDATE borrow_transactions SET status = 'disputed' WHERE id = $1", [exchange.id]);
     await call('get', photoPath(neighbor));
+    // Pre-pickup cancellation: both participants, both API aliases, retries,
+    // authorization, reservation release, and real concurrent state changes.
+    const cancellationFixture = async (status = 'paid', listingId = null, listingType = 'lend') => {
+      const itemId = listingId || (await client.query(`INSERT INTO listings (owner_id,title,condition,is_free,status,is_available,listing_type)
+        VALUES ($1,'Cancellation test item','good',true,'active',false,$2) RETURNING id`, [owner, listingType])).rows[0].id;
+      const id = (await client.query(`INSERT INTO borrow_transactions (listing_id,borrower_id,lender_id,status,requested_start_date,requested_end_date,rental_days,daily_rate,rental_fee,deposit_amount,platform_fee,lender_payout)
+        VALUES ($1,$2,$3,$4,CURRENT_DATE-2,CURRENT_DATE-1,1,0,0,0,0,0) RETURNING id`, [itemId, neighbor, owner, status])).rows[0].id;
+      return { id, itemId };
+    };
+    const cancellationState = async fixture => (await client.query(`SELECT bt.status, bt.payment_status, bt.actual_pickup_at, l.is_available
+      FROM borrow_transactions bt JOIN listings l ON l.id = bt.listing_id WHERE bt.id = $1`, [fixture.id])).rows[0];
+    for (const route of ['rentals', 'transactions']) {
+      for (const actor of [owner, neighbor]) {
+        for (const status of ['approved', 'paid']) {
+          const fixture = await cancellationFixture(status);
+          await call('post', `/api/${route}/${fixture.id}/cancel`, actor, {});
+          await call('post', `/api/${route}/${fixture.id}/cancel`, actor, {});
+          const state = await cancellationState(fixture);
+          assert.deepEqual(state, { status: 'cancelled', payment_status: 'none', actual_pickup_at: null, is_available: true });
+          const notices = (await client.query("SELECT user_id, from_user_id, title FROM notifications WHERE transaction_id = $1 AND type = 'borrow_cancelled'", [fixture.id])).rows;
+          assert.deepEqual(notices, [{ user_id: actor === owner ? neighbor : owner, from_user_id: actor, title: 'Borrow cancelled' }]);
+          await call('post', `/api/${route}/${fixture.id}/pickup`, neighbor, {}, 404);
+        }
+      }
+      const unauthorised = await cancellationFixture();
+      await call('post', `/api/${route}/${unauthorised.id}/cancel`, unverified, {}, 404);
+      assert.equal((await cancellationState(unauthorised)).status, 'paid');
+      await call('post', `/api/${route}/${unauthorised.id}/pickup`, neighbor, {});
+      await call('post', `/api/${route}/${unauthorised.id}/cancel`, owner, {}, 409);
+      assert.equal((await cancellationState(unauthorised)).is_available, false);
+
+      const reserved = await cancellationFixture();
+      const otherReservation = await cancellationFixture('paid', reserved.itemId);
+      await call('post', `/api/${route}/${reserved.id}/cancel`, owner, {});
+      assert.equal((await cancellationState(otherReservation)).is_available, false, 'Keep the other reservation');
+      const pending = await cancellationFixture('pending');
+      await call('post', `/api/${route}/${pending.id}/cancel`, neighbor, {});
+      assert.equal((await cancellationState(pending)).is_available, false, 'Pending free requests do not change owner availability');
+
+      const racing = await cancellationFixture();
+      const raced = await Promise.all([
+        request(listener).post(`/api/${route}/${racing.id}/cancel`).set('Authorization', `Bearer ${token(owner)}`).send({}).timeout(5000),
+        request(listener).post(`/api/${route}/${racing.id}/pickup`).set('Authorization', `Bearer ${token(neighbor)}`).send({}).timeout(5000),
+      ]);
+      checks += raced.length;
+      assert.equal(raced.filter(r => r.status === 200).length, 1);
+      assert.ok(raced.every(r => [200, 404, 409].includes(r.status)), JSON.stringify(raced.map(r => r.body)));
+      const raceState = await cancellationState(racing);
+      assert.equal(raceState.is_available, raceState.status === 'cancelled');
+      assert.equal(Boolean(raceState.actual_pickup_at), raceState.status === 'picked_up');
+
+      const approving = await cancellationFixture('pending');
+      await client.query('UPDATE listings SET is_available = true WHERE id = $1', [approving.itemId]);
+      const approvalRace = await Promise.all([
+        request(listener).post(`/api/${route}/${approving.id}/cancel`).set('Authorization', `Bearer ${token(neighbor)}`).send({}).timeout(5000),
+        request(listener).post(`/api/${route}/${approving.id}/approve`).set('Authorization', `Bearer ${token(owner)}`).send({}).timeout(5000),
+      ]);
+      checks += approvalRace.length;
+      assert.equal(approvalRace[0].status, 200);
+      assert.ok([200, 404, 409].includes(approvalRace[1].status));
+      assert.equal((await cancellationState(approving)).status, 'cancelled');
+      assert.equal((await cancellationState(approving)).is_available, true);
+
+      const giveaway = await cancellationFixture('paid', null, 'giveaway');
+      await call('post', `/api/${route}/${giveaway.id}/cancel`, owner, {});
+      assert.equal((await cancellationState(giveaway)).is_available, true);
+    }
     // Real database concurrency rehearsal; one request key must create one row
     // and return the same message ID, including after an ambiguous timeout.
     assert.equal((await call('get', '/api/messages/capabilities', owner)).idempotentMessages, true);
@@ -161,7 +228,7 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     await client.query("UPDATE users SET token_invalidated_at = NOW() + INTERVAL '1 minute' WHERE id = $1", [neighbor]);
     await call('get', grantedPhoto, null, undefined, 404);
     assert.equal(outboundAttempts, 0, 'The free exchange must not attempt external services.');
-    console.log(`Passed ${checks} local HTTP checks: private creation, offers/revocation, photos, free approval/pickup/return, and concurrent chat retries.`);
+    console.log(`Passed ${checks} local HTTP checks: private creation, offers/revocation, photos, free approval/pickup/return, pre-pickup cancellation, and concurrent chat retries.`);
   } finally {
     if (listener) await new Promise(resolve => listener.close(resolve));
     if (photoCreated) await unlink(photo);

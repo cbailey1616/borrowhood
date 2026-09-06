@@ -1,37 +1,44 @@
 import { useState } from 'react';
-import { Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import HapticPressable from '../../components/HapticPressable';
 import HeroIcon from '../../components/HeroIcon';
+import { Ionicons } from '../../components/Icon';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { COLORS, RADIUS } from '../../utils/config';
+import { US_STATES, normalizeUSState, stateName } from '../../utils/usStates';
 
 export default function OnboardingTownScreen() {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [city, setCity] = useState(user?.city || '');
-  const [state, setState] = useState(user?.state || '');
+  const [state, setState] = useState(normalizeUSState(user?.state));
+  const [statePickerOpen, setStatePickerOpen] = useState(false);
   const needsName = !user?.firstName?.trim();
   const [firstName, setFirstName] = useState('');
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
   const locate = async () => {
+    Keyboard.dismiss(); setStatePickerOpen(false);
     setLocating(true); setError('');
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== 'granted') throw new Error('Enter your town below to continue without location access.');
       const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const [address] = await Location.reverseGeocodeAsync(coords);
-      if (!address?.city || !address?.region) throw new Error('Could not identify your town. Please enter it below.');
-      setCity(address.city); setState(address.region);
+      const town = address?.city;
+      const stateCode = normalizeUSState(address?.region);
+      if (!town || !stateCode) throw new Error('Could not identify your town. Please enter it below.');
+      setCity(town); setState(stateCode);
     } catch (e) { setError(e.message || 'Could not find your town. You can enter it below.'); }
     finally { setLocating(false); }
   };
   const finish = async () => {
-    if (busy) return;
+    if (busy || locating) return;
     if (needsName && !firstName.trim()) { setError('What should we call you? Add your first name.'); return; }
     if (!city.trim() || !state.trim()) { setError('Enter your town and state to continue.'); return; }
     setBusy(true); setError('');
@@ -57,9 +64,21 @@ export default function OnboardingTownScreen() {
           {locating ? <ActivityIndicator color={COLORS.primary} /> : <Text style={styles.link}>Use my current location</Text>}
         </HapticPressable>
         <Text style={styles.label}>Town or city</Text>
-        <TextInput accessibilityLabel="Town or city" value={city} onChangeText={setCity} editable={!busy} autoCapitalize="words" autoCorrect={false} maxLength={100} style={styles.input} placeholder="Upton" placeholderTextColor={COLORS.textMuted} />
+        <TextInput accessibilityLabel="Town or city" value={city} onChangeText={setCity} editable={!busy && !locating} autoCapitalize="words" autoCorrect={false} maxLength={100} style={styles.input} placeholder="Enter your town" placeholderTextColor={COLORS.textMuted} />
         <Text style={styles.label}>State</Text>
-        <TextInput accessibilityLabel="State" value={state} onChangeText={setState} editable={!busy} autoCapitalize="words" autoCorrect={false} maxLength={60} style={styles.input} placeholder="Massachusetts" placeholderTextColor={COLORS.textMuted} returnKeyType="done" onSubmitEditing={finish} />
+        <HapticPressable accessibilityRole="button" accessibilityLabel="Choose state" accessibilityValue={{ text: stateName(state) || 'No state selected' }} accessibilityState={{ expanded: statePickerOpen, disabled: busy || locating }} disabled={busy || locating} style={[styles.input, styles.stateField]} onPress={() => { Keyboard.dismiss(); setStatePickerOpen(open => !open); }}>
+          <Text style={[styles.stateText, !state && { color: COLORS.textMuted }]}>{stateName(state) || 'Choose state'}</Text>
+          <Ionicons name={statePickerOpen ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
+        </HapticPressable>
+        {statePickerOpen && <View style={styles.pickerCard}>
+          <Picker accessibilityLabel="State" testID="Onboarding.statePicker" selectedValue={state} onValueChange={setState} enabled={!busy && !locating} style={styles.picker} itemStyle={styles.pickerItem} dropdownIconColor={COLORS.primary}>
+            <Picker.Item label="Choose state" value="" color={COLORS.textSecondary} />
+            {US_STATES.map(([code, name]) => <Picker.Item key={code} label={name} value={code} color={COLORS.text} />)}
+          </Picker>
+          <HapticPressable accessibilityRole="button" style={styles.pickerDone} onPress={() => setStatePickerOpen(false)}>
+            <Text style={styles.link}>Done</Text>
+          </HapticPressable>
+        </View>}
         {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         <HapticPressable accessibilityRole="button" disabled={busy || locating} onPress={finish} style={styles.button}>
           {busy ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue to Borrowhood</Text>}
@@ -75,6 +94,12 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, lineHeight: 24, color: COLORS.textSecondary },
   label: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   input: { minHeight: 52, fontSize: 17, padding: 14, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text },
+  stateField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  stateText: { flex: 1, fontSize: 17, color: COLORS.text },
+  pickerCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary + '80', overflow: 'hidden' },
+  picker: { color: COLORS.text, backgroundColor: COLORS.surface },
+  pickerItem: { color: COLORS.text, fontSize: 20 },
+  pickerDone: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border },
   secondary: { minHeight: 48, justifyContent: 'center', paddingVertical: 12 },
   link: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
   button: { minHeight: 52, padding: 16, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', marginTop: 10 },

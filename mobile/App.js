@@ -51,6 +51,7 @@ export default function App() {
     DMSans_500Medium,
     DMSans_600SemiBold,
     DMSans_700Bold,
+    GoogleSansMedium: require('./assets/brand/GoogleSans-Medium.ttf'),
   });
 
   if (fontsLoaded) {

@@ -6,6 +6,8 @@ Date: 2026-09-06. iOS version 1.0.0 (215).
 
 The automated mobile and isolated backend regression runs pass. Build 215 is available to internal TestFlight testers: Apple reports VALID and IN_BETA_TESTING. This is not a claim that every physical-device or third-party interaction has been verified.
 
+Post-release finding: real Apple/Google attempts exposed a production upgrade gap—older databases lacked the social identity columns despite passing the fresh-database suite. GitHub commit `5413ad86f64119f9d29edb1775eb07f51f5fbab6` added the runtime schema repair and was deployed successfully. Production column metadata was verified afterward; the user's device then reached the existing-account connection form. Successful completion of that real provider connection is still awaiting user confirmation. Subsequent UI and cancellation work is recorded in [next-update.md](next-update.md).
+
 - EAS build: `386e3103-9faa-41bc-af55-aadc0e4cbe48` — FINISHED.
 - EAS submission: `9c8ac2c9-9f41-4996-90ed-a1021699aa6e` — FINISHED.
 - Build 214 failed because its provisioning profile lacked Sign in with Apple. Signing was repaired and the replacement uses build 215.

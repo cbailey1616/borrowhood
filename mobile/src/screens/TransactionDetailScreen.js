@@ -54,6 +54,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const pollRef = useRef(null);
+  const cancelInProgress = useRef(false);
 
   useFocusEffect(useCallback(() => {
     fetchTransaction();
@@ -164,16 +165,19 @@ export default function TransactionDetailScreen({ route, navigation }) {
   };
 
   const handleCancel = async () => {
+    if (cancelInProgress.current) return;
+    cancelInProgress.current = true;
     setActionLoading(true);
     try {
       await api.cancelRental(id);
       haptics.success();
-      showToast('Request cancelled.', 'success');
+      showToast('Borrow cancelled.', 'success');
       navigation.goBack();
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t cancel right now. Please check your connection and try again.' });
     } finally {
+      cancelInProgress.current = false;
       setActionLoading(false);
     }
   };
@@ -467,11 +471,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
       )}
 
       {/* Borrower: Cancel request before pickup */}
-      {transaction.isBorrower && transaction.status === 'pending' && (
+      {transaction.isBorrower && !transaction.actualPickupAt && transaction.status === 'pending' && (
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
             testID="Transaction.button.cancel"
-            accessibilityLabel="Cancel request"
+            accessibilityLabel="Cancel borrow"
             accessibilityRole="button"
             haptic="light"
             style={styles.declineButton}
@@ -481,23 +485,26 @@ export default function TransactionDetailScreen({ route, navigation }) {
             {actionLoading ? (
               <ActivityIndicator color={COLORS.text} size="small" />
             ) : (
-              <Text style={styles.declineButtonText}>Cancel Request</Text>
+              <Text style={styles.declineButtonText}>Cancel borrow</Text>
             )}
           </HapticPressable>
         </View>
       )}
 
-      {transaction.isBorrower && ['paid', 'approved'].includes(transaction.status) && (
+      {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt && ['paid', 'approved'].includes(transaction.status) && (
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <HapticPressable
+            testID="Transaction.button.cancel"
+            accessibilityRole="button"
+            accessibilityLabel="Cancel borrow"
             haptic="light"
             style={styles.declineButton}
             onPress={() => setCancelSheetVisible(true)}
             disabled={actionLoading}
           >
-            <Text style={styles.declineButtonText}>Cancel</Text>
+            {actionLoading ? <ActivityIndicator color={COLORS.text} size="small" /> : <Text style={styles.declineButtonText}>Cancel borrow</Text>}
           </HapticPressable>
-          <HapticPressable
+          {transaction.isBorrower && <HapticPressable
             testID="Transaction.button.confirmPickup"
             accessibilityLabel="Confirm pickup"
             accessibilityRole="button"
@@ -507,7 +514,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             disabled={actionLoading}
           >
             <Text style={styles.approveButtonText}>Confirm Pickup</Text>
-          </HapticPressable>
+          </HapticPressable>}
         </View>
       )}
 
@@ -657,16 +664,17 @@ export default function TransactionDetailScreen({ route, navigation }) {
       <ActionSheet
         isVisible={cancelSheetVisible}
         onClose={() => setCancelSheetVisible(false)}
-        title="Cancel Request"
-        message="Are you sure you want to cancel this request?"
+        title="Cancel this borrow?"
+        message="Plans changed? This will cancel the pickup and let your neighbor know."
         actions={[
           {
-            label: 'Cancel Request',
+            label: 'Cancel borrow',
+            testID: 'Transaction.confirmCancel',
             onPress: handleCancel,
             destructive: true,
           },
         ]}
-        cancelLabel="Keep Request"
+        cancelLabel="Keep borrow"
       />
     </KeyboardAvoidingView>
   );

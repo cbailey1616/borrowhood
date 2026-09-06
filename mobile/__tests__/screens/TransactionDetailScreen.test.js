@@ -1,4 +1,5 @@
 import React from 'react';
+import { Modal } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -70,5 +71,41 @@ describe('TransactionDetailScreen', () => {
     // "Alice" appears in both the counterparty card and the activity copy.
     const matches = await findAllByText(/Alice/);
     expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it.each([['approved', true], ['paid', true], ['approved', false], ['paid', false]])('lets the %s participant (owner=%s) cancel only after confirmation', async (status, isLender) => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status, isLender, isBorrower: !isLender });
+    api.cancelRental.mockResolvedValue({ success: true });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
+    expect(api.cancelRental).not.toHaveBeenCalled();
+    expect(screen.getByText('Cancel this borrow?')).toBeTruthy();
+    const modal = screen.UNSAFE_getAllByType(Modal).find(node => node.props.visible);
+    fireEvent.press(screen.getByTestId('Transaction.confirmCancel'));
+    await act(async () => fireEvent(modal, 'dismiss'));
+    expect(api.cancelRental).toHaveBeenCalledTimes(1);
+    expect(api.cancelRental).toHaveBeenCalledWith('txn-1');
+    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the borrow when the confirmation is dismissed', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isLender: true, isBorrower: false });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
+    const modal = screen.UNSAFE_getAllByType(Modal).find(node => node.props.visible);
+    fireEvent.press(screen.getByText('Keep borrow'));
+    fireEvent(modal, 'dismiss');
+    expect(api.cancelRental).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it.each(['picked_up', 'return_pending', 'returned', 'completed', 'cancelled'])('does not offer cancellation for %s', async status => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status, isLender: true, isBorrower: false });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Camera');
+    expect(screen.queryByTestId('Transaction.button.cancel')).toBeNull();
   });
 });

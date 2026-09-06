@@ -1,3 +1,5 @@
+import { approveFreeBorrow } from '../services/borrowReservation.js';
+import { cancelBorrow } from '../services/borrowCancellation.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../utils/db.js';
 import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -49,17 +51,9 @@ router.post('/:id/approve', authenticate,
 
       // Free rental — no payment to capture
       if (!t.stripe_payment_intent_id) {
-        await query(
-          `UPDATE borrow_transactions
-           SET status = 'paid', lender_response = $1, payment_status = 'none'
-           WHERE id = $2`,
-          [response, t.id]
-        );
-
-        await query(
-          'UPDATE listings SET is_available = false WHERE id = $1',
-          [t.listing_id]
-        );
+        if (!await approveFreeBorrow(t.id, req.user.id, response)) {
+          return res.status(409).json({ error: 'This request or item changed. Refresh before approving.' });
+        }
 
         await sendNotification(t.borrower_id, 'request_approved', {
           transactionId: t.id,
@@ -247,58 +241,9 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/rentals/:id/cancel
-// Borrower cancels request — immediate refund
+// Either participant can cancel before pickup
 // ============================================
-router.post('/:id/cancel', authenticate, async (req, res) => {
-  try {
-    const txn = await query(
-      `SELECT * FROM borrow_transactions
-       WHERE id = $1 AND (borrower_id = $2 OR lender_id = $2) AND status IN ('pending', 'approved', 'paid')`,
-      [req.params.id, req.user.id]
-    );
-
-    if (txn.rows.length === 0) {
-      return res.status(404).json({ error: 'Transaction not found or cannot be cancelled' });
-    }
-
-    const t = txn.rows[0];
-
-    if (t.stripe_payment_intent_id) {
-      const pi = await getPaymentIntent(t.stripe_payment_intent_id);
-
-      if (pi.status === 'requires_capture') {
-        // Hold not yet captured — cancel it (releases hold instantly)
-        await cancelPaymentIntent(t.stripe_payment_intent_id);
-      } else if (pi.status === 'succeeded') {
-        // Payment was captured — issue full refund
-        await refundPayment(t.stripe_payment_intent_id);
-      }
-    }
-
-    await query(
-      `UPDATE borrow_transactions
-       SET status = 'cancelled', payment_status = 'refunded'
-       WHERE id = $1`,
-      [t.id]
-    );
-
-    // Make listing available again
-    await query(
-      'UPDATE listings SET is_available = true WHERE id = $1',
-      [t.listing_id]
-    );
-
-    await sendNotification(t.lender_id, 'request_declined', {
-      transactionId: t.id,
-      listingId: t.listing_id,
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    logger.error('Cancel rental error:', err);
-    res.status(500).json({ error: `Failed to cancel request: ${err.message}` });
-  }
-});
+router.post('/:id/cancel', authenticate, cancelBorrow);
 
 // ============================================
 // POST /api/rentals/:id/pickup
@@ -342,12 +287,13 @@ router.post('/:id/pickup', authenticate,
 
       if (isGiveaway) {
         // Giveaway: pickup = complete. No return step needed.
-        await query(
+        const pickedUp = await query(
           `UPDATE borrow_transactions
            SET status = 'returned', actual_pickup_at = NOW(), actual_return_at = NOW(), condition_at_pickup = $1
-           WHERE id = $2`,
+           WHERE id = $2 AND status IN ('paid', 'approved') AND actual_pickup_at IS NULL RETURNING id`,
           [condition || 'good', t.id]
         );
+        if (!pickedUp.rowCount) return res.status(409).json({ error: 'This borrow changed. Refresh before confirming pickup.' });
 
         await query(
           `UPDATE listings SET status = 'given_away', is_available = false WHERE id = $1`,
@@ -359,13 +305,14 @@ router.post('/:id/pickup', authenticate,
           transactionId: t.id,
         });
       } else {
-        await query(
+        const pickedUp = await query(
           `UPDATE borrow_transactions
            SET status = 'picked_up', actual_pickup_at = NOW(),
                condition_at_pickup = $1
-           WHERE id = $2`,
+           WHERE id = $2 AND status IN ('paid', 'approved') AND actual_pickup_at IS NULL RETURNING id`,
           [condition || 'good', t.id]
         );
+        if (!pickedUp.rowCount) return res.status(409).json({ error: 'This borrow changed. Refresh before confirming pickup.' });
 
         await sendNotification(otherPartyId, 'pickup_confirmed', {
           itemTitle: t.item_title,

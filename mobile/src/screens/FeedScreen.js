@@ -348,7 +348,7 @@ export default function FeedScreen({ navigation }) {
       subtitle: 'Go to Settings to set your city',
       onPress: () => navigation.navigate('EditProfile'),
     },
-    !hasNeighborhood && !dismissedBanners.join && {
+    !hasNeighborhood && feed.length > 0 && !dismissedBanners.join && {
       key: 'join',
       icon: 'location',
       color: COLORS.primary,
@@ -867,6 +867,7 @@ export default function FeedScreen({ navigation }) {
       <NativeHeader
         title="Borrowhood"
       >
+        {(isFetching || feed.length > 0 || hasFilters || feedError || !user?.city) && <>
         <View style={styles.searchRow}>
           <SearchBar
             value={search}
@@ -933,6 +934,7 @@ export default function FeedScreen({ navigation }) {
             </View>
           )}
         </View>
+        </>}
       </NativeHeader>
 
       <FlatList
@@ -1014,7 +1016,26 @@ export default function FeedScreen({ navigation }) {
             </View>
           )
         }
-        ListEmptyComponent={isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> :
+        ListEmptyComponent={isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
+          <View style={styles.welcomeContainer}>
+            <HeroIcon icon="home-outline" size={88} />
+            <Text style={styles.emptyTitle}>What would you like to do?</Text>
+            <Text style={styles.welcomeSubtitle}>No posts nearby yet. Start by sharing or asking.</Text>
+            <View style={styles.welcomeActions}>
+              <HapticPressable accessibilityRole="button" accessibilityLabel="List an item" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateListing')}>
+                <View style={styles.welcomeActionIcon}><Ionicons name="basket" size={36} color={COLORS.primary} /></View>
+                <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>List an item</Text><Text style={styles.welcomeActionNote}>Share an item or service.</Text></View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+              </HapticPressable>
+              <HapticPressable accessibilityRole="button" accessibilityLabel="Ask for something" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
+                <View style={styles.welcomeActionIcon}><Ionicons name="create-outline" size={36} color={COLORS.primary} /></View>
+                <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Ask for something</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+              </HapticPressable>
+            </View>
+            <Text style={styles.welcomePrivacy}>You choose who sees each post.</Text>
+          </View>
+        ) :
           <View style={styles.emptyContainer}>
             <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
             <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
@@ -2064,6 +2085,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
+    textAlign: 'center',
     marginTop: SPACING.lg,
   },
   emptySubtitle: {
@@ -2085,4 +2107,13 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.button,
     color: '#fff',
   },
+  welcomeContainer: { alignItems: 'center', paddingTop: SPACING.xl, paddingBottom: SPACING.xxl },
+  welcomeSubtitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.sm, paddingHorizontal: SPACING.lg },
+  welcomeActions: { alignSelf: 'stretch', marginTop: SPACING.xl, gap: SPACING.md },
+  welcomeAction: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary + '80', borderRadius: RADIUS.lg, minHeight: 92 },
+  welcomeRequest: { backgroundColor: COLORS.requestSurface },
+  welcomeActionIcon: { width: 44, alignItems: 'center' },
+  welcomeActionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  welcomeActionNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.xs },
+  welcomePrivacy: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.lg, textAlign: 'center' },
 });

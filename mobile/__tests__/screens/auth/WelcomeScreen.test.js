@@ -1,9 +1,12 @@
 import React from 'react';
 import { render as nativeRender, fireEvent, waitFor, act } from '@testing-library/react-native';
-const render = element => { const screen = nativeRender(element); fireEvent.press(screen.getByText('Use email instead')); return screen; };
+const render = element => { const screen = nativeRender(element); fireEvent.press(screen.getByText('Sign in with email')); return screen; };
 import api from '../../../src/services/api';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const mockLogin = jest.fn().mockResolvedValue({ id: 'user-1' });
+const mockGoogle = jest.fn();
+const mockApple = jest.fn();
 const mockShowError = jest.fn();
 const mockShowToast = jest.fn();
 
@@ -13,8 +16,8 @@ jest.mock('../../../src/context/AuthContext', () => ({
     isLoading: false,
     isAuthenticated: false,
     login: mockLogin,
-    loginWithGoogle: jest.fn(),
-    loginWithApple: jest.fn(),
+    loginWithGoogle: mockGoogle,
+    loginWithApple: mockApple,
   }),
 }));
 
@@ -36,6 +39,20 @@ const mockNavigation = {
 
 describe('WelcomeScreen', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('distinguishes joining from signing in before showing password fields', async () => {
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    await screen.findByText('Sign up or sign in');
+    expect(screen.getByText('Create an account with email')).toBeTruthy();
+    expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
+    fireEvent.press(screen.getByText('Sign in with email'));
+    expect(screen.getByText('Welcome back')).toBeTruthy();
+    expect(screen.getByTestId('Welcome.input.password')).toBeTruthy();
+    fireEvent.press(screen.getByText('Use Apple or Google instead'));
+    expect(screen.getByText('Sign up or sign in')).toBeTruthy();
+    expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
+  });
 
   it('renders sign-in form', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
@@ -107,5 +124,35 @@ describe('WelcomeScreen', () => {
     );
     fireEvent.press(getByText('Create an account with email'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Register');
+  });
+
+  it('removes an unfinished Apple connection when Google is cancelled', async () => {
+    mockApple.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { status: 409, code: 'ACCOUNT_LINK_REQUIRED' }));
+    GoogleSignin.signIn.mockResolvedValueOnce({ type: 'cancelled' });
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Auth.apple'));
+    await screen.findByText('Connect Apple & sign in');
+    await act(async () => fireEvent.press(screen.getByTestId('Auth.google')));
+    expect(screen.queryByText('Connect Apple & sign in')).toBeNull();
+    expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
+    expect(mockLogin).not.toHaveBeenCalled();
+  });
+
+  it('switches the linking explanation and submitted credential from Apple to Google', async () => {
+    mockApple.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { status: 409, code: 'ACCOUNT_LINK_REQUIRED' }));
+    mockGoogle.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { status: 409, code: 'ACCOUNT_LINK_REQUIRED' }));
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Auth.apple'));
+    await screen.findByText('Connect Apple & sign in');
+    fireEvent.press(screen.getByTestId('Auth.google'));
+    await screen.findByText('Connect Google & sign in');
+    expect(screen.queryByText(/password once to connect Apple/)).toBeNull();
+    expect(screen.getByText(/Borrowhood password once to connect Google/)).toBeTruthy();
+    fireEvent.changeText(screen.getByTestId('Welcome.input.email'), 'test@test.com');
+    fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'MyPass123');
+    await act(async () => fireEvent.press(screen.getByText('Connect Google & sign in')));
+    expect(mockLogin).toHaveBeenCalledWith('test@test.com', 'MyPass123', { provider: 'google', token: { idToken: 'mock-google-token' } });
   });
 });

@@ -5,6 +5,11 @@ import api from '../../../src/services/api';
 import Screen from '../../../src/screens/onboarding/OnboardingTownScreen';
 
 const mockRefreshUser = jest.fn();
+const chooseState = screen => {
+  fireEvent.press(screen.getByLabelText('Choose state'));
+  fireEvent(screen.getByTestId('Onboarding.statePicker'), 'valueChange', 'MA');
+  fireEvent.press(screen.getByText('Done'));
+};
 let mockUser = { firstName: 'Chris' };
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, refreshUser: mockRefreshUser }) }));
 
@@ -20,7 +25,7 @@ describe('town setup', () => {
     mockUser = { firstName: '', onboardingStep: 2 };
     const screen = render(<Screen />);
     fireEvent.changeText(screen.getByLabelText('Town or city'), 'Upton');
-    fireEvent.changeText(screen.getByLabelText('State'), 'MA');
+    chooseState(screen);
     fireEvent.press(screen.getByText('Continue to Borrowhood'));
     expect(api.completeOnboarding).not.toHaveBeenCalled();
     fireEvent.changeText(screen.getByLabelText('Your first name'), ' Chris ');
@@ -44,9 +49,10 @@ describe('town setup', () => {
     expect(api.completeOnboarding).not.toHaveBeenCalled();
   });
   it('saves only town and state without coordinates or publishing inventory', async () => {
-    const { getByLabelText, getByText } = render(<Screen />);
+    const screen = render(<Screen />);
+    const { getByLabelText, getByText } = screen;
     fireEvent.changeText(getByLabelText('Town or city'), ' Upton ');
-    fireEvent.changeText(getByLabelText('State'), ' MA ');
+    chooseState(screen);
     fireEvent.press(getByText('Continue to Borrowhood'));
     await waitFor(() => expect(mockRefreshUser).toHaveBeenCalled());
     expect(api.updateProfile).toHaveBeenCalledWith({ city: 'Upton', state: 'MA' });
@@ -55,11 +61,44 @@ describe('town setup', () => {
   });
   it('does not complete onboarding after a failed profile save', async () => {
     api.updateProfile.mockRejectedValueOnce(new Error('offline'));
-    const { getByLabelText, getByText, findByText } = render(<Screen />);
+    const screen = render(<Screen />);
+    const { getByLabelText, getByText, findByText } = screen;
     fireEvent.changeText(getByLabelText('Town or city'), 'Upton');
-    fireEvent.changeText(getByLabelText('State'), 'MA');
+    chooseState(screen);
     fireEvent.press(getByText('Continue to Borrowhood'));
     await findByText('Could not finish setup. Check your connection and try again.');
     expect(api.completeOnboarding).not.toHaveBeenCalled();
+  });
+
+  it('fills both fields from location and saves a canonical state code', async () => {
+    Location.reverseGeocodeAsync.mockResolvedValueOnce([{ city: 'Upton', region: 'Massachusetts' }]);
+    const screen = render(<Screen />);
+    fireEvent.press(screen.getByText('Use my current location'));
+    await screen.findByText('Massachusetts');
+    expect(screen.getByLabelText('Town or city').props.value).toBe('Upton');
+    fireEvent.press(screen.getByText('Continue to Borrowhood'));
+    await waitFor(() => expect(api.updateProfile).toHaveBeenCalledWith({ city: 'Upton', state: 'MA' }));
+  });
+
+  it('can finish manually after location permission is denied', async () => {
+    Location.requestForegroundPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
+    const screen = render(<Screen />);
+    fireEvent.press(screen.getByText('Use my current location'));
+    await screen.findByText('Enter your town below to continue without location access.');
+    fireEvent.changeText(screen.getByLabelText('Town or city'), 'Upton');
+    chooseState(screen);
+    fireEvent.press(screen.getByText('Continue to Borrowhood'));
+    await waitFor(() => expect(api.updateProfile).toHaveBeenCalledWith({ city: 'Upton', state: 'MA' }));
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('does not silently pick a state when the wheel is dismissed without a selection', () => {
+    const screen = render(<Screen />);
+    fireEvent.changeText(screen.getByLabelText('Town or city'), 'Upton');
+    fireEvent.press(screen.getByLabelText('Choose state'));
+    fireEvent.press(screen.getByText('Done'));
+    fireEvent.press(screen.getByText('Continue to Borrowhood'));
+    expect(api.updateProfile).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter your town and state to continue.')).toBeTruthy();
   });
 });

@@ -106,19 +106,29 @@ describe('FeedScreen', () => {
     expect(api.getFeed).toHaveBeenCalledWith({ page: 1, limit: 20, session: expect.any(String) });
   });
 
-  it('empty feed shows empty state', async () => {
+  it('offers both sharing and asking without competing filters or a join banner', async () => {
+    api.getCommunities.mockResolvedValue([]);
     const FeedScreen = require('../../src/screens/FeedScreen').default;
-    const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
-    await findByText('Ask your town for what you need');
+    const screen = render(<FeedScreen navigation={mockNavigation} />);
+    await screen.findByText('What would you like to do?');
+    expect(screen.queryByTestId('Feed.searchBar')).toBeNull();
+    expect(screen.queryByText('Join a nearby neighborhood')).toBeNull();
+    fireEvent.press(screen.getByLabelText('List an item'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateListing');
+    fireEvent.press(screen.getByLabelText('Ask for something'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateRequest');
+    expect(api.createListing).not.toHaveBeenCalled();
   });
 
   it('search bar renders', async () => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'item', type: 'listing', title: 'Ladder', user: { firstName: 'Robin' } }], hasMore: false });
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByTestId } = render(<FeedScreen navigation={mockNavigation} />);
     await findByTestId('Feed.searchBar');
   });
 
   it('create button renders', async () => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'item', type: 'listing', title: 'Ladder', user: { firstName: 'Robin' } }], hasMore: false });
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findAllByTestId } = render(<FeedScreen navigation={mockNavigation} />);
     const createBtns = await findAllByTestId('Feed.button.create');

@@ -20,6 +20,7 @@ const NOTIFICATION_ICONS = {
   borrow_request: 'hand-left',
   request_approved: 'checkmark-circle',
   request_declined: 'close-circle',
+  borrow_cancelled: 'close-circle',
   payment_confirmed: 'card',
   pickup_confirmed: 'cube',
   return_confirmed: 'checkbox',
