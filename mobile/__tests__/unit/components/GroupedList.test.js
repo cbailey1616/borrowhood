@@ -18,7 +18,7 @@ describe('GroupedList', () => {
         <GroupedListItem title="Edit Profile" onPress={() => {}} />
       </GroupedListSection>
     );
-    expect(getByText('ACCOUNT')).toBeTruthy();
+    expect(getByText('Account')).toBeTruthy();
   });
 
   it('renders items with titles', () => {

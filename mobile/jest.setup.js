@@ -383,6 +383,7 @@ jest.mock('./src/services/api', () => ({
     resetPassword: jest.fn(),
     loginWithGoogle: jest.fn(),
     loginWithApple: jest.fn(),
+    createVerificationPayment: jest.fn(),
     // Users
     getUser: jest.fn(),
     updateProfile: jest.fn(),

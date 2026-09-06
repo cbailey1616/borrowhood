@@ -21,6 +21,7 @@ beforeAll(async () => {
   userA = await createTestUser({ email: `saved-a-${Date.now()}@borrowhood.test` });
   userB = await createTestUser({ email: `saved-b-${Date.now()}@borrowhood.test` });
   createdUserIds.push(userA.userId, userB.userId);
+  await query("INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'accepted')", [userA.userId, userB.userId]);
 
   listingId = await createTestListing(userB.userId, {
     title: 'Saveable Drill',

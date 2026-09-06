@@ -1,21 +1,36 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import api from '../../src/services/api';
-const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'free', isVerified: false, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, replace: jest.fn() };
+import Screen from '../../src/screens/SubscriptionScreen';
+const mockUser = { id: 'user-1', firstName: 'Test', isVerified: false, subscriptionTier: 'free' };
+const navigation = { navigate: jest.fn(), goBack: jest.fn(), replace: jest.fn() };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, refreshUser: jest.fn() }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
-beforeEach(() => { jest.clearAllMocks(); api.getCurrentSubscription.mockResolvedValue(null); api.createSubscription.mockResolvedValue({ clientSecret: 'cs_test', ephemeralKey: 'ek_test', customerId: 'cus_test' }); });
-describe('SubscriptionScreen', () => {
-  const route = { params: { source: 'generic' } };
-  it('fetches subscription on mount', async () => { const S = require('../../src/screens/SubscriptionScreen').default; render(<S navigation={mockNavigation} route={route} />); await waitFor(() => { expect(api.getCurrentSubscription).toHaveBeenCalled(); }); });
-  it('free user sees subscribe button', async () => { const S = require('../../src/screens/SubscriptionScreen').default; const { findByTestId } = render(<S navigation={mockNavigation} route={route} />); await findByTestId('Subscription.button.subscribe'); });
-  it('displays price', async () => { const S = require('../../src/screens/SubscriptionScreen').default; const { getAllByText } = render(<S navigation={mockNavigation} route={route} />); await waitFor(() => { expect(getAllByText(/\$1/).length).toBeGreaterThan(0); }); });
-  it('plus user sees verified plan info', async () => {
-    api.getCurrentSubscription.mockResolvedValue({ tier: 'plus', status: 'active', cancelAtPeriodEnd: false, nextBillingDate: new Date().toISOString(), startedAt: new Date().toISOString() });
-    const S = require('../../src/screens/SubscriptionScreen').default;
-    const { findByText } = render(<S navigation={mockNavigation} route={route} />);
-    await findByText("You're Verified");
-  });
-  it('shows features list', async () => { const S = require('../../src/screens/SubscriptionScreen').default; const { findByText } = render(<S navigation={mockNavigation} route={route} />); await findByText(/Borrow from anyone/i); });
+beforeEach(() => { jest.clearAllMocks(); mockUser.subscriptionTier = 'free'; api.getVerificationStatus.mockResolvedValue({ status: 'none' }); });
+const route = { params: { source: 'generic' } };
+it('uses the identity screen for legacy subscription links', async () => {
+  const screen = render(<Screen navigation={navigation} route={route} />);
+  await screen.findByTestId('Identity.button.verify');
+  expect(api.getCurrentSubscription).not.toHaveBeenCalled();
+});
+it('does not offer a subscription or display a verification price', () => {
+  const screen = render(<Screen navigation={navigation} route={route} />);
+  expect(screen.queryByTestId('Subscription.button.subscribe')).toBeNull();
+  expect(screen.queryByText(/\$1/)).toBeNull();
+});
+it('keeps verification optional from the generic entry point', async () => {
+  const screen = render(<Screen navigation={navigation} route={route} />);
+  fireEvent.press(await screen.findByTestId('Identity.button.skipForNow'));
+  expect(navigation.goBack).toHaveBeenCalled();
+});
+it('does not treat a legacy paid tier as identity verification', async () => {
+  mockUser.subscriptionTier = 'plus';
+  const screen = render(<Screen navigation={navigation} route={route} />);
+  await screen.findByTestId('Identity.button.verify');
+  expect(api.createSubscription).not.toHaveBeenCalled();
+});
+it('explains identity handling without collecting payment information', async () => {
+  const screen = render(<Screen navigation={navigation} route={route} />);
+  await screen.findByText(/Your ID images are handled by Stripe/);
+  expect(api.createVerificationPayment).not.toHaveBeenCalled();
 });

@@ -87,11 +87,10 @@ describe('premiumGate with paid tiers disabled', () => {
     expect(result.passed).toBe(true);
   });
 
-  it('rental_listing requires verification first, then Stripe Connect', () => {
+  it('offline informational pricing needs no payment account', () => {
     const result = checkPremiumGate(freeUser, 'rental_listing');
-    // Unverified user goes to IdentityVerification first
-    expect(result.passed).toBe(false);
-    expect(result.screen).toBe('IdentityVerification');
+    expect(result.passed).toBe(true);
+    expect(result.screen).toBeUndefined();
   });
 
   it('rental_listing passes when user is verified and payouts are enabled', () => {

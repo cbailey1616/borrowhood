@@ -52,9 +52,17 @@ try {
   await run(process.execPath, ['scripts/test-privacy-postgres.js'], {
     ...cleanEnv, PRIVACY_TEST_DATABASE_URL: url,
   });
-  if (process.argv.includes('--migrations')) {
+  if (process.argv.includes('--migrations') || process.argv.includes('--suite')) {
     await run(process.execPath, ['scripts/test-privacy-migrations.js'], {
       ...cleanEnv, PRIVACY_TEST_DATABASE_URL: url, PRIVACY_TEST_FRESH_CLUSTER: 'yes',
+    });
+  }
+  if (process.argv.includes('--suite')) {
+    await run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', '--config', 'vitest.release.config.js', '--reporter=json', '--outputFile=/tmp/borrowhood-release-server-results.json'], {
+      ...cleanEnv, DATABASE_URL: url, PRIVACY_TEST_FRESH_CLUSTER: 'yes', NODE_ENV: 'test',
+      ADMIN_SECRET: randomUUID(), API_URL: 'http://borrowhood.test', JWT_SECRET: randomUUID(), JWT_REFRESH_SECRET: randomUUID(), STRIPE_SECRET_KEY: 'sk_test_local_placeholder_not_a_real_key',
+      ENABLE_PAYMENTS: 'false', ENABLE_PAID_TIERS: 'false',
+      ANTHROPIC_API_KEY: 'local_placeholder', AWS_EC2_METADATA_DISABLED: 'true',
     });
   }
 } catch (error) {

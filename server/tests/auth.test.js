@@ -3,8 +3,11 @@
  * Tests: register, login, forgot/reset password, GET /me, admin endpoints
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
+import crypto from 'node:crypto';
+vi.mock('../src/services/email.js', () => ({ sendResetCodeEmail: vi.fn().mockResolvedValue(undefined), sendAccountHintEmail: vi.fn().mockResolvedValue(undefined) }));
+import { sendResetCodeEmail } from '../src/services/email.js';
 import jwt from 'jsonwebtoken';
 import { query } from '../src/utils/db.js';
 import { createTestUser, createTestApp, cleanupTestUser } from './helpers/stripe.js';
@@ -271,9 +274,9 @@ describe('POST /api/auth/forgot-password', () => {
     expect(res.body.message).toContain('reset code');
 
     // Verify token was stored in DB
-    const dbUser = await query('SELECT password_reset_token, password_reset_expires FROM users WHERE id = $1', [user.userId]);
-    expect(dbUser.rows[0].password_reset_token).toBeTruthy();
-    expect(dbUser.rows[0].password_reset_expires).toBeTruthy();
+    const dbUser = await query('SELECT reset_code_hash, reset_code_expires FROM users WHERE id = $1', [user.userId]);
+    expect(dbUser.rows[0].reset_code_hash).toBeTruthy();
+    expect(dbUser.rows[0].reset_code_expires).toBeTruthy();
   });
 
   it('should return 200 for unknown email (no leak)', async () => {
@@ -299,14 +302,15 @@ describe('POST /api/auth/reset-password', () => {
       .post('/api/auth/forgot-password')
       .send({ email });
 
-    // Get the code from DB
-    const dbUser = await query('SELECT password_reset_token FROM users WHERE email = $1', [email]);
-    const code = dbUser.rows[0].password_reset_token;
+    const code = sendResetCodeEmail.mock.calls.find(([recipient]) => recipient === email)[1];
+    const verified = await request(app).post('/api/auth/verify-reset-code').send({ email, code });
+    expect(verified.status).toBe(200);
+    const resetToken = verified.body.resetToken;
 
     // Reset password
     const res = await request(app)
       .post('/api/auth/reset-password')
-      .send({ email, code, newPassword: 'NewPass456!' });
+      .send({ resetToken, newPassword: 'NewPass456!' });
 
     expect(res.status).toBe(200);
     expect(res.body.message).toContain('reset successfully');
@@ -316,6 +320,8 @@ describe('POST /api/auth/reset-password', () => {
       .post('/api/auth/login')
       .send({ email, password: 'NewPass456!' });
     expect(loginRes.status).toBe(200);
+    const reused = await request(app).post('/api/auth/reset-password').send({ resetToken, newPassword: 'AnotherPass789!' });
+    expect(reused.status).toBe(400);
   });
 
   it('should reject invalid code with 400', async () => {
@@ -327,7 +333,7 @@ describe('POST /api/auth/reset-password', () => {
 
     const res = await request(app)
       .post('/api/auth/reset-password')
-      .send({ email, code: '000000', newPassword: 'NewPass456!' });
+      .send({ resetToken: 'not-a-valid-token', newPassword: 'NewPass456!' });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('Invalid or expired');
@@ -342,13 +348,13 @@ describe('POST /api/auth/reset-password', () => {
 
     // Set expired token directly
     await query(
-      `UPDATE users SET password_reset_token = '123456', password_reset_expires = NOW() - INTERVAL '1 hour' WHERE email = $1`,
-      [email]
+      `UPDATE users SET reset_token_hash = $2, reset_token_expires = NOW() - INTERVAL '1 hour' WHERE email = $1`,
+      [email, crypto.createHash('sha256').update('expired-token').digest('hex')]
     );
 
     const res = await request(app)
       .post('/api/auth/reset-password')
-      .send({ email, code: '123456', newPassword: 'NewPass456!' });
+      .send({ resetToken: 'expired-token', newPassword: 'NewPass456!' });
 
     expect(res.status).toBe(400);
   });
@@ -360,7 +366,7 @@ describe('Admin endpoints', () => {
       .post('/api/auth/admin/reset-user')
       .send({ email: 'anyone@test.com' });
 
-    expect(res.status).toBe(403);
+    expect(res.status, res.body.error).toBe(403);
   });
 
   it('POST /admin/reset-user should work with correct secret', async () => {
@@ -371,7 +377,7 @@ describe('Admin endpoints', () => {
       .post('/api/auth/admin/reset-user')
       .send({ email: user.email, secret: process.env.ADMIN_SECRET });
 
-    expect(res.status).toBe(200);
+    expect(res.status, res.body.error).toBe(200);
     expect(res.body.success).toBe(true);
 
     // Verify user was reset
@@ -385,7 +391,7 @@ describe('Admin endpoints', () => {
       .post('/api/auth/admin/reset-user')
       .send({ email: 'no-such-user@test.com', secret: process.env.ADMIN_SECRET });
 
-    expect(res.status).toBe(404);
+    expect(res.status, res.body.error).toBe(404);
   });
 
   it('POST /admin/reset-onboarding should reject without secret', async () => {
@@ -393,7 +399,7 @@ describe('Admin endpoints', () => {
       .post('/api/auth/admin/reset-onboarding')
       .send({ email: 'anyone@test.com' });
 
-    expect(res.status).toBe(403);
+    expect(res.status, res.body.error).toBe(403);
   });
 
   it('POST /admin/reset-verifications should reject without secret', async () => {
@@ -401,6 +407,6 @@ describe('Admin endpoints', () => {
       .post('/api/auth/admin/reset-verifications')
       .send({});
 
-    expect(res.status).toBe(403);
+    expect(res.status, res.body.error).toBe(403);
   });
 });

@@ -106,7 +106,7 @@ router.post('/claim', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Reward already claimed' });
     }
 
-    // Grant permanent verified status
+    // Preserve the legacy referral perk. Referrals never grant identity verification.
     await query(
       `UPDATE users SET
         subscription_tier = 'plus',
@@ -122,7 +122,7 @@ router.post('/claim', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Congratulations! You now have free verified status!',
+      message: 'Thanks for helping your neighborhood grow!',
     });
   } catch (err) {
     console.error('Claim referral reward error:', err);

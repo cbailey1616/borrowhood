@@ -7,6 +7,10 @@ import { ENABLE_PAYMENTS, ENABLE_PAID_TIERS } from './config';
  * @returns {{ passed: boolean, screen?: string, params?: object, completedSteps: number, totalSteps: number }}
  */
 export function checkPremiumGate(user, source) {
+  // Identity protects town visibility independently of payment features.
+  if (source === 'town_browse' && user?.isVerified !== true) {
+    return { passed: false, screen: 'IdentityVerification', params: { source, totalSteps: 1 }, completedSteps: 0, totalSteps: 1 };
+  }
   if (!ENABLE_PAYMENTS) return { passed: true, completedSteps: 0, totalSteps: 0 };
   if (!ENABLE_PAID_TIERS) {
     const isVerified = user?.isVerified;

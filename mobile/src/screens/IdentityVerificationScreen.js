@@ -241,7 +241,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           <View style={styles.benefitsInner}>
             <BenefitItem icon="lock-closed" text="Your ID images are handled by Stripe. Borrowhood receives verification results and identity details." />
             <BenefitItem icon="people" text="Build trust with your neighbors" />
-            <BenefitItem icon="checkmark-circle" text="No rental fees or deposits. Owners choose what to share." />
+            <BenefitItem icon="checkmark-circle" text="You choose what to share and who can see it." />
           </View>
         </View>
 

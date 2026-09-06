@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
+import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { query } from '../src/utils/db.js';
 import { createTestUser, createTestApp, createTestListing, cleanupTestUser, createTestCategory } from './helpers/stripe.js';
 import { createTestCommunity, addCommunityMember, createFriendship } from './helpers/fixtures.js';
@@ -23,6 +24,8 @@ vi.mock('../src/services/imageAnalysis.js', () => ({
 let app;
 let freeUser, plusUser, verifiedPlusUser;
 let communityId, categoryId;
+let analysisFile;
+const photo = user => `https://borrowhood-uploads.s3.us-east-1.amazonaws.com/listings/${user.userId}/test.jpg`;
 const createdUserIds = [];
 const createdListingIds = [];
 
@@ -53,6 +56,9 @@ beforeAll(async () => {
     state: 'LS',
   });
   createdUserIds.push(freeUser.userId, plusUser.userId, verifiedPlusUser.userId);
+  await mkdir('uploads', { recursive: true });
+  analysisFile = `private-listing-${freeUser.userId}-release-test.png`;
+  await writeFile(`uploads/${analysisFile}`, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'));
 
   // Create community and category
   communityId = await createTestCommunity({ name: 'Listing Neighborhood', city: 'ListCity', state: 'LS' });
@@ -67,6 +73,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (analysisFile) await unlink(`uploads/${analysisFile}`);
   for (const lid of createdListingIds) {
     try {
       await query('DELETE FROM listing_photos WHERE listing_id = $1', [lid]);
@@ -90,13 +97,14 @@ describe('POST /api/listings', () => {
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'Free Garden Hose',
         description: 'A garden hose, free to borrow',
         condition: 'good',
         categoryId,
         isFree: true,
         visibility: ['close_friends'],
-        photos: ['https://example.com/hose.jpg'],
+        photos: [photo(freeUser)],
       });
 
     expect(res.status).toBe(201);
@@ -104,11 +112,12 @@ describe('POST /api/listings', () => {
     createdListingIds.push(res.body.id);
   });
 
-  it('should reject paid listing without Plus subscription', async () => {
+  it('should reject in-app rental charging while payments are disabled', async () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'Paid Camera',
         condition: 'like_new',
         categoryId,
@@ -116,48 +125,51 @@ describe('POST /api/listings', () => {
         pricePerDay: 15.00,
         depositAmount: 100.00,
         visibility: ['close_friends'],
-        photos: ['https://example.com/camera.jpg'],
+        photos: [photo(freeUser)],
       });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('PLUS_REQUIRED');
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('PAYMENTS_DISABLED');
   });
 
-  it('should create paid listing for Plus user', async () => {
+  it('should store an optional offline price without Stripe or Plus', async () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${plusUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'Plus User Camera',
         condition: 'good',
         categoryId,
-        isFree: false,
-        pricePerDay: 10.00,
-        depositAmount: 50.00,
+        isFree: true,
+        directFee: { amount: 10, unit: 'day' },
         visibility: ['neighborhood'],
         communityId,
-        photos: ['https://example.com/camera2.jpg'],
+        photos: [photo(plusUser)],
       });
 
     expect(res.status).toBe(201);
+    const stored = await query('SELECT direct_fee FROM listings WHERE id = $1', [res.body.id]);
+    expect(stored.rows[0].direct_fee).toEqual({ amount: 10, unit: 'day', currency: 'USD' });
     createdListingIds.push(res.body.id);
   });
 
-  it('should reject town visibility without Plus', async () => {
+  it('should reject town sharing by an unverified free user', async () => {
     const res = await request(app)
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'Town Item',
         condition: 'good',
         categoryId,
         isFree: true,
         visibility: ['town'],
-        photos: ['https://example.com/item.jpg'],
+        photos: [photo(freeUser)],
       });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('PLUS_REQUIRED');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Verify your identity');
   });
 
   it('should reject town visibility without verification', async () => {
@@ -165,16 +177,17 @@ describe('POST /api/listings', () => {
       .post('/api/listings')
       .set('Authorization', `Bearer ${plusUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'Unverified Town Item',
         condition: 'good',
         categoryId,
         isFree: true,
         visibility: ['town'],
-        photos: ['https://example.com/item.jpg'],
+        photos: [photo(freeUser)],
       });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('VERIFICATION_REQUIRED');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Verify your identity');
   });
 
   it('should create town listing for verified Plus user', async () => {
@@ -182,14 +195,13 @@ describe('POST /api/listings', () => {
       .post('/api/listings')
       .set('Authorization', `Bearer ${verifiedPlusUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'Town Power Washer',
         condition: 'good',
         categoryId,
-        isFree: false,
-        pricePerDay: 25.00,
-        depositAmount: 100.00,
+        isFree: true,
         visibility: ['town'],
-        photos: ['https://example.com/washer.jpg'],
+        photos: [photo(verifiedPlusUser)],
       });
 
     expect(res.status).toBe(201);
@@ -201,16 +213,17 @@ describe('POST /api/listings', () => {
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'No Community Item',
         condition: 'fair',
         categoryId,
         isFree: true,
         visibility: ['neighborhood'],
-        photos: ['https://example.com/item.jpg'],
+        photos: [photo(freeUser)],
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Neighborhood is required');
+    expect(res.body.error).toContain('Join a neighborhood');
   });
 
   it('should reject missing photos', async () => {
@@ -218,6 +231,7 @@ describe('POST /api/listings', () => {
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'No Photo Item',
         condition: 'good',
         categoryId,
@@ -234,12 +248,13 @@ describe('POST /api/listings', () => {
       .post('/api/listings')
       .set('Authorization', `Bearer ${freeUser.token}`)
       .send({
+        sharingConfirmed: true,
         title: 'AB',
         condition: 'good',
         categoryId,
         isFree: true,
         visibility: ['close_friends'],
-        photos: ['https://example.com/x.jpg'],
+        photos: [photo(freeUser)],
       });
 
     expect(res.status).toBe(400);
@@ -357,7 +372,7 @@ describe('POST /api/listings/analyze-image', () => {
     const res = await request(app)
       .post('/api/listings/analyze-image')
       .set('Authorization', `Bearer ${freeUser.token}`)
-      .send({ imageUrl: 'https://example.com/test-item.jpg' });
+      .send({ imageUrl: `${process.env.API_URL}/uploads/${analysisFile}` });
 
     expect(res.status).toBe(200);
     expect(res.body.title).toBe('Power Drill');

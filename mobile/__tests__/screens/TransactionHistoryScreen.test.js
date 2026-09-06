@@ -8,7 +8,7 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id
 
 const mockTransactions = [
   {
-    id: 'txn-1', status: 'active', isBorrower: true,
+    id: 'txn-1', status: 'returned', isBorrower: true,
     listing: { title: 'Camera', photoUrl: 'https://test.com/photo.jpg' },
     borrower: { id: 'user-1', firstName: 'Test', lastName: 'User' },
     lender: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' },
@@ -54,7 +54,7 @@ describe('TransactionHistoryScreen', () => {
   it('displays status badges', async () => {
     const Screen = require('../../src/screens/TransactionHistoryScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Active');
+    await findByText('Returned');
     await findByText('Completed');
   });
 

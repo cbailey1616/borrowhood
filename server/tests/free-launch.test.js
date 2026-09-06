@@ -36,7 +36,7 @@ const freeItem = { id: listingId, owner_id: 'owner', is_free: true, price_per_da
   deposit_amount: 0, listing_type: 'lend', visibility: 'town', lender_city: 'Upton',
   is_available: true, min_duration: 1, max_duration: 14, title: 'Drill' };
 const borrow = () => request(app).post('/transactions').send({ listingId, startDate: '2026-10-01', endDate: '2026-10-03' });
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); query.mockReset(); });
 describe('free launch', () => {
   it('blocks payment initiation', async () => { expect((await request(app).post('/charge')).status).toBe(403); });
   it.each([{ isFree: false }, { pricePerDay: 5 }, { depositAmount: 10 }, { is_free: false }, { deposit_amount: '10' }])('rejects paid listing fields %j', async body => {
@@ -46,13 +46,13 @@ describe('free launch', () => {
     expect((await request(app).post('/validate-listing').send({ isFree: true, pricePerDay: null, depositAmount: 0 })).status).toBe(204);
   });
   it.each([{ price_per_day: 5 }, { deposit_amount: 10 }, { is_free: false }])('does not convert an existing paid item without owner consent: %j', async override => {
-    query.mockResolvedValueOnce({ rows: [{ ...freeItem, ...override }] });
+    query.mockResolvedValueOnce({ rows: [{ id: listingId }] }).mockResolvedValueOnce({ rows: [{ ...freeItem, ...override }] });
     const response = await borrow(); expect(response.status).toBe(409);
-    expect(query).toHaveBeenCalledTimes(1); expect(createPaymentIntent).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledTimes(2); expect(createPaymentIntent).not.toHaveBeenCalled();
   });
-  it('allows an unverified neighbor to request a free town item without Stripe', async () => {
-    query.mockResolvedValueOnce({ rows: [freeItem] })
-      .mockResolvedValueOnce({ rows: [{ city: 'Upton', is_verified: false }] })
+  it('allows an authorized viewer to request a free item without Stripe', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: listingId }] })
+      .mockResolvedValueOnce({ rows: [freeItem] })
       .mockResolvedValueOnce({ rows: [{ id: 'transaction' }] });
     const response = await borrow(); expect(response.status).toBe(201);
     expect(response.body.freeRental).toBe(true); expect(response.body.clientSecret).toBeUndefined();
@@ -60,13 +60,15 @@ describe('free launch', () => {
     const insert = query.mock.calls.find(([sql]) => sql.includes('INSERT INTO borrow_transactions'));
     expect(insert[1].slice(6, 12)).toEqual([0, 0, 0, 0, 0, undefined]);
   });
-  it('retains the town boundary for borrowing', async () => {
-    query.mockResolvedValueOnce({ rows: [freeItem] }).mockResolvedValueOnce({ rows: [{ city: 'Boston' }] });
-    expect((await borrow()).body.code).toBe('TOWN_MISMATCH');
+  it('denies borrowing when the shared access policy rejects the viewer', async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    expect((await borrow()).status).toBe(404);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(createPaymentIntent).not.toHaveBeenCalled();
   });
-  it('town listing detail has no address, coordinates, or verification paywall', async () => {
-    query.mockResolvedValueOnce({ rows: [{ ...freeItem, owner_city: 'Upton', owner_status: 'active', address_line1: 'PRIVATE', latitude: 42, longitude: -71 }] })
-      .mockResolvedValueOnce({ rows: [{ city: 'Upton', is_verified: false }] })
+  it('authorized listing detail never reveals an address or coordinates', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: listingId }] }).mockResolvedValueOnce({ rows: [{ ...freeItem, owner_city: 'Upton', owner_status: 'active', address_line1: 'PRIVATE', latitude: 42, longitude: -71 }] })
+
       .mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] });
     const response = await request(app).get('/listings/' + listingId);
     expect(response.status).toBe(200); expect(response.body.ownerMasked).toBeFalsy();

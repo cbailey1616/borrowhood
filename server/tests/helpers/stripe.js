@@ -155,13 +155,18 @@ export async function createTestListing(ownerId, overrides = {}) {
   };
   const opts = { ...defaults, ...overrides };
 
+  if (opts.isFree) {
+    if (overrides.pricePerDay === undefined) opts.pricePerDay = 0;
+    if (overrides.depositAmount === undefined) opts.depositAmount = 0;
+  }
+
   const result = await query(
     `INSERT INTO listings (
       owner_id, title, description, condition,
       is_free, price_per_day, deposit_amount,
       min_duration, max_duration, late_fee_per_day,
-      visibility, status, is_available
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', true)
+      visibility, status, is_available, privacy_version
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', true, 1)
     RETURNING id`,
     [
       ownerId, opts.title, opts.description, opts.condition,

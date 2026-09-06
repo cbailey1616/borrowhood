@@ -283,6 +283,12 @@ describe('Onboarding API', () => {
       expect(found.firstName).toBe('Other');
     });
 
+    it('returns neighbors without an explicit neighborhood filter', async () => {
+      const res = await request(app).get('/api/users/suggested').set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.some(u => u.id === testOtherUserId)).toBe(true);
+    });
+
     it('should exclude self from results', async () => {
       const res = await request(app)
         .get(`/api/users/suggested?neighborhood=${testCommunityId}`)
@@ -312,6 +318,12 @@ describe('Onboarding API', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
+
+      const otherNeighborhood = await request(app)
+        .get(`/api/users/suggested?neighborhood=${testCommunityId}`)
+        .set('Authorization', `Bearer ${isoToken}`);
+      expect(otherNeighborhood.status).toBe(200);
+      expect(otherNeighborhood.body).toEqual([]);
 
       // Cleanup
       await query('DELETE FROM users WHERE id = $1', [isoResult.rows[0].id]);

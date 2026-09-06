@@ -366,7 +366,7 @@ describe('GET /api/users/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.firstName).toBe('Alice');
-    expect(res.body.lastName).toBe('Friend');
+    expect(res.body.lastName).toBe('F.');
   });
 
   it('should return 404 for non-existent user', async () => {

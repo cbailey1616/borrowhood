@@ -1,4 +1,5 @@
 import React from 'react';
+import { Modal } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -38,15 +39,14 @@ describe('RespondToDisputeScreen', () => {
   it('submit calls api.respondToDispute', async () => {
     jest.useFakeTimers();
     const RespondToDisputeScreen = require('../../src/screens/RespondToDisputeScreen').default;
-    const { getByTestId, getAllByText } = render(<RespondToDisputeScreen navigation={mockNavigation} route={route} />);
+    const { getByTestId, getAllByText, UNSAFE_getAllByType } = render(<RespondToDisputeScreen navigation={mockNavigation} route={route} />);
     fireEvent.changeText(getByTestId('RespondDispute.input.description'), 'The item was returned in good condition');
     // Step 1: Press submit to show confirmation ActionSheet
     await act(async () => { fireEvent.press(getByTestId('RespondDispute.button.submit')); });
     // Step 2: Press confirm in ActionSheet - use last match (ActionSheet action)
     const buttons = getAllByText('Submit Decline');
     await act(async () => { fireEvent.press(buttons[buttons.length - 1]); });
-    // ActionSheet closes with 200ms delay before calling onPress
-    await act(async () => { jest.advanceTimersByTime(300); });
+    await act(async () => { UNSAFE_getAllByType(Modal).forEach(modal => fireEvent(modal, 'dismiss')); });
     expect(api.respondToDispute).toHaveBeenCalled();
     jest.useRealTimers();
   });

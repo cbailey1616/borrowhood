@@ -278,6 +278,8 @@ router.get('/suggested', authenticate, async (req, res) => {
          FROM community_memberships m
          JOIN users u ON m.user_id = u.id
          WHERE m.community_id = $1 AND u.id != $2
+           AND EXISTS (SELECT 1 FROM community_memberships mine
+             WHERE mine.community_id = m.community_id AND mine.user_id = $2)
          ORDER BY m.joined_at DESC
          LIMIT 20`,
         [neighborhood, req.user.id]
@@ -285,11 +287,13 @@ router.get('/suggested', authenticate, async (req, res) => {
     } else {
       // Get users in any community the current user is in
       result = await query(
-        `SELECT DISTINCT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.city, u.state
-         FROM community_memberships m
-         JOIN community_memberships m2 ON m.community_id = m2.community_id
-         JOIN users u ON m2.user_id = u.id
-         WHERE m.user_id = $1 AND u.id != $1
+        `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.city, u.state
+         FROM users u
+         WHERE u.id != $1 AND EXISTS (
+           SELECT 1 FROM community_memberships m
+           JOIN community_memberships m2 ON m.community_id = m2.community_id
+           WHERE m.user_id = $1 AND m2.user_id = u.id
+         )
          ORDER BY COALESCE(u.display_name, u.first_name), u.last_name
          LIMIT 20`,
         [req.user.id]
@@ -298,7 +302,7 @@ router.get('/suggested', authenticate, async (req, res) => {
 
     // Check which are already friends
     const friendResult = await query(
-      'SELECT friend_id FROM friendships WHERE user_id = $1',
+      "SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted'",
       [req.user.id]
     );
     const friendIds = new Set(friendResult.rows.map(r => r.friend_id));

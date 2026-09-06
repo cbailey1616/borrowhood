@@ -136,13 +136,13 @@ describe('GET /api/feed', () => {
     expect(ladder).toBeDefined();
   });
 
-  it('should reject town visibility for free user', async () => {
+  it('should return an empty town filter without exposing town listings to unverified users', async () => {
     const res = await request(app)
       .get('/api/feed?visibility=town')
       .set('Authorization', `Bearer ${freeUser.token}`);
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('SUBSCRIPTION_REQUIRED');
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual([]);
   });
 
   it('should allow town visibility for verified Plus user', async () => {

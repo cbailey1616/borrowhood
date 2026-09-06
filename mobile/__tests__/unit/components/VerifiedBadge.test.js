@@ -1,4 +1,5 @@
 import React from 'react';
+import { Modal } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import VerifiedBadge from '../../../src/components/VerifiedBadge';
 
@@ -9,12 +10,13 @@ jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: {
 beforeEach(() => { mockVerified = false; mockNavigate.mockClear(); });
 
 it('explains verification and invites an unverified viewer without opening the card', () => {
-  const { getByLabelText, getByText } = render(<VerifiedBadge interactive />);
+  const { getByLabelText, getByText, UNSAFE_getByType } = render(<VerifiedBadge interactive />);
   const stopPropagation = jest.fn();
   fireEvent.press(getByLabelText('Verified identity'), { stopPropagation });
   expect(stopPropagation).toHaveBeenCalled();
   expect(getByText(/This person’s identity has been verified/)).toBeTruthy();
   fireEvent.press(getByText('Build town trust · Get verified'));
+  fireEvent(UNSAFE_getByType(Modal), 'dismiss');
   expect(mockNavigate).toHaveBeenCalledWith('IdentityVerification', { source: 'identity_badge' });
 });
 

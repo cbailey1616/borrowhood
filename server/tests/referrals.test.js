@@ -105,22 +105,23 @@ describe('POST /api/referrals/claim', () => {
     expect(res.body.error).toContain('more referral');
   });
 
-  it('should grant free Plus for 1 year with 3+ referrals', async () => {
+  it('preserves the legacy referral perk without granting identity verification', async () => {
     const res = await request(app)
       .post('/api/referrals/claim')
       .set('Authorization', `Bearer ${referrer.token}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.expiresAt).toBeDefined();
+    expect(res.body.message).not.toMatch(/verified/i);
 
     // Verify user is now Plus
     const user = await query(
-      'SELECT subscription_tier, subscription_expires_at FROM users WHERE id = $1',
+      'SELECT subscription_tier, subscription_expires_at, is_verified FROM users WHERE id = $1',
       [referrer.userId]
     );
     expect(user.rows[0].subscription_tier).toBe('plus');
-    expect(user.rows[0].subscription_expires_at).toBeTruthy();
+    expect(user.rows[0].subscription_expires_at).toBeNull();
+    expect(user.rows[0].is_verified).toBe(false);
   });
 
   it('should reject double claim', async () => {

@@ -19,6 +19,7 @@ const ROLE_SEGMENTS = ['All', 'Borrowing', 'Lending'];
 const ROLE_VALUES = [null, 'borrower', 'lender'];
 
 const STATUS_CONFIG = {
+  returned: { label: 'Returned', color: COLORS.textMuted, icon: 'checkmark-done-outline' },
   requested: { label: 'Requested', color: COLORS.warning, icon: 'time-outline' },
   approved: { label: 'Approved', color: COLORS.primary, icon: 'checkmark-circle-outline' },
   active: { label: 'Active', color: COLORS.secondary, icon: 'swap-horizontal' },

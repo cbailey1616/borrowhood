@@ -39,10 +39,10 @@ describe('BlurTabBar', () => {
     const BlurTabBar = require('../../../src/components/BlurTabBar').default;
     const props = createTabBarProps();
     const { getByText } = render(<BlurTabBar {...props} />);
-    expect(getByText('Feed')).toBeTruthy();
+    expect(getByText('Home')).toBeTruthy();
     expect(getByText('Saved')).toBeTruthy();
-    expect(getByText('My Items')).toBeTruthy();
-    expect(getByText('Activity')).toBeTruthy();
+    expect(getByText('My Posts')).toBeTruthy();
+    expect(getByText('Inbox')).toBeTruthy();
     expect(getByText('Profile')).toBeTruthy();
   });
 
@@ -65,7 +65,7 @@ describe('BlurTabBar', () => {
     const BlurTabBar = require('../../../src/components/BlurTabBar').default;
     const props = createTabBarProps(0);
     const { getByText } = render(<BlurTabBar {...props} />);
-    fireEvent.press(getByText('Feed'));
+    fireEvent.press(getByText('Home'));
     expect(props.navigation.navigate).not.toHaveBeenCalled();
   });
 });

@@ -16,7 +16,7 @@ describe('UserBadges', () => {
     const { getByText } = render(
       <UserBadges isVerified={false} totalTransactions={0} />
     );
-    expect(getByText('Squire')).toBeTruthy();
+    expect(getByText('Squire · About ranks')).toBeTruthy();
   });
 
   it('renders verified badge', () => {
@@ -24,7 +24,7 @@ describe('UserBadges', () => {
     const { getByText } = render(
       <UserBadges isVerified={true} totalTransactions={0} />
     );
-    expect(getByText('Verified')).toBeTruthy();
+    expect(getByText('Verified identity')).toBeTruthy();
   });
 
   it('renders Outlaw tier for 15 transactions', () => {
@@ -32,7 +32,7 @@ describe('UserBadges', () => {
     const { getByText } = render(
       <UserBadges isVerified={false} totalTransactions={15} />
     );
-    expect(getByText('Outlaw')).toBeTruthy();
+    expect(getByText('Outlaw · About ranks')).toBeTruthy();
   });
 
   it('renders Sherwood Ranger tier for 31+ transactions', () => {
@@ -40,6 +40,6 @@ describe('UserBadges', () => {
     const { getByText } = render(
       <UserBadges isVerified={false} totalTransactions={35} />
     );
-    expect(getByText('Sherwood Ranger')).toBeTruthy();
+    expect(getByText('Sherwood Ranger · About ranks')).toBeTruthy();
   });
 });

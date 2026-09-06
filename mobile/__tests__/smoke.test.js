@@ -13,6 +13,7 @@
  */
 
 import React from 'react';
+jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../src/services/api';
 
@@ -303,11 +304,12 @@ describe('CreateListing', () => {
     expect(titleInput).toBeTruthy();
 
     fireEvent.changeText(titleInput, 'My Power Drill');
+    fireEvent.press(getByText('Add optional details'));
     fireEvent.changeText(getByTestId('CreateListing.input.description'), 'DeWalt 20V cordless drill');
 
     // Submit button should exist; label is "List Item" / "List Item for Free"
     // / "List Free Item" depending on free + deposit state (default is free).
-    const submitBtn = getByText(/^List /);
+    const submitBtn = getByTestId('CreateListing.button.submit');
     expect(submitBtn).toBeTruthy();
   });
 });
@@ -443,16 +445,18 @@ describe('Chat', () => {
     const ChatScreen = require('../src/screens/ChatScreen').default;
     const route = { params: { conversationId: 'conv-1' } };
 
-    const { getByPlaceholderText } = render(
+    const { getByPlaceholderText, getByLabelText } = render(
       <ChatScreen navigation={mockNavigation} route={route} />
     );
 
     // Wait for chat to load - placeholder: "Type a message..."
     await waitFor(() => {
-      expect(getByPlaceholderText('Type a message...')).toBeTruthy();
+      expect(getByPlaceholderText('Message…')).toBeTruthy();
     });
 
-    fireEvent.changeText(getByPlaceholderText('Type a message...'), 'Hey, is this available?');
+    fireEvent.changeText(getByPlaceholderText('Message…'), 'Hey, is this available?');
+    await act(async () => fireEvent.press(getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ recipientId: 'user-2', content: 'Hey, is this available?' }));
 
     // Chat loaded and message input is functional
     expect(api.getConversation).toHaveBeenCalled();
@@ -690,7 +694,7 @@ describe('Notifications', () => {
 // 14. Can a user open subscription screen and see plans?
 // ============================================
 describe('Subscription', () => {
-  it('should display subscription plans with subscribe button', async () => {
+  it('opens identity verification without a subscription checkout', async () => {
     const SubscriptionScreen = require('../src/screens/SubscriptionScreen').default;
     const route = { params: { source: 'generic' } };
 
@@ -699,7 +703,7 @@ describe('Subscription', () => {
     );
 
     // Should show the subscribe button (testID: Subscription.button.subscribe)
-    const subscribeBtn = await findByTestId('Subscription.button.subscribe');
+    const subscribeBtn = await findByTestId('Identity.button.verify');
     expect(subscribeBtn).toBeTruthy();
   });
 });
