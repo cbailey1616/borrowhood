@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render as nativeRender, fireEvent, waitFor, act } from '@testing-library/react-native';
+const render = element => { const screen = nativeRender(element); fireEvent.press(screen.getByText('Use email instead')); return screen; };
 import api from '../../../src/services/api';
 
 const mockLogin = jest.fn().mockResolvedValue({ id: 'user-1' });
@@ -104,7 +105,7 @@ describe('WelcomeScreen', () => {
     const { getByText } = render(
       <WelcomeScreen navigation={mockNavigation} />
     );
-    fireEvent.press(getByText('Create one'));
+    fireEvent.press(getByText('Create an account with email'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Register');
   });
 });

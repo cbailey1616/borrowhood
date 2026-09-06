@@ -2,22 +2,13 @@ import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
-import jwksClient from 'jwks-rsa';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
+import { verifySocialIdentity, resolveSocialAccount } from '../services/socialAuth.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
 import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession, cancelPaymentIntent } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
 import { sendResetCodeEmail, sendAccountHintEmail } from '../services/email.js';
 import { body, validationResult } from 'express-validator';
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-const appleJwksClient = jwksClient({
-  jwksUri: 'https://appleid.apple.com/auth/keys',
-  cache: true,
-  cacheMaxAge: 86400000, // 24 hours
-});
 
 const router = Router();
 
@@ -190,236 +181,24 @@ router.post('/login',
   }
 );
 
-// ============================================
-// POST /api/auth/google
-// Google Sign-In
-// ============================================
-router.post('/google', async (req, res) => {
-  const { idToken } = req.body;
-  if (!idToken) {
-    return res.status(400).json({ error: 'idToken is required' });
-  }
-
-  try {
-    // Verify the Google ID token
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
-
-    // Try to find existing user by google_id or email
-    let result = await query(
-      'SELECT id, email, first_name, last_name, status, google_id, onboarding_completed, onboarding_step FROM users WHERE google_id = $1',
-      [googleId]
-    );
-
-    let user;
-    let isNewUser = false;
-
-    if (result.rows.length > 0) {
-      // Found by google_id
-      user = result.rows[0];
-    } else {
-      // Check by email
-      result = await query(
-        'SELECT id, email, first_name, last_name, status, google_id, onboarding_completed, onboarding_step FROM users WHERE email = $1',
-        [email]
-      );
-
-      if (result.rows.length > 0) {
-        // Link Google to existing email account
-        user = result.rows[0];
-        await query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, user.id]);
-      } else {
-        // Create new user
-        isNewUser = true;
-        const nameParts = (name || '').split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
-        // Create Stripe customer
-        let stripeCustomerId = null;
-        try {
-          const stripeCustomer = await createStripeCustomer(email, name);
-          stripeCustomerId = stripeCustomer.id;
-        } catch (stripeErr) {
-          console.warn('Stripe customer creation skipped:', stripeErr.message);
-        }
-
-        result = await query(
-          `INSERT INTO users (email, first_name, last_name, google_id, profile_photo_url, stripe_customer_id)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING id, email, first_name, last_name, status`,
-          [email, firstName, lastName, googleId, picture || null, stripeCustomerId]
-        );
-        user = result.rows[0];
-
-        // Generate referral code
-        const referralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
-        await query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, user.id]);
-      }
+// Both providers use the same account and token checks for sign-in and linking.
+for (const provider of ['google', 'apple']) {
+  router.post('/' + provider, async (req, res) => {
+    try {
+      const identity = await verifySocialIdentity(provider, provider === 'google' ? req.body.idToken : req.body.identityToken, req.body.fullName);
+      const { user, isNewUser } = await withTransaction(client => resolveSocialAccount(client, identity));
+      res.status(isNewUser ? 201 : 200).json({
+        user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name,
+          status: user.status, onboardingCompleted: user.onboarding_completed || false,
+          onboardingStep: user.onboarding_step, needsName: !user.first_name },
+        ...generateTokens(user.id),
+      });
+    } catch (err) {
+      const status = err.status || (err.code === '23505' ? 409 : 500);
+      res.status(status).json({ error: err.status ? err.message : 'Couldn’t finish signing in. Please try again.', code: err.status ? err.code : undefined });
     }
-
-    if (user.status === 'suspended') {
-      return res.status(403).json({ error: 'Account suspended' });
-    }
-
-    const tokens = generateTokens(user.id);
-
-    res.status(isNewUser ? 201 : 200).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        status: user.status,
-        onboardingCompleted: user.onboarding_completed || false,
-        onboardingStep: user.onboarding_step,
-      },
-      ...tokens,
-    });
-  } catch (err) {
-    console.error('Google sign-in error:', err);
-    res.status(401).json({ error: 'Invalid Google token' });
-  }
-});
-
-// ============================================
-// POST /api/auth/apple
-// Apple Sign-In
-// ============================================
-router.post('/apple', async (req, res) => {
-  const { identityToken, fullName } = req.body;
-  if (!identityToken) {
-    return res.status(400).json({ error: 'identityToken is required' });
-  }
-
-  try {
-    // Decode the JWT header to get the kid
-    const decoded = jwt.decode(identityToken, { complete: true });
-    if (!decoded) {
-      return res.status(401).json({ error: 'Invalid Apple token' });
-    }
-
-    // Fetch the matching public key from Apple's JWKS
-    const key = await appleJwksClient.getSigningKey(decoded.header.kid);
-    const signingKey = key.getPublicKey();
-
-    // Verify the token
-    const payload = jwt.verify(identityToken, signingKey, {
-      algorithms: ['RS256'],
-      issuer: 'https://appleid.apple.com',
-      audience: 'com.borrowhood.app',
-    });
-
-    const { sub: appleId, email: rawEmail } = payload;
-    // If Apple didn't provide an email (Hide My Email), generate a placeholder
-    const email = rawEmail || `apple_${appleId}@privaterelay.borrowhood.net`;
-
-    // Try to find existing user by apple_id or email
-    let result = await query(
-      'SELECT id, email, first_name, last_name, status, apple_id, onboarding_completed, onboarding_step FROM users WHERE apple_id = $1',
-      [appleId]
-    );
-
-    let user;
-    let isNewUser = false;
-
-    if (result.rows.length > 0) {
-      // Found by apple_id
-      user = result.rows[0];
-    } else if (email) {
-      // Check by email
-      result = await query(
-        'SELECT id, email, first_name, last_name, status, apple_id, onboarding_completed, onboarding_step FROM users WHERE email = $1',
-        [email]
-      );
-
-      if (result.rows.length > 0) {
-        // Link Apple to existing email account
-        user = result.rows[0];
-        await query('UPDATE users SET apple_id = $1 WHERE id = $2', [appleId, user.id]);
-      } else {
-        // Create new user — Apple only sends name on first sign-in
-        isNewUser = true;
-        const firstName = fullName?.givenName || '';
-        const lastName = fullName?.familyName || '';
-
-        let stripeCustomerId = null;
-        try {
-          const stripeCustomer = await createStripeCustomer(email, `${firstName} ${lastName}`.trim());
-          stripeCustomerId = stripeCustomer.id;
-        } catch (stripeErr) {
-          console.warn('Stripe customer creation skipped:', stripeErr.message);
-        }
-
-        result = await query(
-          `INSERT INTO users (email, first_name, last_name, apple_id, stripe_customer_id)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id, email, first_name, last_name, status`,
-          [email, firstName, lastName, appleId, stripeCustomerId]
-        );
-        user = result.rows[0];
-
-        // Generate referral code
-        const referralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
-        await query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, user.id]);
-      }
-    } else {
-      // Fallback — email is always set (real or placeholder), but guard defensively
-      isNewUser = true;
-      const firstName = fullName?.givenName || '';
-      const lastName = fullName?.familyName || '';
-      const fallbackEmail = `apple_${appleId}@privaterelay.borrowhood.net`;
-
-      let stripeCustomerId = null;
-      try {
-        const stripeCustomer = await createStripeCustomer(fallbackEmail, `${firstName} ${lastName}`.trim());
-        stripeCustomerId = stripeCustomer.id;
-      } catch (stripeErr) {
-        console.warn('Stripe customer creation skipped:', stripeErr.message);
-      }
-
-      result = await query(
-        `INSERT INTO users (email, first_name, last_name, apple_id, stripe_customer_id)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, email, first_name, last_name, status`,
-        [fallbackEmail, firstName, lastName, appleId, stripeCustomerId]
-      );
-      user = result.rows[0];
-
-      const referralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
-      await query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, user.id]);
-    }
-
-    if (user.status === 'suspended') {
-      return res.status(403).json({ error: 'Account suspended' });
-    }
-
-    const tokens = generateTokens(user.id);
-
-    const needsName = !user.first_name;
-
-    res.status(isNewUser ? 201 : 200).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        status: user.status,
-        onboardingCompleted: user.onboarding_completed || false,
-        onboardingStep: user.onboarding_step,
-        needsName,
-      },
-      ...tokens,
-    });
-  } catch (err) {
-    console.error('Apple sign-in error:', err);
-    res.status(401).json({ error: 'Invalid Apple token' });
-  }
-});
+  });
+}
 
 // ============================================
 // POST /api/auth/verify-identity
@@ -858,6 +637,7 @@ router.get('/me', authenticate, async (req, res) => {
       subscriptionTier: user.subscription_tier || 'free',
       hasConnectAccount: !!user.stripe_connect_account_id,
       payoutsEnabled: user.payouts_enabled || false,
+      needsName: !user.first_name,
       onboardingStep: user.onboarding_step,
       onboardingCompleted: user.onboarding_completed || false,
       isFounder: user.is_founder || false,
@@ -1139,51 +919,12 @@ router.post('/find-account',
 // ============================================
 router.post('/link-account', authenticate, async (req, res) => {
   const { provider, idToken, identityToken } = req.body;
-
-  if (!provider || !['apple', 'google'].includes(provider)) {
-    return res.status(400).json({ error: 'Provider must be "apple" or "google"' });
-  }
-
   try {
-    if (provider === 'google') {
-      if (!idToken) return res.status(400).json({ error: 'idToken is required' });
-
-      const ticket = await googleClient.verifyIdToken({
-        idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      const { sub: googleId } = ticket.getPayload();
-
-      // Check if another user already has this google_id
-      const existing = await query('SELECT id FROM users WHERE google_id = $1 AND id != $2', [googleId, req.user.id]);
-      if (existing.rows.length > 0) {
-        return res.status(409).json({ error: 'This Google account is already linked to another user' });
-      }
-
-      await query('UPDATE users SET google_id = $1 WHERE id = $2', [googleId, req.user.id]);
-    } else {
-      if (!identityToken) return res.status(400).json({ error: 'identityToken is required' });
-
-      // Decode Apple JWT header to get kid
-      const header = JSON.parse(Buffer.from(identityToken.split('.')[0], 'base64').toString());
-      const key = await appleJwksClient.getSigningKey(header.kid);
-      const publicKey = key.getPublicKey();
-      const decoded = jwt.verify(identityToken, publicKey, { algorithms: ['RS256'] });
-      const appleId = decoded.sub;
-
-      // Check if another user already has this apple_id
-      const existing = await query('SELECT id FROM users WHERE apple_id = $1 AND id != $2', [appleId, req.user.id]);
-      if (existing.rows.length > 0) {
-        return res.status(409).json({ error: 'This Apple account is already linked to another user' });
-      }
-
-      await query('UPDATE users SET apple_id = $1 WHERE id = $2', [appleId, req.user.id]);
-    }
-
-    res.json({ message: 'Account linked successfully' });
+    const identity = await verifySocialIdentity(provider, provider === 'google' ? idToken : identityToken);
+    await withTransaction(client => resolveSocialAccount(client, identity, req.user.id));
+    res.json({ message: 'Account connected.' });
   } catch (err) {
-    console.error('Link account error:', err);
-    res.status(400).json({ error: 'Failed to verify provider token' });
+    res.status(err.status || 409).json({ error: err.status ? err.message : 'Couldn’t connect this sign-in. Please try again.' });
   }
 });
 

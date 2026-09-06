@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { directFeeLabel } from '../utils/directFee';
+import { randomUUID } from 'expo-crypto';
+import ThreadMessageButton from '../components/ThreadMessageButton';
 import {
   View,
   Text,
@@ -103,13 +105,28 @@ export default function FeedScreen({ navigation }) {
   const [feedError, setFeedError] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const feedRequest = useRef(0);
+  const feedSession = useRef(null);
+  const impressions = useRef(new Set());
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    const events = viewableItems.filter(({ item, isViewable }) => {
+      const key = `${item.type}:${item.id}`;
+      if (!isViewable || impressions.current.has(key)) return false;
+      impressions.current.add(key); return true;
+    }).map(({ item }) => ({ id: item.id, type: item.type, event: 'seen' }));
+    if (events.length) api.recordFeedEvents(events.slice(0, 30)).catch(() => {});
+  }).current;
+  const openFeedItem = item => {
+    api.recordFeedEvents([{ id: item.id, type: item.type, event: 'click' }]).catch(() => {});
+    navigation.navigate(item.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: item.id });
+  };
   const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
   const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
     const requestId = ++feedRequest.current;
     setFeedError(false);
     setIsFetching(true);
     try {
-      const params = { page: pageNum, limit: 20 };
+      if (pageNum === 1 || !feedSession.current) { feedSession.current = randomUUID(); impressions.current.clear(); }
+      const params = { page: pageNum, limit: 20, session: feedSession.current };
       if (!clear && search.trim()) params.search = search.trim();
       if (!clear && activeFilters.length > 0) params.type = activeFilters.join(',');
       if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
@@ -119,7 +136,7 @@ export default function FeedScreen({ navigation }) {
       if (requestId !== feedRequest.current) return;
 
       if (append) {
-        setFeed(prev => [...prev, ...data.items]);
+        setFeed(prev => [...prev, ...data.items.filter(item => !prev.some(existing => existing.id === item.id && existing.type === item.type))]);
       } else {
         setFeed(data.items || []);
       }
@@ -457,7 +474,7 @@ export default function FeedScreen({ navigation }) {
     return (
     <AnimatedCard index={index} style={styles.tileShadow}>
       <HapticPressable
-        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+        onPress={() => openFeedItem(item)}
         haptic="light"
         scaleDown={0.98}
         style={styles.tile}
@@ -662,6 +679,8 @@ export default function FeedScreen({ navigation }) {
                 </Text>
                 <Text style={styles.requestThreadText}>{post.content}</Text>
                 <View style={styles.threadPostActions}>
+                  <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation}
+                    context={{ id: itemId, title: feedItem?.title, type: isRequest ? 'request' : 'listing' }} />
                   <HapticPressable
                     haptic="light"
                     onPress={() => setReplyingTo(prev => ({ ...prev, [itemId]: post }))}
@@ -698,6 +717,8 @@ export default function FeedScreen({ navigation }) {
                     {reply.user.firstName} {reply.user.lastName}
                   </Text>
                   <Text style={styles.threadReplyText}>{reply.content}</Text>
+                  <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation}
+                    context={{ id: itemId, title: feedItem?.title, type: isRequest ? 'request' : 'listing' }} />
                 </View>
               </View>
             ))}
@@ -791,7 +812,7 @@ export default function FeedScreen({ navigation }) {
     return (
       <AnimatedCard index={index} style={styles.tileShadow}>
         <HapticPressable
-          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+          onPress={() => openFeedItem(item)}
           haptic="light"
           scaleDown={0.98}
           style={[styles.tile, styles.requestTile]}
@@ -915,6 +936,8 @@ export default function FeedScreen({ navigation }) {
       </NativeHeader>
 
       <FlatList
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
         ref={listRef}
         data={feed}
         renderItem={renderItem}

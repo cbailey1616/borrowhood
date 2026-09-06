@@ -43,7 +43,7 @@ export default function TransactionHistoryScreen({ navigation }) {
       const params = {};
       if (roleFilter) params.role = roleFilter;
       const data = await api.getTransactions(params);
-      setTransactions(Array.isArray(data) ? data : []);
+      setTransactions(Array.isArray(data) ? data.filter(item => ['returned', 'completed', 'cancelled', 'declined', 'expired'].includes(item.status)) : []);
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
     } finally {

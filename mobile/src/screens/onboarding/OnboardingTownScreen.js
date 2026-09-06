@@ -13,6 +13,8 @@ export default function OnboardingTownScreen() {
   const insets = useSafeAreaInsets();
   const [city, setCity] = useState(user?.city || '');
   const [state, setState] = useState(user?.state || '');
+  const needsName = !user?.firstName?.trim();
+  const [firstName, setFirstName] = useState('');
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
@@ -30,11 +32,12 @@ export default function OnboardingTownScreen() {
   };
   const finish = async () => {
     if (busy) return;
+    if (needsName && !firstName.trim()) { setError('What should we call you? Add your first name.'); return; }
     if (!city.trim() || !state.trim()) { setError('Enter your town and state to continue.'); return; }
     setBusy(true); setError('');
     try {
       // Store town only: precise device coordinates stay on the device.
-      await api.updateProfile({ city: city.trim(), state: state.trim() });
+      await api.updateProfile({ city: city.trim(), state: state.trim(), ...(needsName ? { firstName: firstName.trim() } : {}) });
       await api.completeOnboarding();
       await refreshUser();
     } catch { setError('Could not finish setup. Check your connection and try again.'); }
@@ -45,7 +48,11 @@ export default function OnboardingTownScreen() {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
         <HeroIcon icon="location-outline" size={72} />
         <Text style={styles.title}>What’s your town?</Text>
-        <Text style={styles.body}>Find your neighbors. Your belongings and street address stay private.</Text>
+        <Text style={styles.body}>Find people nearby. Your street address stays private.</Text>
+        {needsName && <>
+          <Text style={styles.label}>Your first name</Text>
+          <TextInput accessibilityLabel="Your first name" value={firstName} onChangeText={setFirstName} editable={!busy} autoCapitalize="words" autoCorrect={false} textContentType="givenName" maxLength={100} style={styles.input} placeholder="What should we call you?" placeholderTextColor={COLORS.textMuted} />
+        </>}
         <HapticPressable accessibilityRole="button" disabled={locating || busy} onPress={locate} style={styles.secondary}>
           {locating ? <ActivityIndicator color={COLORS.primary} /> : <Text style={styles.link}>Use my current location</Text>}
         </HapticPressable>
@@ -57,8 +64,7 @@ export default function OnboardingTownScreen() {
         <HapticPressable accessibilityRole="button" disabled={busy || locating} onPress={finish} style={styles.button}>
           {busy ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue to Borrowhood</Text>}
         </HapticPressable>
-        <Text style={styles.note}>Town-wide requests and sharing require completed ID verification. You can do that later; Borrowhood covers verification during launch.</Text>
-        <Text style={styles.note}>Your street address isn’t shown in search. Share pickup details privately when you agree to an exchange.</Text>
+        <Text style={styles.note}>Verify later to share and ask across your town.</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

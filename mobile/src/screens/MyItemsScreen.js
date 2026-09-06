@@ -50,15 +50,6 @@ export default function MyItemsScreen({ navigation }) {
       if (activeTab === 0) {
         const data = await api.getMyListings();
         setListings(data);
-      } else if (activeTab === 1) {
-        const data = await api.getTransactions();
-        // Filter to active only (not completed/cancelled/giveaway-returned)
-        setRentals(data.filter(t => {
-          if (['completed', 'cancelled'].includes(t.status)) return false;
-          // Giveaways go straight to 'returned' on pickup — they're done
-          if (t.listingType === 'giveaway' && t.status === 'returned') return false;
-          return true;
-        }));
       } else {
         const data = await api.getMyRequests();
         setRequests(data);
@@ -194,11 +185,11 @@ export default function MyItemsScreen({ navigation }) {
               </Text>
               <View style={[
                 styles.statusBadge,
-                { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.warningMuted }
+                { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
               ]}>
                 <Text style={[
                   styles.statusText,
-                  { color: item.isAvailable ? COLORS.secondary : COLORS.warning }
+                  { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
                 ]}>
                   {item.status === 'given_away' ? 'Claimed' : item.isAvailable ? 'Available' : 'Borrowed'}
                 </Text>
@@ -245,16 +236,15 @@ export default function MyItemsScreen({ navigation }) {
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
           haptic="light"
         >
-          <View style={[styles.requestAccent, item.isExpired ? styles.requestAccentExpired : item.status === 'open' ? styles.requestAccentOpen : styles.requestAccentClosed]} />
           <View style={styles.requestContent}>
             <View style={styles.requestHeader}>
               <View style={styles.requestTitleRow}>
                 <Ionicons
-                  name={item.isExpired ? 'alert-circle' : item.status === 'open' ? 'time-outline' : 'checkmark-circle'}
-                  size={18}
-                  color={item.isExpired ? COLORS.danger : item.status === 'open' ? COLORS.warning : COLORS.textMuted}
+                  name={item.type === 'service' ? 'construct' : 'basket'} illustrated
+                  size={34}
+                  color={COLORS.primary}
                 />
-                <Text style={styles.requestTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={[styles.requestTitle, { fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
               </View>
               <View style={styles.requestBadges}>
                 {item.type === 'service' && (
@@ -265,16 +255,16 @@ export default function MyItemsScreen({ navigation }) {
                 <View style={[
                   styles.requestStatusBadge,
                   item.isExpired ? { backgroundColor: COLORS.dangerMuted }
-                    : item.status === 'open' ? { backgroundColor: COLORS.warningMuted }
+                    : item.status === 'open' ? { backgroundColor: COLORS.primaryMuted }
                     : { backgroundColor: COLORS.surfaceElevated }
                 ]}>
                   <Text style={[
                     styles.requestStatusText,
                     item.isExpired ? { color: COLORS.danger }
-                      : item.status === 'open' ? { color: COLORS.warning }
+                      : item.status === 'open' ? { color: COLORS.primary }
                       : { color: COLORS.textMuted }
                   ]}>
-                    {item.isExpired ? 'Expired' : item.status === 'open' ? 'Active' : 'Closed'}
+                    {item.isExpired ? 'Expired' : item.status === 'open' ? 'Open' : 'Closed'}
                   </Text>
                 </View>
               </View>
@@ -299,7 +289,7 @@ export default function MyItemsScreen({ navigation }) {
 
             <View style={styles.requestFooter}>
               <Text style={styles.requestDate}>
-                Posted {new Date(item.createdAt).toLocaleDateString()}
+                {!item.neededFrom && !item.neededUntil ? 'Flexible' : ''}
               </Text>
               {item.isExpired && item.status === 'open' && (
                 <HapticPressable
@@ -392,31 +382,29 @@ export default function MyItemsScreen({ navigation }) {
     );
   };
 
-  const data = activeTab === 0 ? listings : activeTab === 1 ? rentals : requests;
-  const emptyTitle = activeTab === 0 ? 'Your private inventory starts here' : activeTab === 1 ? 'No exchanges yet' : 'No requests yet';
+  const data = activeTab === 0 ? listings : requests;
+  const emptyTitle = activeTab === 0 ? 'Your listings start here' : 'No requests yet';
   const emptySubtitle = activeTab === 0
-    ? 'Add an item for yourself. Choose who sees it when you’re ready to share.'
-    : activeTab === 1
-    ? 'Things you lend and borrow will show up here.'
+    ? 'List an item and choose who can see it.'
     : 'Post what you need and neighbors can offer to help';
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="My Items">
+      <NativeHeader title="My Posts">
         <SegmentedControl
           testID="MyItems.segment"
-          segments={['My items', 'Exchanges', 'Requests']}
+          segments={['Items', 'Requests']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
         />
       </NativeHeader>
 
-      {loadError && <View style={{ padding: 16, backgroundColor: COLORS.warningMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Try again</Text></HapticPressable></View>}
+      {loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Try again</Text></HapticPressable></View>}
 
       <FlatList
         data={data}
-        renderItem={activeTab === 0 ? renderListingItem : activeTab === 1 ? renderRentalItem : renderRequestItem}
+        renderItem={activeTab === 0 ? renderListingItem : renderRequestItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -429,10 +417,10 @@ export default function MyItemsScreen({ navigation }) {
         ListEmptyComponent={
           !isLoading && !loadError && (
             <View style={styles.emptyContainer}>
-              <HeroIcon icon={activeTab === 0 ? 'basket' : activeTab === 1 ? 'swap-horizontal' : 'search'} size={80} />
+              <HeroIcon icon={activeTab === 0 ? 'basket' : 'search'} size={80} />
               <Text style={styles.emptyTitle}>{emptyTitle}</Text>
               <Text style={styles.emptySubtitle}>{emptySubtitle}</Text>
-              {activeTab !== 1 && (
+              {(
                 <HapticPressable
                   style={styles.addButton}
                   onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
@@ -448,7 +436,7 @@ export default function MyItemsScreen({ navigation }) {
           )
         }
         ListHeaderComponent={
-          data.length > 0 && activeTab !== 1 && (
+          data.length > 0 && (
             <HapticPressable
               style={styles.headerButton}
               onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
@@ -591,7 +579,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.warning + '30',
+    borderColor: COLORS.border,
   },
   requestCardExpired: {
     borderColor: COLORS.danger + '30',

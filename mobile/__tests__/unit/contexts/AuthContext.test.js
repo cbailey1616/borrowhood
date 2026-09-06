@@ -26,6 +26,26 @@ beforeEach(() => {
 const wrapper = ({ children }) => React.createElement(AuthProvider, null, children);
 
 describe('AuthContext', () => {
+  it('does not persist a session if connecting the provider fails', async () => {
+    SecureStore.getItemAsync.mockResolvedValue(null);
+    api.linkAccount = jest.fn().mockRejectedValue(new Error('Already connected elsewhere'));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await expect(result.current.login('test@test.com', 'password', { provider: 'google', token: { idToken: 'proof' } })).rejects.toThrow('Already connected elsewhere');
+    });
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+  it('connects with the authenticated account token before completing login', async () => {
+    SecureStore.getItemAsync.mockResolvedValue(null);
+    api.linkAccount = jest.fn().mockResolvedValue({});
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => result.current.login('test@test.com', 'password', { provider: 'google', token: { idToken: 'proof' } }));
+    expect(api.linkAccount).toHaveBeenCalledWith('google', { idToken: 'proof' }, 'test-access-token');
+    expect(result.current.isAuthenticated).toBe(true);
+  });
   it('throws when useAuth used outside provider', () => {
     // Suppress console.error for expected error
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});

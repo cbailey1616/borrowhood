@@ -68,14 +68,14 @@ describe('MyItemsScreen', () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
     await selectTab(utils, 0);
-    await utils.findByText('Your private inventory starts here');
+    await utils.findByText('Your listings start here');
   });
 
   it('requests tab calls api.getMyRequests', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
     // Switch to ISO tab (index 2)
-    await selectTab(utils, 2);
+    await selectTab(utils, 1);
     await waitFor(() => {
       expect(api.getMyRequests).toHaveBeenCalled();
     });
@@ -88,7 +88,7 @@ describe('MyItemsScreen', () => {
     }]);
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
-    await selectTab(utils, 2);
+    await selectTab(utils, 1);
     await utils.findByText('Need a ladder');
   });
 });

@@ -12,7 +12,7 @@ export default function VerifiedBadge({ size = 18, interactive = false }) {
   if (interactive) return <IdentityInfoBadge size={size} />;
   return (
     <View accessible accessibilityLabel="Verified identity" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Ionicons name="checkmark-circle" size={size} color={COLORS.primary} />
+      <Ionicons name="identity-seal" size={size} color={COLORS.primary} />
     </View>
   );
 }
@@ -27,8 +27,8 @@ function IdentityInfoBadge({ size }) {
       accessibilityHint="Learn about identity verification"
       hitSlop={8}
       onPress={event => { event?.stopPropagation?.(); setVisible(true); }}
-      style={{ minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' }}>
-      <Ionicons name="checkmark-circle" size={size} color={COLORS.primary} />
+      style={{ width: size + 4, minHeight: 32, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name="identity-seal" size={size} color={COLORS.primary} />
     </HapticPressable>
     {visible && <ActionSheet isVisible onClose={() => setVisible(false)}
       title="A little extra peace of mind"

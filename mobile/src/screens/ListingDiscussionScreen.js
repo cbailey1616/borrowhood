@@ -14,6 +14,7 @@ import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 
 import ActionSheet from '../components/ActionSheet';
+import ThreadMessageButton from '../components/ThreadMessageButton';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
@@ -24,6 +25,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const isRequest = !!requestId;
   const targetId = requestId || listingId;
   const targetTitle = request?.title || listing?.title;
+  const threadContext = { id: targetId, title: targetTitle, type: isRequest ? 'request' : 'listing' };
   const isOwner = isRequest ? request?.isOwner : listing?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
@@ -219,6 +221,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           <Text style={styles.replyDate}>{formatDate(reply.createdAt)}</Text>
         </View>
         <Text style={styles.replyText}>{reply.content}</Text>
+        <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation} context={threadContext} />
         {(reply.isOwn || isOwner) && (
           <HapticPressable
             haptic="light"
@@ -263,6 +266,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         <Text style={styles.postContent}>{post.content}</Text>
 
         <View style={styles.postActions}>
+          <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation} context={threadContext} />
           <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply(post)}>
             <Ionicons name="arrow-undo-outline" size={16} color={COLORS.textSecondary} />
             <Text style={styles.actionText}>Reply</Text>

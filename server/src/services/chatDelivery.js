@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 // simultaneous sends cannot create duplicate conversations. Idempotency is
 // account-scoped and binds the key to the complete, immutable payload.
 export async function deliverMessage(client, { senderId, recipientId, content, imageUrl, listingId, clientRequestId }) {
+  const blocked = await client.query('SELECT 1 FROM user_blocks WHERE (user_id=$1 AND blocked_id=$2) OR (user_id=$2 AND blocked_id=$1)', [senderId, recipientId]);
+  if (blocked.rows.length) { const error = new Error('Messages between these accounts are blocked.'); error.status = 403; throw error; }
   if (clientRequestId) {
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`message:${senderId}:${clientRequestId}`]);
   }

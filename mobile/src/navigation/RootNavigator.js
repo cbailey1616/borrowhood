@@ -120,10 +120,7 @@ export default function RootNavigator() {
   // Show onboarding for new users
   if (needsOnboarding) {
     return (
-      <>
-        <OnboardingNavigator initialStep={user?.onboardingStep || 1} />
-        {showNamePrompt && <NamePromptModal nameInput={nameInput} setNameInput={setNameInput} saving={savingName} onSave={handleSaveName} />}
-      </>
+      <OnboardingNavigator initialStep={user?.onboardingStep || 1} />
     );
   }
 

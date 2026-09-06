@@ -53,7 +53,7 @@ export default function MainNavigator() {
       <Tab.Screen
         name="MyItems"
         component={MyItemsScreen}
-        options={{ title: 'My Items' }}
+        options={{ title: 'My Posts' }}
       />
       <Tab.Screen
         name="Activity"

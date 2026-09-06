@@ -5,18 +5,36 @@ import api from '../../../src/services/api';
 import Screen from '../../../src/screens/onboarding/OnboardingTownScreen';
 
 const mockRefreshUser = jest.fn();
-jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: {}, refreshUser: mockRefreshUser }) }));
+let mockUser = { firstName: 'Chris' };
+jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, refreshUser: mockRefreshUser }) }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUser = { firstName: 'Chris' };
   api.updateProfile.mockResolvedValue({});
   api.completeOnboarding.mockResolvedValue({});
 });
 
 describe('town setup', () => {
+  it('asks for a missing Apple name on the town screen and saves everything together', async () => {
+    mockUser = { firstName: '', onboardingStep: 2 };
+    const screen = render(<Screen />);
+    fireEvent.changeText(screen.getByLabelText('Town or city'), 'Upton');
+    fireEvent.changeText(screen.getByLabelText('State'), 'MA');
+    fireEvent.press(screen.getByText('Continue to Borrowhood'));
+    expect(api.completeOnboarding).not.toHaveBeenCalled();
+    fireEvent.changeText(screen.getByLabelText('Your first name'), ' Chris ');
+    fireEvent.press(screen.getByText('Continue to Borrowhood'));
+    await waitFor(() => expect(mockRefreshUser).toHaveBeenCalled());
+    expect(api.updateProfile).toHaveBeenCalledWith({ city: 'Upton', state: 'MA', firstName: 'Chris' });
+  });
+  it('does not ask for a name already supplied by the provider', () => {
+    const screen = render(<Screen />);
+    expect(screen.queryByLabelText('Your first name')).toBeNull();
+  });
   it('does not request device location without a tap', () => {
     const { getByText } = render(<Screen />);
-    expect(getByText(/Town-wide requests and sharing require completed ID verification/)).toBeTruthy();
+    expect(getByText('Verify later to share and ask across your town.')).toBeTruthy();
     expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
   });
   it('requires town and state and does not finish an empty form', () => {

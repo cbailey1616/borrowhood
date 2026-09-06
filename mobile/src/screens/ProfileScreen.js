@@ -236,7 +236,7 @@ export default function ProfileScreen({ navigation }) {
         <GroupedListSection header="Borrowing">
           <GroupedListItem
             icon="receipt-outline"
-            title="Past exchanges"
+            title="History"
             onPress={() => navigation.navigate('TransactionHistory')}
           />
           {ENABLE_PAYMENTS && (
@@ -253,11 +253,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('PaymentMethods')}
           />
           )}
-          <GroupedListItem
-            icon="flag-outline"
-            title="Disputes"
-            onPress={() => navigation.navigate('Disputes')}
-          />
+
           {/* TODO: Restore when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
           {ENABLE_PAID_TIERS && (
             <GroupedListItem

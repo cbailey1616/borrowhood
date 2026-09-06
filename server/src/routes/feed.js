@@ -3,8 +3,31 @@ import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constan
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
+import { rankFeed } from '../utils/feedRanking.js';
+import { canViewListing, canViewRequest } from '../services/listingAccess.js';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const router = Router();
+router.post('/events', authenticate, async (req, res) => {
+  const events = req.body.events;
+  if (!Array.isArray(events) || events.length > 30 || events.some(e => !e || !UUID.test(e.id) || !['listing', 'request'].includes(e.type) || !['seen', 'click'].includes(e.event))) {
+    return res.status(400).json({ error: 'Invalid feed events' });
+  }
+  try {
+    for (const event of events) {
+      const allowed = event.type === 'listing' ? await canViewListing(event.id, req.user.id, { discovery: true }) : await canViewRequest(event.id, req.user.id);
+      if (!allowed) continue;
+      const owner = await query(event.type === 'listing' ? 'SELECT owner_id AS id FROM listings WHERE id=$1' : 'SELECT user_id AS id FROM item_requests WHERE id=$1', [event.id]);
+      const countClick = event.event === 'click' && owner.rows[0]?.id !== req.user.id;
+      await query(`INSERT INTO feed_events(user_id,item_type,item_id,seen_at,clicked_at)
+        VALUES($1,$2,$3,NOW(),CASE WHEN $4 THEN NOW() ELSE NULL END)
+        ON CONFLICT(user_id,item_type,item_id) DO UPDATE SET seen_at=NOW(),
+        clicked_at=CASE WHEN $4 THEN NOW() ELSE feed_events.clicked_at END`, [req.user.id,event.type,event.id,countClick]);
+    }
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Could not record feed events' }); }
+});
 
 // ============================================
 // GET /api/feed
@@ -13,6 +36,9 @@ const router = Router();
 router.get('/', authenticate, async (req, res) => {
   const { page = 1, limit = 20, search, type, categoryId, visibility } = req.query;
   const offset = (page - 1) * limit;
+  if (!Number.isInteger(Number(page)) || Number(page) < 1 || !Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) return res.status(400).json({ error: 'Invalid page' });
+  const token = req.query.session;
+  if (token && !UUID.test(token)) return res.status(400).json({ error: 'Invalid session' });
 
   try {
     const visibilityFilters = visibility ? visibility.split(',') : [];
@@ -95,8 +121,7 @@ router.get('/', authenticate, async (req, res) => {
       // Private inventory belongs in My Items, not the discovery feed.
       listingQuery += " AND l.privacy_version = 1 AND l.visibility != 'private'";
 
-      listingQuery += ` ORDER BY l.created_at DESC LIMIT $${listingParams.length + 1}`;
-      listingParams.push(parseInt(limit) * 2);
+      listingQuery += ` ORDER BY l.created_at DESC`;
 
       listingsResult = await query(listingQuery, listingParams);
     }
@@ -144,8 +169,7 @@ router.get('/', authenticate, async (req, res) => {
         requestParams.push(`%${search}%`);
       }
 
-      requestQuery += ` ORDER BY r.created_at DESC LIMIT $${requestParams.length + 1}`;
-      requestParams.push(parseInt(limit) * 2);
+      requestQuery += ` ORDER BY r.created_at DESC`;
 
       requestsResult = await query(requestQuery, requestParams);
     }
@@ -220,60 +244,36 @@ router.get('/', authenticate, async (req, res) => {
       },
     }));
 
-    // Feed algorithm: score-based with freshness tiers + randomization
-    // - New listings (< 24h) get top priority
-    // - Recent items (1-7 days) get medium priority
-    // - Older items fill the rest
-    // - Random factor within tiers keeps feed feeling fresh each load
-    // - ISOs get a small boost to stay visible
-    const now = Date.now();
-    const HOUR = 3600000;
-    const DAY = 24 * HOUR;
-
-    const scored = [...listings, ...requests].map(item => {
-      const age = now - new Date(item.createdAt).getTime();
-      const isRequest = item.type === 'request';
-
-      // Base score from recency (exponential decay)
-      let score;
-      if (age < DAY) {
-        // Under 24h: highest tier (score 800-1000)
-        score = 1000 - (age / DAY) * 200;
-      } else if (age < 7 * DAY) {
-        // 1-7 days: medium tier (score 400-800)
-        score = 800 - ((age - DAY) / (6 * DAY)) * 400;
-      } else {
-        // Older: lower tier (score 0-400, decays over 30 days)
-        score = Math.max(0, 400 - ((age - 7 * DAY) / (30 * DAY)) * 400);
+    const candidates = [...listings, ...requests];
+    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '']);
+    let keys;
+    if (token) {
+      const stored = await query('SELECT item_keys FROM feed_sessions WHERE user_id=$1 AND token=$2 AND filter_key=$3 AND created_at > NOW() - INTERVAL \'1 day\'', [req.user.id, token, filterKey]);
+      keys = stored.rows[0]?.item_keys;
+    }
+    if (!keys) {
+      const events = await query(`SELECT item_type, item_id,
+        BOOL_OR(user_id=$1 AND seen_at > NOW()-INTERVAL '30 days') AS seen,
+        COUNT(*) FILTER(WHERE user_id != $1 AND clicked_at > NOW()-INTERVAL '14 days') AS clicks
+        FROM feed_events GROUP BY item_type,item_id`, [req.user.id]);
+      const signals = new Map(events.rows.map(e => [e.item_type + ':' + e.item_id, e]));
+      keys = rankFeed(candidates, signals, Date.now(), token || 'default').map(item => item.type + ':' + item.id);
+      if (token) {
+        await query('DELETE FROM feed_sessions WHERE user_id=$1 AND created_at < NOW()-INTERVAL \'1 day\'', [req.user.id]);
+        const stored = await query(`INSERT INTO feed_sessions(user_id,token,filter_key,item_keys) VALUES($1,$2,$3,$4)
+          ON CONFLICT(user_id,token) DO UPDATE SET token=EXCLUDED.token RETURNING item_keys`, [req.user.id,token,filterKey,JSON.stringify(keys)]);
+        keys = stored.rows[0].item_keys;
       }
-
-      // New listing bonus: extra push for listings < 12h old
-      if (!isRequest && age < 12 * HOUR) {
-        score += 150;
-      }
-
-      // ISO boost: smaller than before, keeps them visible but not dominant
-      if (isRequest) {
-        score += 50;
-      }
-
-      // Random factor: shuffles items within ~same freshness level
-      // ±75 points keeps it interesting without breaking the tiers
-      score += (Math.random() - 0.5) * 150;
-
-      return { ...item, _score: score };
-    });
-
-    const feed = scored
-      .sort((a, b) => b._score - a._score)
-      .slice(offset, offset + parseInt(limit))
-      .map(({ _score, ...item }) => item);
-
+    }
+    // Reapply current access rules on every page; snapshots never grant access.
+    const permitted = new Map(candidates.map(item => [item.type + ':' + item.id, item]));
+    const pageKeys = keys.slice(offset, offset + Number(limit));
+    const feed = pageKeys.map(key => permitted.get(key)).filter(Boolean);
     res.json({
       items: feed,
       page: parseInt(page),
       limit: parseInt(limit),
-      hasMore: feed.length === parseInt(limit),
+      hasMore: keys.length > offset + Number(limit),
     });
   } catch (err) {
     console.error('Get feed error:', err);

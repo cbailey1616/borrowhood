@@ -132,8 +132,9 @@ const resetPassword = (resetToken, newPassword) =>
 const findAccount = (params) =>
   post('/auth/find-account', params);
 
-const linkAccount = (provider, token) =>
-  post('/auth/link-account', { provider, ...token });
+const linkAccount = (provider, token, accessToken) =>
+  request('/auth/link-account', { method: 'POST', body: JSON.stringify({ provider, ...token }),
+    ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {}) });
 
 const loginWithGoogle = (idToken) =>
   post('/auth/google', { idToken });
@@ -800,6 +801,11 @@ export default {
   getCategories,
   // Feed
   getFeed,
+  getUserSafety: id => get(`/safety/${id}`),
+  blockUser: id => post(`/safety/${id}/block`),
+  unblockUser: id => del(`/safety/${id}/block`),
+  reportUser: (id, reason) => post(`/safety/${id}/report`, { reason }),
+  recordFeedEvents: events => post('/feed/events', { events }),
   // Transactions
   getTransactions,
   getTransaction,

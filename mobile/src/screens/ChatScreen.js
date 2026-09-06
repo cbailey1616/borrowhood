@@ -1,4 +1,5 @@
 import { mergeMessages } from '../utils/chatMessages';
+import UserSafetyActions from '../components/UserSafetyActions';
 import { useIsFocused } from '@react-navigation/native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,7 +74,7 @@ function SendButton({ onPress, disabled, loading }) {
 }
 
 export default function ChatScreen({ route, navigation }) {
-  const { conversationId, recipientId, listingId, listing: passedListing } = route.params || {};
+  const { conversationId, recipientId, recipient, threadContext, listingId, listing: passedListing } = route.params || {};
   const isFocused = useIsFocused();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
@@ -125,14 +126,16 @@ export default function ChatScreen({ route, navigation }) {
     } else {
       // New conversation - set up initial state
       setIsLoading(false);
-      if (passedListing) {
+      if (recipient) {
+        setConversation({ otherUser: recipient });
+      } else if (passedListing) {
         setConversation({
           listing: passedListing,
           otherUser: passedListing.owner,
         });
       }
     }
-  }, [conversationId, isFocused]);
+  }, [conversationId, recipientId, isFocused]);
 
   useEffect(() => {
     // Update header with other user's name
@@ -518,7 +521,17 @@ export default function ChatScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
       {/* Listing Context Header */}
-      {conversation?.listing && !hasExchange && (
+      <UserSafetyActions userId={recipientId || conversation?.otherUser?.id} />
+      {threadContext?.id && <HapticPressable style={styles.listingHeader} accessibilityRole="button"
+        accessibilityLabel={`View ${threadContext.title || 'original thread'}`}
+        onPress={() => navigation.navigate(threadContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: threadContext.id })}>
+        <Ionicons name="chatbubble" size={28} color={COLORS.primary} illustrated />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={{ color: COLORS.text, fontWeight: '600' }}>{threadContext.title || 'From the thread'}</Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>Private message · not a public reply</Text>
+        </View>
+      </HapticPressable>}
+      {!threadContext && conversation?.listing && !hasExchange && (
         <HapticPressable
           style={styles.listingHeader}
           onPress={() => navigation.navigate('ListingDetail', { id: conversation.listing.id })}

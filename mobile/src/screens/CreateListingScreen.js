@@ -84,6 +84,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const setListingType = value => setFormData(prev => ({ ...prev, listingType: value }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [failedPhotos, setFailedPhotos] = useState({});
   const [hasFriends, setHasFriends] = useState(false);
   const [showPhotoActionSheet, setShowPhotoActionSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
@@ -412,15 +413,17 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Photos */}
       <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
-        <DraftStatus draft={draft} allowDiscard />
-        {draft.restored && formData.photos.length > 0 && <Text style={styles.hint}>Check restored photos before posting. If a preview is missing, remove it and choose the photo again.</Text>}
+        <DraftStatus draft={draft} quiet />
+        {formData.photos.some(uri => failedPhotos[uri]) && <Text accessibilityRole="alert" style={styles.hint}>A photo couldn’t load. Remove it and choose it again.</Text>}
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
-        <Text style={styles.hint}>Add up to 10 photos — these also serve as proof of condition</Text>
+        <Text style={styles.hint}>Up to 10 photos</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
             {formData.photos.map((uri, index) => (
               <View key={index} style={styles.photoWrapper}>
-                <Image source={{ uri }} style={styles.photo} />
+                <Image source={{ uri }} style={styles.photo}
+                  onError={() => setFailedPhotos(previous => ({ ...previous, [uri]: true }))}
+                  onLoad={() => setFailedPhotos(previous => ({ ...previous, [uri]: false }))} />
                 <HapticPressable
                   style={styles.removePhoto}
                   onPress={() => handleRemovePhoto(index)}
@@ -676,6 +679,7 @@ export default function CreateListingScreen({ navigation, route }) {
         <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Condition: {CONDITION_LABELS[formData.condition]}. Check this matches your item.</Text>
       </HapticPressable>
       {showDetails && <View>
+        {draft.restored && !draft.error && <DraftStatus draft={draft} allowDiscard quiet />}
       {/* Category */}
       <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
         <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category (optional)</Text>

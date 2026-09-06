@@ -103,7 +103,7 @@ describe('FeedScreen', () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
     await findByText('Power Drill');
-    expect(api.getFeed).toHaveBeenCalledWith({ page: 1, limit: 20 });
+    expect(api.getFeed).toHaveBeenCalledWith({ page: 1, limit: 20, session: expect.any(String) });
   });
 
   it('empty feed shows empty state', async () => {

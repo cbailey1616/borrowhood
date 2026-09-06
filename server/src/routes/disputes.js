@@ -24,7 +24,7 @@ const TYPE_LABELS = {
 // POST /api/disputes
 // File a new dispute
 // ============================================
-router.post('/', authenticate,
+router.post('/', authenticate, (req, res) => res.status(410).json({ error: 'Formal disputes are no longer available. Arrange item and payment disagreements directly, or report a safety concern.' }),
   body('transactionId').isUUID(),
   body('type').isIn(VALID_TYPES),
   body('description').isLength({ min: 10, max: 2000 }),

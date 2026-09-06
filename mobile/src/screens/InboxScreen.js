@@ -21,6 +21,8 @@ import NativeHeader from '../components/NativeHeader';
 import { SkeletonListItem } from '../components/SkeletonLoader';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
+import { exchangeAction } from '../utils/chatExchange';
+import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const NOTIFICATION_ICONS = {
@@ -52,6 +54,8 @@ const NOTIFICATION_ICONS = {
 };
 
 export default function InboxScreen({ navigation, badgeCounts, onRead }) {
+  const { user } = useAuth();
+  const [activeBorrows, setActiveBorrows] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -69,12 +73,14 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [notifData, convData] = await Promise.all([
+      const [notifData, convData, transactions] = await Promise.all([
         api.getNotifications(),
         api.getConversations(),
+        api.getTransactions(),
       ]);
-      setNotifications(notifData?.notifications || []);
+      setNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute')));
       setConversations(convData || []);
+      setActiveBorrows((transactions || []).filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
       setLoadError(false);
     } catch (error) {
       setLoadError(true);
@@ -334,6 +340,20 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       ) : (
         <FlatList
           data={conversations}
+          ListHeaderComponent={<View style={{ gap: SPACING.sm, marginBottom: SPACING.md }}>
+            <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('TransactionHistory')} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'flex-end' }}><Text style={{ color: COLORS.primary }}>History</Text></HapticPressable>
+            {activeBorrows.length > 0 && <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>Borrowing & lending</Text>}
+            {activeBorrows.map(t => {
+              const other = t.isBorrower ? t.lender : t.borrower;
+              const existing = conversations.find(c => c.otherUser?.id === other?.id);
+              return <HapticPressable key={t.id} accessibilityRole="button" style={{ padding: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted }}
+                onPress={() => other?.id ? navigation.navigate('Chat', { conversationId: existing?.id, recipientId: other.id, recipient: other, listingId: t.listing?.id, listing: t.listing }) : navigation.navigate('TransactionDetail', { id: t.id })}>
+                <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>{t.listing?.title || 'Borrowing & lending'}</Text>
+                <Text style={{ color: COLORS.textSecondary }}>{t.isBorrower ? 'Borrowing from' : 'Lending to'} {other?.firstName || 'your neighbor'}</Text>
+                <Text style={{ color: COLORS.primary, marginTop: 6 }}>{exchangeAction(t, user?.id).label}</Text>
+              </HapticPressable>;
+            })}
+          </View>}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}

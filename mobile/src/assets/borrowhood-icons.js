@@ -119,6 +119,7 @@ const DRAWINGS = {
   checkmark: () => p('M5 16L12 23L27 8'),
   'checkmark-done': () => p('M2 16L8 22L22 8M14 20L18 24L30 12'),
   'checkmark-circle': c => circle(16, 16, 13, panel(c)) + p('M9 16L14 21L23 11'),
+  'identity-seal': c => p('M16 2L20 4L25 4L28 8L28 13L30 16L28 20L27 25L22 27L18 29L13 28L8 28L5 24L3 20L4 15L3 10L7 7L10 3Z', `fill="${c.stroke}" stroke="none"`) + p('M9 16L14 21L23 11', 'fill="none" stroke="#FAF6EB" stroke-width="3"'),
   checkbox: c => rect(3, 3, 26, 26, 6, panel(c)) + p('M9 16L14 21L23 11'),
   square: c => rect(3, 3, 26, 26, 6, panel(c)),
   'close-circle': c => circle(16, 16, 13, panel(c)) + p('M11 11L21 21M11 21L21 11'),

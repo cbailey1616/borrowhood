@@ -102,7 +102,7 @@ export default function RegisterScreen({ navigation }) {
           </HapticPressable>
 
           <Text style={styles.title}>Create account</Text>
-          <Text style={styles.subtitle}>Join your neighborhood sharing community</Text>
+          <Text style={styles.subtitle}>A little about you, then you’re in.</Text>
 
           <View style={styles.formCard}>
             <View style={styles.form}>
@@ -299,11 +299,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xxl,
   },
   formCard: {
-    padding: SPACING.xl,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
+    width: '100%',
   },
   form: {
     gap: SPACING.xl - SPACING.xs,
@@ -325,14 +321,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     color: COLORS.text,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   passwordInput: {
     flex: 1,

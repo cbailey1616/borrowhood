@@ -141,7 +141,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     setActionLoading(true);
     try {
       const result = await api.confirmRentalReturn(id, condition);
-      if (result.conditionDegraded) {
+      if (false && result.conditionDegraded) {
         haptics.warning();
         navigation.navigate('DamageClaim', {
           transactionId: id,
@@ -346,7 +346,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         )}
 
         {/* Pricing — hidden for free rentals with no money */}
-        {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
+        {false && ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Details</Text>
           <View style={styles.priceBreakdown}>
@@ -390,7 +390,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         )}
 
         {/* Dispute Banner */}
-        {transaction?.hasDispute && transaction?.disputeId && (() => {
+        {false && transaction?.hasDispute && transaction?.disputeId && (() => {
           const active = ['pending', 'awaitingResponse', 'underReview'].includes(transaction.disputeStatus);
           const bannerColor = active ? COLORS.danger : COLORS.secondary;
           return (
@@ -427,7 +427,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               {isGiveaway
                 ? 'Item received! Enjoy your new item.'
                 : ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0
-                  ? 'Item returned. This transaction will close automatically if no dispute is filed.'
+                  ? 'Item returned. Discuss any remaining details with your neighbor.'
                   : 'Item returned. This transaction is complete.'}
             </Text>
           </View>
@@ -522,7 +522,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           >
             <Text style={styles.approveButtonText}>Return Item</Text>
           </HapticPressable>
-          {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
+          {false && ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
           <HapticPressable
             haptic="light"
             style={styles.reportIssueButton}
@@ -556,7 +556,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           >
             <Text style={styles.approveButtonText}>Confirm Return</Text>
           </HapticPressable>
-          {((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
+          {false && ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
           <HapticPressable
             haptic="light"
             style={styles.reportIssueButton}
@@ -592,7 +592,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       )}
 
       {/* Report Issue button — either party can dispute within 7 days of return (paid transactions only) */}
-      {['returned', 'completed'].includes(transaction?.status) &&
+      {false && ['returned', 'completed'].includes(transaction?.status) &&
         !transaction?.hasDispute &&
         transaction?.actualReturnAt &&
         ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 &&
@@ -648,17 +648,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
             primary: true,
           },
           {
-            label: 'No, there\'s an issue',
-            onPress: () => {
-              setReturnSheetVisible(false);
-              navigation.navigate('DamageClaim', {
-                transactionId: id,
-                depositAmount: transaction?.depositAmount,
-                listingTitle: transaction?.listing?.title,
-                conditionAtPickup: transaction?.conditionAtPickup,
-              });
-            },
-            destructive: true,
+            label: 'Message my neighbor',
+            onPress: () => navigation.navigate('Chat', { recipientId: transaction?.borrower?.id, recipient: transaction?.borrower, listingId: transaction?.listing?.id, listing: transaction?.listing }),
           },
         ]}
       />

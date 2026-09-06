@@ -5,6 +5,7 @@ function database() {
   const messages = new Map();
   let conversation;
   const client = { query: vi.fn(async (sql, params) => {
+    if (sql.includes('FROM user_blocks')) return { rows: [] };
     if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
     if (sql.includes('client_request_hash FROM messages')) return { rows: messages.has(`${params[0]}:${params[1]}`) ? [messages.get(`${params[0]}:${params[1]}`)] : [] };
     if (sql.startsWith('SELECT id FROM conversations')) return { rows: conversation ? [{ id: conversation }] : [] };
@@ -43,7 +44,7 @@ describe('chat delivery replay contract (mocked transaction client)', () => {
   it('takes transaction locks before checking a send key and creating a conversation', async () => {
     const client = database();
     await deliverMessage(client, payload);
-    expect(client.query.mock.calls[0][1]).toEqual(['message:a:attempt-1']);
+    expect(client.query.mock.calls.find(([sql]) => sql.includes('pg_advisory_xact_lock'))[1]).toEqual(['message:a:attempt-1']);
     const calls = client.query.mock.calls;
     expect(calls.findIndex(([sql, params]) => params?.[0] === 'conversation:a:b')).toBeLessThan(calls.findIndex(([sql]) => sql.startsWith('INSERT INTO conversations')));
   });

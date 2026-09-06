@@ -320,11 +320,21 @@ jest.mock('@stripe/stripe-identity-react-native', () => ({
 }));
 
 jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSigninButton: Object.assign(require('react-native').Pressable, { Size: { Wide: 1 }, Color: { Light: 'light' } }),
   GoogleSignin: {
     configure: jest.fn(),
     hasPlayServices: jest.fn().mockResolvedValue(true),
-    signIn: jest.fn().mockResolvedValue({ idToken: 'mock-google-token' }),
+    signIn: jest.fn().mockResolvedValue({ type: 'success', data: { idToken: 'mock-google-token' } }),
   },
+}));
+
+jest.mock('expo-apple-authentication', () => ({
+  isAvailableAsync: jest.fn().mockResolvedValue(true),
+  signInAsync: jest.fn().mockImplementation(async options => ({ identityToken: 'apple-token', state: options.state, fullName: { givenName: 'Chris' } })),
+  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
+  AppleAuthenticationButtonType: { CONTINUE: 2 },
+  AppleAuthenticationButtonStyle: { BLACK: 0 },
+  AppleAuthenticationButton: require('react-native').Pressable,
 }));
 
 jest.mock('react-native-confetti-cannon', () => 'ConfettiCannon');
@@ -442,6 +452,11 @@ jest.mock('./src/services/api', () => ({
     checkSaved: jest.fn().mockResolvedValue({ saved: false }),
     // Feed
     getFeed: jest.fn().mockResolvedValue({ items: [], hasMore: false }),
+    recordFeedEvents: jest.fn().mockResolvedValue({ ok: true }),
+    getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),
+    blockUser: jest.fn().mockResolvedValue({ blocked: true }),
+    unblockUser: jest.fn().mockResolvedValue({ blocked: false }),
+    reportUser: jest.fn().mockResolvedValue({ ok: true }),
     // Categories
     getCategories: jest.fn().mockResolvedValue([]),
     // Subscriptions

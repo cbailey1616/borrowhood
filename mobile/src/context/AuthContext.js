@@ -37,8 +37,10 @@ export function AuthProvider({ children, navigationRef }) {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, pendingLink) => {
     const response = await api.login(email, password);
+    // Keep the welcome screen visible until both proofs have been checked.
+    if (pendingLink) await api.linkAccount(pendingLink.provider, pendingLink.token, response.accessToken);
     await SecureStore.setItemAsync('accessToken', response.accessToken);
     await SecureStore.setItemAsync('refreshToken', response.refreshToken);
     api.setAuthToken(response.accessToken);

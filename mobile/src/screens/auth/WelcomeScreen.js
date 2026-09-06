@@ -8,17 +8,19 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
 import WoodlandIllustration from '../../components/WoodlandIllustration';
+import SocialSignInButtons from '../../components/SocialSignInButtons';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import useBiometrics from '../../hooks/useBiometrics';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function WelcomeScreen({ navigation }) {
   const { login } = useAuth();
@@ -43,6 +45,9 @@ export default function WelcomeScreen({ navigation }) {
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
   const [biometricSheetVisible, setBiometricSheetVisible] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
+  const [showEmail, setShowEmail] = useState(false);
+  const [socialBusy, setSocialBusy] = useState(false);
+  const [pendingLink, setPendingLink] = useState(null);
   useEffect(() => {
     checkBiometricsReady();
   }, [isBiometricsAvailable, isBiometricsEnabled]);
@@ -92,7 +97,8 @@ export default function WelcomeScreen({ navigation }) {
     setLoginError(null);
     setIsLoading(true);
     try {
-      await login(email, password);
+      if (pendingLink) await login(email, password, pendingLink);
+      else await login(email, password);
       haptics.success();
 
       // After successful login, prompt to enable biometrics if available but not enabled
@@ -135,7 +141,7 @@ export default function WelcomeScreen({ navigation }) {
               <HapticPressable
                 style={styles.biometricButton}
                 onPress={handleBiometricLogin}
-                disabled={isLoading}
+                disabled={isLoading || socialBusy}
                 haptic="medium"
                 testID="Welcome.button.biometric"
                 accessibilityLabel="Sign in with biometrics"
@@ -148,8 +154,13 @@ export default function WelcomeScreen({ navigation }) {
               </HapticPressable>
             )}
 
-            <View style={styles.formCard}>
+            <SocialSignInButtons disabled={isLoading} onBusyChange={setSocialBusy} onLinkRequired={link => { setPendingLink(link); setShowEmail(true); }} />
+            <HapticPressable onPress={() => { setShowEmail(!showEmail); setPendingLink(null); }} disabled={socialBusy || isLoading} style={styles.forgotPassword} accessibilityRole="button" accessibilityState={{ expanded: showEmail }}>
+              <Text style={styles.forgotPasswordText}>{showEmail ? 'Hide email sign-in' : 'Use email instead'}</Text>
+            </HapticPressable>
+            {showEmail && <View style={styles.formCard}>
               <View style={styles.form}>
+                {!!pendingLink && <Text style={styles.welcomeLine}>Sign in once with your password to connect {pendingLink.provider === 'apple' ? 'Apple' : 'Google'} to your existing account.</Text>}
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Email</Text>
                   <TextInput
@@ -205,7 +216,7 @@ export default function WelcomeScreen({ navigation }) {
                 <HapticPressable
                   style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
                   onPress={handleLogin}
-                  disabled={isLoading}
+                  disabled={isLoading || socialBusy}
                   haptic="medium"
                   testID="Welcome.button.signIn"
                   accessibilityLabel="Sign in"
@@ -214,7 +225,7 @@ export default function WelcomeScreen({ navigation }) {
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
                   ) : (
-                    <Text style={styles.loginButtonText}>Sign In</Text>
+                    <Text style={styles.loginButtonText}>{pendingLink ? 'Sign in & connect' : 'Sign In'}</Text>
                   )}
                 </HapticPressable>
 
@@ -226,12 +237,16 @@ export default function WelcomeScreen({ navigation }) {
                   <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
                 </HapticPressable>
               </View>
-            </View>
+            </View>}
+
+            <Text style={styles.terms}>By continuing, you agree to our{' '}
+              <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>Terms</Text> and{' '}
+              <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>Privacy Policy</Text>.
+            </Text>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
-              <HapticPressable onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link">
-                <Text style={styles.footerLink}>Create one</Text>
+              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account with email" accessibilityRole="link">
+                <Text style={styles.footerLink}>Create an account with email</Text>
               </HapticPressable>
             </View>
           </View>
@@ -261,6 +276,8 @@ export default function WelcomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  terms: { fontSize: 12, lineHeight: 18, textAlign: 'center', color: COLORS.textSecondary, paddingTop: 16 },
+  termsLink: { color: COLORS.primary, textDecorationLine: 'underline' },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

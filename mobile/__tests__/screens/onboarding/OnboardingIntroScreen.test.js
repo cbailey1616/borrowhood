@@ -10,12 +10,12 @@ beforeEach(() => {
 });
 
 describe('private-first onboarding', () => {
-  it('explains explicit sharing and free exchanges without a payment step', () => {
+  it('explains sharing and arranging details without a payment step', () => {
     const { getByText, queryByText } = render(<Screen navigation={navigation} />);
-    expect(getByText('Private until you share')).toBeTruthy();
-    expect(getByText(/Only you can see your things until you choose/)).toBeTruthy();
-    expect(getByText(/No fees, deposits, or payment setup/)).toBeTruthy();
-    expect(getByText(/Private items stay private/)).toBeTruthy();
+    expect(getByText('Choose who sees each item')).toBeTruthy();
+    expect(getByText('Find what you need nearby')).toBeTruthy();
+    expect(getByText('Arrange the details in chat')).toBeTruthy();
+    expect(getByText('Get started now. Verify your identity later.')).toBeTruthy();
     expect(queryByText(/Choose Your Plan/)).toBeNull();
   });
   it('saves progress and goes straight to town setup', async () => {

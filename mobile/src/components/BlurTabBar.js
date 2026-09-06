@@ -24,7 +24,7 @@ const TAB_ICONS = {
 const TAB_LABELS = {
   Feed: 'Home',
   Saved: 'Saved',
-  MyItems: 'My Items',
+  MyItems: 'My Posts',
   Activity: 'Inbox',
   Profile: 'Profile',
 };

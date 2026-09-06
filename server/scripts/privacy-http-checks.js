@@ -40,7 +40,7 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     app.use(express.json(), protectMediaResponses);
     app.get('/api/private-photos/:token', servePrivatePhoto);
     app.use('/uploads', blockPublicListingPhoto, (req, res) => res.sendStatus(404));
-    for (const route of ['listings', 'requests', 'transactions', 'rentals', 'users', 'saved', 'messages']) {
+    for (const route of ['listings', 'requests', 'transactions', 'rentals', 'users', 'saved', 'messages', 'feed', 'safety']) {
       app.use(`/api/${route}`, (await import(`../src/routes/${route}.js`)).default);
     }
     listener = app.listen(0, '127.0.0.1');
@@ -123,6 +123,41 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     await call('post', '/api/messages', owner, { ...sendAttempt, content: 'Different payload' }, 409);
     const replay = await call('post', '/api/messages', owner, sendAttempt);
     assert.equal(replay.id, concurrent[0].body.id);
+    // Exercise the actual SQL for stable pages, refresh, and permission changes.
+    const seeded = await client.query(`INSERT INTO listings(owner_id,title,condition,is_free,visibility,privacy_version,status,created_at)
+      SELECT $1, 'Feed item ' || n, 'good', true, 'close_friends', 1, 'active', NOW()-INTERVAL '10 days'
+      FROM generate_series(1,65) n RETURNING id`, [owner]);
+    const session = randomUUID();
+    const page1 = await call('get', `/api/feed?session=${session}&page=1&limit=20`, owner);
+    const page2 = await call('get', `/api/feed?session=${session}&page=2&limit=20`, owner);
+    const page3 = await call('get', `/api/feed?session=${session}&page=3&limit=20`, owner);
+    assert.equal(page3.items.length, 20, 'Feed must continue beyond the former 40-candidate cutoff');
+    assert.equal(new Set([...page1.items,...page2.items,...page3.items].map(i=>i.type+':'+i.id)).size,60);
+    await call('post', '/api/feed/events', owner, { events: page1.items.map(i=>({ id:i.id,type:i.type,event:'seen' })) });
+    assert.deepEqual((await call('get', `/api/feed?session=${session}&page=1&limit=20`, owner)).items.map(i=>i.id),page1.items.map(i=>i.id));
+    const hiddenId = page1.items.find(i=>i.type==='listing').id;
+    await client.query("UPDATE listings SET visibility='private' WHERE id=$1",[hiddenId]);
+    assert.equal((await call('get', `/api/feed?session=${session}&page=1&limit=20`, owner)).items.some(i=>i.id===hiddenId),false);
+    const refreshed = await call('get', `/api/feed?session=${randomUUID()}&page=1&limit=20`, owner);
+    assert.ok(refreshed.items.some(i=>!page1.items.some(old=>old.id===i.id)));
+    await call('post', `/api/safety/${neighbor}/block`, owner);
+    await call('post','/api/messages',owner,{ recipientId:neighbor,content:'Blocked outgoing',clientRequestId:randomUUID() },403);
+    await call('post','/api/messages',neighbor,{ recipientId:owner,content:'Blocked incoming',clientRequestId:randomUUID() },403);
+    await call('delete', `/api/safety/${neighbor}/block`, owner);
+    await call('post', `/api/safety/${neighbor}/report`, owner, { reason:'Unsafe behavior' });
+    const { resolveSocialAccount } = await import('../src/services/socialAuth.js');
+    const { withTransaction } = await import('../src/utils/db.js');
+    const social = { provider: 'google', subject: randomUUID(), email: `${randomUUID()}@example.com`, firstName: 'New', lastName: 'Neighbor', photo: null };
+    const signedUp = await withTransaction(db => resolveSocialAccount(db, social));
+    assert.equal(signedUp.isNewUser, true);
+    assert.equal(signedUp.user.onboarding_step, 2);
+    assert.equal(signedUp.user.onboarding_completed, false);
+    const returning = await withTransaction(db => resolveSocialAccount(db, social));
+    assert.equal(returning.user.id, signedUp.user.id);
+    await assert.rejects(withTransaction(db => resolveSocialAccount(db, { ...social, subject: randomUUID() })), e => e.code === 'ACCOUNT_LINK_REQUIRED');
+    const apple = { ...social, provider: 'apple', subject: randomUUID() };
+    await withTransaction(db => resolveSocialAccount(db, apple, signedUp.user.id));
+    assert.equal((await withTransaction(db => resolveSocialAccount(db, { ...apple, email: null }))).user.id, signedUp.user.id);
     await client.query("UPDATE users SET token_invalidated_at = NOW() + INTERVAL '1 minute' WHERE id = $1", [neighbor]);
     await call('get', grantedPhoto, null, undefined, 404);
     assert.equal(outboundAttempts, 0, 'The free exchange must not attempt external services.');

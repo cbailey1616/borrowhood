@@ -7,8 +7,20 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    await query(`CREATE TABLE IF NOT EXISTS user_blocks (user_id UUID REFERENCES users(id) ON DELETE CASCADE, blocked_id UUID REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(user_id, blocked_id), CHECK(user_id != blocked_id))`);
+    await query(`CREATE TABLE IF NOT EXISTS safety_reports (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), reporter_id UUID REFERENCES users(id), reported_id UUID REFERENCES users(id), reason TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
     // A displayed offline price is separate from Stripe rental amounts.
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS direct_fee JSONB');
+    await query(`CREATE TABLE IF NOT EXISTS feed_events (
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      item_type TEXT NOT NULL CHECK (item_type IN ('listing','request')),
+      item_id UUID NOT NULL, seen_at TIMESTAMPTZ, clicked_at TIMESTAMPTZ,
+      PRIMARY KEY(user_id, item_type, item_id))`);
+    await query('CREATE INDEX IF NOT EXISTS feed_events_item_idx ON feed_events(item_type, item_id, clicked_at)');
+    await query(`CREATE TABLE IF NOT EXISTS feed_sessions (
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE, token UUID NOT NULL,
+      filter_key TEXT NOT NULL, item_keys JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(user_id, token))`);
     // Retain approval history for aggregate conversion measurements.
     await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ');
 

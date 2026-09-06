@@ -269,7 +269,8 @@ router.post('/', authenticate,
       });
     } catch (err) {
       console.error('Send message error:', err);
-      res.status(err.status === 409 ? 409 : 500).json({ error: err.status === 409 ? err.message : 'Failed to send message' });
+      const expectedError = [403, 409].includes(err.status);
+      res.status(expectedError ? err.status : 500).json({ error: expectedError ? err.message : 'Failed to send message' });
     }
   }
 );
