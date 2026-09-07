@@ -139,7 +139,7 @@ export default function FeedScreen({ navigation }) {
     } catch (error) {
       if (requestId !== feedRequest.current) return;
       setFeedError(true);
-      if (!append) setFeed([]);
+      // Keep the current feed visible when a background refresh fails.
     } finally {
       if (requestId !== feedRequest.current) return;
       setIsFetching(false);
@@ -449,7 +449,7 @@ export default function FeedScreen({ navigation }) {
         onPress={() => openFeedItem(item)}
         haptic="light"
         scaleDown={0.98}
-        style={[styles.tile, isGiveaway && { borderColor: '#B59A53', borderWidth: 1.5 }]}
+        style={[styles.tile, isGiveaway && { borderColor: isSaleListing(item) ? COLORS.primary : '#B59A53', borderWidth: 1.5 }]}
         testID="FeedCard"
       >
           {/* Thumbnail + Content row */}
@@ -498,11 +498,13 @@ export default function FeedScreen({ navigation }) {
             <View style={styles.tileFooterRow}>
               {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
                 <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
-                <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
-                {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                <View style={styles.authorNameAndBadge}>
+                  <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
+                  {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                </View>
               </>}
               {priceLabel ? (
-                <Text style={[styles.tilePrice, { color: accent.pill }]}>{priceLabel}</Text>
+                <Text style={[styles.tilePrice, { color: COLORS.primary }]}>{priceLabel}</Text>
               ) : null}
             </View>
           </View>
@@ -539,8 +541,10 @@ export default function FeedScreen({ navigation }) {
               <View style={styles.tileFooterRow}>
                 {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
                   <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
+                  <View style={styles.authorNameAndBadge}>
                   <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
                   {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                </View>
                 </>}
               </View>
             </View>
@@ -1281,6 +1285,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  authorNameAndBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    gap: 0,
   },
   tileFooterText: {
     ...TYPOGRAPHY.caption,
