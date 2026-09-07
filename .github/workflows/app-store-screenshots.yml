@@ -1,0 +1,94 @@
+name: App Store screenshots
+
+on:
+  pull_request:
+    paths:
+      - mobile/screenshots/**
+      - .github/workflows/app-store-screenshots.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    runs-on: macos-15
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install app dependencies
+        run: npm ci
+      - name: Prepare isolated mock photos
+        run: python3 screenshots/prepare-assets.py
+      - name: Find a compatible simulator archive
+        id: native-cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 screenshots/reuse-native.py
+      - name: Restore simulator archive
+        id: restore-native
+        if: steps.native-cache.outputs.run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: borrowhood-screenshot-simulator
+          run-id: ${{ steps.native-cache.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/borrowhood-native-cache
+      - name: Update restored app with the current screenshot bundle
+        if: steps.restore-native.outcome == 'success'
+        env:
+          BORROWHOOD_SCREENSHOTS: '1'
+        run: |
+          mkdir -p "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
+          ditto -x -k "$RUNNER_TEMP/borrowhood-native-cache/borrowhood-simulator-app.zip" "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
+          node node_modules/@expo/cli/build/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
+      - name: Prepare native dependencies
+        if: steps.restore-native.outcome != 'success'
+        run: pod install --project-directory=ios
+      - name: Build actual native app with screenshot fixtures
+        if: steps.restore-native.outcome != 'success'
+        env:
+          BORROWHOOD_SCREENSHOTS: '1'
+        run: |
+          export ENTRY_FILE="$PWD/screenshots/index.js"
+          xcodebuild -workspace ios/Borrowhood.xcworkspace -scheme Borrowhood -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/borrowhood-capture-build" CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" build > "$RUNNER_TEMP/borrowhood-native-build.log" 2>&1
+      - name: Archive the current simulator app
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/borrowhood-simulator-app.zip"
+      - name: Preserve simulator app for capture diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrowhood-screenshot-simulator
+          path: ${{ runner.temp }}/borrowhood-simulator-app.zip
+          retention-days: 3
+      - name: Capture iPhone Pro Max and iPad with mock posts
+        run: |
+          python3 -m venv "$RUNNER_TEMP/borrowhood-capture-python"
+          "$RUNNER_TEMP/borrowhood-capture-python/bin/pip" install Pillow
+          "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/app-store-screenshots"
+          cp screenshots/README.md "$RUNNER_TEMP/app-store-screenshots/README.md"
+          cp screenshots/assets.json "$RUNNER_TEMP/app-store-screenshots/photo-sources.json"
+      - name: Save screenshots and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrowhood-app-store-screenshots
+          path: |
+            ${{ runner.temp }}/app-store-screenshots
+            ${{ runner.temp }}/borrowhood-native-build.log
+          retention-days: 14
