@@ -30,7 +30,7 @@ try {
     CREATE TEMP TABLE friendships (user_id text, friend_id text, status text);
     CREATE TEMP TABLE lending_circle_members (circle_id text, user_id text, status text);
     CREATE TEMP TABLE community_memberships (community_id text, user_id text);
-    CREATE TEMP TABLE item_requests (id text, user_id text, visibility text, community_id text, status text, expires_at timestamptz, needed_until date);
+    CREATE TEMP TABLE item_requests (id text, user_id text, visibility text, community_id text, status text, expires_at timestamptz, needed_until date, time_zone text DEFAULT 'UTC');
     CREATE TEMP TABLE listing_shares (listing_id text, user_id text, request_id text, revoked_at timestamptz, expires_at timestamptz);
     CREATE TEMP TABLE borrow_transactions (listing_id text, borrower_id text, status text);
     INSERT INTO users (id, is_verified, city, state) VALUES ('owner', true, 'Upton', 'MA'), ('neighbor', true, ' upton ', 'ma'),

@@ -136,7 +136,7 @@ export default function MyItemsScreen({ navigation }) {
         }}
       >
         <HapticPressable
-          style={styles.card}
+          style={[styles.card, item.listingType === 'giveaway' && { borderColor: '#B59A53', borderWidth: 1.5 }]}
           onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
           haptic="light"
         >
@@ -153,7 +153,7 @@ export default function MyItemsScreen({ navigation }) {
               <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
               {item.listingType === 'giveaway' && (
                 <View style={styles.giveawayTag}>
-                  <Ionicons name="gift" size={10} color={COLORS.secondary} />
+                  <Ionicons name="gift" size={18} illustrated />
                   <Text style={styles.giveawayTagText}>Giveaway</Text>
                 </View>
               )}

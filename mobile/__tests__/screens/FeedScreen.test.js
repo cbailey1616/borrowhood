@@ -1,5 +1,7 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { AppState, StyleSheet } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
@@ -16,6 +18,7 @@ const mockNavigation = {
   navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(),
   addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }),
   dispatch: jest.fn(), canGoBack: () => true,
+  isFocused: () => true,
 };
 
 jest.mock('../../src/context/AuthContext', () => ({
@@ -27,6 +30,9 @@ jest.mock('../../src/context/ErrorContext', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  let session = 0;
+  Crypto.randomUUID.mockImplementation(() => `session-${++session}`);
+  AppState.addEventListener.mockReturnValue({ remove: jest.fn() });
   api.getFeed.mockResolvedValue({ items: [], hasMore: false });
   api.getSavedListings.mockResolvedValue([]);
   api.saveListing.mockResolvedValue({ saved: true });
@@ -36,6 +42,33 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it('fetches a fresh first page when a request arrives in the foreground', async () => {
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('What would you like to do?');
+    const previous = api.getFeed.mock.calls.at(-1)[0].session;
+    api.getFeed.mockResolvedValue({ items: [{ id: 'new-request', type: 'request', title: 'Need a ladder', user: { id: 'neighbor', firstName: 'Robin' } }], hasMore: false });
+    const receive = Notifications.addNotificationReceivedListener.mock.calls.at(-1)[0];
+    await act(async () => receive({ request: { content: { data: { type: 'new_request' } } } }));
+    await screen.findByText('Need a ladder');
+    expect(api.getFeed.mock.calls.at(-1)[0].page).toBe(1);
+    expect(api.getFeed.mock.calls.at(-1)[0].session).not.toBe(previous);
+  });
+
+  it('refreshes when returning to the app and removes the listener on unmount', async () => {
+    const remove = jest.fn();
+    const subscribe = AppState.addEventListener.mockReturnValue({ remove });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('What would you like to do?');
+    const changeState = subscribe.mock.calls.at(-1)[1];
+    act(() => changeState('background'));
+    api.getFeed.mockClear();
+    await act(async () => changeState('active'));
+    expect(api.getFeed).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+    screen.unmount();
+    expect(remove).toHaveBeenCalled();
+  });
   it('saves and unsaves from a listing card without opening its detail page', async () => {
     const item = { id: 'ladder', type: 'listing', title: 'Ladder', user: { id: 'owner', firstName: 'Robin', lastName: '' }, createdAt: new Date().toISOString() };
     let savedItems = [];

@@ -13,10 +13,17 @@ export default function OfferItemScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(null);
+  const [canOffer, setCanOffer] = useState(false);
   const load = async () => {
-    setLoading(true); setError(null);
-    try { setItems((await api.getMyListings()).filter(i => i.status === 'active' && i.isAvailable)); }
-    catch { setError('Could not load your inventory.'); }
+    setLoading(true); setError(null); setCanOffer(false);
+    try {
+      const current = await api.getRequest(request.id);
+      if (current.status !== 'open' || current.isExpired) throw new Error('This request has ended. Ask the requester to renew it.');
+      if (current.ownerMasked || current.isOwner) throw new Error('This request is not available for a private offer.');
+      setItems((await api.getMyListings()).filter(i => i.status === 'active' && i.isAvailable));
+      setCanOffer(true);
+    }
+    catch (e) { setItems([]); setError(e.message || 'Could not load this request and your inventory.'); }
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
@@ -29,7 +36,10 @@ export default function OfferItemScreen({ route, navigation }) {
           await api.offerItem(request.id, item.id);
           Alert.alert('Private offer sent', 'You can withdraw it from the request page.');
           navigation.goBack();
-        } catch (e) { Alert.alert('Could not send offer', e.message); }
+        } catch (e) {
+          Alert.alert('Could not send offer', e.message || 'Please try again.');
+          if ([404, 409, 410].includes(e.status)) await load();
+        }
         finally { setSending(null); }
       } },
     ]);
@@ -45,7 +55,7 @@ export default function OfferItemScreen({ route, navigation }) {
           <Text style={styles.itemTitle}>{item.title}</Text>
           {sending === item.id ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="chevron-forward" size={20} />}
         </HapticPressable>} />}
-    <HapticPressable style={styles.row} disabled={Boolean(sending)} onPress={() => navigation.navigate('CreateListing', { requestMatch: request })}>
+    <HapticPressable style={styles.row} disabled={Boolean(sending) || !canOffer} onPress={() => navigation.navigate('CreateListing', { requestMatch: request })}>
       <Ionicons name="add-circle" size={24} /><Text style={styles.itemTitle}>Add a new item privately</Text>
     </HapticPressable>
   </View>;

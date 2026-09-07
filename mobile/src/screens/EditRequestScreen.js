@@ -26,11 +26,7 @@ const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return dateStr.slice(0, 10);
 };
 
 export default function EditRequestScreen({ navigation, route }) {
@@ -121,8 +117,9 @@ export default function EditRequestScreen({ navigation, route }) {
         visibility: formData.visibility,
         townPreviewEnabled: true,
         communityId: communityId || undefined,
-        neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
-        neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
+        neededFrom: formData.neededFrom || null,
+        neededUntil: formData.neededUntil || null,
+        timeZone: request.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       };
 
       await api.updateRequest(request.id, data);

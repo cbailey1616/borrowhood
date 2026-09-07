@@ -7,6 +7,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 const mockLogin = jest.fn().mockResolvedValue({ id: 'user-1' });
 const mockGoogle = jest.fn();
 const mockApple = jest.fn();
+const mockCompleteLinkCode = jest.fn();
 const mockShowError = jest.fn();
 const mockShowToast = jest.fn();
 
@@ -18,6 +19,7 @@ jest.mock('../../../src/context/AuthContext', () => ({
     login: mockLogin,
     loginWithGoogle: mockGoogle,
     loginWithApple: mockApple,
+    completeSocialLinkCode: mockCompleteLinkCode,
   }),
 }));
 
@@ -39,6 +41,51 @@ const mockNavigation = {
 
 describe('WelcomeScreen', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('connects Google with an email code without asking for or submitting a password', async () => {
+    mockGoogle.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { code: 'ACCOUNT_LINK_REQUIRED', email: 'neighbor@example.com' }));
+    api.startSocialLinkCode.mockResolvedValueOnce({ challengeId: 'challenge-1', email: 'neighbor@example.com' });
+    mockCompleteLinkCode.mockResolvedValueOnce({});
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Auth.google'));
+    fireEvent.press(await screen.findByText('Email me a sign-in code'));
+    await screen.findByTestId('Welcome.input.linkCode');
+    expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
+    expect(api.startSocialLinkCode).toHaveBeenCalledWith('google', { idToken: 'mock-google-token' });
+    fireEvent.changeText(screen.getByTestId('Welcome.input.linkCode'), '123456');
+    await act(async () => fireEvent.press(screen.getByText('Connect Google & sign in')));
+    expect(mockCompleteLinkCode).toHaveBeenCalledWith({ provider: 'google', token: { idToken: 'mock-google-token' }, email: 'neighbor@example.com' }, 'challenge-1', '123456');
+    expect(mockLogin).not.toHaveBeenCalled();
+  });
+
+  it('keeps reset available after a wrong Borrowhood password and prefills the account email', async () => {
+    mockGoogle.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { code: 'ACCOUNT_LINK_REQUIRED', email: 'neighbor@example.com' }));
+    mockLogin.mockRejectedValueOnce(new Error('Incorrect password.'));
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Auth.google'));
+    fireEvent.press(await screen.findByText('Use my Borrowhood password'));
+    fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'wrong');
+    fireEvent.press(screen.getByText('Connect Google & sign in'));
+    await screen.findByText('Incorrect password.');
+    fireEvent.press(screen.getByText('Forgot your password?'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword', { email: 'neighbor@example.com' });
+    expect(screen.getByText('Use an email code instead')).toBeTruthy();
+  });
+
+  it('shows a delivery error without pretending a code was sent', async () => {
+    mockGoogle.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { code: 'ACCOUNT_LINK_REQUIRED' }));
+    api.startSocialLinkCode.mockRejectedValueOnce(new Error('Could not send the code.'));
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Auth.google'));
+    fireEvent.press(await screen.findByText('Email me a sign-in code'));
+    await screen.findByText('Could not send the code.');
+    expect(screen.queryByTestId('Welcome.input.linkCode')).toBeNull();
+    expect(mockCompleteLinkCode).not.toHaveBeenCalled();
+    expect(screen.getByText('Forgot your password?')).toBeTruthy();
+  });
 
   it('distinguishes joining from signing in before showing password fields', async () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
@@ -114,7 +161,7 @@ describe('WelcomeScreen', () => {
       <WelcomeScreen navigation={mockNavigation} />
     );
     fireEvent.press(getByText('Forgot your password?'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword', { email: '' });
   });
 
   it('"Create one" link navigates to Register', () => {
@@ -132,7 +179,7 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.apple'));
-    await screen.findByText('Connect Apple & sign in');
+    await screen.findByText('Email me a sign-in code');
     await act(async () => fireEvent.press(screen.getByTestId('Auth.google')));
     expect(screen.queryByText('Connect Apple & sign in')).toBeNull();
     expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
@@ -145,11 +192,12 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.apple'));
-    await screen.findByText('Connect Apple & sign in');
+    await screen.findByText('Email me a sign-in code');
     fireEvent.press(screen.getByTestId('Auth.google'));
-    await screen.findByText('Connect Google & sign in');
+    await screen.findByText(/Connect Google with a code/);
+    fireEvent.press(screen.getByText('Use my Borrowhood password'));
     expect(screen.queryByText(/password once to connect Apple/)).toBeNull();
-    expect(screen.getByText(/Borrowhood password once to connect Google/)).toBeTruthy();
+    expect(screen.getByText(/Enter your Borrowhood password to connect Google/)).toBeTruthy();
     fireEvent.changeText(screen.getByTestId('Welcome.input.email'), 'test@test.com');
     fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'MyPass123');
     await act(async () => fireEvent.press(screen.getByText('Connect Google & sign in')));

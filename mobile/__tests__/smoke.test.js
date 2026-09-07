@@ -482,11 +482,11 @@ describe('EditProfile', () => {
   });
 
   it('should call updateProfile on save', async () => {
-    api.updateProfile.mockResolvedValue({ ...mockUser, firstName: 'Updated' });
+    api.updateProfile.mockResolvedValue({ ...mockUser, displayName: 'Updated' });
 
     const EditProfileScreen = require('../src/screens/EditProfileScreen').default;
 
-    const { getByDisplayValue, getByText } = render(
+    const { getByDisplayValue, getByText, getByPlaceholderText } = render(
       <EditProfileScreen navigation={mockNavigation} />
     );
 
@@ -494,14 +494,14 @@ describe('EditProfile', () => {
       expect(getByDisplayValue('Test')).toBeTruthy();
     });
 
-    // Change first name
-    fireEvent.changeText(getByDisplayValue('Test'), 'Updated');
+    // Verified legal names stay locked; the public display name remains editable.
+    fireEvent.changeText(getByPlaceholderText('Test'), 'Updated');
 
     await act(async () => {
       fireEvent.press(getByText('Save Changes'));
     });
 
-    expect(api.updateProfile).toHaveBeenCalled();
+    expect(api.updateProfile).toHaveBeenCalledWith({ displayName: 'Updated' });
   });
 });
 

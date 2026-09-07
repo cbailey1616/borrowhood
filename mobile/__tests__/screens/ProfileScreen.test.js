@@ -27,7 +27,10 @@ jest.mock('../../src/context/ErrorContext', () => ({
   useError: () => ({ showError: jest.fn(), showToast: jest.fn() }),
 }));
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  delete mockUser.displayName;
+});
 
 describe('ProfileScreen', () => {
   it('renders user name', () => {
@@ -39,6 +42,15 @@ describe('ProfileScreen', () => {
   it('shows verified badge when user.isVerified', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(getByText('Verified identity')).toBeTruthy();
+  });
+
+  it('shows a refreshed display name while retaining the verified badge', () => {
+    mockUser.displayName = 'New public name';
+    const ProfileScreen = require('../../src/screens/ProfileScreen').default;
+    const { getByText, queryByText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(getByText('New public name')).toBeTruthy();
+    expect(queryByText('Test User')).toBeNull();
     expect(getByText('Verified identity')).toBeTruthy();
   });
 

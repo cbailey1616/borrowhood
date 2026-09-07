@@ -4,9 +4,10 @@ import api from '../../../src/services/api';
 
 const mockShowError = jest.fn();
 const mockShowToast = jest.fn();
+const mockChangePassword = jest.fn();
 
 jest.mock('../../../src/context/AuthContext', () => ({
-  useAuth: () => ({ user: null }),
+  useAuth: () => ({ user: null, changePassword: mockChangePassword }),
 }));
 
 jest.mock('../../../src/context/ErrorContext', () => ({
@@ -24,6 +25,30 @@ const mockNavigation = {
 };
 
 describe('ForgotPasswordScreen', () => {
+  it('changes a signed-in password using current and new passwords without emailing a code', async () => {
+    mockChangePassword.mockResolvedValueOnce({});
+    const Screen = require('../../../src/screens/auth/ForgotPasswordScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { changeMode: true, email: 'test@example.com' } }} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Enter current password'), 'current123');
+    fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'newpassword123');
+    fireEvent.changeText(screen.getByPlaceholderText('Re-enter your password'), 'newpassword123');
+    await act(async () => fireEvent.press(screen.getByText('Change Password')));
+    expect(mockChangePassword).toHaveBeenCalledWith('current123', 'newpassword123');
+    expect(api.forgotPassword).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  it('keeps the change form open when the current password is incorrect', async () => {
+    mockChangePassword.mockRejectedValueOnce(new Error('Current password is incorrect.'));
+    const Screen = require('../../../src/screens/auth/ForgotPasswordScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { changeMode: true } }} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Enter current password'), 'wrong');
+    fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'newpassword123');
+    fireEvent.changeText(screen.getByPlaceholderText('Re-enter your password'), 'newpassword123');
+    await act(async () => fireEvent.press(screen.getByText('Change Password')));
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Current password is incorrect.' }));
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     api.forgotPassword.mockResolvedValue({ success: true });

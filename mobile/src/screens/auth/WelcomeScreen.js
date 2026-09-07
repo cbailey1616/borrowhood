@@ -16,6 +16,7 @@ import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
 import WoodlandIllustration from '../../components/WoodlandIllustration';
 import SocialSignInButtons from '../../components/SocialSignInButtons';
+import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import useBiometrics from '../../hooks/useBiometrics';
@@ -23,7 +24,7 @@ import { haptics } from '../../utils/haptics';
 import { BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function WelcomeScreen({ navigation }) {
-  const { login } = useAuth();
+  const { login, completeSocialLinkCode } = useAuth();
 
   const { showError } = useError();
   const {
@@ -48,6 +49,37 @@ export default function WelcomeScreen({ navigation }) {
   const [showEmail, setShowEmail] = useState(false);
   const [socialBusy, setSocialBusy] = useState(false);
   const [pendingLink, setPendingLink] = useState(null);
+  const [useLinkPassword, setUseLinkPassword] = useState(false);
+  const [linkChallenge, setLinkChallenge] = useState(null);
+  const [linkCode, setLinkCode] = useState('');
+  const linkingWithCode = !!pendingLink && !useLinkPassword;
+
+  const resetLink = () => {
+    setPendingLink(null);
+    setUseLinkPassword(false);
+    setLinkChallenge(null);
+    setLinkCode('');
+    setPassword('');
+    setLoginError(null);
+  };
+
+  const handleLinkCode = async (resend = false) => {
+    setLoginError(null);
+    setIsLoading(true);
+    try {
+      if (!linkChallenge || resend) {
+        const challenge = await api.startSocialLinkCode(pendingLink.provider, pendingLink.token);
+        setLinkChallenge(challenge);
+        setLinkCode('');
+      } else {
+        if (!/^\d{6}$/.test(linkCode)) throw new Error('Enter the six-digit code from your email.');
+        await completeSocialLinkCode(pendingLink, linkChallenge.challengeId, linkCode);
+        haptics.success();
+      }
+    } catch (error) {
+      setLoginError(error.message || 'Could not connect your account. Please try again.');
+    } finally { setIsLoading(false); }
+  };
   useEffect(() => {
     checkBiometricsReady();
   }, [isBiometricsAvailable, isBiometricsEnabled]);
@@ -132,7 +164,7 @@ export default function WelcomeScreen({ navigation }) {
           <View style={styles.content}>
             <View style={styles.logoContainer}>
               <Text style={styles.wordmark}>Borrowhood</Text>
-              <WoodlandIllustration scene="neighborhood" width={218} />
+              {!pendingLink && <WoodlandIllustration scene="neighborhood" width={218} />}
               <Text accessibilityRole="header" style={styles.authTitle}>{pendingLink ? 'Connect your account' : showEmail ? 'Welcome back' : 'Sign up or sign in'}</Text>
               {!showEmail && <Text style={styles.welcomeLine}>Apple and Google work for both.</Text>}
             </View>
@@ -157,15 +189,22 @@ export default function WelcomeScreen({ navigation }) {
 
             <SocialSignInButtons disabled={isLoading} onBusyChange={busy => {
               setSocialBusy(busy);
-              if (busy) { setPendingLink(null); setShowEmail(false); setPassword(''); setLoginError(null); }
-            }} onLinkRequired={link => { setPendingLink(link); setShowEmail(true); }} />
-            <HapticPressable onPress={() => { setShowEmail(!showEmail); setPendingLink(null); }} disabled={socialBusy || isLoading} style={styles.forgotPassword} accessibilityRole="button" accessibilityState={{ expanded: showEmail }}>
+              if (busy) { resetLink(); setShowEmail(false); }
+            }} onLinkRequired={link => { setPendingLink(link); if (link.email) setEmail(link.email); setShowEmail(true); }} />
+            <HapticPressable onPress={() => { setShowEmail(!showEmail); resetLink(); }} disabled={socialBusy || isLoading} style={styles.forgotPassword} accessibilityRole="button" accessibilityState={{ expanded: showEmail }}>
               <Text style={styles.forgotPasswordText}>{showEmail ? 'Use Apple or Google instead' : 'Sign in with email'}</Text>
             </HapticPressable>
             {showEmail && <View style={styles.formCard}>
               <View style={styles.form}>
-                {!!pendingLink && <Text style={styles.welcomeLine}>Enter your Borrowhood password once to connect {pendingLink.provider === 'apple' ? 'Apple' : 'Google'}. Next time, just tap Continue with {pendingLink.provider === 'apple' ? 'Apple' : 'Google'}.</Text>}
-                <View style={styles.inputContainer}>
+                {!!pendingLink && <>
+                  <Text style={styles.welcomeLine}>{linkingWithCode
+                    ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} with a code sent to your account email. No Borrowhood password needed.`
+                    : `Enter your Borrowhood password to connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'}. This is the password you created for Borrowhood.`}</Text>
+                  <HapticPressable onPress={() => navigation.navigate('ForgotPassword', { email })} style={styles.recoveryLink} disabled={isLoading || socialBusy} accessibilityRole="link">
+                    <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                  </HapticPressable>
+                </>}
+                {!linkingWithCode && <><View style={styles.inputContainer}>
                   <Text style={styles.label}>Email</Text>
                   <TextInput
                     style={styles.input}
@@ -182,7 +221,7 @@ export default function WelcomeScreen({ navigation }) {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Password</Text>
+                  <Text style={styles.label}>{pendingLink ? 'Borrowhood password' : 'Password'}</Text>
                   <View style={styles.passwordContainer}>
                     <TextInput
                       style={styles.passwordInput}
@@ -208,7 +247,19 @@ export default function WelcomeScreen({ navigation }) {
                       </Text>
                     </HapticPressable>
                   </View>
-                </View>
+                </View></>}
+
+                {linkingWithCode && <>
+                  {!!(linkChallenge?.email || pendingLink.email) && <Text style={styles.welcomeLine}>{linkChallenge ? 'Code sent to ' : ''}{linkChallenge?.email || pendingLink.email}</Text>}
+                  {!!linkChallenge && <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Email code</Text>
+                    <TextInput style={styles.input} value={linkCode} onChangeText={text => { setLinkCode(text.replace(/\D/g, '').slice(0, 6)); setLoginError(null); }} keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="one-time-code" maxLength={6} accessibilityLabel="Email code" testID="Welcome.input.linkCode" placeholder="Six-digit code" />
+                  </View>}
+                </>}
+
+                {!pendingLink && <HapticPressable onPress={() => navigation.navigate('ForgotPassword', { email })} style={styles.recoveryLink} accessibilityRole="link">
+                  <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                </HapticPressable>}
 
                 {loginError && (
                   <View style={styles.errorCard}>
@@ -219,27 +270,26 @@ export default function WelcomeScreen({ navigation }) {
 
                 <HapticPressable
                   style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-                  onPress={handleLogin}
+                  onPress={linkingWithCode ? () => handleLinkCode() : handleLogin}
                   disabled={isLoading || socialBusy}
                   haptic="medium"
                   testID="Welcome.button.signIn"
-                  accessibilityLabel={pendingLink ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} and sign in` : 'Sign in'}
+                  accessibilityLabel={linkingWithCode && !linkChallenge ? 'Email me a sign-in code' : pendingLink ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} and sign in` : 'Sign in'}
                   accessibilityRole="button"
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
                   ) : (
-                    <Text style={styles.loginButtonText}>{pendingLink ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} & sign in` : 'Sign In'}</Text>
+                    <Text style={styles.loginButtonText}>{linkingWithCode && !linkChallenge ? 'Email me a sign-in code' : pendingLink ? `Connect ${pendingLink.provider === 'apple' ? 'Apple' : 'Google'} & sign in` : 'Sign In'}</Text>
                   )}
                 </HapticPressable>
 
-                <HapticPressable
-                  onPress={() => navigation.navigate('ForgotPassword')}
-                  style={styles.forgotPassword}
-                  haptic="light"
-                >
-                  <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
-                </HapticPressable>
+                {!!pendingLink && <HapticPressable onPress={() => { setUseLinkPassword(!useLinkPassword); setLoginError(null); }} disabled={isLoading || socialBusy} style={styles.recoveryLink} accessibilityRole="button">
+                  <Text style={styles.forgotPasswordText}>{linkingWithCode ? 'Use my Borrowhood password' : 'Use an email code instead'}</Text>
+                </HapticPressable>}
+                {linkingWithCode && !!linkChallenge && <HapticPressable onPress={() => handleLinkCode(true)} disabled={isLoading || socialBusy} style={styles.recoveryLink} accessibilityRole="button">
+                  <Text style={styles.forgotPasswordText}>Send a new code</Text>
+                </HapticPressable>}
               </View>
             </View>}
 
@@ -295,8 +345,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: SPACING.xl,
+    paddingBottom: SPACING.xl,
     justifyContent: 'center',
   },
   logoContainer: {
@@ -404,6 +455,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.md,
   },
+  recoveryLink: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   forgotPasswordText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,

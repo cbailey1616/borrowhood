@@ -128,8 +128,9 @@ export default function CreateRequestScreen({ navigation, route }) {
         categoryId: formData.categoryId,
         visibility: formData.visibility,
         townPreviewEnabled: true,
-        neededFrom: formData.neededFrom ? new Date(formData.neededFrom).toISOString() : undefined,
-        neededUntil: formData.neededUntil ? new Date(formData.neededUntil).toISOString() : undefined,
+        neededFrom: formData.neededFrom || undefined,
+        neededUntil: formData.neededUntil || undefined,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
         communityId: communityId,
       };
 

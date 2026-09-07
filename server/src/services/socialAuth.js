@@ -43,14 +43,18 @@ export async function verifySocialIdentity(provider, token, fullName) {
 
 // Called inside a DB transaction. Provider subjects identify returning users;
 // email matches require proof of access to the existing Borrowhood account.
+export async function lockSocialIdentity(client, { provider, subject, email }) {
+  const locks = [`social:${provider}:${subject}`, ...(email ? [`social:email:${email}`] : [])].sort();
+  for (const lock of locks) await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lock]);
+}
+
 export async function resolveSocialAccount(client, identity, linkUserId = null) {
   const { provider, subject, email, firstName, lastName, photo } = identity;
   const column = { apple: 'apple_id', google: 'google_id' }[provider];
   if (!column) throw socialError(400, 'Unknown sign-in provider.');
   const fields = 'id, email, first_name, last_name, status, onboarding_completed, onboarding_step, apple_id, google_id';
   // Serialize retries and competing provider signups for the same email.
-  const locks = [`social:${provider}:${subject}`, ...(email ? [`social:email:${email}`] : [])].sort();
-  for (const lock of locks) await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lock]);
+  await lockSocialIdentity(client, identity);
   const existing = await client.query(`SELECT ${fields} FROM users WHERE ${column} = $1 FOR UPDATE`, [subject]);
   if (existing.rows[0]) {
     const user = existing.rows[0];
@@ -68,7 +72,7 @@ export async function resolveSocialAccount(client, identity, linkUserId = null) 
   }
   if (!email) throw socialError(400, 'Please allow Apple to share your email, then try again. Hide My Email works too.');
   const matches = await client.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [email]);
-  if (matches.rows.length) throw socialError(409, 'You already have an account. Sign in once with your email and password to connect this sign-in.', 'ACCOUNT_LINK_REQUIRED');
+  if (matches.rows.length) throw Object.assign(socialError(409, 'Connect your existing Borrowhood account to continue.', 'ACCOUNT_LINK_REQUIRED'), { email });
   const result = await client.query(
     `INSERT INTO users (email, first_name, last_name, ${column}, profile_photo_url, onboarding_step)
      VALUES ($1, $2, $3, $4, $5, 2) RETURNING ${fields}`,

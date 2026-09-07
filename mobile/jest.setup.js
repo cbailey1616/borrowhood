@@ -391,8 +391,11 @@ jest.mock('./src/services/api', () => ({
     getMe: jest.fn(),
     forgotPassword: jest.fn(),
     resetPassword: jest.fn(),
+    changePassword: jest.fn(),
     loginWithGoogle: jest.fn(),
     loginWithApple: jest.fn(),
+    startSocialLinkCode: jest.fn(),
+    completeSocialLinkCode: jest.fn(),
     createVerificationPayment: jest.fn(),
     // Users
     getUser: jest.fn(),

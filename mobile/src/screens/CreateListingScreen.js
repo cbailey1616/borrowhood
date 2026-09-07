@@ -230,6 +230,7 @@ export default function CreateListingScreen({ navigation, route }) {
     }
 
     const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
       quality: 0.8,
     });
 

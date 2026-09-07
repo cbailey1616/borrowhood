@@ -15,6 +15,14 @@ export async function runMigrations() {
       await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE');
       await client.query('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL');
     });
+    await query(`CREATE TABLE IF NOT EXISTS social_link_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL CHECK (provider IN ('google','apple')),
+      subject TEXT NOT NULL, email TEXT NOT NULL, code_hash TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0, expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await query('CREATE INDEX IF NOT EXISTS social_link_codes_user ON social_link_codes(user_id, created_at)');
     await query(`CREATE TABLE IF NOT EXISTS user_blocks (user_id UUID REFERENCES users(id) ON DELETE CASCADE, blocked_id UUID REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(user_id, blocked_id), CHECK(user_id != blocked_id))`);
     await query(`CREATE TABLE IF NOT EXISTS safety_reports (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), reporter_id UUID REFERENCES users(id), reported_id UUID REFERENCES users(id), reason TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
@@ -642,6 +650,10 @@ export async function runMigrations() {
       await query('ALTER TABLE communities ADD COLUMN announcement_by UUID REFERENCES users(id) ON DELETE SET NULL');
       logger.info('Migration complete: communities banner and announcement columns added');
     }
+
+    // Keep date-only request deadlines in the creator's timezone. Legacy rows
+    // retain UTC semantics until the owner edits or renews them.
+    await query("ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS time_zone TEXT NOT NULL DEFAULT 'UTC'");
 
     // Privacy v1: legacy inventory is NOT silently republished under new rules.
     // Owners retain access and explicitly reconfirm audiences when editing.

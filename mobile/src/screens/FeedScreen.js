@@ -1,5 +1,6 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import * as Notifications from 'expo-notifications';
 import { directFeeLabel } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import ThreadMessageButton from '../components/ThreadMessageButton';
@@ -11,6 +12,7 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  AppState,
   InteractionManager,
   Platform,
   TextInput,
@@ -235,6 +237,7 @@ export default function FeedScreen({ navigation }) {
     return unsubscribe;
   }, [navigation, isInitialLoad, fetchFeed]);
 
+
   const fetchActiveDisputes = useCallback(async () => {
     try {
       const data = await api.getDisputes();
@@ -288,6 +291,23 @@ export default function FeedScreen({ navigation }) {
       // Keep current state
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    const refreshVisibleFeed = () => {
+      if (!navigation.isFocused?.()) return;
+      fetchFeed(1, false);
+      fetchBannerData();
+    };
+    const received = Notifications.addNotificationReceivedListener(notification => {
+      if (['new_request', 'item_match'].includes(notification.request?.content?.data?.type)) refreshVisibleFeed();
+    });
+    let previousState = AppState.currentState;
+    const resumed = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active' && previousState !== 'active') refreshVisibleFeed();
+      previousState = nextState;
+    });
+    return () => { received.remove(); resumed.remove(); };
+  }, [navigation, fetchFeed, fetchBannerData]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -473,7 +493,7 @@ export default function FeedScreen({ navigation }) {
         onPress={() => openFeedItem(item)}
         haptic="light"
         scaleDown={0.98}
-        style={styles.tile}
+        style={[styles.tile, isGiveaway && { borderColor: '#B59A53', borderWidth: 1.5 }]}
         testID="FeedCard"
       >
           {/* Thumbnail + Content row */}
@@ -508,7 +528,7 @@ export default function FeedScreen({ navigation }) {
             <View style={styles.tileTopRow}>
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
-                  <Ionicons name="gift" size={10} color="#fff" />
+                  <Ionicons name="gift" size={18} illustrated />
                   <Text style={styles.tilePillText}>GIVEAWAY</Text>
                 </View>
               ) : (

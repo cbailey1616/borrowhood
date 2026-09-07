@@ -83,12 +83,30 @@ export function AuthProvider({ children, navigationRef }) {
     return response.user;
   };
 
+  const completeSocialLinkCode = async (pendingLink, challengeId, code) => {
+    const response = await api.completeSocialLinkCode(pendingLink.provider, pendingLink.token, challengeId, code);
+    await SecureStore.setItemAsync('accessToken', response.accessToken);
+    await SecureStore.setItemAsync('refreshToken', response.refreshToken);
+    api.setAuthToken(response.accessToken);
+    setUser(response.user);
+    setIsAuthenticated(true);
+    api.getMe().then(full => setUser(full)).catch(() => {});
+    return response.user;
+  };
+
   const logout = async () => {
     await SecureStore.deleteItemAsync('accessToken');
     await SecureStore.deleteItemAsync('refreshToken');
     api.setAuthToken(null);
     setUser(null);
     setIsAuthenticated(false);
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    const response = await api.changePassword(currentPassword, newPassword);
+    await SecureStore.setItemAsync('accessToken', response.accessToken);
+    await SecureStore.setItemAsync('refreshToken', response.refreshToken);
+    api.setAuthToken(response.accessToken);
   };
 
   const refreshUser = async () => {
@@ -115,8 +133,10 @@ export function AuthProvider({ children, navigationRef }) {
     login,
     loginWithGoogle,
     loginWithApple,
+    completeSocialLinkCode,
     register,
     logout,
+    changePassword,
     refreshUser,
   };
 

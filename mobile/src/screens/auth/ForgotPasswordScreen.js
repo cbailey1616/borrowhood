@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -15,6 +16,7 @@ import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
@@ -40,9 +42,12 @@ function getPasswordStrength(password) {
 
 export default function ForgotPasswordScreen({ navigation, route }) {
   const prefillEmail = route?.params?.email;
-  const isChangeMode = route?.params?.changeMode;
+  const [recovering, setRecovering] = useState(false);
+  const isChangeMode = route?.params?.changeMode && !recovering;
+  const { changePassword, logout } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
   const { showError } = useError();
-  const [step, setStep] = useState('email');
+  const [step, setStep] = useState(isChangeMode ? 'password' : 'email');
   const [email, setEmail] = useState(prefillEmail || '');
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [resetToken, setResetToken] = useState('');
@@ -55,7 +60,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
 
   // Auto-send code when opened with pre-filled email (change password mode)
   useEffect(() => {
-    if (prefillEmail && step === 'email') {
+    if (prefillEmail && !isChangeMode && step === 'email') {
       handleSendCode();
     }
   }, []);
@@ -178,6 +183,10 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   };
 
   const handleResetPassword = async () => {
+    if (isChangeMode && !currentPassword) {
+      showError({ type: 'validation', message: 'Enter your current password.' });
+      return;
+    }
     if (!newPassword || newPassword.length < 8) {
       showError({ type: 'validation', message: 'Your new password needs to be at least 8 characters.' });
       return;
@@ -188,7 +197,8 @@ export default function ForgotPasswordScreen({ navigation, route }) {
     }
     setIsLoading(true);
     try {
-      await api.resetPassword(resetToken, newPassword);
+      if (isChangeMode) await changePassword(currentPassword, newPassword);
+      else await api.resetPassword(resetToken, newPassword);
       haptics.success();
       if (isChangeMode) {
         showError({
@@ -203,7 +213,8 @@ export default function ForgotPasswordScreen({ navigation, route }) {
           title: "You're all set!",
           message: 'Your password has been reset. Go ahead and sign in with your new password.',
         });
-        navigation.navigate('Login');
+        if (route?.params?.changeMode) await logout();
+        else navigation.navigate('Login');
       }
     } catch (error) {
       haptics.error();
@@ -217,6 +228,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   };
 
   const handleBack = () => {
+    if (isChangeMode) { navigation.goBack(); return; }
     if (step === 'email') {
       navigation.goBack();
     } else if (step === 'code') {
@@ -240,24 +252,25 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: SPACING.xl }}>
         <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
           <Text style={styles.backButtonText}>{'\u2039'}</Text>
         </HapticPressable>
 
         {/* Step dots */}
-        <View style={styles.dotsRow}>
+        {!isChangeMode && <View style={styles.dotsRow}>
           {STEPS.map((s, i) => (
             <View
               key={s}
               style={[styles.dot, i <= stepIndex && styles.dotActive]}
             />
           ))}
-        </View>
+        </View>}
 
         <Text style={styles.title}>
           {step === 'email' && (isChangeMode ? 'Change password' : 'Reset password')}
           {step === 'code' && 'Enter your code'}
-          {step === 'password' && 'Set new password'}
+          {step === 'password' && (isChangeMode ? 'Change password' : 'Set new password')}
         </Text>
         <Text style={styles.subtitle}>
           {step === 'email' && (isChangeMode ? "We'll send a verification code to your email." : "Enter your email and we'll send you a 6-digit reset code.")}
@@ -342,6 +355,15 @@ export default function ForgotPasswordScreen({ navigation, route }) {
             {/* Step 3: New Password */}
             {step === 'password' && (
               <>
+                {isChangeMode && <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Current Password</Text>
+                  <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword}
+                    placeholder="Enter current password" secureTextEntry={!showPassword} autoCapitalize="none"
+                    autoCorrect={false} autoComplete="current-password" textContentType="password" />
+                  <HapticPressable onPress={() => { setRecovering(true); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); animateStep('email'); }} disabled={isLoading} style={styles.resendButton} accessibilityRole="link">
+                    <Text style={styles.resendButtonText}>Forgot your password?</Text>
+                  </HapticPressable>
+                </View>}
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>New Password</Text>
                   <View style={styles.passwordContainer}>
@@ -356,7 +378,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                       autoCorrect={false}
                       autoComplete="off"
                       textContentType="none"
-                      autoFocus
+                      autoFocus={!isChangeMode}
                     />
                     <HapticPressable
                       onPress={() => setShowPassword(!showPassword)}
@@ -402,13 +424,14 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
                   ) : (
-                    <Text style={styles.buttonText}>Reset Password</Text>
+                    <Text style={styles.buttonText}>{isChangeMode ? 'Change Password' : 'Reset Password'}</Text>
                   )}
                 </HapticPressable>
               </>
             )}
           </View>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

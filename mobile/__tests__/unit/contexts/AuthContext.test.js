@@ -26,6 +26,19 @@ beforeEach(() => {
 const wrapper = ({ children }) => React.createElement(AuthProvider, null, children);
 
 describe('AuthContext', () => {
+  it('persists a session only after the email code and provider are accepted', async () => {
+    const link = { provider: 'google', token: { idToken: 'proof' } };
+    api.completeSocialLinkCode.mockRejectedValueOnce(new Error('Incorrect code')).mockResolvedValueOnce(mockResponse);
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => { await expect(result.current.completeSocialLinkCode(link, 'challenge', '000000')).rejects.toThrow('Incorrect code'); });
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+    expect(result.current.isAuthenticated).toBe(false);
+    await act(async () => result.current.completeSocialLinkCode(link, 'challenge', '123456'));
+    expect(api.completeSocialLinkCode).toHaveBeenLastCalledWith('google', { idToken: 'proof' }, 'challenge', '123456');
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith('accessToken', mockResponse.accessToken);
+    expect(result.current.isAuthenticated).toBe(true);
+  });
   it('does not persist a session if connecting the provider fails', async () => {
     SecureStore.getItemAsync.mockResolvedValue(null);
     api.linkAccount = jest.fn().mockRejectedValue(new Error('Already connected elsewhere'));

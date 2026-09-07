@@ -115,6 +115,7 @@ export default function EditListingScreen({ navigation, route }) {
     }
 
     const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
       quality: 0.8,
     });
 

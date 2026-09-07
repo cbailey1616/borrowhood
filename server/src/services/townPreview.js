@@ -1,11 +1,12 @@
 import { query } from '../utils/db.js';
+import { requestActiveSql } from '../utils/requestState.js';
 
 // Existing posts keep their original audience until their owner enables previews.
 // This never grants profile, discussion, messaging, borrowing or offer permission.
 export function townPreviewSql(alias, ownerColumn, viewer, { listing = false } = {}) {
   return `(${alias}.town_preview_enabled = true
     AND 'town' = ANY(string_to_array(${alias}.visibility::text, ','))
-    ${listing ? `AND ${alias}.privacy_version = 1 AND ${alias}.status = 'active'` : `AND ${alias}.status = 'open' AND (${alias}.expires_at IS NULL OR ${alias}.expires_at > NOW()) AND (${alias}.needed_until IS NULL OR ${alias}.needed_until >= CURRENT_DATE)`}
+    ${listing ? `AND ${alias}.privacy_version = 1 AND ${alias}.status = 'active'` : `AND ${requestActiveSql(alias)}`}
     AND EXISTS (SELECT 1 FROM users pv JOIN users po ON po.id = ${alias}.${ownerColumn}
       WHERE pv.id = ${viewer} AND pv.status != 'suspended' AND po.status != 'suspended'
       AND NULLIF(TRIM(pv.city), '') IS NOT NULL AND NULLIF(TRIM(pv.state), '') IS NOT NULL

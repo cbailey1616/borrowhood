@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { query, withTransaction } from '../utils/db.js';
 import { verifySocialIdentity, resolveSocialAccount } from '../services/socialAuth.js';
+import { startSocialLinkCode, completeSocialLinkCode } from '../services/socialLinkCodes.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
 import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession, cancelPaymentIntent } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
@@ -196,10 +197,33 @@ for (const provider of ['google', 'apple']) {
     } catch (err) {
       const status = err.status || (err.code === '23505' ? 409 : 500);
       if (status >= 500) console.error('Social sign-in failed', { provider, code: err.code || err.name || 'UNKNOWN' });
-      res.status(status).json({ error: err.status ? err.message : 'Couldn’t finish signing in. Please try again.', code: err.status ? err.code : undefined });
+      res.status(status).json({ error: err.status ? err.message : 'Couldn’t finish signing in. Please try again.', code: err.status ? err.code : undefined,
+        ...(err.code === 'ACCOUNT_LINK_REQUIRED' ? { email: err.email } : {}) });
     }
   });
 }
+
+router.post('/social-link/code', async (req, res) => {
+  try {
+    const { provider, idToken, identityToken } = req.body;
+    const identity = await verifySocialIdentity(provider, provider === 'google' ? idToken : identityToken);
+    res.json(await startSocialLinkCode(identity));
+  } catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not send your sign-in code.' }); }
+});
+
+router.post('/social-link/complete', body('challengeId').isUUID(), body('code').matches(/^\d{6}$/), async (req, res) => {
+  if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Enter the six-digit code from your email.' });
+  try {
+    const { provider, idToken, identityToken, challengeId, code } = req.body;
+    const identity = await verifySocialIdentity(provider, provider === 'google' ? idToken : identityToken);
+    const result = await completeSocialLinkCode(identity, challengeId, code);
+    const user = result.user;
+    res.json({ accessToken: result.accessToken, refreshToken: result.refreshToken,
+      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name,
+        status: user.status, onboardingCompleted: user.onboarding_completed || false,
+        onboardingStep: user.onboarding_step, needsName: !user.first_name } });
+  } catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not connect your account. Please try again.' }); }
+});
 
 // ============================================
 // POST /api/auth/verify-identity
@@ -790,6 +814,28 @@ router.post('/verify-reset-code',
 // POST /api/auth/reset-password
 // Reset password with one-time reset token
 // ============================================
+router.post('/change-password', authenticate,
+  body('currentPassword').isString().notEmpty(),
+  body('newPassword').isString().isLength({ min: 8, max: 72 }),
+  async (req, res) => {
+    if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Enter your current password and a new password of 8–72 characters.' });
+    try {
+      await withTransaction(async client => {
+        const { rows } = await client.query('SELECT password_hash FROM users WHERE id=$1 FOR UPDATE', [req.user.id]);
+        if (!rows[0]?.password_hash || !await bcrypt.compare(req.body.currentPassword, rows[0].password_hash)) {
+          throw Object.assign(new Error('Current password is incorrect. Use Forgot your password? if you need to reset it.'), { status: 400 });
+        }
+        const hash = await bcrypt.hash(req.body.newPassword, 12);
+        await client.query(`UPDATE users SET password_hash=$1, token_invalidated_at=NOW(),
+          reset_code_hash=NULL, reset_code_expires=NULL, reset_code_attempts=0,
+          reset_token_hash=NULL, reset_token_expires=NULL WHERE id=$2`, [hash, req.user.id]);
+      });
+      res.json({ message: 'Password changed successfully', ...generateTokens(req.user.id) });
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not change your password. Please try again.' });
+    }
+  });
+
 router.post('/reset-password',
   body('resetToken').notEmpty().withMessage('Reset token is required'),
   body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),

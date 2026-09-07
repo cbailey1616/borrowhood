@@ -1,4 +1,6 @@
 import React from 'react';
+import { Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -23,6 +25,17 @@ beforeEach(() => {
 
 describe('CreateListingScreen', () => {
   const route = { params: {} };
+  it('uses the cropped camera image and keeps it when the next capture is cancelled', async () => {
+    ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///cropped-camera.jpg' }] }).mockResolvedValueOnce({ canceled: true });
+    const Screen = require('../../src/screens/CreateListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await act(async () => fireEvent.press(screen.getByText('Camera')));
+    expect(ImagePicker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true }));
+    const photos = () => screen.UNSAFE_getAllByType(Image).filter(image => image.props.source?.uri === 'file:///cropped-camera.jpg');
+    expect(photos()).toHaveLength(1);
+    await act(async () => fireEvent.press(screen.getByText('Camera')));
+    expect(photos()).toHaveLength(1);
+  });
   it.each([true, false])('defaults a new listing to Town with isVerified=%s', async isVerified => {
     mockUser.isVerified = isVerified;
     mockUser.city = 'Upton'; mockUser.state = 'MA';

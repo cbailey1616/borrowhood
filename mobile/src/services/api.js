@@ -55,6 +55,7 @@ const request = async (endpoint, options = {}) => {
       const error = new Error(message || 'Something went wrong. Please try again.');
       error.status = response.status;
       error.code = data.code;
+      if (data.code === 'ACCOUNT_LINK_REQUIRED') error.email = data.email;
       error.requiredTier = data.requiredTier;
       throw error;
     }
@@ -66,6 +67,7 @@ const request = async (endpoint, options = {}) => {
     const apiError = new Error(error.message || 'Network error');
     apiError.status = error.status;
     apiError.code = error.code;
+    apiError.email = error.email;
     apiError.requiredTier = error.requiredTier;
     throw apiError;
   }
@@ -129,6 +131,9 @@ const verifyResetCode = (email, code) =>
 const resetPassword = (resetToken, newPassword) =>
   post('/auth/reset-password', { resetToken, newPassword });
 
+const changePassword = (currentPassword, newPassword) =>
+  post('/auth/change-password', { currentPassword, newPassword });
+
 const findAccount = (params) =>
   post('/auth/find-account', params);
 
@@ -138,6 +143,12 @@ const linkAccount = (provider, token, accessToken) =>
 
 const loginWithGoogle = (idToken) =>
   post('/auth/google', { idToken });
+
+const startSocialLinkCode = (provider, token) =>
+  post('/auth/social-link/code', { provider, ...token });
+
+const completeSocialLinkCode = (provider, token, challengeId, code) =>
+  post('/auth/social-link/complete', { provider, ...token, challengeId, code });
 
 const loginWithApple = (identityToken, fullName) =>
   post('/auth/apple', { identityToken, fullName });
@@ -358,7 +369,7 @@ const deleteRequest = (id) =>
   del(`/requests/${id}`);
 
 const renewRequest = (id, expiresIn) =>
-  post(`/requests/${id}/renew`, expiresIn ? { expiresIn } : {});
+  post(`/requests/${id}/renew`, { ...(expiresIn ? { expiresIn } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' });
 
 const getRequestSuggestions = (id) =>
   get(`/requests/${id}/suggestions`);
@@ -761,8 +772,11 @@ export default {
   forgotPassword,
   verifyResetCode,
   resetPassword,
+  changePassword,
   findAccount,
   linkAccount,
+  startSocialLinkCode,
+  completeSocialLinkCode,
   loginWithGoogle,
   loginWithApple,
   deleteAccount,

@@ -15,6 +15,27 @@ import { createTestUser, createTestApp, cleanupTestUser } from './helpers/stripe
 let app;
 const createdUserIds = [];
 
+describe('Authenticated password changes', () => {
+  it('requires the current password, changes only the signed-in account, and accepts the new password', async () => {
+    const email = `change-${Date.now()}@authtest.borrowhood.test`;
+    const signup = await request(app).post('/api/auth/register').send({ email, password: 'OriginalPass123!', firstName: 'Password', lastName: 'Test' });
+    expect(signup.status).toBe(201);
+    createdUserIds.push(signup.body.user.id);
+    const endpoint = () => request(app).post('/api/auth/change-password').set('Authorization', `Bearer ${signup.body.accessToken}`);
+    const unauthenticated = await request(app).post('/api/auth/change-password').send({ currentPassword: 'OriginalPass123!', newPassword: 'UpdatedPass123!' });
+    expect(unauthenticated.status).toBe(401);
+    expect((await endpoint().send({ currentPassword: 'wrong', newPassword: 'UpdatedPass123!' })).status).toBe(400);
+    expect((await request(app).post('/api/auth/login').send({ email, password: 'OriginalPass123!' })).status).toBe(200);
+    expect((await endpoint().send({ currentPassword: 'OriginalPass123!', newPassword: 'short' })).status).toBe(400);
+    const changed = await endpoint().send({ currentPassword: 'OriginalPass123!', newPassword: 'UpdatedPass123!' });
+    expect(changed.status).toBe(200);
+    expect(changed.body.accessToken).toBeTruthy();
+    expect(changed.body.refreshToken).toBeTruthy();
+    expect((await request(app).post('/api/auth/login').send({ email, password: 'OriginalPass123!' })).status).toBe(401);
+    expect((await request(app).post('/api/auth/login').send({ email, password: 'UpdatedPass123!' })).status).toBe(200);
+  });
+});
+
 beforeAll(async () => {
   app = await createTestApp(
     { path: '/api/auth', module: '../../src/routes/auth.js' }
