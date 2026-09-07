@@ -68,6 +68,7 @@ export const COLORS = {
   primary: '#42594C', primaryDark: '#32483C', primaryLight: '#688566',
   primaryMuted: '#E0E8D8', secondary: '#42594C', secondaryMuted: '#E0E8D8',
   accent: '#875039', accentMuted: '#F1DDD1',
+  saved: '#B45376', savedMuted: '#F4DEE5',
   info: '#526D7A', infoMuted: '#E1E9E8',
   warning: '#946200', warningMuted: '#FFF4DB',
   danger: '#B54242', dangerMuted: '#F6E0DB', success: '#42594C',

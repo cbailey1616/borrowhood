@@ -159,20 +159,16 @@ export default function MyItemsScreen({ navigation }) {
               )}
             </View>
 
-            <View style={styles.cardStats}>
-              <View style={styles.stat}>
-                <Ionicons name="swap-horizontal" size={14} color={COLORS.gray[400]} />
-                <Text style={styles.statText}>{item.timesBorrowed} borrows</Text>
-              </View>
-              {item.totalEarnings > 0 && (
+            {item.totalEarnings > 0 && (
+              <View style={styles.cardStats}>
                 <View style={styles.stat}>
                   <Ionicons name="cash" size={14} color={COLORS.secondary} />
                   <Text style={[styles.statText, { color: COLORS.secondary }]}>
                     ${item.totalEarnings.toFixed(0)} earned
                   </Text>
                 </View>
-              )}
-            </View>
+              </View>
+            )}
 
             <View style={styles.cardFooter}>
               <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
