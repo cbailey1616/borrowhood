@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Linking } from 'react-native';
+import { Settings } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
@@ -16,9 +16,8 @@ import { COLORS } from '../src/utils/config';
 const navigation = createNavigationContainerRef();
 const tabs = ['Feed', 'Saved', 'MyItems', 'Activity', 'Profile'];
 const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: COLORS.primary, background: COLORS.background, card: COLORS.surface, text: COLORS.text, border: COLORS.border, notification: COLORS.danger } };
-let requested = 'home';
-function openCapture(url) {
-  requested = url?.split('/').filter(Boolean).at(-1) || 'home';
+const requested = Settings.get('BorrowhoodCaptureScreen') || 'home';
+function openCapture() {
   if (!navigation.isReady()) return;
   const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', profile: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
@@ -32,17 +31,12 @@ function openCapture(url) {
 
 export default function CaptureApp() {
   const [fontsLoaded] = useFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, GoogleSansMedium: require('../assets/brand/GoogleSans-Medium.ttf') });
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', ({ url }) => openCapture(url));
-    Linking.getInitialURL().then(url => { if (url) openCapture(url); });
-    return () => subscription.remove();
-  }, []);
   useEffect(() => { if (fontsLoaded) SplashScreen.hideAsync(); }, [fontsLoaded]);
   if (!fontsLoaded) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <ErrorBoundary><SafeAreaProvider><AuthProvider>
-        <NavigationContainer ref={navigation} theme={theme} onReady={() => openCapture(requested)}>
+        <NavigationContainer ref={navigation} theme={theme} onReady={openCapture}>
           <ErrorProvider navigationRef={navigation}>
             <RootNavigator />
             <ThemedAlertHost />

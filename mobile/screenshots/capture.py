@@ -30,14 +30,14 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 16 Pro Max', (1320, 2868))
             run('boot', udid)
         run('bootstatus', udid, '-b', timeout=300)
         run('ui', udid, 'appearance', 'light')
-        run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'charged', '--batteryLevel', '100')
+        run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
         run('install', udid, str(app))
-        run('launch', '--terminate-running-process', udid, 'com.borrowhood.app')
-        time.sleep(12)
         hashes = set()
         for filename, route in screens:
-            run('openurl', udid, f'com.borrowhood.app://capture/{route}')
-            time.sleep(8)
+            # A launch argument selects the screen without an iOS open-link dialog.
+            print(f'Capturing {name}: {route}', flush=True)
+            run('launch', '--terminate-running-process', udid, 'com.borrowhood.app', '-BorrowhoodCaptureScreen', route)
+            time.sleep(15)
             target = destination / f'{filename}.png'
             run('io', udid, 'screenshot', '--type=png', str(target))
             with Image.open(target) as original:

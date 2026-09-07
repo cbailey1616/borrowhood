@@ -1,6 +1,5 @@
 import { Image } from 'react-native';
-import { iconSvg } from '../src/assets/borrowhood-icons';
-const avatar = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg('person', { illustrated: true }))}`;
+const avatar = null;
 const photo = asset => Image.resolveAssetSource(asset).uri;
 const photos = {
   drill: photo(require('./assets/drill.jpg')),
