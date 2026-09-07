@@ -37,6 +37,8 @@ import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
+import ShimmerImage from '../components/ShimmerImage';
+import { ThemedAlert as Alert } from '../components/ThemedAlert';
 import EmojiReactionPicker from '../components/EmojiReactionPicker';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
@@ -104,6 +106,9 @@ export default function ChatScreen({ route, navigation }) {
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [photoMenuVisible, setPhotoMenuVisible] = useState(false);
+  const [attachment, setAttachment] = useState(null);
+  const preparingPhoto = useRef(false);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [emojiPickerMessage, setEmojiPickerMessage] = useState(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState(null);
@@ -182,12 +187,15 @@ export default function ChatScreen({ route, navigation }) {
         id: result.id,
         senderId: user.id,
         content: pending.payload.content || null,
-        imageUrl: pending.payload.imageUrl,
+        // Upload references point into the private bucket. Display the signed
+        // URL returned by the API immediately, without waiting for the next poll.
+        imageUrl: result.imageUrl || pending.payload.imageUrl,
         isOwnMessage: true,
         isRead: false,
         createdAt: result.createdAt || new Date().toISOString(),
       };
       setMessages(prev => mergeMessages(prev, [newMsg]));
+      if (pending.attachmentUri) setAttachment(current => current?.uri === pending.attachmentUri ? null : current);
 
       // Scroll to bottom
       setTimeout(() => {
@@ -202,14 +210,32 @@ export default function ChatScreen({ route, navigation }) {
     }
   };
 
-  const handleSend = () => {
-    if (!newMessage.trim() || sending.current || isUploading || composer.pending || !draft.ready) return;
+  const handleSend = async () => {
+    if ((!newMessage.trim() && !attachment) || sending.current || preparingPhoto.current || isUploading || composer.pending || !draft.ready) return;
     const recipient = recipientId || conversation?.otherUser?.id;
     if (!recipient) return setChatError('Couldn’t identify the recipient. Reopen this conversation.');
-    return deliver({ retryable: safeRetries, composerText: newMessage.trim(), payload: {
-      recipientId: recipient, content: contextPrefix + newMessage.trim(), listingId: listingId || conversation?.listing?.id,
-      ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
-    } });
+    const text = newMessage.trim();
+    const selected = attachment;
+    preparingPhoto.current = true;
+    try {
+      let imageUrl = selected?.imageUrl;
+      if (selected && !imageUrl) {
+        setIsUploading(true);
+        imageUrl = await api.uploadImage(selected.uri, 'messages');
+        setAttachment(current => current?.uri === selected.uri ? { ...current, imageUrl } : current);
+      }
+      await deliver({ retryable: safeRetries, composerText: text, attachmentUri: selected?.uri, payload: {
+        recipientId: recipient, ...(text || contextPrefix ? { content: (contextPrefix + text).trim() } : {}),
+        ...(imageUrl ? { imageUrl } : {}), listingId: listingId || conversation?.listing?.id,
+        ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
+      } });
+    } catch {
+      setChatError('Couldn’t upload the photo. It’s still here—tap send to try again.');
+      haptics.error();
+    } finally {
+      preparingPhoto.current = false;
+      setIsUploading(false);
+    }
   };
 
   const dismissPending = () => Alert.alert('Stop tracking this send?', 'This does not unsend anything. Check the conversation first: the message may already have arrived.', [
@@ -265,33 +291,26 @@ export default function ChatScreen({ route, navigation }) {
     haptics.light();
   }, []);
 
-  const handlePickImage = async () => {
-    if (isUploading || sending.current || composer.pending || !draft.ready) return;
-    setIsUploading(true);
+  const handlePickImage = async (camera = false) => {
+    if (preparingPhoto.current || sending.current || composer.pending || !draft.ready) return;
+    preparingPhoto.current = true;
     setChatError('');
     try {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      allowsEditing: true,
-    });
-
-    if (result.canceled) return;
-
-    const uri = result.assets[0].uri;
-    const recipient = recipientId || conversation?.otherUser?.id;
-    if (!recipient) return;
-
-      const imageUrl = await api.uploadImage(uri, 'messages');
-      await deliver({ retryable: safeRetries, payload: {
-        recipientId: recipient, imageUrl, ...(contextPrefix ? { content: contextPrefix.trim() } : {}), listingId: listingId || conversation?.listing?.id,
-        ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
-      } });
+      if (camera) {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (permission.status !== 'granted') {
+          setChatError('Allow camera access in Settings to take a photo, or choose one from your library.');
+          return;
+        }
+      }
+      const pick = camera ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
+      const result = await pick({ mediaTypes: ['images'], quality: 0.8, allowsEditing: true });
+      if (!result.canceled && result.assets?.[0]?.uri) setAttachment({ uri: result.assets[0].uri });
     } catch (error) {
-      setChatError('The photo could not be uploaded. Please choose it again.');
+      setChatError('Couldn’t open the photo picker. Please try again.');
       haptics.error();
     } finally {
-      setIsUploading(false);
+      preparingPhoto.current = false;
     }
   };
 
@@ -462,7 +481,7 @@ export default function ChatScreen({ route, navigation }) {
               >
                 {item.imageUrl && (
                   <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
-                    <Image source={{ uri: item.imageUrl }} style={styles.messageImage} />
+                    <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
                   </HapticPressable>
                 )}
                 {item.content ? (
@@ -490,7 +509,7 @@ export default function ChatScreen({ route, navigation }) {
               >
                   {item.imageUrl && (
                     <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
-                      <Image source={{ uri: item.imageUrl }} style={styles.messageImage} />
+                      <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
                     </HapticPressable>
                   )}
                   {item.content ? (
@@ -593,13 +612,24 @@ export default function ChatScreen({ route, navigation }) {
         {!composer.pending.retryable && <Text style={{ color: COLORS.textSecondary, fontSize: 12, paddingBottom: 8 }}>Check the conversation before sending again. Safe retries need the updated server.</Text>}
       </View>}
       {(draft.error || draft.restored) && <DraftStatus draft={draft} />}
+      {!!attachment && <View style={styles.attachmentPreview}>
+        <Image source={{ uri: attachment.uri }} style={styles.attachmentThumbnail} accessibilityLabel="Photo ready to send" />
+        <Text style={styles.attachmentLabel}>{isUploading ? 'Sending photo…' : 'Photo ready to send'}</Text>
+        <HapticPressable accessibilityRole="button" accessibilityLabel="Remove attached photo" disabled={isUploading || isSending || !!composer.pending} onPress={() => setAttachment(null)} style={styles.removeAttachment}>
+          <Ionicons name="close" size={22} color={COLORS.primary} />
+        </HapticPressable>
+      </View>}
       <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }} onPress={handlePickImage} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
-          {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="add-outline" size={26} color={COLORS.primary} />}
+        <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
+          {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="image-outline" size={26} color={COLORS.primary} />}
         </HapticPressable>
         <TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Private message…" placeholderTextColor={COLORS.textMuted} testID="Chat.input.message" accessibilityLabel="Message" multiline maxLength={2000 - contextPrefix.length} autoCapitalize="sentences" />
-        <SendButton onPress={handleSend} loading={isSending} disabled={!newMessage.trim() || isSending || isUploading || !!composer.pending || !draft.ready} />
+        <SendButton onPress={handleSend} loading={isSending || isUploading} disabled={(!newMessage.trim() && !attachment) || isSending || isUploading || !!composer.pending || !draft.ready} />
       </View>
+      <ActionSheet isVisible={photoMenuVisible} onClose={() => setPhotoMenuVisible(false)} title="Add a photo" actions={[
+        { label: 'Take a photo', icon: <Ionicons name="camera-outline" size={24} color={COLORS.primary} />, onPress: () => handlePickImage(true) },
+        { label: 'Choose from library', icon: <Ionicons name="images-outline" size={24} color={COLORS.primary} />, onPress: () => handlePickImage(false) },
+      ]} />
       {/* Emoji Reaction Picker Overlay */}
       {emojiPickerMessage && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -646,6 +676,10 @@ export default function ChatScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  attachmentPreview: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: COLORS.surface },
+  attachmentThumbnail: { width: 72, height: 72, borderRadius: RADIUS.md },
+  attachmentLabel: { flex: 1, color: COLORS.primary, fontSize: 14 },
+  removeAttachment: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -914,4 +948,3 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 });
-import { ThemedAlert as Alert } from "../components/ThemedAlert";

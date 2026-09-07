@@ -25,7 +25,7 @@ beforeEach(() => {
 describe('protected photo delivery', () => {
   it('binds a temporary display URL to one viewer and one image', () => {
     const url = privatePhotoUrl(source, id);
-    const payload = jwt.verify(url.split('/api/private-photos/')[1], process.env.JWT_SECRET, { audience: 'listing-photo', subject: id });
+    const payload = jwt.verify(new URL(url).pathname.split('/api/private-photos/')[1], process.env.JWT_SECRET, { audience: 'listing-photo', subject: id });
     expect(payload.src).toBeUndefined();
     expect(payload.enc).toEqual(expect.any(String));
     expect(JSON.stringify(payload)).not.toContain(source);
@@ -39,11 +39,37 @@ describe('protected photo delivery', () => {
     expect((await request(app).get(url.pathname + 'tampered')).status).toBe(404);
     expect(query).not.toHaveBeenCalled();
   });
+  it('preserves photo identity across refreshed API responses while rotating access tokens', () => {
+    const respond = (user, image = source) => {
+      const res = { json: vi.fn() };
+      const original = res.json;
+      protectMediaResponses({ user }, res, () => {});
+      res.json({ photos: [image] });
+      return new URL(original.mock.calls[0][0].photos[0]);
+    };
+    const first = respond({ id });
+    const refreshed = respond({ id });
+    expect(first.pathname).not.toBe(refreshed.pathname);
+    const key = first.searchParams.get('photo');
+    expect(key).toMatch(/^[a-f0-9]{64}$/);
+    expect(refreshed.searchParams.get('photo')).toBe(key);
+    expect(respond({ id: 'another-viewer' }).searchParams.get('photo')).not.toBe(key);
+    expect(respond({ id, token_invalidated_at: new Date() }).searchParams.get('photo')).not.toBe(key);
+    expect(respond({ id }, source + '-replacement').searchParams.get('photo')).not.toBe(key);
+  });
+  it('rejects a substituted cache identity before reading a private photo', async () => {
+    const url = new URL(privatePhotoUrl(source, id));
+    url.searchParams.set('photo', '0'.repeat(64));
+    expect((await request(app).get(url.pathname + url.search)).status).toBe(404);
+    expect(query).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
   it('streams an authorized S3 image only after permission checks', async () => {
     query.mockResolvedValue({ rows: [{ id }] });
     send.mockResolvedValue({ ContentType: 'image/jpeg', Body: Readable.from(Buffer.from('test-image')) });
     const photo = 'https://borrowhood-uploads.s3.us-east-1.amazonaws.com/listings/owner/item.jpg';
-    const response = await request(app).get(new URL(privatePhotoUrl(photo, id)).pathname);
+    const url = new URL(privatePhotoUrl(photo, id));
+    const response = await request(app).get(url.pathname + url.search);
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
     expect(response.body.toString()).toBe('test-image');

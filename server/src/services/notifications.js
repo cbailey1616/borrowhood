@@ -18,10 +18,8 @@ const NOTIFICATION_TEMPLATES = {
       : 'Someone wants your item. Tap to review.',
   },
   request_approved: {
-    title: 'You\'re all set!',
-    body: (data) => data.itemTitle
-      ? `Great news — your request to borrow ${data.itemTitle} was approved! Tap to coordinate pickup.`
-      : 'Great news — your borrow request was approved! Tap to coordinate pickup.',
+    title: 'Congrats! Your request was accepted',
+    body: (data) => `Your request${data.itemTitle ? ` for ${data.itemTitle}` : ''} was accepted! Contact ${data.lenderName || 'your neighbor'} to arrange pickup. Tap to get in touch.`,
   },
   request_declined: {
     title: 'Request Update',

@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { query } from '../src/utils/db.js';
+import { randomUUID } from 'node:crypto';
 import { createTestUser, createTestApp, createTestListing, cleanupTestUser } from './helpers/stripe.js';
 
 let app;
@@ -125,6 +126,8 @@ describe('POST /api/messages', () => {
     expect(res.status).toBe(201);
     createdConversationIds.push(res.body.conversationId);
   });
+
+
 });
 
 describe('GET /api/messages/conversations', () => {
@@ -230,5 +233,25 @@ describe('POST /api/messages/conversations/:id/read', () => {
       .set('Authorization', `Bearer ${userC.token}`);
 
     expect(res.status).toBe(404);
+  });
+});
+
+
+describe('Photo messages', () => {
+  it.each([undefined, 'The ladder is ready'])('delivers a photo with optional caption %s exactly once', async content => {
+    const imageUrl = `https://borrowhood-uploads.s3.us-east-1.amazonaws.com/messages/${userA.userId}/${randomUUID()}.jpg`;
+    const payload = { recipientId: userB.userId, listingId, imageUrl, clientRequestId: randomUUID(), ...(content ? { content } : {}) };
+    const send = () => request(app).post('/api/messages').set('Authorization', `Bearer ${userA.token}`).send(payload);
+    const first = await send();
+    const retry = await send();
+    expect(first.status).toBe(201);
+    expect(retry.body.id).toBe(first.body.id);
+    expect(first.body.imageUrl).toBe(imageUrl);
+    const received = await request(app).get(`/api/messages/conversations/${first.body.conversationId}`).set('Authorization', `Bearer ${userB.token}`);
+    const matches = received.body.messages.filter(message => message.id === first.body.id);
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({ imageUrl, content: content || null });
+    const outsider = await request(app).get(`/api/messages/conversations/${first.body.conversationId}`).set('Authorization', `Bearer ${userC.token}`);
+    expect(outsider.status).toBe(404);
   });
 });
