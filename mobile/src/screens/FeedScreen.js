@@ -139,7 +139,7 @@ export default function FeedScreen({ navigation }) {
     } catch (error) {
       if (requestId !== feedRequest.current) return;
       setFeedError(true);
-      if (!append) setFeed([]);
+      // Keep the current feed visible when a background refresh fails.
     } finally {
       if (requestId !== feedRequest.current) return;
       setIsFetching(false);
@@ -449,7 +449,7 @@ export default function FeedScreen({ navigation }) {
         onPress={() => openFeedItem(item)}
         haptic="light"
         scaleDown={0.98}
-        style={[styles.tile, isGiveaway && { borderColor: '#B59A53', borderWidth: 1.5 }]}
+        style={[styles.tile, isGiveaway && { borderColor: isSaleListing(item) ? COLORS.primary : '#B59A53', borderWidth: 1.5 }]}
         testID="FeedCard"
       >
           {/* Thumbnail + Content row */}
@@ -502,7 +502,7 @@ export default function FeedScreen({ navigation }) {
                 {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
               </>}
               {priceLabel ? (
-                <Text style={[styles.tilePrice, { color: accent.pill }]}>{priceLabel}</Text>
+                <Text style={[styles.tilePrice, { color: COLORS.primary }]}>{priceLabel}</Text>
               ) : null}
             </View>
           </View>
