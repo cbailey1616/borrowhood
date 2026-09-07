@@ -102,11 +102,12 @@ describe('FeedScreen', () => {
     expect(queryByText('REQUEST')).toBeNull();
     const style = id => StyleSheet.flatten(getByTestId(id).props.style);
     expect(style('Feed.request.note').backgroundColor).toBe(COLORS.requestSurface);
-    expect(style('Feed.thread.note').backgroundColor).toBe(COLORS.requestSurface);
     expect(style('FeedCard').backgroundColor).toBe(COLORS.card);
-    expect(style('Feed.thread.item').backgroundColor).toBe(COLORS.card);
     expect(style('Feed.request.note').borderRadius).toBe(style('FeedCard').borderRadius);
-    expect(getAllByText('View comments')).toHaveLength(2);
+    expect(queryByText('View comments')).toBeNull();
+    expect(queryByText('Private message')).toBeNull();
+    expect(api.getDiscussions).not.toHaveBeenCalled();
+    expect(api.getRequestDiscussions).not.toHaveBeenCalled();
     fireEvent.press(getByTestId('Feed.request.note'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'note' });
   });
