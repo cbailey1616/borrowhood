@@ -1,3 +1,4 @@
+import BiometricIcon from '../components/BiometricIcon';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -277,7 +278,7 @@ export default function ProfileScreen({ navigation }) {
         <GroupedListSection header="Settings">
           {isBiometricsAvailable && (
             <GroupedListItem
-              icon={biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline'}
+              icon={<BiometricIcon type={biometricType} size={20} color={COLORS.textSecondary} />}
               title={biometricType || 'Biometrics'}
               switchValue={biometricToggle}
               onSwitchChange={handleBiometricToggle}

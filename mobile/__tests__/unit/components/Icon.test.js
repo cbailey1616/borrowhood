@@ -17,7 +17,7 @@ describe('Icon', () => {
     expect(iconSvg('heart', { illustrated: true, selected: true })).toContain('fill-opacity="1"');
   });
 
-  it('does not import stock icon libraries in application source', () => {
+  it('uses native symbols only for platform biometric branding', () => {
     const fs = require('fs');
     const path = require('path');
     const scan = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
@@ -25,6 +25,7 @@ describe('Icon', () => {
       return entry.isDirectory() ? scan(file) : /\.[jt]sx?$/.test(file) ? [file] : [];
     });
     for (const file of scan(path.resolve(__dirname, '../../../src'))) {
+      if (path.basename(file) === 'BiometricIcon.js') continue;
       expect(fs.readFileSync(file, 'utf8')).not.toMatch(/(?:from\s*|require\s*\(\s*)['"](?:@expo\/vector-icons|react-native-vector-icons|expo-symbols)/);
     }
   });

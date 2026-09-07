@@ -1,3 +1,4 @@
+import BiometricIcon from '../../components/BiometricIcon';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -148,7 +149,6 @@ export default function WelcomeScreen({ navigation }) {
     }
   };
 
-  const biometricIcon = biometricType === 'Face ID' ? 'scan-outline' : 'finger-print-outline';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -180,7 +180,7 @@ export default function WelcomeScreen({ navigation }) {
                 accessibilityLabel="Sign in with biometrics"
                 accessibilityRole="button"
               >
-                <Ionicons name={biometricIcon} size={32} color={COLORS.primary} />
+                <BiometricIcon type={biometricType} size={32} color={COLORS.primary} />
                 <Text style={styles.biometricButtonText}>
                   Sign in with {biometricType}
                 </Text>

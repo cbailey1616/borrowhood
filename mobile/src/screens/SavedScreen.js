@@ -20,7 +20,6 @@ import Animated, {
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
-import AnimatedCard from '../components/AnimatedCard';
 import NativeHeader from '../components/NativeHeader';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -102,7 +101,7 @@ export default function SavedScreen({ navigation }) {
   };
 
   const renderItem = ({ item, index }) => (
-    <AnimatedCard index={index} style={[styles.cardWrap, index % 2 === 0 ? { marginRight: GRID_GAP } : null]}>
+    <View style={[styles.cardWrap, index % 2 === 0 ? { marginRight: GRID_GAP } : null]}>
       <HapticPressable
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
         haptic="light"
@@ -149,7 +148,7 @@ export default function SavedScreen({ navigation }) {
           </View>
         </View>
       </HapticPressable>
-    </AnimatedCard>
+    </View>
   );
 
   return (

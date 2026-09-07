@@ -28,6 +28,21 @@ describe('BorrowRequestScreen', () => {
     await findByText('Camera');
   });
 
+  it('bounds a one-day loan and clamps an out-of-range end date', async () => {
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { ...listing, minDuration: 1, maxDuration: 1 } } }} />);
+    fireEvent.press(await screen.findByText('End Date'));
+    const picker = screen.UNSAFE_getByType('DateTimePicker');
+    expect(picker.props.minimumDate.getTime()).toBe(picker.props.maximumDate.getTime());
+    const invalid = new Date(picker.props.value);
+    invalid.setFullYear(invalid.getFullYear() + 1);
+    fireEvent(picker, 'change', { type: 'set' }, invalid);
+    expect(screen.UNSAFE_getByType('DateTimePicker').props.value.getTime()).toBe(picker.props.maximumDate.getTime());
+    await act(async () => fireEvent.press(screen.getByText('Send Request')));
+    const request = api.createTransaction.mock.calls[0][0];
+    expect(Math.round((new Date(request.endDate) - new Date(request.startDate)) / 86400000)).toBe(1);
+  });
+
   it('message input accepts text', async () => {
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;
     const { findByPlaceholderText } = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);

@@ -15,7 +15,6 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
-import AnimatedCard from '../components/AnimatedCard';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
 import { useError } from '../context/ErrorContext';
@@ -126,7 +125,7 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const renderListingItem = ({ item, index }) => (
-    <AnimatedCard index={index}>
+    <View>
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
@@ -204,7 +203,7 @@ export default function MyItemsScreen({ navigation }) {
           </View>
         </HapticPressable>
       </Swipeable>
-    </AnimatedCard>
+    </View>
   );
 
   const handleRenew = async (requestId) => {
@@ -222,7 +221,7 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const renderRequestItem = ({ item, index }) => (
-    <AnimatedCard index={index}>
+    <View>
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
@@ -309,7 +308,7 @@ export default function MyItemsScreen({ navigation }) {
           </View>
         </HapticPressable>
       </Swipeable>
-    </AnimatedCard>
+    </View>
   );
 
   const getTimeAgo = (date) => {
@@ -328,7 +327,7 @@ export default function MyItemsScreen({ navigation }) {
     const statusColor = STATUS_COLORS[item.status] || COLORS.textSecondary;
 
     return (
-      <AnimatedCard index={index}>
+      <View>
         <HapticPressable
           style={styles.rentalCard}
           onPress={() => navigation.getParent()?.navigate('TransactionDetail', { id: item.id })
@@ -379,7 +378,7 @@ export default function MyItemsScreen({ navigation }) {
             )}
           </View>
         </HapticPressable>
-      </AnimatedCard>
+      </View>
     );
   };
 

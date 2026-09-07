@@ -15,7 +15,6 @@ import ShimmerImage from '../components/ShimmerImage';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
-import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
@@ -81,7 +80,7 @@ export default function BrowseScreen({ navigation }) {
   };
 
   const renderListingItem = ({ item, index }) => (
-    <AnimatedCard index={index} style={styles.cardAnimated}>
+    <View style={styles.cardAnimated}>
       <HapticPressable
         style={styles.card}
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
@@ -147,11 +146,11 @@ export default function BrowseScreen({ navigation }) {
           </View>
         </View>
       </HapticPressable>
-    </AnimatedCard>
+    </View>
   );
 
   const renderRequestItem = ({ item, index }) => (
-    <AnimatedCard index={index}>
+    <View>
       <View style={[styles.cardBox, styles.requestCardOuter]}>
         <HapticPressable
           style={styles.requestCard}
@@ -223,7 +222,7 @@ export default function BrowseScreen({ navigation }) {
           </HapticPressable>
         </HapticPressable>
       </View>
-    </AnimatedCard>
+    </View>
   );
 
   const data = activeTab === 'items' ? listings : requests;
