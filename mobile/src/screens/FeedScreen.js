@@ -498,8 +498,10 @@ export default function FeedScreen({ navigation }) {
             <View style={styles.tileFooterRow}>
               {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
                 <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
-                <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
-                {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                <View style={styles.authorNameAndBadge}>
+                  <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
+                  {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                </View>
               </>}
               {priceLabel ? (
                 <Text style={[styles.tilePrice, { color: COLORS.primary }]}>{priceLabel}</Text>
@@ -539,8 +541,10 @@ export default function FeedScreen({ navigation }) {
               <View style={styles.tileFooterRow}>
                 {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
                   <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
+                  <View style={styles.authorNameAndBadge}>
                   <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
                   {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
+                </View>
                 </>}
               </View>
             </View>
@@ -1281,6 +1285,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  authorNameAndBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    gap: 0,
   },
   tileFooterText: {
     ...TYPOGRAPHY.caption,
