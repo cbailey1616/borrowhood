@@ -10,6 +10,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Alert,
 
   Platform,
 } from 'react-native';
@@ -39,13 +40,17 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const isGiveaway = isTransferListing(listing);
   useEffect(() => { navigation.setOptions({ title: isSaleListing(listing) ? 'Request to buy' : isGiveaway ? 'Request this item' : 'Request to borrow' }); }, [listing.listingType, listing.directFee, navigation]);
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
+  const minDays = Math.max(1, Number(listing.minDuration) || 1);
+  const maxDays = Math.max(minDays, Number(listing.maxDuration) || 14);
+  const addDays = (date, days) => { const result = new Date(date); result.setDate(result.getDate() + days); return result; };
+  const clampEnd = (date, start) => new Date(Math.min(addDays(start, maxDays).getTime(), Math.max(addDays(start, minDays).getTime(), date.getTime())));
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const [startDate, setStartDate] = useState(tomorrow);
   const [endDate, setEndDate] = useState(() => {
     const end = new Date(tomorrow);
-    end.setDate(end.getDate() + (listing.minDuration || 1));
+    end.setDate(end.getDate() + minDays);
     return end;
   });
   const [message, setMessage] = useState('');
@@ -102,7 +107,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   }, [listing.visibility, listing.isFree, user?.subscriptionTier, user?.isVerified, isGracePeriodActive]);
 
   const calculateDays = () => {
-    return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    return Math.round((Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) - Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())) / 86400000);
   };
 
   const days = calculateDays();
@@ -113,19 +118,14 @@ export default function BorrowRequestScreen({ route, navigation }) {
     if (Platform.OS === 'android') setShowStartPicker(false);
     if (selectedDate) {
       setStartDate(selectedDate);
-      // Ensure end date is after start date
-      if (selectedDate >= endDate) {
-        const newEnd = new Date(selectedDate);
-        newEnd.setDate(newEnd.getDate() + listing.minDuration);
-        setEndDate(newEnd);
-      }
+      setEndDate(current => clampEnd(current, selectedDate));
     }
   };
 
   const handleEndDateChange = (event, selectedDate) => {
     if (Platform.OS === 'android') setShowEndPicker(false);
-    if (selectedDate && selectedDate > startDate) {
-      setEndDate(selectedDate);
+    if (selectedDate) {
+      setEndDate(clampEnd(selectedDate, startDate));
     }
   };
 
@@ -134,12 +134,13 @@ export default function BorrowRequestScreen({ route, navigation }) {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
+      ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}),
     });
   };
 
   const handleSubmit = async () => {
     if (!isGiveaway) {
-      if (days < listing.minDuration || days > listing.maxDuration) {
+      if (days < minDays || days > maxDays) {
         Alert.alert(
           'Adjust Your Dates',
           `This item can be borrowed for ${listing.minDuration}–${listing.maxDuration} days. Try picking a shorter or longer window.`
@@ -428,7 +429,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
               textColor={COLORS.text}
               accentColor={COLORS.primary}
               style={{ width: '100%', backgroundColor: COLORS.surface }}
-              minimumDate={new Date(startDate.getTime() + 86400000)}
+              minimumDate={addDays(startDate, minDays)}
+              maximumDate={addDays(startDate, maxDays)}
               onChange={handleEndDateChange}
             />
             {Platform.OS === 'ios' && (

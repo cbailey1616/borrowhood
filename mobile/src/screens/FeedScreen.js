@@ -27,7 +27,6 @@ import HeroIcon from '../components/HeroIcon';
 import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import SearchBar from '../components/SearchBar';
-import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonCard } from '../components/SkeletonLoader';
@@ -482,7 +481,7 @@ export default function FeedScreen({ navigation }) {
     const priceLabel = isGiveaway && !isSaleListing(item) ? null : (directFeeLabel(item) || (item.isFree ? 'Free' : `$${item.pricePerDay}/day`));
 
     return (
-    <AnimatedCard index={index} style={styles.tileShadow}>
+    <View style={styles.tileShadow}>
       <HapticPressable
         onPress={() => openFeedItem(item)}
         haptic="light"
@@ -551,7 +550,7 @@ export default function FeedScreen({ navigation }) {
         {/* Inline thread */}
         {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
       </HapticPressable>
-    </AnimatedCard>
+    </View>
     );
   };
 
@@ -577,7 +576,7 @@ export default function FeedScreen({ navigation }) {
     const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
-      <AnimatedCard index={index} style={styles.tileShadow}>
+      <View style={styles.tileShadow}>
         <HapticPressable
           onPress={() => openFeedItem(item)}
           haptic="light"
@@ -608,7 +607,7 @@ export default function FeedScreen({ navigation }) {
           {/* Inline thread */}
           {!item.ownerMasked && renderInlineThread(item.id, requestDiscussions[item.id], true)}
         </HapticPressable>
-      </AnimatedCard>
+      </View>
     );
   };
 
