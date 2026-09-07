@@ -15,14 +15,18 @@ beforeEach(() => {
 });
 
 describe('Auth Flow Integration', () => {
-  it('register stores tokens and sets user', async () => {
+  it('register completes only after email verification', async () => {
     const mockUser = { id: 'u-1', firstName: 'New', lastName: 'User' };
-    api.register.mockResolvedValue({ user: mockUser, accessToken: 'tok', refreshToken: 'ref' });
+    api.register.mockResolvedValue({ verificationRequired: true, challengeId: 'pending-1' });
+    api.verifySignupCode.mockResolvedValue({ user: mockUser, accessToken: 'tok', refreshToken: 'ref' });
     const { result } = renderHook(() => useAuth(), { wrapper });
     await act(async () => {
       await result.current.register({ firstName: 'New', lastName: 'User', email: 'new@test.com', password: 'pass1234' });
     });
     expect(api.register).toHaveBeenCalled();
+    expect(result.current.isAuthenticated).toBe(false);
+    await act(async () => result.current.verifySignupCode('pending-1','123456'));
+    expect(result.current.isAuthenticated).toBe(true);
   });
 
   it('login stores tokens and sets user', async () => {

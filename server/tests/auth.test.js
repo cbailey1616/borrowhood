@@ -6,19 +6,29 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import crypto from 'node:crypto';
-vi.mock('../src/services/email.js', () => ({ sendResetCodeEmail: vi.fn().mockResolvedValue(undefined), sendAccountHintEmail: vi.fn().mockResolvedValue(undefined) }));
-import { sendResetCodeEmail } from '../src/services/email.js';
+vi.mock('../src/services/email.js', () => ({ sendSignupCodeEmail: vi.fn().mockResolvedValue(undefined), sendSocialLinkCodeEmail: vi.fn().mockResolvedValue(undefined), sendResetCodeEmail: vi.fn().mockResolvedValue(undefined), sendAccountHintEmail: vi.fn().mockResolvedValue(undefined) }));
+import { sendResetCodeEmail, sendSignupCodeEmail } from '../src/services/email.js';
 import jwt from 'jsonwebtoken';
 import { query } from '../src/utils/db.js';
 import { createTestUser, createTestApp, cleanupTestUser } from './helpers/stripe.js';
 
+import { ensureSignupSchema } from '../src/services/signupVerification.js';
+
 let app;
 const createdUserIds = [];
+async function registerAndVerify(data) {
+  const pending = await request(app).post('/api/auth/register').send({ ...data, verificationFlow: 'email-code-v1' });
+  if (pending.status !== 202) return pending;
+  expect(pending.body.accessToken).toBeUndefined();
+  const code = sendSignupCodeEmail.mock.calls.filter(([recipient]) => recipient === pending.body.email).at(-1)[1];
+  return request(app).post('/api/auth/register/verify').send({ challengeId: pending.body.challengeId, code });
+}
+
 
 describe('Authenticated password changes', () => {
   it('requires the current password, changes only the signed-in account, and accepts the new password', async () => {
     const email = `change-${Date.now()}@authtest.borrowhood.test`;
-    const signup = await request(app).post('/api/auth/register').send({ email, password: 'OriginalPass123!', firstName: 'Password', lastName: 'Test' });
+    const signup = await registerAndVerify({ email, password: 'OriginalPass123!', firstName: 'Password', lastName: 'Test' });
     expect(signup.status).toBe(201);
     createdUserIds.push(signup.body.user.id);
     const endpoint = () => request(app).post('/api/auth/change-password').set('Authorization', `Bearer ${signup.body.accessToken}`);
@@ -37,6 +47,7 @@ describe('Authenticated password changes', () => {
 });
 
 beforeAll(async () => {
+  await ensureSignupSchema();
   app = await createTestApp(
     { path: '/api/auth', module: '../../src/routes/auth.js' }
   );
@@ -56,11 +67,32 @@ afterAll(async () => {
 });
 
 describe('POST /api/auth/register', () => {
+  it('requires a verification-capable client and creates no account for older builds', async () => {
+    const email = `old-client-${Date.now()}@authtest.borrowhood.test`;
+    const res = await request(app).post('/api/auth/register').send({ email, password: 'Password123!', firstName: 'Old', lastName: 'Client' });
+    expect(res.status).toBe(426);
+    expect(res.body.code).toBe('UPDATE_REQUIRED');
+    expect((await query('SELECT id FROM users WHERE email=$1', [email])).rows).toHaveLength(0);
+  });
+  it('does not allow signing in before confirmation and accepts the email code only once', async () => {
+    const email = `pending-${Date.now()}@authtest.borrowhood.test`;
+    const data = { email, password: 'Password123!', firstName: 'Pending', lastName: 'Neighbor', verificationFlow: 'email-code-v1' };
+    const pending = await request(app).post('/api/auth/register').send(data);
+    expect(pending.status).toBe(202);
+    expect(pending.body.accessToken).toBeUndefined();
+    expect((await request(app).post('/api/auth/login').send(data)).status).toBe(401);
+    const code = sendSignupCodeEmail.mock.calls.filter(([recipient])=>recipient===email).at(-1)[1];
+    const invalid = await request(app).post('/api/auth/register/verify').send({ challengeId: pending.body.challengeId, code: '000000' });
+    expect(invalid.status).toBe(400);
+    const verified = await request(app).post('/api/auth/register/verify').send({ challengeId: pending.body.challengeId, code });
+    expect(verified.status).toBe(201);
+    createdUserIds.push(verified.body.user.id);
+    expect((await request(app).post('/api/auth/register/verify').send({ challengeId: pending.body.challengeId, code })).status).toBe(400);
+    expect((await request(app).post('/api/auth/login').send(data)).status).toBe(200);
+  });
   it('should register a new user and return 201 with tokens', async () => {
     const email = `register-${Date.now()}@authtest.borrowhood.test`;
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
+    const res = await registerAndVerify({
         email,
         password: 'TestPass123!',
         firstName: 'Auth',
@@ -83,27 +115,21 @@ describe('POST /api/auth/register', () => {
     createdUserIds.push(res.body.user.id);
   });
 
-  it('should reject duplicate email with 400', async () => {
+  it('should reject duplicate email with 409', async () => {
     const email = `dup-${Date.now()}@authtest.borrowhood.test`;
     // Register first
-    const first = await request(app)
-      .post('/api/auth/register')
-      .send({ email, password: 'TestPass123!', firstName: 'Dup', lastName: 'User' });
+    const first = await registerAndVerify({ email, password: 'TestPass123!', firstName: 'Dup', lastName: 'User' });
     createdUserIds.push(first.body.user.id);
 
     // Register again with same email
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({ email, password: 'DifferentPass1!', firstName: 'Dup', lastName: 'Two' });
+    const res = await registerAndVerify({ email, password: 'DifferentPass1!', firstName: 'Dup', lastName: 'Two' });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body.error).toContain('already registered');
   });
 
   it('should reject password shorter than 8 characters', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
+    const res = await registerAndVerify({
         email: `short-${Date.now()}@authtest.borrowhood.test`,
         password: 'short',
         firstName: 'Short',
@@ -115,9 +141,7 @@ describe('POST /api/auth/register', () => {
   });
 
   it('should reject invalid email format', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
+    const res = await registerAndVerify({
         email: 'not-an-email',
         password: 'TestPass123!',
         firstName: 'Bad',
@@ -128,9 +152,7 @@ describe('POST /api/auth/register', () => {
   });
 
   it('should reject missing firstName', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
+    const res = await registerAndVerify({
         email: `nofn-${Date.now()}@authtest.borrowhood.test`,
         password: 'TestPass123!',
         lastName: 'User',
@@ -149,9 +171,7 @@ describe('POST /api/auth/register', () => {
     await query('UPDATE users SET referral_code = $1 WHERE id = $2', [code, referrer.userId]);
 
     // Register with referral code
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
+    const res = await registerAndVerify({
         email: `referred-${Date.now()}@authtest.borrowhood.test`,
         password: 'TestPass123!',
         firstName: 'Referred',
@@ -173,9 +193,7 @@ describe('POST /api/auth/login', () => {
 
   beforeAll(async () => {
     loginEmail = `login-${Date.now()}@authtest.borrowhood.test`;
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({
+    const res = await registerAndVerify({
         email: loginEmail,
         password: 'LoginPass123!',
         firstName: 'Login',
@@ -313,9 +331,7 @@ describe('POST /api/auth/forgot-password', () => {
 describe('POST /api/auth/reset-password', () => {
   it('should reset password with valid code', async () => {
     const email = `reset-${Date.now()}@authtest.borrowhood.test`;
-    const regRes = await request(app)
-      .post('/api/auth/register')
-      .send({ email, password: 'OldPass123!', firstName: 'Reset', lastName: 'User' });
+    const regRes = await registerAndVerify({ email, password: 'OldPass123!', firstName: 'Reset', lastName: 'User' });
     createdUserIds.push(regRes.body.user.id);
 
     // Request reset
@@ -347,9 +363,7 @@ describe('POST /api/auth/reset-password', () => {
 
   it('should reject invalid code with 400', async () => {
     const email = `badcode-${Date.now()}@authtest.borrowhood.test`;
-    const regRes = await request(app)
-      .post('/api/auth/register')
-      .send({ email, password: 'TestPass123!', firstName: 'Bad', lastName: 'Code' });
+    const regRes = await registerAndVerify({ email, password: 'TestPass123!', firstName: 'Bad', lastName: 'Code' });
     createdUserIds.push(regRes.body.user.id);
 
     const res = await request(app)
@@ -362,9 +376,7 @@ describe('POST /api/auth/reset-password', () => {
 
   it('should reject expired code', async () => {
     const email = `expcode-${Date.now()}@authtest.borrowhood.test`;
-    const regRes = await request(app)
-      .post('/api/auth/register')
-      .send({ email, password: 'TestPass123!', firstName: 'Exp', lastName: 'Code' });
+    const regRes = await registerAndVerify({ email, password: 'TestPass123!', firstName: 'Exp', lastName: 'Code' });
     createdUserIds.push(regRes.body.user.id);
 
     // Set expired token directly

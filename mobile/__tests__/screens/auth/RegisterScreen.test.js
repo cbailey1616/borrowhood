@@ -2,9 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 
 const mockRegister = jest.fn().mockResolvedValue({
-  user: { id: 'user-1' },
-  accessToken: 'token',
-  refreshToken: 'refresh',
+  verificationRequired: true, challengeId: 'challenge-1', email: 'jane@test.com', resendAfter: 60,
 });
 const mockShowError = jest.fn();
 
@@ -67,6 +65,8 @@ describe('RegisterScreen', () => {
         password: 'SecurePass123',
       })
     );
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('VerifySignupEmail', expect.objectContaining({ challengeId: 'challenge-1', email: 'jane@test.com' }));
+    expect(mockNavigation.navigate.mock.calls.at(-1)[1]).not.toHaveProperty('password');
   });
 
   it('validates required fields', async () => {

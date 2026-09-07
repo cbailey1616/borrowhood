@@ -99,7 +99,7 @@ export function accountHintEmail(providers = []) {
   };
 }
 
-// Prepared for email/password signup verification; no signup behavior changes here.
+// Used only by email/password signup; Apple and Google verify emails with their providers.
 export function signupCodeEmail(code) {
   return {
     subject: 'Confirm your Borrowhood email',

@@ -55,6 +55,7 @@ const request = async (endpoint, options = {}) => {
       const error = new Error(message || 'Something went wrong. Please try again.');
       error.status = response.status;
       error.code = data.code;
+      error.retryAfter = data.retryAfter;
       if (data.code === 'ACCOUNT_LINK_REQUIRED') error.email = data.email;
       error.requiredTier = data.requiredTier;
       throw error;
@@ -67,6 +68,7 @@ const request = async (endpoint, options = {}) => {
     const apiError = new Error(error.message || 'Network error');
     apiError.status = error.status;
     apiError.code = error.code;
+    apiError.retryAfter = error.retryAfter;
     apiError.email = error.email;
     apiError.requiredTier = error.requiredTier;
     throw apiError;
@@ -108,7 +110,10 @@ const login = (email, password) =>
   post('/auth/login', { email, password });
 
 const register = (data) =>
-  post('/auth/register', data);
+  post('/auth/register', { ...data, verificationFlow: 'email-code-v1' });
+
+const verifySignupCode = (challengeId, code) => post('/auth/register/verify', { challengeId, code });
+const resendSignupCode = (challengeId) => post('/auth/register/resend', { challengeId });
 
 const getMe = () =>
   get('/auth/me');
@@ -765,6 +770,8 @@ export default {
   // Auth
   login,
   register,
+  verifySignupCode,
+  resendSignupCode,
   getMe,
   startIdentityVerification,
   checkVerification,

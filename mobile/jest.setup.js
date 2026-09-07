@@ -388,6 +388,8 @@ jest.mock('./src/services/api', () => ({
     // Auth
     login: jest.fn(),
     register: jest.fn(),
+    verifySignupCode: jest.fn(),
+    resendSignupCode: jest.fn(),
     getMe: jest.fn(),
     forgotPassword: jest.fn(),
     resetPassword: jest.fn(),

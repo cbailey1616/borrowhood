@@ -18,7 +18,8 @@ beforeEach(() => {
   SecureStore.getItemAsync.mockResolvedValue(null);
   api.getMe.mockResolvedValue(mockResponse.user);
   api.login.mockResolvedValue(mockResponse);
-  api.register.mockResolvedValue(mockResponse);
+  api.register.mockResolvedValue({ verificationRequired: true, challengeId: 'challenge-1', email: 'new@test.com' });
+  api.verifySignupCode.mockResolvedValue(mockResponse);
   api.loginWithGoogle.mockResolvedValue(mockResponse);
   api.loginWithApple.mockResolvedValue(mockResponse);
 });
@@ -104,14 +105,21 @@ describe('AuthContext', () => {
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it('register stores tokens and sets user', async () => {
+  it('registration waits for a code before saving a session', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
-    await waitFor(() => { expect(result.current.isLoading).toBe(false); });
-    await act(async () => {
-      await result.current.register({ email: 'new@test.com', password: 'pass123' });
-    });
-    expect(api.register).toHaveBeenCalled();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    let challenge;
+    await act(async () => { challenge = await result.current.register({ email: 'new@test.com', password: 'pass1234' }); });
+    expect(challenge.challengeId).toBe('challenge-1');
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+    api.verifySignupCode.mockRejectedValueOnce(new Error('Incorrect code'));
+    await act(async () => { await expect(result.current.verifySignupCode('challenge-1','000000')).rejects.toThrow('Incorrect code'); });
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+    await act(async () => result.current.verifySignupCode('challenge-1','123456'));
     expect(result.current.isAuthenticated).toBe(true);
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith('accessToken', mockResponse.accessToken);
   });
 
   it('loginWithGoogle stores tokens and sets user', async () => {

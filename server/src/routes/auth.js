@@ -11,110 +11,51 @@ import { sendNotification } from '../services/notifications.js';
 import { sendResetCodeEmail, sendAccountHintEmail } from '../services/email.js';
 import { body, validationResult } from 'express-validator';
 
+import { startSignup, completeSignup, resendSignupCode } from '../services/signupVerification.js';
+
 const router = Router();
 
 // ============================================
 // POST /api/auth/register
 // ============================================
+const signupError = (res, error) => res.status(error.status || (error.code === '23505' ? 409 : 500)).json({
+  error: error.status ? error.message : (error.code === '23505' ? 'This email is already registered. Please sign in.' : 'Could not finish signing up. Please try again.'),
+  code: error.status ? error.code : undefined, retryAfter: error.retryAfter,
+});
 router.post('/register',
-  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail(),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('firstName').trim().notEmpty().withMessage('First name is required'),
-  body('lastName').trim().notEmpty().withMessage('Last name is required'),
+  body('email').isEmail().isLength({ max: 255 }).withMessage('Please enter a valid email address').normalizeEmail(),
+  body('password').isString().bail().isLength({ min: 8, max: 72 }).withMessage('Use a password between 8 and 72 characters').bail()
+    .custom(value => Buffer.byteLength(value, 'utf8') <= 72).withMessage('Please use a shorter password'),
+  body('firstName').trim().isLength({ min: 1, max: 100 }).withMessage('First name is required'),
+  body('lastName').trim().isLength({ min: 1, max: 100 }).withMessage('Last name is required'),
   body('phone').optional({ values: 'falsy' }).isMobilePhone().withMessage('Please enter a valid phone number'),
+  body('referralCode').optional({ values: 'falsy' }).isString().isLength({ max: 20 }),
   async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.error('Registration validation errors:', errors.array());
-      const messages = errors.array().map(e => e.msg);
-      return res.status(400).json({ error: messages[0], errors: errors.array() });
+    if (!errors.isEmpty()) return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array().map(({ msg, path }) => ({ msg, path })) });
+    if (req.body.verificationFlow !== 'email-code-v1') {
+      return res.status(426).json({ error: 'Please update Borrowhood to create an account with email verification. You can also continue with Apple or Google.', code: 'UPDATE_REQUIRED' });
     }
-
-    const { email, password, firstName, lastName, phone, referralCode } = req.body;
-
-    try {
-      // Check if email exists
-      const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
-      if (existing.rows.length > 0) {
-        return res.status(400).json({ error: 'Email already registered' });
-      }
-
-      // Look up referrer by referral code (if provided)
-      let referrerId = null;
-      if (referralCode) {
-        const referrerResult = await query(
-          'SELECT id FROM users WHERE referral_code = $1',
-          [referralCode.trim()]
-        );
-        if (referrerResult.rows.length > 0) {
-          referrerId = referrerResult.rows[0].id;
-        }
-      }
-
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 12);
-
-      // Create Stripe customer (optional in development)
-      let stripeCustomerId = null;
-      try {
-        const stripeCustomer = await createStripeCustomer(email, `${firstName} ${lastName}`);
-        stripeCustomerId = stripeCustomer.id;
-      } catch (stripeErr) {
-        console.warn('Stripe customer creation skipped:', stripeErr.message);
-      }
-
-      // Insert user with referral info
-      const result = await query(
-        `INSERT INTO users (email, password_hash, first_name, last_name, phone, stripe_customer_id, referred_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, email, first_name, last_name, status`,
-        [email, passwordHash, firstName, lastName, phone, stripeCustomerId, referrerId]
-      );
-
-      const user = result.rows[0];
-
-      // Generate referral code for new user
-      const newReferralCode = 'BH-' + user.id.replace(/-/g, '').substring(0, 8);
-      await query(
-        'UPDATE users SET referral_code = $1 WHERE id = $2',
-        [newReferralCode, user.id]
-      );
-
-      // Notify referrer that someone joined with their code
-      if (referrerId) {
-        try {
-          await sendNotification(referrerId, 'referral_joined', {
-            friendName: `${firstName} ${lastName}`,
-          }, { fromUserId: user.id });
-        } catch (notifErr) {
-          console.warn('Failed to send referral notification:', notifErr.message);
-        }
-      }
-
-      const tokens = generateTokens(user.id);
-
-      res.status(201).json({
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          status: user.status,
-          onboardingCompleted: false,
-          onboardingStep: 0,
-        },
-        ...tokens,
-      });
-    } catch (err) {
-      console.error('Registration error:', err);
-      if (err.code === '23505') {
-        // Unique constraint violation (e.g., duplicate email)
-        return res.status(400).json({ error: 'An account with this email already exists.' });
-      }
-      res.status(500).json({ error: 'Something went wrong creating your account. Please try again.' });
-    }
+    try { res.status(202).json(await startSignup(req.body)); }
+    catch (error) { signupError(res, error); }
   }
 );
+router.post('/register/resend', body('challengeId').isUUID(), async (req, res) => {
+  if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Please start signing up again.' });
+  try { res.json(await resendSignupCode(req.body.challengeId)); }
+  catch (error) { signupError(res, error); }
+});
+router.post('/register/verify', body('challengeId').isUUID(), body('code').isString().matches(/^\d{6}$/), async (req, res) => {
+  if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Enter the six-digit code from your email.' });
+  try {
+    const { user, referrerId, accessToken, refreshToken } = await completeSignup(req.body.challengeId, req.body.code);
+    if (referrerId) {
+      await sendNotification(referrerId, 'referral_joined', { friendName: `${user.first_name} ${user.last_name}` }, { fromUserId: user.id }).catch(() => {});
+    }
+    res.status(201).json({ user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name,
+      status: user.status, onboardingCompleted: false, onboardingStep: 1 }, accessToken, refreshToken });
+  } catch (error) { signupError(res, error); }
+});
 
 // ============================================
 // POST /api/auth/login

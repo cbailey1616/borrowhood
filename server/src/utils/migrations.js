@@ -1,5 +1,6 @@
 import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
+import { ensureSignupSchema } from '../services/signupVerification.js';
 
 /**
  * Run pending migrations on server startup
@@ -7,6 +8,7 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    await ensureSignupSchema();
     // Older production installations run startup migrations without the numbered
     // SQL files. Social sign-in needs these columns even when password reset
     // columns already exist and its older migration guard is skipped.
