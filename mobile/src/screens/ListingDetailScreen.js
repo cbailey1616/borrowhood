@@ -848,11 +848,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.headline,
   },
   deleteButton: {
+    backgroundColor: COLORS.dangerMuted,
     width: 52,
     height: 52,
     borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: COLORS.borderGreen,
+    borderColor: COLORS.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },

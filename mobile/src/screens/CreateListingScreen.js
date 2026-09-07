@@ -82,7 +82,7 @@ export default function CreateListingScreen({ navigation, route }) {
   });
   const listingType = formData.listingType;
   const isGiveaway = listingType === 'giveaway';
-  const isSale = isGiveaway && formData.giveawayMode === 'sell';
+  const isSale = false;
   const setListingType = value => setFormData(prev => ({ ...prev, listingType: value }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -266,7 +266,7 @@ export default function CreateListingScreen({ navigation, route }) {
     if (!draft.ready || isSubmitting) return;
     const data = overrideData || formData;
     let directFee;
-    try { directFee = directFeePayload(isGiveaway ? isSale : data.chargeFee, isGiveaway ? data.salePrice : data.directFeeAmount, isGiveaway ? 'flat' : 'day'); }
+    try { directFee = directFeePayload(isGiveaway ? false : data.chargeFee, isGiveaway ? data.salePrice : data.directFeeAmount, isGiveaway ? 'flat' : 'day'); }
     catch (error) { showError({ message: error.message }); return; }
 
     const errors = {

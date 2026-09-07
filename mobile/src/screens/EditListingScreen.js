@@ -168,7 +168,7 @@ export default function EditListingScreen({ navigation, route }) {
     }
 
     let directFee;
-    try { directFee = directFeePayload(listing.listingType === 'giveaway' ? formData.giveawayMode === 'sell' : formData.chargeFee, formData.directFeeAmount, listing.listingType === 'giveaway' ? 'flat' : listing.directFee?.unit || 'day'); }
+    try { directFee = directFeePayload(listing.listingType === 'giveaway' ? false : formData.chargeFee, formData.directFeeAmount, listing.listingType === 'giveaway' ? 'flat' : listing.directFee?.unit || 'day'); }
     catch (error) { showError({ message: error.message }); return; }
     // Validate rental fee when charging ($5 minimum to cover processing fees)
     if (ENABLE_PAYMENTS && !formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
@@ -238,7 +238,7 @@ export default function EditListingScreen({ navigation, route }) {
         sharingConfirmed: true,
         townPreviewEnabled: true,
         directFee,
-        giveawayMode: listing.listingType === 'giveaway' ? formData.giveawayMode : undefined,
+        giveawayMode: listing.listingType === 'giveaway' ? 'free' : undefined,
         circleId: formData.circleId || undefined,
         communityId: formData.communityId || undefined,
         isFree: !ENABLE_PAYMENTS || formData.isFree,

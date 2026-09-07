@@ -41,15 +41,13 @@ describe('EditListingScreen', () => {
     expect(api.updateListing).toHaveBeenCalled();
   });
 
-  it.each(['sell', 'free'])('preserves a sale or changes it to %s', async mode => {
+  it('saves giveaways as free even with a legacy price', async () => {
     const Screen = require('../../src/screens/EditListingScreen').default;
     const saleRoute = { params: { listing: { ...listing, listingType: 'giveaway', directFee: { amount: 25, unit: 'flat', currency: 'USD' } } } };
     const screen = render(<Screen navigation={mockNavigation} route={saleRoute} />);
-    expect(screen.getByLabelText('Sale price').props.value).toBe('25');
-    if (mode === 'free') fireEvent.press(screen.getByLabelText('Free'));
-    else fireEvent.changeText(screen.getByLabelText('Sale price'), '30');
+    expect(screen.queryByLabelText('Sale price')).toBeNull();
     await act(async () => fireEvent.press(screen.getByText('Save Changes')));
-    expect(api.updateListing).toHaveBeenCalledWith('l-1', expect.objectContaining({ directFee: mode === 'free' ? null : { amount: 30, unit: 'flat', currency: 'USD' } }));
+    expect(api.updateListing).toHaveBeenCalledWith('l-1', expect.objectContaining({ directFee: null, giveawayMode: 'free' }));
   });
 
   it('validates required fields', async () => {

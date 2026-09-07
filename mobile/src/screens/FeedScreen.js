@@ -527,7 +527,6 @@ export default function FeedScreen({ navigation }) {
                 </View>
               ) : (
                 <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? accent.pill : COLORS.textMuted }]}>
-                  <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
                   <Text style={styles.tilePillText}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Borrowable' : 'Unavailable'}</Text>
                 </View>
               )}

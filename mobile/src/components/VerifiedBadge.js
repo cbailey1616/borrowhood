@@ -32,7 +32,7 @@ function IdentityInfoBadge({ size }) {
     </HapticPressable>
     {visible && <ActionSheet isVisible onClose={() => setVisible(false)}
       title="A little extra peace of mind"
-      message={`This person’s identity has been verified. It helps you know who you’re sharing with.${!verified ? '\n\nBuild trust in your town. Get verified with a quick ID and selfie check.' : ''}\n\nVerification confirms identity, not a guarantee of someone’s behavior.`}
+      message={`This person’s identity has been verified. It helps you know who you’re sharing with.${!verified ? '\n\nBuild trust in your town. Get verified with a quick ID and selfie check.' : ''}`}
       cancelLabel="Got it"
       actions={verified ? [] : [{ label: 'Build town trust · Get verified',
         icon: <Ionicons name="shield-checkmark" size={28} illustrated />,

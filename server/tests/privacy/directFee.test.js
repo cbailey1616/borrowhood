@@ -8,8 +8,8 @@ describe('offline informational pricing', () => {
   it('rejects recurring prices for permanent transfers', () => {
     expect(() => normalizeDirectFee({ amount: 5, unit: 'day' }, 'giveaway')).toThrow();
   });
-  it('allows a one-time sale price without checkout or rental fees', () => {
-    expect(normalizeDirectFee({ amount: 25.5, unit: 'flat' }, 'giveaway')).toEqual({ amount: 25.5, unit: 'flat', currency: 'USD' });
+  it('rejects one-time prices on giveaways', () => {
+    expect(() => normalizeDirectFee({ amount: 25.5, unit: 'flat' }, 'giveaway')).toThrow('Giveaways must be free.');
     expect(normalizeDirectFee(null, 'giveaway')).toBeNull();
   });
   it.each([NaN, Infinity, -1, 0, 1.234, 100001, '2.50'])('rejects invalid amount %s', amount => {
