@@ -22,13 +22,15 @@ The user's design standard is warm cream surfaces, forest green actions, sage ac
 
 - Add administrator report review with database history, mandatory decision notes, stale-review protection and explicit suspension confirmation. Existing reports remain available. Personal blocks are separate. Suspensions deny authenticated access and discovery; verification callbacks preserve suspensions. Deletion no longer fails because of report foreign keys.
 
+- Remove unused background-location and microphone permissions; keep foreground town lookup optional and clarify that photos can be used in listings and private chats. Installed Expo plugins are configured to avoid reintroducing those permissions.
+
 ## Verification evidence
 
 - Full mobile run: **672 tests passed in 114 suites** (local, production-source components with mocked native/services).
 - Isolated server privacy/service run: **133 tests passed in 13 files**.
 - Static screen inventory found no enabled Pressable/HapticPressable/Switch without a handler. All mobile source files parsed; reference scan found no unbound identifiers.
 - Added meaningful coverage for Community Members, Request Suggestions, Insights, expiry races, image failure, real native invitations, confirmation actions, and legacy notification copy.
-- Required remote gates: full PostgreSQL/PostGIS API tests, migrations replayed safely, HTTP auth/privacy checks, and production iOS JavaScript export. See PR checks for completion; local isolated tests do not replace these gates.
+- Remote checks passed for audit source 09f745e: 269 full API tests in 19 suites, 101 HTTP checks, disposable PostgreSQL/PostGIS policy checks, migrations replayed twice, 672 mobile tests and production iOS JavaScript export. The final permission-copy follow-up is verified by its own PR checks.
 - Browser visual review could not reach the local Expo preview (browser reported ERR_BLOCKED_BY_CLIENT). No visual pass or device pass is claimed.
 
 ## Open checks before App Store submission
@@ -119,5 +121,4 @@ Every row received a source-level theme/purpose/navigation review. “Current”
 | `onboarding/OnboardingTownScreen.js` | Current | Present |
 | `onboarding/OnboardingVerifyScreen.js` | Current | Present |
 | `onboarding/OnboardingWelcomeScreen.js` | Inactive | Present |
-
 | `SafetyReportsScreen.js` | Current, administrator only | Present |
