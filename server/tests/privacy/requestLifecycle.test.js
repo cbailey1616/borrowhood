@@ -41,7 +41,7 @@ it('sends a private offer and grants the requester access to only that item', as
   expect((await state.db.query('SELECT * FROM listing_shares')).rows).toHaveLength(1);
 });
 
-it.each(["status='closed'", "expires_at=NOW()-INTERVAL '1 second'", 'needed_until=CURRENT_DATE-1'])('explains ended requests without creating an offer: %s', async change => {
+it.each(["status='closed'", "expires_at=NOW()-INTERVAL '1 second'", 'needed_until=(NOW() AT TIME ZONE time_zone)::date-1'])('explains ended requests without creating an offer: %s', async change => {
   await state.db.exec(`UPDATE item_requests SET ${change}`);
   await expect(offerListing('request','drill','owner')).rejects.toMatchObject({ status: 410, code: 'REQUEST_ENDED' });
   expect((await state.db.query('SELECT * FROM listing_shares')).rows).toHaveLength(0);

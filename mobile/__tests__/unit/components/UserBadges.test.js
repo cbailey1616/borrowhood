@@ -27,19 +27,23 @@ describe('UserBadges', () => {
     expect(getByText('Verified identity')).toBeTruthy();
   });
 
-  it('renders Outlaw tier for 15 transactions', () => {
+  it('renders Outlaw tier for 100 transactions', () => {
     const UserBadges = require('../../../src/components/UserBadges').default;
     const { getByText } = render(
-      <UserBadges isVerified={false} totalTransactions={15} />
+      <UserBadges isVerified={false} totalTransactions={100} />
     );
     expect(getByText('Outlaw · About ranks')).toBeTruthy();
   });
 
-  it('renders Sherwood Ranger tier for 31+ transactions', () => {
+  it('renders Sherwood Ranger tier for 250 transactions', () => {
     const UserBadges = require('../../../src/components/UserBadges').default;
     const { getByText } = render(
-      <UserBadges isVerified={false} totalTransactions={35} />
+      <UserBadges isVerified={false} totalTransactions={250} />
     );
     expect(getByText('Sherwood Ranger · About ranks')).toBeTruthy();
+  });
+  it.each([[0, 'Squire'], [24, 'Squire'], [25, 'Archer'], [99, 'Archer'], [100, 'Outlaw'], [249, 'Outlaw'], [250, 'Sherwood Ranger'], [999, 'Sherwood Ranger'], [1000, 'Robin']])('assigns %i completed exchanges to %s', (count, expected) => {
+    const { getTier } = require('../../../src/components/UserBadges');
+    expect(getTier(count).label).toBe(expected);
   });
 });

@@ -3,6 +3,7 @@ import { act, render } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import ShimmerImage from '../../../src/components/ShimmerImage';
 import { getDecodedImage, loadDecodedImage } from '../../../src/utils/decodedImageCache';
+import { API_URL } from '../../../src/utils/config';
 
 // Observe the props committed to the native boundary, rather than mocking the
 // app's image component or only testing the cache Map.
@@ -77,6 +78,22 @@ it('starts with the cached native image when the photo mounts on another screen'
   render(<ShimmerImage source={{ uri }} style={style} />);
   expect(Image.sources).toEqual([ref, ref]);
   expect(loadDecodedImage).not.toHaveBeenCalled();
+});
+
+it('keeps the decoded photo visible when a refresh rotates its private access URL', async () => {
+  const key = 'a'.repeat(64);
+  const url = token => `${API_URL}/private-photos/${token}?photo=${key}`;
+  const screen = render(<ShimmerImage source={{ uri: url('first-token') }} style={style} />);
+  await act(async () => finish(ref));
+  const nativeView = screen.getByTestId('native-photo');
+  Image.sources = [];
+  screen.rerender(<ShimmerImage source={{ uri: url('fresh-token') }} style={style} />);
+  screen.rerender(<ShimmerImage source={{ uri: url('another-fresh-token') }} style={style} />);
+  expect(screen.getByTestId('native-photo')).toBe(nativeView);
+  expect(nativeView.props.source).toBe(ref);
+  expect(Image.sources).toEqual([]);
+  expect(Image.mounted).toHaveBeenCalledTimes(1);
+  expect(loadDecodedImage).toHaveBeenCalledTimes(1);
 });
 
 it('retains its displayed ref when another screen evicts and reloads the same URL', () => {

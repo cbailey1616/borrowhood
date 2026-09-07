@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { townPreviewSql } from './townPreview.js';
 import { S3Client, GetObjectCommand, GetPublicAccessBlockCommand } from '@aws-sdk/client-s3';
 import { query } from '../utils/db.js';
@@ -29,19 +29,23 @@ function decryptSource(data) {
   return Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString('utf8');
 }
 
-export function privatePhotoUrl(url, userId) {
+export function privatePhotoUrl(url, userId, sessionVersion = '') {
   if (!url) return null;
+  // Access tokens rotate on every response; photo identity must not. This
+  // opaque, viewer-scoped key reveals neither the storage URL nor uploader ID.
+  const cacheKey = createHmac('sha256', process.env.JWT_SECRET)
+    .update(JSON.stringify(['photo-cache-v1', userId, sessionVersion, url])).digest('hex');
   // Storage paths contain uploader IDs. Signing alone does not hide those IDs.
-  const token = jwt.sign({ enc: encryptSource(url) }, process.env.JWT_SECRET, {
+  const token = jwt.sign({ enc: encryptSource(url), photoCacheKey: cacheKey }, process.env.JWT_SECRET, {
     algorithm: 'HS256', subject: userId, audience: 'listing-photo', expiresIn: '1h',
   });
-  return `${origin()}/api/private-photos/${token}`;
+  return `${origin()}/api/private-photos/${token}?photo=${cacheKey}`;
 }
 
 // Editing must retain the original storage reference, not a temporary display URL.
 export function originalPhotoUrl(url, userId) {
   if (!url.includes('/api/private-photos/')) return url;
-  const token = url.split('/api/private-photos/')[1];
+  const token = new URL(url).pathname.split('/api/private-photos/')[1];
   const data = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'], audience: 'listing-photo', subject: userId });
   return decryptSource(data);
 }
@@ -96,7 +100,7 @@ export function protectMediaResponses(req, res, next) {
     if (userId) res.set?.('Cache-Control', 'private, no-store');
     const walk = (value, field = '') => {
       if (typeof value === 'string' && /(?:photoUrls?|imageUrls?|photos|profilePhotoUrl|bannerUrl|evidenceUrls|damageEvidenceUrls)$/i.test(field) && managedPhoto(value)) {
-        return userId ? privatePhotoUrl(value, userId) : null;
+        return userId ? privatePhotoUrl(value, userId, req.user?.token_invalidated_at ? new Date(req.user.token_invalidated_at).toISOString() : '') : null;
       }
       if (Array.isArray(value)) return value.map(item => walk(item, field));
       if (value && typeof value === 'object' && !(value instanceof Date)) {
@@ -112,6 +116,7 @@ export function protectMediaResponses(req, res, next) {
 export async function servePrivatePhoto(req, res) {
   try {
     const data = jwt.verify(req.params.token, process.env.JWT_SECRET, { algorithms: ['HS256'], audience: 'listing-photo' });
+    if (req.query.photo && req.query.photo !== data.photoCacheKey) return res.sendStatus(404);
     data.src = decryptSource(data);
     const viewer = await query(`SELECT id FROM users WHERE id = $1 AND status != 'suspended'
       AND (token_invalidated_at IS NULL OR token_invalidated_at <= to_timestamp($2))`, [data.sub, data.iat]);

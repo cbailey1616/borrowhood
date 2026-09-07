@@ -39,8 +39,8 @@ describe('UserProfileScreen', () => {
   it('displays tier badge based on transaction count', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    // User with 15 transactions = Outlaw tier (11-30)
-    await findByText('Outlaw · About ranks');
+    // Squire now covers the first 25 completed exchanges.
+    await findByText('Squire · About ranks');
   });
 });
 

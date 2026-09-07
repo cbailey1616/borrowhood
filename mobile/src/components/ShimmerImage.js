@@ -3,12 +3,14 @@ import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import SkeletonShape from './SkeletonLoader';
 import { getDecodedImage, loadDecodedImage } from '../utils/decodedImageCache';
+import { imageIdentity } from '../utils/imageIdentity';
 
 export default function ShimmerImage({ source, ...props }) {
   const src = typeof source === 'object' && source?.uri ? source.uri : source;
   // A different photo gets its own state and native view. Changing recyclingKey
   // on an existing iOS ImageRef view can clear the image after source renders it.
-  return <Photo key={typeof src === 'string' || typeof src === 'number' ? src : undefined} src={src} {...props} />;
+  const key = imageIdentity(src);
+  return <Photo key={typeof key === 'string' || typeof key === 'number' ? key : undefined} src={src} {...props} />;
 }
 
 function Photo({ src, style, ...imageProps }) {
