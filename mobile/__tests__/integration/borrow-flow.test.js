@@ -5,6 +5,8 @@ import api from '../../src/services/api';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
 
+jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
+
 jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }),
 }));

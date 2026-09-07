@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { directFeeLabel, isSaleListing } from '../utils/directFee';
+import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -34,7 +34,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
   };
 
   const renderSuggestion = ({ item }) => {
-    const isGiveaway = item.listingType === 'giveaway';
+    const isGiveaway = isTransferListing(item);
     const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
@@ -63,7 +63,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
               {(!isGiveaway || isSaleListing(item)) && (
                 <View style={[styles.pill, { backgroundColor: COLORS.primary }]}>
                   <Text style={styles.pillText}>
-                    {directFeeLabel(item) || (item.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow')}
+                    {directFeeLabel(item) || (isTransferListing(item) ? 'Free to keep' : 'Free to borrow')}
                   </Text>
                 </View>
               )}

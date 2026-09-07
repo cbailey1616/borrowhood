@@ -82,12 +82,31 @@ describe('CreateListingScreen', () => {
     fireEvent.changeText(screen.getByLabelText('Listing title'), 'Desk chair');
     fireEvent.changeText(screen.getByLabelText('Listing description'), 'Good condition, adjustable height.');
     await act(async () => fireEvent.press(screen.getByText('Camera')));
-    fireEvent.press(screen.getByText('Give away'));
-    expect(screen.queryByLabelText('Sell')).toBeNull();
+    fireEvent.press(screen.getByText('Giveaway'));
+    expect(screen.queryByLabelText('Sale price')).toBeNull();
     await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
     expect(api.createListing).toHaveBeenCalledWith(expect.objectContaining({
       description: 'Good condition, adjustable height.', listingType: 'giveaway',
       directFee: null,
+      depositAmount: 0,
+    }));
+  });
+  it('creates a distinct sale with a one-time price and no return dates', async () => {
+    ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///listing.jpg' }] });
+    api.uploadImages.mockResolvedValueOnce(['https://example.com/listing.jpg']);
+    const Screen = require('../../src/screens/CreateListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await waitFor(() => expect(screen.getByTestId('CreateListing.button.submit')).not.toBeDisabled());
+    fireEvent.changeText(screen.getByLabelText('Listing title'), 'Desk chair');
+    fireEvent.changeText(screen.getByLabelText('Listing description'), 'Good condition, adjustable height.');
+    await act(async () => fireEvent.press(screen.getByText('Camera')));
+    fireEvent.press(screen.getByLabelText('Sell'));
+    fireEvent.changeText(screen.getByLabelText('Sale price'), '25.50');
+    await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
+    expect(api.createListing).toHaveBeenCalledWith(expect.objectContaining({
+      description: 'Good condition, adjustable height.', listingType: 'sell',
+      directFee: { amount: 25.5, unit: 'flat', currency: 'USD' },
+      minDuration: undefined, maxDuration: undefined,
       depositAmount: 0,
     }));
   });

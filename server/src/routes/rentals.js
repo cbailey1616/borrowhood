@@ -283,7 +283,7 @@ router.post('/:id/pickup', authenticate,
         'SELECT listing_type FROM listings WHERE id = $1',
         [t.listing_id]
       );
-      const isGiveaway = listingCheck.rows[0]?.listing_type === 'giveaway';
+      const isGiveaway = ['giveaway', 'sell'].includes(listingCheck.rows[0]?.listing_type);
 
       if (isGiveaway) {
         // Giveaway: pickup = complete. No return step needed.
@@ -359,7 +359,7 @@ router.post('/:id/return', authenticate,
 
       // Giveaways are permanent — no return flow
       const listing = await query('SELECT listing_type FROM listings WHERE id = $1', [t.listing_id]);
-      if (listing.rows[0]?.listing_type === 'giveaway') {
+      if (['giveaway', 'sell'].includes(listing.rows[0]?.listing_type)) {
         return res.status(400).json({ error: 'Free items cannot be processed through the return flow' });
       }
 

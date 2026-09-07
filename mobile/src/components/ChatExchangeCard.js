@@ -1,3 +1,4 @@
+import { isTransferListing } from '../utils/directFee';
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import HapticPressable from './HapticPressable';
@@ -29,7 +30,7 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   }, [refresh, focused, otherId]);
   const exchange = exchanges.find(t => t.id === selectedId) || exchanges[0];
   if (!exchange) return error ? <HapticPressable accessibilityRole="button" onPress={refresh} style={styles.retry}><Text style={styles.secondary}>{error} Tap to retry.</Text></HapticPressable> : null;
-  const guidance = borrowGuidance({ status: exchange.status, isBorrower: exchange.borrower?.id === userId, isGiveaway: exchange.listingType === 'giveaway' });
+  const guidance = borrowGuidance({ status: exchange.status, isBorrower: exchange.borrower?.id === userId, isGiveaway: isTransferListing(exchange) });
   const action = exchangeAction(exchange, userId);
   const details = () => navigation.navigate('TransactionDetail', { id: exchange.id });
   const perform = () => {
@@ -48,7 +49,7 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   return <View style={styles.card}>
     <HapticPressable accessibilityRole="button" accessibilityLabel={`Borrow details for ${exchange.listing?.title}`} onPress={details} style={styles.heading}>
       <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
-      <View style={{ flex: 1 }}><Text style={styles.title} numberOfLines={1}>{exchange.listing?.title}</Text><Text style={styles.secondary}>{date(exchange.startDate)}{exchange.endDate && exchange.listingType !== 'giveaway' ? ` – ${date(exchange.endDate)}` : ''} · {guidance.title}</Text></View>
+      <View style={{ flex: 1 }}><Text style={styles.title} numberOfLines={1}>{exchange.listing?.title}</Text><Text style={styles.secondary}>{date(exchange.startDate)}{exchange.endDate && !isTransferListing(exchange) ? ` – ${date(exchange.endDate)}` : ''} · {guidance.title}</Text></View>
     </HapticPressable>
     {!!error && <Text accessibilityRole="alert" style={styles.secondary}>{error}</Text>}
     <View style={styles.actions}>

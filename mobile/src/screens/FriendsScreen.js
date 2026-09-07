@@ -11,7 +11,8 @@ import {
   Linking,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
-import * as SMS from 'expo-sms';
+import { inviteToAlpha } from '../utils/alphaInvite';
+import { useError } from '../context/ErrorContext';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
@@ -22,6 +23,7 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function FriendsScreen({ navigation, route }) {
+  const { showError } = useError();
   const [activeTab, setActiveTab] = useState(route.params?.initialTab || 'friends'); // 'friends', 'requests', 'contacts', or 'search'
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
@@ -315,15 +317,11 @@ export default function FriendsScreen({ navigation, route }) {
   };
 
   const handleInvite = async (contact) => {
-    const isAvailable = await SMS.isAvailableAsync();
-    if (!isAvailable) {
-      return;
+    try {
+      await inviteToAlpha(contact?.phone);
+    } catch {
+      showError('Could not open invitation', 'Please try again.');
     }
-
-    await SMS.sendSMSAsync(
-      [contact.phone],
-      `Hey! I'm using Borrowhood to share and borrow items with neighbors. Join me! https://borrowhood.com/download`
-    );
   };
 
   const openSettings = () => {
@@ -700,11 +698,7 @@ export default function FriendsScreen({ navigation, route }) {
         actions={[
           { label: 'From contacts', icon: <Ionicons name="people" size={30} color={COLORS.primary} />, onPress: () => switchTab('contacts') },
           { label: 'Search people', icon: <Ionicons name="search" size={30} color={COLORS.primary} />, onPress: () => switchTab('search') },
-          { label: 'Invite by text', icon: <Ionicons name="paper-plane" size={30} color={COLORS.primary} />, onPress: async () => {
-            try {
-              if (await SMS.isAvailableAsync()) await SMS.sendSMSAsync([], `Hey! I'm using Borrowhood to share and borrow items with neighbors. Join me! https://borrowhood.com/download`);
-            } catch { haptics.error(); }
-          } },
+          { label: 'Invite by text', icon: <Ionicons name="paper-plane" size={30} color={COLORS.primary} />, onPress: () => handleInvite() },
         ]}
       />
 

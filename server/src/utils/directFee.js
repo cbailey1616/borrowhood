@@ -1,6 +1,10 @@
 // Informational only. Never use this field to calculate or collect payments.
 export function normalizeDirectFee(value, listingType) {
-  if (value == null) return null;
+  if (value == null) {
+    if (listingType === 'sell') throw new Error('A sale price is required.');
+    return null;
+  }
+  if (listingType === 'sell' && value.unit !== 'flat') throw new Error('Sale prices must be a one-time amount.');
   if (listingType === 'giveaway') throw new Error('Giveaways must be free.');
   if (typeof value !== 'object' || Array.isArray(value) ||
       typeof value.amount !== 'number' || !Number.isFinite(value.amount) ||
