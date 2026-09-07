@@ -493,7 +493,7 @@ export default function FeedScreen({ navigation }) {
         onPress={() => openFeedItem(item)}
         haptic="light"
         scaleDown={0.98}
-        style={styles.tile}
+        style={[styles.tile, isGiveaway && { borderColor: '#B59A53', borderWidth: 1.5 }]}
         testID="FeedCard"
       >
           {/* Thumbnail + Content row */}
@@ -528,7 +528,7 @@ export default function FeedScreen({ navigation }) {
             <View style={styles.tileTopRow}>
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
-                  <Ionicons name="gift" size={10} color="#fff" />
+                  <Ionicons name="gift" size={18} illustrated />
                   <Text style={styles.tilePillText}>GIVEAWAY</Text>
                 </View>
               ) : (
