@@ -1,3 +1,4 @@
+import { publicReplyRoute } from '../utils/conversationContext';
 import { useState, useCallback } from 'react';
 import {
   View,
@@ -153,6 +154,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       } catch (e) {}
     }
 
+    const publicRoute = publicReplyRoute(item);
+    if (publicRoute) { nav.navigate('ListingDiscussion', publicRoute); return; }
     if (item.type === 'new_message') {
       if (item.conversationId) {
         nav.navigate('Chat', { conversationId: item.conversationId });
@@ -169,10 +172,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       nav.navigate('CommunityMembers');
     } else if (item.type === 'join_approved') {
       nav.navigate('MyCommunity');
-    } else if (item.type === 'request_comment' && item.requestId) {
-      nav.navigate('RequestDetail', { id: item.requestId });
-    } else if (['listing_comment', 'discussion_reply'].includes(item.type) && item.listingId) {
-      nav.navigate('ListingDiscussion', { listingId: item.listingId });
     } else if (['new_rating', 'rating_received'].includes(item.type) && !item.transactionId) {
       nav.navigate('UserProfile', { id: user?.id });
     } else if (item.disputeId) {
@@ -220,6 +219,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
             <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
           </View>
           <Text style={styles.lastMessage} numberOfLines={2}>{item.body}</Text>
+          {!!publicReplyRoute(item) && <Text style={styles.listingText}>Public reply · opens the original post’s replies</Text>}
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
       </HapticPressable>
@@ -253,6 +253,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
             </Text>
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
+          <Text style={styles.listingText}>Private conversation</Text>
           {item.listing && (
             <View style={styles.listingRow}>
               <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />

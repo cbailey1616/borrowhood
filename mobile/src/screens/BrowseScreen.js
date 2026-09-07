@@ -1,3 +1,4 @@
+import { directFeeLabel } from '../utils/directFee';
 import { useState, useEffect, useCallback } from 'react';
 import VerifiedBadge from '../components/VerifiedBadge';
 import {
@@ -98,7 +99,7 @@ export default function BrowseScreen({ navigation }) {
           <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
 
           <View style={styles.cardPricing}>
-            {item.isFree ? (
+            {directFeeLabel(item) ? <Text style={styles.priceLabel}>{directFeeLabel(item)}</Text> : item.isFree ? (
               <Text style={styles.freeLabel}>Free to borrow</Text>
             ) : (
               <Text style={styles.priceLabel}>

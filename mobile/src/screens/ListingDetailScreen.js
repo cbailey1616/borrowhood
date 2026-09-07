@@ -1,6 +1,6 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { directFeeLabel } from '../utils/directFee';
+import { directFeeLabel, isSaleListing } from '../utils/directFee';
 import {
   View,
   Text,
@@ -102,7 +102,7 @@ export default function ListingDetailScreen({ route, navigation }) {
     try {
       const isGiveaway = listing.listingType === 'giveaway';
       const priceText = directFeeLabel(listing) || (isGiveaway ? 'Free Item' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`);
-      const actionText = isGiveaway ? 'claim this free item' : 'borrow items from your neighbors';
+      const actionText = isSaleListing(listing) ? 'buy this item' : isGiveaway ? 'claim this free item' : 'borrow items from your neighbors';
       const message = `Check out "${listing.title}" on Borrowhood!\n\n${priceText}\n\nDownload Borrowhood to ${actionText}.`;
 
       await Share.share({
@@ -242,7 +242,7 @@ export default function ListingDetailScreen({ route, navigation }) {
             {listing.listingType === 'giveaway' && (
               <View style={[styles.badge, styles.badgeGiveaway]}>
                 <Ionicons name="gift" size={12} color={COLORS.secondary} />
-                <Text style={[styles.badgeText, { color: COLORS.secondary }]}>Giveaway</Text>
+                <Text style={[styles.badgeText, { color: COLORS.secondary }]}>{isSaleListing(listing) ? 'For sale' : 'Giveaway'}</Text>
               </View>
             )}
             <View style={styles.badge}>
@@ -263,6 +263,13 @@ export default function ListingDetailScreen({ route, navigation }) {
             {directFeeLabel(listing) || (listing.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow')}
           </Text>
           {listing.directFee && <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>Arrange payment directly with your neighbor. Borrowhood does not collect or process this fee.</Text>}
+
+          <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, marginBottom: SPACING.md }}>
+            <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Public replies</Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+          </HapticPressable>
 
           {/* Active Transaction Status */}
           {listing.activeTransaction && (
@@ -388,14 +395,14 @@ export default function ListingDetailScreen({ route, navigation }) {
             {listing.isAvailable && !listing.activeTransaction && (
               <HapticPressable
                 testID="ListingDetail.button.borrow"
-                accessibilityLabel={listing.listingType === 'giveaway' ? 'Claim this item' : 'Request to borrow'}
+                accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : listing.listingType === 'giveaway' ? 'Claim this item' : 'Request to borrow'}
                 accessibilityRole="button"
                 style={styles.borrowButton}
                 onPress={() => navigation.navigate('BorrowRequest', { listing })}
                 haptic="medium"
               >
                 <Text style={styles.borrowButtonText}>
-                  {listing.listingType === 'giveaway' ? 'Request This Item' : 'Request to Borrow'}
+                  {isSaleListing(listing) ? 'Request to Buy' : listing.listingType === 'giveaway' ? 'Request This Item' : 'Request to Borrow'}
                 </Text>
               </HapticPressable>
             )}

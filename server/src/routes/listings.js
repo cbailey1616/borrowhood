@@ -509,7 +509,7 @@ router.patch('/:id', authenticate, freeListingOnly,
       }
       // Verify ownership
       const listing = await query(
-        'SELECT owner_id, community_id, listing_type FROM listings WHERE id = $1',
+        'SELECT owner_id, community_id, listing_type, direct_fee FROM listings WHERE id = $1',
         [req.params.id]
       );
 
@@ -521,6 +521,10 @@ router.patch('/:id', authenticate, freeListingOnly,
         return res.status(403).json({ error: 'Not authorized' });
       }
 
+      if (listing.rows[0].listing_type === 'giveaway' && listing.rows[0].direct_fee?.unit === 'flat'
+          && req.body.directFee === null && req.body.giveawayMode !== 'free') {
+        return res.status(409).json({ error: 'Update Borrowhood before editing a for-sale item. Its price has not been changed.' });
+      }
       if (req.body.directFee !== undefined) {
         try { req.body.directFee = normalizeDirectFee(req.body.directFee, listing.rows[0].listing_type); }
         catch (error) { return res.status(400).json({ error: error.message }); }

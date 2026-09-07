@@ -81,6 +81,16 @@ describe('InboxScreen', () => {
     await findByText(/No messages yet/i);
   });
 
+  it('opens a request reply notification in that request’s public thread', async () => {
+    api.getNotifications.mockResolvedValue({ notifications: [{ id: 'n-1', type: 'discussion_reply', title: 'New reply', body: 'A neighbor replied about your ladder.', requestId: 'request-1', isRead: true, createdAt: new Date().toISOString() }], unreadCount: 0 });
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    const activity = await screen.findByText('Activity');
+    await act(async () => fireEvent.press(activity));
+    fireEvent.press(await screen.findByText('New reply'));
+    expect(mockParentNavigate).toHaveBeenCalledWith('ListingDiscussion', { requestId: 'request-1' });
+  });
+
   it('tap conversation navigates to Chat', async () => {
     api.getConversations.mockResolvedValue([{
       id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null },

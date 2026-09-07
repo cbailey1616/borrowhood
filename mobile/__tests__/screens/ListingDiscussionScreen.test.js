@@ -34,7 +34,7 @@ describe('ListingDiscussionScreen', () => {
   it('renders comment input', async () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const { findByPlaceholderText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByPlaceholderText('Ask a question...');
+    await findByPlaceholderText('Add a public reply…');
   });
 
   it('displays posts when available', async () => {
@@ -44,6 +44,14 @@ describe('ListingDiscussionScreen', () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText('Is this still available?');
+  });
+
+  it('loads the original title when opened from Activity with only an ID', async () => {
+    api.getListing.mockResolvedValueOnce({ id: 'listing-1', title: 'Garden ladder' });
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listingId: 'listing-1' } }} />);
+    await screen.findByText('Garden ladder');
+    await screen.findByText('Public replies · visible to people who can see this post');
   });
 
   it('renders send button', async () => {

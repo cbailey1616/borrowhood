@@ -15,7 +15,7 @@ const NOTIFICATION_TEMPLATES = {
     title: 'Someone Wants Your Item!',
     body: (data) => data.borrowerName
       ? `${data.borrowerName} wants your ${data.itemTitle || 'item'}. Tap to review their request.`
-      : 'Someone wants your free item. Tap to review.',
+      : 'Someone wants your item. Tap to review.',
   },
   request_approved: {
     title: 'You\'re all set!',
@@ -70,13 +70,13 @@ const NOTIFICATION_TEMPLATES = {
     title: 'Item is Yours!',
     body: (data) => data.itemTitle
       ? `The handoff for ${data.itemTitle} is complete — it's all yours! Tap to leave a rating.`
-      : 'Your free item pickup is complete. Tap to leave a rating.',
+      : 'Your item pickup is complete. Tap to leave a rating.',
   },
   giveaway_expired: {
     title: 'Request Expired',
     body: (data) => data.itemTitle
       ? `Your request for ${data.itemTitle} expired because the owner didn't respond in time.`
-      : 'Your free item request expired because the owner didn\'t respond in time.',
+      : 'Your item request expired because the owner didn\'t respond in time.',
   },
   giveaway_pickup_expired: {
     title: 'Pickup Expired',
@@ -314,7 +314,7 @@ export async function sendNotification(userId, type, data, options = {}) {
         );
         const badge = parseInt(unreadResult.rows[0].count) || 1;
 
-        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data }, badge, sound: prefs.push_sound !== false });
+        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data, listingId: options.listingId || data.listingId, requestId: options.requestId || data.requestId, conversationId: options.conversationId || data.conversationId, transactionId: options.transactionId || data.transactionId, disputeId: options.disputeId || data.disputeId }, badge, sound: prefs.push_sound !== false });
       }
     }
 

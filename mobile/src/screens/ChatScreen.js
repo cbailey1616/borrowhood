@@ -1,3 +1,4 @@
+import { privateMessagePrefix } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
 import UserSafetyActions from '../components/UserSafetyActions';
 import { useIsFocused } from '@react-navigation/native';
@@ -85,8 +86,11 @@ export default function ChatScreen({ route, navigation }) {
   const [conversation, setConversation] = useState(null);
   const [hasExchange, setHasExchange] = useState(false);
   const [messages, setMessages] = useState([]);
+  const contextId = threadContext?.id || listingId;
+  const activeContext = threadContext || (listingId && (passedListing?.title || conversation?.listing?.title) ? { id: listingId, type: 'listing', title: passedListing?.title || conversation.listing.title } : null);
+  const contextPrefix = privateMessagePrefix(activeContext);
   const draftTarget = recipientId || conversation?.otherUser?.id;
-  const [composer, setComposer, draft] = useFormDraft(user?.id && draftTarget ? `${user.id}.chat.${draftTarget}` : null, { text: '', pending: null });
+  const [composer, setComposer, draft] = useFormDraft(user?.id && draftTarget ? `${user.id}.chat.${draftTarget}${contextId ? `.${threadContext?.type || 'listing'}.${contextId}` : ''}` : null, { text: '', pending: null });
   const newMessage = composer.text;
   const setNewMessage = text => setComposer(current => ({ ...current, text }));
   const [safeRetries, setSafeRetries] = useState(false);
@@ -169,7 +173,7 @@ export default function ChatScreen({ route, navigation }) {
       // Persist the immutable attempt before sending; retries keep the same ID.
       if (!(await draft.retry())) throw new Error('draft-storage');
       const result = await api.sendMessage(pending.payload);
-      setComposer(current => ({ ...current, pending: null, text: pending.payload.content && current.text.trim() === pending.payload.content ? '' : current.text }));
+      setComposer(current => ({ ...current, pending: null, text: pending.payload.content && current.text.trim() === (pending.composerText ?? pending.payload.content) ? '' : current.text }));
       await draft.retry();
       if (!conversationId && result.conversationId) navigation.setParams({ conversationId: result.conversationId });
       nearBottom.current = true;
@@ -202,8 +206,8 @@ export default function ChatScreen({ route, navigation }) {
     if (!newMessage.trim() || sending.current || isUploading || composer.pending || !draft.ready) return;
     const recipient = recipientId || conversation?.otherUser?.id;
     if (!recipient) return setChatError('Couldn’t identify the recipient. Reopen this conversation.');
-    return deliver({ retryable: safeRetries, payload: {
-      recipientId: recipient, content: newMessage.trim(), listingId: listingId || conversation?.listing?.id,
+    return deliver({ retryable: safeRetries, composerText: newMessage.trim(), payload: {
+      recipientId: recipient, content: contextPrefix + newMessage.trim(), listingId: listingId || conversation?.listing?.id,
       ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
     } });
   };
@@ -280,7 +284,7 @@ export default function ChatScreen({ route, navigation }) {
 
       const imageUrl = await api.uploadImage(uri, 'messages');
       await deliver({ retryable: safeRetries, payload: {
-        recipientId: recipient, imageUrl, listingId: listingId || conversation?.listing?.id,
+        recipientId: recipient, imageUrl, ...(contextPrefix ? { content: contextPrefix.trim() } : {}), listingId: listingId || conversation?.listing?.id,
         ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
       } });
     } catch (error) {
@@ -520,6 +524,10 @@ export default function ChatScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: COLORS.surface }}>
+        <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Private conversation</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>Only you and {conversation?.otherUser?.firstName || recipient?.firstName || 'this neighbor'} can see these messages.</Text>
+      </View>
       {/* Listing Context Header */}
       <UserSafetyActions userId={recipientId || conversation?.otherUser?.id} />
       {threadContext?.id && <HapticPressable style={styles.listingHeader} accessibilityRole="button"
@@ -528,7 +536,8 @@ export default function ChatScreen({ route, navigation }) {
         <Ionicons name="chatbubble" size={28} color={COLORS.primary} illustrated />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={{ color: COLORS.text, fontWeight: '600' }}>{threadContext.title || 'From the thread'}</Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>Private message · not a public reply</Text>
+          {!!threadContext.replyText && <Text style={{ color: COLORS.textSecondary, fontSize: 12 }} numberOfLines={2}>Replying to: “{threadContext.replyText}”</Text>}
+          <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>This subject will be included with your message</Text>
         </View>
       </HapticPressable>}
       {!threadContext && conversation?.listing && !hasExchange && (
@@ -588,7 +597,7 @@ export default function ChatScreen({ route, navigation }) {
         <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }} onPress={handlePickImage} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
           {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="add-outline" size={26} color={COLORS.primary} />}
         </HapticPressable>
-        <TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Message…" placeholderTextColor={COLORS.textMuted} testID="Chat.input.message" accessibilityLabel="Message" multiline maxLength={2000} autoCapitalize="sentences" />
+        <TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Private message…" placeholderTextColor={COLORS.textMuted} testID="Chat.input.message" accessibilityLabel="Message" multiline maxLength={2000 - contextPrefix.length} autoCapitalize="sentences" />
         <SendButton onPress={handleSend} loading={isSending} disabled={!newMessage.trim() || isSending || isUploading || !!composer.pending || !draft.ready} />
       </View>
       {/* Emoji Reaction Picker Overlay */}

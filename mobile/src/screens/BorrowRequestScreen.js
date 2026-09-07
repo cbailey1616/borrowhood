@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import { directFeeLabel } from '../utils/directFee';
+import { directFeeLabel, isSaleListing } from '../utils/directFee';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  InputAccessoryView,
+  Keyboard,
   TextInput,
   Image,
   ActivityIndicator,
 
   Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -135,10 +138,12 @@ export default function BorrowRequestScreen({ route, navigation }) {
       }
     }
 
+    Keyboard.dismiss();
     setIsSubmitting(true);
     try {
       const result = await api.createTransaction({
         listingId: listing.id,
+        salePrice: isSaleListing(listing) ? Number(listing.directFee.amount) : undefined,
         ...(isGiveaway ? {} : {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -325,7 +330,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <>
+    <KeyboardAwareScrollView style={styles.container} contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
+      enableOnAndroid extraScrollHeight={28} enableResetScrollToCoords={false}>
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
         <Image
@@ -340,7 +348,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           {isGiveaway && (
             <View style={styles.giveawayBadge}>
               <Ionicons name="gift" size={12} color={COLORS.secondary} />
-              <Text style={styles.giveawayBadgeText}>Giveaway — Yours to Keep</Text>
+              <Text style={styles.giveawayBadgeText}>{isSaleListing(listing) ? 'For sale — Yours to keep' : 'Giveaway — Yours to Keep'}</Text>
             </View>
           )}
         </View>
@@ -421,9 +429,18 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
       {/* Message */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Message (optional)</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.sectionTitle}>Private message (optional)</Text>
+          <HapticPressable accessibilityRole="button" accessibilityLabel="Dismiss keyboard" onPress={() => Keyboard.dismiss()}
+            style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' }}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Done ×</Text>
+          </HapticPressable>
+        </View>
+        <Text style={styles.hint}>Sent privately to the owner with this request.</Text>
         <TextInput
           style={[styles.input, styles.messageInput]}
+          inputAccessoryViewID={Platform.OS === 'ios' ? 'borrow-request-keyboard' : undefined}
+          accessibilityLabel="Private message to owner"
           value={message}
           onChangeText={setMessage}
           placeholder="Introduce yourself and explain what you need the item for..."
@@ -483,7 +500,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {isGiveaway ? 'Request Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
+            {isSaleListing(listing) ? 'Request to Buy' : isGiveaway ? 'Request Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
           </Text>
         )}
       </HapticPressable>
@@ -493,7 +510,16 @@ export default function BorrowRequestScreen({ route, navigation }) {
           ? 'By requesting this item, you agree to our terms and conditions'
           : 'By sending this request, you agree to our borrowing terms and conditions'}
       </Text>
-    </ScrollView>
+    </KeyboardAwareScrollView>
+    {Platform.OS === 'ios' && <InputAccessoryView nativeID="borrow-request-keyboard" backgroundColor={COLORS.surface}>
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: COLORS.border }}>
+        <HapticPressable accessibilityRole="button" accessibilityLabel="Hide keyboard" onPress={() => Keyboard.dismiss()}
+          style={{ minHeight: 44, paddingHorizontal: 20, justifyContent: 'center' }}>
+          <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Done ×</Text>
+        </HapticPressable>
+      </View>
+    </InputAccessoryView>}
+    </>
   );
 }
 

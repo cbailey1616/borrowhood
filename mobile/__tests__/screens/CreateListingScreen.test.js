@@ -63,7 +63,6 @@ describe('CreateListingScreen', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
     const { getByTestId, getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
     expect(getByTestId('CreateListing.input.title')).toBeTruthy();
-    fireEvent.press(getByText('Add optional details'));
     expect(getByTestId('CreateListing.input.description')).toBeTruthy();
   });
 
@@ -71,8 +70,29 @@ describe('CreateListingScreen', () => {
     const CreateListingScreen = require('../../src/screens/CreateListingScreen').default;
     const { getByTestId, getByText } = render(<CreateListingScreen navigation={mockNavigation} route={route} />);
     fireEvent.changeText(getByTestId('CreateListing.input.title'), 'My Power Drill');
-    fireEvent.press(getByText('Add optional details'));
     fireEvent.changeText(getByTestId('CreateListing.input.description'), 'DeWalt 20V cordless drill');
+  });
+
+  it.each(['free', 'sell'])('saves the initial description and %s transfer choice', async mode => {
+    ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///listing.jpg' }] });
+    api.uploadImages.mockResolvedValueOnce(['https://example.com/listing.jpg']);
+    const Screen = require('../../src/screens/CreateListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await waitFor(() => expect(screen.getByTestId('CreateListing.button.submit')).not.toBeDisabled());
+    fireEvent.changeText(screen.getByLabelText('Listing title'), 'Desk chair');
+    fireEvent.changeText(screen.getByLabelText('Listing description'), 'Good condition, adjustable height.');
+    await act(async () => fireEvent.press(screen.getByText('Camera')));
+    fireEvent.press(screen.getByText('Give away'));
+    if (mode === 'sell') {
+      fireEvent.press(screen.getByLabelText('Sell'));
+      fireEvent.changeText(screen.getByLabelText('Sale price'), '25.50');
+    }
+    await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
+    expect(api.createListing).toHaveBeenCalledWith(expect.objectContaining({
+      description: 'Good condition, adjustable height.', listingType: 'giveaway',
+      directFee: mode === 'sell' ? { amount: 25.5, unit: 'flat', currency: 'USD' } : null,
+      depositAmount: 0,
+    }));
   });
 
   it('defaults to sharing a new listing with friends when no wider audience is available', () => {

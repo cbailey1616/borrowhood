@@ -1,3 +1,4 @@
+import GiveawayOptions from '../components/GiveawayOptions';
 import SharingPicker from '../components/SharingPicker';
 import DirectFeePicker from '../components/DirectFeePicker';
 import { directFeePayload } from '../utils/directFee';
@@ -61,6 +62,8 @@ export default function CreateListingScreen({ navigation, route }) {
 
   const [formData, setFormData, draft] = useFormDraft(user?.id ? `${user.id}.item.${requestMatchId || route?.params?.relistFrom?.id || 'new'}` : null, {
     listingType: 'lend',
+    giveawayMode: 'free',
+    salePrice: '',
     title: '',
     description: '',
     condition: 'good',
@@ -79,6 +82,7 @@ export default function CreateListingScreen({ navigation, route }) {
   });
   const listingType = formData.listingType;
   const isGiveaway = listingType === 'giveaway';
+  const isSale = isGiveaway && formData.giveawayMode === 'sell';
   const setListingType = value => setFormData(prev => ({ ...prev, listingType: value }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -105,6 +109,9 @@ export default function CreateListingScreen({ navigation, route }) {
       setIsRelist(true);
       setFormData(prev => ({
         ...prev,
+        listingType: relistFrom.listingType || 'lend',
+        giveawayMode: relistFrom.listingType === 'giveaway' && relistFrom.directFee?.unit === 'flat' ? 'sell' : 'free',
+        salePrice: relistFrom.directFee?.amount?.toString() || '',
         title: relistFrom.title || '',
         description: relistFrom.description || '',
         condition: relistFrom.condition || 'good',
@@ -259,7 +266,7 @@ export default function CreateListingScreen({ navigation, route }) {
     if (!draft.ready || isSubmitting) return;
     const data = overrideData || formData;
     let directFee;
-    try { directFee = directFeePayload(!isGiveaway && data.chargeFee, data.directFeeAmount); }
+    try { directFee = directFeePayload(isGiveaway ? isSale : data.chargeFee, isGiveaway ? data.salePrice : data.directFeeAmount, isGiveaway ? 'flat' : 'day'); }
     catch (error) { showError({ message: error.message }); return; }
 
     const errors = {
@@ -467,6 +474,26 @@ export default function CreateListingScreen({ navigation, route }) {
         />
       </View>
 
+      {/* Description */}
+      <View style={styles.section}>
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          testID="CreateListing.input.description"
+          accessibilityLabel="Listing description"
+          style={[styles.input, styles.textArea]}
+          value={formData.description}
+          onChangeText={(v) => updateField('description', v)}
+          placeholder="Add details about your item..."
+          placeholderTextColor={COLORS.textMuted}
+          multiline
+          numberOfLines={4}
+          maxLength={2000}
+          autoCapitalize="sentences"
+          autoCorrect={true}
+          spellCheck={true}
+        />
+      </View>
+
       {/* Listing Type */}
       <View style={styles.section}>
         <Text style={styles.label}>What would you like to do?</Text>
@@ -495,9 +522,8 @@ export default function CreateListingScreen({ navigation, route }) {
           </HapticPressable>
         </View>
         {isGiveaway && (
-          <Text style={[styles.hint, { marginTop: SPACING.sm }]}>
-            This item will be given away permanently — no return expected.
-          </Text>
+          <GiveawayOptions mode={formData.giveawayMode || 'free'} amount={formData.salePrice || ''}
+            onModeChange={value => updateField('giveawayMode', value)} onAmountChange={value => updateField('salePrice', value)} />
         )}
       </View>
 
@@ -706,26 +732,6 @@ export default function CreateListingScreen({ navigation, route }) {
         ) : (
           <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>Loading categories...</Text>
         )}
-      </View>
-
-      {/* Description */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          testID="CreateListing.input.description"
-          accessibilityLabel="Listing description"
-          style={[styles.input, styles.textArea]}
-          value={formData.description}
-          onChangeText={(v) => updateField('description', v)}
-          placeholder="Add details about your item..."
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          numberOfLines={4}
-          maxLength={2000}
-          autoCapitalize="sentences"
-          autoCorrect={true}
-          spellCheck={true}
-        />
       </View>
 
       {/* Condition */}

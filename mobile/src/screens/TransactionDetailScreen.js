@@ -1,3 +1,4 @@
+import { isSaleListing, directFeeLabel } from '../utils/directFee';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -209,7 +210,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
   const nextStep = borrowGuidance({ ...transaction, isGiveaway });
   const otherPerson = transaction.isBorrower ? transaction.lender : transaction.borrower;
-  const roleLabel = isGiveaway
+  const roleLabel = isSaleListing(transaction) ? (transaction.isBorrower ? 'Seller' : 'Buyer') : isGiveaway
     ? (transaction.isBorrower ? 'Giver' : 'Recipient')
     : (transaction.isBorrower ? 'Owner' : 'Borrower');
 
@@ -267,6 +268,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Text style={{ fontSize: 20, fontWeight: '600', color: COLORS.text, marginBottom: 6 }}>{nextStep.title}</Text>
           <Text style={{ fontSize: 15, lineHeight: 22, color: COLORS.textSecondary }}>{nextStep.detail}</Text>
         </View>
+        {isSaleListing(transaction) && <View style={styles.statusCard}>
+          <Text style={styles.sectionTitle}>For sale · {directFeeLabel(transaction)}</Text>
+          <Text style={{ color: COLORS.textSecondary }}>Confirm the price and arrange payment directly with your neighbor before pickup. Borrowhood does not process payments.</Text>
+        </View>}
         {/* Progress Tracker */}
         <View style={styles.statusCard}>
           <RentalProgress
@@ -381,14 +386,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {/* Messages */}
         {transaction.borrowerMessage && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Message from {isGiveaway ? 'Recipient' : 'Borrower'}</Text>
+            <Text style={styles.sectionTitle}>Message from {isSaleListing(transaction) ? 'Buyer' : isGiveaway ? 'Recipient' : 'Borrower'}</Text>
             <Text style={styles.messageText}>{transaction.borrowerMessage}</Text>
           </View>
         )}
 
         {transaction.lenderResponse && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Response from {isGiveaway ? 'Giver' : 'Owner'}</Text>
+            <Text style={styles.sectionTitle}>Response from {isSaleListing(transaction) ? 'Seller' : isGiveaway ? 'Giver' : 'Owner'}</Text>
             <Text style={styles.messageText}>{transaction.lenderResponse}</Text>
           </View>
         )}

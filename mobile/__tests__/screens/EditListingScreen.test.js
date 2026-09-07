@@ -41,6 +41,17 @@ describe('EditListingScreen', () => {
     expect(api.updateListing).toHaveBeenCalled();
   });
 
+  it.each(['sell', 'free'])('preserves a sale or changes it to %s', async mode => {
+    const Screen = require('../../src/screens/EditListingScreen').default;
+    const saleRoute = { params: { listing: { ...listing, listingType: 'giveaway', directFee: { amount: 25, unit: 'flat', currency: 'USD' } } } };
+    const screen = render(<Screen navigation={mockNavigation} route={saleRoute} />);
+    expect(screen.getByLabelText('Sale price').props.value).toBe('25');
+    if (mode === 'free') fireEvent.press(screen.getByLabelText('Free'));
+    else fireEvent.changeText(screen.getByLabelText('Sale price'), '30');
+    await act(async () => fireEvent.press(screen.getByText('Save Changes')));
+    expect(api.updateListing).toHaveBeenCalledWith('l-1', expect.objectContaining({ directFee: mode === 'free' ? null : { amount: 30, unit: 'flat', currency: 'USD' } }));
+  });
+
   it('validates required fields', async () => {
     const route2 = { params: { listing: { ...listing, title: '' } } };
     const EditListingScreen = require('../../src/screens/EditListingScreen').default;
