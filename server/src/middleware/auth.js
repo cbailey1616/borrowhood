@@ -31,20 +31,20 @@ export async function authenticate(req, res, next) {
     }
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ error: 'User not found', code: 'SESSION_EXPIRED' });
     }
 
     const user = result.rows[0];
 
     if (user.status === 'suspended') {
-      return res.status(403).json({ error: 'Account suspended' });
+      return res.status(403).json({ error: 'Account suspended. Contact chris@borrowhood.net for help.', code: 'ACCOUNT_SUSPENDED' });
     }
 
     // Check if token was issued before a password reset invalidated all sessions
     if (user.token_invalidated_at && decoded.iat) {
       const invalidatedAt = Math.floor(new Date(user.token_invalidated_at).getTime() / 1000);
       if (decoded.iat < invalidatedAt) {
-        return res.status(401).json({ error: 'Token invalidated — please sign in again' });
+        return res.status(401).json({ error: 'Token invalidated — please sign in again', code: 'SESSION_EXPIRED' });
       }
     }
 
@@ -53,9 +53,9 @@ export async function authenticate(req, res, next) {
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
+      return res.status(401).json({ error: 'Token expired', code: 'SESSION_EXPIRED' });
     }
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid token', code: 'INVALID_SESSION' });
   }
 }
 

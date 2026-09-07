@@ -289,6 +289,7 @@ describe('GET /api/auth/me', () => {
       .set('Authorization', `Bearer ${expiredToken}`);
 
     expect(res.status).toBe(401);
+    expect(res.body.code).toBe('SESSION_EXPIRED');
   });
 
   it('should reject invalid token with 401', async () => {
@@ -297,6 +298,7 @@ describe('GET /api/auth/me', () => {
       .set('Authorization', 'Bearer invalidtoken123');
 
     expect(res.status).toBe(401);
+    expect(res.body.code).toBe('INVALID_SESSION');
   });
 });
 

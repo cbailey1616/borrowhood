@@ -56,6 +56,8 @@ export default function HapticPressable({
 
   return (
     <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       onPress={handlePress}
       onLongPress={onLongPress ? handleLongPress : undefined}
       onPressIn={handlePressIn}

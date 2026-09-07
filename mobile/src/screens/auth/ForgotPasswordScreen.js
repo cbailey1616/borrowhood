@@ -35,8 +35,8 @@ function getPasswordStrength(password) {
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  if (score <= 1) return { label: 'Weak', color: '#C0392B', width: 0.33 };
-  if (score <= 3) return { label: 'Fair', color: '#F39C12', width: 0.66 };
+  if (score <= 1) return { label: 'Weak', color: COLORS.danger, width: 0.33 };
+  if (score <= 3) return { label: 'Fair', color: COLORS.warning, width: 0.66 };
   return { label: 'Strong', color: COLORS.primary, width: 1 };
 }
 

@@ -1,3 +1,4 @@
+import { ScrollView } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,7 +77,7 @@ export default function OnboardingCompleteScreen() {
         colors={[COLORS.primary, COLORS.primaryLight, COLORS.warning, '#fff']}
       />
 
-      <Animated.View style={styles.content} entering={FadeInDown.duration(550).springify().damping(16)}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} bounces={false}><Animated.View style={styles.content} entering={FadeInDown.duration(550).springify().damping(16)}>
         <View style={styles.checkContainer}>
           <HeroIcon icon="checkmark" size={92} glow />
         </View>
@@ -100,7 +101,7 @@ export default function OnboardingCompleteScreen() {
             <Text style={styles.founderText}>Neighborhood Founder</Text>
           </View>
         )}
-      </Animated.View>
+      </Animated.View></ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,

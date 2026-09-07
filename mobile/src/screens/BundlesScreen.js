@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -116,9 +117,9 @@ export default function BundlesScreen({ navigation }) {
         <View style={styles.bundleCardContent}>
           <View style={styles.bundleImages}>
             {item.listings?.slice(0, 4).map((listing, idx) => (
-              <Image
+              <ShimmerImage
                 key={idx}
-                source={{ uri: listing.photoUrl || 'https://via.placeholder.com/60' }}
+                source={{ uri: listing.photoUrl || null }}
                 style={[
                   styles.bundleImage,
                   { position: 'absolute', left: idx * 20, zIndex: 4 - idx }
@@ -188,7 +189,7 @@ export default function BundlesScreen({ navigation }) {
       </View>
 
       {displayBundles.length > 0 ? (
-        <FlatList
+        <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
           data={displayBundles}
           renderItem={renderBundle}
           keyExtractor={(item) => item.id}
@@ -197,7 +198,7 @@ export default function BundlesScreen({ navigation }) {
       ) : (
         <View style={styles.emptyState}>
           <View style={{ marginBottom: 16 }}>
-            <HeroIcon icon="cube" size={84} colors={['#E8A23D', '#C0763A']} />
+            <HeroIcon icon="cube" size={84} colors={[COLORS.primaryLight, COLORS.primary]} />
           </View>
           <Text style={styles.emptyTitle}>
             {activeTab === 'browse' ? 'No Bundles Available' : 'No Bundles Yet'}
@@ -246,7 +247,7 @@ export default function BundlesScreen({ navigation }) {
             />
 
             <Text style={styles.selectLabel}>Select Items ({newBundle.listingIds.length} selected)</Text>
-            <FlatList
+            <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
               data={myListings}
               keyExtractor={(item) => item.id}
               style={styles.listingsList}
@@ -259,8 +260,8 @@ export default function BundlesScreen({ navigation }) {
                   onPress={() => toggleListingSelection(item.id)}
                   haptic="light"
                 >
-                  <Image
-                    source={{ uri: item.photos?.[0] || 'https://via.placeholder.com/50' }}
+                  <ShimmerImage
+                    source={{ uri: item.photos?.[0] || null }}
                     style={styles.listingItemImage}
                   />
                   <Text style={styles.listingItemTitle} numberOfLines={1}>{item.title}</Text>

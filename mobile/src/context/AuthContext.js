@@ -17,6 +17,8 @@ export function AuthProvider({ children, navigationRef }) {
     checkAuth();
   }, []);
 
+  useEffect(() => api.setSessionExpiredHandler?.(logout), []);
+
   const checkAuth = async () => {
     try {
       const token = await SecureStore.getItemAsync('accessToken');
@@ -102,11 +104,13 @@ export function AuthProvider({ children, navigationRef }) {
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('refreshToken');
     api.setAuthToken(null);
     setUser(null);
     setIsAuthenticated(false);
+    await Promise.allSettled([
+      SecureStore.deleteItemAsync('accessToken'),
+      SecureStore.deleteItemAsync('refreshToken'),
+    ]);
   };
 
   const changePassword = async (currentPassword, newPassword) => {

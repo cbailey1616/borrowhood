@@ -147,7 +147,7 @@ async function handleIdentityVerified(session) {
   // Update user as verified
   const updateResult = await query(
     `UPDATE users SET
-      status = 'verified',
+      status = CASE WHEN status='suspended' THEN status ELSE 'verified'::user_status END,
       is_verified = true,
       verification_status = 'verified',
       stripe_identity_session_id = $1,
@@ -347,7 +347,7 @@ async function handleConnectAccountUpdated(account) {
   // Check if account is fully onboarded
   if (account.charges_enabled && account.payouts_enabled) {
     await query(
-      `UPDATE users SET status = 'verified', payouts_enabled = true WHERE stripe_connect_account_id = $1`,
+      `UPDATE users SET status = CASE WHEN status='suspended' THEN status ELSE 'verified'::user_status END, payouts_enabled = true WHERE stripe_connect_account_id = $1`,
       [account.id]
     );
     logger.info(`Connect account ${account.id} fully onboarded`);

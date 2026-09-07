@@ -199,7 +199,7 @@ it('lets an unverified member select Town and makes hidden identities explicit',
     expect(mockNavigation.navigate).not.toHaveBeenCalledWith('IdentityVerification', expect.anything());
     expect(screen.getByText('Identity hidden · Get verified')).toBeTruthy();
     expect(api.getDiscussions).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByLabelText('Close menu'));
+    fireEvent.press(screen.getByText('Done'));
     fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
   } finally { mockUser.isVerified = true; }

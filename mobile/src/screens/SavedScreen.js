@@ -109,7 +109,7 @@ export default function SavedScreen({ navigation }) {
       >
         <View style={styles.imageWrap}>
           <ShimmerImage
-            source={{ uri: item.photoUrl || 'https://via.placeholder.com/200' }}
+            source={{ uri: item.photoUrl || null }}
             style={styles.cardImage}
           />
           <HeartButton onUnsave={() => handleUnsave(item.id)} />
@@ -126,12 +126,6 @@ export default function SavedScreen({ navigation }) {
               <Text style={styles.freeTag}>Free</Text>
             ) : (
               <Text style={styles.price}>${item.pricePerDay}/day</Text>
-            )}
-            {item.owner?.rating > 0 && (
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={10} color={COLORS.warning} />
-                <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
-              </View>
             )}
           </View>
           <View style={styles.ownerRow}>

@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -68,8 +69,8 @@ export default function WantedPostsScreen({ navigation }) {
       <View style={[styles.cardBox, styles.card]}>
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Image
-              source={{ uri: item.requester.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+            <ShimmerImage placeholderIcon="person"
+              source={{ uri: item.requester.profilePhotoUrl || null }}
               style={styles.avatar}
             />
             <View style={styles.requesterInfo}>
@@ -137,7 +138,7 @@ export default function WantedPostsScreen({ navigation }) {
         )}
       </View>
 
-      <FlatList
+      <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
         data={requests}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}

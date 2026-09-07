@@ -231,7 +231,7 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     const social = { provider: 'google', subject: randomUUID(), email: `${randomUUID()}@example.com`, firstName: 'New', lastName: 'Neighbor', photo: null };
     const signedUp = await withTransaction(db => resolveSocialAccount(db, social));
     assert.equal(signedUp.isNewUser, true);
-    assert.equal(signedUp.user.onboarding_step, 2);
+    assert.equal(signedUp.user.onboarding_step, 1); // New accounts see the sharing introduction.
     assert.equal(signedUp.user.onboarding_completed, false);
     const returning = await withTransaction(db => resolveSocialAccount(db, social));
     assert.equal(returning.user.id, signedUp.user.id);

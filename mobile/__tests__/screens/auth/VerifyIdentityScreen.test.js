@@ -24,9 +24,9 @@ describe('VerifyIdentityScreen', () => {
   it('displays benefit items', () => {
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
     const { getByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    expect(getByText('Your data is encrypted and secure')).toBeTruthy();
+    expect(getByText('Stripe handles your ID images. They are not shown to neighbors.')).toBeTruthy();
     expect(getByText('Build trust with your neighbors')).toBeTruthy();
-    expect(getByText('Required to borrow or lend items')).toBeTruthy();
+    expect(getByText('Choose which items you share and who can see them')).toBeTruthy();
   });
 
   it('has verify with ID button', () => {

@@ -324,11 +324,6 @@ export default function ListingDetailScreen({ route, navigation }) {
                     totalTransactions={listing.owner.totalTransactions || 0}
                     size="small"
                   />
-                  {listing.owner.ratingCount > 0 && (
-                    <Text style={styles.ownerTransactions}>
-                      {Number(listing.owner.rating || 0).toFixed(1)} ★ · {listing.owner.ratingCount} review{listing.owner.ratingCount !== 1 ? 's' : ''}
-                    </Text>
-                  )}
 
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} style={{ alignSelf: 'center' }} />

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { query } from '../utils/db.js';
+import rateLimit from 'express-rate-limit';
 const router = Router();
 router.use(authenticate);
 router.param('userId', async (req, res, next, id) => {
@@ -29,8 +30,11 @@ router.delete('/:userId/block', async (req, res) => {
     res.json({ blocked: false });
   } catch { res.status(500).json({ error: 'Could not unblock user' }); }
 });
-router.post('/:userId/report', async (req, res) => {
-  if (!['Scam or fraud','Harassment','Unsafe behavior'].includes(req.body.reason)) return res.status(400).json({ error: 'Choose a reason' });
+router.post('/:userId/report', rateLimit({ windowMs: 60 * 60 * 1000, max: 10,
+  standardHeaders: true, legacyHeaders: false, keyGenerator: req => req.user.id,
+  message: { error: 'You have submitted several reports. Please try again later or contact chris@borrowhood.net.' },
+}), async (req, res) => {
+  if (!['Scam or fraud','Harassment','Unsafe behavior','Inappropriate content'].includes(req.body.reason)) return res.status(400).json({ error: 'Choose a reason' });
   try {
     await query('INSERT INTO safety_reports(reporter_id,reported_id,reason) VALUES($1,$2,$3)',[req.user.id,req.params.userId,req.body.reason]);
     res.json({ ok: true });

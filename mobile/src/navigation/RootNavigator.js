@@ -1,9 +1,10 @@
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
+import SafetyReportsScreen from '../screens/SafetyReportsScreen';
 import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View, Modal, Text, TextInput, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, Modal, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import HapticPressable from '../components/HapticPressable';
 import { ModalHeader } from '../components/ModalControls';
 import api from '../services/api';
@@ -38,7 +39,6 @@ import EditListingScreen from '../screens/EditListingScreen';
 import EditRequestScreen from '../screens/EditRequestScreen';
 import ListingDiscussionScreen from '../screens/ListingDiscussionScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
-import BundlesScreen from '../screens/BundlesScreen';
 import JoinCommunityScreen from '../screens/JoinCommunityScreen';
 import InviteMembersScreen from '../screens/InviteMembersScreen';
 import CommunitySettingsScreen from '../screens/CommunitySettingsScreen';
@@ -87,12 +87,13 @@ export default function RootNavigator() {
   const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
   const [nameInput, setNameInput] = useState({ first: '', last: '' });
   const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
 
   const showNamePrompt = isAuthenticated && user?.needsName;
 
   const handleSaveName = async () => {
-    if (!nameInput.first.trim()) return;
-    setSavingName(true);
+    if (!nameInput.first.trim() || savingName) return;
+    setSavingName(true); setNameError('');
     try {
       await api.updateProfile({
         firstName: nameInput.first.trim(),
@@ -100,7 +101,7 @@ export default function RootNavigator() {
       });
       await refreshUser();
     } catch (e) {
-      console.error('Failed to save name:', e);
+      setNameError('Could not save your name. Check your connection and try again.');
     } finally {
       setSavingName(false);
     }
@@ -139,6 +140,7 @@ export default function RootNavigator() {
             options={{ ...sharedScreenOptions, title: 'Item Details' }}
           />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
+          <Stack.Screen name="SafetyReports" component={SafetyReportsScreen} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
           <Stack.Screen
             name="TransactionDetail"
             component={TransactionDetailScreen}
@@ -262,11 +264,6 @@ export default function RootNavigator() {
             options={modalScreenOptions('Verification')}
           />
           <Stack.Screen
-            name="Bundles"
-            component={BundlesScreen}
-            options={{ ...sharedScreenOptions, title: 'Item Bundles' }}
-          />
-          <Stack.Screen
             name="JoinCommunity"
             component={JoinCommunityScreen}
             options={({ route }) => route.params?.fromPosting
@@ -348,22 +345,23 @@ export default function RootNavigator() {
         </>
       )}
     </Stack.Navigator>
-    {showNamePrompt && <NamePromptModal nameInput={nameInput} setNameInput={setNameInput} saving={savingName} onSave={handleSaveName} />}
+    {showNamePrompt && <NamePromptModal nameInput={nameInput} setNameInput={setNameInput} saving={savingName} error={nameError} onSave={handleSaveName} />}
     </>
   );
 }
 
-function NamePromptModal({ nameInput, setNameInput, saving, onSave }) {
+function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet">
-      <View style={nameStyles.container}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={nameStyles.container} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text style={nameStyles.title}>What's your name?</Text>
         <Text style={nameStyles.subtitle}>
           We need your name so neighbors know who they're borrowing from.
         </Text>
         <TextInput
           style={nameStyles.input}
-          placeholder="First name"
+          placeholder="First name" accessibilityLabel="First name" editable={!saving} maxLength={100}
           placeholderTextColor={COLORS.textMuted}
           value={nameInput.first}
           onChangeText={(v) => setNameInput(prev => ({ ...prev, first: v }))}
@@ -372,12 +370,13 @@ function NamePromptModal({ nameInput, setNameInput, saving, onSave }) {
         />
         <TextInput
           style={nameStyles.input}
-          placeholder="Last name"
+          placeholder="Last name" accessibilityLabel="Last name" editable={!saving} maxLength={100}
           placeholderTextColor={COLORS.textMuted}
           value={nameInput.last}
           onChangeText={(v) => setNameInput(prev => ({ ...prev, last: v }))}
           autoCapitalize="words"
         />
+        {!!error && <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.md }}>{error}</Text>}
         <HapticPressable
           style={[nameStyles.button, !nameInput.first.trim() && { opacity: 0.5 }]}
           onPress={onSave}
@@ -390,14 +389,15 @@ function NamePromptModal({ nameInput, setNameInput, saving, onSave }) {
             <Text style={nameStyles.buttonText}>Continue</Text>
           )}
         </HapticPressable>
-      </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const nameStyles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: COLORS.background,
     padding: SPACING.xl,
     justifyContent: 'center',

@@ -27,10 +27,10 @@ describe('CommunitySettingsScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText('Leave Neighborhood');
   });
-  it('shows notification toggles', async () => {
+  it('opens saved notification settings instead of showing unsaved switches', async () => {
     const Screen = require('../../src/screens/CommunitySettingsScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText('New Items');
-    await findByText('Messages');
+    fireEvent.press(await findByText('Notification settings'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('NotificationSettings');
   });
 });

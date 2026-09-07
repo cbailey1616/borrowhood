@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -86,8 +87,8 @@ export default function BadgesScreen({ navigation }) {
         <Text style={[styles.rank, rank <= 3 && styles.rankTop]}>
           {`#${rank}`}
         </Text>
-        <Image
-          source={{ uri: user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
+        <ShimmerImage placeholderIcon="person"
+          source={{ uri: user.profilePhotoUrl || null }}
           style={styles.leaderAvatar}
         />
         <View style={styles.leaderInfo}>

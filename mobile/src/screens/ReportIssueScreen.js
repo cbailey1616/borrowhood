@@ -174,7 +174,7 @@ export default function ReportIssueScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
         ref={scrollRef}
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}

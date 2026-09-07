@@ -5,7 +5,6 @@ import {
   TextInput,
   Image,
   StyleSheet,
-  Switch,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
@@ -25,8 +24,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const { showError, showToast } = useError();
   const [community, setCommunity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  const [showInDirectory, setShowInDirectory] = useState(true);
   const [showLeaveSheet, setShowLeaveSheet] = useState(false);
 
   // Edit state
@@ -140,7 +137,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets style={styles.container} keyboardShouldPersistTaps="handled">
       {/* Neighborhood Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Neighborhood</Text>
@@ -236,67 +233,18 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         )}
       </View>
 
-      {/* Notification Settings */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-
-        <View style={[styles.cardBox, styles.settingCard]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>New Items</Text>
-              <Text style={styles.settingDescription}>
-                Get notified when neighbors list new items
-              </Text>
-            </View>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-              thumbColor="#fff"
-              ios_backgroundColor={COLORS.primaryMuted}
-            />
-          </View>
-        </View>
-
-        <View style={[styles.cardBox, styles.settingCard]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Messages</Text>
-              <Text style={styles.settingDescription}>
-                Receive notifications for new messages
-              </Text>
-            </View>
-            <Switch
-              value={true}
-              trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-              thumbColor="#fff"
-              ios_backgroundColor={COLORS.primaryMuted}
-            />
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Your preferences</Text>
+        <HapticPressable style={styles.actionButton} onPress={() => navigation.navigate('NotificationSettings')}>
+          <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.actionButtonText}>Notification settings</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+        </HapticPressable>
+        <Text style={styles.settingDescription}>Choose which updates you receive across Borrowhood.</Text>
       </View>
-
-      {/* Privacy */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Privacy</Text>
-
-        <View style={[styles.cardBox, styles.settingCard]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Show in Member Directory</Text>
-              <Text style={styles.settingDescription}>
-                Let other neighbors see your profile
-              </Text>
-            </View>
-            <Switch
-              value={showInDirectory}
-              onValueChange={setShowInDirectory}
-              trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-              thumbColor="#fff"
-              ios_backgroundColor={COLORS.primaryMuted}
-            />
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Your sharing choices</Text>
+        <Text style={styles.settingDescription}>Choose the audience for each item when you post or edit it. Items you keep private stay in your inventory.</Text>
       </View>
 
       {/* Actions */}

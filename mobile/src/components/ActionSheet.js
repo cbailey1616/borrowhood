@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import PopupLayer from './PopupLayer';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,8 +18,12 @@ export default function ActionSheet({
   actions = [],
   cancelLabel = 'Cancel',
   multiSelect = false,
+  variant = 'menu',
+  icon,
 }) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const confirmation = variant === 'confirmation';
   const [closing, setClosing] = useState(false);
   const pending = useRef(null);
   const finishDismiss = useCallback(() => {
@@ -79,31 +83,41 @@ export default function ActionSheet({
         <Animated.View
           entering={SlideInDown.duration(200)}
           exiting={SlideOutDown.duration(150)}
-          style={[styles.sheetContainer, { paddingBottom: bottomPad }]}
+          style={[styles.sheetContainer, { paddingBottom: bottomPad, maxHeight: height - insets.top - SPACING.md }]}
         >
-          <View style={styles.sheetCard}>
-            <HapticPressable accessibilityRole="button" accessibilityLabel="Close menu"
-              onPress={handleCancel} style={styles.closeControl}>
-              <Ionicons name="close" size={20} color={COLORS.primary} />
-            </HapticPressable>
+          <ScrollView style={styles.sheetCard} contentContainerStyle={confirmation && styles.confirmationCard} bounces={false}>
+            {confirmation ? <>
+              <View style={styles.confirmationHeader}>
+                {icon ? <View style={styles.confirmationIcon}>{icon}</View> : null}
+                <Text style={styles.confirmationTitle}>{title}</Text>
+                <HapticPressable accessibilityRole="button" accessibilityLabel="Close confirmation" onPress={handleCancel} style={styles.confirmationClose}>
+                  <Ionicons name="close" size={20} color={COLORS.primary} />
+                </HapticPressable>
+              </View>
+              {message ? <Text style={styles.confirmationMessage}>{message}</Text> : null}
+            </> : <>
             {title ? (
               <View style={styles.header}>
                 <Text style={styles.title}>{title}</Text>
                 {message ? <Text style={styles.message}>{message}</Text> : null}
               </View>
             ) : null}
-            <View style={styles.actionsContainer}>
+            </>}
+            <View style={[styles.actionsContainer, confirmation && styles.confirmationActions]}>
               {actions.map((action, index) => (
                 <HapticPressable
                   key={index}
                   onPress={() => handleAction(action)}
                   haptic={null}
+                  accessibilityRole="button"
                   testID={action.testID}
                   accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
                   style={[
                     styles.actionButton,
                     action.destructive && styles.destructiveButton,
                     action.primary && styles.primaryButton,
+                    confirmation && styles.confirmationButton,
+                    confirmation && !action.primary && !action.destructive && styles.secondaryButton,
                   ]}
                 >
                   {action.icon ? (
@@ -114,6 +128,8 @@ export default function ActionSheet({
                       styles.actionText,
                       action.destructive && styles.destructiveText,
                       action.primary && styles.primaryText,
+                      confirmation && styles.confirmationActionText,
+                      confirmation && !action.primary && !action.destructive && styles.secondaryText,
                     ]}
                   >
                     {action.label}
@@ -121,14 +137,15 @@ export default function ActionSheet({
                 </HapticPressable>
               ))}
             </View>
-          </View>
-          <HapticPressable
+          </ScrollView>
+          {!confirmation && <HapticPressable
             onPress={handleCancel}
             haptic="light"
+            accessibilityRole="button"
             style={styles.cancelButton}
           >
             <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
-          </HapticPressable>
+          </HapticPressable>}
         </Animated.View>
       </View>
     </PopupLayer>
@@ -136,6 +153,17 @@ export default function ActionSheet({
 }
 
 const styles = StyleSheet.create({
+  confirmationCard: { paddingVertical: 20 },
+  confirmationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  confirmationIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
+  confirmationTitle: { ...TYPOGRAPHY.h2, flex: 1, color: COLORS.primary, fontSize: 21, lineHeight: 27 },
+  confirmationClose: { width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
+  confirmationMessage: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 24, marginBottom: 20 },
+  confirmationActions: { gap: 10, marginBottom: 0 },
+  confirmationButton: { justifyContent: 'center', minHeight: 52, paddingVertical: 13, paddingHorizontal: 16, borderRadius: 18, marginTop: 0, borderBottomWidth: 0 },
+  confirmationActionText: { ...TYPOGRAPHY.button, lineHeight: 22, textAlign: 'center' },
+  secondaryButton: { borderWidth: 1, borderBottomWidth: 1, borderColor: COLORS.borderGreen, backgroundColor: COLORS.surface },
+  secondaryText: { color: COLORS.primary },
   closeControl: {
     alignSelf: 'flex-end', width: 44, height: 44, marginTop: SPACING.sm,
     borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated,
@@ -154,8 +182,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: SPACING.md,
+    width: '100%',
+    maxWidth: 572,
+    alignSelf: 'center',
+    marginHorizontal: 'auto',
   },
   sheetCard: {
+    flexGrow: 0,
+    flexShrink: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
     paddingHorizontal: SPACING.lg,
@@ -235,6 +269,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cancelButton: {
+    flexShrink: 0,
     alignItems: 'center',
     paddingVertical: SPACING.lg,
     backgroundColor: COLORS.surface,

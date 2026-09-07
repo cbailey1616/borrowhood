@@ -26,6 +26,32 @@ beforeEach(() => { jest.clearAllMocks(); api.getTransaction.mockResolvedValue(mo
 describe('TransactionDetailScreen', () => {
   const route = { params: { id: 'txn-1' } };
 
+  it('confirms the return only after the owner explicitly confirms in the sheet', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'picked_up', isLender: true, isBorrower: false });
+    api.confirmRentalReturn.mockResolvedValue({});
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.confirmReturn'));
+    expect(api.confirmRentalReturn).not.toHaveBeenCalled();
+    expect(screen.getAllByLabelText('Close confirmation')).toHaveLength(1);
+    expect(screen.queryByText('Cancel')).toBeNull();
+    fireEvent.press(screen.getByTestId('Transaction.confirmReturn'));
+    await waitFor(() => expect(api.confirmRentalReturn).toHaveBeenCalledTimes(1));
+    expect(api.confirmRentalReturn).toHaveBeenCalledWith('txn-1', 'good');
+  });
+
+  it('lets the owner message about a return without completing the exchange', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'return_pending', isLender: true, isBorrower: false,
+      borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S' } });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.confirmReturn'));
+    fireEvent.press(screen.getByTestId('Transaction.messageAboutReturn'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: 'user-3', listingId: 'l-1' })));
+    expect(api.confirmRentalReturn).not.toHaveBeenCalled();
+    expect(screen.queryByText('Everything back?')).toBeNull();
+  });
+
   it('fetches transaction via api.getTransaction(id)', async () => {
     const TransactionDetailScreen = require('../../src/screens/TransactionDetailScreen').default;
     render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);

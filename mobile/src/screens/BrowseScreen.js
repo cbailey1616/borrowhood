@@ -135,12 +135,6 @@ export default function BrowseScreen({ navigation }) {
                   {item.owner.firstName} {item.owner.lastName[0]}.
                 </Text>
                 {item.owner.isVerified === true && <VerifiedBadge size={16} interactive />}
-                {item.owner.rating > 0 && (
-                  <View style={styles.rating}>
-                    <Text style={styles.star}>★</Text>
-                    <Text style={styles.ratingText}>{item.owner.rating.toFixed(1)}</Text>
-                  </View>
-                )}
               </>
             )}
           </View>
@@ -299,7 +293,7 @@ export default function BrowseScreen({ navigation }) {
       </View>
 
       {activeTab === 'items' ? (
-        <FlatList
+        <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
           key="items-grid"
           data={listings}
           renderItem={renderListingItem}
@@ -327,7 +321,7 @@ export default function BrowseScreen({ navigation }) {
           }
         />
       ) : (
-        <FlatList
+        <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
           key="requests-list"
           data={requests}
           renderItem={renderRequestItem}

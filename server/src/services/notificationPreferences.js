@@ -20,6 +20,7 @@ export function normalizedPreferences(prefs = {}) {
   };
 }
 export function shouldSendPush(type, prefs = {}) {
+  if (['new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(type)) return false;
   if (!(prefs.push_enabled ?? prefs.push ?? true)) return false;
   const group = groups[type];
   if (group && typeof prefs[group] === 'boolean') return prefs[group];
@@ -29,4 +30,4 @@ export const validPreferenceKeys = new Set([...Object.keys(DEFAULT_NOTIFICATION_
   'email', 'push', 'borrow_request', 'request_response', 'pickup_return', 'new_request', 'payment_updates']);
 // Messages already have their own unread count and conversation list. Keep the
 // historical rows, but remove duplicate alerts and retired promotion/dispute UI.
-export const ACTIVITY_SQL = "type != 'new_message' AND type NOT IN ('referral_reward', 'subscription_expired', 'verification_expiring') AND type NOT LIKE 'dispute%'";
+export const ACTIVITY_SQL = "type != 'new_message' AND type NOT IN ('new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring') AND type NOT LIKE 'dispute%'";

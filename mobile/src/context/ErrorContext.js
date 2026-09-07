@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -191,7 +192,7 @@ export function ErrorProvider({ children, navigationRef }) {
       icon: config.icon,
       title: title || config.title,
       message: message || config.defaultMessage,
-      primaryAction: primaryAction || config.primaryAction,
+      primaryAction: primaryAction || (detectedType === 'network' && !onPrimaryPress && !onPrimaryAction ? 'Got it' : config.primaryAction),
       secondaryAction,
       onPrimaryPress: onPrimaryPress || onPrimaryAction,
       onSecondaryPress,
@@ -255,20 +256,17 @@ export function ErrorProvider({ children, navigationRef }) {
         onDismiss={finishDismiss}
       >
         <View style={styles.overlay}>
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(44,24,16,0.7)' }]} />
-          )}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.overlay }]} />
 
           <Animated.View
             entering={FadeInUp.springify().damping(15).stiffness(150)}
             style={styles.modalContent}
           >
+            <ScrollView bounces={false} contentContainerStyle={styles.modalInner}>
             <View style={[styles.iconContainer, { borderColor: getIconColor() + '30' }]}>
               <Ionicons
                 name={error?.icon || 'warning-outline'}
-                size={40}
+                size={28}
                 color={getIconColor()}
               />
             </View>
@@ -300,9 +298,10 @@ export function ErrorProvider({ children, navigationRef }) {
               </HapticPressable>
             </View>
 
-            <HapticPressable style={styles.dismissButton} onPress={dismissError} haptic="light">
-              <Ionicons name="close" size={24} color={COLORS.textMuted} />
+            <HapticPressable accessibilityLabel="Close alert" style={styles.dismissButton} onPress={dismissError} haptic="light">
+              <Ionicons name="close" size={20} color={COLORS.primary} />
             </HapticPressable>
+            </ScrollView>
           </Animated.View>
         </View>
       </PopupLayer>
@@ -335,41 +334,42 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xxl,
-    padding: 32,
     width: '100%',
-    maxWidth: 340,
-    alignItems: 'center',
+    maxWidth: 540,
+    maxHeight: '90%',
+    overflow: 'hidden',
   },
+  modalInner: { padding: 20 },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.xl,
-    borderWidth: 2,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
   },
   title: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
+    ...TYPOGRAPHY.h2,
+    color: COLORS.primary,
     marginBottom: SPACING.md,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   message: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 22,
     marginBottom: SPACING.xl + SPACING.xs,
   },
   buttonContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: SPACING.md,
     width: '100%',
   },
   primaryButton: {
-    flex: 1,
+    minHeight: 52,
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
     borderRadius: RADIUS.md,
@@ -384,23 +384,28 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     ...TYPOGRAPHY.headline,
+    textAlign: 'center',
   },
   secondaryButton: {
-    flex: 1,
-    backgroundColor: COLORS.gray[800],
+    minHeight: 52,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderGreen,
     paddingVertical: 14,
     borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: COLORS.text,
+    color: COLORS.primary,
     ...TYPOGRAPHY.headline,
+    textAlign: 'center',
   },
   dismissButton: {
     position: 'absolute',
     top: SPACING.lg,
     right: SPACING.lg,
-    padding: 4,
+    width: 44, height: 44, borderRadius: RADIUS.full,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surfaceElevated,
   },
   toastContainer: {
     position: 'absolute',
@@ -420,7 +425,7 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.danger + '40',
-    shadowColor: '#2C1810',
+    shadowColor: COLORS.primaryDark,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

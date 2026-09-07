@@ -52,3 +52,13 @@ it('does not claim success after a failed block and offers retry through the men
   fireEvent.press(screen.getByText('Got it'));
   await waitFor(() => expect(screen.getByLabelText('More profile options')).not.toBeDisabled());
 });
+it('shows direct report and block rows in the profile safety section without a More menu', async () => {
+  const screen=render(<UserSafetyActions userId="neighbor" name="Alex" variant="section" />);
+  expect(screen.getByText('Safety')).toBeTruthy();
+  expect(screen.getByText('Block user')).toBeTruthy();
+  expect(screen.queryByText('More')).toBeNull();
+  fireEvent.press(screen.getByText('Report user'));
+  fireEvent.press(screen.getByText('Inappropriate content'));
+  await screen.findByText('Thank you for letting us know');
+  expect(api.reportUser).toHaveBeenCalledWith('neighbor','Inappropriate content');
+});

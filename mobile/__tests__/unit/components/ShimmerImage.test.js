@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import ShimmerImage from '../../../src/components/ShimmerImage';
 import { getDecodedImage, loadDecodedImage } from '../../../src/utils/decodedImageCache';
@@ -45,6 +45,32 @@ beforeEach(() => {
   getDecodedImage.mockReset();
   loadDecodedImage.mockReset();
   loadDecodedImage.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+});
+
+it('uses a local themed fallback for a missing photo without making a network request', () => {
+  const screen = render(<ShimmerImage source={{ uri: null }} style={style} placeholderIcon="person" />);
+  expect(screen.getByLabelText('Photo unavailable')).toBeTruthy();
+  expect(loadDecodedImage).not.toHaveBeenCalled();
+  expect(Image.sources.every(source => source.uri?.startsWith('data:image/svg+xml'))).toBe(true);
+});
+
+it('ends the loading state when a photo fails and retries a refreshed source', async () => {
+  loadDecodedImage.mockRejectedValueOnce(new Error('Offline'));
+  const screen = render(<ShimmerImage source={{ uri }} style={style} />);
+  await act(async () => {});
+  fireEvent(screen.getByTestId('native-photo'), 'error', { error: 'Offline' });
+  expect(screen.getByLabelText('Photo unavailable')).toBeTruthy();
+  const freshUri = `${uri}?fresh=1`;
+  screen.rerender(<ShimmerImage source={{ uri: freshUri }} style={style} />);
+  await act(async () => finish(ref));
+  expect(screen.queryByLabelText('Photo unavailable')).toBeNull();
+  expect(screen.getByTestId('native-photo').props.source).toBe(ref);
+});
+
+it('keeps avatars out of the decoded listing cache', () => {
+  const screen = render(<ShimmerImage source={{ uri }} style={style} placeholderIcon="person" />);
+  expect(loadDecodedImage).not.toHaveBeenCalled();
+  expect(screen.getByTestId('native-photo').props.source).toBe(uri);
 });
 
 it('uses one loading path: it never starts a URL load while decoding the same photo', async () => {

@@ -47,8 +47,9 @@ describe('UserProfileScreen', () => {
 it('offers report and block from another member’s profile', async () => {
   const Screen = require('../../src/screens/UserProfileScreen').default;
   const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'user-2' } }} />);
-  fireEvent.press(await screen.findByLabelText('More profile options'));
   await screen.findByText('Report user');
+  expect(screen.getByText('Safety')).toBeTruthy();
+  expect(screen.queryByText('More')).toBeNull();
   expect(screen.getByText('Block user')).toBeTruthy();
   expect(api.getUserSafety).toHaveBeenCalledWith('user-2');
 });
@@ -56,5 +57,6 @@ it('does not offer report/block for your own profile', async () => {
   const Screen = require('../../src/screens/UserProfileScreen').default;
   const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'user-1' } }} />);
   await screen.findByText('Alice Jones');
-  expect(screen.queryByLabelText('More profile options')).toBeNull();
+  expect(screen.queryByText('Report user')).toBeNull();
+  expect(screen.queryByText('Block user')).toBeNull();
 });

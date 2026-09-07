@@ -71,7 +71,7 @@ export default function UserBadges({
         >
           <ScrollView style={styles.legendCard} contentContainerStyle={styles.legendContent}>
             <Text style={styles.legendTitle}>Borrowhood Ranks</Text>
-            <Text style={styles.legendSubtitle}>Ranks reflect activity, not identity or safety checks. Reviews and completed exchanges offer more context.</Text>
+            <Text style={styles.legendSubtitle}>Ranks grow with completed exchanges. Identity verification is shown separately by the verified badge.</Text>
 
             {TIERS.map((t) => {
               const isCurrent = t.key === tier.key;

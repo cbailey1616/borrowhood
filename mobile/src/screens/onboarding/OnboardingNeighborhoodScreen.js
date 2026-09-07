@@ -295,7 +295,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 
       <Animated.View style={styles.stepContainer} entering={FadeInDown.duration(500).springify().damping(18)}>
         <View style={styles.iconContainer}>
-          <HeroIcon icon="home" size={76} colors={['#3E8E5A', '#1C5230']} />
+          <HeroIcon icon="home" size={76} colors={[COLORS.primaryLight, COLORS.primaryDark]} />
         </View>
         <Text style={styles.title}>Join a Neighborhood</Text>
         <Text style={styles.subtitle}>

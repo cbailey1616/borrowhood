@@ -12,7 +12,7 @@ it('requires explicit confirmation and treats closing as cancellation', () => {
     { text: 'Share', onPress: confirm },
   ]));
   expect(getByText('Only this item is shared.')).toBeTruthy();
-  fireEvent.press(getByLabelText('Close menu'));
+  fireEvent.press(getByLabelText('Close confirmation'));
   expect(cancel).toHaveBeenCalledTimes(1);
   expect(confirm).not.toHaveBeenCalled();
   expect(queryByText('Share this item?')).toBeNull();

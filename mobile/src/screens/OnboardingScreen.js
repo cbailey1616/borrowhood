@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -385,8 +386,8 @@ export default function OnboardingScreen({ onComplete }) {
           renderItem={({ item }) => (
             <View style={[styles.cardBox, styles.friendCard]}>
               <View style={styles.friendRow}>
-                <Image
-                  source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/44' }}
+                <ShimmerImage placeholderIcon="person"
+                  source={{ uri: item.profilePhotoUrl || null }}
                   style={styles.friendAvatar}
                 />
                 <View style={styles.friendInfo}>
