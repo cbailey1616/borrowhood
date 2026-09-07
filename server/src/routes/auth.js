@@ -814,6 +814,28 @@ router.post('/verify-reset-code',
 // POST /api/auth/reset-password
 // Reset password with one-time reset token
 // ============================================
+router.post('/change-password', authenticate,
+  body('currentPassword').isString().notEmpty(),
+  body('newPassword').isString().isLength({ min: 8, max: 72 }),
+  async (req, res) => {
+    if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Enter your current password and a new password of 8–72 characters.' });
+    try {
+      await withTransaction(async client => {
+        const { rows } = await client.query('SELECT password_hash FROM users WHERE id=$1 FOR UPDATE', [req.user.id]);
+        if (!rows[0]?.password_hash || !await bcrypt.compare(req.body.currentPassword, rows[0].password_hash)) {
+          throw Object.assign(new Error('Current password is incorrect. Use Forgot your password? if you need to reset it.'), { status: 400 });
+        }
+        const hash = await bcrypt.hash(req.body.newPassword, 12);
+        await client.query(`UPDATE users SET password_hash=$1, token_invalidated_at=NOW(),
+          reset_code_hash=NULL, reset_code_expires=NULL, reset_code_attempts=0,
+          reset_token_hash=NULL, reset_token_expires=NULL WHERE id=$2`, [hash, req.user.id]);
+      });
+      res.json({ message: 'Password changed successfully', ...generateTokens(req.user.id) });
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not change your password. Please try again.' });
+    }
+  });
+
 router.post('/reset-password',
   body('resetToken').notEmpty().withMessage('Reset token is required'),
   body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),

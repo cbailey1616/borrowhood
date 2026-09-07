@@ -131,6 +131,9 @@ const verifyResetCode = (email, code) =>
 const resetPassword = (resetToken, newPassword) =>
   post('/auth/reset-password', { resetToken, newPassword });
 
+const changePassword = (currentPassword, newPassword) =>
+  post('/auth/change-password', { currentPassword, newPassword });
+
 const findAccount = (params) =>
   post('/auth/find-account', params);
 
@@ -769,6 +772,7 @@ export default {
   forgotPassword,
   verifyResetCode,
   resetPassword,
+  changePassword,
   findAccount,
   linkAccount,
   startSocialLinkCode,

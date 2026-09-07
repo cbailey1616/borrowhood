@@ -220,9 +220,9 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('MyCommunity')}
           />
           <GroupedListItem
-            icon="mail-outline"
-            title="Messages"
-            onPress={() => navigation.navigate('Conversations')}
+            icon="receipt-outline"
+            title="History"
+            onPress={() => navigation.navigate('TransactionHistory')}
           />
           <GroupedListItem
             icon="people-outline"
@@ -233,12 +233,7 @@ export default function ProfileScreen({ navigation }) {
 
         {user?.isAdmin && <GroupedListSection header="Admin"><GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} /></GroupedListSection>}
         {/* Borrowing & Payments Section */}
-        <GroupedListSection header="Borrowing">
-          <GroupedListItem
-            icon="receipt-outline"
-            title="History"
-            onPress={() => navigation.navigate('TransactionHistory')}
-          />
+        {(ENABLE_PAYMENTS || ENABLE_PAID_TIERS) && <GroupedListSection header="Borrowing">
           {ENABLE_PAYMENTS && (
           <GroupedListItem
             icon="cash-outline"
@@ -265,7 +260,7 @@ export default function ProfileScreen({ navigation }) {
               accessibilityRole="button"
             />
           )}
-        </GroupedListSection>
+        </GroupedListSection>}
 
         {/* Community Section */}
         {ENABLE_PAID_TIERS && (

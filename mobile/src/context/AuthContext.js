@@ -102,6 +102,13 @@ export function AuthProvider({ children, navigationRef }) {
     setIsAuthenticated(false);
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    const response = await api.changePassword(currentPassword, newPassword);
+    await SecureStore.setItemAsync('accessToken', response.accessToken);
+    await SecureStore.setItemAsync('refreshToken', response.refreshToken);
+    api.setAuthToken(response.accessToken);
+  };
+
   const refreshUser = async () => {
     try {
       const userData = await api.getMe();
@@ -129,6 +136,7 @@ export function AuthProvider({ children, navigationRef }) {
     completeSocialLinkCode,
     register,
     logout,
+    changePassword,
     refreshUser,
   };
 
