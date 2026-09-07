@@ -10,7 +10,6 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
-  Alert,
 
   Platform,
 } from 'react-native';
