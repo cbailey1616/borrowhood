@@ -55,7 +55,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const pollRef = useRef(null);
-  const cancelInProgress = useRef(false);
+  const actionInProgress = useRef(false);
 
   useFocusEffect(useCallback(() => {
     fetchTransaction();
@@ -97,21 +97,26 @@ export default function TransactionDetailScreen({ route, navigation }) {
   };
 
   const handleApprove = async () => {
+    if (actionInProgress.current) return;
+    actionInProgress.current = true;
     setActionLoading(true);
     try {
       await api.approveRental(id);
-      fetchTransaction();
+      await fetchTransaction();
       haptics.success();
       showToast('Request approved! The borrower has been notified.', 'success');
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Something went wrong approving this request. Please check your connection and try again.' });
     } finally {
+      actionInProgress.current = false;
       setActionLoading(false);
     }
   };
 
   const handleDecline = async () => {
+    if (actionInProgress.current) return;
+    actionInProgress.current = true;
     setActionLoading(true);
     try {
       await api.declineRental(id);
@@ -121,40 +126,40 @@ export default function TransactionDetailScreen({ route, navigation }) {
       haptics.error();
       showError({ message: error.message || 'Something went wrong declining this request. Please check your connection and try again.' });
     } finally {
+      actionInProgress.current = false;
       setActionLoading(false);
     }
   };
 
   const handleConfirmPickup = async () => {
+    if (actionInProgress.current) return;
+    actionInProgress.current = true;
     setActionLoading(true);
     try {
       await api.confirmRentalPickup(id);
-      fetchTransaction();
+      await fetchTransaction();
       haptics.success();
       showToast('Pickup confirmed!', 'success');
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t confirm the pickup right now. Please check your connection and try again.' });
     } finally {
+      actionInProgress.current = false;
       setActionLoading(false);
     }
   };
 
   const handleConfirmReturn = async (condition) => {
+    if (actionInProgress.current) return;
+    actionInProgress.current = true;
     setActionLoading(true);
     try {
       const result = await api.confirmRentalReturn(id, condition);
-      if (false && result.conditionDegraded) {
+      if (result.conditionDegraded) {
         haptics.warning();
-        navigation.navigate('DamageClaim', {
-          transactionId: id,
-          depositAmount: transaction.depositAmount,
-          listingTitle: transaction.listing.title,
-          conditionAtPickup: transaction.conditionAtPickup,
-          conditionAtReturn: condition,
-        });
+        showError({ message: 'The return is not complete. Message your neighbor about the item’s condition before confirming.' });
       } else {
-        fetchTransaction();
+        await fetchTransaction();
         haptics.success();
         showToast('Return confirmed!', 'success');
       }
@@ -162,13 +167,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t confirm the return right now. Please check your connection and try again.' });
     } finally {
+      actionInProgress.current = false;
       setActionLoading(false);
     }
   };
 
   const handleCancel = async () => {
-    if (cancelInProgress.current) return;
-    cancelInProgress.current = true;
+    if (actionInProgress.current) return;
+    actionInProgress.current = true;
     setActionLoading(true);
     try {
       await api.cancelRental(id);
@@ -179,7 +185,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t cancel right now. Please check your connection and try again.' });
     } finally {
-      cancelInProgress.current = false;
+      actionInProgress.current = false;
       setActionLoading(false);
     }
   };

@@ -5,15 +5,19 @@ import { withTransaction } from '../utils/db.js';
 export async function approveFreeBorrow(id, lenderId, response) {
   return withTransaction(async client => {
     const { rows: [borrow] } = await client.query(`SELECT * FROM borrow_transactions
-      WHERE id = $1 AND lender_id = $2 AND status = 'pending' AND stripe_payment_intent_id IS NULL
+      WHERE id = $1 AND lender_id = $2 AND stripe_payment_intent_id IS NULL
       FOR UPDATE`, [id, lenderId]);
     if (!borrow) return false;
+    if (['approved', 'paid', 'picked_up', 'return_pending', 'returned', 'completed'].includes(borrow.status)) {
+      return { alreadyApproved: true };
+    }
+    if (borrow.status !== 'pending') return false;
     const reserved = await client.query(`UPDATE listings SET is_available = false
       WHERE id = $1 AND is_available = true AND status = 'active' RETURNING id`, [borrow.listing_id]);
     if (!reserved.rowCount) return false;
     await client.query(`UPDATE borrow_transactions
       SET status = 'paid', accepted_at = COALESCE(accepted_at, NOW()), lender_response = $2, payment_status = 'none'
       WHERE id = $1`, [id, response]);
-    return true;
+    return { alreadyApproved: false };
   });
 }

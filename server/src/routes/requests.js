@@ -3,7 +3,7 @@ import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { canViewRequest, offerListing } from '../services/listingAccess.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification, sendBulkNotification } from '../services/notifications.js';
@@ -327,53 +327,56 @@ router.post('/', authenticate,
         }
       }
 
-      // Create request
-      let result;
-      if (expiresAtValue === null) {
-        // No expiration
-        result = await query(
-          `INSERT INTO item_requests (
-            user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at, type, time_zone
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL, $9, $10)
-          RETURNING id`,
-          [
-            req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, type, timeZone
-          ]
-        );
-      } else if (expiresAtValue instanceof Date) {
-        // Custom date
-        result = await query(
-          `INSERT INTO item_requests (
-            user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at, type, time_zone
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11)
-          RETURNING id`,
-          [
-            req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type, timeZone
-          ]
-        );
-      } else {
-        // Interval string (1 day, 3 days, 7 days)
-        result = await query(
-          `INSERT INTO item_requests (
-            user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at, type, time_zone
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval, $10, $11)
-          RETURNING id`,
-          [
-            req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type, timeZone
-          ]
-        );
-      }
+      const requestId = await withTransaction(async client => {
+        // Create request
+        let result;
+        if (expiresAtValue === null) {
+          // No expiration
+          result = await client.query(
+            `INSERT INTO item_requests (
+              user_id, community_id, category_id, title, description,
+              needed_from, needed_until, visibility, status, expires_at, type, time_zone
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL, $9, $10)
+            RETURNING id`,
+            [
+              req.user.id, communityId, categoryId || null, title, description,
+              neededFrom || null, neededUntil || null, visibility, type, timeZone
+            ]
+          );
+        } else if (expiresAtValue instanceof Date) {
+          // Custom date
+          result = await client.query(
+            `INSERT INTO item_requests (
+              user_id, community_id, category_id, title, description,
+              needed_from, needed_until, visibility, status, expires_at, type, time_zone
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11)
+            RETURNING id`,
+            [
+              req.user.id, communityId, categoryId || null, title, description,
+              neededFrom || null, neededUntil || null, visibility, expiresAtValue, type, timeZone
+            ]
+          );
+        } else {
+          // Interval string (1 day, 3 days, 7 days)
+          result = await client.query(
+            `INSERT INTO item_requests (
+              user_id, community_id, category_id, title, description,
+              needed_from, needed_until, visibility, status, expires_at, type, time_zone
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval, $10, $11)
+            RETURNING id`,
+            [
+              req.user.id, communityId, categoryId || null, title, description,
+              neededFrom || null, neededUntil || null, visibility, expiresAtValue, type, timeZone
+            ]
+          );
+        }
 
-      const requestId = result.rows[0].id;
-      if (req.body.townPreviewEnabled === true && visibility.split(',').includes('town')) {
-        await query('UPDATE item_requests SET town_preview_enabled=true WHERE id=$1', [requestId]);
-      }
+        const requestId = result.rows[0].id;
+        if (req.body.townPreviewEnabled === true && visibility.split(',').includes('town')) {
+          await client.query('UPDATE item_requests SET town_preview_enabled=true WHERE id=$1', [requestId]);
+        }
+        return requestId;
+      });
       res.status(201).json({ id: requestId });
 
       // Fire-and-forget: notify relevant users about the new request

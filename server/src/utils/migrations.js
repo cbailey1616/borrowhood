@@ -2,6 +2,7 @@ import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
 import { ensureSignupSchema } from '../services/signupVerification.js';
 import { ensureSafetyReviewSchema } from '../services/safetyReview.js';
+import { ensureExchangeCompletionSchema } from '../services/exchangeCompletionSchema.js';
 
 /**
  * Run pending migrations on server startup
@@ -514,6 +515,7 @@ export async function runMigrations() {
       await query("ALTER TABLE listings ADD COLUMN listing_type VARCHAR(10) DEFAULT 'lend' NOT NULL");
       logger.info('Migration complete: listings.listing_type added');
     }
+    await ensureExchangeCompletionSchema();
 
     // Migration: Add display_name column to users
     const hasDisplayName = await query(`

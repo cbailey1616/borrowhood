@@ -37,6 +37,24 @@ describe('ChatScreen', () => {
     expect(photo.props.source).toEqual({ uri: 'https://api.example/private-photos/signed' });
   });
 
+  it('does not call a delivered photo a draft or a failed send if local cleanup fails', async () => {
+    ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///sent.jpg' }] });
+    api.uploadImage.mockResolvedValueOnce('https://private-bucket/messages/sent.jpg');
+    api.sendMessage.mockResolvedValueOnce({ id: 'sent-photo', imageUrl: 'https://api.example/sent-photo' });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByPlaceholderText('Private message…');
+    await choosePhoto(screen);
+    SecureStore.deleteItemAsync.mockRejectedValueOnce(new Error('local storage unavailable'));
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Draft saved|Send not confirmed|Private conversation|Only you and/)).toBeNull();
+    expect(screen.queryByText('Retry send')).toBeNull();
+    expect(screen.queryByText('Photo ready to send')).toBeNull();
+    expect(screen.getByLabelText('Send message')).toBeDisabled();
+    expect(screen.getByLabelText('Report or block')).toBeTruthy();
+  });
+
   it('takes a camera photo and safely retries an uncertain photo-only send without uploading twice', async () => {
     api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: true });
     ImagePicker.requestCameraPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });

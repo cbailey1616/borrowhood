@@ -6,7 +6,7 @@ import { canViewListing, canViewRequest, validateSharing, offerListing } from '.
 import { freeListingOnly } from '../middleware/freeLaunch.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
@@ -408,38 +408,42 @@ router.post('/', authenticate, freeListingOnly,
       // Store visibility as comma-separated (e.g. 'close_friends,town')
       const primaryVisibility = visibilityArray.join(',');
 
-      // Create listing
-      const isGiveaway = ['giveaway', 'sell'].includes(listingType);
-      const result = await query(
-        `INSERT INTO listings (
-          owner_id, community_id, category_id, title, description, condition,
-          is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type, privacy_version, circle_id, direct_fee
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1, $14, $15)
-        RETURNING id`,
-        [
-          req.user.id, communityId || null, categoryId || null, title, description, condition,
-          isFree, isFree ? null : pricePerDay, isGiveaway ? 0 : (depositAmount || 0),
-          isGiveaway ? null : (minDuration || 1), isGiveaway ? null : (maxDuration || 14),
-          primaryVisibility, listingType, sharing.circleId, directFee
-        ]
-      );
+      const listingId = await withTransaction(async client => {
+        // Create listing
+        const isGiveaway = ['giveaway', 'sell'].includes(listingType);
+        const result = await client.query(
+          `INSERT INTO listings (
+            owner_id, community_id, category_id, title, description, condition,
+            is_free, price_per_day, deposit_amount, min_duration, max_duration, visibility, listing_type, privacy_version, circle_id, direct_fee
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 1, $14, $15)
+          RETURNING id`,
+          [
+            req.user.id, communityId || null, categoryId || null, title, description, condition,
+            isFree, isFree ? null : pricePerDay, isGiveaway ? 0 : (depositAmount || 0),
+            isGiveaway ? null : (minDuration || 1), isGiveaway ? null : (maxDuration || 14),
+            primaryVisibility, listingType, sharing.circleId, directFee
+          ]
+        );
 
-      const listingId = result.rows[0].id;
-      if (req.body.townPreviewEnabled === true && visibilityArray.includes('town')) {
-        await query('UPDATE listings SET town_preview_enabled=true WHERE id=$1', [listingId]);
-      }
-
-      // Add photos (if any)
-      if (photos && photos.length > 0) {
-        for (let i = 0; i < photos.length; i++) {
-          await query(
-            'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
-            [listingId, storedPhotos[i], i]
-          );
+        const listingId = result.rows[0].id;
+        if (req.body.townPreviewEnabled === true && visibilityArray.includes('town')) {
+          await client.query('UPDATE listings SET town_preview_enabled=true WHERE id=$1', [listingId]);
         }
-      }
 
-      if (requestMatchId) await offerListing(requestMatchId, listingId, req.user.id);
+        // Add photos (if any)
+        if (photos && photos.length > 0) {
+          for (let i = 0; i < photos.length; i++) {
+            await client.query(
+              'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
+              [listingId, storedPhotos[i], i]
+            );
+          }
+        }
+
+        if (requestMatchId) await offerListing(requestMatchId, listingId, req.user.id, client);
+
+        return listingId;
+      });
 
       // Direct request match notification (from "I Have This" flow)
       if (requestMatchId) {
@@ -492,7 +496,7 @@ router.post('/', authenticate, freeListingOnly,
       });
     } catch (err) {
       console.error('Create listing error:', err);
-      res.status(500).json({ error: 'Failed to create listing' });
+      res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to create listing' });
     }
   }
 );
@@ -616,24 +620,28 @@ router.patch('/:id', authenticate, freeListingOnly,
         return res.status(400).json({ error: 'No updates provided' });
       }
 
-      if (updates.length > 0) {
-        values.push(req.params.id);
-        await query(
-          `UPDATE listings SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
-          values
-        );
-      }
-
-      // Replace listing photos if provided
-      if (hasPhotoUpdate && req.body.photos.length > 0) {
-        await query('DELETE FROM listing_photos WHERE listing_id = $1', [req.params.id]);
-        for (let i = 0; i < req.body.photos.length; i++) {
-          await query(
-            'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
-            [req.params.id, req.body.photos[i], i]
+      await withTransaction(async client => {
+        await client.query('SELECT id FROM listings WHERE id = $1 FOR UPDATE', [req.params.id]);
+        if (updates.length > 0) {
+          values.push(req.params.id);
+          await client.query(
+            `UPDATE listings SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+            values
           );
         }
-      }
+
+        // Replace listing photos if provided
+        if (hasPhotoUpdate) {
+          await client.query('DELETE FROM listing_photos WHERE listing_id = $1', [req.params.id]);
+          for (let i = 0; i < req.body.photos.length; i++) {
+            await client.query(
+              'INSERT INTO listing_photos (listing_id, url, sort_order) VALUES ($1, $2, $3)',
+              [req.params.id, req.body.photos[i], i]
+            );
+          }
+        }
+
+      });
 
       res.json({ success: true });
     } catch (err) {

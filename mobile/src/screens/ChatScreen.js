@@ -30,7 +30,6 @@ import Animated, {
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import useFormDraft from '../hooks/useFormDraft';
-import DraftStatus from '../components/DraftStatus';
 import ChatExchangeCard from '../components/ChatExchangeCard';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '../components/Icon';
@@ -173,13 +172,18 @@ export default function ChatScreen({ route, navigation }) {
     sending.current = true;
     setChatError('');
     setIsSending(true);
+    let acknowledged = false;
     try {
       setComposer(current => ({ ...current, pending }));
       // Persist the immutable attempt before sending; retries keep the same ID.
       if (!(await draft.retry())) throw new Error('draft-storage');
       const result = await api.sendMessage(pending.payload);
-      setComposer(current => ({ ...current, pending: null, text: pending.payload.content && current.text.trim() === (pending.composerText ?? pending.payload.content) ? '' : current.text }));
-      await draft.retry();
+      acknowledged = true;
+      let remainingText;
+      setComposer(current => {
+        remainingText = pending.payload.content && current.text.trim() === (pending.composerText ?? pending.payload.content) ? '' : current.text;
+        return { ...current, pending: null, text: remainingText };
+      });
       if (!conversationId && result.conversationId) navigation.setParams({ conversationId: result.conversationId });
       nearBottom.current = true;
       // Add message to list
@@ -201,7 +205,12 @@ export default function ChatScreen({ route, navigation }) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
+      // Local cleanup follows the server acknowledgement. Its failure must not
+      // label a delivered message as unsent or offer a second send.
+      if (remainingText.trim()) await draft.retry();
+      else await draft.clear();
     } catch (error) {
+      if (acknowledged) return;
       setChatError(error.message === 'draft-storage' ? 'Couldn’t save this send attempt on your device. Nothing was sent.' : 'Send not confirmed. Your message is kept here until you check or retry.');
       haptics.error();
     } finally {
@@ -543,10 +552,6 @@ export default function ChatScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
-      <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: COLORS.surface }}>
-        <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Private conversation</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>Only you and {conversation?.otherUser?.firstName || recipient?.firstName || 'this neighbor'} can see these messages.</Text>
-      </View>
       {/* Listing Context Header */}
       <UserSafetyActions userId={recipientId || conversation?.otherUser?.id} />
       {threadContext?.id && <HapticPressable style={styles.listingHeader} accessibilityRole="button"
@@ -611,7 +616,7 @@ export default function ChatScreen({ route, navigation }) {
         </View>
         {!composer.pending.retryable && <Text style={{ color: COLORS.textSecondary, fontSize: 12, paddingBottom: 8 }}>Check the conversation before sending again. Safe retries need the updated server.</Text>}
       </View>}
-      {(draft.error || draft.restored) && <DraftStatus draft={draft} />}
+      {draft.error && !!newMessage.trim() && <Text accessibilityRole="alert" style={{ color: COLORS.danger, paddingHorizontal: 16, paddingVertical: 8, fontSize: 13 }}>Couldn’t save your unsent message. Keep this conversation open.</Text>}
       {!!attachment && <View style={styles.attachmentPreview}>
         <Image source={{ uri: attachment.uri }} style={styles.attachmentThumbnail} accessibilityLabel="Photo ready to send" />
         <Text style={styles.attachmentLabel}>{isUploading ? 'Sending photo…' : 'Photo ready to send'}</Text>
