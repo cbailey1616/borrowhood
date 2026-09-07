@@ -7,7 +7,7 @@ It has no production API fallback, sign-in, or live database seeding.
 The App Store set contains six portrait PNGs per device: Home, Giveaway,
 For Sale, Saved, My Posts, and Messages. Screens are captured at native size:
 
-- iPhone 16 Pro Max: 1320 × 2868 pixels.
+- iPhone 13 Pro Max: 1284 × 2778 pixels (the requested 6.5-inch upload size).
 - iPad Pro 13-inch (M4): 2064 × 2752 pixels.
 
 The capture script exports RGB PNGs without transparency or resizing.

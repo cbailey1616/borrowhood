@@ -17,10 +17,22 @@ manifest = []
 def run(*args, check=True, timeout=180):
     return subprocess.run(['xcrun', 'simctl', *args], check=check, timeout=timeout)
 
-for folder, name, size in [('iphone-pro-max', 'iPhone 16 Pro Max', (1320, 2868)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752))]:
+for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752))]:
     matches = [(runtime, device) for runtime, group in devices.items() if '.iOS-' in runtime for device in group if device['name'] == name and device.get('isAvailable')]
+    created_device = False
     if not matches:
-        raise RuntimeError(f'No available simulator for {name}')
+        # Hosted Macs may not pre-create older screen sizes. Capture natively
+        # on the requested device instead of resizing another phone's layout.
+        types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '--json']))['devicetypes']
+        device_type = next((item['identifier'] for item in types if item['name'] == name), None)
+        runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runtimes', '--json']))['runtimes']
+        available = [item for item in runtimes if '.iOS-' in item['identifier'] and item.get('isAvailable')]
+        if not device_type or not available:
+            raise RuntimeError(f'No available simulator configuration for {name}')
+        runtime = max(available, key=lambda item: tuple(map(int, item['version'].split('.'))))['identifier']
+        udid = subprocess.check_output(['xcrun', 'simctl', 'create', f'Borrowhood capture {name}', device_type, runtime], text=True).strip()
+        matches = [(runtime, {'udid': udid, 'state': 'Shutdown'})]
+        created_device = True
     runtime, device = sorted(matches, key=lambda match: tuple(map(int, match[0].split('iOS-')[1].split('-'))))[-1]
     udid = device['udid']
     destination = output / folder
@@ -51,4 +63,6 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 16 Pro Max', (1320, 2868))
             manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest})
     finally:
         run('shutdown', udid, check=False)
+        if created_device:
+            run('delete', udid, check=False)
 (output / 'capture-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
