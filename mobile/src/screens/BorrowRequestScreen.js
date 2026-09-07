@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import { directFeeLabel } from '../utils/directFee';
+import { directFeeLabel, isSaleListing } from '../utils/directFee';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  InputAccessoryView,
+  Keyboard,
   TextInput,
   Image,
   ActivityIndicator,
 
   Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -25,6 +28,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const { user, isGracePeriodActive } = useAuth();
   const { showError } = useError();
   const isGiveaway = listing.listingType === 'giveaway';
+  useEffect(() => { navigation.setOptions({ title: isSaleListing(listing) ? 'Request to buy' : isGiveaway ? 'Request this item' : 'Request to borrow' }); }, [listing.listingType, listing.directFee, navigation]);
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -135,10 +139,12 @@ export default function BorrowRequestScreen({ route, navigation }) {
       }
     }
 
+    Keyboard.dismiss();
     setIsSubmitting(true);
     try {
       const result = await api.createTransaction({
         listingId: listing.id,
+        salePrice: isSaleListing(listing) ? Number(listing.directFee.amount) : undefined,
         ...(isGiveaway ? {} : {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -325,7 +331,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <>
+    <KeyboardAwareScrollView style={styles.container} contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
+      enableOnAndroid extraScrollHeight={28} enableResetScrollToCoords={false}>
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
         <Image
@@ -340,7 +349,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           {isGiveaway && (
             <View style={styles.giveawayBadge}>
               <Ionicons name="gift" size={12} color={COLORS.secondary} />
-              <Text style={styles.giveawayBadgeText}>Giveaway — Yours to Keep</Text>
+              <Text style={styles.giveawayBadgeText}>{isSaleListing(listing) ? 'For sale — Yours to keep' : 'Giveaway — Yours to Keep'}</Text>
             </View>
           )}
         </View>
@@ -358,7 +367,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <HapticPressable
             haptic="light"
             style={[styles.dateButton, showStartPicker && styles.dateButtonActive]}
-            onPress={() => { setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
+            onPress={() => { Keyboard.dismiss(); setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
           >
             <Text style={styles.dateLabel}>Start Date</Text>
             <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
@@ -366,7 +375,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <HapticPressable
             haptic="light"
             style={[styles.dateButton, showEndPicker && styles.dateButtonActive]}
-            onPress={() => { setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
+            onPress={() => { Keyboard.dismiss(); setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
           >
             <Text style={styles.dateLabel}>End Date</Text>
             <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
@@ -379,6 +388,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               value={startDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="light"
+              textColor={COLORS.text}
+              accentColor={COLORS.primary}
+              style={{ width: '100%', backgroundColor: COLORS.surface }}
               minimumDate={new Date()}
               onChange={handleStartDateChange}
             />
@@ -400,6 +413,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               value={endDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="light"
+              textColor={COLORS.text}
+              accentColor={COLORS.primary}
+              style={{ width: '100%', backgroundColor: COLORS.surface }}
               minimumDate={new Date(startDate.getTime() + 86400000)}
               onChange={handleEndDateChange}
             />
@@ -415,17 +432,27 @@ export default function BorrowRequestScreen({ route, navigation }) {
           </View>
         )}
 
-        <Text style={styles.daysText}>{days} days</Text>
+        <Text style={styles.daysText}>{days} {days === 1 ? 'day' : 'days'}</Text>
       </View>
       )}
 
       {/* Message */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Message (optional)</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.sectionTitle}>Private message (optional)</Text>
+          <HapticPressable accessibilityRole="button" accessibilityLabel="Dismiss keyboard" onPress={() => Keyboard.dismiss()}
+            style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' }}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Done ×</Text>
+          </HapticPressable>
+        </View>
+        <Text style={styles.hint}>Sent privately to the owner with this request.</Text>
         <TextInput
           style={[styles.input, styles.messageInput]}
+          inputAccessoryViewID={Platform.OS === 'ios' ? 'borrow-request-keyboard' : undefined}
+          accessibilityLabel="Private message to owner"
           value={message}
           onChangeText={setMessage}
+          onFocus={() => { setShowStartPicker(false); setShowEndPicker(false); }}
           placeholder="Introduce yourself and explain what you need the item for..."
           placeholderTextColor={COLORS.textMuted}
           multiline
@@ -483,7 +510,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {isGiveaway ? 'Request Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
+            {isSaleListing(listing) ? 'Request to Buy' : isGiveaway ? 'Request Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
           </Text>
         )}
       </HapticPressable>
@@ -493,7 +520,16 @@ export default function BorrowRequestScreen({ route, navigation }) {
           ? 'By requesting this item, you agree to our terms and conditions'
           : 'By sending this request, you agree to our borrowing terms and conditions'}
       </Text>
-    </ScrollView>
+    </KeyboardAwareScrollView>
+    {Platform.OS === 'ios' && <InputAccessoryView nativeID="borrow-request-keyboard" backgroundColor={COLORS.surface}>
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: COLORS.border }}>
+        <HapticPressable accessibilityRole="button" accessibilityLabel="Hide keyboard" onPress={() => Keyboard.dismiss()}
+          style={{ minHeight: 44, paddingHorizontal: 20, justifyContent: 'center' }}>
+          <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Done ×</Text>
+        </HapticPressable>
+      </View>
+    </InputAccessoryView>}
+    </>
   );
 }
 

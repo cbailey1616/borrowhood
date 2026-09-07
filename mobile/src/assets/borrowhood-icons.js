@@ -178,7 +178,7 @@ export function iconSvg(name, { color = '#42594C', illustrated = false, selected
     stroke: illustrated ? '#42594C' : safeColor,
     fill: illustrated ? palette[0] : safeColor,
     accent: illustrated ? palette[1] : safeColor,
-    opacity: illustrated ? 1 : selected ? (['heart', 'bookmark', 'star', 'ellipse'].includes(base) ? 1 : 0.2) : 0,
+    opacity: base === 'heart' && !selected ? 0 : illustrated ? 1 : selected ? (['heart', 'bookmark', 'star', 'ellipse'].includes(base) ? 1 : 0.2) : 0,
   };
   return `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 32 32"><g fill="none" stroke="${c.stroke}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${DRAWINGS[base](c)}</g></svg>`;
 }

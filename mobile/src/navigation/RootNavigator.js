@@ -253,7 +253,7 @@ export default function RootNavigator() {
             component={ListingDiscussionScreen}
             options={({ route }) => ({
               ...sharedScreenOptions,
-              title: route.params?.requestId ? 'Discussion' : 'Questions & Answers',
+              title: 'Public replies',
             })}
           />
           <Stack.Screen

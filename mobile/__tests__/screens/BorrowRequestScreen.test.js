@@ -1,4 +1,5 @@
 import React from 'react';
+import { Keyboard } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -39,6 +40,42 @@ describe('BorrowRequestScreen', () => {
     fireEvent.changeText(input, 'Need it for a trip!');
     await act(async () => { fireEvent.press(getByText('Send Request')); });
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1' }));
+  });
+
+  it('dismisses the keyboard without losing the private request message', async () => {
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const input = await screen.findByLabelText('Private message to owner');
+    fireEvent.changeText(input, 'Tomorrow afternoon?');
+    fireEvent.press(screen.getByLabelText('Dismiss keyboard'));
+    expect(dismiss).toHaveBeenCalled();
+    expect(input.props.value).toBe('Tomorrow afternoon?');
+    await act(async () => fireEvent.press(screen.getByText('Send Request')));
+    expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ message: 'Tomorrow afternoon?' }));
+    dismiss.mockRestore();
+  });
+
+  it('dismisses typing before date selection and closes dates when typing resumes', async () => {
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const endDate = await screen.findByText('End Date');
+    fireEvent.press(endDate);
+    expect(dismiss).toHaveBeenCalled();
+    expect(screen.getByText('Done')).toBeTruthy();
+    fireEvent(screen.getByLabelText('Private message to owner'), 'focus');
+    expect(screen.queryByText('Done')).toBeNull();
+    dismiss.mockRestore();
+  });
+
+  it('includes the displayed sale price with a purchase request', async () => {
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const sale = { ...listing, listingType: 'giveaway', directFee: { amount: 25, unit: 'flat' } };
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: sale } }} />);
+    await screen.findByText('$25.00');
+    await act(async () => fireEvent.press(screen.getByText('Request to Buy')));
+    expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1', salePrice: 25 }));
   });
 
   it('submits without message (message is optional)', async () => {

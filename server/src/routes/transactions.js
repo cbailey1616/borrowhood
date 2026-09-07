@@ -57,6 +57,9 @@ router.post('/', authenticate,
         return res.status(409).json({ code: 'LISTING_REQUIRES_UPDATE', error: 'The owner must update this listing to free borrowing with no deposit before you can request it.' });
       }
       const isGiveaway = item.listing_type === 'giveaway';
+      if (isGiveaway && item.direct_fee?.unit === 'flat' && req.body.salePrice !== Number(item.direct_fee.amount)) {
+        return res.status(409).json({ error: 'This item is for sale. Update Borrowhood and reopen the listing to review its current price before requesting it.' });
+      }
 
       // Giveaways don't need dates
       if (!isGiveaway && (!startDate || !endDate)) {
@@ -287,7 +290,7 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await query(
       `SELECT t.*,
-              l.title as listing_title, l.listing_type,
+              l.title as listing_title, l.listing_type, l.direct_fee,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
               COALESCE(b.display_name, b.first_name) as borrower_first_name,
               CASE WHEN b.display_name IS NOT NULL THEN '' ELSE b.last_name END as borrower_last_name,
@@ -308,6 +311,7 @@ router.get('/', authenticate, async (req, res) => {
       id: t.id,
       status: t.status,
       listingType: t.listing_type || 'lend',
+      directFee: t.direct_fee || null,
       listing: {
         id: t.listing_id,
         title: t.listing_title,
@@ -348,7 +352,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const result = await query(
       `SELECT t.*,
               l.title as listing_title, l.description as listing_description,
-              l.condition as listing_condition, l.listing_type,
+              l.condition as listing_condition, l.listing_type, l.direct_fee,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
               (SELECT EXISTS(SELECT 1 FROM disputes WHERE transaction_id = t.id)) as has_dispute,
               (SELECT id FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) as dispute_id,
@@ -384,6 +388,7 @@ router.get('/:id', authenticate, async (req, res) => {
       id: t.id,
       status: t.status,
       listingType: t.listing_type || 'lend',
+      directFee: t.direct_fee || null,
       listing: {
         id: t.listing_id,
         title: t.listing_title,

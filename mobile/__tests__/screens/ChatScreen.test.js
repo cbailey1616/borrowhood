@@ -18,7 +18,7 @@ describe('ChatScreen', () => {
   it('renders message input', async () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByPlaceholderText('Message…');
+    await findByPlaceholderText('Private message…');
   });
   it('displays messages', async () => {
     api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [{ id: 'msg-1', content: 'Hello there!', senderId: 'user-2', createdAt: new Date().toISOString() }] });
@@ -29,11 +29,22 @@ describe('ChatScreen', () => {
   it('send button calls api.sendMessage', async () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
-    const input = await findByPlaceholderText('Message…');
+    const input = await findByPlaceholderText('Private message…');
     fireEvent.changeText(input, 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => { fireEvent.press(getByLabelText('Send message')); });
     expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ content: 'Hi!' }));
+  });
+
+  it('sends the visible post context to both participants and clears only the sent draft', async () => {
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { ...route.params, threadContext: { id: 'request-1', type: 'request', title: 'Need a ladder', replyText: 'I have one you can use.' } } }} />);
+    const input = await screen.findByPlaceholderText('Private message…');
+    fireEvent.changeText(input, 'Can I pick it up tomorrow?');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ content: 'About request: “Need a ladder”\nReplying to: “I have one you can use.”\n\nCan I pick it up tomorrow?' }));
+    expect(input.props.value).toBe('');
   });
 
   it('retries an uncertain send using the same immutable key and preserves newly typed text', async () => {
@@ -41,7 +52,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout')).mockResolvedValueOnce({ id: 'msg-1' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText, findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    const input = await findByPlaceholderText('Message…');
+    const input = await findByPlaceholderText('Private message…');
     fireEvent.changeText(input, 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(getByLabelText('Send message')));
@@ -57,7 +68,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout'));
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText, findByText, queryByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.changeText(await findByPlaceholderText('Message…'), 'Hi!');
+    fireEvent.changeText(await findByPlaceholderText('Private message…'), 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(getByLabelText('Send message')));
     await findByText('Clear after checking');
@@ -70,7 +81,7 @@ describe('ChatScreen', () => {
     SecureStore.setItemAsync.mockRejectedValue(new Error('full'));
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText, findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.changeText(await findByPlaceholderText('Message…'), 'Hi!');
+    fireEvent.changeText(await findByPlaceholderText('Private message…'), 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(getByLabelText('Send message')));
     await findByText(/Nothing was sent/);
@@ -85,7 +96,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout')).mockResolvedValueOnce({ id: 'msg-1' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const first = render(<Screen navigation={mockNavigation} route={{ params: { recipientId: 'user-2' } }} />);
-    fireEvent.changeText(await first.findByPlaceholderText('Message…'), 'Keep this attempt');
+    fireEvent.changeText(await first.findByPlaceholderText('Private message…'), 'Keep this attempt');
     await waitFor(() => expect(first.getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(first.getByLabelText('Send message')));
     await first.findByText('Retry send');

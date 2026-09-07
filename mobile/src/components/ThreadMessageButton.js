@@ -22,6 +22,7 @@ export default function ThreadMessageButton({ author, currentUserId, navigation,
         recipientId: author.id,
         recipient: author,
         threadContext: context,
+        ...(context?.type === 'listing' ? { listingId: context.id } : {}),
       });
     } catch { setFailed(true); }
     finally { busy.current = false; setLoading(false); }
@@ -29,9 +30,12 @@ export default function ThreadMessageButton({ author, currentUserId, navigation,
   return <View>
     <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${author.firstName || 'neighbor'} privately`}
       accessibilityHint="Opens private chat; does not post a reply" disabled={loading} onPress={open}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 44, paddingHorizontal: 8 }}>
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 48, paddingHorizontal: 8 }}>
       <Ionicons name="chatbubble" size={18} color={COLORS.primary} illustrated />
-      <Text style={{ color: COLORS.primary, fontSize: 13 }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Message'}</Text>
+      <View style={{ maxWidth: 150 }}>
+        <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 11 }} numberOfLines={1}>To {author.firstName || 'neighbor'}</Text>
+      </View>
     </HapticPressable>
     {failed && <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary, fontSize: 12 }}>Couldn’t open chat. Please try again.</Text>}
   </View>;

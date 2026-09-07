@@ -1,7 +1,7 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
-import { directFeeLabel } from '../utils/directFee';
+import { directFeeLabel, isSaleListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import ThreadMessageButton from '../components/ThreadMessageButton';
 import {
@@ -64,7 +64,7 @@ const FEED = {
 
 const CARD_ACCENTS = {
   borrow: { pill: COLORS.primary, soft: COLORS.primaryMuted },
-  giveaway: { pill: COLORS.accent, soft: COLORS.accentMuted },
+  giveaway: { pill: COLORS.primaryMuted, soft: COLORS.primaryMuted },
   wanted: { pill: COLORS.warning, soft: COLORS.warningMuted },
 };
 
@@ -95,12 +95,6 @@ export default function FeedScreen({ navigation }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [requestDiscussions, setRequestDiscussions] = useState({});
   const [listingDiscussions, setListingDiscussions] = useState({});
-  const [threadInputs, setThreadInputs] = useState({});
-  const [submittingThread, setSubmittingThread] = useState(null);
-  const [expandedThreads, setExpandedThreads] = useState({});
-  const [threadReplies, setThreadReplies] = useState({});
-  const [replyingTo, setReplyingTo] = useState({});
-  const [collapsedThreads, setCollapsedThreads] = useState({});
   const listRef = useRef(null);
   const [focusedItemId, setFocusedItemId] = useState(null);
 
@@ -485,7 +479,7 @@ export default function FeedScreen({ navigation }) {
     const userName = item.ownerMasked ? 'Verified Owner'
       : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
     const isGiveaway = item.listingType === 'giveaway';
-    const priceLabel = isGiveaway ? null : (directFeeLabel(item) || (item.isFree ? 'Free' : `$${item.pricePerDay}/day`));
+    const priceLabel = isGiveaway && !isSaleListing(item) ? null : (directFeeLabel(item) || (item.isFree ? 'Free' : `$${item.pricePerDay}/day`));
 
     return (
     <AnimatedCard index={index} style={styles.tileShadow}>
@@ -529,12 +523,11 @@ export default function FeedScreen({ navigation }) {
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
                   <Ionicons name="gift" size={18} illustrated />
-                  <Text style={styles.tilePillText}>GIVEAWAY</Text>
+                  <Text style={[styles.tilePillText, { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : 'GIVEAWAY'}</Text>
                 </View>
               ) : (
                 <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? accent.pill : COLORS.textMuted }]}>
-                  <Ionicons name={item.isAvailable ? 'swap-horizontal' : 'time-outline'} size={10} color="#fff" />
-                  <Text style={styles.tilePillText}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Available' : 'Unavailable'}</Text>
+                  <Text style={styles.tilePillText}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Borrowable' : 'Unavailable'}</Text>
                 </View>
               )}
               <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
@@ -562,259 +555,22 @@ export default function FeedScreen({ navigation }) {
     );
   };
 
-  const handleThreadSubmit = async (itemId, isRequest = false) => {
-    const text = (threadInputs[itemId] || '').trim();
-    if (!text) return;
-
-    setSubmittingThread(itemId);
-    try {
-      const parentId = replyingTo[itemId]?.id || undefined;
-      const result = isRequest
-        ? await api.createRequestDiscussionPost(itemId, { content: text, parentId })
-        : await api.createDiscussionPost(itemId, { content: text, parentId });
-
-      const newPost = {
-        id: result.id,
-        content: result.content,
-        replyCount: 0,
-        createdAt: result.createdAt,
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          profilePhotoUrl: user.profilePhotoUrl,
-        },
-        isOwn: true,
-      };
-
-      const setDiscussions = isRequest ? setRequestDiscussions : setListingDiscussions;
-
-      if (parentId) {
-        setThreadReplies(prev => ({
-          ...prev,
-          [parentId]: [...(prev[parentId] || []), newPost],
-        }));
-        setDiscussions(prev => ({
-          ...prev,
-          [itemId]: {
-            ...prev[itemId],
-            posts: (prev[itemId]?.posts || []).map(p =>
-              p.id === parentId ? { ...p, replyCount: (p.replyCount || 0) + 1 } : p
-            ),
-          },
-        }));
-        setExpandedThreads(prev => ({ ...prev, [parentId]: true }));
-      } else {
-        setDiscussions(prev => ({
-          ...prev,
-          [itemId]: {
-            posts: [newPost, ...(prev[itemId]?.posts || [])],
-            total: (prev[itemId]?.total || 0) + 1,
-          },
-        }));
-      }
-
-      haptics.success();
-      setThreadInputs(prev => ({ ...prev, [itemId]: '' }));
-      setReplyingTo(prev => ({ ...prev, [itemId]: null }));
-    } catch (error) {
-      console.error('Thread submit error:', error);
-      haptics.error();
-    } finally {
-      setSubmittingThread(null);
-    }
-  };
-
-  const fetchThreadReplies = async (itemId, postId, isRequest = false) => {
-    try {
-      const data = isRequest
-        ? await api.getRequestDiscussionReplies(itemId, postId)
-        : await api.getDiscussionReplies(itemId, postId);
-      setThreadReplies(prev => ({ ...prev, [postId]: data.replies || [] }));
-    } catch (error) {
-      console.error('Failed to fetch replies:', error);
-    }
-  };
-
-  const toggleThreadExpand = async (itemId, postId, isRequest = false) => {
-    const isExpanding = !expandedThreads[postId];
-    setExpandedThreads(prev => ({ ...prev, [postId]: isExpanding }));
-    if (isExpanding && !threadReplies[postId]) {
-      await fetchThreadReplies(itemId, postId, isRequest);
-    }
-  };
-
   const renderInlineThread = (itemId, thread, isRequest) => {
-    const posts = thread?.posts || [];
-    const inputValue = threadInputs[itemId] || '';
-    const isSubmitting = submittingThread === itemId;
-    const currentReply = replyingTo[itemId];
-    const isCollapsed = collapsedThreads[itemId] !== false;
-    const feedItem = feed.find(f => f.id === itemId);
-    const navParams = isRequest
-      ? { requestId: itemId, request: feedItem }
-      : { listingId: itemId, listing: feedItem };
-
-    return (
-      <View testID={`Feed.thread.${itemId}`} style={[styles.threadContainer, isRequest && styles.requestThread]}>
-        <Pressable
-          onPress={() => {
-            haptics.light();
-            setCollapsedThreads(prev => ({ ...prev, [itemId]: !prev[itemId] }));
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={[styles.threadHeader, !isCollapsed && styles.threadHeaderExpanded]}
-        >
-          <Ionicons name="chatbubbles-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={[styles.threadHeaderText, { flex: 1 }]}>
-            {thread?.total > 0 ? `${thread.total} ${thread.total === 1 ? 'comment' : 'comments'}` : 'No comments yet'}
-          </Text>
-          <Ionicons name={isCollapsed ? 'chevron-down' : 'chevron-up'} size={14} color={COLORS.textMuted} />
-        </Pressable>
-
-        {isCollapsed ? null : (<>
-
-        {posts.map((post) => (
-          <View key={post.id} style={styles.threadPost}>
-            <View style={styles.threadPostRow}>
-              {post.user.profilePhotoUrl ? (
-                <Image source={{ uri: post.user.profilePhotoUrl }} style={styles.requestThreadAvatar} />
-              ) : (
-                <View style={[styles.requestThreadAvatar, styles.requestAvatarPlaceholder]}>
-                  <Ionicons name="person" size={10} color={COLORS.gray[400]} />
-                </View>
-              )}
-              <View style={styles.requestThreadBody}>
-                <Text style={styles.requestThreadAuthor}>
-                  {post.user.firstName} {post.user.lastName}
-                </Text>
-                <Text style={styles.requestThreadText}>{post.content}</Text>
-                <View style={styles.threadPostActions}>
-                  <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation}
-                    context={{ id: itemId, title: feedItem?.title, type: isRequest ? 'request' : 'listing' }} />
-                  <HapticPressable
-                    haptic="light"
-                    onPress={() => setReplyingTo(prev => ({ ...prev, [itemId]: post }))}
-                    style={styles.threadReplyBtn}
-                  >
-                    <Text style={styles.threadReplyBtnText}>Reply</Text>
-                  </HapticPressable>
-                  {post.replyCount > 0 && (
-                    <HapticPressable
-                      haptic="light"
-                      onPress={() => toggleThreadExpand(itemId, post.id, isRequest)}
-                      style={styles.threadReplyBtn}
-                    >
-                      <Text style={[styles.threadReplyBtnText, { color: COLORS.primary }]}>
-                        {expandedThreads[post.id] ? 'Hide' : 'View'} {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
-                      </Text>
-                    </HapticPressable>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {expandedThreads[post.id] && (threadReplies[post.id] || []).map((reply) => (
-              <View key={reply.id} style={styles.threadReply}>
-                {reply.user.profilePhotoUrl ? (
-                  <Image source={{ uri: reply.user.profilePhotoUrl }} style={styles.threadReplyAvatar} />
-                ) : (
-                  <View style={[styles.threadReplyAvatar, styles.requestAvatarPlaceholder]}>
-                    <Ionicons name="person" size={8} color={COLORS.gray[400]} />
-                  </View>
-                )}
-                <View style={styles.threadReplyBody}>
-                  <Text style={styles.threadReplyAuthor}>
-                    {reply.user.firstName} {reply.user.lastName}
-                  </Text>
-                  <Text style={styles.threadReplyText}>{reply.content}</Text>
-                  <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation}
-                    context={{ id: itemId, title: feedItem?.title, type: isRequest ? 'request' : 'listing' }} />
-                </View>
-              </View>
-            ))}
-          </View>
-        ))}
-
-        {thread?.total > 2 && (
-          <HapticPressable
-            onPress={() => navigation.navigate('ListingDiscussion', navParams)}
-            haptic="light"
-            style={styles.threadViewAll}
-          >
-            <Text style={styles.requestThreadLinkText}>View all {thread.total} comments</Text>
-          </HapticPressable>
-        )}
-
-        {currentReply && (
-          <View style={styles.threadReplyingBar}>
-            <Text style={styles.threadReplyingText}>
-              Replying to {currentReply.user.firstName}
-            </Text>
-            <HapticPressable
-              haptic="light"
-              onPress={() => setReplyingTo(prev => ({ ...prev, [itemId]: null }))}
-            >
-              <Ionicons name="close" size={16} color={COLORS.textSecondary} />
-            </HapticPressable>
-          </View>
-        )}
-
-        <View style={styles.threadInputRow}>
-          <TextInput
-            style={styles.threadInput}
-            value={inputValue}
-            onChangeText={(text) => setThreadInputs(prev => ({ ...prev, [itemId]: text }))}
-            placeholder={currentReply ? 'Write a reply...' : 'Write a comment...'}
-            placeholderTextColor={COLORS.textMuted}
-            maxLength={2000}
-            onFocus={() => {
-              setFocusedItemId(itemId);
-              const index = feed.findIndex(f => f.id === itemId);
-              if (index >= 0 && listRef.current) {
-                setTimeout(() => {
-                  listRef.current.scrollToIndex({ index, viewPosition: 0, animated: true });
-                }, 300);
-              }
-            }}
-            onBlur={() => setFocusedItemId(null)}
-          />
-          <HapticPressable
-            haptic="medium"
-            style={[styles.threadSendBtn, (!inputValue.trim() || isSubmitting) && styles.threadSendBtnDisabled]}
-            onPress={() => handleThreadSubmit(itemId, isRequest)}
-            disabled={!inputValue.trim() || isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={14} color="#fff" />
-            )}
-          </HapticPressable>
-        </View>
-
-        {feedItem && feedItem.user?.id !== user?.id && (
-          <HapticPressable
-            haptic="light"
-            style={styles.threadDmButton}
-            onPress={() => navigation.navigate('Chat', {
-              recipientId: feedItem.user.id,
-              ...(isRequest
-                ? {}
-                : { listingId: itemId, listing: feedItem }),
-            })}
-          >
-            <Ionicons name="mail-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.threadDmText}>
-              {isRequest
-                ? `Message ${feedItem.user.firstName} privately`
-                : `Message ${feedItem.user.firstName} about this item`}
-            </Text>
-          </HapticPressable>
-        )}
-        </>)}
+    const item = feed.find(entry => entry.id === itemId);
+    const params = isRequest ? { requestId: itemId, request: item } : { listingId: itemId, listing: item };
+    return <View testID={`Feed.thread.${itemId}`} style={[styles.threadContainer, isRequest && styles.requestThread]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <HapticPressable accessibilityRole="button" accessibilityLabel={`Public replies about ${item?.title || 'this post'}`}
+          onPress={event => { event?.stopPropagation?.(); navigation.navigate('ListingDiscussion', params); }}
+          style={[styles.threadHeader, { minHeight: 44 }]}>
+          <Ionicons name="chatbubbles-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.threadHeaderText}>Public replies{thread?.total ? ` · ${thread.total}` : ''}</Text>
+          <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+        </HapticPressable>
+        <ThreadMessageButton author={item?.user} currentUserId={user?.id} navigation={navigation}
+          context={{ id: itemId, title: item?.title, type: isRequest ? 'request' : 'listing' }} />
       </View>
-    );
+    </View>;
   };
 
   const renderRequestItem = (item, index) => {

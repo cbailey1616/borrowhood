@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { directFeeLabel } from '../utils/directFee';
+import { directFeeLabel, isSaleListing } from '../utils/directFee';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -56,11 +56,11 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
           </View>
           <View style={styles.cardContent}>
             <View style={styles.cardTopRow}>
-              <View style={[styles.pill, { backgroundColor: isGiveaway ? '#A03030' : COLORS.primary }]}>
-                <Ionicons name={isGiveaway ? 'gift' : 'swap-horizontal'} size={10} color="#fff" />
-                <Text style={styles.pillText}>{isGiveaway ? 'FREE' : 'BORROW'}</Text>
+              <View style={[styles.pill, { backgroundColor: isGiveaway ? COLORS.primaryMuted : COLORS.primary }]}>
+                <Ionicons name={isGiveaway ? 'gift' : 'swap-horizontal'} size={isGiveaway ? 18 : 10} illustrated={isGiveaway} color={isGiveaway ? COLORS.primary : '#fff'} />
+                <Text style={[styles.pillText, isGiveaway && { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : isGiveaway ? 'FREE' : 'BORROW'}</Text>
               </View>
-              {!isGiveaway && (
+              {(!isGiveaway || isSaleListing(item)) && (
                 <View style={[styles.pill, { backgroundColor: COLORS.primary }]}>
                   <Text style={styles.pillText}>
                     {directFeeLabel(item) || (item.listingType === 'giveaway' ? 'Free to keep' : 'Free to borrow')}

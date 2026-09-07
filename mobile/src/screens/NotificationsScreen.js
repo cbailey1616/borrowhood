@@ -1,3 +1,4 @@
+import { publicReplyRoute } from '../utils/conversationContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -108,6 +109,8 @@ export default function NotificationsScreen({ navigation }) {
     haptics.light();
 
     // Navigate based on notification type
+    const publicRoute = publicReplyRoute(notification);
+    if (publicRoute) { navigation.navigate('ListingDiscussion', publicRoute); return; }
     if (notification.type === 'new_message') {
       if (notification.conversationId) {
         navigation.navigate('Chat', { conversationId: notification.conversationId });
@@ -117,14 +120,6 @@ export default function NotificationsScreen({ navigation }) {
       return;
     } else if (notification.type === 'new_request' && notification.requestId) {
       navigation.navigate('RequestDetail', { id: notification.requestId });
-    } else if (notification.type === 'discussion_reply' || notification.type === 'listing_comment') {
-      if (notification.listingId) {
-        navigation.navigate('ListingDiscussion', { listingId: notification.listingId });
-      }
-    } else if (notification.type === 'request_comment') {
-      if (notification.requestId) {
-        navigation.navigate('RequestDetail', { id: notification.requestId });
-      }
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
       navigation.navigate('Friends');
     } else if (notification.transactionId) {

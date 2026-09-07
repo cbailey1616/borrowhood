@@ -1,3 +1,4 @@
+import { publicReplyRoute } from '../utils/conversationContext';
 import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -195,10 +196,11 @@ function handleNotificationResponse(data) {
 
     case 'discussion_reply':
     case 'listing_comment':
-      if (data.listingId) {
-        navigationRef.navigate('ListingDiscussion', { listingId: data.listingId });
-      }
+    case 'request_comment': {
+      const target = publicReplyRoute(data);
+      if (target) navigationRef.navigate('ListingDiscussion', target);
       break;
+    }
 
     case 'dispute_opened':
     case 'dispute_resolved':

@@ -1,4 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
+import GiveawayOptions from '../components/GiveawayOptions';
 import SharingPicker from '../components/SharingPicker';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import DirectFeePicker from '../components/DirectFeePicker';
@@ -50,6 +51,7 @@ export default function EditListingScreen({ navigation, route }) {
     circleId: listing.circleId || null,
     communityId: listing.communityId || null,
     isFree: listing.isFree ?? true,
+    giveawayMode: listing.directFee?.unit === 'flat' ? 'sell' : 'free',
     chargeFee: Boolean(listing.directFee),
     directFeeAmount: listing.directFee?.amount?.toString() || '',
     pricePerDay: listing.pricePerDay?.toString() || '',
@@ -166,7 +168,7 @@ export default function EditListingScreen({ navigation, route }) {
     }
 
     let directFee;
-    try { directFee = directFeePayload(listing.listingType !== 'giveaway' && formData.chargeFee, formData.directFeeAmount, listing.directFee?.unit || 'day'); }
+    try { directFee = directFeePayload(listing.listingType === 'giveaway' ? false : formData.chargeFee, formData.directFeeAmount, listing.listingType === 'giveaway' ? 'flat' : listing.directFee?.unit || 'day'); }
     catch (error) { showError({ message: error.message }); return; }
     // Validate rental fee when charging ($5 minimum to cover processing fees)
     if (ENABLE_PAYMENTS && !formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
@@ -236,6 +238,7 @@ export default function EditListingScreen({ navigation, route }) {
         sharingConfirmed: true,
         townPreviewEnabled: true,
         directFee,
+        giveawayMode: listing.listingType === 'giveaway' ? 'free' : undefined,
         circleId: formData.circleId || undefined,
         communityId: formData.communityId || undefined,
         isFree: !ENABLE_PAYMENTS || formData.isFree,
@@ -429,6 +432,8 @@ export default function EditListingScreen({ navigation, route }) {
 
       </View>
 
+      {listing.listingType === 'giveaway' && <GiveawayOptions mode={formData.giveawayMode} amount={formData.directFeeAmount}
+        onModeChange={value => updateField('giveawayMode', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
       {listing.listingType !== 'giveaway' && <DirectFeePicker enabled={formData.chargeFee} amount={formData.directFeeAmount}
         onToggle={value => updateField('chargeFee', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
       {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (

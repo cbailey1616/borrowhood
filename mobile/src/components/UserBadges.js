@@ -69,7 +69,7 @@ export default function UserBadges({
           onPress={() => setShowLegend(false)}
           haptic="light"
         >
-          <ScrollView style={[styles.legendCard, { maxHeight: '85%' }]} contentContainerStyle={{ paddingBottom: 24 }}>
+          <ScrollView style={styles.legendCard} contentContainerStyle={styles.legendContent}>
             <Text style={styles.legendTitle}>Borrowhood Ranks</Text>
             <Text style={styles.legendSubtitle}>Ranks reflect activity, not identity or safety checks. Reviews and completed exchanges offer more context.</Text>
 
@@ -176,11 +176,15 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
   },
   legendCard: {
+    flexGrow: 0,
+    maxHeight: '85%',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
     width: '100%',
     maxWidth: 340,
+  },
+  legendContent: {
+    padding: SPACING.xl,
   },
   legendTitle: {
     ...TYPOGRAPHY.h2,

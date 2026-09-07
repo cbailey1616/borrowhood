@@ -5,8 +5,12 @@ describe('offline informational pricing', () => {
     expect(normalizeDirectFee({ amount: 2.5, unit: 'day' }, 'lend')).toEqual({ amount: 2.5, unit: 'day', currency: 'USD' });
     expect(normalizeDirectFee(null, 'lend')).toBeNull();
   });
-  it('never permits a fee for giveaways', () => {
+  it('rejects recurring prices for permanent transfers', () => {
     expect(() => normalizeDirectFee({ amount: 5, unit: 'day' }, 'giveaway')).toThrow();
+  });
+  it('rejects one-time prices on giveaways', () => {
+    expect(() => normalizeDirectFee({ amount: 25.5, unit: 'flat' }, 'giveaway')).toThrow('Giveaways must be free.');
+    expect(normalizeDirectFee(null, 'giveaway')).toBeNull();
   });
   it.each([NaN, Infinity, -1, 0, 1.234, 100001, '2.50'])('rejects invalid amount %s', amount => {
     expect(() => normalizeDirectFee({ amount, unit: 'day' }, 'lend')).toThrow();

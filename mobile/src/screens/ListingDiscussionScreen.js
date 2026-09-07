@@ -24,9 +24,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const { listingId, listing, requestId, request, autoFocus } = route.params;
   const isRequest = !!requestId;
   const targetId = requestId || listingId;
-  const targetTitle = request?.title || listing?.title;
+  const [target, setTarget] = useState(request || listing || null);
+  const targetTitle = target?.title;
+  const [threadError, setThreadError] = useState('');
   const threadContext = { id: targetId, title: targetTitle, type: isRequest ? 'request' : 'listing' };
-  const isOwner = isRequest ? request?.isOwner : listing?.isOwner;
+  const isOwner = target?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [expandedPosts, setExpandedPosts] = useState({});
@@ -40,6 +42,18 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    let active = true;
+    setTarget(request || listing || null);
+    if (!request?.title && !listing?.title) {
+      (isRequest ? api.getRequest(targetId) : api.getListing(targetId)).then(data => {
+        if (active) setTarget(data);
+      }).catch(() => { if (active) setThreadError('Couldn’t load the original post. Go back and reopen it.'); });
+    }
+    return () => { active = false; };
+  }, [targetId]);
+
+  useEffect(() => {
+    setPosts([]); setReplies({}); setExpandedPosts({}); setReplyingTo(null); setNewComment(''); setIsLoading(true); setThreadError('');
     fetchPosts();
   }, [targetId]);
 
@@ -56,7 +70,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         : await api.getDiscussions(listingId, { limit: 50 });
       setPosts(data.posts || []);
     } catch (error) {
-      console.error('Failed to fetch discussions:', error);
+      setThreadError('Couldn’t load public replies. Go back and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +100,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     if (!newComment.trim()) return;
 
     setIsSubmitting(true);
+    setThreadError('');
     try {
       const data = {
         content: newComment.trim(),
@@ -144,7 +159,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       setNewComment('');
       setReplyingTo(null);
     } catch (error) {
-      console.error('Discussion submit error:', error);
+      setThreadError('Your public reply was not sent. Your text is still here—please try again.');
       haptics.error();
     } finally {
       setIsSubmitting(false);
@@ -221,7 +236,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           <Text style={styles.replyDate}>{formatDate(reply.createdAt)}</Text>
         </View>
         <Text style={styles.replyText}>{reply.content}</Text>
-        <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation} context={threadContext} />
+        <View style={styles.postActions}>
+          <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply({ id: parentId, user: reply.user, content: reply.content })}>
+            <Text style={styles.actionText}>Reply publicly</Text>
+          </HapticPressable>
+        <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: reply.content }} />
+        </View>
         {(reply.isOwn || isOwner) && (
           <HapticPressable
             haptic="light"
@@ -266,12 +286,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         <Text style={styles.postContent}>{post.content}</Text>
 
         <View style={styles.postActions}>
-          <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation} context={threadContext} />
           <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply(post)}>
             <Ionicons name="arrow-undo-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.actionText}>Reply</Text>
+            <Text style={styles.actionText}>Reply publicly</Text>
           </HapticPressable>
-
+          <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: post.content }} />
+        </View>
           {post.replyCount > 0 && (
             <HapticPressable
               haptic="light"
@@ -288,7 +308,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
               </Text>
             </HapticPressable>
           )}
-        </View>
 
         {isExpanded && (
           <View style={styles.repliesContainer}>
@@ -312,7 +331,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       {replyingTo && (
         <View style={styles.replyingToBar}>
           <Text style={styles.replyingToText}>
-            Replying to {replyingTo.user.firstName}
+            Public reply to {replyingTo.user.firstName}: “{replyingTo.content.slice(0, 120)}”
           </Text>
           <HapticPressable haptic="light" onPress={cancelReply}>
             <Ionicons name="close" size={18} color={COLORS.textSecondary} />
@@ -325,7 +344,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           style={styles.input}
           value={newComment}
           onChangeText={setNewComment}
-          placeholder={replyingTo ? 'Write a reply...' : isRequest ? 'Write a response...' : 'Ask a question...'}
+          placeholder={replyingTo ? 'Write a public reply…' : 'Add a public reply…'}
+          accessibilityLabel="Public reply"
           placeholderTextColor={COLORS.textMuted}
           multiline
           maxLength={2000}
@@ -335,6 +355,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         />
         <HapticPressable
           haptic="medium"
+          accessibilityRole="button" accessibilityLabel="Post public reply"
           style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
           onPress={handleSubmit}
           disabled={!newComment.trim() || isSubmitting}
@@ -356,11 +377,13 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      {targetTitle && (
-        <View style={styles.listingHeader}>
-          <Text style={styles.listingTitle} numberOfLines={1}>{targetTitle}</Text>
-        </View>
-      )}
+      <HapticPressable style={styles.listingHeader} accessibilityRole="button" accessibilityLabel="View original post"
+        onPress={() => navigation.navigate(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}>
+        <Text style={styles.listingTitle} numberOfLines={2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Public replies · visible to people who can see this post</Text>
+        <Text style={{ color: COLORS.primary, fontSize: 12, marginTop: 4 }}>View original post →</Text>
+      </HapticPressable>
+      {!!threadError && <Text accessibilityRole="alert" style={{ color: COLORS.danger, padding: 16 }}>{threadError}</Text>}
 
       <FlatList
         data={posts}
@@ -493,12 +516,16 @@ const styles = StyleSheet.create({
   },
   postActions: {
     flexDirection: 'row',
-    gap: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
     borderTopColor: COLORS.separator,
   },
   actionButton: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,

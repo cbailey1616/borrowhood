@@ -451,10 +451,10 @@ describe('Chat', () => {
 
     // Wait for chat to load - placeholder: "Type a message..."
     await waitFor(() => {
-      expect(getByPlaceholderText('Message…')).toBeTruthy();
+      expect(getByPlaceholderText('Private message…')).toBeTruthy();
     });
 
-    fireEvent.changeText(getByPlaceholderText('Message…'), 'Hey, is this available?');
+    fireEvent.changeText(getByPlaceholderText('Private message…'), 'Hey, is this available?');
     await act(async () => fireEvent.press(getByLabelText('Send message')));
     expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ recipientId: 'user-2', content: 'Hey, is this available?' }));
 

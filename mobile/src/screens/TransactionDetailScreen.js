@@ -1,3 +1,4 @@
+import { isSaleListing, directFeeLabel } from '../utils/directFee';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -64,6 +65,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   }, [id]));
 
   const isGiveaway = transaction?.listingType === 'giveaway';
+  useEffect(() => { navigation.setOptions({ title: isGiveaway ? 'Exchange details' : 'Borrow details' }); }, [isGiveaway, navigation]);
 
   // Schedule or cancel return reminders based on transaction status (skip for giveaways)
   useEffect(() => {
@@ -209,7 +211,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
   const nextStep = borrowGuidance({ ...transaction, isGiveaway });
   const otherPerson = transaction.isBorrower ? transaction.lender : transaction.borrower;
-  const roleLabel = isGiveaway
+  const roleLabel = isSaleListing(transaction) ? (transaction.isBorrower ? 'Seller' : 'Buyer') : isGiveaway
     ? (transaction.isBorrower ? 'Giver' : 'Recipient')
     : (transaction.isBorrower ? 'Owner' : 'Borrower');
 
@@ -233,165 +235,101 @@ export default function TransactionDetailScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
-      <ScrollView
+      <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }
       >
-        {/* Item Info */}
-        <HapticPressable
-          haptic="light"
-          style={styles.listingCard}
-          onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}
-        >
-          {transaction.listing.photos?.[0] ? (
-            <Image
-              source={{ uri: transaction.listing.photos[0] }}
-              style={styles.listingImage}
-            />
-          ) : (
-            <View style={[styles.listingImage, styles.imagePlaceholder]}>
-              <Ionicons name="image-outline" size={24} color={COLORS.gray[400]} />
-            </View>
-          )}
-          <View style={styles.listingInfo}>
-            <Text style={styles.listingTitle}>{transaction.listing.title}</Text>
-            <Text style={styles.listingCondition}>
-              {CONDITION_LABELS[transaction.listing.condition]}
-            </Text>
+        <Text style={styles.pageEyebrow}>{isSaleListing(transaction) ? 'Your exchange' : isGiveaway ? 'A new home for something good' : transaction.isBorrower ? 'Your borrow, at a glance' : 'Sharing with a neighbor'}</Text>
+        <View style={styles.statusHero} accessibilityLiveRegion="polite">
+          <View style={styles.heroIcon}><Ionicons name={transaction.status === 'pending' ? 'request-note' : ['approved', 'paid'].includes(transaction.status) ? 'chatbubble' : transaction.status === 'cancelled' ? 'close-circle' : ['completed', 'returned'].includes(transaction.status) ? 'home' : isGiveaway ? 'gift' : 'basket'} size={46} illustrated color={COLORS.primary} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroTitle}>{nextStep.title}</Text>
+            <Text style={styles.heroDescription}>{nextStep.detail}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
-        </HapticPressable>
-
-        <View style={{ marginHorizontal: 16, marginVertical: 12, padding: 18, borderRadius: 16, backgroundColor: COLORS.primaryMuted }} accessibilityLiveRegion="polite">
-          <Text style={{ fontSize: 20, fontWeight: '600', color: COLORS.text, marginBottom: 6 }}>{nextStep.title}</Text>
-          <Text style={{ fontSize: 15, lineHeight: 22, color: COLORS.textSecondary }}>{nextStep.detail}</Text>
-        </View>
-        {/* Progress Tracker */}
-        <View style={styles.statusCard}>
-          <RentalProgress
-            status={transaction.status}
-            isBorrower={transaction.isBorrower}
-            isGiveaway={isGiveaway}
-            paymentStatus={transaction.paymentStatus}
-          />
         </View>
 
-        {/* Other Person */}
-        <HapticPressable
-          haptic="light"
-          style={styles.personCard}
-          onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}
-        >
-          {otherPerson.profilePhotoUrl ? (
-            <Image
-              source={{ uri: otherPerson.profilePhotoUrl }}
-              style={styles.personAvatar}
-            />
-          ) : (
-            <View style={[styles.personAvatar, styles.avatarPlaceholder]}>
-              <Ionicons name="person" size={22} color={COLORS.gray[400]} />
+        <View style={styles.detailCard}>
+          <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`View ${transaction.listing.title}`}
+            style={styles.itemSummary} onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}>
+            {transaction.listing.photos?.[0] ? <Image source={{ uri: transaction.listing.photos[0] }} style={styles.itemPhoto} />
+              : <View style={[styles.itemPhoto, styles.imagePlaceholder]}><Ionicons name={isGiveaway ? 'gift' : 'basket'} size={46} illustrated /></View>}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : 'Borrowing'}</Text>
+              <Text style={styles.itemName}>{transaction.listing.title}</Text>
+              <Text style={styles.detailText}>{CONDITION_LABELS[transaction.listing.condition]}</Text>
             </View>
-          )}
-          <View style={styles.personInfo}>
-            <Text style={styles.personRole}>{roleLabel}</Text>
-            <Text style={styles.personName}>
-              {otherPerson.firstName} {otherPerson.lastName}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
-        </HapticPressable>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+          </HapticPressable>
+          <View style={styles.cardDivider} />
+          <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />
+          {!isGiveaway && <>
+            <View style={styles.cardDivider} />
+            <View style={styles.borrowDates}>
+              <View style={styles.borrowDate}>
+                <Text style={styles.smallLabel}>Pickup</Text>
+                <Text style={styles.borrowDateValue}>{new Date(transaction.startDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+                <Text style={styles.detailText}>{new Date(transaction.startDate).getFullYear()}</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={22} color={COLORS.primary} />
+              <View style={styles.borrowDate}>
+                <Text style={styles.smallLabel}>Return by</Text>
+                <Text style={styles.borrowDateValue}>{new Date(transaction.endDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+                <Text style={styles.detailText}>{new Date(transaction.endDate).getFullYear()}</Text>
+              </View>
+            </View>
+            <Text style={styles.durationNote}>{transaction.rentalDays} {transaction.rentalDays === 1 ? 'day' : 'days'} together</Text>
+          </>}
+        </View>
 
-        {/* Quick message button for active transactions */}
-        {['pending', 'approved', 'paid', 'picked_up'].includes(transaction.status) && (
-          <HapticPressable
-            haptic="light"
-            style={styles.messageButton}
-            onPress={async () => {
+        <View style={styles.detailCard}>
+          <Text style={styles.cardEyebrow}>Your neighbor</Text>
+          <HapticPressable haptic="light" accessibilityRole="button" style={styles.neighborRow}
+            onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
+            {otherPerson.profilePhotoUrl ? <Image source={{ uri: otherPerson.profilePhotoUrl }} style={styles.neighborAvatar} />
+              : <View style={[styles.neighborAvatar, styles.avatarPlaceholder]}><Ionicons name="people" size={30} illustrated /></View>}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.detailText}>{roleLabel}</Text>
+              <Text style={styles.neighborName}>{otherPerson.firstName} {otherPerson.lastName}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+          </HapticPressable>
+          <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+            style={styles.neighborMessage} onPress={async () => {
+              const params = { recipientId: otherPerson.id, recipient: otherPerson, listingId: transaction.listing.id,
+                listing: transaction.listing, threadContext: { id: transaction.listing.id, title: transaction.listing.title, type: 'listing' } };
               try {
                 const conversations = await api.getConversations();
-                const existing = conversations.find(c => c.otherUser?.id === otherPerson.id);
-                if (existing) {
-                  navigation.navigate('Chat', { conversationId: existing.id });
-                } else {
-                  navigation.navigate('Chat', { recipientId: otherPerson.id, listing: transaction.listing });
-                }
-              } catch {
-                navigation.navigate('Chat', { recipientId: otherPerson.id, listing: transaction.listing });
-              }
-            }}
-          >
-            <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.messageButtonText}>Message {otherPerson.firstName} to coordinate {isGiveaway ? 'pickup' : 'details'}</Text>
+                const existing = conversations.find(chat => chat.otherUser?.id === otherPerson.id);
+                navigation.navigate('Chat', { ...params, conversationId: existing?.id });
+              } catch { navigation.navigate('Chat', params); }
+            }}>
+            <Ionicons name="chatbubble" size={26} illustrated />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
+              <Text style={styles.neighborMessageHint}>Private · about {transaction.listing.title}</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color={COLORS.primary} />
           </HapticPressable>
-        )}
-
-        {/* Dates — hidden for giveaways */}
-        {!isGiveaway && (
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Borrowing dates</Text>
-          <View style={styles.dateRow}>
-            <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>Start</Text>
-              <Text style={styles.dateValue}>
-                {new Date(transaction.startDate).toLocaleDateString()}
-              </Text>
-            </View>
-            <Ionicons name="arrow-forward" size={20} color={COLORS.gray[300]} />
-            <View style={styles.dateItem}>
-              <Text style={styles.dateLabel}>End</Text>
-              <Text style={styles.dateValue}>
-                {new Date(transaction.endDate).toLocaleDateString()}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.daysText}>{transaction.rentalDays} days</Text>
         </View>
-        )}
 
-        {/* Pricing — hidden for free rentals with no money */}
-        {false && ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Details</Text>
-          <View style={styles.priceBreakdown}>
-            {(transaction.rentalFee || 0) > 0 && (
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>
-                Rental fee ({transaction.rentalDays} days x ${transaction.dailyRate})
-              </Text>
-              <Text style={styles.priceValue}>${(transaction.rentalFee || 0).toFixed(2)}</Text>
-            </View>
-            )}
-            {(transaction.depositAmount || 0) > 0 && (
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Refundable deposit</Text>
-              <Text style={styles.priceValue}>${(transaction.depositAmount || 0).toFixed(2)}</Text>
-            </View>
-            )}
-            <View style={[styles.priceRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>
-                ${((transaction.rentalFee || 0) + (transaction.depositAmount || 0)).toFixed(2)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        )}
+        {isSaleListing(transaction) && <View style={styles.detailCard}>
+          <Text style={styles.cardEyebrow}>Sale price</Text>
+          <Text style={styles.itemName}>{directFeeLabel(transaction)}</Text>
+          <Text style={styles.detailText}>Confirm the price and arrange payment directly with your neighbor before pickup. Borrowhood does not process payments.</Text>
+        </View>}
 
-        {/* Messages */}
-        {transaction.borrowerMessage && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Message from {isGiveaway ? 'Recipient' : 'Borrower'}</Text>
-            <Text style={styles.messageText}>{transaction.borrowerMessage}</Text>
-          </View>
-        )}
-
-        {transaction.lenderResponse && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Response from {isGiveaway ? 'Giver' : 'Owner'}</Text>
-            <Text style={styles.messageText}>{transaction.lenderResponse}</Text>
-          </View>
-        )}
+        {(transaction.borrowerMessage || transaction.lenderResponse) && <View style={styles.detailCard}>
+          <Text style={styles.cardEyebrow}>Request notes · private</Text>
+          {!!transaction.borrowerMessage && <View style={styles.noteQuote}>
+            <Text style={styles.smallLabel}>{transaction.isBorrower ? 'You wrote' : `${transaction.borrower.firstName} wrote`}</Text>
+            <Text style={styles.noteText}>{transaction.borrowerMessage}</Text>
+          </View>}
+          {!!transaction.lenderResponse && <View style={styles.noteQuote}>
+            <Text style={styles.smallLabel}>{transaction.isLender ? 'You replied' : `${transaction.lender.firstName} replied`}</Text>
+            <Text style={styles.noteText}>{transaction.lenderResponse}</Text>
+          </View>}
+        </View>}
 
         {/* Dispute Banner */}
         {false && transaction?.hasDispute && transaction?.disputeId && (() => {
@@ -681,6 +619,32 @@ export default function TransactionDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  pageContent: { padding: 18, paddingBottom: 28, gap: 16 },
+  pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '600', marginTop: 6 },
+  statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },
+  heroIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  heroTitle: { fontSize: 23, lineHeight: 29, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
+  heroDescription: { fontSize: 14, lineHeight: 21, color: COLORS.textSecondary },
+  detailCard: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 24, padding: 18 },
+  itemSummary: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  itemPhoto: { width: 74, height: 82, borderRadius: 17, backgroundColor: COLORS.primaryMuted },
+  itemName: { color: COLORS.text, fontSize: 22, lineHeight: 27, fontWeight: '600', marginVertical: 4 },
+  smallLabel: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  detailText: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20 },
+  cardDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 18 },
+  borrowDates: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  borrowDate: { flex: 1 },
+  borrowDateValue: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '600', marginTop: 6 },
+  durationNote: { color: COLORS.primary, fontSize: 12, textAlign: 'center', marginTop: 12 },
+  cardEyebrow: { fontSize: 12, fontWeight: '600', color: COLORS.primary, marginBottom: 15 },
+  neighborRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  neighborAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primaryMuted },
+  neighborName: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '600' },
+  neighborMessage: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, backgroundColor: COLORS.primaryMuted, padding: 14, marginTop: 18 },
+  neighborMessageTitle: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
+  neighborMessageHint: { fontSize: 12, lineHeight: 17, color: COLORS.textSecondary, marginTop: 3 },
+  noteQuote: { borderLeftWidth: 3, borderLeftColor: COLORS.primaryMuted, paddingLeft: 12, marginBottom: 12 },
+  noteText: { fontSize: 15, lineHeight: 22, color: COLORS.text, marginTop: 6 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

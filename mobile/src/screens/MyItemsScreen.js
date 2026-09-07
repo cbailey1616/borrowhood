@@ -1,3 +1,4 @@
+import { isSaleListing } from '../utils/directFee';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -154,7 +155,7 @@ export default function MyItemsScreen({ navigation }) {
               {item.listingType === 'giveaway' && (
                 <View style={styles.giveawayTag}>
                   <Ionicons name="gift" size={18} illustrated />
-                  <Text style={styles.giveawayTagText}>Giveaway</Text>
+                  <Text style={styles.giveawayTagText}>{isSaleListing(item) ? 'For sale' : 'Giveaway'}</Text>
                 </View>
               )}
             </View>
@@ -191,7 +192,7 @@ export default function MyItemsScreen({ navigation }) {
                   styles.statusText,
                   { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
                 ]}>
-                  {item.status === 'given_away' ? 'Claimed' : item.isAvailable ? 'Available' : 'Borrowed'}
+                  {item.status === 'given_away' ? 'Claimed' : item.isAvailable ? (item.listingType === 'giveaway' ? 'Unclaimed' : 'Borrowable') : 'Borrowed'}
                 </Text>
               </View>
               {item.pendingRequests > 0 && (
