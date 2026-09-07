@@ -136,7 +136,7 @@ export default function MyItemsScreen({ navigation }) {
         }}
       >
         <HapticPressable
-          style={[styles.card, isTransferListing(item) && { borderColor: '#B59A53', borderWidth: 1.5 }]}
+          style={styles.card}
           onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
           haptic="light"
         >
@@ -490,8 +490,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.separator,
+    borderWidth: 0,
   },
   cardImage: {
     width: 100,

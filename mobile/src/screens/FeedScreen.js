@@ -449,7 +449,7 @@ export default function FeedScreen({ navigation }) {
         onPress={() => openFeedItem(item)}
         haptic="light"
         scaleDown={0.98}
-        style={[styles.tile, isGiveaway && { borderColor: isSaleListing(item) ? COLORS.primary : '#B59A53', borderWidth: 1.5 }]}
+        style={styles.tile}
         testID="FeedCard"
       >
           {/* Thumbnail + Content row */}
@@ -488,8 +488,9 @@ export default function FeedScreen({ navigation }) {
                   <Text style={[styles.tilePillText, { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : 'GIVEAWAY'}</Text>
                 </View>
               ) : (
-                <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? accent.pill : COLORS.textMuted }]}>
-                  <Text style={styles.tilePillText}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Borrowable' : 'Unavailable'}</Text>
+                <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? COLORS.primaryMuted : COLORS.textMuted }]}>
+                  {item.isAvailable && item.isBorrowed !== true && <Ionicons name="basket" size={18} illustrated />}
+                  <Text style={[styles.tilePillText, item.isAvailable && { color: COLORS.primary }]}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Borrowable' : 'Unavailable'}</Text>
                 </View>
               )}
               <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
@@ -1153,8 +1154,7 @@ const styles = StyleSheet.create({
   tile: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: FEED.cardBorder,
+    borderWidth: 0,
     backgroundColor: FEED.card,
   },
   requestTile: {
