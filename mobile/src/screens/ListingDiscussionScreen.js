@@ -14,7 +14,6 @@ import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 
 import ActionSheet from '../components/ActionSheet';
-import ThreadMessageButton from '../components/ThreadMessageButton';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
@@ -31,6 +30,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const isOwner = target?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [actionTarget, setActionTarget] = useState(null);
+  const openingChat = useRef(false);
   const [expandedPosts, setExpandedPosts] = useState({});
   const [replies, setReplies] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -222,98 +223,57 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     return date.toLocaleDateString();
   };
 
-  const renderReply = (reply, parentId) => (
-    <View key={reply.id} style={styles.reply}>
-      <Image
-        source={{ uri: reply.user.profilePhotoUrl || 'https://via.placeholder.com/28' }}
-        style={styles.replyAvatar}
-      />
-      <View style={styles.replyContent}>
-        <View style={styles.replyHeader}>
-          <Text style={styles.replyAuthor}>
-            {reply.user.firstName} {reply.user.lastName}
-          </Text>
-          <Text style={styles.replyDate}>{formatDate(reply.createdAt)}</Text>
-        </View>
-        <Text style={styles.replyText}>{reply.content}</Text>
-        <View style={styles.postActions}>
-          <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply({ id: parentId, user: reply.user, content: reply.content })}>
-            <Text style={styles.actionText}>Reply publicly</Text>
+  const openPrivateChat = async (post) => {
+    if (openingChat.current) return;
+    openingChat.current = true;
+    try {
+      const conversations = await api.getConversations();
+      const existing = conversations.find(chat => chat.otherUser?.id === post.user.id);
+      navigation.navigate('Chat', {
+        conversationId: existing?.id, recipientId: post.user.id, recipient: post.user,
+        threadContext: { ...threadContext, replyText: post.content },
+        ...(isRequest ? {} : { listingId: targetId }),
+      });
+    } catch {
+      setThreadError('Couldn’t open private chat. Please try again from the comment menu.');
+    } finally { openingChat.current = false; }
+  };
+
+  const renderComment = (post, parentId = null) => (
+    <View style={styles.commentRow}>
+      <Image source={{ uri: post.user.profilePhotoUrl || 'https://via.placeholder.com/40' }} style={styles.postAvatar} />
+      <View style={styles.commentBody}>
+        <View style={styles.commentMeta}>
+          <Text style={styles.postAuthor}>{post.user.firstName} {post.user.lastName}</Text>
+          <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
+          <HapticPressable accessibilityLabel={`Comment options for ${post.user.firstName}`} style={styles.moreButton}
+            onPress={() => setActionTarget({ post, parentId })}>
+            <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textSecondary} />
           </HapticPressable>
-        <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: reply.content }} />
         </View>
-        {(reply.isOwn || isOwner) && (
-          <HapticPressable
-            haptic="light"
-            style={styles.deleteButton}
-            onPress={() => confirmDelete(reply.id, true, parentId)}
-          >
-            <Text style={styles.deleteText}>Delete</Text>
-          </HapticPressable>
-        )}
+        <Text style={styles.postContent}>{post.content}</Text>
+        <HapticPressable style={styles.actionButton} accessibilityLabel={`Reply publicly to ${post.user.firstName}`}
+          onPress={() => startReply(parentId ? { id: parentId, user: post.user, content: post.content } : post)}>
+          <Text style={styles.actionText}>Reply</Text>
+        </HapticPressable>
       </View>
     </View>
   );
 
   const renderPost = ({ item: post }) => {
     const isExpanded = expandedPosts[post.id];
-    const postReplies = replies[post.id] || [];
-
     return (
-      <View style={[styles.cardBox, styles.postCard]}>
-        <View style={styles.postHeader}>
-          <Image
-            source={{ uri: post.user.profilePhotoUrl || 'https://via.placeholder.com/40' }}
-            style={styles.postAvatar}
-          />
-          <View style={styles.postMeta}>
-            <Text style={styles.postAuthor}>
-              {post.user.firstName} {post.user.lastName}
-            </Text>
-            <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
-          </View>
-          {(post.isOwn || isOwner) && (
-            <HapticPressable
-              haptic="light"
-              style={styles.moreButton}
-              onPress={() => confirmDelete(post.id)}
-            >
-              <Ionicons name="trash-outline" size={18} color={COLORS.textMuted} />
-            </HapticPressable>
-          )}
-        </View>
-
-        <Text style={styles.postContent}>{post.content}</Text>
-
-        <View style={styles.postActions}>
-          <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply(post)}>
-            <Ionicons name="arrow-undo-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.actionText}>Reply publicly</Text>
+      <View style={styles.postCard}>
+        {renderComment(post)}
+        {post.replyCount > 0 && (
+          <HapticPressable style={styles.threadToggle} onPress={() => toggleExpanded(post.id)}>
+            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.primary} />
+            <Text style={styles.actionText}>{isExpanded ? 'Hide' : 'View'} {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
           </HapticPressable>
-          <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: post.content }} />
-        </View>
-          {post.replyCount > 0 && (
-            <HapticPressable
-              haptic="light"
-              style={styles.actionButton}
-              onPress={() => toggleExpanded(post.id)}
-            >
-              <Ionicons
-                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={COLORS.primary}
-              />
-              <Text style={[styles.actionText, { color: COLORS.primary }]}>
-                {isExpanded ? 'Hide' : 'View'} {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
-              </Text>
-            </HapticPressable>
-          )}
-
-        {isExpanded && (
-          <View style={styles.repliesContainer}>
-            {postReplies.map(reply => renderReply(reply, post.id))}
-          </View>
         )}
+        {isExpanded && <View style={styles.repliesContainer}>
+          {(replies[post.id] || []).map(reply => <View key={reply.id}>{renderComment(reply, post.id)}</View>)}
+        </View>}
       </View>
     );
   };
@@ -409,10 +369,26 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       {renderInputBar()}
 
       <ActionSheet
+        isVisible={!!actionTarget}
+        onClose={() => setActionTarget(null)}
+        title={actionTarget ? `${actionTarget.post.user.firstName}’s comment` : 'Comment'}
+        actions={actionTarget ? [
+          ...(!actionTarget.post.isOwn && actionTarget.post.user.id !== user?.id ? [{
+            label: `Message ${actionTarget.post.user.firstName} privately`,
+            onPress: () => openPrivateChat(actionTarget.post),
+          }] : []),
+          ...((actionTarget.post.isOwn || isOwner) ? [{
+            label: 'Delete comment', destructive: true,
+            onPress: () => confirmDelete(actionTarget.post.id, !!actionTarget.parentId, actionTarget.parentId),
+          }] : []),
+        ] : []}
+      />
+
+      <ActionSheet
         isVisible={deleteSheetVisible}
         onClose={() => setDeleteSheetVisible(false)}
-        title="Delete Post"
-        message="Are you sure you want to delete this post?"
+        title="Delete comment"
+        message="Delete this comment?"
         actions={[
           {
             label: 'Delete',
@@ -455,7 +431,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.lg,
-    paddingBottom: 120,
+    paddingBottom: SPACING.lg,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -474,18 +450,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   postCard: {
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
+  commentRow: { flexDirection: 'row', gap: SPACING.sm },
+  commentBody: { flex: 1 },
+  commentMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  threadToggle: { marginLeft: 44, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: SPACING.md,
   },
   postAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     backgroundColor: COLORS.gray[700],
     borderWidth: 2,
     borderColor: COLORS.surfaceElevated,
@@ -504,15 +485,12 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 2,
   },
-  moreButton: {
-    padding: SPACING.sm,
-    borderRadius: RADIUS.sm,
-  },
+  moreButton: { marginLeft: 'auto', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   postContent: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
     lineHeight: 23,
-    marginBottom: SPACING.md,
+    marginBottom: 0,
   },
   postActions: {
     flexDirection: 'row',
@@ -537,11 +515,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   repliesContainer: {
-    marginTop: SPACING.lg,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
-    gap: SPACING.md,
+    marginLeft: 16,
+    paddingLeft: SPACING.md,
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.primaryMuted,
+    gap: SPACING.sm,
   },
   reply: {
     flexDirection: 'row',

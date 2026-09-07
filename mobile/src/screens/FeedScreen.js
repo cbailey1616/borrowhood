@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
-import ThreadMessageButton from '../components/ThreadMessageButton';
 import {
   View,
   Text,
@@ -93,8 +92,6 @@ export default function FeedScreen({ navigation }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [requestDiscussions, setRequestDiscussions] = useState({});
-  const [listingDiscussions, setListingDiscussions] = useState({});
   const listRef = useRef(null);
   const [focusedItemId, setFocusedItemId] = useState(null);
 
@@ -152,39 +149,7 @@ export default function FeedScreen({ navigation }) {
     }
   }, [search, activeFilters, visibilityFilters, categoryFilters]);
 
-  // Fetch discussion previews for visible feed items (batched)
-  useEffect(() => {
-    if (feed.length === 0) return;
 
-    const fetchDiscussions = async () => {
-      const requestItems = feed.filter(item => item.type === 'request' && !item.ownerMasked && !requestDiscussions[item.id]);
-      const listingItems = feed.filter(item => item.type === 'listing' && !item.ownerMasked && !listingDiscussions[item.id]);
-
-      const reqResults = await Promise.allSettled(
-        requestItems.slice(0, 10).map(item =>
-          api.getRequestDiscussions(item.id, { limit: 2 }).then(data => ({ id: item.id, data }))
-        )
-      );
-      const reqMap = {};
-      reqResults.forEach(r => {
-        if (r.status === 'fulfilled') reqMap[r.value.id] = { posts: r.value.data.posts || [], total: r.value.data.total || 0 };
-      });
-      if (Object.keys(reqMap).length > 0) setRequestDiscussions(prev => ({ ...prev, ...reqMap }));
-
-      const listResults = await Promise.allSettled(
-        listingItems.slice(0, 10).map(item =>
-          api.getDiscussions(item.id, { limit: 2 }).then(data => ({ id: item.id, data }))
-        )
-      );
-      const listMap = {};
-      listResults.forEach(r => {
-        if (r.status === 'fulfilled') listMap[r.value.id] = { posts: r.value.data.posts || [], total: r.value.data.total || 0 };
-      });
-      if (Object.keys(listMap).length > 0) setListingDiscussions(prev => ({ ...prev, ...listMap }));
-    };
-
-    fetchDiscussions();
-  }, [feed.length]);
 
   useEffect(() => {
     fetchFeed();
@@ -305,8 +270,6 @@ export default function FeedScreen({ navigation }) {
   const onRefresh = () => {
     setIsRefreshing(true);
     saved.refresh();
-    setRequestDiscussions({});
-    setListingDiscussions({});
     fetchFeed(1, false);
     refreshUser(); // Refresh user data on manual pull-to-refresh
     checkNeighborhood();
@@ -532,9 +495,6 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
             <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
-            {item.description ? (
-              <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
-            ) : null}
             <View style={styles.tileFooterRow}>
               {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
                 <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
@@ -547,29 +507,9 @@ export default function FeedScreen({ navigation }) {
             </View>
           </View>
           </View>
-        {/* Inline thread */}
-        {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
       </HapticPressable>
     </View>
     );
-  };
-
-  const renderInlineThread = (itemId, thread, isRequest) => {
-    const item = feed.find(entry => entry.id === itemId);
-    const params = isRequest ? { requestId: itemId, request: item } : { listingId: itemId, listing: item };
-    return <View testID={`Feed.thread.${itemId}`} style={[styles.threadContainer, isRequest && styles.requestThread]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <HapticPressable accessibilityRole="button" accessibilityLabel={`Public replies about ${item?.title || 'this post'}`}
-          onPress={event => { event?.stopPropagation?.(); navigation.navigate('ListingDiscussion', params); }}
-          style={[styles.threadHeader, { minHeight: 44 }]}>
-          <Ionicons name="chatbubbles-outline" size={18} color={COLORS.primary} />
-          <Text style={styles.threadHeaderText}>Public replies{thread?.total ? ` · ${thread.total}` : ''}</Text>
-          <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
-        </HapticPressable>
-        <ThreadMessageButton author={item?.user} currentUserId={user?.id} navigation={navigation}
-          context={{ id: itemId, title: item?.title, type: isRequest ? 'request' : 'listing' }} />
-      </View>
-    </View>;
   };
 
   const renderRequestItem = (item, index) => {
@@ -604,8 +544,6 @@ export default function FeedScreen({ navigation }) {
                 </>}
               </View>
             </View>
-          {/* Inline thread */}
-          {!item.ownerMasked && renderInlineThread(item.id, requestDiscussions[item.id], true)}
         </HapticPressable>
       </View>
     );
