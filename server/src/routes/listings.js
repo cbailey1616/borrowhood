@@ -352,9 +352,10 @@ router.post('/', authenticate, freeListingOnly,
       isFree: _isFree, pricePerDay: _pricePerDay, depositAmount, minDuration, maxDuration,
       visibility, photos, requestMatchId, listingType: _listingType
     } = req.body;
-    const listingType = _listingType === 'giveaway' ? 'giveaway' : 'lend';
-    let isFree = listingType === 'giveaway' ? true : _isFree;
-    let pricePerDay = listingType === 'giveaway' ? null : _pricePerDay;
+    if (_listingType && !['lend', 'giveaway', 'sell'].includes(_listingType)) return res.status(400).json({ error: 'Choose Lend, Giveaway, or Sell.' });
+    const listingType = _listingType || 'lend';
+    let isFree = ['giveaway', 'sell'].includes(listingType) ? true : _isFree;
+    let pricePerDay = ['giveaway', 'sell'].includes(listingType) ? null : _pricePerDay;
     let directFee;
     try { directFee = normalizeDirectFee(req.body.directFee, listingType); }
     catch (error) { return res.status(400).json({ error: error.message }); }
@@ -408,7 +409,7 @@ router.post('/', authenticate, freeListingOnly,
       const primaryVisibility = visibilityArray.join(',');
 
       // Create listing
-      const isGiveaway = listingType === 'giveaway';
+      const isGiveaway = ['giveaway', 'sell'].includes(listingType);
       const result = await query(
         `INSERT INTO listings (
           owner_id, community_id, category_id, title, description, condition,
@@ -521,10 +522,6 @@ router.patch('/:id', authenticate, freeListingOnly,
         return res.status(403).json({ error: 'Not authorized' });
       }
 
-      if (listing.rows[0].listing_type === 'giveaway' && listing.rows[0].direct_fee?.unit === 'flat'
-          && req.body.directFee === null && req.body.giveawayMode !== 'free') {
-        return res.status(409).json({ error: 'Update Borrowhood before editing a for-sale item. Its price has not been changed.' });
-      }
       if (req.body.directFee !== undefined) {
         try { req.body.directFee = normalizeDirectFee(req.body.directFee, listing.rows[0].listing_type); }
         catch (error) { return res.status(400).json({ error: error.message }); }

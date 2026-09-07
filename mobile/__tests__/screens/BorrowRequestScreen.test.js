@@ -7,6 +7,8 @@ const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscripti
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
 const mockShowError = jest.fn();
 
+jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
+
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: jest.fn() }) }));
 
@@ -42,16 +44,19 @@ describe('BorrowRequestScreen', () => {
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1' }));
   });
 
-  it('dismisses the keyboard without losing the private request message', async () => {
+  it('sends the typed message directly without a keyboard dismissal toolbar', async () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     const input = await screen.findByLabelText('Private message to owner');
+    fireEvent(input, 'focus');
     fireEvent.changeText(input, 'Tomorrow afternoon?');
-    fireEvent.press(screen.getByLabelText('Dismiss keyboard'));
-    expect(dismiss).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Dismiss keyboard')).toBeNull();
+    expect(screen.queryByText('Done ×')).toBeNull();
+    expect(screen.queryByLabelText('Hide keyboard')).toBeNull();
     expect(input.props.value).toBe('Tomorrow afternoon?');
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
+    expect(dismiss).toHaveBeenCalled();
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ message: 'Tomorrow afternoon?' }));
     dismiss.mockRestore();
   });
@@ -71,7 +76,7 @@ describe('BorrowRequestScreen', () => {
 
   it('includes the displayed sale price with a purchase request', async () => {
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
-    const sale = { ...listing, listingType: 'giveaway', directFee: { amount: 25, unit: 'flat' } };
+    const sale = { ...listing, listingType: 'sell', directFee: { amount: 25, unit: 'flat' } };
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: sale } }} />);
     await screen.findByText('$25.00');
     await act(async () => fireEvent.press(screen.getByText('Request to Buy')));

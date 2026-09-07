@@ -229,7 +229,7 @@ async function expireStaleGiveawayRequests() {
        SET status = 'cancelled'
        FROM listings l
        WHERE bt.listing_id = l.id
-         AND l.listing_type = 'giveaway'
+         AND l.listing_type IN ('giveaway', 'sell')
          AND bt.status = 'pending'
          AND bt.created_at < NOW() - INTERVAL '48 hours'
        RETURNING bt.id, bt.borrower_id, bt.lender_id, l.title as item_title`
@@ -257,7 +257,7 @@ async function expireGiveawayPickups() {
       `SELECT bt.id, bt.borrower_id, bt.lender_id, bt.listing_id, l.title as item_title
        FROM borrow_transactions bt
        JOIN listings l ON bt.listing_id = l.id
-       WHERE l.listing_type = 'giveaway'
+       WHERE l.listing_type IN ('giveaway', 'sell')
          AND bt.status = 'paid'
          AND bt.actual_pickup_at IS NULL
          AND bt.updated_at < NOW() - INTERVAL '7 days'`

@@ -1,3 +1,4 @@
+import { isTransferListing, isSaleListing } from '../utils/directFee';
 import { publicReplyRoute } from '../utils/conversationContext';
 import { useState, useCallback } from 'react';
 import {
@@ -322,7 +323,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
                   return <HapticPressable key={transaction.id} accessibilityRole="button" accessibilityLabel={`View exchange for ${transaction.listing?.title || 'item'}`}
                     onPress={() => nav.navigate('TransactionDetail', { id: transaction.id })}
                     style={{ padding: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
-                    <Ionicons name={transaction.listingType === 'giveaway' ? 'gift' : 'basket'} size={32} illustrated />
+                    <Ionicons name={isSaleListing(transaction) ? 'pricetag' : isTransferListing(transaction) ? 'gift' : 'basket'} size={32} illustrated />
                     <View style={{ flex: 1 }}>
                       <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>{transaction.listing?.title || 'Shared item'}</Text>
                       <Text style={{ color: COLORS.textSecondary }}>With {other?.firstName || 'your neighbor'}</Text>

@@ -12,6 +12,6 @@ test('shows offline fee and keeps giveaways free', () => {
 });
 
 test('shows a one-time sale price while free giveaways stay free', () => {
-  expect(directFeeLabel({ listingType: 'giveaway', directFee: { amount: 25, unit: 'flat' } })).toBe('$25.00');
+  expect(directFeeLabel({ listingType: 'sell', directFee: { amount: 25, unit: 'flat' } })).toBe('$25.00');
   expect(directFeeLabel({ listingType: 'giveaway' })).toBe('Free to keep');
 });

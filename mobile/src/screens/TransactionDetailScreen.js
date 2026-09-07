@@ -1,4 +1,4 @@
-import { isSaleListing, directFeeLabel } from '../utils/directFee';
+import { isSaleListing, directFeeLabel, isTransferListing } from '../utils/directFee';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -64,7 +64,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     return () => clearInterval(pollRef.current);
   }, [id]));
 
-  const isGiveaway = transaction?.listingType === 'giveaway';
+  const isGiveaway = isTransferListing(transaction);
   useEffect(() => { navigation.setOptions({ title: isGiveaway ? 'Exchange details' : 'Borrow details' }); }, [isGiveaway, navigation]);
 
   // Schedule or cancel return reminders based on transaction status (skip for giveaways)

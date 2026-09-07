@@ -1,4 +1,4 @@
-import { isSaleListing } from '../utils/directFee';
+import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -137,7 +137,7 @@ export default function MyItemsScreen({ navigation }) {
         }}
       >
         <HapticPressable
-          style={[styles.card, item.listingType === 'giveaway' && { borderColor: '#B59A53', borderWidth: 1.5 }]}
+          style={[styles.card, isTransferListing(item) && { borderColor: '#B59A53', borderWidth: 1.5 }]}
           onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
           haptic="light"
         >
@@ -152,9 +152,9 @@ export default function MyItemsScreen({ navigation }) {
             <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
             <View style={styles.cardSubRow}>
               <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
-              {item.listingType === 'giveaway' && (
+              {isTransferListing(item) && (
                 <View style={styles.giveawayTag}>
-                  <Ionicons name="gift" size={18} illustrated />
+                  <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
                   <Text style={styles.giveawayTagText}>{isSaleListing(item) ? 'For sale' : 'Giveaway'}</Text>
                 </View>
               )}
@@ -192,7 +192,7 @@ export default function MyItemsScreen({ navigation }) {
                   styles.statusText,
                   { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
                 ]}>
-                  {item.status === 'given_away' ? 'Claimed' : item.isAvailable ? (item.listingType === 'giveaway' ? 'Unclaimed' : 'Borrowable') : 'Borrowed'}
+                  {item.status === 'given_away' ? (isSaleListing(item) ? 'Sold' : 'Claimed') : item.isAvailable ? (isSaleListing(item) ? 'For sale' : isTransferListing(item) ? 'Unclaimed' : 'Borrowable') : 'Borrowed'}
                 </Text>
               </View>
               {item.pendingRequests > 0 && (
@@ -347,12 +347,12 @@ export default function MyItemsScreen({ navigation }) {
               <Text style={styles.cardTitle} numberOfLines={1}>{item.listing.title}</Text>
               <View style={styles.rentalPartyRow}>
                 <Ionicons
-                  name={item.listingType === 'giveaway' ? 'gift' : item.isBorrower ? 'arrow-down-circle' : 'arrow-up-circle'}
+                  name={isTransferListing(item) ? 'gift' : item.isBorrower ? 'arrow-down-circle' : 'arrow-up-circle'}
                   size={14}
                   color={item.isBorrower ? COLORS.primary : COLORS.secondary}
                 />
                 <Text style={styles.rentalPartyText}>
-                  {item.listingType === 'giveaway'
+                  {isTransferListing(item)
                     ? (item.isBorrower ? 'From' : 'Giving to')
                     : (item.isBorrower ? 'Borrowing from' : 'Lending to')}{' '}
                   {otherParty.firstName} {otherParty.lastName?.[0]}.

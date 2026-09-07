@@ -56,7 +56,7 @@ router.post('/', authenticate,
       if (!ENABLE_PAYMENTS && (!item.is_free || Number(item.price_per_day) > 0 || Number(item.deposit_amount) > 0)) {
         return res.status(409).json({ code: 'LISTING_REQUIRES_UPDATE', error: 'The owner must update this listing to free borrowing with no deposit before you can request it.' });
       }
-      const isGiveaway = item.listing_type === 'giveaway';
+      const isGiveaway = ['giveaway', 'sell'].includes(item.listing_type);
       if (isGiveaway && item.direct_fee?.unit === 'flat' && req.body.salePrice !== Number(item.direct_fee.amount)) {
         return res.status(409).json({ error: 'This item is for sale. Update Borrowhood and reopen the listing to review its current price before requesting it.' });
       }
@@ -184,6 +184,7 @@ router.post('/', authenticate,
       if (totalChargeCents < 50) {
         // Notify owner immediately — no payment step to wait for
         await sendNotification(item.owner_id, isGiveaway ? 'giveaway_claim' : 'borrow_request', {
+          isSale: item.listing_type === 'sell',
           borrowerName: req.user.display_name || req.user.first_name,
           itemTitle: item.title,
           transactionId,
@@ -691,7 +692,7 @@ router.post('/:id/pickup', authenticate,
         'SELECT listing_type FROM listings WHERE id = $1',
         [t.listing_id]
       );
-      const isGiveaway = listingCheck.rows[0]?.listing_type === 'giveaway';
+      const isGiveaway = ['giveaway', 'sell'].includes(listingCheck.rows[0]?.listing_type);
 
       // Borrower confirms pickup
       const otherPartyId = isBorrower ? t.lender_id : t.borrower_id;

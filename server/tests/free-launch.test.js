@@ -137,3 +137,30 @@ describe('chat refresh reconciliation', () => {
     expect(result[1].id).toBe('b');
   });
 });
+
+describe('separate sale exchanges', () => {
+  const sale = { ...freeItem, listing_type: 'sell', direct_fee: { amount: 25, unit: 'flat', currency: 'USD' } };
+  it('requires agreement to the current sale price', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: listingId }] }).mockResolvedValueOnce({ rows: [sale] });
+    expect((await request(app).post('/transactions').send({ listingId, salePrice: 20 })).status).toBe(409);
+    expect(createPaymentIntent).not.toHaveBeenCalled();
+  });
+  it('creates a sale request without dates or payment processing', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: listingId }] }).mockResolvedValueOnce({ rows: [sale] })
+      .mockResolvedValueOnce({ rows: [{ id: 'sale-transaction' }] });
+    const result = await request(app).post('/transactions').send({ listingId, salePrice: 25 });
+    expect(result.status).toBe(201);
+    expect(result.body.clientSecret).toBeUndefined();
+    expect(createPaymentIntent).not.toHaveBeenCalled();
+  });
+  it('completes a sale at pickup without scheduling a return', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: 'sale-transaction', listing_id: listingId, borrower_id: 'borrower', lender_id: 'owner' }] })
+      .mockResolvedValueOnce({ rows: [{ listing_type: 'sell' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 'sale-transaction' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    const result = await request(app).post('/transactions/sale-transaction/pickup').send({ condition: 'good' });
+    expect(result.status).toBe(200);
+    expect(query.mock.calls.some(([sql]) => sql.includes("SET status = 'returned'") && sql.includes('actual_pickup_at'))).toBe(true);
+    expect(query.mock.calls.some(([sql]) => sql.includes("status = 'given_away', is_available = false"))).toBe(true);
+  });
+});

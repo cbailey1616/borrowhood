@@ -1,7 +1,7 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
-import { directFeeLabel, isSaleListing } from '../utils/directFee';
+import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import ThreadMessageButton from '../components/ThreadMessageButton';
 import {
@@ -45,6 +45,7 @@ const FILTER_OPTIONS = [
   { key: 'all', label: 'All' },
   { key: 'listings', label: 'Borrow' },
   { key: 'giveaway', label: 'Giveaways' },
+  { key: 'sell', label: 'For sale' },
   { key: 'requests', label: 'Requests' },
 ];
 
@@ -220,7 +221,6 @@ export default function FeedScreen({ navigation }) {
         // Delay feed fetch until modal dismiss animation completes
         // to avoid blocking the JS thread during transitions
         InteractionManager.runAfterInteractions(() => {
-          setIsRefreshing(true);
           fetchFeed(1, false);
           checkNeighborhood();
           fetchActiveDisputes();
@@ -471,14 +471,14 @@ export default function FeedScreen({ navigation }) {
   // Accent per card type (see CARD_ACCENTS at module top)
   const getCardAccent = (item) =>
     item.type === 'request' ? CARD_ACCENTS.wanted
-      : item.listingType === 'giveaway' ? CARD_ACCENTS.giveaway
+      : isTransferListing(item) ? CARD_ACCENTS.giveaway
       : CARD_ACCENTS.borrow;
 
   const renderListingItem = (item, index) => {
     const accent = getCardAccent(item);
     const userName = item.ownerMasked ? 'Verified Owner'
       : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
-    const isGiveaway = item.listingType === 'giveaway';
+    const isGiveaway = isTransferListing(item);
     const priceLabel = isGiveaway && !isSaleListing(item) ? null : (directFeeLabel(item) || (item.isFree ? 'Free' : `$${item.pricePerDay}/day`));
 
     return (
@@ -522,7 +522,7 @@ export default function FeedScreen({ navigation }) {
             <View style={styles.tileTopRow}>
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
-                  <Ionicons name="gift" size={18} illustrated />
+                  <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
                   <Text style={[styles.tilePillText, { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : 'GIVEAWAY'}</Text>
                 </View>
               ) : (

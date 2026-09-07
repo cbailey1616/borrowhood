@@ -4,17 +4,17 @@ import { Image } from 'expo-image';
 import SkeletonShape from './SkeletonLoader';
 
 export default function ShimmerImage({ source, style, ...imageProps }) {
-  const [loaded, setLoaded] = useState(false);
+  const src = typeof source === 'object' && source?.uri ? source.uri : source;
+  const [loadedSource, setLoadedSource] = useState(null);
+  const loaded = loadedSource === src;
 
   const handleLoad = useCallback(() => {
-    setLoaded(true);
-  }, []);
+    setLoadedSource(src);
+  }, [src]);
 
   // Flatten style to extract width/height/borderRadius for the skeleton
   const flatStyle = StyleSheet.flatten(style) || {};
 
-  // expo-image uses `source` as string or object
-  const src = typeof source === 'object' && source?.uri ? source.uri : source;
 
   return (
     <View style={[style, styles.container]}>
@@ -30,8 +30,8 @@ export default function ShimmerImage({ source, style, ...imageProps }) {
         source={src}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
-        cachePolicy="disk"
-        transition={300}
+        cachePolicy="memory-disk"
+        transition={0}
         onLoad={handleLoad}
         recyclingKey={typeof src === 'string' ? src : undefined}
         {...imageProps}

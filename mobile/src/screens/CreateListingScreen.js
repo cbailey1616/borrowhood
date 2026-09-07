@@ -1,4 +1,5 @@
 import GiveawayOptions from '../components/GiveawayOptions';
+import SalePriceInput from '../components/SalePriceInput';
 import SharingPicker from '../components/SharingPicker';
 import DirectFeePicker from '../components/DirectFeePicker';
 import { directFeePayload } from '../utils/directFee';
@@ -62,7 +63,6 @@ export default function CreateListingScreen({ navigation, route }) {
 
   const [formData, setFormData, draft] = useFormDraft(user?.id ? `${user.id}.item.${requestMatchId || route?.params?.relistFrom?.id || 'new'}` : null, {
     listingType: 'lend',
-    giveawayMode: 'free',
     salePrice: '',
     title: '',
     description: '',
@@ -81,8 +81,8 @@ export default function CreateListingScreen({ navigation, route }) {
     photos: [],
   });
   const listingType = formData.listingType;
-  const isGiveaway = listingType === 'giveaway';
-  const isSale = false;
+  const isGiveaway = ['giveaway', 'sell'].includes(listingType);
+  const isSale = listingType === 'sell';
   const setListingType = value => setFormData(prev => ({ ...prev, listingType: value }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -110,7 +110,6 @@ export default function CreateListingScreen({ navigation, route }) {
       setFormData(prev => ({
         ...prev,
         listingType: relistFrom.listingType || 'lend',
-        giveawayMode: relistFrom.listingType === 'giveaway' && relistFrom.directFee?.unit === 'flat' ? 'sell' : 'free',
         salePrice: relistFrom.directFee?.amount?.toString() || '',
         title: relistFrom.title || '',
         description: relistFrom.description || '',
@@ -266,7 +265,7 @@ export default function CreateListingScreen({ navigation, route }) {
     if (!draft.ready || isSubmitting) return;
     const data = overrideData || formData;
     let directFee;
-    try { directFee = directFeePayload(isGiveaway ? false : data.chargeFee, isGiveaway ? data.salePrice : data.directFeeAmount, isGiveaway ? 'flat' : 'day'); }
+    try { directFee = directFeePayload(data.listingType === 'sell' || (data.listingType === 'lend' && data.chargeFee), data.listingType === 'sell' ? data.salePrice : data.directFeeAmount, data.listingType === 'sell' ? 'flat' : 'day'); }
     catch (error) { showError({ message: error.message }); return; }
 
     const errors = {
@@ -360,7 +359,7 @@ export default function CreateListingScreen({ navigation, route }) {
         depositAmount: (!ENABLE_PAYMENTS || isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
         minDuration: isGiveaway ? undefined : parseInt(data.minDuration) || 1,
         maxDuration: isGiveaway ? undefined : parseInt(data.maxDuration) || 14,
-        listingType: isGiveaway ? 'giveaway' : 'lend',
+        listingType,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
         communityId: communityId || undefined, // Always send communityId (required by DB)
         requestMatchId: requestMatchId || undefined,
@@ -498,33 +497,23 @@ export default function CreateListingScreen({ navigation, route }) {
       <View style={styles.section}>
         <Text style={styles.label}>What would you like to do?</Text>
         <View style={styles.options}>
-          <HapticPressable
-            style={[styles.typeChoice, !isGiveaway && styles.typeChoiceSelected]}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: !isGiveaway }}
-            onPress={() => { setListingType('lend'); haptics.selection(); }}
-            haptic={null}
-          >
-            <Ionicons name="basket" size={36} illustrated />
-            <Text style={styles.typeTitle}>Lend</Text>
-            <Text style={styles.typeHint}>They return it</Text>
-          </HapticPressable>
-          <HapticPressable
-            style={[styles.typeChoice, isGiveaway && styles.typeChoiceSelected]}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: isGiveaway }}
-            onPress={() => { setListingType('giveaway'); haptics.selection(); }}
-            haptic={null}
-          >
-            <Ionicons name="gift" size={36} illustrated />
-            <Text style={styles.typeTitle}>Give away</Text>
-            <Text style={styles.typeHint}>They keep it</Text>
-          </HapticPressable>
+          {[
+            ['lend', 'Lend', 'They return it', 'basket'],
+            ['giveaway', 'Giveaway', 'Free to keep', 'gift'],
+            ['sell', 'Sell', 'Set your price', 'pricetag'],
+          ].map(([value, title, hint, icon]) => (
+            <HapticPressable key={value} style={[styles.typeChoice, listingType === value && styles.typeChoiceSelected]}
+              accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{ checked: listingType === value }}
+              onPress={() => { setListingType(value); haptics.selection(); }} haptic={null}>
+              <Ionicons name={icon} size={32} illustrated />
+              <Text style={styles.typeTitle}>{title}</Text>
+              <Text style={styles.typeHint}>{hint}</Text>
+            </HapticPressable>
+          ))}
         </View>
-        {isGiveaway && (
-          <GiveawayOptions mode={formData.giveawayMode || 'free'} amount={formData.salePrice || ''}
-            onModeChange={value => updateField('giveawayMode', value)} onAmountChange={value => updateField('salePrice', value)} />
-        )}
+        {listingType === 'giveaway' && <GiveawayOptions />}
+        {isSale && <SalePriceInput amount={formData.salePrice || ''} onChange={value => updateField('salePrice', value)} />}
+
       </View>
 
       <View style={styles.section}>
@@ -816,7 +805,7 @@ export default function CreateListingScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  typeChoice: { flexGrow: 1, flexBasis: 130, padding: SPACING.lg, gap: 6, alignItems: 'center', borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 2, borderColor: COLORS.border },
+  typeChoice: { flexGrow: 1, flexBasis: 85, padding: SPACING.sm, gap: 6, alignItems: 'center', borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 2, borderColor: COLORS.border },
   typeChoiceSelected: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
   typeTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   typeHint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },

@@ -50,10 +50,12 @@ router.get('/', authenticate, async (req, res) => {
 
     // Parse type filters (can be comma-separated: listings,free,requests)
     const typeFilters = type ? type.split(',') : [];
-    const wantListings = typeFilters.length === 0 || typeFilters.includes('listings') || typeFilters.includes('free') || typeFilters.includes('giveaway');
-    const wantFreeOnly = typeFilters.includes('free') && !typeFilters.includes('listings') && !typeFilters.includes('giveaway');
-    const wantGiveawayOnly = typeFilters.includes('giveaway') && !typeFilters.includes('listings') && !typeFilters.includes('free');
-    const wantBorrowOnly = typeFilters.includes('listings') && !typeFilters.includes('giveaway') && !typeFilters.includes('free');
+    const selectedListingTypes = [
+      ...(typeFilters.includes('listings') ? ['lend'] : []),
+      ...(typeFilters.includes('giveaway') ? ['giveaway'] : []),
+      ...(typeFilters.includes('sell') ? ['sell'] : []),
+    ];
+    const wantListings = typeFilters.length === 0 || selectedListingTypes.length > 0 || typeFilters.includes('free');
     const wantRequests = typeFilters.length === 0 || typeFilters.includes('requests');
 
     // Get listings if applicable
@@ -93,7 +95,7 @@ router.get('/', authenticate, async (req, res) => {
         LEFT JOIN categories cat ON l.category_id = cat.id
         WHERE l.status = 'active'
           ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
-          AND (l.listing_type != 'giveaway' OR l.is_available = true)`;
+          AND (l.listing_type NOT IN ('giveaway', 'sell') OR l.is_available = true)`;
 
       const listingParams = [];
 
@@ -102,12 +104,14 @@ router.get('/', authenticate, async (req, res) => {
         listingParams.push(`%${search}%`);
       }
 
-      if (wantFreeOnly) {
-        listingQuery += ` AND l.is_free = true AND l.direct_fee IS NULL`;
-      } else if (wantGiveawayOnly) {
-        listingQuery += ` AND l.listing_type = 'giveaway'`;
-      } else if (wantBorrowOnly) {
-        listingQuery += ` AND l.listing_type = 'lend'`;
+      if (selectedListingTypes.length > 0 || typeFilters.includes('free')) {
+        const choices = [];
+        if (selectedListingTypes.length > 0) {
+          listingParams.push(selectedListingTypes);
+          choices.push(`l.listing_type = ANY($${listingParams.length}::text[])`);
+        }
+        if (typeFilters.includes('free')) choices.push('(l.is_free = true AND l.direct_fee IS NULL)');
+        listingQuery += ` AND (${choices.join(' OR ')})`;
       }
 
       if (categoryId) {

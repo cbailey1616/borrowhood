@@ -49,6 +49,14 @@ describe('EditListingScreen', () => {
     await act(async () => fireEvent.press(screen.getByText('Save Changes')));
     expect(api.updateListing).toHaveBeenCalledWith('l-1', expect.objectContaining({ directFee: null, giveawayMode: 'free' }));
   });
+  it('edits the price of a distinct sale', async () => {
+    const Screen = require('../../src/screens/EditListingScreen').default;
+    const saleRoute = { params: { listing: { ...listing, listingType: 'sell', directFee: { amount: 25, unit: 'flat', currency: 'USD' } } } };
+    const screen = render(<Screen navigation={mockNavigation} route={saleRoute} />);
+    fireEvent.changeText(screen.getByLabelText('Sale price'), '30');
+    await act(async () => fireEvent.press(screen.getByText('Save Changes')));
+    expect(api.updateListing).toHaveBeenCalledWith('l-1', expect.objectContaining({ directFee: { amount: 30, unit: 'flat', currency: 'USD' } }));
+  });
 
   it('validates required fields', async () => {
     const route2 = { params: { listing: { ...listing, title: '' } } };

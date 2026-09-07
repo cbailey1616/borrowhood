@@ -1,5 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import GiveawayOptions from '../components/GiveawayOptions';
+import SalePriceInput from '../components/SalePriceInput';
+import { isSaleListing, isTransferListing } from '../utils/directFee';
 import SharingPicker from '../components/SharingPicker';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import DirectFeePicker from '../components/DirectFeePicker';
@@ -51,7 +53,6 @@ export default function EditListingScreen({ navigation, route }) {
     circleId: listing.circleId || null,
     communityId: listing.communityId || null,
     isFree: listing.isFree ?? true,
-    giveawayMode: listing.directFee?.unit === 'flat' ? 'sell' : 'free',
     chargeFee: Boolean(listing.directFee),
     directFeeAmount: listing.directFee?.amount?.toString() || '',
     pricePerDay: listing.pricePerDay?.toString() || '',
@@ -168,7 +169,7 @@ export default function EditListingScreen({ navigation, route }) {
     }
 
     let directFee;
-    try { directFee = directFeePayload(listing.listingType === 'giveaway' ? false : formData.chargeFee, formData.directFeeAmount, listing.listingType === 'giveaway' ? 'flat' : listing.directFee?.unit || 'day'); }
+    try { directFee = directFeePayload(isTransferListing(listing) ? isSaleListing(listing) : formData.chargeFee, formData.directFeeAmount, isTransferListing(listing) ? 'flat' : listing.directFee?.unit || 'day'); }
     catch (error) { showError({ message: error.message }); return; }
     // Validate rental fee when charging ($5 minimum to cover processing fees)
     if (ENABLE_PAYMENTS && !formData.isFree && !(parseFloat(formData.pricePerDay) >= 5)) {
@@ -244,8 +245,8 @@ export default function EditListingScreen({ navigation, route }) {
         isFree: !ENABLE_PAYMENTS || formData.isFree,
         pricePerDay: !ENABLE_PAYMENTS || formData.isFree ? null : parseFloat(formData.pricePerDay) || 0,
         depositAmount: ENABLE_PAYMENTS && formData.requireDeposit ? parseFloat(formData.depositAmount) || 0 : 0,
-        minDuration: parseInt(formData.minDuration) || 1,
-        maxDuration: parseInt(formData.maxDuration) || 14,
+        minDuration: isTransferListing(listing) ? undefined : parseInt(formData.minDuration) || 1,
+        maxDuration: isTransferListing(listing) ? undefined : parseInt(formData.maxDuration) || 14,
         photos: allPhotos,
       });
 
@@ -432,9 +433,9 @@ export default function EditListingScreen({ navigation, route }) {
 
       </View>
 
-      {listing.listingType === 'giveaway' && <GiveawayOptions mode={formData.giveawayMode} amount={formData.directFeeAmount}
-        onModeChange={value => updateField('giveawayMode', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
-      {listing.listingType !== 'giveaway' && <DirectFeePicker enabled={formData.chargeFee} amount={formData.directFeeAmount}
+      {listing.listingType === 'giveaway' && <GiveawayOptions />}
+      {isSaleListing(listing) && <SalePriceInput amount={formData.directFeeAmount} onChange={value => updateField('directFeeAmount', value)} />}
+      {!isTransferListing(listing) && <DirectFeePicker enabled={formData.chargeFee} amount={formData.directFeeAmount}
         onToggle={value => updateField('chargeFee', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
       {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (
         <Text style={styles.label}>Saving makes this item free to borrow, with no deposit.</Text>
@@ -561,7 +562,7 @@ export default function EditListingScreen({ navigation, route }) {
       </View>}
 
       {/* Duration */}
-      <View style={styles.section}>
+      {!isTransferListing(listing) && <View style={styles.section}>
         <Text style={styles.label}>Borrow duration (days)</Text>
         <View style={styles.durationRow}>
           <View style={styles.durationInput}>
@@ -584,7 +585,7 @@ export default function EditListingScreen({ navigation, route }) {
             />
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* Submit */}
       <HapticPressable

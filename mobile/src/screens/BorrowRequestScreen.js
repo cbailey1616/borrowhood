@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { directFeeLabel, isSaleListing } from '../utils/directFee';
+import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  InputAccessoryView,
+  KeyboardAvoidingView,
   Keyboard,
   TextInput,
   Image,
@@ -13,7 +13,8 @@ import {
 
   Platform,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -25,9 +26,17 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils
 
 export default function BorrowRequestScreen({ route, navigation }) {
   const { listing } = route.params;
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
   const { user, isGracePeriodActive } = useAuth();
   const { showError } = useError();
-  const isGiveaway = listing.listingType === 'giveaway';
+  const isGiveaway = isTransferListing(listing);
   useEffect(() => { navigation.setOptions({ title: isSaleListing(listing) ? 'Request to buy' : isGiveaway ? 'Request this item' : 'Request to borrow' }); }, [listing.listingType, listing.directFee, navigation]);
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
   const tomorrow = new Date();
@@ -331,10 +340,12 @@ export default function BorrowRequestScreen({ route, navigation }) {
   }
 
   return (
-    <>
-    <KeyboardAwareScrollView style={styles.container} contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
-      enableOnAndroid extraScrollHeight={28} enableResetScrollToCoords={false}>
+    <KeyboardAvoidingView style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
         <Image
@@ -348,7 +359,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           </Text>
           {isGiveaway && (
             <View style={styles.giveawayBadge}>
-              <Ionicons name="gift" size={12} color={COLORS.secondary} />
+              <Ionicons name={isSaleListing(listing) ? 'pricetag' : 'gift'} size={12} color={COLORS.secondary} />
               <Text style={styles.giveawayBadgeText}>{isSaleListing(listing) ? 'For sale — Yours to keep' : 'Giveaway — Yours to Keep'}</Text>
             </View>
           )}
@@ -438,17 +449,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
       {/* Message */}
       <View style={styles.section}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={styles.sectionTitle}>Private message (optional)</Text>
-          <HapticPressable accessibilityRole="button" accessibilityLabel="Dismiss keyboard" onPress={() => Keyboard.dismiss()}
-            style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' }}>
-            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Done ×</Text>
-          </HapticPressable>
-        </View>
+        <Text style={styles.sectionTitle}>Private message (optional)</Text>
         <Text style={styles.hint}>Sent privately to the owner with this request.</Text>
         <TextInput
           style={[styles.input, styles.messageInput]}
-          inputAccessoryViewID={Platform.OS === 'ios' ? 'borrow-request-keyboard' : undefined}
           accessibilityLabel="Private message to owner"
           value={message}
           onChangeText={setMessage}
@@ -499,7 +503,14 @@ export default function BorrowRequestScreen({ route, navigation }) {
       </View>
       )}
 
-      {/* Submit */}
+      <Text style={styles.termsText}>
+        {isGiveaway
+          ? 'By requesting this item, you agree to our terms and conditions'
+          : 'By sending this request, you agree to our borrowing terms and conditions'}
+      </Text>
+    </ScrollView>
+    <View style={[styles.submitFooter, { paddingBottom: keyboardVisible ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
+      {/* Submit stays above the keyboard so no dismissal toolbar is needed. */}
       <HapticPressable
         haptic="medium"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -514,22 +525,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
           </Text>
         )}
       </HapticPressable>
-
-      <Text style={styles.termsText}>
-        {isGiveaway
-          ? 'By requesting this item, you agree to our terms and conditions'
-          : 'By sending this request, you agree to our borrowing terms and conditions'}
-      </Text>
-    </KeyboardAwareScrollView>
-    {Platform.OS === 'ios' && <InputAccessoryView nativeID="borrow-request-keyboard" backgroundColor={COLORS.surface}>
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: COLORS.border }}>
-        <HapticPressable accessibilityRole="button" accessibilityLabel="Hide keyboard" onPress={() => Keyboard.dismiss()}
-          style={{ minHeight: 44, paddingHorizontal: 20, justifyContent: 'center' }}>
-          <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 16 }}>Done ×</Text>
-        </HapticPressable>
-      </View>
-    </InputAccessoryView>}
-    </>
+    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -808,6 +805,13 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: SPACING.sm,
   },
+  submitFooter: {
+    backgroundColor: COLORS.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
+  },
   submitButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,
@@ -828,7 +832,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     marginTop: SPACING.md,
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.md,
   },
 });
 import { ThemedAlert as Alert } from "../components/ThemedAlert";

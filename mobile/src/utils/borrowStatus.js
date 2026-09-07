@@ -4,7 +4,7 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute }) {
   switch (status) {
     case 'pending': return isBorrower
       ? { title: 'Waiting for the owner', detail: 'Your request is sent. We’ll notify you when they respond.' }
-      : { title: 'Review this request', detail: 'Check the dates and borrower’s profile, then approve or decline.' };
+      : { title: 'Review this request', detail: isGiveaway ? 'Check your neighbor’s profile, then approve or decline.' : 'Check the dates and borrower’s profile, then approve or decline.' };
     case 'approved': case 'paid': return { title: 'Arrange pickup', detail: isBorrower ? 'Message the owner to agree on a place and time. Confirm pickup only after you receive the item.' : 'Message your neighbor to agree on a place and time. Share pickup details privately.' };
     case 'picked_up': return { title: isGiveaway ? 'Pickup confirmed' : 'Return is next', detail: isGiveaway ? 'The handoff is complete.' : isBorrower ? 'Keep an eye on the agreed return date. Mark the item returned after handing it back.' : 'Confirm return after the item is back with you.' };
     case 'return_pending': return { title: 'Return reported', detail: 'The return is awaiting confirmation.' };

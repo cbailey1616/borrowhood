@@ -7,10 +7,13 @@ export function directFeePayload(enabled, amount, unit = 'day') {
   return { amount: Number(text), unit, currency: 'USD' };
 }
 export function isSaleListing(listing) {
-  return listing?.listingType === 'giveaway' && listing.directFee?.unit === 'flat' && Number(listing.directFee.amount) > 0;
+  return listing?.listingType === 'sell';
+}
+export function isTransferListing(listing) {
+  return ['giveaway', 'sell'].includes(listing?.listingType);
 }
 export function directFeeLabel(listing) {
-  if (isSaleListing(listing)) return `$${Number(listing.directFee.amount).toFixed(2)}`;
+  if (isSaleListing(listing)) return listing.directFee ? `$${Number(listing.directFee.amount).toFixed(2)}` : 'For sale';
   if (listing.listingType === 'giveaway') return 'Free to keep';
   if (!listing.directFee) return null;
   const { amount, unit } = listing.directFee;
