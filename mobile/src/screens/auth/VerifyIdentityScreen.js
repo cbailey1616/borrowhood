@@ -1,3 +1,4 @@
+import { ScrollView } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -103,14 +104,14 @@ export default function VerifyIdentityScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
         <View style={styles.iconContainer}>
           <Ionicons name="shield-checkmark" size={80} color={COLORS.primary} />
         </View>
 
         <Text style={styles.title}>Verify Your Identity</Text>
         <Text style={styles.subtitle}>
-          To keep our community safe, we verify all members with a valid government ID.
+          Verify your identity with an ID and selfie check. Add the verified badge to your profile and see who’s sharing in Town.
           {fromSubscription ? ' We\'ll notify you once your verification is complete — it usually only takes a few minutes.' : ''}
         </Text>
 
@@ -118,7 +119,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
           <View style={styles.benefitsInner}>
             <BenefitItem
               icon="lock-closed"
-              text="Your data is encrypted and secure"
+              text="Stripe handles your ID images. They are not shown to neighbors."
             />
             <BenefitItem
               icon="people"
@@ -126,7 +127,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
             />
             <BenefitItem
               icon="checkmark-circle"
-              text="Required to borrow or lend items"
+              text="Choose which items you share and who can see them"
             />
           </View>
         </View>
@@ -165,13 +166,13 @@ export default function VerifyIdentityScreen({ navigation, route }) {
             <Text style={styles.skipButtonText}>Skip for now</Text>
           </HapticPressable>
         </View>
-      </View>
+      </ScrollView>
 
       <ActionSheet
         isVisible={skipSheetVisible}
         onClose={() => setSkipSheetVisible(false)}
         title="Skip Verification?"
-        message="You can browse items, but you won't be able to borrow or lend until your identity is verified."
+        message="You can explore now and verify later. Get verified to see who’s sharing in Town."
         actions={[
           {
             label: 'Skip',
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     padding: SPACING.xl,
     justifyContent: 'center',
   },

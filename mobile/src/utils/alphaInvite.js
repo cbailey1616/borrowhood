@@ -9,8 +9,7 @@ export function alphaInviteMessage(link = process.env.EXPO_PUBLIC_TESTFLIGHT_INV
 }
 
 // Only opens the system composer. The person inviting chooses when to send.
-export async function inviteToAlpha(phone) {
-  const message = alphaInviteMessage();
+export async function inviteToAlpha(phone, message = alphaInviteMessage()) {
   if (await SMS.isAvailableAsync()) {
     return SMS.sendSMSAsync(phone ? [phone] : [], message);
   }

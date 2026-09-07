@@ -304,7 +304,7 @@ export default function FeedScreen({ navigation }) {
     dueSoonItems.length > 0 && !dismissedBanners.dueSoon && {
       key: 'dueSoon',
       icon: 'time',
-      color: COLORS.info || '#5BA4CF',
+      color: COLORS.info || COLORS.info,
       title: `${dueSoonItems.length} item${dueSoonItems.length !== 1 ? 's' : ''} due back soon`,
       subtitle: "Don't forget to return on time",
       onPress: () => navigation.navigate('MyItems'),

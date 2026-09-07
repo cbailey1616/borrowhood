@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import {
@@ -216,8 +217,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
-            <Image
-              source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/80' }}
+            <ShimmerImage
+              source={{ uri: listing.photos?.[0] || null }}
               style={styles.promptItemImage}
             />
             <View style={styles.promptItemInfo}>
@@ -282,8 +283,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
-            <Image
-              source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/80' }}
+            <ShimmerImage
+              source={{ uri: listing.photos?.[0] || null }}
               style={styles.promptItemImage}
             />
             <View style={styles.promptItemInfo}>
@@ -348,8 +349,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
-        <Image
-          source={{ uri: listing.photos?.[0] || 'https://via.placeholder.com/60' }}
+        <ShimmerImage
+          source={{ uri: listing.photos?.[0] || null }}
           style={styles.itemImage}
         />
         <View style={styles.itemInfo}>

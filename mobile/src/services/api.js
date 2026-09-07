@@ -17,6 +17,12 @@ const compressImage = async (uri) => {
 
 // Token management
 let authToken = null;
+let sessionExpiredHandler = null;
+
+const setSessionExpiredHandler = handler => {
+  sessionExpiredHandler = handler;
+  return () => { if (sessionExpiredHandler === handler) sessionExpiredHandler = null; };
+};
 
 const setAuthToken = (token) => {
   authToken = token;
@@ -25,6 +31,7 @@ const setAuthToken = (token) => {
 // Fetch helper
 const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
+  const requestToken = authToken;
 
   if (__DEV__) console.log('API Request:', url);
 
@@ -47,6 +54,14 @@ const request = async (endpoint, options = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
+      // An old request must never sign out a newly signed-in account. Incorrect
+      // login/password/code responses have no session code and do not trigger this.
+      if (requestToken && requestToken === authToken &&
+          ((response.status === 401 && ['SESSION_EXPIRED', 'INVALID_SESSION'].includes(data.code)) ||
+           (response.status === 403 && data.code === 'ACCOUNT_SUSPENDED'))) {
+        authToken = null;
+        await sessionExpiredHandler?.();
+      }
       // Handle express-validator errors array and single error string
       let message = data.error;
       if (!message && data.errors && Array.isArray(data.errors)) {
@@ -55,6 +70,7 @@ const request = async (endpoint, options = {}) => {
       const error = new Error(message || 'Something went wrong. Please try again.');
       error.status = response.status;
       error.code = data.code;
+      error.retryAfter = data.retryAfter;
       if (data.code === 'ACCOUNT_LINK_REQUIRED') error.email = data.email;
       error.requiredTier = data.requiredTier;
       throw error;
@@ -67,6 +83,7 @@ const request = async (endpoint, options = {}) => {
     const apiError = new Error(error.message || 'Network error');
     apiError.status = error.status;
     apiError.code = error.code;
+    apiError.retryAfter = error.retryAfter;
     apiError.email = error.email;
     apiError.requiredTier = error.requiredTier;
     throw apiError;
@@ -108,7 +125,10 @@ const login = (email, password) =>
   post('/auth/login', { email, password });
 
 const register = (data) =>
-  post('/auth/register', data);
+  post('/auth/register', { ...data, verificationFlow: 'email-code-v1' });
+
+const verifySignupCode = (challengeId, code) => post('/auth/register/verify', { challengeId, code });
+const resendSignupCode = (challengeId) => post('/auth/register/resend', { challengeId });
 
 const getMe = () =>
   get('/auth/me');
@@ -760,11 +780,16 @@ const getReferralStatus = () => get('/referrals/status');
 const claimReferralReward = () => post('/referrals/claim');
 
 export default {
+  getSafetyReports: (status = 'open', page = 1) => get(`/admin/safety-reports?status=${encodeURIComponent(status)}&page=${page}`),
+  reviewSafetyReport: (id, decision) => post(`/admin/safety-reports/${id}/review`, decision),
+  setSessionExpiredHandler,
   getFunnelInsights: (days = 30) => get(`/insights/funnel?days=${days}`),
   setAuthToken,
   // Auth
   login,
   register,
+  verifySignupCode,
+  resendSignupCode,
   getMe,
   startIdentityVerification,
   checkVerification,

@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -17,25 +18,29 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function CommunityMembersScreen({ route, navigation }) {
-  const { id: communityId } = route.params;
+  const communityId = route?.params?.id || route?.params?.communityId;
   const { user } = useAuth();
   const { showToast, showError } = useError();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('member');
+  const [loadError, setLoadError] = useState(false);
 
   const fetchMembers = useCallback(async () => {
+    if (!communityId) { setLoading(false); return; }
     try {
       const data = await api.getCommunityMembers(communityId, { limit: 100 });
       setMembers(data || []);
       const me = (data || []).find(m => m.id === user?.id);
-      if (me) setUserRole(me.role);
+      setUserRole(me?.role || 'member');
+      setLoadError(false);
     } catch (err) {
+      setLoadError(true);
       showError({ message: 'Failed to load members' });
     } finally {
       setLoading(false);
     }
-  }, [communityId]);
+  }, [communityId, user?.id]);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
@@ -96,8 +101,8 @@ export default function CommunityMembersScreen({ route, navigation }) {
       style={styles.memberRow}
       onPress={() => navigation.navigate('UserProfile', { id: item.id })}
     >
-      <Image
-        source={{ uri: item.profilePhotoUrl || 'https://via.placeholder.com/44' }}
+      <ShimmerImage placeholderIcon="person"
+        source={{ uri: item.profilePhotoUrl || null }}
         style={styles.avatar}
       />
       <View style={styles.memberInfo}>
@@ -119,14 +124,16 @@ export default function CommunityMembersScreen({ route, navigation }) {
           <HapticPressable
             haptic="medium"
             style={styles.promoteButton}
-            onPress={() => handlePromote(item)}
+            accessibilityLabel={`Make ${item.firstName} an admin`}
+            onPress={event => { event?.stopPropagation?.(); handlePromote(item); }}
           >
             <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
           </HapticPressable>
           <HapticPressable
             haptic="medium"
             style={styles.removeButton}
-            onPress={() => handleRemove(item)}
+            accessibilityLabel={`Remove ${item.firstName} from the neighborhood`}
+            onPress={event => { event?.stopPropagation?.(); handleRemove(item); }}
           >
             <Ionicons name="person-remove-outline" size={18} color={COLORS.danger} />
           </HapticPressable>
@@ -142,6 +149,18 @@ export default function CommunityMembersScreen({ route, navigation }) {
       </View>
     );
   }
+
+  if (!communityId) return <View style={styles.emptyContainer}>
+    <Text style={styles.emptyText}>Choose a neighborhood to see its members.</Text>
+    <HapticPressable onPress={() => navigation.navigate('MyCommunity')} style={{ padding: SPACING.lg }}>
+      <Text style={{ color: COLORS.primary }}>My neighborhoods</Text>
+    </HapticPressable>
+  </View>;
+
+  if (loadError) return <View style={styles.emptyContainer}>
+    <Text style={styles.emptyText}>Could not load members.</Text>
+    <HapticPressable onPress={fetchMembers} style={{ padding: SPACING.lg }}><Text style={{ color: COLORS.primary }}>Try again</Text></HapticPressable>
+  </View>;
 
   return (
     <View style={styles.container}>

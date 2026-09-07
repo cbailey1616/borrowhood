@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { logger } from '../utils/logger.js';
-import { socialLinkCodeEmail, resetCodeEmail, accountHintEmail } from './emailTemplates.js';
+import { socialLinkCodeEmail, resetCodeEmail, accountHintEmail, signupCodeEmail } from './emailTemplates.js';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = 'Borrowhood <noreply@borrowhood.net>';
@@ -29,4 +29,8 @@ export async function sendResetCodeEmail(to, code) {
 
 export async function sendAccountHintEmail(to, providers) {
   await sendMail(to, accountHintEmail(providers));
+}
+
+export async function sendSignupCodeEmail(to, code) {
+  await sendMail(to, signupCodeEmail(code));
 }

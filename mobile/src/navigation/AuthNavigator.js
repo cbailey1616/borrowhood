@@ -5,6 +5,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import FindAccountScreen from '../screens/auth/FindAccountScreen';
+import VerifySignupEmailScreen from '../screens/auth/VerifySignupEmailScreen';
 import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
 
 const Stack = createNativeStackNavigator();
@@ -32,6 +33,7 @@ export default function AuthNavigator() {
         component={RegisterScreen}
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen name="VerifySignupEmail" component={VerifySignupEmailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}

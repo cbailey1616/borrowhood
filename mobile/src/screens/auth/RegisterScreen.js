@@ -69,10 +69,9 @@ export default function RegisterScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      await register({ firstName, lastName, email, phone: phone || undefined, password, referralCode: formData.referralCode || undefined });
+      const challenge = await register({ firstName, lastName, email, phone: phone || undefined, password, referralCode: formData.referralCode || undefined });
       haptics.success();
-      // RootNavigator will automatically swap to OnboardingNavigator
-      // once isAuthenticated=true and onboardingCompleted=false
+      navigation.navigate('VerifySignupEmail', challenge);
     } catch (error) {
       showError({
         message: error.message || 'Couldn\'t create your account right now. Please check your connection and try again.',
@@ -102,7 +101,7 @@ export default function RegisterScreen({ navigation }) {
           </HapticPressable>
 
           <Text style={styles.title}>Create account</Text>
-          <Text style={styles.subtitle}>A little about you, then you’re in.</Text>
+          <Text style={styles.subtitle}>A little about you, then confirm your email.</Text>
 
           <View style={styles.formCard}>
             <View style={styles.form}>

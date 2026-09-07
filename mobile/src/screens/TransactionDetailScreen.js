@@ -570,8 +570,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
       <ActionSheet
         isVisible={returnSheetVisible && transaction?.isBorrower}
         onClose={() => setReturnSheetVisible(false)}
-        title="Return Item"
-        message="Confirm that you've returned the item to the lender. They'll have 7 days to report any issues."
+        variant="confirmation"
+        icon={<Ionicons name="cube" size={28} illustrated />}
+        title="Item returned?"
+        message="Confirm once the item is back with your neighbor."
         actions={[
           {
             label: 'Confirm Return',
@@ -584,16 +586,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
       <ActionSheet
         isVisible={returnSheetVisible && transaction?.isLender}
         onClose={() => setReturnSheetVisible(false)}
-        title="Confirm Return"
-        message="Is the item in the same condition as when it was picked up?"
+        variant="confirmation"
+        icon={<Ionicons name="cube" size={28} illustrated />}
+        title="Everything back?"
+        message={`Confirm once ${transaction?.listing?.title || 'the item'} is back with you in the same condition. If something needs attention, message your neighbor first.`}
         actions={[
           {
-            label: 'Yes, looks good',
+            label: 'Confirm return',
+            testID: 'Transaction.confirmReturn',
             onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
             primary: true,
           },
           {
-            label: 'Message my neighbor',
+            label: 'Message neighbor',
+            testID: 'Transaction.messageAboutReturn',
             onPress: () => navigation.navigate('Chat', { recipientId: transaction?.borrower?.id, recipient: transaction?.borrower, listingId: transaction?.listing?.id, listing: transaction?.listing }),
           },
         ]}

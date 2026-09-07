@@ -108,3 +108,14 @@ describe('ProfileScreen', () => {
     expect(getByText('Borrowhood 1.0.0 · Build 999')).toBeTruthy();
   });
 });
+it('shows the safety review queue only to administrators', () => {
+  const ProfileScreen=require('../../src/screens/ProfileScreen').default;
+  mockUser.isAdmin=false;
+  const screen=render(<ProfileScreen navigation={mockNavigation} />);
+  expect(screen.queryByText('Safety reports')).toBeNull();
+  mockUser.isAdmin=true;
+  screen.rerender(<ProfileScreen navigation={mockNavigation} />);
+  fireEvent.press(screen.getByText('Safety reports'));
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('SafetyReports');
+  delete mockUser.isAdmin;
+});

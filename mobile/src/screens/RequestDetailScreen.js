@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import { useState, useCallback } from 'react';
 import {
@@ -184,8 +185,8 @@ export default function RequestDetailScreen({ route, navigation }) {
           onPress={() => navigation.navigate('UserProfile', { id: request.requester.id })}
           haptic="light"
         >
-          <Image
-            source={{ uri: request.requester.profilePhotoUrl || 'https://via.placeholder.com/48' }}
+          <ShimmerImage placeholderIcon="person"
+            source={{ uri: request.requester.profilePhotoUrl || null }}
             style={styles.requesterAvatar}
           />
           <View style={styles.requesterInfo}>

@@ -16,7 +16,8 @@ it('sends branded HTML, plain text, and a working reply address through every cu
   await email.sendResetCodeEmail('person@example.test', '012345');
   await email.sendSocialLinkCodeEmail('person@example.test', '012345', 'google');
   await email.sendAccountHintEmail('person@example.test', ['apple']);
-  expect(mocks.send).toHaveBeenCalledTimes(3);
+  await email.sendSignupCodeEmail('person@example.test', '012345');
+  expect(mocks.send).toHaveBeenCalledTimes(4);
   for (const [message] of mocks.send.mock.calls) {
     expect(message).toMatchObject({ from: 'Borrowhood <noreply@borrowhood.net>', replyTo: 'chris@borrowhood.net', to: 'person@example.test' });
     expect(message.html).toContain('YOUR BORROWHOOD ACCOUNT');
@@ -24,7 +25,7 @@ it('sends branded HTML, plain text, and a working reply address through every cu
   }
 });
 
-it.each(['sendResetCodeEmail', 'sendAccountHintEmail', 'sendSocialLinkCodeEmail'])('does not silently accept provider errors: %s', async name => {
+it.each(['sendResetCodeEmail', 'sendAccountHintEmail', 'sendSocialLinkCodeEmail', 'sendSignupCodeEmail'])('does not silently accept provider errors: %s', async name => {
   const email = await import('../../src/services/email.js');
   mocks.send.mockResolvedValue({ data: null, error: { message: 'secret 012345 person@example.test' } });
   const args = name === 'sendAccountHintEmail' ? ['person@example.test', []] : ['person@example.test', '012345', 'apple'];

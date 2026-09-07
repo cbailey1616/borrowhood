@@ -1,17 +1,25 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text } from 'react-native';
 import HapticPressable from './HapticPressable';
 import ActionSheet from './ActionSheet';
+import { GroupedListSection, GroupedListItem } from './GroupedList';
 import { Ionicons } from './Icon';
 import { COLORS, SPACING } from '../utils/config';
 import api from '../services/api';
 
-export default function UserSafetyActions({ userId, name = 'this person', label = 'Report or block', onBlockChange }) {
+export default function UserSafetyActions({ userId, name = 'this person', label = 'Report or block', variant = 'button', onBlockChange }) {
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [sheet, setSheet] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const inFlight = useRef(false);
+  useEffect(() => {
+    let current = true;
+    if (variant === 'section' && userId) api.getUserSafety(userId).then(result => {
+      if (current) { setBlocked(result.blocked); onBlockChange?.(result.blocked); }
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [userId, variant]);
   const run = async action => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -49,7 +57,7 @@ export default function UserSafetyActions({ userId, name = 'this person', label 
     ],
   } : sheet === 'report' ? {
     title: 'Report user', message: 'What would you like us to know?',
-    actions: ['Scam or fraud', 'Harassment', 'Unsafe behavior'].map(reason => ({ label: reason, onPress: () => report(reason) })),
+    actions: ['Scam or fraud', 'Harassment', 'Unsafe behavior', 'Inappropriate content'].map(reason => ({ label: reason, onPress: () => report(reason) })),
   } : sheet === 'block' ? {
     title: `${blocked ? 'Unblock' : 'Block'} ${name}?`,
     message: blocked ? 'You’ll be able to message each other again.' : 'You won’t be able to message each other. Existing conversations and borrows stay available.',
@@ -57,14 +65,20 @@ export default function UserSafetyActions({ userId, name = 'this person', label 
     actions: [{ label: blocked ? 'Unblock user' : 'Block user', destructive: !blocked, onPress: toggleBlock }],
   } : { ...feedback, actions: [{ label: 'Got it' }] };
   return <>
+    {variant === 'section' ? <GroupedListSection header="Safety" footer="Reports are reviewed privately. Blocking stops new messages between you.">
+      <GroupedListItem icon="flag-outline" title="Report user" onPress={() => { if (!busy) setSheet('report'); }} />
+      <GroupedListItem icon="shield-outline" title={blocked ? 'Unblock user' : 'Block user'} onPress={() => run(async () => {
+        const result = await api.getUserSafety(userId); setBlocked(result.blocked); setSheet('block');
+      })} rightElement={busy ? <ActivityIndicator color={COLORS.primary} /> : null} />
+    </GroupedListSection> :
     <HapticPressable accessibilityRole="button" accessibilityLabel={label === 'More' ? 'More profile options' : label}
       disabled={busy} onPress={open}
       style={{ minHeight: 44, minWidth: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, paddingHorizontal: SPACING.md }}>
       {busy ? <ActivityIndicator size="small" color={COLORS.primary} /> : <>
-        {label === 'More' && <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.primary} />}
+        <Ionicons name="shield-outline" size={20} color={COLORS.primary} />
         <Text style={{ color: COLORS.primary }}>{label}</Text>
       </>}
-    </HapticPressable>
+    </HapticPressable>}
     {sheet && <ActionSheet key={sheet} isVisible {...dialog}
       onClose={() => setSheet(current => current === sheet ? null : current)} />}
   </>;

@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -143,9 +144,9 @@ export default function LendingCirclesScreen({ navigation }) {
           {circle.memberAvatars?.length > 0 && (
             <View style={styles.memberAvatars}>
               {circle.memberAvatars.slice(0, 5).map((avatar, idx) => (
-                <Image
+                <ShimmerImage placeholderIcon="person"
                   key={idx}
-                  source={{ uri: avatar || 'https://via.placeholder.com/32' }}
+                  source={{ uri: avatar || null }}
                   style={[styles.memberAvatar, { marginLeft: idx > 0 ? -8 : 0 }]}
                 />
               ))}
@@ -163,7 +164,7 @@ export default function LendingCirclesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.content}>
+      <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Lending Circles</Text>
           <Text style={styles.subtitle}>
@@ -192,7 +193,7 @@ export default function LendingCirclesScreen({ navigation }) {
         {circles.length === 0 && (
           <View style={styles.emptyState}>
             <View style={{ marginBottom: 16 }}>
-              <HeroIcon icon="people" size={84} colors={['#9B7BE8', '#5B3FB0']} />
+              <HeroIcon icon="people" size={84} colors={[COLORS.primaryLight, COLORS.primary]} />
             </View>
             <Text style={styles.emptyTitle}>No Circles Yet</Text>
             <Text style={styles.emptyText}>
@@ -433,7 +434,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#2C1810',
+    shadowColor: COLORS.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 4,

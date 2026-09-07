@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TextInput,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   ActivityIndicator,
   LayoutAnimation,
@@ -76,10 +77,11 @@ export default function FindAccountScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
+        style={{ flex: 1 }}
       >
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
-          <Text style={styles.backButtonText}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </HapticPressable>
 
         {step !== 'success' ? (
@@ -225,6 +227,7 @@ export default function FindAccountScreen({ navigation }) {
             </HapticPressable>
           </View>
         )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -236,12 +239,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     padding: SPACING.xl,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     marginBottom: SPACING.lg,
   },

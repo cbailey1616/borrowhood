@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { isTransferListing, isSaleListing } from '../utils/directFee';
 import { publicReplyRoute } from '../utils/conversationContext';
 import { useState, useCallback } from 'react';
@@ -169,7 +170,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     } else if (item.type === 'new_request' && item.requestId) {
       nav.navigate('RequestDetail', { id: item.requestId });
     } else if (item.type === 'join_request') {
-      nav.navigate('CommunityMembers');
+      if (item.communityId) nav.navigate('CommunityMembers', { id: item.communityId });
+      else nav.navigate('MyCommunity');
     } else if (item.type === 'join_approved') {
       nav.navigate('MyCommunity');
     } else if (['new_rating', 'rating_received'].includes(item.type) && !item.transactionId) {
@@ -234,8 +236,8 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         haptic="light"
       >
         <View style={styles.avatarContainer}>
-          <Image
-            source={{ uri: item.otherUser?.profilePhotoUrl || 'https://via.placeholder.com/50' }}
+          <ShimmerImage placeholderIcon="person"
+            source={{ uri: item.otherUser?.profilePhotoUrl || null }}
             style={styles.avatar}
           />
           {item.unreadCount > 0 && (

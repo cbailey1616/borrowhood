@@ -1,3 +1,4 @@
+import { ScrollView } from 'react-native';
 import { ENABLE_PAYMENTS } from '../utils/config';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -132,7 +133,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         {source !== 'generic' && totalSteps && (
           <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
         )}
-        <View style={styles.content}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
           <View style={styles.iconContainer} testID="Identity.status.verified" accessibilityLabel="Identity verified" accessibilityRole="image">
             <View style={styles.successCircle}>
               <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
@@ -151,7 +152,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
               {ENABLE_PAYMENTS && source === 'rental_listing' ? 'Continue' : 'Done'}
             </Text>
           </HapticPressable>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -175,7 +176,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         {source !== 'generic' && totalSteps && (
           <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
         )}
-        <View style={styles.content}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
           <View style={styles.iconContainer} testID="Identity.status.submitted" accessibilityLabel="Verification processing" accessibilityRole="image">
             <View style={[styles.successCircle, { backgroundColor: COLORS.warning + '20' }]}>
               <Ionicons name="time" size={48} color={COLORS.warning} />
@@ -197,7 +198,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
               {ENABLE_PAYMENTS && source === 'rental_listing' ? 'Continue' : 'Start Exploring'}
             </Text>
           </HapticPressable>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -225,7 +226,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
       {source !== 'generic' && totalSteps && (
         <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
       )}
-      <View style={styles.content}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
         <View style={styles.iconContainer}>
           <Ionicons
             name={needsRetry ? 'alert-circle' : 'shield-checkmark'}
@@ -284,7 +285,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
             {source !== 'generic' ? "I'll do this later" : 'Skip for now'}
           </Text>
         </HapticPressable>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     padding: SPACING.xl,
     justifyContent: 'center',
   },

@@ -116,11 +116,8 @@ export default function UserProfileScreen({ route, navigation }) {
       <ScrollView style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
-          {!isOwnProfile && <View style={{ alignSelf: 'flex-end' }}>
-            <UserSafetyActions key={id} userId={id} name={user.firstName} label="More" onBlockChange={setMessagesBlocked} />
-          </View>}
-          <Image
-            source={{ uri: user.profilePhotoUrl || 'https://via.placeholder.com/100' }}
+          <ShimmerImage placeholderIcon="person"
+            source={{ uri: user.profilePhotoUrl || null }}
             style={styles.avatar}
           />
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
@@ -197,6 +194,9 @@ export default function UserProfileScreen({ route, navigation }) {
         <View style={styles.ratingsSection}>
           <Text style={styles.emptyText}>An item shared with you never gives access to this member’s full inventory.</Text>
         </View>
+        {!isOwnProfile && <View style={{ paddingHorizontal: SPACING.lg }}>
+          <UserSafetyActions key={id} userId={id} name={user.firstName} variant="section" onBlockChange={setMessagesBlocked} />
+        </View>}
       </ScrollView>
 
       <ActionSheet

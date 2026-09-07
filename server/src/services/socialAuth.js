@@ -75,7 +75,7 @@ export async function resolveSocialAccount(client, identity, linkUserId = null) 
   if (matches.rows.length) throw Object.assign(socialError(409, 'Connect your existing Borrowhood account to continue.', 'ACCOUNT_LINK_REQUIRED'), { email });
   const result = await client.query(
     `INSERT INTO users (email, first_name, last_name, ${column}, profile_photo_url, onboarding_step)
-     VALUES ($1, $2, $3, $4, $5, 2) RETURNING ${fields}`,
+     VALUES ($1, $2, $3, $4, $5, 1) RETURNING ${fields}`,
     [email, firstName, lastName, subject, photo]
   );
   const user = result.rows[0];

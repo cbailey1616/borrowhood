@@ -1,5 +1,7 @@
 import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
+import { ensureSignupSchema } from '../services/signupVerification.js';
+import { ensureSafetyReviewSchema } from '../services/safetyReview.js';
 
 /**
  * Run pending migrations on server startup
@@ -7,6 +9,7 @@ import { logger } from './logger.js';
 export async function runMigrations() {
   try {
     logger.info('Checking for pending migrations...');
+    await ensureSignupSchema();
     // Older production installations run startup migrations without the numbered
     // SQL files. Social sign-in needs these columns even when password reset
     // columns already exist and its older migration guard is skipped.
@@ -25,6 +28,7 @@ export async function runMigrations() {
     await query('CREATE INDEX IF NOT EXISTS social_link_codes_user ON social_link_codes(user_id, created_at)');
     await query(`CREATE TABLE IF NOT EXISTS user_blocks (user_id UUID REFERENCES users(id) ON DELETE CASCADE, blocked_id UUID REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(user_id, blocked_id), CHECK(user_id != blocked_id))`);
     await query(`CREATE TABLE IF NOT EXISTS safety_reports (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), reporter_id UUID REFERENCES users(id), reported_id UUID REFERENCES users(id), reason TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await ensureSafetyReviewSchema();
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     // A displayed offline price is separate from Stripe rental amounts.

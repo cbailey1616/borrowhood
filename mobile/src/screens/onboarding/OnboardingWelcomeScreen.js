@@ -1,3 +1,4 @@
+import { ScrollView } from 'react-native';
 import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
@@ -24,7 +25,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
     <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
       <OnboardingProgress currentStep={1} />
 
-      <View style={styles.content}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
         <View style={styles.logoContainer}>
           <WoodlandIllustration scene="neighborhood" width={260} />
         </View>
@@ -34,7 +35,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
           Borrow anything from your neighbors.{'\n'}
           Share what you have. Save money together.
         </Text>
-      </View>
+      </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,

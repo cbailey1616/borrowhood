@@ -1,6 +1,7 @@
 import { query } from '../utils/db.js';
 import logger from '../utils/logger.js';
 import { shouldSendPush } from './notificationPreferences.js';
+import { returnCompleteBody, giveawayCompleteBody } from './notificationCopy.js';
 
 // Notification types and their templates
 const NOTIFICATION_TEMPLATES = {
@@ -54,9 +55,7 @@ const NOTIFICATION_TEMPLATES = {
   },
   return_confirmed: {
     title: 'Return Complete',
-    body: (data) => data.itemTitle
-      ? `${data.itemTitle} has been returned. Tap to leave a rating for your neighbor.`
-      : 'Your item has been returned. Tap to leave a rating for your neighbor.',
+    body: returnCompleteBody,
   },
   deposit_released: {
     title: 'Deposit Refunded',
@@ -66,9 +65,7 @@ const NOTIFICATION_TEMPLATES = {
   },
   giveaway_complete: {
     title: 'Item is Yours!',
-    body: (data) => data.itemTitle
-      ? `The handoff for ${data.itemTitle} is complete — it's all yours! Tap to leave a rating.`
-      : 'Your item pickup is complete. Tap to leave a rating.',
+    body: giveawayCompleteBody,
   },
   giveaway_expired: {
     title: 'Request Expired',

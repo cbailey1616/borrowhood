@@ -35,9 +35,9 @@ beforeAll(async () => {
     body: 'Bob wants to borrow your drill',
     fromUserId: userB.userId,
   }));
-  notifIds.push(await createTestNotification(userA.userId, 'rating_received', {
-    title: 'New Rating',
-    body: 'You received a 5-star rating',
+  notifIds.push(await createTestNotification(userA.userId, 'return_confirmed', {
+    title: 'Return Complete',
+    body: 'Your item has been returned. Tap to view your exchange.',
     fromUserId: userB.userId,
   }));
 });
@@ -237,6 +237,17 @@ describe('PATCH /api/notifications/preferences', () => {
 });
 
 describe('Current notification controls', () => {
+  it('corrects a stored return prompt while preserving its read state and identity', async () => {
+    const id = await createTestNotification(userA.userId, 'return_confirmed', {
+      title: 'Return Complete', body: 'Drill has been returned. Tap to leave a rating for your neighbor.',
+    });
+    await query('UPDATE notifications SET is_read = true WHERE id = $1', [id]);
+    const res = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    expect(res.body.notifications.find(n => n.id === id)).toMatchObject({
+      id, type: 'return_confirmed', isRead: true,
+      body: 'Drill has been returned. Tap to view your exchange.',
+    });
+  });
   it('hides duplicate message alerts and keeps the activity badge consistent', async () => {
     const res = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`);
     expect(res.body.notifications.every(n => n.type !== 'new_message')).toBe(true);
@@ -262,5 +273,7 @@ describe('Current notification controls', () => {
     expect(shouldSendPush('new_message', { push_enabled: false })).toBe(false);
     expect(shouldSendPush('new_message', { new_message: true })).toBe(true);
     expect(shouldSendPush('request_approved', { request_response: false })).toBe(false);
+    expect(shouldSendPush('rating_received', {})).toBe(false);
+    expect(shouldSendPush('new_rating', {})).toBe(false);
   });
 });

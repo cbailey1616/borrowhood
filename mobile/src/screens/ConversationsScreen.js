@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -75,8 +76,8 @@ export default function ConversationsScreen({ navigation, onRead }) {
       onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
     >
       <View style={styles.avatarContainer}>
-        <Image
-          source={{ uri: item.otherUser?.profilePhotoUrl || 'https://via.placeholder.com/50' }}
+        <ShimmerImage placeholderIcon="person"
+          source={{ uri: item.otherUser?.profilePhotoUrl || null }}
           style={styles.avatar}
         />
         {item.unreadCount > 0 && (

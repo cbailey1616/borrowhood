@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -241,7 +242,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
   const renderComment = (post, parentId = null) => (
     <View style={styles.commentRow}>
-      <Image source={{ uri: post.user.profilePhotoUrl || 'https://via.placeholder.com/40' }} style={styles.postAvatar} />
+      <ShimmerImage placeholderIcon="person" source={{ uri: post.user.profilePhotoUrl || null }} style={styles.postAvatar} />
       <View style={styles.commentBody}>
         <View style={styles.commentMeta}>
           <Text style={styles.postAuthor}>{post.user.firstName} {post.user.lastName}</Text>

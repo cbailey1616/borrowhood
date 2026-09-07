@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { currentNotificationBody } from '../services/notificationCopy.js';
 
 import { ACTIVITY_SQL, normalizedPreferences, validPreferenceKeys } from '../services/notificationPreferences.js';
 
@@ -43,7 +44,7 @@ router.get('/', authenticate, async (req, res) => {
         id: n.id,
         type: n.type,
         title: n.title,
-        body: n.body,
+        body: currentNotificationBody(n.type, n.body),
         transactionId: n.transaction_id,
         listingId: n.listing_id,
         requestId: n.request_id,

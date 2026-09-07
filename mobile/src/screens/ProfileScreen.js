@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import BiometricIcon from '../components/BiometricIcon';
 import { useState, useEffect } from 'react';
 import {
@@ -159,8 +160,8 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.headerInner}>
             <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null}>
               <View style={styles.avatarContainer}>
-                <Image
-                  source={{ uri: user?.profilePhotoUrl || 'https://via.placeholder.com/88' }}
+                <ShimmerImage placeholderIcon="person"
+                  source={{ uri: user?.profilePhotoUrl || null }}
                   style={styles.avatar}
                 />
                 {uploadingPhoto ? (
@@ -232,7 +233,10 @@ export default function ProfileScreen({ navigation }) {
           />
         </GroupedListSection>
 
-        {user?.isAdmin && <GroupedListSection header="Admin"><GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} /></GroupedListSection>}
+        {user?.isAdmin && <GroupedListSection header="Admin">
+          <GroupedListItem icon="shield-checkmark-outline" title="Safety reports" onPress={() => navigation.navigate('SafetyReports')} />
+          <GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} />
+        </GroupedListSection>}
         {/* Borrowing & Payments Section */}
         {(ENABLE_PAYMENTS || ENABLE_PAID_TIERS) && <GroupedListSection header="Borrowing">
           {ENABLE_PAYMENTS && (
@@ -302,8 +306,13 @@ export default function ProfileScreen({ navigation }) {
           />
           <GroupedListItem
             icon="document-text-outline"
-            title="Terms & Privacy"
+            title="Terms of Service"
             onPress={() => Linking.openURL(`${BASE_URL}/terms`)}
+          />
+          <GroupedListItem
+            icon="lock-closed-outline"
+            title="Privacy Policy"
+            onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}
           />
         </GroupedListSection>
 

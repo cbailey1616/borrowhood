@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState } from 'react';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
 import {
@@ -177,8 +178,8 @@ export default function EditProfileScreen({ navigation }) {
         extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       >
         <View style={styles.avatarSection}>
-          <Image
-            source={{ uri: selectedPhoto || user?.profilePhotoUrl || 'https://via.placeholder.com/100' }}
+          <ShimmerImage placeholderIcon="person"
+            source={{ uri: selectedPhoto || user?.profilePhotoUrl || null }}
             style={styles.avatar}
           />
           <HapticPressable haptic="light" style={styles.changePhotoButton} onPress={handleChangePhoto}>

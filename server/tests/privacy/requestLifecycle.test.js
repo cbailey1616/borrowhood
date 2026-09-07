@@ -24,7 +24,7 @@ beforeAll(async () => {
 }, 20000);
 afterAll(async () => { await state.db?.close(); });
 beforeEach(async () => {
-  await state.db.exec(`TRUNCATE users,listings,item_requests,listing_shares,friendships;
+  await state.db.exec(`TRUNCATE users,listings,item_requests,listing_shares,friendships,borrow_transactions;
     INSERT INTO users(id,is_verified,city,state) VALUES ('owner',true,'Upton','MA'), ('neighbor',true,' upton ','ma'), ('outsider',true,'Upton','NY');
     INSERT INTO listings(id,owner_id) VALUES ('drill','owner'), ('private-saw','owner');
     INSERT INTO item_requests(id,user_id,visibility) VALUES ('request','neighbor','town');`);
@@ -83,4 +83,15 @@ it('allows requests shared through either friendship or town, without exposing t
 it('rejects invalid timezone names', () => {
   expect(validRequestTimeZone('America/New_York')).toBe(true);
   for (const value of [null, '', 'Not/A_Timezone', 'UTC; SELECT 1']) expect(validRequestTimeZone(value)).toBe(false);
+});
+
+it('hides a suspended owner from friends and private offers while retaining an existing exchange record', async () => {
+  await offerListing('request','drill','owner');
+  await state.db.exec("UPDATE listings SET visibility='close_friends'; INSERT INTO friendships VALUES ('owner','neighbor','accepted')");
+  expect(await canViewListing('drill','neighbor',{ discovery:true })).toBe(true);
+  await state.db.exec("UPDATE users SET status='suspended' WHERE id='owner'");
+  expect(await canViewListing('drill','neighbor',{ discovery:true })).toBe(false);
+  expect(await canViewListing('drill','neighbor')).toBe(false);
+  await state.db.exec("INSERT INTO borrow_transactions VALUES ('drill','neighbor','picked_up')");
+  expect(await canViewListing('drill','neighbor')).toBe(true);
 });

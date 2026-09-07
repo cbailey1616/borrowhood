@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -86,8 +87,8 @@ export default function CommunityLibraryScreen({ navigation }) {
         haptic="light"
       >
         <View style={[styles.cardBox, styles.itemCard]}>
-          <Image
-            source={{ uri: item.photoUrl || 'https://via.placeholder.com/100' }}
+          <ShimmerImage
+            source={{ uri: item.photoUrl || null }}
             style={styles.itemImage}
           />
           <View style={styles.itemInfo}>

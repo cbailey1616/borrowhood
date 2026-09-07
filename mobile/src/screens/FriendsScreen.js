@@ -504,7 +504,7 @@ export default function FriendsScreen({ navigation, route }) {
       )}
 
       {activeTab === 'friends' && (
-        <FlatList
+        <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
           data={filteredFriends}
           renderItem={renderFriendItem}
           keyExtractor={(item) => item.id}
@@ -532,7 +532,7 @@ export default function FriendsScreen({ navigation, route }) {
       )}
 
       {activeTab === 'requests' && (
-        <FlatList
+        <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
           data={friendRequests}
           renderItem={({ item }) => (
             <View style={styles.card}>
@@ -613,7 +613,7 @@ export default function FriendsScreen({ navigation, route }) {
               <Text style={styles.emptySubtitle}>Checking your contacts...</Text>
             </View>
           ) : (
-            <FlatList
+            <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
               data={contactsData}
               renderItem={({ item }) =>
                 item._sectionHeader ? (
@@ -660,7 +660,7 @@ export default function FriendsScreen({ navigation, route }) {
       )}
 
       {activeTab === 'search' && (
-        <FlatList
+        <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
           data={searchResults}
           renderItem={renderSearchItem}
           keyExtractor={(item) => item.id}

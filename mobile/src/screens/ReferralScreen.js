@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -185,8 +186,8 @@ export default function ReferralScreen() {
           <Text style={styles.friendsTitle}>Referred Friends</Text>
           {status.referredFriends.map(friend => (
             <View key={friend.id} style={styles.friendRow}>
-              <Image
-                source={{ uri: friend.profilePhotoUrl || 'https://via.placeholder.com/36' }}
+              <ShimmerImage placeholderIcon="person"
+                source={{ uri: friend.profilePhotoUrl || null }}
                 style={styles.friendAvatar}
               />
               <View style={styles.friendInfo}>

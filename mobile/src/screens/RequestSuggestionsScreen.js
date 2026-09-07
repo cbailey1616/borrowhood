@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '../components/Icon';
@@ -14,8 +14,11 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
   const { requestData, requestTitle, suggestions, draftScope } = route.params;
   const { showToast, showError } = useError();
   const [isPosting, setIsPosting] = useState(false);
+  const posting = useRef(false);
 
   const handleSkip = async () => {
+    if (posting.current) return;
+    posting.current = true;
     setIsPosting(true);
     try {
       await api.createRequest(requestData);
@@ -24,6 +27,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
       showToast('Your request has been posted!', 'success');
       navigation.popToTop();
     } catch (error) {
+      posting.current = false;
       showError({ message: error.message || 'Failed to post request' });
       setIsPosting(false);
     }
@@ -35,7 +39,7 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
 
   const renderSuggestion = ({ item }) => {
     const isGiveaway = isTransferListing(item);
-    const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
+    const userName = `${item.user?.firstName || 'Neighbor'} ${item.user?.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
 
     return (
       <HapticPressable
@@ -56,9 +60,9 @@ const RequestSuggestionsScreen = ({ navigation, route }) => {
           </View>
           <View style={styles.cardContent}>
             <View style={styles.cardTopRow}>
-              <View style={[styles.pill, { backgroundColor: isGiveaway ? COLORS.primaryMuted : COLORS.primary }]}>
-                <Ionicons name={isGiveaway ? 'gift' : 'swap-horizontal'} size={isGiveaway ? 18 : 10} illustrated={isGiveaway} color={isGiveaway ? COLORS.primary : '#fff'} />
-                <Text style={[styles.pillText, isGiveaway && { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : isGiveaway ? 'FREE' : 'BORROW'}</Text>
+              <View style={[styles.pill, { backgroundColor: COLORS.primaryMuted }]}>
+                <Ionicons name={isSaleListing(item) ? 'pricetag' : isGiveaway ? 'gift' : 'basket'} size={18} illustrated color={COLORS.primary} />
+                <Text style={[styles.pillText, { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : isGiveaway ? 'FREE' : 'BORROWABLE'}</Text>
               </View>
               {(!isGiveaway || isSaleListing(item)) && (
                 <View style={[styles.pill, { backgroundColor: COLORS.primary }]}>
@@ -235,7 +239,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
   skipButton: {
-    backgroundColor: COLORS.greenBg,
+    backgroundColor: COLORS.primary,
+    minHeight: 52,
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.lg,
     alignItems: 'center',

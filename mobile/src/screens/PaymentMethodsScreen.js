@@ -346,7 +346,7 @@ export default function PaymentMethodsScreen({ navigation, route }) {
             ) : connectStatus?.detailsSubmitted ? (
               <View style={[styles.payoutCard, styles.cardBox]}>
                 <View style={[styles.payoutIconWrap, styles.payoutPendingIcon]}>
-                  <Ionicons name="time" size={28} color="#F5A623" />
+                  <Ionicons name="time" size={28} color={COLORS.warning} />
                 </View>
                 <View style={styles.payoutInfo}>
                   <Text style={styles.payoutTitle}>Verification in Progress</Text>
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   payoutPendingIcon: {
-    backgroundColor: '#F5A62315',
+    backgroundColor: COLORS.warningMuted,
   },
   payoutSetupIcon: {
     backgroundColor: COLORS.primary + '15',

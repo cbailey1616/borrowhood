@@ -134,7 +134,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <ScrollView keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets
         style={styles.scrollContent}
         contentContainerStyle={styles.scrollInner}
         keyboardShouldPersistTaps="handled"

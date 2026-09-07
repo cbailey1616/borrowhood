@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -116,8 +117,8 @@ export default function ActivityScreen({ navigation }) {
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
           haptic="light"
         >
-          <Image
-            source={{ uri: item.listing?.photoUrl || 'https://via.placeholder.com/80' }}
+          <ShimmerImage
+            source={{ uri: item.listing?.photoUrl || null }}
             style={styles.cardImage}
           />
           <View style={styles.cardContent}>

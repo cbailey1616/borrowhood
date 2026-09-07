@@ -17,7 +17,7 @@ export function normalizeSharing(value) {
 export function audienceSql(alias, ownerColumn, viewer, { circle = false, town = true } = {}) {
   const owner = `${alias}.${ownerColumn}`;
   const scope = s => `'${s}' = ANY(string_to_array(${alias}.visibility::text, ','))`;
-  return `(
+  return `(EXISTS (SELECT 1 FROM users audience_owner WHERE audience_owner.id=${owner} AND audience_owner.status != 'suspended') AND (
     ${owner} = ${viewer} OR
     (${scope('close_friends')} AND EXISTS (
       SELECT 1 FROM friendships sf WHERE sf.status = 'accepted'
@@ -40,7 +40,7 @@ export function audienceSql(alias, ownerColumn, viewer, { circle = false, town =
         AND NULLIF(TRIM(sv.city), '') IS NOT NULL AND NULLIF(TRIM(sv.state), '') IS NOT NULL
         AND LOWER(TRIM(sv.city)) = LOWER(TRIM(so.city))
         AND LOWER(TRIM(sv.state)) = LOWER(TRIM(so.state))))` : 'false'}
-  )`;
+  ))`;
 }
 
 export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
@@ -50,6 +50,7 @@ export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
     ${discovery ? '' : `OR EXISTS (SELECT 1 FROM listing_shares ss
       JOIN item_requests sr ON sr.id = ss.request_id
       WHERE ss.listing_id = ${alias}.id AND ss.user_id = ${viewer}
+        AND EXISTS (SELECT 1 FROM users share_owner WHERE share_owner.id=${alias}.owner_id AND share_owner.status != 'suspended')
         AND ss.revoked_at IS NULL AND ss.expires_at > NOW() AND ${requestActiveSql('sr')})
     OR EXISTS (SELECT 1 FROM borrow_transactions st
       WHERE st.listing_id = ${alias}.id AND st.borrower_id = ${viewer}

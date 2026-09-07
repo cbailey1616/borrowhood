@@ -26,13 +26,14 @@ export default function ThemedAlertHost() {
     callback?.();
   };
   const cancel = dialog.buttons.find(button => button.style === 'cancel');
-  return <ActionSheet key={dialog.id} isVisible title={dialog.title} message={dialog.message}
+  const choices = dialog.buttons.filter(button => button !== cancel);
+  return <ActionSheet key={dialog.id} isVisible variant="confirmation" title={dialog.title} message={dialog.message}
     onClose={() => finish(cancel?.onPress || dialog.options.onDismiss)}
     cancelLabel={cancel?.text || 'Close'}
-    actions={dialog.buttons.filter(button => button !== cancel).map(button => ({
+    actions={choices.map((button, index) => ({
       label: button.text,
       destructive: button.style === 'destructive',
-      primary: button.style !== 'destructive',
+      primary: button.style !== 'destructive' && index === choices.length - 1 && !choices.some(choice => choice.style === 'destructive'),
       onPress: () => finish(button.onPress),
     }))} />;
 }

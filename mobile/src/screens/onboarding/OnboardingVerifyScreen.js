@@ -1,3 +1,4 @@
+import { ScrollView } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -117,7 +118,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </HapticPressable>
 
-        <View style={styles.content}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
           <View style={styles.successCircle}>
             <VerifiedBadge size={84} glow />
           </View>
@@ -125,7 +126,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
           <Text style={styles.subtitle}>
             Your identity has been verified. You can now see who’s sharing in Town, and your profile has a verified badge. Private inventories stay private.
           </Text>
-        </View>
+        </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
           <HapticPressable onPress={goToComplete} haptic="medium">
@@ -156,7 +157,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
         <Ionicons name="chevron-back" size={24} color={COLORS.text} />
       </HapticPressable>
 
-      <View style={styles.content}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
         <View style={styles.iconContainer}>
           <VerifiedBadge size={76} glow />
         </View>
@@ -173,7 +174,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
             Stripe handles your ID images. Borrowhood receives verification results and identity details; your ID images are not shown to neighbors.
           </Text>
         </View>
-      </View>
+      </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable onPress={handleVerify} disabled={isStarting} haptic="medium">
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xl,

@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -202,7 +203,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
       {/* Status + Type header */}
       <View style={styles.header}>
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
@@ -229,8 +230,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
         }}
         haptic="light"
       >
-        <Image
-          source={{ uri: dispute.listing?.photos?.[0] || 'https://via.placeholder.com/60' }}
+        <ShimmerImage
+          source={{ uri: dispute.listing?.photos?.[0] || null }}
           style={styles.itemImage}
         />
         <View style={styles.itemInfo}>
@@ -266,8 +267,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
               onPress={() => navigation.navigate('UserProfile', { id: dispute.claimant.id })}
               haptic="light"
             >
-              <Image
-                source={{ uri: dispute.claimant.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+              <ShimmerImage placeholderIcon="person"
+                source={{ uri: dispute.claimant.profilePhotoUrl || null }}
                 style={styles.avatar}
               />
               <Text style={styles.personName}>
@@ -316,8 +317,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
                 onPress={() => navigation.navigate('UserProfile', { id: dispute.respondent.id })}
                 haptic="light"
               >
-                <Image
-                  source={{ uri: dispute.respondent.profilePhotoUrl || 'https://via.placeholder.com/32' }}
+                <ShimmerImage placeholderIcon="person"
+                  source={{ uri: dispute.respondent.profilePhotoUrl || null }}
                   style={styles.avatar}
                 />
                 <Text style={styles.personName}>
@@ -741,7 +742,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.gray?.[700] || '#333',
+    backgroundColor: COLORS.surfaceElevated,
   },
   itemInfo: {
     flex: 1,
@@ -813,7 +814,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: COLORS.gray?.[700] || '#333',
+    backgroundColor: COLORS.surfaceElevated,
   },
   personName: {
     ...TYPOGRAPHY.footnote,
@@ -840,7 +841,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.gray?.[700] || '#333',
+    backgroundColor: COLORS.surfaceElevated,
   },
   amountRow: {
     flexDirection: 'row',
