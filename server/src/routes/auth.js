@@ -251,7 +251,7 @@ router.post('/reset-verification', authenticate, async (req, res) => {
     await query(
       `UPDATE users SET
         is_verified = false,
-        status = 'active',
+        status = 'pending',
         stripe_identity_session_id = NULL,
         verified_at = NULL,
         verification_grace_until = NULL,
@@ -361,7 +361,7 @@ router.post('/admin/reset-verifications', async (req, res) => {
   }
   try {
     const result = await query(
-      "UPDATE users SET status = 'active', is_verified = false, verified_at = NULL WHERE is_verified = true RETURNING id, email"
+      "UPDATE users SET status = CASE WHEN status = 'suspended' THEN status ELSE 'pending'::user_status END, is_verified = false, verified_at = NULL WHERE is_verified = true RETURNING id, email"
     );
     res.json({ success: true, count: result.rowCount, users: result.rows });
   } catch (err) {

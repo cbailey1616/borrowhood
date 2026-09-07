@@ -240,24 +240,28 @@ router.post('/', authenticate,
       const conversationId = message.conversation_id;
 
       if (!message.replayed) {
-      // Get sender name for notification
-      const sender = await query(
-        'SELECT first_name, display_name FROM users WHERE id = $1',
-        [req.user.id]
-      );
+        try {
+          // Get sender name for notification
+          const sender = await query(
+            'SELECT first_name, display_name FROM users WHERE id = $1',
+            [req.user.id]
+          );
 
-      // Send notification to recipient
-      const preview = imageUrl && !content ? 'Sent a photo' : (content || '').substring(0, 50) + ((content || '').length > 50 ? '...' : '');
-      await sendNotification(
-        recipientId,
-        'new_message',
-        {
-          senderName: sender.rows[0]?.display_name || sender.rows[0]?.first_name || 'Someone',
-          messagePreview: preview,
-          conversationId,
-        },
-        { fromUserId: req.user.id }
-      ).catch(err => console.error('Message notification failed:', err.message));
+          // Send notification to recipient
+          const preview = imageUrl && !content ? 'Sent a photo' : (content || '').substring(0, 50) + ((content || '').length > 50 ? '...' : '');
+          await sendNotification(
+            recipientId,
+            'new_message',
+            {
+              senderName: sender.rows[0]?.display_name || sender.rows[0]?.first_name || 'Someone',
+              messagePreview: preview,
+              conversationId,
+            },
+            { fromUserId: req.user.id }
+          ).catch(err => console.error('Message notification failed:', err.message));
+        } catch (error) {
+          console.error('Message saved; notification preparation failed:', error.message);
+        }
       }
 
       res.status(message.replayed ? 200 : 201).json({
@@ -267,6 +271,7 @@ router.post('/', authenticate,
         imageUrl: imageUrl || null,
         createdAt: message.created_at,
       });
+
     } catch (err) {
       console.error('Send message error:', err);
       const expectedError = [403, 409].includes(err.status);

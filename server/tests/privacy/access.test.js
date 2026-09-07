@@ -15,7 +15,7 @@ import messages from '../../src/routes/messages.js';
 const viewer = '10000000-0000-4000-8000-000000000001';
 const item = '20000000-0000-4000-8000-000000000002';
 const requestId = '30000000-0000-4000-8000-000000000003';
-vi.mock('../../src/utils/db.js', () => ({ query: vi.fn() }));
+vi.mock('../../src/utils/db.js', () => { const query = vi.fn(); return { query, withTransaction: fn => fn({ query }) }; });
 vi.mock('../../src/middleware/auth.js', () => ({
   authenticate: (req, res, next) => { req.user = { id: '10000000-0000-4000-8000-000000000001' }; next(); },
   requireVerified: (req, res, next) => next(), ENABLE_PAID_TIERS: false,

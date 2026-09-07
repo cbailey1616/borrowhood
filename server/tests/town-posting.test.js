@@ -36,6 +36,7 @@ beforeAll(async () => {
   [poster, viewer, verified, outsider, noTown, suspended] = users;
 });
 afterAll(async () => {
+  await query('DELETE FROM notifications WHERE user_id=ANY($1) OR from_user_id=ANY($1)', [users.map(user => user.userId)]);
   await query('DELETE FROM item_requests WHERE id=ANY($1)', [posts.requests]);
   await query('DELETE FROM listing_photos WHERE listing_id=ANY($1)', [posts.listings]);
   await query('DELETE FROM listings WHERE id=ANY($1)', [posts.listings]);

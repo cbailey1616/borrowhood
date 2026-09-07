@@ -1,3 +1,6 @@
+import { completeFreeReturn, notifyFreeReturn } from '../services/borrowReturn.js';
+import { declineBorrow } from '../services/borrowDecline.js';
+import { confirmBorrowPickup } from '../services/borrowPickup.js';
 import { approveFreeBorrow } from '../services/borrowReservation.js';
 import { cancelBorrow } from '../services/borrowCancellation.js';
 import { Router } from 'express';
@@ -39,7 +42,7 @@ router.post('/:id/approve', authenticate,
         `SELECT bt.*, l.title as item_title
          FROM borrow_transactions bt
          JOIN listings l ON bt.listing_id = l.id
-         WHERE bt.id = $1 AND bt.lender_id = $2 AND bt.status = 'pending'`,
+         WHERE bt.id = $1 AND bt.lender_id = $2`,
         [req.params.id, req.user.id]
       );
 
@@ -51,11 +54,14 @@ router.post('/:id/approve', authenticate,
 
       // Free rental — no payment to capture
       if (!t.stripe_payment_intent_id) {
-        if (!await approveFreeBorrow(t.id, req.user.id, response)) {
+        const approval = await approveFreeBorrow(t.id, req.user.id, response);
+        if (!approval) {
           return res.status(409).json({ error: 'This request or item changed. Refresh before approving.' });
         }
 
-        await sendNotification(t.borrower_id, 'request_approved', {
+        if (!approval.alreadyApproved) await sendNotification(t.borrower_id, 'request_approved', {
+          fromUserId: t.lender_id,
+          lenderName: req.user.display_name || req.user.first_name || 'your neighbor',
           transactionId: t.id,
           listingId: t.listing_id,
           itemTitle: t.item_title,
@@ -63,6 +69,8 @@ router.post('/:id/approve', authenticate,
 
         return res.json({ success: true, freeRental: true });
       }
+
+      if (t.status !== 'pending') return res.status(409).json({ error: 'This request is no longer pending.' });
 
       // Paid rental — verify payment was authorized before capturing
       const pi = await getPaymentIntent(t.stripe_payment_intent_id);
@@ -113,50 +121,7 @@ router.post('/:id/approve', authenticate,
 // ============================================
 router.post('/:id/decline', authenticate,
   body('reason').optional().isLength({ max: 500 }),
-  async (req, res) => {
-    const { reason } = req.body;
-
-    try {
-      const result = await query(
-        `UPDATE borrow_transactions
-         SET status = 'cancelled', lender_response = $1, payment_status = 'cancelled'
-         WHERE id = $2 AND lender_id = $3 AND status = 'pending'
-         RETURNING borrower_id, listing_id, stripe_payment_intent_id`,
-        [reason, req.params.id, req.user.id]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Transaction not found or not pending' });
-      }
-
-      const t = result.rows[0];
-
-      // Re-list the item so it can be borrowed again
-      await query(
-        'UPDATE listings SET is_available = true WHERE id = $1',
-        [t.listing_id]
-      );
-
-      // Cancel PaymentIntent if one exists
-      if (t.stripe_payment_intent_id) {
-        try {
-          await cancelPaymentIntent(t.stripe_payment_intent_id);
-        } catch (e) {
-          logger.warn('Could not cancel PI on decline:', e.message);
-        }
-      }
-
-      await sendNotification(t.borrower_id, 'request_declined', {
-        transactionId: req.params.id,
-        listingId: t.listing_id,
-      });
-
-      res.json({ success: true });
-    } catch (err) {
-      logger.error('Decline rental error:', err);
-      res.status(500).json({ error: 'Failed to decline rental' });
-    }
-  }
+  declineBorrow
 );
 
 // ============================================
@@ -247,86 +212,11 @@ router.post('/:id/cancel', authenticate, cancelBorrow);
 
 // ============================================
 // POST /api/rentals/:id/pickup
-// Lender confirms pickup
+// Either participant confirms pickup
 // ============================================
 router.post('/:id/pickup', authenticate,
   body('condition').optional().isIn(['like_new', 'good', 'fair', 'worn']),
-  async (req, res) => {
-    const { condition } = req.body;
-
-    try {
-      const txn = await query(
-        `SELECT bt.*, l.title as item_title
-         FROM borrow_transactions bt
-         JOIN listings l ON bt.listing_id = l.id
-         WHERE bt.id = $1 AND bt.status IN ('paid', 'approved')`,
-        [req.params.id]
-      );
-
-      if (txn.rows.length === 0) {
-        return res.status(404).json({ error: 'Transaction not found or not ready for pickup' });
-      }
-
-      const t = txn.rows[0];
-      const isBorrower = t.borrower_id === req.user.id;
-      const isLender = t.lender_id === req.user.id;
-
-      if (!isBorrower && !isLender) {
-        return res.status(403).json({ error: 'Not authorized' });
-      }
-
-      // Either party can confirm pickup
-      const otherPartyId = isBorrower ? t.lender_id : t.borrower_id;
-
-      // Check if this is a giveaway
-      const listingCheck = await query(
-        'SELECT listing_type FROM listings WHERE id = $1',
-        [t.listing_id]
-      );
-      const isGiveaway = ['giveaway', 'sell'].includes(listingCheck.rows[0]?.listing_type);
-
-      if (isGiveaway) {
-        // Giveaway: pickup = complete. No return step needed.
-        const pickedUp = await query(
-          `UPDATE borrow_transactions
-           SET status = 'returned', actual_pickup_at = NOW(), actual_return_at = NOW(), condition_at_pickup = $1
-           WHERE id = $2 AND status IN ('paid', 'approved') AND actual_pickup_at IS NULL RETURNING id`,
-          [condition || 'good', t.id]
-        );
-        if (!pickedUp.rowCount) return res.status(409).json({ error: 'This borrow changed. Refresh before confirming pickup.' });
-
-        await query(
-          `UPDATE listings SET status = 'given_away', is_available = false WHERE id = $1`,
-          [t.listing_id]
-        );
-
-        await sendNotification(otherPartyId, 'giveaway_complete', {
-          itemTitle: t.item_title,
-          transactionId: t.id,
-        });
-      } else {
-        const pickedUp = await query(
-          `UPDATE borrow_transactions
-           SET status = 'picked_up', actual_pickup_at = NOW(),
-               condition_at_pickup = $1
-           WHERE id = $2 AND status IN ('paid', 'approved') AND actual_pickup_at IS NULL RETURNING id`,
-          [condition || 'good', t.id]
-        );
-        if (!pickedUp.rowCount) return res.status(409).json({ error: 'This borrow changed. Refresh before confirming pickup.' });
-
-        await sendNotification(otherPartyId, 'pickup_confirmed', {
-          itemTitle: t.item_title,
-          returnDate: t.requested_end_date,
-          transactionId: t.id,
-        });
-      }
-
-      res.json({ success: true, isGiveaway });
-    } catch (err) {
-      logger.error('Confirm pickup error:', err);
-      res.status(500).json({ error: 'Failed to confirm pickup' });
-    }
-  }
+  confirmBorrowPickup()
 );
 
 // ============================================
@@ -368,6 +258,15 @@ router.post('/:id/return', authenticate,
 
       if (!isLender && !isBorrower) {
         return res.status(403).json({ error: 'Only the lender or borrower can confirm return' });
+      }
+
+      if (!t.stripe_payment_intent_id) {
+        const result = await completeFreeReturn(t.id, req.user.id, condition, notes);
+        if (result.error) return res.status(result.status).json({ error: result.error });
+        res.json({ success: true, conditionDegraded: !!result.conditionDegraded, alreadyConfirmed: !!result.alreadyConfirmed });
+        if (result.borrow) await notifyFreeReturn(result.borrow, req.user.id).catch(error =>
+          logger.error('Return notification failed', { code: error.code || error.name }));
+        return;
       }
 
       // Lender confirming return after borrower already reported it — release deposit

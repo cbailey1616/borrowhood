@@ -4,7 +4,7 @@ import express from 'express';
 import request from 'supertest';
 
 vi.mock('../src/utils/constants.js', () => ({ ENABLE_PAYMENTS: false, REQUIRE_IDENTITY_VERIFICATION: false, PLATFORM_FEE_PERCENT: 0.03 }));
-vi.mock('../src/utils/db.js', () => ({ query: vi.fn() }));
+vi.mock('../src/utils/db.js', () => { const query = vi.fn(); return { query, withTransaction: fn => fn({ query }) }; });
 vi.mock('../src/middleware/auth.js', async (importOriginal) => ({
   requireAdmin: (await importOriginal()).requireAdmin,
   ENABLE_PAID_TIERS: false,
@@ -117,6 +117,11 @@ describe('first-borrow improvements', () => {
   it('does not ask for a giveaway back after pickup', () => {
     expect(borrowGuidance({ status: 'picked_up', isGiveaway: true }).title).toBe('Pickup confirmed');
   });
+  it.each(['returned', 'completed'])('does not ask for reviews after %s', status => {
+    for (const isGiveaway of [false, true]) {
+      expect(borrowGuidance({ status, isGiveaway }).detail).not.toMatch(/review|rating/i);
+    }
+  });
   it('prioritizes an active dispute over a completed-looking status', () => {
     expect(borrowGuidance({ status: 'returned', hasDispute: true }).title).toBe('An issue is being reviewed');
   });
@@ -154,8 +159,8 @@ describe('separate sale exchanges', () => {
     expect(createPaymentIntent).not.toHaveBeenCalled();
   });
   it('completes a sale at pickup without scheduling a return', async () => {
-    query.mockResolvedValueOnce({ rows: [{ id: 'sale-transaction', listing_id: listingId, borrower_id: 'borrower', lender_id: 'owner' }] })
-      .mockResolvedValueOnce({ rows: [{ listing_type: 'sell' }] })
+    query.mockResolvedValueOnce({ rows: [{ id: 'sale-transaction', listing_id: listingId, borrower_id: 'borrower', lender_id: 'owner', status: 'approved' }] })
+      .mockResolvedValueOnce({ rows: [{ id: listingId, listing_type: 'sell', title: 'Sale item', condition: 'good' }] })
       .mockResolvedValueOnce({ rows: [{ id: 'sale-transaction' }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 1 });
     const result = await request(app).post('/transactions/sale-transaction/pickup').send({ condition: 'good' });

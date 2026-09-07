@@ -8,7 +8,7 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute }) {
     case 'approved': case 'paid': return { title: 'Arrange pickup', detail: isBorrower ? 'Message the owner to agree on a place and time. Confirm pickup only after you receive the item.' : 'Message your neighbor to agree on a place and time. Share pickup details privately.' };
     case 'picked_up': return { title: isGiveaway ? 'Pickup confirmed' : 'Return is next', detail: isGiveaway ? 'The handoff is complete.' : isBorrower ? 'Keep an eye on the agreed return date. Mark the item returned after handing it back.' : 'Confirm return after the item is back with you.' };
     case 'return_pending': return { title: 'Return reported', detail: 'The return is awaiting confirmation.' };
-    case 'returned': case 'completed': return { title: isGiveaway ? 'Exchange complete' : 'Item returned', detail: 'A review helps the next neighbor decide who to share with.' };
+    case 'returned': case 'completed': return { title: isGiveaway ? 'Exchange complete' : 'Item returned', detail: isGiveaway ? 'The handoff is complete. Thanks for connecting with your neighbor.' : 'The item is back with its owner. Thanks for sharing with your neighbor.' };
     case 'cancelled': return { title: 'Request cancelled', detail: 'This exchange is no longer active.' };
     case 'declined': return { title: 'Request declined', detail: 'You can look for another item nearby.' };
     default: return { title: 'Exchange details', detail: 'Check below for the latest status.' };

@@ -46,6 +46,17 @@ try {
   const { runMigrations } = await import('../src/utils/migrations.js');
   await runMigrations();
   assert.equal(errors.length, 0, 'Runtime migrations logged errors.');
+  // Exercise the values written by current handlers against the actual enum
+  // types. Mocked query tests cannot catch a missing production enum value.
+  for (const [type, values] of Object.entries({
+    listing_status: ['active', 'paused', 'deleted', 'given_away'],
+    user_status: ['pending', 'verified', 'suspended'],
+    request_status: ['open', 'fulfilled', 'closed'],
+    item_condition: ['like_new', 'good', 'fair', 'worn'],
+  })) {
+    for (const value of values) assert.equal((await client.query(`SELECT $1::${type}::text AS value`, [value])).rows[0].value, value);
+  }
+  console.log('Passed: current item, account, request and condition enum values.');
   const socialColumns = await client.query(`SELECT column_name, is_nullable FROM information_schema.columns
     WHERE table_name = 'users' AND column_name IN ('apple_id', 'google_id', 'password_hash') ORDER BY column_name`);
   assert.deepEqual(socialColumns.rows, ['apple_id', 'google_id', 'password_hash'].map(column_name => ({ column_name, is_nullable: 'YES' })));

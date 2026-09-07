@@ -47,14 +47,14 @@ export async function validateSharing(body, userId) {
 
 // An offer grants access to one item, to one requester, for a limited time.
 // It does not change the item's audience or grant access to the owner's profile inventory.
-export async function offerListing(requestId, listingId, ownerId) {
+export async function offerListing(requestId, listingId, ownerId, db = { query }) {
   const fail = (status, code, message) => Object.assign(new Error(message), { status, code });
-  const request = await query(`SELECT r.user_id, ${requestActiveSql('r')} AS accepting_offers
+  const request = await db.query(`SELECT r.user_id, ${requestActiveSql('r')} AS accepting_offers
     FROM item_requests r WHERE r.id = $1 AND ${requestAccessSql('r', '$2')}`, [requestId, ownerId]);
   if (!request.rows.length) throw fail(404, 'REQUEST_NOT_FOUND', 'Request not found or no longer shared with you.');
   if (request.rows[0].user_id === ownerId) throw fail(400, 'OWN_REQUEST', 'You cannot offer an item to your own request.');
   if (!request.rows[0].accepting_offers) throw fail(410, 'REQUEST_ENDED', 'This request has ended. Ask the requester to renew it.');
-  const result = await query(`INSERT INTO listing_shares (listing_id, user_id, request_id, expires_at)
+  const result = await db.query(`INSERT INTO listing_shares (listing_id, user_id, request_id, expires_at)
     SELECT l.id, r.user_id, r.id, NOW() + INTERVAL '14 days'
     FROM listings l CROSS JOIN item_requests r
     WHERE l.id = $1 AND l.owner_id = $2 AND l.status = 'active' AND l.is_available = true

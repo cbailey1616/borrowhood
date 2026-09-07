@@ -1,4 +1,4 @@
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import { sendNotification } from './notifications.js';
 import logger from '../utils/logger.js';
 
@@ -251,7 +251,7 @@ async function expireStaleGiveawayRequests() {
  * Expire approved giveaway transactions where nobody picked up
  * within 7 days. Cancels the transaction and relists the item.
  */
-async function expireGiveawayPickups() {
+export async function expireGiveawayPickups() {
   try {
     const result = await query(
       `SELECT bt.id, bt.borrower_id, bt.lender_id, bt.listing_id, l.title as item_title
@@ -264,14 +264,18 @@ async function expireGiveawayPickups() {
     );
 
     for (const t of result.rows) {
-      await query(
-        `UPDATE borrow_transactions SET status = 'cancelled' WHERE id = $1`,
-        [t.id]
-      );
-      await query(
-        `UPDATE listings SET is_available = true, status = 'active' WHERE id = $1`,
-        [t.listing_id]
-      );
+      const expired = await withTransaction(async client => {
+        const updated = await client.query(`UPDATE borrow_transactions SET status = 'cancelled'
+          WHERE id = $1 AND status = 'paid' AND actual_pickup_at IS NULL
+            AND updated_at < NOW() - INTERVAL '7 days' RETURNING id`, [t.id]);
+        if (!updated.rowCount) return false;
+        await client.query('SELECT id FROM listings WHERE id = $1 FOR UPDATE', [t.listing_id]);
+        await client.query(`UPDATE listings l SET is_available = true WHERE l.id = $1 AND l.status = 'active'
+          AND NOT EXISTS (SELECT 1 FROM borrow_transactions bt WHERE bt.listing_id = l.id
+            AND bt.status IN ('approved', 'paid', 'picked_up', 'return_pending'))`, [t.listing_id]);
+        return true;
+      });
+      if (!expired) continue;
 
       await sendNotification(t.borrower_id, 'giveaway_pickup_expired', {
         itemTitle: t.item_title,

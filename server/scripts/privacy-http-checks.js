@@ -143,7 +143,7 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
           assert.deepEqual(state, { status: 'cancelled', payment_status: 'none', actual_pickup_at: null, is_available: true });
           const notices = (await client.query("SELECT user_id, from_user_id, title FROM notifications WHERE transaction_id = $1 AND type = 'borrow_cancelled'", [fixture.id])).rows;
           assert.deepEqual(notices, [{ user_id: actor === owner ? neighbor : owner, from_user_id: actor, title: 'Borrow cancelled' }]);
-          await call('post', `/api/${route}/${fixture.id}/pickup`, neighbor, {}, 404);
+          await call('post', `/api/${route}/${fixture.id}/pickup`, neighbor, {}, 409);
         }
       }
       const unauthorised = await cancellationFixture();
