@@ -23,9 +23,14 @@ Run `python3 screenshots/prepare-assets.py` from `mobile`, install the locked
 Node and CocoaPods dependencies, then build for an iOS simulator in Release
 with `BORROWHOOD_SCREENSHOTS=1` and `ENTRY_FILE` set to the absolute path of
 `screenshots/index.js`. This opt-in Metro configuration replaces only the
-auth context and API for the screenshot bundle. Normal builds use `App.js`
+auth context, API, and temporary draft store for the screenshot bundle. Normal builds use `App.js`
 and production modules.
 
 Run `python3 screenshots/capture.py /path/to/Borrowhood.app /path/to/output`
 with Pillow installed. The hosted workflow performs these same steps and
 provides an artifact with both device folders and a capture manifest.
+
+The workflow can reuse a previous simulator binary from an ancestor commit when
+its native project and dependency files are unchanged. It rebuilds the JavaScript
+bundle with the current fixtures before capturing. New native changes or expired
+artifacts trigger a fresh native build.

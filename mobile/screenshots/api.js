@@ -11,7 +11,7 @@ const api = {
   getTransactions: async () => [],
   getDisputes: async () => [],
   getSavedListings: async () => [listings[0], listings[3], listings[1], listings[2]],
-  checkSaved: async id => ({ isSaved: ['demo-drill', 'demo-tent'].includes(id) }),
+  checkSaved: async id => ({ saved: ['demo-drill', 'demo-tent', 'demo-books', 'demo-bike'].includes(id) }),
   getListing: async id => listings.find(item => item.id === id),
   getDiscussions: async () => ({ posts: [], total: 0 }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
