@@ -92,8 +92,9 @@ export default function RequestDetailScreen({ route, navigation }) {
 
   const formatDateRange = (from, until) => {
     if (!from && !until) return null;
-    const fromDate = from ? new Date(from).toLocaleDateString() : '';
-    const untilDate = until ? new Date(until).toLocaleDateString() : '';
+    const calendarDate = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString();
+    const fromDate = from ? calendarDate(from) : '';
+    const untilDate = until ? calendarDate(until) : '';
     if (from && until) return `${fromDate} - ${untilDate}`;
     if (from) return `From ${fromDate}`;
     return `Until ${untilDate}`;
@@ -116,6 +117,7 @@ export default function RequestDetailScreen({ route, navigation }) {
   }
 
   const dateRange = formatDateRange(request.neededFrom, request.neededUntil);
+  const acceptingOffers = request.status === 'open' && !request.isExpired;
 
   return (
     <View style={styles.container}>
@@ -130,13 +132,14 @@ export default function RequestDetailScreen({ route, navigation }) {
               styles.statusText,
               { color: request.status === 'open' ? COLORS.secondary : COLORS.textSecondary }
             ]}>
-              {request.status === 'open' ? 'Open' : 'Closed'}
+              {request.isExpired ? 'Expired' : request.status === 'open' ? 'Open' : 'Closed'}
             </Text>
           </View>
         </View>
 
         {/* Title */}
         <Text style={styles.title}>{request.title}</Text>
+        {request.isExpired && <Text style={styles.description}>This request has expired and cannot receive offers. The requester can renew it from My Posts.</Text>}
 
         {/* Badges */}
         <View style={styles.badges}>
@@ -292,7 +295,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Action Buttons */}
-      {!request.ownerMasked && !request.isOwner && request.status === 'open' && (
+      {!request.ownerMasked && !request.isOwner && acceptingOffers && (
         <View style={styles.footer}>
           <HapticPressable
             style={styles.haveThisButton}

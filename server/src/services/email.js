@@ -61,6 +61,18 @@ async function sendMail({ to, subject, text, html }) {
 
 // ── Public API ──────────────────────────────────────────────────────
 
+export async function sendSocialLinkCodeEmail(to, code, provider) {
+  // Never log sign-in codes or report delivery when the mail service is absent.
+  if (!resend) throw new Error('Email service unavailable');
+  const name = provider === 'apple' ? 'Apple' : 'Google';
+  const result = await resend.emails.send({ from: FROM, to,
+    subject: 'Your Borrowhood sign-in code',
+    text: `Your Borrowhood code is ${code}. Use it to connect ${name} to your existing account. It expires in 10 minutes. If you did not request this, ignore this email.`,
+    html: wrapHtml('Connect your account', `<p>Use this code to connect ${name} to your existing Borrowhood account:</p><p style="font-size:32px;letter-spacing:8px">${code}</p><p>Expires in 10 minutes. If you did not request this, ignore this email.</p>`),
+  });
+  if (result.error) throw new Error('Email delivery failed');
+}
+
 export async function sendResetCodeEmail(to, code) {
   const subject = 'Your Borrowhood password reset code';
   const text = `Your password reset code is: ${code}\n\nThis code expires in 1 hour. If you didn't request this, you can safely ignore this email.`;

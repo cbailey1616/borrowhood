@@ -7,6 +7,7 @@ import { query } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification, sendBulkNotification } from '../services/notifications.js';
+import { requestActiveSql, validRequestTimeZone } from '../utils/requestState.js';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    let whereConditions = [`r.status = 'open'`, `(r.expires_at IS NULL OR r.expires_at > NOW())`, `(r.needed_until IS NULL OR r.needed_until >= CURRENT_DATE)`];
+    let whereConditions = [requestActiveSql('r')];
     let params = [];
     let paramIndex = 1;
 
@@ -93,7 +94,7 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/mine', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT r.*, c.name as category_name
+      `SELECT r.*, ${requestActiveSql('r')} AS accepting_offers, c.name as category_name
        FROM item_requests r
        LEFT JOIN categories c ON r.category_id = c.id
        WHERE r.user_id = $1 AND r.status = 'open'
@@ -113,7 +114,8 @@ router.get('/mine', authenticate, async (req, res) => {
       category: r.category_name,
       createdAt: r.created_at,
       expiresAt: r.expires_at,
-      isExpired: r.expires_at ? new Date(r.expires_at) <= new Date() : false,
+      isExpired: !r.accepting_offers,
+      timeZone: r.time_zone,
     })));
   } catch (err) {
     console.error('Get my requests error:', err);
@@ -211,7 +213,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const fullAccess = await canViewRequest(req.params.id, req.user.id);
     if (!fullAccess && !await canPreviewTownPost(req.params.id, req.user.id, 'request')) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
-      `SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.is_verified,
+      `SELECT r.*, ${requestActiveSql('r')} AS accepting_offers, u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.is_verified,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               c.name as category_name
        FROM item_requests r
@@ -237,6 +239,9 @@ router.get('/:id', authenticate, async (req, res) => {
       neededUntil: r.needed_until,
       visibility: r.visibility,
       status: r.status,
+      expiresAt: r.expires_at,
+      timeZone: r.time_zone,
+      isExpired: r.status === 'open' && !r.accepting_offers,
       category: r.category_name,
       categoryId: r.category_id,
       requester: {
@@ -270,6 +275,7 @@ router.post('/', authenticate,
   body('type').optional().isIn(['item', 'service']),
   body('neededFrom').optional().isISO8601(),
   body('neededUntil').optional().isISO8601(),
+  body('timeZone').optional().custom(validRequestTimeZone).withMessage('Choose a valid timezone.'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -279,7 +285,7 @@ router.post('/', authenticate,
     let {
       title, description, communityId, categoryId,
       neededFrom, neededUntil, visibility, expiresIn, expiresAt,
-      type
+      type, timeZone = 'UTC'
     } = req.body;
 
     type = type || 'item';
@@ -328,12 +334,12 @@ router.post('/', authenticate,
         result = await query(
           `INSERT INTO item_requests (
             user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at, type
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL, $9)
+            needed_from, needed_until, visibility, status, expires_at, type, time_zone
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NULL, $9, $10)
           RETURNING id`,
           [
             req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, type
+            neededFrom || null, neededUntil || null, visibility, type, timeZone
           ]
         );
       } else if (expiresAtValue instanceof Date) {
@@ -341,12 +347,12 @@ router.post('/', authenticate,
         result = await query(
           `INSERT INTO item_requests (
             user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at, type
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10)
+            needed_from, needed_until, visibility, status, expires_at, type, time_zone
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11)
           RETURNING id`,
           [
             req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type
+            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type, timeZone
           ]
         );
       } else {
@@ -354,12 +360,12 @@ router.post('/', authenticate,
         result = await query(
           `INSERT INTO item_requests (
             user_id, community_id, category_id, title, description,
-            needed_from, needed_until, visibility, status, expires_at, type
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval, $10)
+            needed_from, needed_until, visibility, status, expires_at, type, time_zone
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', NOW() + $9::interval, $10, $11)
           RETURNING id`,
           [
             req.user.id, communityId, categoryId || null, title, description,
-            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type
+            neededFrom || null, neededUntil || null, visibility, expiresAtValue, type, timeZone
           ]
         );
       }
@@ -388,7 +394,7 @@ router.post('/', authenticate,
                  FROM friendships WHERE (user_id = $1 OR friend_id = $1) AND status = 'accepted'`,
                 [req.user.id]
               );
-              recipientIds = friends.rows.map(f => f.uid);
+              recipientIds.push(...friends.rows.map(f => f.uid));
             }
 
             // For neighborhood: notify community members
@@ -397,7 +403,7 @@ router.post('/', authenticate,
                 'SELECT user_id FROM community_memberships WHERE community_id = $1 AND user_id != $2',
                 [communityId, req.user.id]
               );
-              recipientIds = members.rows.map(m => m.user_id);
+              recipientIds.push(...members.rows.map(m => m.user_id));
             }
 
             // For town: notify all users in the same city/state
@@ -408,18 +414,18 @@ router.post('/', authenticate,
               );
               if (userLocation.rows[0]?.city) {
                 const townUsers = await query(
-                  'SELECT id FROM users WHERE city = $1 AND state = $2 AND id != $3',
+                  'SELECT id FROM users WHERE LOWER(TRIM(city)) = LOWER(TRIM($1)) AND LOWER(TRIM(state)) = LOWER(TRIM($2)) AND id != $3',
                   [userLocation.rows[0].city, userLocation.rows[0].state, req.user.id]
                 );
-                recipientIds = townUsers.rows.map(u => u.id);
+                recipientIds.push(...townUsers.rows.map(u => u.id));
               }
             }
           }
 
           if (recipientIds.length > 0) {
             const permitted = await query(`SELECT recipients.id FROM users recipients
-              WHERE recipients.id = ANY($1::uuid[]) AND EXISTS (
-                SELECT 1 FROM item_requests r WHERE r.id = $2 AND ${requestAccessSql('r', 'recipients.id')}
+              WHERE recipients.id = ANY($1::uuid[]) AND recipients.status != 'suspended' AND EXISTS (
+                SELECT 1 FROM item_requests r WHERE r.id = $2 AND ${requestActiveSql('r')} AND ${requestAccessSql('r', 'recipients.id')}
               )`, [[...new Set(recipientIds)], requestId]);
             recipientIds = permitted.rows.map(row => row.id);
             await sendBulkNotification(
@@ -464,7 +470,13 @@ router.post('/:id/renew', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Only open requests can be renewed' });
     }
 
-    const { expiresIn } = req.body;
+    const { expiresIn, timeZone } = req.body;
+    if (timeZone !== undefined && !validRequestTimeZone(timeZone)) return res.status(400).json({ error: 'Choose a valid timezone.' });
+    if (timeZone) await query('UPDATE item_requests SET time_zone=$1 WHERE id=$2', [timeZone, req.params.id]);
+    // A renewed request must not keep a past needed-by date that immediately
+    // removes it from discovery and rejects every offer again.
+    await query(`UPDATE item_requests SET needed_from=NULL, needed_until=NULL
+      WHERE id=$1 AND needed_until < (NOW() AT TIME ZONE time_zone)::date`, [req.params.id]);
 
     if (expiresIn === 'never') {
       await query(
@@ -494,6 +506,7 @@ router.post('/:id/renew', authenticate, async (req, res) => {
 router.patch('/:id', authenticate,
   async (req, res) => {
     try {
+      if (req.body.timeZone !== undefined && !validRequestTimeZone(req.body.timeZone)) return res.status(400).json({ error: 'Choose a valid timezone.' });
       // Verify ownership
       const request = await query(
         'SELECT user_id, community_id FROM item_requests WHERE id = $1',
@@ -530,7 +543,7 @@ router.patch('/:id', authenticate,
       }
       const allowedFields = [
         'community_id', 'title', 'description', 'category_id', 'needed_from',
-        'needed_until', 'visibility', 'status', 'type'
+        'needed_until', 'visibility', 'status', 'type', 'time_zone'
       ];
 
       const updates = [];
@@ -608,7 +621,11 @@ router.post('/:id/offers', authenticate, body('listingId').isUUID(), async (req,
     }, { fromUserId: req.user.id, listingId: req.body.listingId, requestId: req.params.id }).catch(() => {});
     res.status(201).json({ success: true });
   } catch (error) {
-    res.status(404).json({ error: 'Request or available item not found.' });
+    if (!error.status) console.error('Private offer failed', { code: error.code || error.name });
+    res.status(error.status || 500).json({
+      error: error.status ? error.message : 'Could not send your offer right now. Please try again.',
+      code: error.status ? error.code : 'OFFER_FAILED',
+    });
   }
 });
 

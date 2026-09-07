@@ -38,7 +38,7 @@ export default function SocialSignInButtons({ disabled = false, onBusyChange, on
       }
     } catch (e) {
       if (e.code === 'ACCOUNT_LINK_REQUIRED' && onLinkRequired && mounted.current) {
-        onLinkRequired({ provider, token });
+        onLinkRequired({ provider, token, ...(e.email ? { email: e.email } : {}) });
         return;
       }
       if (!isSignInCancellation(e) && mounted.current) {

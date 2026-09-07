@@ -30,7 +30,7 @@ export default function EditProfileScreen({ navigation }) {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [formData, setFormData] = useState({
+  const [initialFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     displayName: user?.displayName || '',
@@ -41,6 +41,7 @@ export default function EditProfileScreen({ navigation }) {
     latitude: user?.latitude || null,
     longitude: user?.longitude || null,
   });
+  const [formData, setFormData] = useState(initialFormData);
 
   const finishSaving = useUnsavedChanges(navigation, { formData, selectedPhoto });
   const updateField = (field, value) => {
@@ -99,7 +100,8 @@ export default function EditProfileScreen({ navigation }) {
   };
 
   const handleSave = async () => {
-    if (!formData.firstName || !formData.lastName) {
+    const nameChanged = formData.firstName !== initialFormData.firstName || formData.lastName !== initialFormData.lastName;
+    if (!isVerified && nameChanged && (!formData.firstName.trim() || !formData.lastName.trim())) {
       showError({
         message: 'Your name helps neighbors know who they\'re borrowing from. Please fill in your first and last name.',
         type: 'validation',
@@ -109,7 +111,11 @@ export default function EditProfileScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      let profileData = { ...formData };
+      // Verification may finish before the cached user refreshes. Sending only
+      // edits keeps a display-name change from resubmitting locked ID details.
+      const profileData = Object.fromEntries(
+        Object.entries(formData).filter(([field, value]) => value !== initialFormData[field])
+      );
 
       // Don't send verified fields — server will reject them
       if (isVerified) {
@@ -121,10 +127,11 @@ export default function EditProfileScreen({ navigation }) {
         delete profileData.longitude;
       }
 
-      // If city/state are set but lat/lng are missing, geocode the address
-      if (profileData.city && profileData.state && (!profileData.latitude || !profileData.longitude)) {
+      // Geocode only location edits, never an unrelated display-name change.
+      const locationChanged = ['city', 'state', 'latitude', 'longitude'].some(field => field in profileData);
+      if (locationChanged && formData.city && formData.state && (formData.latitude == null || formData.longitude == null)) {
         try {
-          const geocoded = await Location.geocodeAsync(`${profileData.city}, ${profileData.state}`);
+          const geocoded = await Location.geocodeAsync(`${formData.city}, ${formData.state}`);
           if (geocoded && geocoded.length > 0) {
             profileData.latitude = geocoded[0].latitude;
             profileData.longitude = geocoded[0].longitude;
@@ -146,7 +153,7 @@ export default function EditProfileScreen({ navigation }) {
         }
       }
 
-      await api.updateProfile(profileData);
+      if (Object.keys(profileData).length) await api.updateProfile(profileData);
       if (refreshUser) await refreshUser();
       haptics.success();
       finishSaving();
@@ -189,7 +196,7 @@ export default function EditProfileScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.verifiedBannerTitle}>Identity Verified</Text>
                 <Text style={styles.verifiedBannerText}>
-                  Name and address are locked to match your verified ID.
+                  Your legal name and address match your verified ID. You can still edit your display name below.
                 </Text>
               </View>
               <HapticPressable
@@ -248,7 +255,7 @@ export default function EditProfileScreen({ navigation }) {
               autoCapitalize="words"
             />
             <Text style={styles.fieldHint}>
-              This is how your name appears to others (e.g., "Danny" instead of "Daniel")
+              This is how your name appears to others (e.g., "Danny" instead of "Daniel"). You can change it after verification.
             </Text>
           </View>
 

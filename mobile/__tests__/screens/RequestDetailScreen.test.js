@@ -21,6 +21,15 @@ beforeEach(() => { jest.clearAllMocks(); api.getRequest.mockResolvedValue(mockRe
 describe('RequestDetailScreen', () => {
   const route = { params: { id: 'req-1' } };
 
+  it('shows an expired request honestly and does not offer an action that will fail', async () => {
+    api.getRequest.mockResolvedValueOnce({ ...mockRequest, isExpired: true });
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Expired');
+    expect(screen.queryByText('Offer an item privately')).toBeNull();
+    expect(screen.getByText(/renew it from My Posts/)).toBeTruthy();
+  });
+
   it('fetches request via api.getRequest', async () => {
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     render(<Screen navigation={mockNavigation} route={route} />);

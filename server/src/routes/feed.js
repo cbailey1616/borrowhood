@@ -6,6 +6,7 @@ import { query } from '../utils/db.js';
 import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { rankFeed } from '../utils/feedRanking.js';
 import { canViewListing, canViewRequest } from '../services/listingAccess.js';
+import { requestActiveSql } from '../utils/requestState.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -141,6 +142,7 @@ router.get('/', authenticate, async (req, res) => {
           r.needed_from,
           r.needed_until,
           r.expires_at,
+          ${requestActiveSql('r')} AS accepting_offers,
           r.created_at,
           r.visibility,
           u.id as user_id,
@@ -154,10 +156,7 @@ router.get('/', authenticate, async (req, res) => {
         WHERE r.status = 'open'
           AND (
             r.user_id = $1
-            OR (
-              (r.expires_at IS NULL OR r.expires_at > NOW())
-              AND (r.needed_until IS NULL OR r.needed_until >= CURRENT_DATE)
-            )
+            OR ${requestActiveSql('r')}
           )`;
 
       const requestParams = [req.user.id];
@@ -240,7 +239,7 @@ router.get('/', authenticate, async (req, res) => {
       description: r.description,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
-      isExpired: r.expires_at ? new Date(r.expires_at) < new Date() : false,
+      isExpired: !r.accepting_offers,
       createdAt: r.created_at,
       user: {
         id: r.user_id,

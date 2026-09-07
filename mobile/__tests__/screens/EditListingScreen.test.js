@@ -1,4 +1,6 @@
 import React from 'react';
+import { Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -14,6 +16,16 @@ beforeEach(() => { jest.clearAllMocks(); api.getCategories.mockResolvedValue([{ 
 describe('EditListingScreen', () => {
   const listing = { id: 'l-1', title: 'My Drill', description: 'DeWalt 20V', condition: 'good', isFree: true, pricePerDay: 0, depositAmount: 0, visibility: 'close_friends', category: { id: 'cat-1', name: 'Tools' }, photos: ['https://test.com/photo.jpg'], minDuration: 1, maxDuration: 14 };
   const route = { params: { listing } };
+
+  it('adds the cropped camera image alongside existing listing photos', async () => {
+    ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///cropped-camera.jpg' }] });
+    const Screen = require('../../src/screens/EditListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await act(async () => fireEvent.press(screen.getByText('Camera')));
+    expect(ImagePicker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true }));
+    const uris = screen.UNSAFE_getAllByType(Image).map(image => image.props.source?.uri);
+    expect(uris).toEqual(expect.arrayContaining(['file:///cropped-camera.jpg', 'https://test.com/photo.jpg']));
+  });
 
   it('pre-populates form from route.params.listing', () => {
     const EditListingScreen = require('../../src/screens/EditListingScreen').default;

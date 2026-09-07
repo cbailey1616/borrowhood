@@ -1,5 +1,6 @@
 // One deny-by-default policy for every listing read. SQL aliases/parameter
 // references are supplied by application code, never by request input.
+import { requestActiveSql } from './requestState.js';
 export const LISTING_SCOPES = ['private', 'close_friends', 'neighborhood', 'circle', 'town'];
 
 export function normalizeSharing(value) {
@@ -49,9 +50,7 @@ export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
     ${discovery ? '' : `OR EXISTS (SELECT 1 FROM listing_shares ss
       JOIN item_requests sr ON sr.id = ss.request_id
       WHERE ss.listing_id = ${alias}.id AND ss.user_id = ${viewer}
-        AND ss.revoked_at IS NULL AND ss.expires_at > NOW() AND sr.status = 'open'
-        AND (sr.expires_at IS NULL OR sr.expires_at > NOW())
-        AND (sr.needed_until IS NULL OR sr.needed_until >= CURRENT_DATE))
+        AND ss.revoked_at IS NULL AND ss.expires_at > NOW() AND ${requestActiveSql('sr')})
     OR EXISTS (SELECT 1 FROM borrow_transactions st
       WHERE st.listing_id = ${alias}.id AND st.borrower_id = ${viewer}
         AND st.status IN ('approved', 'paid', 'picked_up', 'return_pending', 'returned', 'completed', 'disputed'))`}
