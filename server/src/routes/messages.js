@@ -239,14 +239,6 @@ router.post('/', authenticate,
       }));
       const conversationId = message.conversation_id;
 
-      res.status(message.replayed ? 200 : 201).json({
-        id: message.id,
-        conversationId,
-        content: content || null,
-        imageUrl: imageUrl || null,
-        createdAt: message.created_at,
-      });
-
       if (!message.replayed) {
         try {
           // Get sender name for notification
@@ -271,6 +263,14 @@ router.post('/', authenticate,
           console.error('Message saved; notification preparation failed:', error.message);
         }
       }
+
+      res.status(message.replayed ? 200 : 201).json({
+        id: message.id,
+        conversationId,
+        content: content || null,
+        imageUrl: imageUrl || null,
+        createdAt: message.created_at,
+      });
 
     } catch (err) {
       console.error('Send message error:', err);

@@ -22,7 +22,7 @@ The startup upgrade adds the missing enum value before using it. Its backfill re
 | Listing edit | Failed photo replacement could delete photos but retain other edits | Row lock and atomic field/photo update; explicit empty photo list works |
 | New request | Preview-setting failure left a posted request behind | Request and preview choice commit together |
 | Existing private offer | Availability/request can change during offering | Existing conditional upsert rechecks access and active state; remains one write |
-| Chat send | Notification preparation could fail after message persistence | Acknowledge persisted message before best-effort notification work |
+| Chat send | Notification preparation could fail after message persistence | Notification preparation failures cannot report a persisted message as failed |
 | Sent chat photo | Draft-cleanup failure could present a successful send as uncertain | Sent UI updated from acknowledgement; cleanup cannot offer another send |
 | Verification reset | Handler wrote an unsupported `active` account status | Canonical `pending` status; administrator reset preserves suspension |
 

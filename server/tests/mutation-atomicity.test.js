@@ -19,7 +19,7 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
       VALUES($1,'Atomic item','good',true,'private',1,$2,false) RETURNING id`, [owner,type])).rows[0].id;
     const exchange = (await query(`INSERT INTO borrow_transactions(listing_id,borrower_id,lender_id,requested_start_date,requested_end_date,
       rental_days,daily_rate,rental_fee,deposit_amount,platform_fee,lender_payout,status,payment_status,condition_at_pickup,actual_pickup_at)
-      VALUES($1,$2,$3,CURRENT_DATE,CURRENT_DATE+1,1,0,0,0,0,0,$4,'none','good',CASE WHEN $4='picked_up' THEN NOW() ELSE NULL END)
+      VALUES($1,$2,$3,CURRENT_DATE,CURRENT_DATE+1,1,0,0,0,0,0,$4::varchar,'none','good',CASE WHEN $4::varchar='picked_up' THEN NOW() ELSE NULL END)
       RETURNING id`, [listing,neighbor,owner,status])).rows[0].id;
     return { listing, exchange };
   };
@@ -82,7 +82,8 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
     const needed = (await query(`INSERT INTO item_requests(user_id,title,visibility,status,expires_at)
       VALUES($1,'Atomic request','town','open',NOW()+INTERVAL '1 day') RETURNING id`,[neighbor])).rows[0].id;
     await failWrites('listing_shares'); const title = `Failed offer ${randomUUID()}`;
-    expect((await createListing({ title,requestMatchId:needed })).status).toBe(500);
+    const response = await createListing({ title,requestMatchId:needed,photos:[ownedPhoto('offer')] });
+    expect(response.status, JSON.stringify(response.body)).toBe(500);
     expect((await query('SELECT id FROM listings WHERE title=$1',[title])).rows).toHaveLength(0);
   });
   it('does not leave a request behind if its town preview choice cannot save', async () => {

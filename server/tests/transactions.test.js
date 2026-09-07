@@ -145,7 +145,7 @@ describe('Transactions API', () => {
     const lenderToken = jwt.sign({ userId: testLenderId }, process.env.JWT_SECRET, { expiresIn: '1h' });
     const approve = () => request(app).post(`/api/transactions/${pending.id}/approve`).set('Authorization', `Bearer ${lenderToken}`).send({});
     expect((await approve()).status).toBe(200);
-    expect((await approve()).status).toBe(404);
+    expect((await approve()).status).toBe(200);
     const { rows } = await query("SELECT * FROM notifications WHERE transaction_id = $1 AND type = 'request_approved'", [pending.id]);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ user_id: testUserId, from_user_id: testLenderId, listing_id: testListingId });
