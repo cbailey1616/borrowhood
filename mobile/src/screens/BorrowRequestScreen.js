@@ -28,6 +28,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const { user, isGracePeriodActive } = useAuth();
   const { showError } = useError();
   const isGiveaway = listing.listingType === 'giveaway';
+  useEffect(() => { navigation.setOptions({ title: isSaleListing(listing) ? 'Request to buy' : isGiveaway ? 'Request this item' : 'Request to borrow' }); }, [listing.listingType, listing.directFee, navigation]);
   const [accessCheck, setAccessCheck] = useState({ loading: true, canAccess: true, reason: null });
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -366,7 +367,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <HapticPressable
             haptic="light"
             style={[styles.dateButton, showStartPicker && styles.dateButtonActive]}
-            onPress={() => { setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
+            onPress={() => { Keyboard.dismiss(); setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
           >
             <Text style={styles.dateLabel}>Start Date</Text>
             <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
@@ -374,7 +375,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <HapticPressable
             haptic="light"
             style={[styles.dateButton, showEndPicker && styles.dateButtonActive]}
-            onPress={() => { setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
+            onPress={() => { Keyboard.dismiss(); setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
           >
             <Text style={styles.dateLabel}>End Date</Text>
             <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
@@ -387,6 +388,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               value={startDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="light"
+              textColor={COLORS.text}
+              accentColor={COLORS.primary}
+              style={{ width: '100%', backgroundColor: COLORS.surface }}
               minimumDate={new Date()}
               onChange={handleStartDateChange}
             />
@@ -408,6 +413,10 @@ export default function BorrowRequestScreen({ route, navigation }) {
               value={endDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="light"
+              textColor={COLORS.text}
+              accentColor={COLORS.primary}
+              style={{ width: '100%', backgroundColor: COLORS.surface }}
               minimumDate={new Date(startDate.getTime() + 86400000)}
               onChange={handleEndDateChange}
             />
@@ -423,7 +432,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           </View>
         )}
 
-        <Text style={styles.daysText}>{days} days</Text>
+        <Text style={styles.daysText}>{days} {days === 1 ? 'day' : 'days'}</Text>
       </View>
       )}
 
@@ -443,6 +452,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           accessibilityLabel="Private message to owner"
           value={message}
           onChangeText={setMessage}
+          onFocus={() => { setShowStartPicker(false); setShowEndPicker(false); }}
           placeholder="Introduce yourself and explain what you need the item for..."
           placeholderTextColor={COLORS.textMuted}
           multiline

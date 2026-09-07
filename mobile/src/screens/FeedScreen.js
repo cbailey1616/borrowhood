@@ -64,7 +64,7 @@ const FEED = {
 
 const CARD_ACCENTS = {
   borrow: { pill: COLORS.primary, soft: COLORS.primaryMuted },
-  giveaway: { pill: COLORS.accent, soft: COLORS.accentMuted },
+  giveaway: { pill: COLORS.primaryMuted, soft: COLORS.primaryMuted },
   wanted: { pill: COLORS.warning, soft: COLORS.warningMuted },
 };
 
@@ -523,7 +523,7 @@ export default function FeedScreen({ navigation }) {
               {isGiveaway ? (
                 <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
                   <Ionicons name="gift" size={18} illustrated />
-                  <Text style={styles.tilePillText}>{isSaleListing(item) ? 'FOR SALE' : 'GIVEAWAY'}</Text>
+                  <Text style={[styles.tilePillText, { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : 'GIVEAWAY'}</Text>
                 </View>
               ) : (
                 <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? accent.pill : COLORS.textMuted }]}>

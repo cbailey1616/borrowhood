@@ -236,7 +236,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           <Text style={styles.replyDate}>{formatDate(reply.createdAt)}</Text>
         </View>
         <Text style={styles.replyText}>{reply.content}</Text>
+        <View style={styles.postActions}>
+          <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply({ id: parentId, user: reply.user, content: reply.content })}>
+            <Text style={styles.actionText}>Reply publicly</Text>
+          </HapticPressable>
         <ThreadMessageButton author={reply.user} isOwn={reply.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: reply.content }} />
+        </View>
         {(reply.isOwn || isOwner) && (
           <HapticPressable
             haptic="light"
@@ -281,12 +286,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         <Text style={styles.postContent}>{post.content}</Text>
 
         <View style={styles.postActions}>
-          <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: post.content }} />
           <HapticPressable haptic="light" style={styles.actionButton} onPress={() => startReply(post)}>
             <Ionicons name="arrow-undo-outline" size={16} color={COLORS.textSecondary} />
             <Text style={styles.actionText}>Reply publicly</Text>
           </HapticPressable>
-
+          <ThreadMessageButton author={post.user} isOwn={post.isOwn} currentUserId={user?.id} navigation={navigation} context={{ ...threadContext, replyText: post.content }} />
+        </View>
           {post.replyCount > 0 && (
             <HapticPressable
               haptic="light"
@@ -303,7 +308,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
               </Text>
             </HapticPressable>
           )}
-        </View>
 
         {isExpanded && (
           <View style={styles.repliesContainer}>
@@ -512,12 +516,16 @@ const styles = StyleSheet.create({
   },
   postActions: {
     flexDirection: 'row',
-    gap: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
     borderTopColor: COLORS.separator,
   },
   actionButton: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,

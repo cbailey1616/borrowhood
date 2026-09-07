@@ -206,12 +206,13 @@ export default function ListingDetailScreen({ route, navigation }) {
             <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
             {!listing.ownerMasked && (
               <View style={styles.actionButtons}>
-                <HapticPressable testID="ListingDetail.button.save" accessibilityLabel="Save listing" accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
+                <HapticPressable testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
                   <Animated.View style={heartAnimStyle}>
                     <Ionicons
                       name={isSaved ? 'heart' : 'heart-outline'}
                       size={22}
-                      color={isSaved ? COLORS.danger : COLORS.textSecondary}
+                      color={COLORS.primary}
+                      illustrated={isSaved}
                     />
                   </Animated.View>
                 </HapticPressable>
@@ -283,6 +284,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   paymentStatus={listing.activeTransaction.paymentStatus}
                   isBorrower={listing.activeTransaction.isBorrower}
                   isGiveaway={listing.listingType === 'giveaway'}
+                  isSale={isSaleListing(listing)}
                 />
                 <View style={styles.viewTransactionRow}>
                   <Text style={styles.viewTransactionText}>Go to Transaction</Text>

@@ -11,6 +11,12 @@ describe('Icon', () => {
     expect(usesWarmIllustration('close', '#42594C')).toBe(false);
   });
 
+  it('keeps an unselected heart unfilled even with the warm illustration palette', () => {
+    const { iconSvg } = require('../../../src/assets/borrowhood-icons');
+    expect(iconSvg('heart-outline', { illustrated: true, selected: false })).toContain('fill-opacity="0"');
+    expect(iconSvg('heart', { illustrated: true, selected: true })).toContain('fill-opacity="1"');
+  });
+
   it('does not import stock icon libraries in application source', () => {
     const fs = require('fs');
     const path = require('path');

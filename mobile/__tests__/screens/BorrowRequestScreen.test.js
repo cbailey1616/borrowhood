@@ -56,6 +56,19 @@ describe('BorrowRequestScreen', () => {
     dismiss.mockRestore();
   });
 
+  it('dismisses typing before date selection and closes dates when typing resumes', async () => {
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const endDate = await screen.findByText('End Date');
+    fireEvent.press(endDate);
+    expect(dismiss).toHaveBeenCalled();
+    expect(screen.getByText('Done')).toBeTruthy();
+    fireEvent(screen.getByLabelText('Private message to owner'), 'focus');
+    expect(screen.queryByText('Done')).toBeNull();
+    dismiss.mockRestore();
+  });
+
   it('includes the displayed sale price with a purchase request', async () => {
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
     const sale = { ...listing, listingType: 'giveaway', directFee: { amount: 25, unit: 'flat' } };

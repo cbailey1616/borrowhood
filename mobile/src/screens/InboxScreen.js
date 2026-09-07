@@ -22,7 +22,6 @@ import NativeHeader from '../components/NativeHeader';
 import { SkeletonListItem } from '../components/SkeletonLoader';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { exchangeAction } from '../utils/chatExchange';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
@@ -316,6 +315,23 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           }
           ListHeaderComponent={
             <>
+              {activeBorrows.length > 0 && <View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
+                <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>Active exchanges</Text>
+                {activeBorrows.map(transaction => {
+                  const other = transaction.isBorrower ? transaction.lender : transaction.borrower;
+                  return <HapticPressable key={transaction.id} accessibilityRole="button" accessibilityLabel={`View exchange for ${transaction.listing?.title || 'item'}`}
+                    onPress={() => nav.navigate('TransactionDetail', { id: transaction.id })}
+                    style={{ padding: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
+                    <Ionicons name={transaction.listingType === 'giveaway' ? 'gift' : 'basket'} size={32} illustrated />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>{transaction.listing?.title || 'Shared item'}</Text>
+                      <Text style={{ color: COLORS.textSecondary }}>With {other?.firstName || 'your neighbor'}</Text>
+                      <Text style={{ color: COLORS.primary, marginTop: 4 }}>View details</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+                  </HapticPressable>;
+                })}
+              </View>}
               {notifsDenied && (
                 <HapticPressable
                   style={styles.notifBannerInline}
@@ -342,7 +358,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <HeroIcon icon="notifications" size={80} />
-              <Text style={styles.emptyTitle}>{loadError ? 'Couldn’t load activity' : 'All caught up!'}</Text>
+              <Text style={styles.emptyTitle}>{loadError ? 'Couldn’t load activity' : activeBorrows.length ? 'No new updates' : 'All caught up!'}</Text>
               <Text style={styles.emptySubtitle}>
                 {loadError ? 'Check your connection and pull down to retry.' : 'Requests, replies and pickup updates will appear here.'}
               </Text>
@@ -352,20 +368,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       ) : (
         <FlatList
           data={conversations}
-          ListHeaderComponent={<View style={{ gap: SPACING.sm, marginBottom: SPACING.md }}>
-            <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('TransactionHistory')} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'flex-end' }}><Text style={{ color: COLORS.primary }}>History</Text></HapticPressable>
-            {activeBorrows.length > 0 && <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>Borrowing & lending</Text>}
-            {activeBorrows.map(t => {
-              const other = t.isBorrower ? t.lender : t.borrower;
-              const existing = conversations.find(c => c.otherUser?.id === other?.id);
-              return <HapticPressable key={t.id} accessibilityRole="button" style={{ padding: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted }}
-                onPress={() => other?.id ? navigation.navigate('Chat', { conversationId: existing?.id, recipientId: other.id, recipient: other, listingId: t.listing?.id, listing: t.listing }) : navigation.navigate('TransactionDetail', { id: t.id })}>
-                <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>{t.listing?.title || 'Borrowing & lending'}</Text>
-                <Text style={{ color: COLORS.textSecondary }}>{t.isBorrower ? 'Borrowing from' : 'Lending to'} {other?.firstName || 'your neighbor'}</Text>
-                <Text style={{ color: COLORS.primary, marginTop: 6 }}>{exchangeAction(t, user?.id).label}</Text>
-              </HapticPressable>;
-            })}
-          </View>}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}

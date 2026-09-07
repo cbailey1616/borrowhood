@@ -91,6 +91,18 @@ describe('InboxScreen', () => {
     expect(mockParentNavigate).toHaveBeenCalledWith('ListingDiscussion', { requestId: 'request-1' });
   });
 
+  it('keeps active exchanges out of Messages and opens their details from Activity', async () => {
+    api.getTransactions.mockResolvedValue([{ id: 'exchange-1', status: 'pending', isBorrower: true, listing: { title: 'TheraGun' }, lender: { firstName: 'Sam' } }]);
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Messages');
+    expect(screen.queryByText('TheraGun')).toBeNull();
+    fireEvent.press(screen.getByText('Activity'));
+    fireEvent.press(await screen.findByText('TheraGun'));
+    expect(mockParentNavigate).toHaveBeenCalledWith('TransactionDetail', { id: 'exchange-1' });
+    expect(mockParentNavigate).not.toHaveBeenCalledWith('Chat', expect.anything());
+  });
+
   it('tap conversation navigates to Chat', async () => {
     api.getConversations.mockResolvedValue([{
       id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null },

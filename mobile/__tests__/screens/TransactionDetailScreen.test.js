@@ -73,6 +73,14 @@ describe('TransactionDetailScreen', () => {
     expect(matches.length).toBeGreaterThan(0);
   });
 
+  it('keeps the item context when messaging from the neighbor card', async () => {
+    api.getConversations.mockResolvedValueOnce([{ id: 'chat-1', otherUser: { id: 'user-2' } }]);
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('Message Alice privately'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ conversationId: 'chat-1', listingId: 'l-1', threadContext: { id: 'l-1', title: 'Camera', type: 'listing' } })));
+  });
+
   it.each([['approved', true], ['paid', true], ['approved', false], ['paid', false]])('lets the %s participant (owner=%s) cancel only after confirmation', async (status, isLender) => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status, isLender, isBorrower: !isLender });
     api.cancelRental.mockResolvedValue({ success: true });

@@ -2,191 +2,40 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
 import { COLORS, SPACING } from '../utils/config';
 
-const BORROWER_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
-  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
-  { key: 'pickup', icon: 'cube', label: 'Picked up' },
-  { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
-];
-
-const LENDER_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
-  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
-  { key: 'pickup', icon: 'cube', label: 'Picked Up' },
-  { key: 'returned', icon: 'arrow-undo', label: 'Returned' },
-];
-
-const GIVEAWAY_RECIPIENT_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
-  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
-  { key: 'pickup', icon: 'gift', label: 'Picked Up' },
-];
-
-const GIVEAWAY_GIVER_STEPS = [
-  { key: 'requested', icon: 'paper-plane', label: 'Requested' },
-  { key: 'approved', icon: 'checkmark-circle', label: 'Approved' },
-  { key: 'pickup', icon: 'gift', label: 'Given' },
-];
-
-function getActiveStep(status, isGiveaway) {
-  switch (status) {
-    case 'pending': return 0;
-    case 'approved':
-    case 'paid': return 1;
-    case 'picked_up': return 2;
-    case 'returned':
-    case 'return_pending':
-    case 'completed': return isGiveaway ? 2 : 3;
-    default: return -1;
-  }
+export default function RentalProgress({ status, isBorrower, isGiveaway, isSale = false }) {
+  const steps = [
+    { icon: 'request-note', label: 'Requested' },
+    { icon: 'checkmark-circle', label: 'Approved' },
+    { icon: isGiveaway ? 'gift' : 'basket', label: isGiveaway && !isBorrower ? (isSale ? 'Sold' : 'Given') : 'Picked up' },
+    ...(!isGiveaway ? [{ icon: 'home', label: status === 'return_pending' ? 'Return pending' : 'Returned' }] : []),
+  ];
+  const active = ({ pending: 0, approved: 1, paid: 1, picked_up: 2, return_pending: steps.length - 1, returned: steps.length - 1, completed: steps.length - 1 })[status] ?? -1;
+  const stopped = ['cancelled', 'disputed'].includes(status);
+  const finished = ['returned', 'completed'].includes(status);
+  return <View style={styles.track} accessibilityLabel={stopped ? 'Exchange paused or cancelled' : `Exchange progress: ${steps[active]?.label || status}`}>
+    {steps.map((step, index) => {
+      const complete = !stopped && (index < active || finished);
+      const current = !stopped && index === active;
+      return <View key={step.label} style={styles.step}>
+        {index < steps.length - 1 && <View style={[styles.line, complete && styles.lineComplete]} />}
+        <View style={[styles.iconCircle, current && styles.active, complete && styles.complete]}>
+          <View style={{ opacity: stopped || index > active ? 0.55 : 1 }}><Ionicons name={step.icon} size={30} illustrated color={COLORS.primary} /></View>
+          {complete && <View style={styles.check}><Ionicons name="checkmark" size={10} color={COLORS.surface} /></View>}
+        </View>
+        <Text style={[styles.label, current && styles.activeLabel]}>{step.label}</Text>
+      </View>;
+    })}
+  </View>;
 }
-
-export default function RentalProgress({ status, isBorrower, isGiveaway }) {
-  const activeStep = getActiveStep(status, isGiveaway);
-  const isCancelled = status === 'cancelled' || status === 'disputed';
-  const steps = isGiveaway
-    ? (isBorrower ? GIVEAWAY_RECIPIENT_STEPS : GIVEAWAY_GIVER_STEPS)
-    : (isBorrower ? BORROWER_STEPS : LENDER_STEPS);
-
-  const elements = [];
-  steps.forEach((step, index) => {
-    const isComplete = index < activeStep;
-    const isActive = index === activeStep;
-    const isFuture = index > activeStep;
-
-    if (index > 0) {
-      const connectorDone = (isComplete || isActive) && !isCancelled;
-      elements.push(
-        <View
-          key={`c-${index}`}
-          style={[styles.connector, connectorDone && styles.connectorComplete]}
-        />
-      );
-    }
-
-    elements.push(
-      <View
-        key={step.key}
-        style={[
-          styles.circle,
-          isComplete && styles.circleComplete,
-          isActive && !isCancelled && styles.circleActive,
-          isCancelled && isActive && styles.circleCancelled,
-          isFuture && styles.circleFuture,
-        ]}
-      >
-        {isComplete ? (
-          <Ionicons name="checkmark" size={12} color="#fff" />
-        ) : isCancelled && isActive ? (
-          <Ionicons name="close" size={12} color="#fff" />
-        ) : (
-          <Ionicons
-            name={step.icon}
-            size={12}
-            color={isActive ? '#fff' : COLORS.gray[500]}
-          />
-        )}
-      </View>
-    );
-  });
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.track}>{elements}</View>
-      <View style={styles.labelsRow}>
-        {steps.map((step, index) => {
-          const isComplete = index < activeStep;
-          const isActive = index === activeStep;
-
-          return (
-            <Text
-              key={step.key}
-              style={[
-                styles.label,
-                isComplete && styles.labelComplete,
-                isActive && !isCancelled && styles.labelActive,
-                isCancelled && isActive && styles.labelCancelled,
-              ]}
-
-            >
-              {step.label}
-            </Text>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-const CIRCLE_SIZE = 26;
-
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: SPACING.sm,
-  },
-  track: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: SPACING.md,
-  },
-  connector: {
-    flex: 1,
-    height: 2,
-    backgroundColor: COLORS.border,
-  },
-  connectorComplete: {
-    backgroundColor: COLORS.primary,
-  },
-  circle: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.border,
-  },
-  circleComplete: {
-    backgroundColor: COLORS.primary,
-  },
-  circleActive: {
-    backgroundColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  circleCancelled: {
-    backgroundColor: COLORS.danger,
-    shadowColor: COLORS.danger,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  circleFuture: {
-    backgroundColor: COLORS.borderLight,
-  },
-  labelsRow: {
-    flexDirection: 'row',
-    marginTop: SPACING.xs,
-    marginHorizontal: SPACING.md,
-  },
-  label: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 12,
-    color: COLORS.gray[500],
-  },
-  labelComplete: {
-    color: COLORS.primary,
-  },
-  labelActive: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  labelCancelled: {
-    color: COLORS.danger,
-    fontWeight: '700',
-  },
+  track: { flexDirection: 'row', paddingVertical: SPACING.sm },
+  step: { flex: 1, alignItems: 'center' },
+  line: { position: 'absolute', top: 24, left: '50%', width: '100%', height: 2, backgroundColor: COLORS.border },
+  lineComplete: { backgroundColor: COLORS.primary },
+  iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
+  active: { backgroundColor: COLORS.primaryMuted, borderColor: '#B59A53', borderWidth: 2 },
+  complete: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
+  check: { position: 'absolute', right: -2, bottom: -2, width: 17, height: 17, borderRadius: 9, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: COLORS.surface },
+  label: { textAlign: 'center', fontSize: 11, lineHeight: 15, marginTop: 9, paddingHorizontal: 2, color: COLORS.textSecondary },
+  activeLabel: { color: COLORS.primary, fontWeight: '700' },
 });
