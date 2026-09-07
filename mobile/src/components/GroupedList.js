@@ -64,7 +64,7 @@ export function GroupedListItem({
               { backgroundColor: iconBg || (destructive ? COLORS.dangerMuted : 'transparent') },
             ]}
           >
-            <Ionicons name={icon} size={20} color={destructive ? COLORS.danger : iconColor} illustrated={!destructive && iconColor === COLORS.textSecondary} />
+            {React.isValidElement(icon) ? icon : <Ionicons name={icon} size={20} color={destructive ? COLORS.danger : iconColor} illustrated={!destructive && iconColor === COLORS.textSecondary} />}
           </View>
         ) : null}
         <View style={styles.itemContent}>
