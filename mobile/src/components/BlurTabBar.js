@@ -49,6 +49,8 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
   const icons = TAB_ICONS[route.name] || { active: 'ellipse', inactive: 'ellipse-outline' };
   const iconName = isFocused ? icons.active : icons.inactive;
   const label = TAB_LABELS[route.name] || route.name;
+  const isSaved = route.name === 'Saved';
+  const iconColor = isSaved ? COLORS.saved : isFocused ? COLORS.primary : COLORS.textSecondary;
 
   return (
     <HapticPressable
@@ -63,13 +65,18 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       accessibilityLabel={label}
       accessibilityValue={badge > 0 ? { text: `${badge} new` } : undefined}
     >
-      <Animated.View style={[styles.iconContainer, isFocused && styles.iconContainerActive, animatedStyle]}>
+      <Animated.View style={[
+        styles.iconContainer,
+        isFocused && styles.iconContainerActive,
+        isFocused && isSaved && styles.savedIconContainerActive,
+        animatedStyle,
+      ]}>
         <Ionicons
           name={iconName}
           size={26}
-          illustrated
+          illustrated={!isSaved}
           selected={isFocused}
-          color={isFocused ? COLORS.primary : COLORS.textSecondary}
+          color={iconColor}
         />
         {badge > 0 && (
           <View style={styles.badge}>
@@ -192,6 +199,9 @@ const styles = StyleSheet.create({
   },
   iconContainerActive: {
     backgroundColor: COLORS.primaryMuted,
+  },
+  savedIconContainerActive: {
+    backgroundColor: COLORS.savedMuted,
   },
   label: {
     fontSize: 12,

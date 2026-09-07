@@ -249,14 +249,6 @@ export default function ListingDetailScreen({ route, navigation }) {
             <View style={styles.badge}>
               <Text style={styles.badgeText}>Condition: {CONDITION_LABELS[listing.condition]}</Text>
             </View>
-            {listing.timesBorrowed > 0 && (
-              <View style={[styles.badge, styles.badgeSecondary]}>
-                <Ionicons name="swap-horizontal" size={12} color={COLORS.secondary} />
-                <Text style={[styles.badgeText, { color: COLORS.secondary }]}>
-                  {listing.timesBorrowed}x borrowed
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Borrowhood's current release has no rental fees or deposits. */}
@@ -569,9 +561,6 @@ const styles = StyleSheet.create({
     gap: 4,
     borderWidth: 1.5,
     borderColor: COLORS.borderLight,
-  },
-  badgeSecondary: {
-    borderColor: COLORS.borderGreenStrong,
   },
   badgeGiveaway: {
     borderColor: COLORS.secondary,
