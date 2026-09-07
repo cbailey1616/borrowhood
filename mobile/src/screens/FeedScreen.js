@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
-import ThreadMessageButton from '../components/ThreadMessageButton';
 import {
   View,
   Text,
@@ -547,14 +546,14 @@ export default function FeedScreen({ navigation }) {
             </View>
           </View>
           </View>
-        {/* Inline thread */}
-        {!item.ownerMasked && renderInlineThread(item.id, listingDiscussions[item.id], false)}
+        {/* Comments open in their dedicated screen. */}
+        {!item.ownerMasked && renderCommentsLink(item.id, listingDiscussions[item.id], false)}
       </HapticPressable>
     </View>
     );
   };
 
-  const renderInlineThread = (itemId, thread, isRequest) => {
+  const renderCommentsLink = (itemId, thread, isRequest) => {
     const item = feed.find(entry => entry.id === itemId);
     const params = isRequest ? { requestId: itemId, request: item } : { listingId: itemId, listing: item };
     return <View testID={`Feed.thread.${itemId}`} style={[styles.threadContainer, isRequest && styles.requestThread]}>
@@ -563,11 +562,10 @@ export default function FeedScreen({ navigation }) {
           onPress={event => { event?.stopPropagation?.(); navigation.navigate('ListingDiscussion', params); }}
           style={[styles.threadHeader, { minHeight: 44 }]}>
           <Ionicons name="chatbubbles-outline" size={18} color={COLORS.primary} />
-          <Text style={styles.threadHeaderText}>Public replies{thread?.total ? ` · ${thread.total}` : ''}</Text>
+          <Text style={styles.threadHeaderText}>View comments{thread?.total ? ` · ${thread.total}` : ''}</Text>
           <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
         </HapticPressable>
-        <ThreadMessageButton author={item?.user} currentUserId={user?.id} navigation={navigation}
-          context={{ id: itemId, title: item?.title, type: isRequest ? 'request' : 'listing' }} />
+
       </View>
     </View>;
   };
@@ -604,8 +602,8 @@ export default function FeedScreen({ navigation }) {
                 </>}
               </View>
             </View>
-          {/* Inline thread */}
-          {!item.ownerMasked && renderInlineThread(item.id, requestDiscussions[item.id], true)}
+          {/* Comments open in their dedicated screen. */}
+          {!item.ownerMasked && renderCommentsLink(item.id, requestDiscussions[item.id], true)}
         </HapticPressable>
       </View>
     );

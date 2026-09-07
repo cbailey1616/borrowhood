@@ -106,7 +106,7 @@ describe('FeedScreen', () => {
     expect(style('FeedCard').backgroundColor).toBe(COLORS.card);
     expect(style('Feed.thread.item').backgroundColor).toBe(COLORS.card);
     expect(style('Feed.request.note').borderRadius).toBe(style('FeedCard').borderRadius);
-    expect(getAllByText('Public replies')).toHaveLength(2);
+    expect(getAllByText('View comments')).toHaveLength(2);
     fireEvent.press(getByTestId('Feed.request.note'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'note' });
   });
