@@ -1,15 +1,25 @@
 import React from 'react';
+import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+let mockHeaderHeight = 88;
+const mockInsets = { top: 44, bottom: 34, left: 0, right: 0 };
+
+jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => mockHeaderHeight }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => mockInsets,
+  SafeAreaView: require('react-native').View,
+}));
 
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockHeaderHeight = 88;
   // Source calls api.getDiscussions(listingId, { limit: 50 }) and reads data.posts
   api.getDiscussions.mockResolvedValue({ posts: [] });
   // Source calls api.createDiscussionPost(listingId, data)
@@ -18,6 +28,42 @@ beforeEach(() => {
 
 describe('ListingDiscussionScreen', () => {
   const route = { params: { listingId: 'listing-1', listing: { title: 'Camera', isOwner: false } } };
+
+  it.each([
+    { screenHeight: 844, headerHeight: 113, keyboardTop: 520 },
+    { screenHeight: 667, headerHeight: 88, keyboardTop: 407 },
+  ])('keeps the composer above the keyboard with a $headerHeight-point header', async ({ screenHeight, headerHeight, keyboardTop }) => {
+    mockHeaderHeight = headerHeight;
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByLabelText('Comment');
+    const viewportHeight = screenHeight - headerHeight;
+    await act(async () => fireEvent(screen.getByTestId('Comments.keyboardLayout'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: viewportHeight } },
+      persist: jest.fn(),
+    }));
+    const composerPadding = () => StyleSheet.flatten(screen.getByTestId('Comments.composer').props.style).paddingBottom;
+    expect(composerPadding()).toBeGreaterThanOrEqual(mockInsets.bottom);
+    await act(async () => DeviceEventEmitter.emit('keyboardWillShow', {
+      duration: 0, easing: 'keyboard',
+      endCoordinates: { screenY: keyboardTop, screenX: 0, width: 390, height: screenHeight - keyboardTop },
+    }));
+    const keyboardPadding = StyleSheet.flatten(screen.getByTestId('Comments.keyboardLayout').props.style).paddingBottom;
+    expect(headerHeight + viewportHeight - keyboardPadding).toBe(keyboardTop);
+    expect(composerPadding()).toBeGreaterThanOrEqual(8);
+    expect(composerPadding()).toBeLessThanOrEqual(12);
+    fireEvent.changeText(screen.getByLabelText('Comment'), 'Can I collect this tomorrow?');
+    fireEvent.press(screen.getByLabelText('Post comment'));
+    await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', {
+      content: 'Can I collect this tomorrow?', parentId: undefined,
+    }));
+    await act(async () => DeviceEventEmitter.emit('keyboardWillHide', {
+      duration: 0, easing: 'keyboard',
+      endCoordinates: { screenY: screenHeight, screenX: 0, width: 390, height: 0 },
+    }));
+    expect(StyleSheet.flatten(screen.getByTestId('Comments.keyboardLayout').props.style).paddingBottom).toBe(0);
+    expect(composerPadding()).toBeGreaterThanOrEqual(mockInsets.bottom);
+  });
 
   it('fetches discussions on mount', async () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;

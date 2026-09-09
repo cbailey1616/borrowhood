@@ -1,5 +1,7 @@
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -9,6 +11,7 @@ import {
   Image,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
@@ -21,6 +24,9 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
   const { listingId, listing, requestId, request, autoFocus } = route.params;
   const isRequest = !!requestId;
   const targetId = requestId || listingId;
@@ -42,6 +48,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -288,13 +300,16 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   }
 
   const renderInputBar = () => (
-    <View style={styles.composeContainer}>
+    <View testID="Comments.composer" style={[styles.composeContainer, {
+      // The keyboard covers the home indicator; keep only a small typing gap.
+      paddingBottom: keyboardVisible ? SPACING.sm : Math.max(insets.bottom, SPACING.md),
+    }]}>
       {replyingTo && (
         <View style={styles.replyingToBar}>
-          <Text style={styles.replyingToText}>
+          <Text style={styles.replyingToText} numberOfLines={2}>
             Replying to {replyingTo.user.firstName}: “{replyingTo.content.slice(0, 120)}”
           </Text>
-          <HapticPressable haptic="light" onPress={cancelReply}>
+          <HapticPressable haptic="light" onPress={cancelReply} accessibilityLabel="Cancel reply" style={styles.cancelReplyButton}>
             <Ionicons name="close" size={18} color={COLORS.textSecondary} />
           </HapticPressable>
         </View>
@@ -333,9 +348,10 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
   return (
     <KeyboardAvoidingView
+      testID="Comments.keyboardLayout"
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
       {/* Header */}
       <HapticPressable style={styles.listingHeader} accessibilityRole="button" accessibilityLabel="View original post"
@@ -347,6 +363,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       {!!threadError && <Text accessibilityRole="alert" style={{ color: COLORS.danger, padding: 16 }}>{threadError}</Text>}
 
       <FlatList
+        style={styles.list}
         data={posts}
         renderItem={renderPost}
         keyExtractor={(item) => item.id}
@@ -434,6 +451,7 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     paddingBottom: SPACING.lg,
   },
+  list: { flex: 1 },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 80,
@@ -567,12 +585,12 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
   },
   composeContainer: {
+    flexShrink: 0,
     borderTopWidth: 1,
     borderTopColor: COLORS.separator,
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    paddingBottom: SPACING.xl,
   },
   replyingToBar: {
     flexDirection: 'row',
@@ -585,10 +603,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   replyingToText: {
+    flex: 1,
     ...TYPOGRAPHY.footnote,
     fontWeight: '500',
     color: COLORS.primary,
   },
+  cancelReplyButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -602,7 +622,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     ...TYPOGRAPHY.body,
     color: COLORS.text,
+    minHeight: 44,
     maxHeight: 120,
+    textAlignVertical: 'top',
   },
   sendButton: {
     width: 44,

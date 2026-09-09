@@ -31,7 +31,7 @@ const TAB_LABELS = {
   Profile: 'Profile',
 };
 
-function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
+function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCount = 0 }) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -65,7 +65,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
       accessibilityRole="tab"
       accessibilityState={{ selected: isFocused }}
       accessibilityLabel={label}
-      accessibilityValue={badge > 0 ? { text: `${badge} new` } : undefined}
+      accessibilityValue={hasUpdate ? { text: route.name === 'Feed' ? 'New posts' : `${unreadCount} unread message${unreadCount === 1 ? '' : 's'}` } : undefined}
     >
       <Animated.View style={[
         styles.iconContainer,
@@ -80,11 +80,11 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
           selected={isSaved || isFocused}
           color={iconColor}
         />
-        {badge > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
-          </View>
-        )}
+        {hasUpdate && (route.name === 'Activity'
+          ? <View testID="TabBar.Activity.badge" style={styles.unreadBadge}>
+              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          : <View testID="TabBar.Feed.dot" style={styles.unreadDot} />)}
       </Animated.View>
       <Text
         style={[
@@ -99,7 +99,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
   );
 }
 
-export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0 }) {
+export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0, hasNewFeed = false }) {
   const insets = useSafeAreaInsets();
 
   const content = (
@@ -134,7 +134,8 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
             isFocused={isFocused}
             onPress={onPress}
             onLongPress={onLongPress}
-            badge={route.name === 'Activity' ? unreadCount : 0}
+            hasUpdate={route.name === 'Activity' ? unreadCount > 0 : route.name === 'Feed' ? hasNewFeed : false}
+            unreadCount={route.name === 'Activity' ? unreadCount : 0}
           />
         );
       })}
@@ -210,21 +211,20 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 4,
   },
-  badge: {
+  unreadDot: {
     position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: COLORS.danger,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+    top: -7,
+    left: 19,
+    backgroundColor: COLORS.success,
+    borderRadius: 5,
+    width: 10,
+    height: 10,
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+  unreadBadge: {
+    position: 'absolute', top: -5, right: -2,
+    minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 4,
+    backgroundColor: COLORS.success, borderWidth: 2, borderColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
+  badgeText: { color: COLORS.surface, fontSize: 11, fontWeight: '700' },
 });

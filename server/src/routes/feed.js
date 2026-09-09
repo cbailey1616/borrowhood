@@ -41,6 +41,7 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (page - 1) * limit;
   if (!Number.isInteger(Number(page)) || Number(page) < 1 || !Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) return res.status(400).json({ error: 'Invalid page' });
   const token = req.query.session;
+  const summary = req.query.summary === 'true';
   if (token && !UUID.test(token)) return res.status(400).json({ error: 'Invalid session' });
 
   try {
@@ -61,7 +62,7 @@ router.get('/', authenticate, async (req, res) => {
     // Get listings if applicable
     if (wantListings) {
       let listingQuery = `
-        SELECT
+        SELECT ${summary ? 'MAX(l.created_at) AS latest_post_at' : `
           l.id,
           'listing' as type,
           l.title,
@@ -89,7 +90,7 @@ router.get('/', authenticate, async (req, res) => {
           u.city as owner_city,
           cat.name as category_name,
           cat.icon as category_icon,
-          (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
+          (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url`}
         FROM listings l
         JOIN users u ON l.owner_id = u.id
         LEFT JOIN categories cat ON l.category_id = cat.id
@@ -120,9 +121,10 @@ router.get('/', authenticate, async (req, res) => {
       }
 
       const fullAccess = listingAccessSql('l', '$' + (listingParams.length + 1), { discovery: true });
-      listingQuery = listingQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
+      if (!summary) listingQuery = listingQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
       listingQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('l', 'owner_id', '$' + (listingParams.length + 1), { listing: true }) + ')';
       listingParams.push(req.user.id);
+      if (summary) listingQuery += ` AND l.owner_id != $${listingParams.length}`;
       if (visibilityFilters.length) {
         listingQuery += " AND string_to_array(l.visibility::text, ',') && $" + (listingParams.length + 1) + '::text[]';
         listingParams.push(visibilityFilters);
@@ -130,7 +132,7 @@ router.get('/', authenticate, async (req, res) => {
       // Private inventory belongs in My Items, not the discovery feed.
       listingQuery += " AND l.privacy_version = 1 AND l.visibility != 'private'";
 
-      listingQuery += ` ORDER BY l.created_at DESC`;
+      if (!summary) listingQuery += ` ORDER BY l.created_at DESC`;
 
       listingsResult = await query(listingQuery, listingParams);
     }
@@ -138,7 +140,7 @@ router.get('/', authenticate, async (req, res) => {
     // Get requests if applicable
     if (wantRequests) {
       let requestQuery = `
-        SELECT
+        SELECT ${summary ? 'MAX(r.created_at) AS latest_post_at' : `
           r.id,
           'request' as type,
           r.title,
@@ -154,7 +156,7 @@ router.get('/', authenticate, async (req, res) => {
           u.last_name,
           u.display_name,
           u.profile_photo_url,
-          u.is_verified
+          u.is_verified`}
         FROM item_requests r
         JOIN users u ON r.user_id = u.id
         WHERE r.status = 'open'
@@ -166,7 +168,8 @@ router.get('/', authenticate, async (req, res) => {
       const requestParams = [req.user.id];
 
       const fullAccess = requestAccessSql('r', '$1');
-      requestQuery = requestQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
+      if (!summary) requestQuery = requestQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
+      if (summary) requestQuery += ' AND r.user_id != $1';
       requestQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('r', 'user_id', '$1') + ')';
       if (visibilityFilters.length) {
         requestQuery += " AND string_to_array(r.visibility::text, ',') && $" + (requestParams.length + 1) + '::text[]';
@@ -178,10 +181,18 @@ router.get('/', authenticate, async (req, res) => {
         requestParams.push(`%${search}%`);
       }
 
-      requestQuery += ` ORDER BY r.created_at DESC`;
+      if (!summary) requestQuery += ` ORDER BY r.created_at DESC`;
 
       requestsResult = await query(requestQuery, requestParams);
     }
+
+    // Use the same current access/status rules as the feed. The lightweight
+    // summary skips photos, ranking and sessions, and never exposes identities.
+    const latestTime = [...listingsResult.rows, ...requestsResult.rows]
+      .filter(row => summary || row.user_id !== req.user.id)
+      .reduce((latest, row) => Math.max(latest, new Date(summary ? row.latest_post_at : row.created_at).getTime() || 0), 0);
+    const latestPostAt = latestTime ? new Date(latestTime).toISOString() : null;
+    if (summary) return res.json({ latestPostAt });
 
     // Determine if we need to mask owner info on town listings
     const needsMasking = false;
@@ -281,6 +292,7 @@ router.get('/', authenticate, async (req, res) => {
     const feed = pageKeys.map(key => permitted.get(key)).filter(Boolean);
     res.json({
       items: feed,
+      latestPostAt,
       page: parseInt(page),
       limit: parseInt(limit),
       hasMore: keys.length > offset + Number(limit),

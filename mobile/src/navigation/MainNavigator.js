@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useState, useEffect, useCallback } from 'react';
 import { COLORS } from '../utils/config';
-import api from '../services/api';
+import useInboxBadges, { FeedSeenContext } from '../hooks/useInboxBadges';
+import { useAuth } from '../context/AuthContext';
 import BlurTabBar from '../components/BlurTabBar';
 
 import FeedScreen from '../screens/FeedScreen';
@@ -13,27 +13,13 @@ import ProfileScreen from '../screens/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 export default function MainNavigator() {
-  const [badgeCounts, setBadgeCounts] = useState({ messages: 0, notifications: 0, actions: 0, total: 0 });
-
-  const fetchBadgeCount = useCallback(async () => {
-    try {
-      const data = await api.getBadgeCount();
-      setBadgeCounts(data);
-    } catch (error) {
-      console.error('Failed to fetch badge count:', error);
-    }
-  }, []);
-
-  // Fetch on mount and periodically
-  useEffect(() => {
-    fetchBadgeCount();
-    const interval = setInterval(fetchBadgeCount, 30000);
-    return () => clearInterval(interval);
-  }, [fetchBadgeCount]);
+  const { user } = useAuth();
+  const { badgeCounts, refresh: fetchBadgeCount, hasNewFeed, markFeedSeen } = useInboxBadges(user.id);
 
   return (
+    <FeedSeenContext.Provider value={markFeedSeen}>
     <Tab.Navigator
-      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.notifications + badgeCounts.messages} />}
+      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.messages} hasNewFeed={hasNewFeed} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -59,9 +45,7 @@ export default function MainNavigator() {
         name="Activity"
         options={{ title: 'Inbox' }}
         listeners={{
-          tabPress: () => {
-            setTimeout(fetchBadgeCount, 1000);
-          },
+          tabPress: fetchBadgeCount,
         }}
       >
         {(props) => <InboxScreen {...props} badgeCounts={badgeCounts} onRead={fetchBadgeCount} />}
@@ -72,5 +56,6 @@ export default function MainNavigator() {
         options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
+    </FeedSeenContext.Provider>
   );
 }

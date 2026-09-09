@@ -1,7 +1,9 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { FeedSeenContext } from '../hooks/useInboxBadges';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
@@ -60,6 +62,8 @@ const FEED = {
 };
 
 export default function FeedScreen({ navigation }) {
+  const markFeedSeen = useContext(FeedSeenContext);
+  const insets = useSafeAreaInsets();
   const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showToast, showError } = useError();
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
@@ -70,6 +74,7 @@ export default function FeedScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [activeFilters, setActiveFilters] = useState([]);
   const [visibilityFilters, setVisibilityFilters] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -97,7 +102,7 @@ export default function FeedScreen({ navigation }) {
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     const events = viewableItems.filter(({ item, isViewable }) => {
       const key = `${item.type}:${item.id}`;
-      if (!isViewable || impressions.current.has(key)) return false;
+      if (!['listing', 'request'].includes(item.type) || !isViewable || impressions.current.has(key)) return false;
       impressions.current.add(key); return true;
     }).map(({ item }) => ({ id: item.id, type: item.type, event: 'seen' }));
     if (events.length) api.recordFeedEvents(events.slice(0, 30)).catch(() => {});
@@ -130,6 +135,10 @@ export default function FeedScreen({ navigation }) {
       }
       setHasMore(data.hasMore);
       setPage(pageNum);
+      if (pageNum === 1 && !params.search && !params.type && !params.visibility && !params.categoryId &&
+          navigation.isFocused?.() && (AppState.currentState == null || AppState.currentState === 'active')) {
+        markFeedSeen(data.latestPostAt);
+      }
     } catch (error) {
       if (requestId !== feedRequest.current) return;
       setFeedError(true);
@@ -141,7 +150,7 @@ export default function FeedScreen({ navigation }) {
       setIsRefreshing(false);
       setIsLoadingMore(false);
     }
-  }, [search, activeFilters, visibilityFilters, categoryFilters]);
+  }, [search, activeFilters, visibilityFilters, categoryFilters, navigation, markFeedSeen]);
 
 
 
@@ -260,6 +269,12 @@ export default function FeedScreen({ navigation }) {
     });
     return () => { received.remove(); resumed.remove(); };
   }, [navigation, fetchFeed, fetchBannerData]);
+
+  useEffect(() => navigation.addListener('tabPress', () => {
+    if (!navigation.isFocused?.()) return;
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    fetchFeed(1, false);
+  }), [navigation, fetchFeed]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -514,7 +529,58 @@ export default function FeedScreen({ navigation }) {
     </LayeredCard>
   );
 
+  const renderBanners = () => (<>
+    {banners.length > 0 ? (
+      <View style={[styles.bannerDeck, { marginBottom: SPACING.lg, height: 60 + (banners.length - 1) * PEEK_HEIGHT }]}>
+        {banners.map((b, i) => {
+          const isTop = i === 0;
+          return (
+            <View
+              key={b.key}
+              style={[
+                styles.bannerCard,
+                {
+                  top: i * PEEK_HEIGHT,
+                  zIndex: banners.length - i,
+                  borderColor: b.color,
+                  opacity: isTop ? 1 : 0.95,
+                  transform: [{ scale: 1 - i * 0.02 }],
+                },
+              ]}
+            >
+              <HapticPressable
+                style={styles.bannerCardInner}
+                onPress={b.onPress}
+                haptic="light"
+                scaleDown={0.98}
+              >
+                <View style={[styles.bannerIcon, { backgroundColor: b.color + '15' }]}>
+                  <Ionicons name={b.icon} size={20} color={b.color} />
+                </View>
+                <View style={styles.bannerContent}>
+                  <Text style={styles.bannerTitle}>{b.title}</Text>
+                  {isTop && <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>}
+                </View>
+              </HapticPressable>
+              {isTop && (
+                <HapticPressable
+                  style={styles.bannerDismissBtn}
+                  onPress={() => dismissBanner(b.key)}
+                  haptic="light"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={16} color={COLORS.textMuted} />
+                </HapticPressable>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    ) : null}
+  </>);
+
   const renderItem = ({ item, index }) => {
+    if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing') {
       return renderListingItem(item, index);
     }
@@ -534,40 +600,13 @@ export default function FeedScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      <NativeHeader
-        title="Borrowhood"
-        titleStyle={styles.feedTitle}
-        rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
-          <Ionicons name="add" size={20} color={COLORS.surface} />
-          <Text style={styles.addButtonText}>Post</Text>
-        </HapticPressable>}
-      >
-        {(isFetching || feed.length > 0 || hasFilters || feedError || !user?.city) && <>
-          <View style={styles.searchRow}>
-            <SearchBar value={search} onChangeText={setSearch} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
-            <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
-              <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
-            </HapticPressable>
-          </View>
-          <ScrollView horizontal style={styles.typeRibbon} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
-              {FILTER_OPTIONS.map(option => {
-                const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
-                return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={option.label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
-                  <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{option.label}</Text>
-                </HapticPressable>;
-              })}
-            </View>
-          </ScrollView>
-        </>}
-      </NativeHeader>
-
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <FlatList
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
         ref={listRef}
-        data={feed}
+        testID="Feed.list"
+        data={feed.length > 0 && banners.length > 0 ? [{ id: 'banners', type: 'feed-banners' }, ...feed] : feed}
         renderItem={renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}
         contentContainerStyle={styles.listContent}
@@ -586,55 +625,40 @@ export default function FeedScreen({ navigation }) {
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={<>
-          {banners.length > 0 ? (
-            <View style={[styles.bannerDeck, { marginBottom: SPACING.lg, height: 60 + (banners.length - 1) * PEEK_HEIGHT }]}>
-              {banners.map((b, i) => {
-                const isTop = i === 0;
-                return (
-                  <View
-                    key={b.key}
-                    style={[
-                      styles.bannerCard,
-                      {
-                        top: i * PEEK_HEIGHT,
-                        zIndex: banners.length - i,
-                        borderColor: b.color,
-                        opacity: isTop ? 1 : 0.95,
-                        transform: [{ scale: 1 - i * 0.02 }],
-                      },
-                    ]}
-                  >
-                    <HapticPressable
-                      style={styles.bannerCardInner}
-                      onPress={b.onPress}
-                      haptic="light"
-                      scaleDown={0.98}
-                    >
-                      <View style={[styles.bannerIcon, { backgroundColor: b.color + '15' }]}>
-                        <Ionicons name={b.icon} size={20} color={b.color} />
-                      </View>
-                      <View style={styles.bannerContent}>
-                        <Text style={styles.bannerTitle}>{b.title}</Text>
-                        {isTop && <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>}
-                      </View>
-                    </HapticPressable>
-                    {isTop && (
-                      <HapticPressable
-                        style={styles.bannerDismissBtn}
-                        onPress={() => dismissBanner(b.key)}
-                        haptic="light"
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="close" size={16} color={COLORS.textMuted} />
-                      </HapticPressable>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          ) : null}
-        </>}
+        ListHeaderComponent={
+          <NativeHeader
+            includeTopInset={false}
+            title="Borrowhood"
+            titleStyle={styles.feedTitle}
+            rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
+              <Ionicons name="add" size={20} color={COLORS.surface} />
+              <Text style={styles.addButtonText}>Post</Text>
+            </HapticPressable>}
+          >
+            {(isFetching || feed.length > 0 || hasFilters || feedError || !user?.city) && <>
+              <View style={styles.searchRow}>
+                <SearchBar value={search} onChangeText={setSearch} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
+                <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
+                  <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
+                </HapticPressable>
+              </View>
+              <ScrollView horizontal style={styles.typeRibbon} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
+                  {FILTER_OPTIONS.map(option => {
+                    const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
+                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={option.label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
+                      <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{option.label}</Text>
+                    </HapticPressable>;
+                  })}
+                </View>
+              </ScrollView>
+            </>}
+          </NativeHeader>
+        }
+        ListHeaderComponentStyle={{ marginHorizontal: -SPACING.lg }}
+        stickyHeaderIndices={[0]}
+        stickyHeaderHiddenOnScroll={!searchFocused}
+        scrollEventThrottle={16}
         ListFooterComponent={
           isLoadingMore && (
             <View style={styles.loadingMore}>
@@ -642,7 +666,7 @@ export default function FeedScreen({ navigation }) {
             </View>
           )
         }
-        ListEmptyComponent={isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
+        ListEmptyComponent={<View>{renderBanners()}{isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
           <View style={styles.welcomeContainer}>
             <HeroIcon icon="home-outline" size={88} />
             <Text style={styles.emptyTitle}>What would you like to do?</Text>
@@ -681,7 +705,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '600' }}>{hasFilters ? 'Request an item' : 'Invite a neighbor'}</Text>
             </HapticPressable>}
           </View>
-        }
+        }</View>}
       />
 
       <ActionSheet

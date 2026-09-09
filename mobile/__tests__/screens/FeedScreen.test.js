@@ -5,6 +5,7 @@ import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import { FeedSeenContext } from '../../src/hooks/useInboxBadges';
 
 const mockUser = {
   id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@test.com',
@@ -33,6 +34,7 @@ beforeEach(() => {
   let session = 0;
   Crypto.randomUUID.mockImplementation(() => `session-${++session}`);
   AppState.addEventListener.mockReturnValue({ remove: jest.fn() });
+  AppState.currentState = 'active';
   api.getFeed.mockResolvedValue({ items: [], hasMore: false });
   api.getSavedListings.mockResolvedValue([]);
   api.saveListing.mockResolvedValue({ saved: true });
@@ -42,6 +44,40 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it('acknowledges new feed posts only after a successful, visible, unfiltered first page', async () => {
+    const markSeen = jest.fn();
+    const latestPostAt = '2026-09-09T12:00:00.000Z';
+    api.getFeed.mockResolvedValue({ latestPostAt, items: [{ id: 'new-item', type: 'listing', title: 'New ladder', user: { firstName: 'Sam' } }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<FeedSeenContext.Provider value={markSeen}><Screen navigation={mockNavigation} /></FeedSeenContext.Provider>);
+    await screen.findByText('New ladder');
+    expect(markSeen).toHaveBeenCalledWith(latestPostAt);
+    markSeen.mockClear();
+    fireEvent.press(screen.getByTestId('Feed.type.sell'));
+    await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'sell' })));
+    expect(markSeen).not.toHaveBeenCalled();
+    api.getFeed.mockRejectedValue(new Error('offline'));
+    fireEvent.press(screen.getByTestId('Feed.type.all'));
+    await waitFor(() => expect(api.getFeed.mock.calls.at(-1)[0].type).toBeUndefined());
+    expect(markSeen).not.toHaveBeenCalled();
+  });
+
+  it('keeps the ribbon reachable while searching and refreshes when Home is tapped again', async () => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'ladder', type: 'listing', title: 'Ladder', user: { firstName: 'Sam' } }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    const input = await screen.findByPlaceholderText('What do you need?');
+    fireEvent(input, 'focus');
+    expect(screen.getByTestId('Feed.list').props.stickyHeaderHiddenOnScroll).toBe(false);
+    fireEvent.changeText(input, 'ladder');
+    fireEvent(input, 'blur');
+    expect(screen.getByTestId('Feed.list').props.stickyHeaderHiddenOnScroll).toBe(true);
+    const tabPress = mockNavigation.addListener.mock.calls.filter(([event]) => event === 'tabPress').at(-1)[1];
+    api.getFeed.mockClear();
+    await act(async () => tabPress());
+    expect(api.getFeed).toHaveBeenCalledWith(expect.objectContaining({ page: 1, search: 'ladder' }));
+  });
+
   it('applies and clears extra filters while keeping the selected post type', async () => {
     api.getFeed.mockResolvedValue({ items: [{ id: 'drill', type: 'listing', title: 'Drill', user: { firstName: 'Jamie' } }], hasMore: false });
     api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools' }, { id: 'cat-2', name: 'Garden' }]);
