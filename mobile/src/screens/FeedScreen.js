@@ -642,7 +642,7 @@ export default function FeedScreen({ navigation }) {
                   <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
                 </HapticPressable>
               </View>
-              <ScrollView horizontal style={styles.typeRibbon} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ScrollView horizontal style={styles.typeRibbon} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
@@ -870,11 +870,12 @@ const styles = StyleSheet.create({
   addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '700' },
   feedTitle: { fontSize: 28, lineHeight: 36 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
-  typeTabs: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 2 },
-  typeTab: { minHeight: 44, minWidth: 44, flexShrink: 0, paddingHorizontal: SPACING.sm, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.full },
-  typeTabActive: { backgroundColor: COLORS.primary },
-  typeTabText: { ...TYPOGRAPHY.footnote, fontWeight: '600', color: COLORS.textSecondary },
-  typeTabTextActive: { color: COLORS.surface },
+  typeRibbonContent: { flexGrow: 1 },
+  typeTabs: { flexGrow: 1, flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator },
+  typeTab: { minHeight: 44, minWidth: 44, flexShrink: 0, paddingHorizontal: SPACING.xs, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  typeTabActive: { borderBottomColor: COLORS.primary },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  typeTabTextActive: { color: COLORS.primary },
   sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
   requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   requestTitle: { fontSize: 22, lineHeight: 29 },
