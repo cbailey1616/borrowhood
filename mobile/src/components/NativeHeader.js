@@ -18,8 +18,10 @@ export default function NativeHeader({
   rightElement,
   leftElement,
   children,
+  includeTopInset = true,
 }) {
   const insets = useSafeAreaInsets();
+  const topInset = includeTopInset ? insets.top : 0;
 
   const largeTitleStyle = useAnimatedStyle(() => {
     if (!scrollY) return { opacity: 1, transform: [{ translateY: 0 }] };
@@ -49,7 +51,7 @@ export default function NativeHeader({
       maxHeight: interpolate(
         scrollY.value,
         [0, LARGE_TITLE_THRESHOLD],
-        [LARGE_TITLE_HEIGHT + insets.top + SPACING.lg, insets.top + 4],
+        [LARGE_TITLE_HEIGHT + topInset + SPACING.lg, topInset + 4],
         Extrapolation.CLAMP
       ),
     };
@@ -57,7 +59,7 @@ export default function NativeHeader({
 
   return (
     <View>
-      <Animated.View style={[styles.headerWrapper, { paddingTop: insets.top + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, wrapperStyle]}>
+      <Animated.View style={[styles.headerWrapper, { paddingTop: topInset + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, wrapperStyle]}>
         <Animated.View style={largeTitleStyle}>
           {(title || rightElement) && (
             <View style={styles.titleRow}>
