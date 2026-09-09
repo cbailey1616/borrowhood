@@ -207,7 +207,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         <View style={styles.section}>
           <View style={styles.discussionHeader}>
             <Text style={styles.sectionTitle}>
-              Public replies {discussionCount > 0 && `(${discussionCount})`}
+              Comments {discussionCount > 0 && `(${discussionCount})`}
             </Text>
             {discussionCount > 3 && (
               <HapticPressable
@@ -271,7 +271,7 @@ export default function RequestDetailScreen({ route, navigation }) {
               haptic="light"
             >
               <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.respondButtonText}>Reply publicly</Text>
+              <Text style={styles.respondButtonText}>Add a comment</Text>
             </HapticPressable>
           )}
         </View>
@@ -343,7 +343,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         title="I Can Help"
         actions={[
           {
-            label: 'Reply publicly',
+            label: 'Add a comment',
             icon: <Ionicons name="chatbubbles-outline" size={20} color={COLORS.text} />,
             onPress: () => {
               setShowHaveThisSheet(false);

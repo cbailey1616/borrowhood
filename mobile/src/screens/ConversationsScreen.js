@@ -1,4 +1,5 @@
 import ShimmerImage from '../components/ShimmerImage';
+import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -70,52 +71,54 @@ export default function ConversationsScreen({ navigation, onRead }) {
   };
 
   const renderItem = ({ item }) => (
-    <HapticPressable
-      haptic="light"
-      style={styles.card}
-      onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
-    >
-      <View style={styles.avatarContainer}>
-        <ShimmerImage placeholderIcon="person"
-          source={{ uri: item.otherUser?.profilePhotoUrl || null }}
-          style={styles.avatar}
-        />
-        {item.unreadCount > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadCount}>
-              {item.unreadCount > 9 ? '9+' : item.unreadCount}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]}>
-            {item.otherUser?.firstName || 'Unknown'} {item.otherUser?.lastName || ''}
-          </Text>
-          <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
+    <LayeredCard style={styles.cardDepth} stacked={false}>
+      <HapticPressable
+        haptic="light"
+        style={styles.card}
+        onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
+      >
+        <View style={styles.avatarContainer}>
+          <ShimmerImage placeholderIcon="person"
+            source={{ uri: item.otherUser?.profilePhotoUrl || null }}
+            style={styles.avatar}
+          />
+          {item.unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadCount}>
+                {item.unreadCount > 9 ? '9+' : item.unreadCount}
+              </Text>
+            </View>
+          )}
         </View>
 
-        {item.listing && (
-          <View style={styles.listingRow}>
-            <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />
-            <Text style={styles.listingTitle} numberOfLines={1}>
-              {item.listing.title}
+        <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]}>
+              {item.otherUser?.firstName || 'Unknown'} {item.otherUser?.lastName || ''}
             </Text>
+            <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
-        )}
 
-        <Text
-          style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
-          numberOfLines={1}
-        >
-          {item.lastMessage || 'No messages yet'}
-        </Text>
-      </View>
+          {item.listing && (
+            <View style={styles.listingRow}>
+              <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />
+              <Text style={styles.listingTitle} numberOfLines={1}>
+                {item.listing.title}
+              </Text>
+            </View>
+          )}
 
-      <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-    </HapticPressable>
+          <Text
+            style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
+            numberOfLines={1}
+          >
+            {item.lastMessage || 'No messages yet'}
+          </Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
+      </HapticPressable>
+    </LayeredCard>
   );
 
   return (
@@ -156,17 +159,14 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
   },
+  cardDepth: { marginHorizontal: SPACING.lg, marginBottom: SPACING.md },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: SPACING.lg,
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.sm,
     borderRadius: RADIUS.lg,
     gap: SPACING.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   avatarContainer: {
     position: 'relative',

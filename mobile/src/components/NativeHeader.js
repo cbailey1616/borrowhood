@@ -13,6 +13,7 @@ const LARGE_TITLE_THRESHOLD = 80;
 
 export default function NativeHeader({
   title,
+  titleStyle,
   scrollY,
   rightElement,
   leftElement,
@@ -60,7 +61,7 @@ export default function NativeHeader({
         <Animated.View style={largeTitleStyle}>
           {(title || rightElement) && (
             <View style={styles.titleRow}>
-              {title ? <Text style={styles.largeTitle}>{title}</Text> : <View />}
+              {title ? <Text style={[styles.largeTitle, titleStyle]}>{title}</Text> : <View />}
               {rightElement && <View>{rightElement}</View>}
             </View>
           )}

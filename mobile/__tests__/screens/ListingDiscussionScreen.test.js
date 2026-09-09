@@ -28,13 +28,13 @@ describe('ListingDiscussionScreen', () => {
   it('shows empty state when no discussions', async () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText('No questions yet');
+    await findByText('No comments yet');
   });
 
   it('renders comment input', async () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const { findByPlaceholderText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByPlaceholderText('Add a public reply…');
+    await findByPlaceholderText('Add a comment…');
   });
 
   it('displays posts when available', async () => {
@@ -51,7 +51,7 @@ describe('ListingDiscussionScreen', () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { listingId: 'listing-1' } }} />);
     await screen.findByText('Garden ladder');
-    await screen.findByText('Public replies · visible to people who can see this post');
+    await screen.findByText('Visible to people who can see this post.');
   });
 
   it('keeps public replying in the composer and private chat in the comment menu', async () => {
@@ -61,11 +61,11 @@ describe('ListingDiscussionScreen', () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const ActionSheet = require('../../src/components/ActionSheet').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('Reply publicly to Alice'));
-    expect(screen.getByText(/Public reply to Alice/)).toBeTruthy();
+    fireEvent.press(await screen.findByLabelText('Reply to Alice'));
+    expect(screen.getByText(/Replying to Alice/)).toBeTruthy();
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
-    fireEvent.changeText(screen.getByLabelText('Public reply'), 'Yes, tomorrow works.');
-    fireEvent.press(screen.getByLabelText('Post public reply'));
+    fireEvent.changeText(screen.getByLabelText('Comment'), 'Yes, tomorrow works.');
+    fireEvent.press(screen.getByLabelText('Post reply'));
     await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', { content: 'Yes, tomorrow works.', parentId: 'post-1' }));
     fireEvent.press(screen.getByLabelText('Comment options for Alice'));
     const menu = screen.UNSAFE_getAllByType(ActionSheet).find(sheet => sheet.props.isVisible);

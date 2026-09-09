@@ -72,7 +72,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         : await api.getDiscussions(listingId, { limit: 50 });
       setPosts(data.posts || []);
     } catch (error) {
-      setThreadError('Couldn’t load public replies. Go back and try again.');
+      setThreadError('Couldn’t load comments. Go back and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +161,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       setNewComment('');
       setReplyingTo(null);
     } catch (error) {
-      setThreadError('Your public reply was not sent. Your text is still here—please try again.');
+      setThreadError('Your comment was not sent. Your text is still here—please try again.');
       haptics.error();
     } finally {
       setIsSubmitting(false);
@@ -253,7 +253,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           </HapticPressable>
         </View>
         <Text style={styles.postContent}>{post.content}</Text>
-        <HapticPressable style={styles.actionButton} accessibilityLabel={`Reply publicly to ${post.user.firstName}`}
+        <HapticPressable style={styles.actionButton} accessibilityLabel={`Reply to ${post.user.firstName}`}
           onPress={() => startReply(parentId ? { id: parentId, user: post.user, content: post.content } : post)}>
           <Text style={styles.actionText}>Reply</Text>
         </HapticPressable>
@@ -292,7 +292,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       {replyingTo && (
         <View style={styles.replyingToBar}>
           <Text style={styles.replyingToText}>
-            Public reply to {replyingTo.user.firstName}: “{replyingTo.content.slice(0, 120)}”
+            Replying to {replyingTo.user.firstName}: “{replyingTo.content.slice(0, 120)}”
           </Text>
           <HapticPressable haptic="light" onPress={cancelReply}>
             <Ionicons name="close" size={18} color={COLORS.textSecondary} />
@@ -305,8 +305,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           style={styles.input}
           value={newComment}
           onChangeText={setNewComment}
-          placeholder={replyingTo ? 'Write a public reply…' : 'Add a public reply…'}
-          accessibilityLabel="Public reply"
+          placeholder={replyingTo ? 'Write a reply…' : 'Add a comment…'}
+          accessibilityLabel="Comment"
           placeholderTextColor={COLORS.textMuted}
           multiline
           maxLength={2000}
@@ -316,7 +316,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         />
         <HapticPressable
           haptic="medium"
-          accessibilityRole="button" accessibilityLabel="Post public reply"
+          accessibilityRole="button" accessibilityLabel={replyingTo ? "Post reply" : "Post comment"}
           style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
           onPress={handleSubmit}
           disabled={!newComment.trim() || isSubmitting}
@@ -341,7 +341,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       <HapticPressable style={styles.listingHeader} accessibilityRole="button" accessibilityLabel="View original post"
         onPress={() => navigation.navigate(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}>
         <Text style={styles.listingTitle} numberOfLines={2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Public replies · visible to people who can see this post</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Visible to people who can see this post.</Text>
         <Text style={{ color: COLORS.primary, fontSize: 12, marginTop: 4 }}>View original post →</Text>
       </HapticPressable>
       {!!threadError && <Text accessibilityRole="alert" style={{ color: COLORS.danger, padding: 16 }}>{threadError}</Text>}
@@ -356,7 +356,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray[600]} />
-            <Text style={styles.emptyTitle}>{isRequest ? 'No responses yet' : 'No questions yet'}</Text>
+            <Text style={styles.emptyTitle}>{isRequest ? 'No responses yet' : 'No comments yet'}</Text>
             <Text style={styles.emptySubtitle}>
               {isRequest
                 ? 'Be the first to respond to this request'

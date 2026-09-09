@@ -18,7 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
-import AnimatedCard from '../components/AnimatedCard';
+import LayeredCard from '../components/LayeredCard';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
 import { SkeletonListItem } from '../components/SkeletonLoader';
@@ -193,7 +193,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   };
 
   const renderNotification = ({ item, index }) => (
-    <AnimatedCard index={index}>
+    <LayeredCard style={styles.cardDepth} stacked={false}>
       <HapticPressable
         style={[styles.card, !item.isRead && styles.cardUnread]}
         onPress={() => handleNotificationPress(item)}
@@ -221,15 +221,15 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
             <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
           </View>
           <Text style={styles.lastMessage} numberOfLines={2}>{item.body}</Text>
-          {!!publicReplyRoute(item) && <Text style={styles.listingText}>Public reply · opens the original post’s replies</Text>}
+          {!!publicReplyRoute(item) && <Text style={styles.listingText}>Comment on a post</Text>}
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
       </HapticPressable>
-    </AnimatedCard>
+    </LayeredCard>
   );
 
   const renderConversation = ({ item, index }) => (
-    <AnimatedCard index={index}>
+    <LayeredCard style={styles.cardDepth} stacked={false}>
       <HapticPressable
         style={styles.card}
         onPress={() => nav.navigate('Chat', { conversationId: item.id })}
@@ -271,7 +271,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         </View>
         <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
       </HapticPressable>
-    </AnimatedCard>
+    </LayeredCard>
   );
 
   if (isLoading) {
@@ -428,22 +428,17 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     flexGrow: 1,
   },
+  cardDepth: { marginBottom: SPACING.md },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
-    marginBottom: SPACING.sm,
     gap: SPACING.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   cardUnread: {
-    backgroundColor: COLORS.primaryMuted,
-    borderColor: COLORS.borderGreenStrong,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
+    backgroundColor: COLORS.requestSurface,
   },
   avatarContainer: {
     position: 'relative',

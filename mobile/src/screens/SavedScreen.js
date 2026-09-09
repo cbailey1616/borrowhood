@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { directFeeLabel } from '../utils/directFee';
+import ListingPrice from '../components/ListingPrice';
+import LayeredCard from '../components/LayeredCard';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   RefreshControl,
-  Image,
-  Dimensions,
+  useWindowDimensions,
   InteractionManager,
 } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
@@ -25,19 +25,17 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_GAP = SPACING.sm;
-const CARD_WIDTH = (SCREEN_WIDTH - SPACING.lg * 2 - GRID_GAP) / 2;
-const IMAGE_HEIGHT = CARD_WIDTH * 1.1;
+const GRID_GAP = SPACING.md;
 
 
-function HeartButton({ onUnsave }) {
+function HeartButton({ onUnsave, title }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePress = useCallback(() => {
+  const handlePress = useCallback((event) => {
+    event?.stopPropagation?.();
     haptics.light();
     scale.value = withSequence(
       withSpring(1.3, ANIMATION.spring.bouncy),
@@ -47,15 +45,17 @@ function HeartButton({ onUnsave }) {
   }, [onUnsave]);
 
   return (
-    <HapticPressable onPress={handlePress} haptic={null} style={styles.heartButton}>
+    <HapticPressable onPress={handlePress} haptic={null} style={styles.heartButton} accessibilityRole="button" accessibilityLabel={`Unsave ${title}`}>
       <Animated.View style={animStyle}>
-        <Ionicons name="heart" size={18} color={COLORS.danger} />
+        <Ionicons name="heart" size={22} color={COLORS.saved} illustrated={false} selected />
       </Animated.View>
     </HapticPressable>
   );
 }
 
 export default function SavedScreen({ navigation }) {
+  const { width } = useWindowDimensions();
+  const cardWidth = (Math.min(width, 660) - SPACING.lg * 2 - GRID_GAP) / 2;
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -101,7 +101,7 @@ export default function SavedScreen({ navigation }) {
   };
 
   const renderItem = ({ item, index }) => (
-    <View style={[styles.cardWrap, index % 2 === 0 ? { marginRight: GRID_GAP } : null]}>
+    <LayeredCard style={[styles.cardWrap, { width: cardWidth }, index % 2 === 0 ? { marginRight: GRID_GAP } : null]}>
       <HapticPressable
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
         haptic="light"
@@ -112,25 +112,19 @@ export default function SavedScreen({ navigation }) {
             source={{ uri: item.photoUrl || null }}
             style={styles.cardImage}
           />
-          <HeartButton onUnsave={() => handleUnsave(item.id)} />
-          {!item.isAvailable && (
+          <HeartButton title={item.title} onUnsave={() => handleUnsave(item.id)} />
+          {item.isAvailable === false && (
             <View style={styles.unavailableBadge}>
-              <Text style={styles.unavailableText}>Borrowed</Text>
+              <Text style={styles.unavailableText}>{item.status === 'given_away' ? item.listingType === 'sell' ? 'Sold' : 'Claimed' : item.listingType === 'sell' || item.listingType === 'giveaway' ? 'Unavailable' : 'Borrowed'}</Text>
             </View>
           )}
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <View style={styles.cardRow}>
-            {item.directFee ? <Text style={styles.price}>{directFeeLabel(item)}</Text> : item.isFree ? (
-              <Text style={styles.freeTag}>Free</Text>
-            ) : (
-              <Text style={styles.price}>${item.pricePerDay}/day</Text>
-            )}
-          </View>
+          <ListingPrice listing={item} compact />
           <View style={styles.ownerRow}>
             {item.owner?.profilePhotoUrl ? (
-              <Image source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+              <ShimmerImage placeholderIcon="person" source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
             ) : (
               <View style={[styles.ownerAvatar, styles.ownerAvatarPlaceholder]}>
                 <Ionicons name="person" size={10} color={COLORS.textMuted} />
@@ -142,7 +136,7 @@ export default function SavedScreen({ navigation }) {
           </View>
         </View>
       </HapticPressable>
-    </View>
+    </LayeredCard>
   );
 
   return (
@@ -193,36 +187,41 @@ const styles = StyleSheet.create({
   listContent: {
     padding: SPACING.lg,
     paddingBottom: 100,
+    width: '100%',
+    maxWidth: 660,
+    alignSelf: 'center',
   },
   // Card grid
   cardWrap: {
-    width: CARD_WIDTH,
-    marginBottom: GRID_GAP,
+    marginBottom: SPACING.xl,
   },
   card: {
+    flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.borderBrown,
   },
   // Image
   imageWrap: {
     position: 'relative',
+    margin: SPACING.sm,
+    marginBottom: 0,
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
-    height: IMAGE_HEIGHT,
-    backgroundColor: COLORS.gray[700],
+    aspectRatio: 0.95,
+    backgroundColor: COLORS.surfaceElevated,
   },
   heartButton: {
     position: 'absolute',
-    top: SPACING.sm,
-    right: SPACING.sm,
-    width: 32,
-    height: 32,
+    top: SPACING.xs,
+    right: SPACING.xs,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -243,45 +242,19 @@ const styles = StyleSheet.create({
   },
   // Info
   cardInfo: {
-    padding: SPACING.sm,
-    paddingTop: SPACING.sm,
-    gap: 3,
+    padding: SPACING.md,
+    gap: SPACING.xs,
   },
   cardTitle: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.text,
     fontWeight: '600',
   },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  price: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  freeTag: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  ratingText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    fontSize: 11,
-  },
   ownerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-    marginTop: 1,
+    marginTop: SPACING.xs,
   },
   ownerAvatar: {
     width: 18,

@@ -1,4 +1,6 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
+import ListingPrice, { listingPrice } from '../components/ListingPrice';
+import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
 import {
@@ -251,39 +253,40 @@ export default function ListingDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Borrowhood's current release has no rental fees or deposits. */}
-          <Text style={styles.freeNote}>
-            {directFeeLabel(listing) || (isTransferListing(listing) ? 'Free to keep' : 'Free to borrow')}
-          </Text>
-          {listing.directFee && <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.md }}>Arrange payment directly with your neighbor. Borrowhood does not collect or process this fee.</Text>}
-
-          <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, marginBottom: SPACING.md }}>
-            <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
-            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Public replies</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-          </HapticPressable>
+          {listingPrice(listing).paid || isSaleListing(listing) ? (
+            <LayeredCard style={styles.priceDepth} radius={RADIUS.xl} backingColor={COLORS.primaryMuted}>
+              <View style={styles.pricingCard}>
+                <Text style={styles.priceEyebrow}>{listingPrice(listing).kind}</Text>
+                <ListingPrice listing={listing} />
+                {listingPrice(listing).paid && <Text style={styles.priceHelp}>Arrange payment directly with your neighbor.</Text>}
+              </View>
+            </LayeredCard>
+          ) : (
+            <View style={styles.freeNote}><ListingPrice listing={listing} /></View>
+          )}
 
           {/* Active Transaction Status */}
           {listing.activeTransaction && (
-            <HapticPressable
-              onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
-              haptic="light"
-            >
-              <View style={[styles.transactionCard, styles.cardBox]}>
-                <RentalProgress
-                  status={listing.activeTransaction.status}
-                  paymentStatus={listing.activeTransaction.paymentStatus}
-                  isBorrower={listing.activeTransaction.isBorrower}
-                  isGiveaway={isTransferListing(listing)}
-                  isSale={isSaleListing(listing)}
-                />
-                <View style={styles.viewTransactionRow}>
-                  <Text style={styles.viewTransactionText}>Go to Transaction</Text>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+            <LayeredCard style={styles.transactionDepth}>
+              <HapticPressable
+                onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
+                haptic="light"
+              >
+                <View style={[styles.transactionCard, styles.cardBox]}>
+                  <RentalProgress
+                    status={listing.activeTransaction.status}
+                    paymentStatus={listing.activeTransaction.paymentStatus}
+                    isBorrower={listing.activeTransaction.isBorrower}
+                    isGiveaway={isTransferListing(listing)}
+                    isSale={isSaleListing(listing)}
+                  />
+                  <View style={styles.viewTransactionRow}>
+                    <Text style={styles.viewTransactionText}>Go to Transaction</Text>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                  </View>
                 </View>
-              </View>
-            </HapticPressable>
+              </HapticPressable>
+            </LayeredCard>
           )}
 
           {/* Description */}
@@ -294,33 +297,48 @@ export default function ListingDetailScreen({ route, navigation }) {
             </View>
           )}
 
-          {/* Owner */}
-            <HapticPressable
-              onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
-              haptic="light"
-            >
-              <View style={[styles.ownerCard, styles.cardBox]}>
-                {listing.owner.profilePhotoUrl ? (
-                  <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
-                ) : (
-                  <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
-                    <Ionicons name="person" size={24} color={COLORS.gray[400]} />
-                  </View>
-                )}
-                <View style={styles.ownerInfo}>
-                  <Text style={styles.ownerName}>
-                    {listing.owner.firstName} {listing.owner.lastName}
-                  </Text>
-                  <UserBadges
-                    isVerified={listing.owner.isVerified}
-                    totalTransactions={listing.owner.totalTransactions || 0}
-                    size="small"
-                  />
+          <HapticPressable
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
+            style={styles.questionsCard}
+          >
+            <View style={styles.questionsIcon}><Ionicons name="chatbubbles" size={18} color={COLORS.primary} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.questionsTitle}>Comments</Text>
+              <Text style={styles.questionsHint}>Ask a question or join the conversation.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+          </HapticPressable>
 
+          {/* Owner */}
+            <LayeredCard style={styles.ownerDepth}>
+              <HapticPressable
+                onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
+                haptic="light"
+              >
+                <View style={[styles.ownerCard, styles.cardBox]}>
+                  {listing.owner.profilePhotoUrl ? (
+                    <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+                  ) : (
+                    <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
+                      <Ionicons name="person" size={24} color={COLORS.gray[400]} />
+                    </View>
+                  )}
+                  <View style={styles.ownerInfo}>
+                    <Text style={styles.ownerName}>
+                      {listing.owner.firstName} {listing.owner.lastName}
+                    </Text>
+                    <UserBadges
+                      isVerified={listing.owner.isVerified}
+                      totalTransactions={listing.owner.totalTransactions || 0}
+                      size="small"
+                    />
+
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} style={{ alignSelf: 'center' }} />
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} style={{ alignSelf: 'center' }} />
-              </View>
-            </HapticPressable>
+              </HapticPressable>
+            </LayeredCard>
           </>
           )}
         </View>
@@ -452,8 +470,6 @@ const styles = StyleSheet.create({
   cardBox: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   container: {
     flex: 1,
@@ -571,33 +587,35 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
-  freeNote: { ...TYPOGRAPHY.footnote, color: COLORS.primary, marginBottom: SPACING.md },
+  freeNote: { marginBottom: SPACING.lg },
+  priceDepth: { marginBottom: SPACING.xxl },
+  transactionDepth: { marginBottom: SPACING.xl },
+  ownerDepth: { marginBottom: SPACING.sm },
   pricingCard: {
     backgroundColor: COLORS.primaryMuted,
     padding: SPACING.xl,
-    marginBottom: SPACING.xl,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderGreen,
+    borderWidth: 0,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
   },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  priceLabel: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-  },
-  priceValue: {
-    ...TYPOGRAPHY.h2,
+  priceEyebrow: {
+    ...TYPOGRAPHY.caption1,
     color: COLORS.primary,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: SPACING.xs,
   },
+  priceHelp: {
+    ...TYPOGRAPHY.caption1,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
+  },
+  questionsCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.md, marginBottom: SPACING.lg },
+  questionsIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background },
+  questionsTitle: { ...TYPOGRAPHY.body, color: COLORS.text, fontWeight: '700' },
+  questionsHint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: 2 },
   transactionCard: {
     padding: SPACING.lg,
-    marginBottom: SPACING.xl,
   },
   viewTransactionRow: {
     flexDirection: 'row',

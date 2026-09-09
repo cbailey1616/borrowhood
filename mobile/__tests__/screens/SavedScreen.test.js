@@ -72,7 +72,7 @@ describe('SavedScreen', () => {
     });
   });
 
-  it('unsave action works', async () => {
+  it('unsaves an item without opening its detail page', async () => {
     api.getSavedListings.mockResolvedValue([{
       id: 'listing-1', title: 'Drill', photoUrl: 'https://test.com/photo.jpg',
       photos: ['https://test.com/photo.jpg'], condition: 'good', isFree: true, pricePerDay: 0,
@@ -80,7 +80,26 @@ describe('SavedScreen', () => {
     }]);
     api.unsaveListing.mockResolvedValue({});
     const SavedScreen = require('../../src/screens/SavedScreen').default;
-    const { findByText } = render(<SavedScreen navigation={mockNavigation} />);
-    await findByText('Drill');
+    const { findByLabelText, queryByText } = render(<SavedScreen navigation={mockNavigation} />);
+    const stopPropagation = jest.fn();
+    const unsaveButton = await findByLabelText('Unsave Drill');
+    await act(async () => { fireEvent.press(unsaveButton, { stopPropagation }); });
+    expect(api.unsaveListing).toHaveBeenCalledWith('listing-1');
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    await waitFor(() => expect(queryByText('Drill')).toBeNull());
+  });
+
+  it('shows sale prices and sold status, and keeps giveaways free', async () => {
+    api.getSavedListings.mockResolvedValue([
+      { id: 'sale', title: 'Table', listingType: 'sell', status: 'given_away', isAvailable: false, directFee: { amount: 50, unit: 'flat' } },
+      { id: 'gift', title: 'Planter', listingType: 'giveaway', status: 'active', isAvailable: true, directFee: { amount: 20, unit: 'day' } },
+    ]);
+    const SavedScreen = require('../../src/screens/SavedScreen').default;
+    const { findByLabelText, getByText, queryByText } = render(<SavedScreen navigation={mockNavigation} />);
+    expect(await findByLabelText('$50.00 one-time price')).toBeTruthy();
+    expect(await findByLabelText('Free to keep')).toBeTruthy();
+    expect(getByText('Sold')).toBeTruthy();
+    expect(queryByText('Borrowed')).toBeNull();
   });
 });
