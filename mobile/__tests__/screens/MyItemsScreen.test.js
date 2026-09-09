@@ -50,9 +50,23 @@ beforeEach(() => {
 });
 
 describe('MyItemsScreen', () => {
+  it('keeps available inventory and hides sold, claimed, and borrowed items', async () => {
+    const base = { condition: 'good', status: 'active', isAvailable: true, listingType: 'lend' };
+    api.getMyListings.mockResolvedValue([
+      { ...base, id: 'available', title: 'Available ladder' },
+      { ...base, id: 'sold', title: 'Sold bike', listingType: 'sell', status: 'given_away', isAvailable: false },
+      { ...base, id: 'claimed', title: 'Claimed books', listingType: 'giveaway', status: 'given_away', isAvailable: false },
+      { ...base, id: 'borrowed', title: 'Borrowed drill', isAvailable: false },
+    ]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Available ladder');
+    for (const text of ['Sold bike', 'Claimed books', 'Borrowed drill', 'Good']) expect(screen.queryByText(text)).toBeNull();
+  });
+
   it('retains its loaded image during refresh, fresh API objects, a focus fetch, and a failed refresh', async () => {
     const listing = {
-      id: 'retained-photo', title: 'My ladder', condition: 'good', isAvailable: true,
+      id: 'retained-photo', title: 'My ladder', status: 'active', condition: 'good', isAvailable: true,
       photoUrl: 'https://images.example/my-posts-ladder.jpg', timesBorrowed: 0,
     };
     api.getMyListings.mockResolvedValue([listing]);
@@ -120,7 +134,7 @@ describe('MyItemsScreen', () => {
 
   it('displays listing cards with title', async () => {
     api.getMyListings.mockResolvedValue([{
-      id: 'listing-1', title: 'My Drill', condition: 'good', isFree: true,
+      id: 'listing-1', title: 'My Drill', status: 'active', condition: 'good', isFree: true,
       pricePerDay: 0, photos: ['https://test.com/photo.jpg'], isAvailable: true,
       timesBorrowed: 2, pendingRequests: 0,
     }]);

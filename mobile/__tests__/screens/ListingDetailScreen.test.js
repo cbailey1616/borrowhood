@@ -40,8 +40,8 @@ describe('ListingDetailScreen', () => {
 
   it('shows free borrowing without a rental-fee or pricing card', async () => {
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
-    const { findByText, queryByText, queryByTestId } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
-    await findByText('Free to borrow');
+    const { findByLabelText, queryByText, queryByTestId } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
+    await findByLabelText('Free to borrow');
     expect(queryByText('Rental fee')).toBeNull();
     expect(queryByTestId('ListingDetail.price')).toBeNull();
   });
@@ -50,6 +50,24 @@ describe('ListingDetailScreen', () => {
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
     const { findByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
     await findByText(/Alice/);
+  });
+
+  it('labels a sale price separately from daily borrowing', async () => {
+    api.getListing.mockResolvedValue({ ...mockListing, listingType: 'sell', directFee: { amount: 60, unit: 'flat' } });
+    const Screen = require('../../src/screens/ListingDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByLabelText('$60.00 one-time price');
+    expect(screen.getByText('Sale price')).toBeTruthy();
+    expect(screen.queryByText('Borrowing price')).toBeNull();
+  });
+
+  it('keeps giveaways free even if an old fee is still present', async () => {
+    api.getListing.mockResolvedValue({ ...mockListing, listingType: 'giveaway', directFee: { amount: 60, unit: 'flat' } });
+    const Screen = require('../../src/screens/ListingDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByLabelText('Free to keep');
+    expect(screen.queryByText('$60.00')).toBeNull();
+    expect(screen.queryByText('Arrange payment directly with your neighbor.')).toBeNull();
   });
 
   it('shows "Request to Borrow" button for non-owners', async () => {

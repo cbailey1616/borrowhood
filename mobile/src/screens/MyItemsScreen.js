@@ -11,6 +11,7 @@ import {
   InteractionManager,
 } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
+import LayeredCard from '../components/LayeredCard';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
@@ -20,7 +21,7 @@ import NativeHeader from '../components/NativeHeader';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const STATUS_COLORS = {
   pending: COLORS.warning,
@@ -49,7 +50,9 @@ export default function MyItemsScreen({ navigation }) {
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
-        setListings(data);
+        // Keep only items currently available to borrow, buy, or claim.
+        // Completed exchanges remain accessible through account History.
+        setListings(data.filter((listing) => listing.status === 'active' && listing.isAvailable));
       } else {
         const data = await api.getMyRequests();
         setRequests(data);
@@ -135,69 +138,68 @@ export default function MyItemsScreen({ navigation }) {
           if (direction === 'right') handleSwipeDelete(item, 'listing');
         }}
       >
-        <HapticPressable
-          style={styles.card}
-          onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-          haptic="light"
-        >
-          {item.photoUrl ? (
-            <ShimmerImage source={{ uri: item.photoUrl }} style={styles.cardImage} />
-          ) : (
-            <View style={[styles.cardImage, styles.imagePlaceholder]}>
-              <Ionicons name="image-outline" size={28} color={COLORS.gray[500]} />
-            </View>
-          )}
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            <View style={styles.cardSubRow}>
-              <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
-              {isTransferListing(item) && (
-                <View style={styles.giveawayTag}>
-                  <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
-                  <Text style={styles.giveawayTagText}>{isSaleListing(item) ? 'For sale' : 'Giveaway'}</Text>
-                </View>
-              )}
-            </View>
-
-            {item.totalEarnings > 0 && (
-              <View style={styles.cardStats}>
-                <View style={styles.stat}>
-                  <Ionicons name="cash" size={14} color={COLORS.secondary} />
-                  <Text style={[styles.statText, { color: COLORS.secondary }]}>
-                    ${item.totalEarnings.toFixed(0)} earned
-                  </Text>
-                </View>
+        <LayeredCard style={styles.cardDepth}>
+          <HapticPressable
+            style={styles.card}
+            onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+            haptic="light"
+          >
+            {item.photoUrl ? (
+              <ShimmerImage source={{ uri: item.photoUrl }} style={styles.cardImage} />
+            ) : (
+              <View style={[styles.cardImage, styles.imagePlaceholder]}>
+                <Ionicons name="image-outline" size={28} color={COLORS.gray[500]} />
               </View>
             )}
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              {isTransferListing(item) && (
+                  <View style={styles.giveawayTag}>
+                    <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
+                    <Text style={styles.giveawayTagText}>{isSaleListing(item) ? 'For sale' : 'Giveaway'}</Text>
+                  </View>
+              )}
 
-            <View style={styles.cardFooter}>
-              <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
-                {item.sharingReviewRequired ? 'Private · review sharing' :
-                  (item.visibility || 'private').includes('town') ? 'Shared with town' :
-                  (item.visibility || 'private').includes('neighborhood') ? 'Shared with neighborhood' :
-                  (item.visibility || 'private').includes('circle') ? 'Sharing needs review' :
-                  (item.visibility || 'private').includes('close_friends') ? 'Shared with friends' : 'Private'}
-                {item.activeOffers > 0 ? ` · ${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''}
-              </Text>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
-              ]}>
-                <Text style={[
-                  styles.statusText,
-                  { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
-                ]}>
-                  {item.status === 'given_away' ? (isSaleListing(item) ? 'Sold' : 'Claimed') : item.isAvailable ? (isSaleListing(item) ? 'For sale' : isTransferListing(item) ? 'Unclaimed' : 'Borrowable') : 'Borrowed'}
-                </Text>
-              </View>
-              {item.pendingRequests > 0 && (
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingText}>{item.pendingRequests} pending</Text>
+              {item.totalEarnings > 0 && (
+                <View style={styles.cardStats}>
+                  <View style={styles.stat}>
+                    <Ionicons name="cash" size={14} color={COLORS.secondary} />
+                    <Text style={[styles.statText, { color: COLORS.secondary }]}>
+                      ${item.totalEarnings.toFixed(0)} earned
+                    </Text>
+                  </View>
                 </View>
               )}
+
+              <View style={styles.cardFooter}>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
+                  {item.sharingReviewRequired ? 'Private · review sharing' :
+                    (item.visibility || 'private').includes('town') ? 'Shared with town' :
+                    (item.visibility || 'private').includes('neighborhood') ? 'Shared with neighborhood' :
+                    (item.visibility || 'private').includes('circle') ? 'Sharing needs review' :
+                    (item.visibility || 'private').includes('close_friends') ? 'Shared with friends' : 'Private'}
+                  {item.activeOffers > 0 ? ` · ${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''}
+                </Text>
+                <View style={[
+                  styles.statusBadge,
+                  { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
+                ]}>
+                  <Text style={[
+                    styles.statusText,
+                    { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
+                  ]}>
+                    {item.status === 'given_away' ? (isSaleListing(item) ? 'Sold' : 'Claimed') : item.isAvailable ? (isSaleListing(item) ? 'For sale' : isTransferListing(item) ? 'Unclaimed' : 'Borrowable') : 'Borrowed'}
+                  </Text>
+                </View>
+                {item.pendingRequests > 0 && (
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingText}>{item.pendingRequests} pending</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        </HapticPressable>
+          </HapticPressable>
+        </LayeredCard>
       </Swipeable>
     </View>
   );
@@ -227,82 +229,84 @@ export default function MyItemsScreen({ navigation }) {
           if (direction === 'right') handleSwipeDelete(item, 'request');
         }}
       >
-        <HapticPressable
-          style={[styles.requestCard, item.isExpired && styles.requestCardExpired]}
-          onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-          haptic="light"
-        >
-          <View style={styles.requestContent}>
-            <View style={styles.requestHeader}>
-              <View style={styles.requestTitleRow}>
-                <Ionicons
-                  name={item.type === 'service' ? 'construct' : 'basket'} illustrated
-                  size={34}
-                  color={COLORS.primary}
-                />
-                <Text style={[styles.requestTitle, { fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
-              </View>
-              <View style={styles.requestBadges}>
-                {item.type === 'service' && (
-                  <View style={styles.serviceBadge}>
-                    <Text style={styles.serviceBadgeText}>Service</Text>
-                  </View>
-                )}
-                <View style={[
-                  styles.requestStatusBadge,
-                  item.isExpired ? { backgroundColor: COLORS.dangerMuted }
-                    : item.status === 'open' ? { backgroundColor: COLORS.primaryMuted }
-                    : { backgroundColor: COLORS.surfaceElevated }
-                ]}>
-                  <Text style={[
-                    styles.requestStatusText,
-                    item.isExpired ? { color: COLORS.danger }
-                      : item.status === 'open' ? { color: COLORS.primary }
-                      : { color: COLORS.textMuted }
+        <LayeredCard style={styles.cardDepth} backingColor={COLORS.primaryMuted}>
+          <HapticPressable
+            style={[styles.requestCard, item.isExpired && styles.requestCardExpired]}
+            onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
+            haptic="light"
+          >
+            <View style={styles.requestContent}>
+              <View style={styles.requestHeader}>
+                <View style={styles.requestTitleRow}>
+                  <Ionicons
+                    name={item.type === 'service' ? 'construct' : 'basket'} illustrated
+                    size={34}
+                    color={COLORS.primary}
+                  />
+                  <Text style={[styles.requestTitle, { fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
+                </View>
+                <View style={styles.requestBadges}>
+                  {item.type === 'service' && (
+                    <View style={styles.serviceBadge}>
+                      <Text style={styles.serviceBadgeText}>Service</Text>
+                    </View>
+                  )}
+                  <View style={[
+                    styles.requestStatusBadge,
+                    item.isExpired ? { backgroundColor: COLORS.dangerMuted }
+                      : item.status === 'open' ? { backgroundColor: COLORS.primaryMuted }
+                      : { backgroundColor: COLORS.surfaceElevated }
                   ]}>
-                    {item.isExpired ? 'Expired' : item.status === 'open' ? 'Open' : 'Closed'}
-                  </Text>
+                    <Text style={[
+                      styles.requestStatusText,
+                      item.isExpired ? { color: COLORS.danger }
+                        : item.status === 'open' ? { color: COLORS.primary }
+                        : { color: COLORS.textMuted }
+                    ]}>
+                      {item.isExpired ? 'Expired' : item.status === 'open' ? 'Open' : 'Closed'}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {item.description && (
-              <Text style={styles.requestDescription} numberOfLines={2}>
-                {item.description}
-              </Text>
-            )}
-
-            {(item.neededFrom || item.neededUntil) && (
-              <View style={styles.dateRow}>
-                <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.dateText}>
-                  {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
-                  {item.neededFrom && item.neededUntil && ' - '}
-                  {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+              {item.description && (
+                <Text style={styles.requestDescription} numberOfLines={2}>
+                  {item.description}
                 </Text>
-              </View>
-            )}
-
-            <View style={styles.requestFooter}>
-              <Text style={styles.requestDate}>
-                {!item.neededFrom && !item.neededUntil ? 'Flexible' : ''}
-              </Text>
-              {item.isExpired && item.status === 'open' && (
-                <HapticPressable
-                  style={styles.renewButton}
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    handleRenew(item.id);
-                  }}
-                  haptic="medium"
-                >
-                  <Ionicons name="refresh" size={14} color={COLORS.primary} />
-                  <Text style={styles.renewButtonText}>Renew</Text>
-                </HapticPressable>
               )}
+
+              {(item.neededFrom || item.neededUntil) && (
+                <View style={styles.dateRow}>
+                  <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+                  <Text style={styles.dateText}>
+                    {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
+                    {item.neededFrom && item.neededUntil && ' - '}
+                    {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.requestFooter}>
+                <Text style={styles.requestDate}>
+                  {!item.neededFrom && !item.neededUntil ? 'Flexible' : ''}
+                </Text>
+                {item.isExpired && item.status === 'open' && (
+                  <HapticPressable
+                    style={styles.renewButton}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      handleRenew(item.id);
+                    }}
+                    haptic="medium"
+                  >
+                    <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                    <Text style={styles.renewButtonText}>Renew</Text>
+                  </HapticPressable>
+                )}
+              </View>
             </View>
-          </View>
-        </HapticPressable>
+          </HapticPressable>
+        </LayeredCard>
       </Swipeable>
     </View>
   );
@@ -480,18 +484,21 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.headline,
     color: COLORS.background,
   },
+  cardDepth: { marginBottom: SPACING.xl },
   card: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    marginBottom: SPACING.md,
     overflow: 'hidden',
     borderWidth: 0,
   },
   cardImage: {
-    width: 100,
-    height: 100,
-    backgroundColor: COLORS.gray[700],
+    width: 84,
+    height: 84,
+    margin: SPACING.sm,
+    marginRight: 0,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
   },
   imagePlaceholder: {
     alignItems: 'center',
@@ -501,21 +508,14 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: SPACING.md,
     justifyContent: 'space-between',
+    gap: SPACING.xs,
   },
   cardTitle: {
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
-  cardSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  cardCondition: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-  },
   giveawayTag: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
@@ -544,6 +544,7 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: SPACING.sm,
   },
@@ -568,17 +569,13 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   requestCard: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.requestSurface,
     borderRadius: RADIUS.lg,
-    marginBottom: SPACING.md,
     flexDirection: 'row',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   requestCardExpired: {
-    borderColor: COLORS.danger + '30',
-    opacity: 0.85,
+    backgroundColor: COLORS.surface,
   },
   requestAccent: {
     width: 4,

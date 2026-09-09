@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import LayeredCard from './LayeredCard';
 import HapticPressable from './HapticPressable';
 
 export function GroupedListSection({ header, footer, children }) {
@@ -11,16 +12,16 @@ export function GroupedListSection({ header, footer, children }) {
       {header ? (
         <Text style={styles.sectionHeader}>{header}</Text>
       ) : null}
-      <View style={styles.sectionShadow}>
-      <View style={styles.sectionContent}>
-        {childArray.map((child, index) =>
-          React.cloneElement(child, {
-            isFirst: index === 0,
-            isLast: index === childArray.length - 1,
-          })
-        )}
-      </View>
-      </View>
+      <LayeredCard stacked={false}>
+        <View style={styles.sectionContent}>
+          {childArray.map((child, index) =>
+            React.cloneElement(child, {
+              isFirst: index === 0,
+              isLast: index === childArray.length - 1,
+            })
+          )}
+        </View>
+      </LayeredCard>
       {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
     </View>
   );
@@ -128,22 +129,15 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.lg,
     letterSpacing: 0,
   },
-  sectionShadow: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    ...SHADOWS.sm,
-  },
   sectionContent: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderBrown,
   },
   sectionFooter: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.md,
     marginLeft: SPACING.lg,
   },
   item: {

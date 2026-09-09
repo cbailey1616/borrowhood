@@ -42,6 +42,47 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it('applies and clears extra filters while keeping the selected post type', async () => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'drill', type: 'listing', title: 'Drill', user: { firstName: 'Jamie' } }], hasMore: false });
+    api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools' }, { id: 'cat-2', name: 'Garden' }]);
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Drill', {}, { timeout: 5000 });
+    fireEvent.press(screen.getByTestId('Feed.type.sell'));
+    fireEvent.press(screen.getByLabelText('Filter posts'));
+    fireEvent.press(await screen.findByLabelText('Filter by category'));
+    fireEvent.press(await screen.findByLabelText('Tools'));
+    await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'sell', categoryId: 'cat-1' })));
+    fireEvent.press(screen.getByText('Done'));
+    fireEvent.press(screen.getByLabelText('Filter posts'));
+    fireEvent.press(await screen.findByLabelText('Clear filters'));
+    await waitFor(() => {
+      expect(api.getFeed.mock.calls.at(-1)[0].categoryId).toBeUndefined();
+      expect(api.getFeed.mock.calls.at(-1)[0].type).toBe('sell');
+    });
+  });
+
+  it('filters by the visible listing types and restores the mixed feed with All', async () => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'bike', type: 'listing', title: 'Bike', user: { firstName: 'Sam' } }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Bike');
+    fireEvent.press(screen.getByTestId('Feed.type.sell'));
+    await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'sell', page: 1 })));
+    fireEvent.press(screen.getByTestId('Feed.type.all'));
+    await waitFor(() => expect(api.getFeed.mock.calls.at(-1)[0].type).toBeUndefined());
+  });
+
+  it.each(['listing', 'request'])('opens the correct public discussion from a %s tile', async type => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'post-1', type, title: 'A ladder', user: { firstName: 'Sam' } }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByLabelText('Comments on A ladder'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDiscussion', type === 'request' ? { requestId: 'post-1' } : { listingId: 'post-1' });
+    expect(api.getDiscussions).not.toHaveBeenCalled();
+    expect(api.getRequestDiscussions).not.toHaveBeenCalled();
+  });
+
   it('fetches a fresh first page when a request arrives in the foreground', async () => {
     const Screen = require('../../src/screens/FeedScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
@@ -194,6 +235,8 @@ it('lets an unverified member select Town and makes hidden identities explicit',
     const Screen = require('../../src/screens/FeedScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await screen.findByText('Town ladder');
+    expect(screen.queryByLabelText('Comments on Town ladder')).toBeNull();
+    fireEvent.press(screen.getByLabelText('Filter posts'));
     fireEvent.press(screen.getByLabelText('Filter by visibility'));
     fireEvent.press(screen.getByLabelText('Town'));
     expect(mockNavigation.navigate).not.toHaveBeenCalledWith('IdentityVerification', expect.anything());

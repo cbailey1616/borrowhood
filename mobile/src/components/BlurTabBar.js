@@ -15,7 +15,9 @@ import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
-  Saved: { active: 'heart', inactive: 'heart-outline' },
+  // Saved is an always-recognizable destination, not a toggle. Keep its
+  // signature pink filled heart visible even when another tab is selected.
+  Saved: { active: 'heart', inactive: 'heart' },
   MyItems: { active: 'basket', inactive: 'basket-outline' },
   Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
@@ -75,7 +77,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, badge }) {
           name={iconName}
           size={26}
           illustrated={!isSaved}
-          selected={isFocused}
+          selected={isSaved || isFocused}
           color={iconColor}
         />
         {badge > 0 && (

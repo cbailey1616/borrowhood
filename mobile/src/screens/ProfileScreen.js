@@ -1,4 +1,5 @@
 import ShimmerImage from '../components/ShimmerImage';
+import LayeredCard from '../components/LayeredCard';
 import BiometricIcon from '../components/BiometricIcon';
 import { useState, useEffect } from 'react';
 import {
@@ -156,7 +157,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
         {/* Profile Header */}
-        <View style={styles.header}>
+        <LayeredCard style={styles.header} radius={RADIUS.xl} stacked={false}>
           <View style={styles.headerInner}>
             <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null}>
               <View style={styles.avatarContainer}>
@@ -187,7 +188,7 @@ export default function ProfileScreen({ navigation }) {
               )}
             </View>
           </View>
-        </View>
+        </LayeredCard>
 
         {/* Verification Banner */}
         {!user?.isVerified && (
@@ -429,14 +430,11 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    marginBottom: SPACING.md,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
+    marginBottom: SPACING.xl,
   },
   headerInner: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.lg,

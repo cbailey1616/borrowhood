@@ -1,21 +1,21 @@
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
+import ListingPrice from '../components/ListingPrice';
+import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
-import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
+import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   RefreshControl,
-  Image,
   ActivityIndicator,
   AppState,
   InteractionManager,
   Platform,
-  TextInput,
-  Pressable,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
@@ -23,7 +23,6 @@ import VerifiedBadge from '../components/VerifiedBadge';
 import useSavedListings from '../hooks/useSavedListings';
 import { useError } from '../context/ErrorContext';
 import HeroIcon from '../components/HeroIcon';
-import UserBadges, { getTier, TierIcon } from '../components/UserBadges';
 import HapticPressable from '../components/HapticPressable';
 import SearchBar from '../components/SearchBar';
 import ActionSheet from '../components/ActionSheet';
@@ -33,8 +32,7 @@ import ShimmerImage from '../components/ShimmerImage';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, CONDITION_LABELS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 import { checkPremiumGate } from '../utils/premiumGate';
 import { ENABLE_PAID_TIERS } from '../utils/config';
 
@@ -61,12 +59,6 @@ const FEED = {
   thread: COLORS.gray[50], threadDeep: COLORS.surfaceElevated,
 };
 
-const CARD_ACCENTS = {
-  borrow: { pill: COLORS.primary, soft: COLORS.primaryMuted },
-  giveaway: { pill: COLORS.primaryMuted, soft: COLORS.primaryMuted },
-  wanted: { pill: COLORS.warning, soft: COLORS.warningMuted },
-};
-
 export default function FeedScreen({ navigation }) {
   const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showToast, showError } = useError();
@@ -90,6 +82,7 @@ export default function FeedScreen({ navigation }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dismissedBanners, setDismissedBanners] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const listRef = useRef(null);
@@ -114,6 +107,7 @@ export default function FeedScreen({ navigation }) {
     navigation.navigate(item.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: item.id });
   };
   const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
+  const extraFilterCount = visibilityFilters.length + categoryFilters.length;
   const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
     const requestId = ++feedRequest.current;
     setFeedError(false);
@@ -392,19 +386,10 @@ export default function FeedScreen({ navigation }) {
     });
   };
 
-  const typeKeys = FILTER_OPTIONS.filter(o => o.key !== 'all').map(o => o.key);
   const visibilityKeys = VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(o => o.key);
 
-  const typeChipLabel = activeFilters.length === 0
-    ? 'Listings'
-    : activeFilters.length === 1
-      ? FILTER_OPTIONS.find(o => o.key === activeFilters[0])?.label
-      : activeFilters.length === 2
-        ? activeFilters.map(k => FILTER_OPTIONS.find(o => o.key === k)?.label).join(' & ')
-        : 'All Types';
-
   const visibilityChipLabel = visibilityFilters.length === 0
-    ? 'Visibility'
+    ? 'Everyone'
     : visibilityFilters.length === 1
       ? VISIBILITY_OPTIONS.find(o => o.key === visibilityFilters[0])?.label
       : `${visibilityFilters.length} Areas`;
@@ -430,129 +415,104 @@ export default function FeedScreen({ navigation }) {
     },
   ];
 
-  // Accent per card type (see CARD_ACCENTS at module top)
-  const getCardAccent = (item) =>
-    item.type === 'request' ? CARD_ACCENTS.wanted
-      : isTransferListing(item) ? CARD_ACCENTS.giveaway
-      : CARD_ACCENTS.borrow;
-
-  const renderListingItem = (item, index) => {
-    const accent = getCardAccent(item);
-    const userName = item.ownerMasked ? 'Verified Owner'
-      : `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
-    const isGiveaway = isTransferListing(item);
-    const priceLabel = isGiveaway && !isSaleListing(item) ? null : (directFeeLabel(item) || (item.isFree ? 'Free' : `$${item.pricePerDay}/day`));
-
+  const renderAuthor = item => {
+    if (item.ownerMasked) return <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />;
+    const author = item.user || {};
+    const name = `${author.firstName || 'Neighbor'}${author.lastName ? ` ${author.lastName.charAt(0)}.` : ''}`;
     return (
-    <View style={styles.tileShadow}>
-      <HapticPressable
-        onPress={() => openFeedItem(item)}
-        haptic="light"
-        scaleDown={0.98}
-        style={styles.tile}
-        testID="FeedCard"
-      >
-          {/* Thumbnail + Content row */}
-          <View style={styles.tileRow}>
-          <View style={[styles.tileThumb, { backgroundColor: accent.soft }]}>
-            {item.photoUrl ? (
-              <ShimmerImage
-                source={{ uri: item.photoUrl }}
-                style={styles.tileThumbImage}
-                sharedTransitionTag={`listing-photo-${item.id}`}
-              />
-            ) : (
-              <Ionicons name="image-outline" size={26} color={accent.pill + '55'} />
-            )}
-            {!item.ownerMasked && (
-              <HapticPressable
-                testID={`Feed.save.${item.id}`}
-                accessibilityRole="button"
-                accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
-                accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
-                disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
-                onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
-                style={styles.tileSaveButton}
-              >
-                {saved.status === 'loading' || saved.pendingIds.has(item.id)
-                  ? <ActivityIndicator size="small" color={COLORS.primary} />
-                  : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={saved.status === 'ready' && saved.savedIds.has(item.id)} color={COLORS.primary} />}
-              </HapticPressable>
-            )}
-          </View>
-          <View style={styles.tileContent}>
-            <View style={styles.tileTopRow}>
-              {isGiveaway ? (
-                <View style={[styles.tileTypePill, { backgroundColor: accent.pill }]}>
-                  <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
-                  <Text style={[styles.tilePillText, { color: COLORS.primary }]}>{isSaleListing(item) ? 'FOR SALE' : 'GIVEAWAY'}</Text>
-                </View>
-              ) : (
-                <View style={[styles.tileTypePill, { backgroundColor: item.isAvailable ? COLORS.primaryMuted : COLORS.textMuted }]}>
-                  {item.isAvailable && item.isBorrowed !== true && <Ionicons name="basket" size={18} illustrated />}
-                  <Text style={[styles.tilePillText, item.isAvailable && { color: COLORS.primary }]}>{item.isBorrowed === true ? 'Borrowed' : item.isAvailable ? 'Borrowable' : 'Unavailable'}</Text>
-                </View>
-              )}
-              <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
-            </View>
-            <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
-            <View style={styles.tileFooterRow}>
-              {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
-                <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
-                <View style={styles.authorNameAndBadge}>
-                  <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
-                  {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
-                </View>
-              </>}
-              {priceLabel ? (
-                <Text style={[styles.tilePrice, { color: COLORS.primary }]}>{priceLabel}</Text>
-              ) : null}
-            </View>
-          </View>
-          </View>
-      </HapticPressable>
-    </View>
-    );
-  };
-
-  const renderRequestItem = (item, index) => {
-    const userName = `${item.user.firstName} ${item.user.lastName ? `${item.user.lastName.charAt(0)}.` : ''}`;
-
-    return (
-      <View style={styles.tileShadow}>
-        <HapticPressable
-          onPress={() => openFeedItem(item)}
-          haptic="light"
-          scaleDown={0.98}
-          style={[styles.tile, styles.requestTile]}
-          testID={`Feed.request.${item.id}`}
-        >
-            <View style={styles.tileContent}>
-              <View style={[styles.tileTopRow, styles.requestTopRow]}>
-                <View style={styles.requestLabel}>
-                  <Ionicons name="request-note" size={26} illustrated />
-                  <Text style={styles.requestLabelText}>Neighbor request</Text>
-                </View>
-                <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
-              </View>
-              <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
-              {item.description ? (
-                <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>
-              ) : null}
-              <View style={styles.tileFooterRow}>
-                {item.ownerMasked ? <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
-                  <TierIcon tier={getTier(item.user.totalTransactions || 0)} size={16} />
-                  <View style={styles.authorNameAndBadge}>
-                  <Text style={styles.tileFooterText} numberOfLines={1}>{userName}</Text>
-                  {item.user.isVerified === true && <VerifiedBadge size={16} interactive />}
-                </View>
-                </>}
-              </View>
-            </View>
-        </HapticPressable>
+      <View style={styles.tileFooterRow}>
+        <ShimmerImage source={author.profilePhotoUrl ? { uri: author.profilePhotoUrl } : null} placeholderIcon="person" style={styles.sellerAvatar} />
+        <View style={styles.authorNameAndBadge}>
+          <Text style={styles.tileFooterText} numberOfLines={1}>{name}</Text>
+          {author.isVerified === true && <VerifiedBadge size={16} interactive />}
+        </View>
+        <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
       </View>
     );
   };
+
+  // Keep the discussion entry attached to its post without fetching every
+  // thread during scrolling. Opening it uses the existing permission checks.
+  const renderPublicReplies = item => !item.ownerMasked && !item.previewOnly && (
+    <HapticPressable
+      testID={`Feed.replies.${item.type}.${item.id}`}
+      accessibilityLabel={`Comments on ${item.title}`}
+      onPress={() => navigation.navigate('ListingDiscussion', item.type === 'request'
+        ? { requestId: item.id }
+        : { listingId: item.id })}
+      scaleDown={0.99}
+      style={styles.publicReplies}
+    >
+      <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
+      <Text style={styles.publicRepliesText}>Comments</Text>
+      <Text style={styles.publicRepliesAction}>View</Text>
+    </HapticPressable>
+  );
+
+  const renderListingItem = item => {
+    const transfer = isTransferListing(item);
+    const unavailable = item.isBorrowed === true || item.isAvailable === false;
+    const typeLabel = isSaleListing(item) ? 'For sale' : transfer ? 'Giveaway'
+      : item.isBorrowed === true ? 'Borrowed' : unavailable ? 'Unavailable' : 'Borrowable';
+    return (
+      <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
+        <View style={styles.tile}>
+          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID="FeedCard">
+            <View style={styles.tileThumb}>
+              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+              {!item.ownerMasked && (
+                <HapticPressable
+                  testID={`Feed.save.${item.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
+                  accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
+                  disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
+                  onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
+                  style={styles.tileSaveButton}
+                >
+                  {saved.status === 'loading' || saved.pendingIds.has(item.id)
+                    ? <ActivityIndicator size="small" color={COLORS.primary} />
+                    : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
+                </HapticPressable>
+              )}
+            </View>
+            <View style={styles.tileContent}>
+              <View style={styles.tileTopRow}>
+                <View style={styles.tileTypePill}>
+                  <Ionicons name={isSaleListing(item) ? 'pricetag' : transfer ? 'gift' : 'basket'} size={18} illustrated />
+                  <Text style={styles.tilePillText}>{typeLabel}</Text>
+                </View>
+                {transfer && unavailable && <Text style={styles.availabilityText}>Unavailable</Text>}
+              </View>
+              <ListingPrice listing={item} compact />
+              <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
+              {renderAuthor(item)}
+            </View>
+          </HapticPressable>
+          {renderPublicReplies(item)}
+        </View>
+      </LayeredCard>
+    );
+  };
+
+  const renderRequestItem = item => (
+    <LayeredCard style={styles.tileShadow} radius={RADIUS.xl} backingColor={COLORS.primaryMuted}>
+      <View style={[styles.tile, styles.requestTile]}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={[styles.tile, styles.requestTile]} testID={`Feed.request.${item.id}`}>
+          <View style={styles.tileContent}>
+            <View style={styles.requestLabel}>
+              <View style={styles.requestIcon}><Ionicons name="request-note" size={28} illustrated /></View>
+              <Text style={styles.requestLabelText}>Neighbor request</Text>
+            </View>
+            <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
+            {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
+            {renderAuthor(item)}
+          </View>
+        </HapticPressable>
+        {renderPublicReplies(item)}
+      </View>
+    </LayeredCard>
+  );
 
   const renderItem = ({ item, index }) => {
     if (item.type === 'listing') {
@@ -577,74 +537,29 @@ export default function FeedScreen({ navigation }) {
     <View style={styles.container}>
       <NativeHeader
         title="Borrowhood"
+        titleStyle={styles.feedTitle}
+        rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
+          <Ionicons name="add" size={20} color={COLORS.surface} />
+          <Text style={styles.addButtonText}>Post</Text>
+        </HapticPressable>}
       >
         {(isFetching || feed.length > 0 || hasFilters || feedError || !user?.city) && <>
-        <View style={styles.searchRow}>
-          <SearchBar
-            value={search}
-            onChangeText={setSearch}
-            placeholder="What do you need?"
-            onSubmitEditing={handleSearch}
-            testID="Feed.searchBar"
-            accessibilityLabel="Search items"
-            style={styles.headerSearchBar}
-          />
-          <HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create new listing" accessibilityRole="button" style={styles.addButton}>
-            <Ionicons name="add" size={22} color="#fff" />
-          </HapticPressable>
-        </View>
-
-        <View style={styles.filterChipsRow}>
-          <View style={styles.chipWrapper}>
-            <HapticPressable
-              style={[styles.dropdownChip, activeFilters.length > 0 && styles.dropdownChipActive]}
-              onPress={() => setActiveDropdown('type')}
-              haptic="light"
-              testID="Feed.chip.allTypes"
-              accessibilityLabel="Filter by type"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.dropdownChipText, activeFilters.length > 0 && styles.dropdownChipTextActive]}>
-                {typeChipLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={activeFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
+          <View style={styles.searchRow}>
+            <SearchBar value={search} onChangeText={setSearch} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
+            <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
+              <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
             </HapticPressable>
           </View>
-
-          <View style={styles.chipWrapper}>
-            <HapticPressable
-              style={[styles.dropdownChip, visibilityFilters.length > 0 && styles.dropdownChipActive]}
-              onPress={() => setActiveDropdown('visibility')}
-              haptic="light"
-              testID="Feed.chip.visibility"
-              accessibilityLabel="Filter by visibility"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.dropdownChipText, visibilityFilters.length > 0 && styles.dropdownChipTextActive]}>
-                {visibilityChipLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={visibilityFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-            </HapticPressable>
-          </View>
-
-          {categories.length > 0 && (
-            <View style={styles.chipWrapper}>
-              <HapticPressable
-                style={[styles.dropdownChip, categoryFilters.length > 0 && styles.dropdownChipActive]}
-                onPress={() => setActiveDropdown('category')}
-                haptic="light"
-                testID="Feed.chip.category"
-                accessibilityLabel="Filter by category"
-                accessibilityRole="button"
-              >
-                <Text numberOfLines={1} style={[styles.dropdownChipText, categoryFilters.length > 0 && styles.dropdownChipTextActive, { flexShrink: 1 }]}>
-                  {categoryChipLabel}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={categoryFilters.length > 0 ? '#fff' : COLORS.textSecondary} />
-              </HapticPressable>
+          <ScrollView horizontal style={styles.typeRibbon} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
+              {FILTER_OPTIONS.map(option => {
+                const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
+                return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={option.label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
+                  <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{option.label}</Text>
+                </HapticPressable>;
+              })}
             </View>
-          )}
-        </View>
+          </ScrollView>
         </>}
       </NativeHeader>
 
@@ -671,8 +586,8 @@ export default function FeedScreen({ navigation }) {
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
-        ListHeaderComponent={
-          banners.length > 0 ? (
+        ListHeaderComponent={<>
+          {banners.length > 0 ? (
             <View style={[styles.bannerDeck, { marginBottom: SPACING.lg, height: 60 + (banners.length - 1) * PEEK_HEIGHT }]}>
               {banners.map((b, i) => {
                 const isTop = i === 0;
@@ -718,8 +633,8 @@ export default function FeedScreen({ navigation }) {
                 );
               })}
             </View>
-          ) : null
-        }
+          ) : null}
+        </>}
         ListFooterComponent={
           isLoadingMore && (
             <View style={styles.loadingMore}>
@@ -778,29 +693,13 @@ export default function FeedScreen({ navigation }) {
 
 
       <ActionSheet
-        isVisible={activeDropdown === 'type'}
-        onClose={() => setActiveDropdown(null)}
-        title={
-          activeFilters.length > 0
-            ? <>{'Type  '}<Text onPress={() => { setActiveFilters([]); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
-            : 'Type'
-        }
-        multiSelect
+        isVisible={showFiltersSheet}
+        onClose={() => setShowFiltersSheet(false)}
+        title="Filter posts"
         actions={[
-          {
-            label: 'All',
-            icon: activeFilters.length === 0
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
-            onPress: () => setActiveFilters([]),
-          },
-          ...FILTER_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
-            label: opt.label,
-            icon: activeFilters.includes(opt.key)
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
-            onPress: () => toggleFilter(opt.key, typeKeys, setActiveFilters),
-          })),
+          { label: `Visibility · ${visibilityChipLabel}`, accessibilityLabel: 'Filter by visibility', icon: <Ionicons name="people-outline" size={22} />, onPress: () => setActiveDropdown('visibility') },
+          ...(categories.length ? [{ label: `Category · ${categoryChipLabel}`, accessibilityLabel: 'Filter by category', icon: <Ionicons name="pricetag-outline" size={22} />, onPress: () => setActiveDropdown('category') }] : []),
+          ...(extraFilterCount ? [{ label: 'Clear filters', onPress: () => { setVisibilityFilters([]); setCategoryFilters([]); } }] : []),
         ]}
       />
 
@@ -944,6 +843,21 @@ export default function FeedScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '700' },
+  feedTitle: { fontSize: 28, lineHeight: 36 },
+  typeRibbon: { flexGrow: 0, flexShrink: 0 },
+  typeTabs: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', gap: 2 },
+  typeTab: { minHeight: 44, minWidth: 44, flexShrink: 0, paddingHorizontal: SPACING.sm, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.full },
+  typeTabActive: { backgroundColor: COLORS.primary },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontWeight: '600', color: COLORS.textSecondary },
+  typeTabTextActive: { color: COLORS.surface },
+  sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
+  requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  requestTitle: { fontSize: 22, lineHeight: 29 },
+  availabilityText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginLeft: 'auto' },
+  publicReplies: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, marginHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
+  publicRepliesText: { ...TYPOGRAPHY.footnote, fontWeight: '600', flex: 1, color: COLORS.primary },
+  publicRepliesAction: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   container: {
     flex: 1,
     backgroundColor: FEED.bg,
@@ -955,61 +869,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
   },
   headerSearchBar: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderColor: COLORS.borderLight,
+    flex: 1, backgroundColor: COLORS.surface, borderWidth: 0, borderRadius: RADIUS.md,
   },
+  filtersButton: { width: 48, height: 48, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
+  filtersButtonActive: { backgroundColor: COLORS.primary },
   addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
   },
   filtersSection: {
     paddingBottom: SPACING.md,
     gap: SPACING.md,
-  },
-  filterChipsRow: {
-    flexWrap: 'wrap',
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  chipWrapper: {
-    flexGrow: 1,
-    flexBasis: 90,
-  },
-  dropdownChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    minHeight: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderLight,
-  },
-  dropdownChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  dropdownChipText: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-  },
-  dropdownChipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1137,29 +1009,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: 160,
+    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: 120, width: '100%', maxWidth: 660, alignSelf: 'center',
   },
   gridRow: {
     justifyContent: 'space-between',
     marginBottom: SPACING.md,
   },
   tileShadow: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
+    marginBottom: SPACING.xxl,
   },
   tile: {
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    borderWidth: 0,
-    backgroundColor: FEED.card,
+    borderRadius: RADIUS.xl, overflow: 'hidden', borderWidth: 0, backgroundColor: FEED.card,
   },
   requestTile: {
     backgroundColor: COLORS.requestSurface,
-    borderColor: COLORS.borderGreen,
   },
   requestTopRow: {
     flexWrap: 'wrap',
@@ -1167,10 +1030,7 @@ const styles = StyleSheet.create({
     rowGap: SPACING.xs,
   },
   requestLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    flexShrink: 1,
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm,
   },
   requestLabelText: {
     ...TYPOGRAPHY.footnote,
@@ -1182,13 +1042,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   tileThumb: {
-    width: '100%',
-    aspectRatio: 1.7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    borderTopLeftRadius: RADIUS.lg - 1,
-    overflow: 'hidden',
+    alignSelf: 'stretch', margin: SPACING.sm, marginBottom: 0, aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
   },
   tileThumbImage: {
     ...StyleSheet.absoluteFillObject,
@@ -1196,18 +1050,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   tileSaveButton: {
-    position: 'absolute',
-    top: SPACING.md,
-    right: SPACING.md,
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
+    position: 'absolute', top: SPACING.sm, right: SPACING.sm, width: 44, height: 44, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, ...SHADOWS.sm,
   },
   tileLockOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1227,20 +1070,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   tilePillText: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.2,
+    ...TYPOGRAPHY.caption1, fontWeight: '600', color: COLORS.primary,
   },
   tileContent: {
-    padding: SPACING.lg,
-    justifyContent: 'center',
+    padding: SPACING.lg, paddingBottom: SPACING.sm,
   },
   tileTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm,
   },
   tileTypeLabel: {
     flexDirection: 'row',
@@ -1253,12 +1089,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   tileTypePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
-    borderRadius: RADIUS.sm,
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full,
   },
   tileTypeLabelText: {
     ...TYPOGRAPHY.caption,
@@ -1266,36 +1097,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tileTimeText: {
-    ...TYPOGRAPHY.caption,
-    color: FEED.meta,
+    ...TYPOGRAPHY.caption1, color: COLORS.textMuted, marginLeft: 'auto',
   },
   tileTitle: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.text,
-    marginBottom: 2,
+    ...TYPOGRAPHY.headline, fontSize: 20, lineHeight: 26, color: COLORS.text, marginTop: SPACING.xs,
   },
   tileDesc: {
-    ...TYPOGRAPHY.bodySmall,
-    color: FEED.body,
-    marginBottom: SPACING.xs,
-    lineHeight: 21,
+    ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, marginTop: SPACING.sm, lineHeight: 22,
   },
   tileFooterRow: {
-    marginTop: SPACING.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    marginTop: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 32,
   },
   authorNameAndBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    gap: 0,
+    flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 2,
   },
   tileFooterText: {
-    ...TYPOGRAPHY.caption,
-    color: FEED.meta,
-    flexShrink: 1,
+    ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1,
   },
   tilePrice: {
     ...TYPOGRAPHY.headline,

@@ -255,7 +255,7 @@ export default function RootNavigator() {
             component={ListingDiscussionScreen}
             options={({ route }) => ({
               ...sharedScreenOptions,
-              title: 'Public replies',
+              title: 'Comments',
             })}
           />
           <Stack.Screen

@@ -42,6 +42,7 @@ const DRAWINGS = {
   chatbubble: chat,
   mail: c => rect(3, 7, 26, 20, 4, panel(c)) + p('M4 9L14 17C15 18 17 18 18 17L28 9M4 25L11 19M28 25L21 19'),
   search: c => circle(14, 14, 9, panel(c)) + p('M21 21L29 29'),
+  filter: c => p('M4 8H8M16 8H28M4 16H18M26 16H28M4 24H6M14 24H28') + circle(12, 8, 4, panel(c)) + circle(22, 16, 4, panel(c)) + circle(10, 24, 4, panel(c)),
   bookmark: c => p('M8 4H24V28L16 23L8 28Z', panel(c)),
   gift: c => rect(5, 13, 22, 16, 2, panel(c)) + rect(3, 9, 26, 6, 2, accent(c)) + p('M16 9V29M16 9C3 11 6 0 12 4ZM16 9C29 11 26 0 20 4Z'),
   leaf: c => p('M26 4C10 2 2 12 7 22C12 31 29 24 26 4Z', panel(c)) + p('M5 29L22 10M12 21V15M17 16H23'),

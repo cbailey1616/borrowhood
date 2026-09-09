@@ -7,6 +7,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
+import LayeredCard from './LayeredCard';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -85,59 +86,61 @@ export default function ActionSheet({
           exiting={SlideOutDown.duration(150)}
           style={[styles.sheetContainer, { paddingBottom: bottomPad, maxHeight: height - insets.top - SPACING.md }]}
         >
-          <ScrollView style={styles.sheetCard} contentContainerStyle={confirmation && styles.confirmationCard} bounces={false}>
-            {confirmation ? <>
-              <View style={styles.confirmationHeader}>
-                {icon ? <View style={styles.confirmationIcon}>{icon}</View> : null}
-                <Text style={styles.confirmationTitle}>{title}</Text>
-                <HapticPressable accessibilityRole="button" accessibilityLabel="Close confirmation" onPress={handleCancel} style={styles.confirmationClose}>
-                  <Ionicons name="close" size={20} color={COLORS.primary} />
-                </HapticPressable>
-              </View>
-              {message ? <Text style={styles.confirmationMessage}>{message}</Text> : null}
-            </> : <>
-            {title ? (
-              <View style={styles.header}>
-                <Text style={styles.title}>{title}</Text>
-                {message ? <Text style={styles.message}>{message}</Text> : null}
-              </View>
-            ) : null}
-            </>}
-            <View style={[styles.actionsContainer, confirmation && styles.confirmationActions]}>
-              {actions.map((action, index) => (
-                <HapticPressable
-                  key={index}
-                  onPress={() => handleAction(action)}
-                  haptic={null}
-                  accessibilityRole="button"
-                  testID={action.testID}
-                  accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
-                  style={[
-                    styles.actionButton,
-                    action.destructive && styles.destructiveButton,
-                    action.primary && styles.primaryButton,
-                    confirmation && styles.confirmationButton,
-                    confirmation && !action.primary && !action.destructive && styles.secondaryButton,
-                  ]}
-                >
-                  {action.icon ? (
-                    <View style={styles.actionIcon}>{action.icon}</View>
-                  ) : null}
-                  <Text
+          <LayeredCard style={styles.sheetDepth} radius={RADIUS.xl}>
+            <ScrollView style={styles.sheetCard} contentContainerStyle={confirmation && styles.confirmationCard} bounces={false}>
+              {confirmation ? <>
+                <View style={styles.confirmationHeader}>
+                  {icon ? <View style={styles.confirmationIcon}>{icon}</View> : null}
+                  <Text style={styles.confirmationTitle}>{title}</Text>
+                  <HapticPressable accessibilityRole="button" accessibilityLabel="Close confirmation" onPress={handleCancel} style={styles.confirmationClose}>
+                    <Ionicons name="close" size={20} color={COLORS.primary} />
+                  </HapticPressable>
+                </View>
+                {message ? <Text style={styles.confirmationMessage}>{message}</Text> : null}
+              </> : <>
+              {title ? (
+                <View style={styles.header}>
+                  <Text style={styles.title}>{title}</Text>
+                  {message ? <Text style={styles.message}>{message}</Text> : null}
+                </View>
+              ) : null}
+              </>}
+              <View style={[styles.actionsContainer, confirmation && styles.confirmationActions]}>
+                {actions.map((action, index) => (
+                  <HapticPressable
+                    key={index}
+                    onPress={() => handleAction(action)}
+                    haptic={null}
+                    accessibilityRole="button"
+                    testID={action.testID}
+                    accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
                     style={[
-                      styles.actionText,
-                      action.destructive && styles.destructiveText,
-                      action.primary && styles.primaryText,
-                      confirmation && styles.confirmationActionText,
-                      confirmation && !action.primary && !action.destructive && styles.secondaryText,
+                      styles.actionButton,
+                      action.destructive && styles.destructiveButton,
+                      action.primary && styles.primaryButton,
+                      confirmation && styles.confirmationButton,
+                      confirmation && !action.primary && !action.destructive && styles.secondaryButton,
                     ]}
                   >
-                    {action.label}
-                  </Text>
-                </HapticPressable>
-              ))}
-            </View>
-          </ScrollView>
+                    {action.icon ? (
+                      <View style={styles.actionIcon}>{action.icon}</View>
+                    ) : null}
+                    <Text
+                      style={[
+                        styles.actionText,
+                        action.destructive && styles.destructiveText,
+                        action.primary && styles.primaryText,
+                        confirmation && styles.confirmationActionText,
+                        confirmation && !action.primary && !action.destructive && styles.secondaryText,
+                      ]}
+                    >
+                      {action.label}
+                    </Text>
+                  </HapticPressable>
+                ))}
+              </View>
+            </ScrollView>
+          </LayeredCard>
           {!confirmation && <HapticPressable
             onPress={handleCancel}
             haptic="light"
@@ -187,6 +190,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginHorizontal: 'auto',
   },
+  sheetDepth: { flexShrink: 1, marginBottom: SPACING.xs },
   sheetCard: {
     flexGrow: 0,
     flexShrink: 1,
@@ -274,7 +278,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.md,
   },
   cancelText: {
     ...TYPOGRAPHY.headline,
