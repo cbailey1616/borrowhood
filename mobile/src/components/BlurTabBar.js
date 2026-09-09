@@ -213,12 +213,12 @@ const styles = StyleSheet.create({
   },
   unreadDot: {
     position: 'absolute',
-    top: -7,
-    left: 19,
+    top: 0,
+    right: 8,
     backgroundColor: COLORS.success,
-    borderRadius: 5,
-    width: 10,
-    height: 10,
+    borderRadius: 4,
+    width: 8,
+    height: 8,
   },
   unreadBadge: {
     position: 'absolute', top: -5, right: -2,
