@@ -26,7 +26,7 @@ export function townListingPreview(row, photos) {
     id: row.id, type: 'listing', title: row.title, description: row.description,
     condition: row.condition, listingType: row.listing_type || 'lend',
     isFree: row.is_free, directFee: row.direct_fee || null, isAvailable: row.is_available,
-    isBorrowed: row.is_borrowed === true, photoUrl: row.photo_url || null,
+    availabilityStatus: row.availability_status, isBorrowed: row.is_borrowed === true, photoUrl: row.photo_url || null,
     ...(photos ? { photos } : {}), category: row.category_name || null,
     categoryId: row.category_id || null, createdAt: row.created_at,
     user: hiddenMember(), owner: hiddenMember(), ownerMasked: true, previewOnly: true,

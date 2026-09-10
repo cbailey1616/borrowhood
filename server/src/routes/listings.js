@@ -1,3 +1,4 @@
+import { listingAvailabilitySql } from '../utils/listingAvailability.js';
 import { townPreviewSql, canPreviewTownPost, townListingPreview } from '../services/townPreview.js';
 import { ownedPhotoReferences, readOwnedPhoto } from '../services/privatePhotos.js';
 import { normalizeDirectFee } from '../utils/directFee.js';
@@ -62,7 +63,7 @@ router.get('/', authenticate, async (req, res) => {
     const orderBy = 'l.created_at DESC';
 
     const result = await query(
-      `SELECT l.*, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
+      `SELECT l.*, ${listingAvailabilitySql()} as availability_status, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.city as owner_city,
               u.total_transactions, u.is_verified as owner_verified,
               cat.name as category_name,
@@ -140,7 +141,7 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/mine', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT l.*,
+      `SELECT l.*, ${listingAvailabilitySql()} as availability_status,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
               (SELECT COUNT(*) FROM borrow_transactions WHERE listing_id = l.id AND status = 'pending') as pending_requests,
               (SELECT COUNT(*) FROM listing_shares ss JOIN item_requests sr ON sr.id = ss.request_id
@@ -164,6 +165,7 @@ router.get('/mine', authenticate, async (req, res) => {
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
       isAvailable: l.is_available,
+      availabilityStatus: l.availability_status,
       status: l.status,
       photoUrl: l.photo_url,
       timesBorrowed: l.times_borrowed,
@@ -191,7 +193,7 @@ router.get('/:id', authenticate, async (req, res) => {
     const fullAccess = await canViewListing(req.params.id, req.user.id);
     if (!fullAccess && !await canPreviewTownPost(req.params.id, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
     const result = await query(
-      `SELECT l.*, u.id as owner_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
+      `SELECT l.*, ${listingAvailabilitySql()} as availability_status, u.id as owner_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count, u.total_transactions,
               u.is_verified as owner_verified, u.city as owner_city, c.name as category_name
        FROM listings l
@@ -249,6 +251,7 @@ router.get('/:id', authenticate, async (req, res) => {
         circleId: l.circle_id,
       communityId: l.community_id,
       isAvailable: l.is_available,
+      availabilityStatus: l.availability_status,
       status: l.status,
       photos: photos.rows.map(p => p.url),
       category: l.category_name,

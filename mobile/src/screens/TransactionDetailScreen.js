@@ -263,43 +263,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </HapticPressable>
             <View style={styles.cardDivider} />
             <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />
-
-          </View>
-        </LayeredCard>
-
-        <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
-          <Text style={styles.cardEyebrow}>What happens next</Text>
-          <Text style={styles.heroTitle}>{nextStep.title}</Text>
-          <Text style={styles.heroDescription}>{nextStep.detail}</Text>
-          {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
-            accessibilityLabel={primaryAction.label} style={styles.approveButton}
-            disabled={actionLoading} onPress={primaryAction.onPress}>
-            {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
-          </HapticPressable>}
-          {transaction.isLender && transaction.status === 'pending' && <HapticPressable
-            accessibilityRole="button" accessibilityLabel="Decline request" testID="Transaction.button.decline"
-            disabled={actionLoading} style={styles.secondaryAction} onPress={handleDecline}>
-            <Text style={styles.detailText}>Decline request</Text>
-          </HapticPressable>}
-          {transaction.isBorrower && !transaction.actualPickupAt && ['approved', 'paid'].includes(transaction.status) && <HapticPressable
-            accessibilityRole="button" accessibilityLabel="Confirm pickup" testID="Transaction.button.confirmPickup"
-            disabled={actionLoading} style={styles.secondaryAction} onPress={handleConfirmPickup}>
-            <Text style={styles.neighborMessageTitle}>Confirm pickup</Text>
-            <Text style={styles.detailText}>Only after you have the item</Text>
-          </HapticPressable>}
-          {(!primaryIsMessage || finished) && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
-            style={styles.secondaryAction} onPress={messageNeighbor}>
-            <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
-          </HapticPressable>}
-        </View>
-
-        <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
-          accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
-          onPress={() => setDetailsExpanded(value => !value)}>
-          <Text style={styles.neighborMessageTitle}>Exchange details</Text>
-          <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
-        </HapticPressable>
-        {detailsExpanded && <>
             {!isGiveaway && <>
               <View style={styles.cardDivider} />
               <View style={styles.borrowDates}>
@@ -317,6 +280,46 @@ export default function TransactionDetailScreen({ route, navigation }) {
               </View>
               <Text style={styles.durationNote}>{transaction.rentalDays} {transaction.rentalDays === 1 ? 'day' : 'days'} together</Text>
             </>}
+
+          </View>
+        </LayeredCard>
+
+        <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
+          <Text style={styles.cardEyebrow}>What happens next</Text>
+          <Text style={styles.heroTitle}>{nextStep.title}</Text>
+          <Text style={styles.heroDescription}>{nextStep.detail}</Text>
+          <View style={transaction.isLender && transaction.status === 'pending' ? styles.decisionRow : undefined}>
+          {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
+            accessibilityLabel={primaryAction.label} style={[styles.approveButton, transaction.isLender && transaction.status === 'pending' && { flex: 1 }]}
+            disabled={actionLoading} onPress={primaryAction.onPress}>
+            {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
+          </HapticPressable>}
+          {transaction.isLender && transaction.status === 'pending' && <HapticPressable
+            accessibilityRole="button" accessibilityLabel="Decline request" testID="Transaction.button.decline"
+            disabled={actionLoading} style={[styles.outlinedAction, { flex: 1 }]} onPress={handleDecline}>
+            <Text style={styles.neighborMessageTitle}>Decline</Text>
+          </HapticPressable>}
+          </View>
+          {transaction.isBorrower && !transaction.actualPickupAt && ['approved', 'paid'].includes(transaction.status) && <HapticPressable
+            accessibilityRole="button" accessibilityLabel="Confirm pickup" testID="Transaction.button.confirmPickup"
+            disabled={actionLoading} style={styles.secondaryAction} onPress={handleConfirmPickup}>
+            <Text style={styles.neighborMessageTitle}>Confirm pickup</Text>
+            <Text style={styles.detailText}>Only after you have the item</Text>
+          </HapticPressable>}
+          {(!primaryIsMessage || finished) && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+            style={styles.outlinedAction} onPress={messageNeighbor}>
+            <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
+          </HapticPressable>}
+        </View>
+
+        <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
+          accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
+          onPress={() => setDetailsExpanded(value => !value)}>
+          <Text style={styles.neighborMessageTitle}>Exchange details</Text>
+          <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
+        </HapticPressable>
+        {detailsExpanded && <>
+
           {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
             && (['approved', 'paid'].includes(transaction.status) || (transaction.isBorrower && transaction.status === 'pending')) &&
             <HapticPressable accessibilityRole="button" accessibilityLabel="Cancel borrow" testID="Transaction.button.cancel"
@@ -420,6 +423,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  decisionRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
+  outlinedAction: { minHeight: 50, paddingVertical: 14, paddingHorizontal: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
   secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
   detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },

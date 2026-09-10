@@ -575,6 +575,8 @@ const styles = StyleSheet.create({
   },
   // Request card styles
   requestCardOuter: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
     marginBottom: SPACING.md,
   },
   requestCard: {

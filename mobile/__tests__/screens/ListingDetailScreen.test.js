@@ -107,7 +107,7 @@ describe('ListingDetailScreen', () => {
     api.getConversations.mockResolvedValue([]);
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
     const { findByText, getByLabelText, queryByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
-    await findByText('Not available to borrow right now');
+    await findByText('Not available right now');
     expect(queryByText('Request to Borrow')).toBeNull();
     expect(queryByText('Message owner')).toBeTruthy();
     await act(async () => { fireEvent.press(getByLabelText('Message owner')); });

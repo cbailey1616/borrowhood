@@ -1,3 +1,4 @@
+import { listingAvailability } from '../utils/listingAvailability';
 import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
@@ -465,9 +466,8 @@ export default function FeedScreen({ navigation }) {
 
   const renderListingItem = item => {
     const transfer = isTransferListing(item);
-    const unavailable = item.isBorrowed === true || item.isAvailable === false;
-    const typeLabel = isSaleListing(item) ? 'For sale' : transfer ? 'Giveaway'
-      : item.isBorrowed === true ? 'Borrowed' : unavailable ? 'Unavailable' : 'Borrowable';
+    const typeLabel = listingAvailability(item).label;
+
     return (
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
@@ -496,7 +496,6 @@ export default function FeedScreen({ navigation }) {
                   <Ionicons name={isSaleListing(item) ? 'pricetag' : transfer ? 'gift' : 'basket'} size={18} illustrated />
                   <Text style={styles.tilePillText}>{typeLabel}</Text>
                 </View>
-                {transfer && unavailable && <Text style={styles.availabilityText}>Unavailable</Text>}
               </View>
               <ListingPrice listing={item} compact />
               <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
@@ -512,7 +511,7 @@ export default function FeedScreen({ navigation }) {
   const renderRequestItem = item => (
     <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
-        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={[styles.tile, styles.requestTile]} testID={`Feed.request.${item.id}`}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
               <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
@@ -1022,7 +1021,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl, overflow: 'hidden', borderWidth: 0, backgroundColor: FEED.card,
   },
   requestTile: {
-    backgroundColor: COLORS.requestSurface,
+    backgroundColor: FEED.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
   },
   requestTopRow: {
     flexWrap: 'wrap',

@@ -169,3 +169,19 @@ it('shows completion without an invented confirmation step for a fee-free return
   await screen.findByText('Exchange complete');
   expect(screen.queryByTestId('Transaction.button.confirmReturn')).toBeNull();
 });
+
+it('shows dates and clear decline/message actions before opening Exchange details', async () => {
+  api.getTransaction.mockResolvedValue({ ...mockTransaction, isBorrower: false, isLender: true });
+  api.getConversations.mockResolvedValue([]);
+  const Screen = require('../../src/screens/TransactionDetailScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
+  await screen.findByText('Pickup');
+  expect(screen.getByText('Return by')).toBeTruthy();
+  expect(screen.getByLabelText('Exchange details').props.accessibilityState.expanded).toBe(false);
+  fireEvent.press(screen.getByLabelText('Message Test privately'));
+  await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: 'user-1' })));
+  expect(api.declineRental).not.toHaveBeenCalled();
+  api.declineRental.mockResolvedValue({});
+  fireEvent.press(screen.getByTestId('Transaction.button.decline'));
+  await waitFor(() => expect(api.declineRental).toHaveBeenCalledWith('txn-1'));
+});

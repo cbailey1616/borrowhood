@@ -184,7 +184,7 @@ describe('FeedScreen', () => {
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
-  it('gives requests a sage note treatment while listings stay parchment', async () => {
+  it('gives requests a neutral surface inside an outlined card', async () => {
     const author = { id: 'neighbor', firstName: 'Robin', lastName: '', isVerified: false };
     api.getFeed.mockResolvedValue({ items: [
       { id: 'note', type: 'request', title: 'Could use a ladder', user: author, createdAt: new Date().toISOString() },
@@ -195,7 +195,7 @@ describe('FeedScreen', () => {
     await findByText('Neighbor request');
     expect(queryByText('REQUEST')).toBeNull();
     const style = id => StyleSheet.flatten(getByTestId(id).props.style);
-    expect(style('Feed.request.note').backgroundColor).toBe(COLORS.requestSurface);
+    expect(style('Feed.request.note').backgroundColor).toBe(COLORS.card);
     expect(style('FeedCard').backgroundColor).toBe(COLORS.card);
     expect(style('Feed.request.note').borderRadius).toBe(style('FeedCard').borderRadius);
     expect(queryByText('View comments')).toBeNull();

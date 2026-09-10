@@ -1,3 +1,4 @@
+import { listingAvailabilitySql } from '../utils/listingAvailability.js';
 import { townPreviewSql, canPreviewTownPost, townListingPreview, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
@@ -71,6 +72,7 @@ router.get('/', authenticate, async (req, res) => {
           l.is_free,
           l.direct_fee,
           l.is_available,
+          ${listingAvailabilitySql()} as availability_status,
           EXISTS (SELECT 1 FROM borrow_transactions t WHERE t.listing_id = l.id
             AND t.status IN ('picked_up', 'return_pending')) as is_borrowed,
           l.price_per_day,
@@ -225,6 +227,7 @@ router.get('/', authenticate, async (req, res) => {
       directFee: l.direct_fee || null,
         listingType: l.listing_type || 'lend',
         isAvailable: l.is_available,
+        availabilityStatus: l.availability_status,
         isBorrowed: l.is_borrowed === true,
         pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
         photoUrl: l.photo_url,

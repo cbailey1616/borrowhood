@@ -251,7 +251,7 @@ export default function EditProfileScreen({ navigation }) {
               style={styles.input}
               value={formData.displayName}
               onChangeText={(v) => updateField('displayName', v)}
-              placeholder={formData.firstName || 'How neighbors see you'}
+              placeholder="Choose a name neighbors will see"
               placeholderTextColor={COLORS.textMuted}
               autoCapitalize="words"
             />

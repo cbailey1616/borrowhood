@@ -1,3 +1,4 @@
+import { listingAvailability } from '../utils/listingAvailability';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -50,9 +51,9 @@ export default function MyItemsScreen({ navigation }) {
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
-        // Keep only items currently available to borrow, buy, or claim.
-        // Completed exchanges remain accessible through account History.
-        setListings(data.filter((listing) => listing.status === 'active' && listing.isAvailable));
+        // Keep active and paused inventory visible while exchanges are in progress.
+        // Completed transfers remain in History.
+        setListings(data.filter((listing) => ['active', 'paused'].includes(listing.status)));
       } else {
         const data = await api.getMyRequests();
         setRequests(data);
@@ -188,7 +189,7 @@ export default function MyItemsScreen({ navigation }) {
                     styles.statusText,
                     { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
                   ]}>
-                    {item.status === 'given_away' ? (isSaleListing(item) ? 'Sold' : 'Claimed') : item.isAvailable ? (isSaleListing(item) ? 'For sale' : isTransferListing(item) ? 'Unclaimed' : 'Borrowable') : 'Borrowed'}
+                    {listingAvailability(item).label}
                   </Text>
                 </View>
                 {item.pendingRequests > 0 && (
@@ -569,7 +570,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   requestCard: {
-    backgroundColor: COLORS.requestSurface,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
     borderRadius: RADIUS.lg,
     flexDirection: 'row',
     overflow: 'hidden',
