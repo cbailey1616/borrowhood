@@ -1018,7 +1018,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isVerified: user.is_verified || false,
       rating: parseFloat(user.rating) || 0,
       ratingCount: user.rating_count,
-      endorsement: await endorsementSummary(user.id),
+      endorsement: user.id === req.user.id ? null : await endorsementSummary(user.id),
       totalTransactions: user.total_transactions,
       memberSince: user.created_at,
     });

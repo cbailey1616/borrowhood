@@ -728,7 +728,7 @@ router.post('/:id/rate', authenticate,
 );
 
 router.post('/:id/endorse', authenticate, async (req, res) => {
-  if (typeof req.body.positive !== 'boolean') return res.status(400).json({ error: 'Choose thumbs up or thumbs down.' });
+  if (typeof req.body.positive !== 'boolean' && req.body.positive !== null) return res.status(400).json({ error: 'Choose thumbs up, neutral, or thumbs down.' });
   try {
     const result = await submitEndorsement(req.params.id, req.user.id, req.body.positive);
     return res.status(result.status || 200).json(result);

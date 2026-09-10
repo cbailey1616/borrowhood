@@ -187,7 +187,6 @@ export default function ProfileScreen({ navigation }) {
           <UserBadges
             layout="summary"
             totalTransactions={user?.totalTransactions || 0}
-            endorsement={user?.endorsement}
           />
         </LayeredCard>
 

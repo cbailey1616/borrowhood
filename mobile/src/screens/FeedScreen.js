@@ -529,7 +529,10 @@ export default function FeedScreen({ navigation }) {
             contentFit="cover" style={styles.ribbonPhoto} />}
         </HapticPressable>
         <View style={styles.ribbonFooter}>
-          {renderAuthor(item, { compact: true, showTime: false })}
+          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+            style={styles.ribbonAuthorButton} accessibilityLabel={`View request: ${item.title}`}>
+            {renderAuthor(item, { compact: true, showTime: false })}
+          </HapticPressable>
           {renderPublicReplies(item, { compact: true })}
         </View>
       </View>
@@ -907,6 +910,7 @@ const styles = StyleSheet.create({
   ribbonPhoto: { width: 64, height: 64, borderRadius: RADIUS.sm },
   ribbonFooter: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 48, marginHorizontal: SPACING.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
   ribbonAuthor: { flex: 1, minWidth: 0, marginTop: 0 },
+  ribbonAuthorButton: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
   ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
   ribbonRepliesText: { flex: 0 },
   addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '700' },

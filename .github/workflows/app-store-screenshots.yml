@@ -76,7 +76,9 @@ jobs:
           name: borrowhood-screenshot-simulator
           path: ${{ runner.temp }}/borrowhood-simulator-app.zip
           retention-days: 3
-      - name: Capture iPhone Pro Max and iPad with mock posts
+      - name: Capture native screens with mock posts
+        env:
+          BORROWHOOD_CAPTURE_REVIEW_ONLY: ${{ github.event_name == 'pull_request' }}
         run: |
           python3 -m venv "$RUNNER_TEMP/borrowhood-capture-python"
           "$RUNNER_TEMP/borrowhood-capture-python/bin/pip" install Pillow
@@ -87,7 +89,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: borrowhood-app-store-screenshots
+          name: borrowhood-${{ github.event_name == 'pull_request' && 'ui-review' || 'app-store-screenshots' }}
           path: |
             ${{ runner.temp }}/app-store-screenshots
             ${{ runner.temp }}/borrowhood-native-build.log

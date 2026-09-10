@@ -1,6 +1,7 @@
 import { user, listings, requests, conversation, messages } from './fixtures';
 import { Settings } from 'react-native';
 const noop = async () => ({});
+let feedback = { canRate: true };
 let preferences = {
   push_enabled: true, push_sound: true,
   new_item_requests_source_friends: true, new_item_requests_source_neighborhood: true, new_item_requests_source_town: false,
@@ -12,6 +13,11 @@ const plainRequest = { ...requests[0], id: 'demo-service-request', title: 'Help 
 const carouselRequests = captureScreen === 'requests-photo' ? [photoRequest, plainRequest] : [plainRequest, photoRequest];
 const api = {
   getMe: async () => user,
+  getUser: async id => id === user.id ? user : listings.find(item => item.owner.id === id)?.owner,
+  getFriends: async () => [],
+  getUserSafety: async () => ({ blocked: false }),
+  endorseTransaction: async (_id, positive) => { feedback = { canRate: false, submitted: true, positive }; return { success: true }; },
+  getTransaction: async () => ({ id: 'demo-exchange', endorsement: feedback }),
   getNotificationPreferences: async () => preferences,
   updateNotificationPreferences: async patch => { preferences = { ...preferences, ...patch }; return preferences; },
   getFeed: async () => captureScreen?.startsWith('requests-')

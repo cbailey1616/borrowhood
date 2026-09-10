@@ -46,6 +46,8 @@ try {
   const { runMigrations } = await import('../src/utils/migrations.js');
   await runMigrations();
   assert.equal(errors.length, 0, 'Runtime migrations logged errors.');
+  const endorsementColumn = await client.query("SELECT is_nullable FROM information_schema.columns WHERE table_name='exchange_endorsements' AND column_name='positive'");
+  assert.equal(endorsementColumn.rows[0].is_nullable, 'YES', 'Neutral feedback must be allowed after the upgrade.');
   // Exercise the values written by current handlers against the actual enum
   // types. Mocked query tests cannot catch a missing production enum value.
   for (const [type, values] of Object.entries({

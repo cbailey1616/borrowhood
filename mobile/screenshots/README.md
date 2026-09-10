@@ -11,9 +11,12 @@ For Sale, Saved, My Posts, and Messages. Screens are captured at native size:
 - iPad Pro 13-inch (M4): 2064 × 2752 pixels.
 
 The capture script exports RGB PNGs without transparency or resizing.
-The `ui-review` folders also contain notification settings and rated/unrated
-profiles on iPhone Pro Max and iPhone SE. These review images are separate
+The `ui-review` folders also contain notification settings, your account profile,
+another member’s profile, and the actual exchange feedback component in a preview
+screen on iPhone Pro Max and iPhone SE. These review images are separate
 from the six-image App Store set and include both on and off switch states.
+Pull request runs capture only these review screens on the two iPhones. Manually
+dispatched runs also produce the full App Store set on iPhone and iPad.
 They also show the same compact request carousel with a photo request and
 a short service request in front, to check spacing and consistent height.
 Review every image before uploading to App Store Connect. The photos are

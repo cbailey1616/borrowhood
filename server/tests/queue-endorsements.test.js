@@ -13,6 +13,8 @@ beforeAll(async()=>{
  app.use('/transactions',(await import('../src/routes/transactions.js')).default);
  app.use('/rentals',(await import('../src/routes/rentals.js')).default);
  app.use('/feed',(await import('../src/routes/feed.js')).default);
+ app.use('/users',(await import('../src/routes/users.js')).default);
+ app.use('/auth',(await import('../src/routes/auth.js')).default);
  for(const [id,name] of [[owner,'Owner'],[first,'Alex'],[second,'Sam']]) await query("INSERT INTO users(id,email,password_hash,first_name,last_name,status,is_verified) VALUES($1,$2,'test',$3,'Test','verified',true)",[id,`${id}@queue.invalid`,name]);
  await query("INSERT INTO friendships(user_id,friend_id,status) VALUES($1,$2,'accepted'),($1,$3,'accepted')",users);
  listing=(await query("INSERT INTO listings(owner_id,title,condition,is_free,price_per_day,deposit_amount,visibility,privacy_version) VALUES($1,'Queue drill','good',true,0,0,'close_friends',1) RETURNING id",[owner])).rows[0].id;
@@ -47,6 +49,19 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  expect((await request(app).post(`/rentals/${waiting}/approve`).set(auth(owner)).send({})).status).toBe(200);
  expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(owner)).send({positive:false})).status).toBe(200);
  const own=await request(app).get(`/transactions/${chosen}`).set(auth(owner));expect(own.body.endorsement.submitted).toBe(true);
+ const recipient=chosen===firstRequest ? first : second;
+ const publicProfile=await request(app).get(`/users/${recipient}`).set(auth(owner));
+ expect(publicProfile.status).toBe(200);expect(publicProfile.body.endorsement).toEqual({percent:0,count:1,score:63});
+ const ownProfile=await request(app).get(`/users/${recipient}`).set(auth(recipient));
+ expect(ownProfile.status).toBe(200);expect(ownProfile.body.endorsement).toBeNull();
+ const ownAccount=await request(app).get('/auth/me').set(auth(recipient));
+ expect(ownAccount.status).toBe(200);expect(ownAccount.body.endorsement).toBeNull();
+ expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(recipient)).send({})).status).toBe(400);
+ expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(recipient)).send({positive:null})).status).toBe(200);
+ const neutral=await request(app).get(`/transactions/${chosen}`).set(auth(recipient));
+ expect(neutral.body.endorsement).toMatchObject({submitted:true,positive:null,canRate:false});
+ const neutralRecipient=await request(app).get(`/users/${owner}`).set(auth(recipient));
+ expect(neutralRecipient.body.endorsement).toEqual({percent:null,count:0,score:null});
 });
 it('paginates items independently so many requests cannot bury them',async()=>{
  const reserved=await request(app).get('/feed?layout=sections').set(auth(first));

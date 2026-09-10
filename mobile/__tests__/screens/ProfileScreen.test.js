@@ -55,12 +55,11 @@ describe('ProfileScreen', () => {
     expect(getByLabelText('Verified identity')).toBeTruthy();
   });
 
-  it('shows tier badge based on transaction count', () => {
+  it('shows completed exchanges without a separate rank', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText, getByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('Archer')).toBeTruthy();
-    fireEvent.press(getByLabelText('View community ranks'));
-    expect(getByText('Borrowhood Ranks')).toBeTruthy();
+    const { getByLabelText, queryByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(getByLabelText('5 completed exchanges')).toBeTruthy();
+    expect(queryByLabelText('View community ranks')).toBeNull();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false
@@ -104,15 +103,13 @@ describe('ProfileScreen', () => {
     expect(getByText('test@test.com')).toBeTruthy();
   });
 
-  it('distinguishes an unrated profile from a zero-percent endorsement', () => {
+  it('keeps your own endorsement score hidden even when older cached data includes it', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const screen = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(screen.getByLabelText('No endorsements yet')).toBeTruthy();
     expect(screen.getByLabelText('5 completed exchanges')).toBeTruthy();
     mockUser.endorsement = { count: 1, percent: 0 };
     screen.rerender(<ProfileScreen navigation={mockNavigation} />);
-    expect(screen.getByText('0%')).toBeTruthy();
-    expect(screen.queryByText('No ratings')).toBeNull();
+    expect(screen.queryByText(/0%|endorsed|No score yet/i)).toBeNull();
   });
 
   it('displays version number', () => {

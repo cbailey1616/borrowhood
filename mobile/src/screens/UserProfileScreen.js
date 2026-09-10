@@ -32,9 +32,12 @@ export default function UserProfileScreen({ route, navigation }) {
 
   useEffect(() => {
     setMessagesBlocked(false);
+    setUser(null);
+    setIsLoading(true);
     fetchUser();
     checkFriendStatus();
-  }, [id]);
+    return navigation.addListener('focus', () => { fetchUser(); checkFriendStatus(); });
+  }, [id, navigation]);
 
   const fetchUser = async () => {
     try {
@@ -122,8 +125,7 @@ export default function UserProfileScreen({ route, navigation }) {
           />
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
 
-          <MemberSummary user={user} />
-          <Text style={styles.metaText}>{user.totalTransactions || 0} completed exchanges</Text>
+          <MemberSummary user={user} showEndorsement={!isOwnProfile} centered />
           <View style={styles.metaRow}>
             {user.city && user.state && (
               <View style={styles.metaItem}>

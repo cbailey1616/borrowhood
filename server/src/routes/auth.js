@@ -1,4 +1,3 @@
-import { endorsementSummary } from '../services/endorsements.js';
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -599,7 +598,7 @@ router.get('/me', authenticate, async (req, res) => {
       lenderRatingCount: user.lender_rating_count || 0,
       borrowerRating: parseFloat(user.borrower_rating) || 0,
       borrowerRatingCount: user.borrower_rating_count || 0,
-      endorsement: await endorsementSummary(user.id),
+      endorsement: null,
       totalTransactions: user.total_transactions,
       subscriptionTier: user.subscription_tier || 'free',
       hasConnectAccount: !!user.stripe_connect_account_id,
