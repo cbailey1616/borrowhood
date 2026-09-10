@@ -24,8 +24,9 @@ export default function ExchangeEndorsement({ transaction, onSaved }) {
       <View style={{ flexDirection:'row',gap:12 }}>
         {[true,false].map(positive => <HapticPressable key={String(positive)} accessibilityRole="button" accessibilityLabel={positive ? 'Thumbs up' : 'Thumbs down'}
           accessibilityState={{ selected:choice === positive,disabled:saving }} disabled={saving} onPress={() => setChoice(positive)}
-          style={{ flex:1,minHeight:56,alignItems:'center',justifyContent:'center',borderWidth:choice===positive ? 2 : 1,borderColor:choice===positive ? COLORS.primary : COLORS.border,borderRadius:RADIUS.md,backgroundColor:COLORS.surface }}>
-          <Ionicons name={positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={26} color={COLORS.primary} />
+          style={{ flex:1,minHeight:88,gap:6,padding:12,alignItems:'center',justifyContent:'center',borderWidth:choice===positive ? 2 : 1,borderColor:choice===positive ? COLORS.primary : COLORS.borderBrown,borderRadius:RADIUS.md,backgroundColor:choice===positive ? COLORS.primaryMuted : COLORS.surface }}>
+          <Ionicons name={positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={36} illustrated selected={choice===positive} color={COLORS.primary} />
+          <Text style={{ ...TYPOGRAPHY.footnote,color:COLORS.primary,fontWeight:choice===positive ? '700' : '500' }}>{positive ? 'Thumbs up' : 'Thumbs down'}</Text>
         </HapticPressable>)}
       </View>
       <HapticPressable accessibilityRole="button" accessibilityLabel="Send endorsement" disabled={saving || choice===null} onPress={send}
