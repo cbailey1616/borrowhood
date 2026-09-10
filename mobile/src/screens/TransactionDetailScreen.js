@@ -24,7 +24,7 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import RentalProgress from '../components/RentalProgress';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS } from '../utils/config';
-import { scheduleReturnReminders, cancelReturnReminders } from '../utils/returnReminders';
+import { cancelReturnReminders } from '../utils/returnReminders';
 
 async function dismissRelatedNotifications(transactionId) {
   try {
@@ -66,15 +66,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const isGiveaway = isTransferListing(transaction);
   useEffect(() => { navigation.setOptions({ title: isGiveaway ? 'Exchange details' : 'Borrow details' }); }, [isGiveaway, navigation]);
 
-  // Schedule or cancel return reminders based on transaction status (skip for giveaways)
-  useEffect(() => {
-    if (!transaction) return;
-    if (transaction.status === 'picked_up' && !isGiveaway) {
-      scheduleReturnReminders(id, transaction.endDate, transaction.listing?.title || 'Item');
-    } else if (['returned', 'completed', 'cancelled'].includes(transaction.status)) {
-      cancelReturnReminders(id);
-    }
-  }, [transaction?.status]);
+  // The server schedules reminders and applies the saved push preferences.
+  useEffect(() => { cancelReturnReminders(id); }, [id]);
 
   const fetchTransaction = async () => {
     try {

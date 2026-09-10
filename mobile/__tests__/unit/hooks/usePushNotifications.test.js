@@ -4,6 +4,7 @@ import api from '../../../src/services/api';
 
 jest.unmock('../../../src/hooks/usePushNotifications');
 const usePushNotifications = jest.requireActual('../../../src/hooks/usePushNotifications').default;
+const foregroundHandler = Notifications.setNotificationHandler.mock.calls.at(-1)[0];
 
 describe('usePushNotifications', () => {
   beforeEach(() => {
@@ -39,4 +40,8 @@ describe('usePushNotifications', () => {
     renderHook(() => usePushNotifications(false));
     expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
   });
+});
+
+it.each([[null, false], ['default', true]])('honors foreground notification sound %s', async (sound, expected) => {
+  expect((await foregroundHandler.handleNotification({ request: { content: { sound } } })).shouldPlaySound).toBe(expected);
 });
