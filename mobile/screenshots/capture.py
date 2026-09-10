@@ -12,12 +12,13 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
 screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'sell'), ('04-saved', 'saved'), ('05-my-posts', 'posts'), ('06-messages', 'chat')]
+review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/profile-unrated', 'profile-unrated')]
 manifest = []
 
 def run(*args, check=True, timeout=180):
     return subprocess.run(['xcrun', 'simctl', *args], check=check, timeout=timeout)
 
-for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752))]:
+for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752)), ('iphone-se', 'iPhone SE (3rd generation)', (750, 1334))]:
     matches = [(runtime, device) for runtime, group in devices.items() if '.iOS-' in runtime for device in group if device['name'] == name and device.get('isAvailable')]
     created_device = False
     if not matches:
@@ -45,12 +46,14 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
         run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
         run('install', udid, str(app))
         hashes = set()
-        for filename, route in screens:
+        device_screens = review_screens if folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
+        for filename, route in device_screens:
             # A launch argument selects the screen without an iOS open-link dialog.
             print(f'Capturing {name}: {route}', flush=True)
             run('launch', '--terminate-running-process', udid, 'com.borrowhood.app', '-BorrowhoodCaptureScreen', route)
             time.sleep(15)
             target = destination / f'{filename}.png'
+            target.parent.mkdir(parents=True, exist_ok=True)
             run('io', udid, 'screenshot', '--type=png', str(target))
             with Image.open(target) as original:
                 if original.size != size:

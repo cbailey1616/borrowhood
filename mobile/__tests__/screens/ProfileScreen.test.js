@@ -30,6 +30,7 @@ jest.mock('../../src/context/ErrorContext', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   delete mockUser.displayName;
+  delete mockUser.endorsement;
 });
 
 describe('ProfileScreen', () => {
@@ -41,23 +42,25 @@ describe('ProfileScreen', () => {
 
   it('shows verified badge when user.isVerified', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('Verified identity')).toBeTruthy();
+    const { getByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(getByLabelText('Verified identity')).toBeTruthy();
   });
 
   it('shows a refreshed display name while retaining the verified badge', () => {
     mockUser.displayName = 'New public name';
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText, queryByText } = render(<ProfileScreen navigation={mockNavigation} />);
+    const { getByText, queryByText, getByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
     expect(getByText('New public name')).toBeTruthy();
     expect(queryByText('Test User')).toBeNull();
-    expect(getByText('Verified identity')).toBeTruthy();
+    expect(getByLabelText('Verified identity')).toBeTruthy();
   });
 
   it('shows tier badge based on transaction count', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('Archer · About ranks')).toBeTruthy();
+    const { getByText, getByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(getByText('Archer')).toBeTruthy();
+    fireEvent.press(getByLabelText('View community ranks'));
+    expect(getByText('Borrowhood Ranks')).toBeTruthy();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false
@@ -95,10 +98,21 @@ describe('ProfileScreen', () => {
     expect(getByText('Are you sure you want to sign out?')).toBeTruthy();
   });
 
-  it('displays email', () => {
+  it('keeps email with account editing', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
     expect(getByText('test@test.com')).toBeTruthy();
+  });
+
+  it('distinguishes an unrated profile from a zero-percent endorsement', () => {
+    const ProfileScreen = require('../../src/screens/ProfileScreen').default;
+    const screen = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(screen.getByLabelText('No endorsements yet')).toBeTruthy();
+    expect(screen.getByLabelText('5 completed exchanges')).toBeTruthy();
+    mockUser.endorsement = { count: 1, percent: 0 };
+    screen.rerender(<ProfileScreen navigation={mockNavigation} />);
+    expect(screen.getByText('0%')).toBeTruthy();
+    expect(screen.queryByText('No ratings')).toBeNull();
   });
 
   it('displays version number', () => {

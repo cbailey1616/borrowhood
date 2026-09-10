@@ -19,12 +19,13 @@ const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: COLO
 const requested = Settings.get('BorrowhoodCaptureScreen') || 'home';
 function openCapture() {
   if (!navigation.isReady()) return;
-  const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', profile: 'Profile' }[requested] || 'Feed';
+  const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', profile: 'Profile', 'profile-unrated': 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
     giveaway: { name: 'ListingDetail', params: { id: 'demo-books' } },
     sell: { name: 'ListingDetail', params: { id: 'demo-bike' } },
     chat: { name: 'Chat', params: { conversationId: 'demo-chat' } },
+    notifications: { name: 'NotificationSettings' },
   }[requested];
   navigation.resetRoot({ index: detail ? 1 : 0, routes: detail ? [main, detail] : [main] });
 }

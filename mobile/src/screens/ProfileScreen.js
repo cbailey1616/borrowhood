@@ -1,4 +1,3 @@
-import EndorsementSummary from '../components/EndorsementSummary';
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
 import BiometricIcon from '../components/BiometricIcon';
@@ -7,7 +6,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   Linking,
   ActivityIndicator,
@@ -17,6 +15,7 @@ import * as Application from 'expo-application';
 import appConfig from '../../app.json';
 import { Ionicons } from '../components/Icon';
 import UserBadges from '../components/UserBadges';
+import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import { GroupedListSection, GroupedListItem } from '../components/GroupedList';
 import NativeHeader from '../components/NativeHeader';
@@ -158,9 +157,9 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
         {/* Profile Header */}
-        <LayeredCard style={styles.header} radius={RADIUS.xl}>
+        <LayeredCard style={styles.header} radius={RADIUS.lg}>
           <View style={styles.headerInner}>
-            <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null}>
+            <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null} accessibilityLabel="Change profile photo">
               <View style={styles.avatarContainer}>
                 <ShimmerImage placeholderIcon="person"
                   source={{ uri: user?.profilePhotoUrl || null }}
@@ -179,17 +178,17 @@ export default function ProfileScreen({ navigation }) {
             </HapticPressable>
             <View style={styles.headerInfo}>
               <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
-              <Text style={styles.email}>{user?.email}</Text>
-              <EndorsementSummary value={user?.endorsement} />
-              {user?.isVerified && (
-                <UserBadges
-                  isVerified={user?.isVerified}
-                  totalTransactions={user?.totalTransactions || 0}
-                  size="medium"
-                />
-              )}
+              {user?.isVerified && <View style={styles.verifiedRow}>
+                <VerifiedBadge size={18} interactive />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>}
             </View>
           </View>
+          <UserBadges
+            layout="summary"
+            totalTransactions={user?.totalTransactions || 0}
+            endorsement={user?.endorsement}
+          />
         </LayeredCard>
 
         {/* Verification Banner */}
@@ -217,6 +216,7 @@ export default function ProfileScreen({ navigation }) {
           <GroupedListItem
             icon="person-outline"
             title="Edit Profile"
+            subtitle={user?.email}
             onPress={() => navigation.navigate('EditProfile')}
           />
           <GroupedListItem
@@ -433,28 +433,27 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: SPACING.xl,
+    padding: SPACING.lg,
   },
   headerInner: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    gap: SPACING.lg,
+    gap: SPACING.md,
+    paddingBottom: SPACING.lg,
   },
   avatarContainer: {
     position: 'relative',
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: COLORS.gray[700],
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 44,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -474,16 +473,14 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
+    minWidth: 0,
   },
   name: {
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
   },
-  email: {
-    ...TYPOGRAPHY.subheadline,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
-  },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
+  verifiedText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   verifyBanner: {
     flexDirection: 'row',
     alignItems: 'center',

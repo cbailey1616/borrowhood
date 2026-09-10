@@ -1,4 +1,4 @@
-import { Image } from 'react-native';
+import { Image, Settings } from 'react-native';
 const avatar = null;
 const photo = asset => Image.resolveAssetSource(asset).uri;
 const photos = {
@@ -9,6 +9,8 @@ const photos = {
   plants: photo(require('./assets/plants.jpg')),
 };
 export const user = { id: 'demo-alex', firstName: 'Alex', lastName: 'Green', displayName: 'Alex Green', email: 'alex@example.com', isVerified: true, totalTransactions: 18, onboardingCompleted: true, town: 'Maplewood', townName: 'Maplewood', city: 'Maplewood', state: 'NJ', latitude: 40.73, longitude: -74.27, profilePhotoUrl: avatar, subscriptionTier: 'free', rating: 4.9, ratingCount: 12 };
+user.endorsement = Settings.get('BorrowhoodCaptureScreen') === 'profile-unrated'
+  ? { count: 0, percent: null } : { count: 17, percent: 94 };
 const jamie = { ...user, id: 'demo-jamie', firstName: 'Jamie', lastName: 'Miller', displayName: 'Jamie Miller', totalTransactions: 14 };
 const sam = { ...user, id: 'demo-sam', firstName: 'Sam', lastName: 'Rivera', displayName: 'Sam Rivera', totalTransactions: 8 };
 const taylor = { ...user, id: 'demo-taylor', firstName: 'Taylor', lastName: 'Reed', displayName: 'Taylor Reed', totalTransactions: 27 };

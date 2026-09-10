@@ -11,6 +11,9 @@ For Sale, Saved, My Posts, and Messages. Screens are captured at native size:
 - iPad Pro 13-inch (M4): 2064 × 2752 pixels.
 
 The capture script exports RGB PNGs without transparency or resizing.
+The `ui-review` folders also contain notification settings and rated/unrated
+profiles on iPhone Pro Max and iPhone SE. These review images are separate
+from the six-image App Store set and include both on and off switch states.
 Review every image before uploading to App Store Connect. The photos are
 sample listing images from Unsplash; source URLs are in `assets.json`.
 
@@ -23,7 +26,7 @@ Run `python3 screenshots/prepare-assets.py` from `mobile`, install the locked
 Node and CocoaPods dependencies, then build for an iOS simulator in Release
 with `BORROWHOOD_SCREENSHOTS=1` and `ENTRY_FILE` set to the absolute path of
 `screenshots/index.js`. This opt-in Metro configuration replaces only the
-auth context, API, and temporary draft store for the screenshot bundle. Normal builds use `App.js`
+auth context, API, notification permissions/delivery, and temporary draft store for the screenshot bundle. Normal builds use `App.js`
 and production modules.
 
 Run `python3 screenshots/capture.py /path/to/Borrowhood.app /path/to/output`

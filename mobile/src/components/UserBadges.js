@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from './Icon';
 import VerifiedBadge from './VerifiedBadge';
 import HapticPressable from './HapticPressable';
@@ -10,7 +10,7 @@ const TIERS = [
   { key: 'squire', label: 'Squire', min: 0, max: 4, icon: 'rank-squire', color: '#756044', description: 'New to the Borrowhood' },
   { key: 'archer', label: 'Archer', min: 5, max: 9, icon: 'rank-archer', color: '#756044', description: 'Learning the ropes' },
   { key: 'outlaw', label: 'Outlaw', min: 10, max: 24, icon: 'rank-outlaw', color: '#42594C', description: 'Active member of the crew' },
-  { key: 'ranger', label: 'Sherwood Ranger', min: 25, max: 99, icon: 'rank-ranger', color: '#42594C', description: 'Experienced community member' },
+  { key: 'ranger', label: 'Sherwood Ranger', shortLabel: 'Ranger', min: 25, max: 99, icon: 'rank-ranger', color: '#42594C', description: 'Experienced community member' },
   { key: 'robin', label: 'Robin', min: 100, max: Infinity, icon: 'rank-robin', color: '#946B28', description: 'Legendary Borrowhood member' },
 ];
 
@@ -35,15 +35,41 @@ export default function UserBadges({
   size = 'medium',
   compact = false,
   centered = false,
+  layout = 'default',
+  endorsement,
 }) {
   const [showLegend, setShowLegend] = useState(false);
+  const { fontScale } = useWindowDimensions();
   const tier = getTier(totalTransactions);
   const iconSize = size === 'small' ? 14 : 18;
   const fontSize = size === 'small' ? 11 : 13;
+  const stackSummary = fontScale > 1.4;
+  const hasEndorsements = endorsement?.count > 0 && Number.isFinite(endorsement?.percent);
 
   return (
     <>
-      <View style={[styles.container, centered && styles.containerCentered, compact && styles.containerCompact]}>
+      {layout === 'summary' ? <View style={[styles.summary, stackSummary && styles.summaryStacked]}>
+        <HapticPressable onPress={() => setShowLegend(true)} accessibilityLabel="View community ranks"
+          accessibilityHint={`Your rank is ${tier.label}`}
+          style={[styles.stat, styles.statDivider, stackSummary && styles.statStacked, stackSummary && styles.statStackedDivider]}>
+          <Text style={styles.statValue}>{tier.shortLabel || tier.label}</Text>
+          <View style={styles.rankCaption}>
+            <RankEmblem tier={tier} size={16} />
+            <Text style={styles.statLabel}>Rank</Text>
+            <Ionicons name="chevron-forward" size={12} color={COLORS.textSecondary} />
+          </View>
+        </HapticPressable>
+        <View accessible accessibilityLabel={hasEndorsements ? `${endorsement.percent}% endorsed from ${endorsement.count} rated exchanges` : 'No endorsements yet'}
+          style={[styles.stat, styles.statDivider, stackSummary && styles.statStacked, stackSummary && styles.statStackedDivider]}>
+          <Text style={styles.statValue}>{hasEndorsements ? `${endorsement.percent}%` : '—'}</Text>
+          <Text style={styles.statLabel}>{hasEndorsements ? 'Endorsed' : 'No ratings'}</Text>
+        </View>
+        <View accessible accessibilityLabel={`${totalTransactions} completed ${totalTransactions === 1 ? 'exchange' : 'exchanges'}`}
+          style={[styles.stat, stackSummary && styles.statStacked]}>
+          <Text style={styles.statValue}>{totalTransactions}</Text>
+          <Text style={styles.statLabel}>{totalTransactions === 1 ? 'Exchange' : 'Exchanges'}</Text>
+        </View>
+      </View> : <View style={[styles.container, centered && styles.containerCentered, compact && styles.containerCompact]}>
         {isVerified && (
           <View style={[styles.badge, styles.verifiedBadge, compact && styles.badgeCompact]}>
             <VerifiedBadge size={iconSize} interactive />
@@ -56,7 +82,7 @@ export default function UserBadges({
           <RankEmblem tier={tier} size={22} />
           <Text style={styles.rankText}>{tier.label} · About ranks</Text>
         </HapticPressable>}
-      </View>
+      </View>}
 
       <Modal
         visible={showLegend}
@@ -113,6 +139,18 @@ export default function UserBadges({
 }
 
 const styles = StyleSheet.create({
+  summary: {
+    flexDirection: 'row', paddingTop: SPACING.lg,
+    borderTopWidth: 1, borderTopColor: COLORS.separator,
+  },
+  summaryStacked: { flexDirection: 'column' },
+  stat: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, minHeight: 44, paddingHorizontal: SPACING.xs },
+  statDivider: { borderRightWidth: 1, borderRightColor: COLORS.separator },
+  statValue: { ...TYPOGRAPHY.h2, fontSize: 20, lineHeight: 26, color: COLORS.primary, textAlign: 'center' },
+  statLabel: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, textAlign: 'center' },
+  rankCaption: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statStacked: { flex: 0, flexDirection: 'row', justifyContent: 'space-between', borderRightWidth: 0 },
+  statStackedDivider: { borderBottomWidth: 1, borderBottomColor: COLORS.separator, paddingBottom: SPACING.md, marginBottom: SPACING.md },
   container: {
     alignItems: 'flex-start',
     maxWidth: '100%',

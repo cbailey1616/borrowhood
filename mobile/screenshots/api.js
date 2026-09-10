@@ -1,7 +1,14 @@
 import { user, listings, requests, conversation, messages } from './fixtures';
 const noop = async () => ({});
+let preferences = {
+  push_enabled: true, push_sound: true,
+  new_item_requests_source_friends: true, new_item_requests_source_neighborhood: true, new_item_requests_source_town: false,
+  new_service_requests_source_friends: true, new_service_requests_source_neighborhood: false, new_service_requests_source_town: false,
+};
 const api = {
   getMe: async () => user,
+  getNotificationPreferences: async () => preferences,
+  updateNotificationPreferences: async patch => { preferences = { ...preferences, ...patch }; return preferences; },
   getFeed: async () => ({ items: [listings[0], requests[0], ...listings.slice(1)], hasMore: false }),
   recordFeedEvents: noop,
   getCategories: async () => [{ id: 'tools', name: 'Tools' }, { id: 'outdoors', name: 'Outdoors' }, { id: 'garden', name: 'Garden' }, { id: 'other', name: 'Other' }],
