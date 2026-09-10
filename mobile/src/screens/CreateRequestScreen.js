@@ -203,7 +203,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
     >
       {/* Neighborhood hint when user has no community */}
-      <DraftStatus draft={draft} allowDiscard />
+      <DraftStatus draft={draft} quiet />
       {showDetails && communityId === null && (
         <HapticPressable
           style={styles.communityHint}
@@ -274,6 +274,7 @@ export default function CreateRequestScreen({ navigation, route }) {
         <Text style={{ color: COLORS.primary }}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
       </HapticPressable>
       {showDetails && <>
+      {draft.restored && !draft.error && <DraftStatus draft={draft} allowDiscard quiet />}
       <View style={styles.section}>
         <Text style={styles.label}>Details (optional)</Text>
         <TextInput
