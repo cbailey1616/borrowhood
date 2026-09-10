@@ -434,7 +434,7 @@ router.post('/', authenticate,
             await sendBulkNotification(
               recipientIds,
               'new_request',
-              { firstName, title, requestId },
+              { firstName, title, requestId, requestType: type },
               { fromUserId: req.user.id, requestId }
             );
           }

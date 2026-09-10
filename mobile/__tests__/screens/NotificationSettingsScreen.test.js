@@ -28,3 +28,38 @@ describe('NotificationSettingsScreen', () => {
     await view.findByText('Couldn’t load settings. Tap to try again.');
     expect(view.queryByLabelText('Messages')).toBeNull();
   });
+
+it('saves independent alert and source choices on a granular-capable server', async () => {
+  api.getNotificationPreferences.mockResolvedValueOnce({ push_enabled: true, new_service_requests: true, new_item_requests: false, source_friends: true, source_neighborhood: true, source_town: false });
+  api.updateNotificationPreferences.mockResolvedValue({ success: true });
+  const S = require('../../src/screens/NotificationSettingsScreen').default;
+  const view = render(<S />);
+  await view.findByText('New service requests');
+  expect(view.getByLabelText('New item requests').props.value).toBe(false);
+  expect(view.getByLabelText('Town').props.value).toBe(false);
+  fireEvent(view.getByLabelText('New service requests'), 'valueChange', false);
+  await waitFor(() => expect(api.updateNotificationPreferences).toHaveBeenLastCalledWith({ new_service_requests: false }));
+  await waitFor(() => expect(view.getByLabelText('Friends')).not.toBeDisabled());
+  fireEvent(view.getByLabelText('Friends'), 'valueChange', false);
+  await waitFor(() => expect(api.updateNotificationPreferences).toHaveBeenLastCalledWith({ source_friends: false }));
+  expect(view.getByLabelText('Messages').props.value).toBe(true);
+  expect(view.getByLabelText('Neighborhood').props.value).toBe(true);
+});
+it('restores a source switch if its save fails', async () => {
+  api.getNotificationPreferences.mockResolvedValueOnce({ new_service_requests: true, source_town: true });
+  api.updateNotificationPreferences.mockRejectedValueOnce(new Error('offline'));
+  const S = require('../../src/screens/NotificationSettingsScreen').default;
+  const view = render(<S />);
+  await view.findByText('Town');
+  fireEvent(view.getByLabelText('Town'), 'valueChange', false);
+  await view.findByText('Couldn’t save that change. Please try again.');
+  expect(view.getByLabelText('Town').props.value).toBe(true);
+});
+it('disables every child switch while master push is off', async () => {
+  api.getNotificationPreferences.mockResolvedValueOnce({ push_enabled: false, new_service_requests: true });
+  const S = require('../../src/screens/NotificationSettingsScreen').default;
+  const view = render(<S />);
+  await view.findByText('Town');
+  for (const label of ['Town', 'Friends', 'New service requests', 'Messages', 'Request approvals']) expect(view.getByLabelText(label)).toBeDisabled();
+  expect(view.getByLabelText('Push notifications')).not.toBeDisabled();
+});
