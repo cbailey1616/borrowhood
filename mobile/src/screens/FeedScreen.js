@@ -1,3 +1,4 @@
+import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
@@ -516,8 +517,8 @@ export default function FeedScreen({ navigation }) {
         <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={[styles.tile, styles.requestTile]} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
-              <View style={styles.requestIcon}><Ionicons name="request-note" size={28} illustrated /></View>
-              <Text style={styles.requestLabelText}>Neighbor request</Text>
+              <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
+              <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}

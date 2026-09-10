@@ -143,6 +143,7 @@ router.get('/', authenticate, async (req, res) => {
         SELECT ${summary ? 'MAX(r.created_at) AS latest_post_at' : `
           r.id,
           'request' as type,
+          r.type as request_type,
           r.title,
           r.description,
           r.needed_from,
@@ -250,6 +251,7 @@ router.get('/', authenticate, async (req, res) => {
     const requests = requestsResult.rows.map(r => r.full_access === false ? townRequestPreview(r, true) : ({
       id: r.id,
       type: 'request',
+      requestType: r.request_type,
       title: r.title,
       description: r.description,
       neededFrom: r.needed_from,

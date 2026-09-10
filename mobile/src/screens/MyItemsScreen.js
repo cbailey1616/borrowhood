@@ -239,7 +239,7 @@ export default function MyItemsScreen({ navigation }) {
               <View style={styles.requestHeader}>
                 <View style={styles.requestTitleRow}>
                   <Ionicons
-                    name={item.type === 'service' ? 'construct' : 'basket'} illustrated
+                    name={item.type === 'service' ? 'handshake' : 'cube'} illustrated
                     size={34}
                     color={COLORS.primary}
                   />

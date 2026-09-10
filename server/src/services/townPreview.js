@@ -36,6 +36,7 @@ export function townListingPreview(row, photos) {
 export function townRequestPreview(row, feed = false) {
   return {
     id: row.id, type: feed ? 'request' : row.type, title: row.title, description: row.description,
+    ...(feed ? { requestType: row.request_type || row.type } : {}),
     neededFrom: row.needed_from, neededUntil: row.needed_until, createdAt: row.created_at,
     category: row.category_name || null, categoryId: row.category_id || null,
     status: row.status || 'open', visibility: 'town', isOwner: false,

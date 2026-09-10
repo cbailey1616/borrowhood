@@ -33,7 +33,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [target, setTarget] = useState(request || listing || null);
   const targetTitle = target?.title;
   const [threadError, setThreadError] = useState('');
-  const threadContext = { id: targetId, title: targetTitle, type: isRequest ? 'request' : 'listing' };
+  const threadContext = { id: targetId, title: targetTitle, type: isRequest ? 'request' : 'listing',
+    ...(isRequest ? { requestType: target?.type } : {}) };
   const isOwner = target?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);

@@ -125,4 +125,23 @@ describe('ListingDiscussionScreen', () => {
     render(<Screen navigation={mockNavigation} route={route} />);
     await waitFor(() => { expect(api.getDiscussions).toHaveBeenCalled(); });
   });
+
+  it('keeps service context when messaging someone from a request comment', async () => {
+    const post = { id: 'post-1', content: 'I can babysit', user: { id: 'user-2', firstName: 'Alice' }, replyCount: 0, isOwn: false };
+    api.getRequestDiscussions.mockResolvedValue({ posts: [post] });
+    api.getConversations.mockResolvedValue([]);
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const ActionSheet = require('../../src/components/ActionSheet').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: {
+      requestId: 'req-service', request: { id: 'req-service', title: 'Babysitter', type: 'service' },
+    } }} />);
+    fireEvent.press(await screen.findByLabelText('Comment options for Alice'));
+    const menu = screen.UNSAFE_getAllByType(ActionSheet).find(sheet => sheet.props.isVisible);
+    await act(async () => menu.props.actions[0].onPress());
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({
+      recipientId: 'user-2', threadContext: {
+        id: 'req-service', title: 'Babysitter', type: 'request', requestType: 'service', replyText: post.content,
+      },
+    }));
+  });
 });
