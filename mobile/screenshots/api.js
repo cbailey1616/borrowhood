@@ -1,15 +1,22 @@
 import { user, listings, requests, conversation, messages } from './fixtures';
+import { Settings } from 'react-native';
 const noop = async () => ({});
 let preferences = {
   push_enabled: true, push_sound: true,
   new_item_requests_source_friends: true, new_item_requests_source_neighborhood: true, new_item_requests_source_town: false,
   new_service_requests_source_friends: true, new_service_requests_source_neighborhood: false, new_service_requests_source_town: false,
 };
+const captureScreen = Settings.get('BorrowhoodCaptureScreen');
+const photoRequest = { ...requests[0], id: 'demo-photo-request', title: 'A cordless drill for a weekend project', description: 'Putting up shelves. Happy to collect it.', requestType: 'item', photoUrl: listings[0].photoUrl };
+const plainRequest = { ...requests[0], id: 'demo-service-request', title: 'Help with dinner', description: '', requestType: 'service' };
+const carouselRequests = captureScreen === 'requests-photo' ? [photoRequest, plainRequest] : [plainRequest, photoRequest];
 const api = {
   getMe: async () => user,
   getNotificationPreferences: async () => preferences,
   updateNotificationPreferences: async patch => { preferences = { ...preferences, ...patch }; return preferences; },
-  getFeed: async () => ({ items: [listings[0], requests[0], ...listings.slice(1)], hasMore: false }),
+  getFeed: async () => captureScreen?.startsWith('requests-')
+    ? { items: listings, requests: carouselRequests, hasMore: false }
+    : { items: [listings[0], requests[0], ...listings.slice(1)], hasMore: false },
   recordFeedEvents: noop,
   getCategories: async () => [{ id: 'tools', name: 'Tools' }, { id: 'outdoors', name: 'Outdoors' }, { id: 'garden', name: 'Garden' }, { id: 'other', name: 'Other' }],
   getCommunities: async () => [{ id: 'demo-town', name: 'Maplewood' }],

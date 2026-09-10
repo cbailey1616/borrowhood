@@ -14,6 +14,8 @@ The capture script exports RGB PNGs without transparency or resizing.
 The `ui-review` folders also contain notification settings and rated/unrated
 profiles on iPhone Pro Max and iPhone SE. These review images are separate
 from the six-image App Store set and include both on and off switch states.
+They also show the same compact request carousel with a photo request and
+a short service request in front, to check spacing and consistent height.
 Review every image before uploading to App Store Connect. The photos are
 sample listing images from Unsplash; source URLs are in `assets.json`.
 

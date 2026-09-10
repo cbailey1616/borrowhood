@@ -12,7 +12,7 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
 screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'sell'), ('04-saved', 'saved'), ('05-my-posts', 'posts'), ('06-messages', 'chat')]
-review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/profile-unrated', 'profile-unrated')]
+review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/profile-unrated', 'profile-unrated'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo')]
 manifest = []
 
 def run(*args, check=True, timeout=180):

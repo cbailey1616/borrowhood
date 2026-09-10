@@ -434,25 +434,25 @@ export default function FeedScreen({ navigation }) {
     },
   ];
 
-  const renderAuthor = item => {
+  const renderAuthor = (item, { compact = false, showTime = true } = {}) => {
     if (item.ownerMasked) return <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />;
     const author = item.user || {};
     const name = `${author.firstName || 'Neighbor'}${author.lastName ? ` ${author.lastName.charAt(0)}.` : ''}`;
     return (
-      <View style={styles.tileFooterRow}>
+      <View style={[styles.tileFooterRow, compact && styles.ribbonAuthor]}>
         <ShimmerImage source={author.profilePhotoUrl ? { uri: author.profilePhotoUrl } : null} placeholderIcon="person" style={styles.sellerAvatar} />
         <View style={styles.authorNameAndBadge}>
           <Text style={styles.tileFooterText} numberOfLines={1}>{name}</Text>
           {author.isVerified === true && <VerifiedBadge size={16} interactive />}
         </View>
-        <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
+        {showTime && <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>}
       </View>
     );
   };
 
   // Keep the discussion entry attached to its post without fetching every
   // thread during scrolling. Opening it uses the existing permission checks.
-  const renderPublicReplies = item => !item.ownerMasked && !item.previewOnly && (
+  const renderPublicReplies = (item, { compact = false } = {}) => !item.ownerMasked && !item.previewOnly && (
     <HapticPressable
       testID={`Feed.replies.${item.type}.${item.id}`}
       accessibilityLabel={`Comments on ${item.title}`}
@@ -460,11 +460,11 @@ export default function FeedScreen({ navigation }) {
         ? { requestId: item.id }
         : { listingId: item.id })}
       scaleDown={0.99}
-      style={styles.publicReplies}
+      style={[styles.publicReplies, compact && styles.ribbonReplies]}
     >
       <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
-      <Text style={styles.publicRepliesText}>Comments</Text>
-      <Text style={styles.publicRepliesAction}>View</Text>
+      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>Comments</Text>
+      {!compact && <Text style={styles.publicRepliesAction}>View</Text>}
     </HapticPressable>
   );
 
@@ -514,26 +514,24 @@ export default function FeedScreen({ navigation }) {
 
   const renderRibbonRequest = item => (
     <LayeredCard radius={RADIUS.xl} style={{ marginBottom: SPACING.sm }}>
-      <View style={[styles.tile, styles.requestTile, { height: 260 * Math.max(1, fontScale || 1) }]} testID={`Feed.ribbon.card.${item.id}`}>
+      <View style={[styles.tile, styles.requestTile, { height: 152 * Math.max(1, fontScale || 1) }]} testID={`Feed.ribbon.card.${item.id}`}>
         <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
-          style={[styles.tile, { flex: 1 }]} testID={`Feed.request.${item.id}`}>
-          <View style={[styles.tileContent, { flex: 1 }]}>
-            <View style={styles.requestLabel}>
-              <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
-              <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
+          style={[styles.tile, styles.ribbonContent]} testID={`Feed.request.${item.id}`}>
+          <View style={styles.ribbonCopy}>
+            <View style={styles.ribbonLabel}>
+              <Ionicons name={requestPresentation(item.requestType).icon} size={24} illustrated />
+              <Text style={styles.ribbonLabelText}>{requestPresentation(item.requestType).label}</Text>
+              <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
-                {!!item.description && <Text style={styles.tileDesc} numberOfLines={1}>{item.description}</Text>}
-              </View>
-              {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo"
-                contentFit="cover" style={{ width: 76, height: 76, borderRadius: RADIUS.md }} />}
-            </View>
-            {renderAuthor(item)}
+            <Text style={styles.ribbonTitle} numberOfLines={2}>{item.title}</Text>
           </View>
+          {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo"
+            contentFit="cover" style={styles.ribbonPhoto} />}
         </HapticPressable>
-        {renderPublicReplies(item)}
+        <View style={styles.ribbonFooter}>
+          {renderAuthor(item, { compact: true, showTime: false })}
+          {renderPublicReplies(item, { compact: true })}
+        </View>
       </View>
     </LayeredCard>
   );
@@ -901,6 +899,16 @@ export default function FeedScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  ribbonContent: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: SPACING.md },
+  ribbonCopy: { flex: 1, gap: SPACING.sm },
+  ribbonLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24 },
+  ribbonLabelText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flex: 1 },
+  ribbonTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  ribbonPhoto: { width: 64, height: 64, borderRadius: RADIUS.sm },
+  ribbonFooter: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 48, marginHorizontal: SPACING.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
+  ribbonAuthor: { flex: 1, minWidth: 0, marginTop: 0 },
+  ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
+  ribbonRepliesText: { flex: 0 },
   addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '700' },
   feedTitle: { fontSize: 28, lineHeight: 36 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },

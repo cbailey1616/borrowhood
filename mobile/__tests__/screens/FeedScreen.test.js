@@ -344,6 +344,8 @@ it('aligns ribbon cards with photos and long text with cards that have neither',
  expect(StyleSheet.flatten(photo.props.style).height).toBe(StyleSheet.flatten(plain.props.style).height);
  fireEvent.press(screen.getByTestId('Feed.request.photo'));
  expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail',{id:'photo'});
+ fireEvent.press(screen.getByLabelText('Comments on Ladder'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDiscussion',{requestId:'plain'});
 });
 
 it('keeps the notification ribbon ahead of requests and available items', async () => {
