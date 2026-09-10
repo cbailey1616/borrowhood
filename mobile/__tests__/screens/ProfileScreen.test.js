@@ -57,8 +57,7 @@ describe('ProfileScreen', () => {
   it('shows tier badge based on transaction count', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    // Squire now covers the first 25 completed exchanges.
-    expect(getByText('Squire · About ranks')).toBeTruthy();
+    expect(getByText('Archer · About ranks')).toBeTruthy();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false
