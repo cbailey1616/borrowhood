@@ -35,12 +35,16 @@ export function notificationCore(type, data = {}) {
 }
 
 export function audiencePreferences(type, prefs = {}, data = {}) {
+  if (type !== 'new_request') return Object.fromEntries(SOURCE_PREFERENCES.map(source => [source, true]));
   const core = notificationCore(type, data);
-  const isDiscovery = ['new_request', 'item_match'].includes(type);
+  const isDiscovery = true;
   return Object.fromEntries(SOURCE_PREFERENCES.map(source => [source,
     core && typeof prefs[coreSourceKey(core, source)] === 'boolean'
       ? prefs[coreSourceKey(core, source)] : isDiscovery ? prefs[source] !== false : true]));
 }
+const isRequestCore = core => ['new_item_requests', 'new_service_requests'].includes(core);
+const allCoreSourcesOff = (core, prefs) => core && SOURCE_PREFERENCES.every(source => prefs[coreSourceKey(core, source)] === false);
+
 const granularKey = Object.fromEntries(Object.entries(GRANULAR_NOTIFICATION_TYPES)
   .filter(([key]) => !['new_item_requests', 'new_service_requests'].includes(key))
   .flatMap(([key, types]) => types.map(type => [type, key])));
@@ -63,6 +67,7 @@ export function normalizedPreferences(prefs = {}) {
       .every(([, key]) => normalized[key]);
   }
   for (const core of CORE_NOTIFICATION_KEYS) {
+    if (!isRequestCore(core) && allCoreSourcesOff(core, prefs)) normalized[core] = false;
     for (const source of SOURCE_PREFERENCES) {
       const key = coreSourceKey(core, source);
       const discovery = ['new_item_requests', 'new_service_requests', 'item_match'].includes(core);
@@ -74,6 +79,8 @@ export function normalizedPreferences(prefs = {}) {
 export function shouldSendPush(type, prefs = {}, data = {}) {
   if (['new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(type)) return false;
   if (!(prefs.push_enabled ?? prefs.push ?? true)) return false;
+  const core = notificationCore(type, data);
+  if (core && !isRequestCore(core) && allCoreSourcesOff(core, prefs)) return false;
   if (type === 'new_request') {
     if (data.requestType === 'item') return settingEnabled('new_item_requests', prefs);
     if (data.requestType === 'service') return settingEnabled('new_service_requests', prefs);
@@ -91,6 +98,14 @@ export function preferencePatch(prefs) {
     const changed = types.flatMap(type => [groups[type], type, legacyGroups[type]])
       .filter(parent => parent && typeof prefs[parent] === 'boolean');
     if (changed.length && prefs[key] === undefined) patch[key] = changed.every(parent => prefs[parent]);
+  }
+  // Simple activity switches replace any older audience choices for that category.
+  for (const core of CORE_NOTIFICATION_KEYS.filter(key => !isRequestCore(key))) {
+    if (typeof prefs[core] !== 'boolean') continue;
+    for (const source of SOURCE_PREFERENCES) {
+      const key = coreSourceKey(core, source);
+      if (prefs[key] === undefined) patch[key] = prefs[core];
+    }
   }
   return patch;
 }

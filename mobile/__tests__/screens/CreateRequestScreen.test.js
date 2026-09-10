@@ -39,7 +39,7 @@ describe('CreateRequestScreen', () => {
   it('renders description input', async () => {
     const CreateRequestScreen = require('../../src/screens/CreateRequestScreen').default;
     const { findByPlaceholderText, findByText } = render(<CreateRequestScreen navigation={mockNavigation} />);
-    fireEvent.press(await findByText('Add optional details'));
+    fireEvent.press(await findByText('Add details'));
     await findByPlaceholderText(/Add more details/);
   });
 
@@ -96,6 +96,7 @@ describe('item request photos', () => {
     await waitFor(() => expect(screen.getByTestId('CreateRequest.button.submit')).not.toBeDisabled());
     fireEvent.changeText(screen.getByPlaceholderText(/Power drill/), 'A specific drill');
     fireEvent.press(screen.getByLabelText('Add request photo'));
+    fireEvent.press(await screen.findByTestId('RequestPhoto.library'));
     await screen.findByLabelText('Remove request photo');
     fireEvent.press(screen.getByTestId('CreateRequest.button.submit'));
     await waitFor(() => expect(api.uploadImages).toHaveBeenCalledWith(['file:///requested-drill.jpg'], 'listings'));

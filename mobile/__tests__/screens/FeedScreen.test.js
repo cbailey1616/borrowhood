@@ -329,3 +329,30 @@ it('keeps reserved and borrowed items out of Available nearby even on an older s
  await screen.findByText('Available drill');
  for(const title of ['Reserved ladder','Borrowed saw','Paused mower']) expect(screen.queryByText(title)).toBeNull();
 });
+
+it('aligns ribbon cards with photos and long text with cards that have neither', async () => {
+ const user={id:'neighbor',firstName:'Alex'};
+ api.getFeed.mockResolvedValue({items:[],requests:[
+  {id:'photo',type:'request',title:'A long item request title that should wrap',description:'A long description stays in the detail page',photoUrl:'https://test.example/photo.jpg',user},
+  {id:'plain',type:'request',title:'Ladder',user},
+ ],hasMore:false});
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ const photo=await screen.findByTestId('Feed.ribbon.card.photo');
+ const plain=screen.getByTestId('Feed.ribbon.card.plain');
+ const {StyleSheet}=require('react-native');
+ expect(StyleSheet.flatten(photo.props.style).height).toBe(StyleSheet.flatten(plain.props.style).height);
+ fireEvent.press(screen.getByTestId('Feed.request.photo'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail',{id:'photo'});
+});
+
+it('keeps the notification ribbon ahead of requests and available items', async () => {
+ api.getTransactions.mockResolvedValueOnce([{id:'pending',status:'pending',lender:{id:mockUser.id}}]);
+ api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],requests:[{id:'ask',type:'request',title:'Need a ladder',user:{firstName:'Alex'}}],hasMore:false});
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ await screen.findByText('1 pending borrow request');
+ expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
+ fireEvent.press(screen.getByText('1 pending borrow request'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('MyItems');
+});

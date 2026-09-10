@@ -72,7 +72,7 @@ export default function FeedScreen({ navigation }) {
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
   const [feed, setFeed] = useState([]);
   const [requestCards, setRequestCards] = useState([]);
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -512,7 +512,33 @@ export default function FeedScreen({ navigation }) {
     );
   };
 
-  const renderRequestItem = (item, compact = false) => (
+  const renderRibbonRequest = item => (
+    <LayeredCard radius={RADIUS.xl} style={{ marginBottom: SPACING.sm }}>
+      <View style={[styles.tile, styles.requestTile, { height: 260 * Math.max(1, fontScale || 1) }]} testID={`Feed.ribbon.card.${item.id}`}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+          style={[styles.tile, { flex: 1 }]} testID={`Feed.request.${item.id}`}>
+          <View style={[styles.tileContent, { flex: 1 }]}>
+            <View style={styles.requestLabel}>
+              <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
+              <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
+            </View>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
+                {!!item.description && <Text style={styles.tileDesc} numberOfLines={1}>{item.description}</Text>}
+              </View>
+              {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo"
+                contentFit="cover" style={{ width: 76, height: 76, borderRadius: RADIUS.md }} />}
+            </View>
+            {renderAuthor(item)}
+          </View>
+        </HapticPressable>
+        {renderPublicReplies(item)}
+      </View>
+    </LayeredCard>
+  );
+
+  const renderRequestItem = item => (
     <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
         <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
@@ -522,7 +548,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
-            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: compact ? 96 : 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
+            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>
@@ -568,8 +594,8 @@ export default function FeedScreen({ navigation }) {
   const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
   const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
-    ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
+    ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
   const renderItem = ({ item, index }) => {
@@ -583,7 +609,7 @@ export default function FeedScreen({ navigation }) {
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged} viewabilityConfig={{ itemVisiblePercentThreshold:50,minimumViewTime:800 }}
-        renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRequestItem(request, true)}</View>} />
+        renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRibbonRequest(request)}</View>} />
     </View>;
     if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing-heading') return <View style={{ borderTopWidth:1,borderTopColor:COLORS.borderBrown,paddingTop:SPACING.lg,marginBottom:SPACING.md }}>

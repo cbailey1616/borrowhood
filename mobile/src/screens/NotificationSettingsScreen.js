@@ -16,11 +16,14 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const CORE_SETTINGS = [
+  { key: 'new_item_requests', label: 'Item requests' },
+  { key: 'new_service_requests', label: 'Service requests' },
+];
+const ACTIVITY_SETTINGS = [
   { key: 'new_message', label: 'Messages' },
   { key: 'post_replies', label: 'Comments & replies' },
   { key: 'borrow_updates', label: 'Borrowing & lending' },
-  { key: 'new_item_requests', label: 'Item requests' },
-  { key: 'new_service_requests', label: 'Service requests' },
+  { key: 'return_reminder', label: 'Return reminders' },
   { key: 'item_match', label: 'Matches for your requests' },
   { key: 'community_updates', label: 'Friends & neighborhood activity' },
 ];
@@ -32,7 +35,6 @@ const SOURCES = [
 const PHONE_SETTINGS = [
   { key: 'push_enabled', label: 'Push notifications' },
   { key: 'push_sound', label: 'Sound' },
-  { key: 'return_reminder', label: 'Return reminders' },
 ];
 
 export default function NotificationSettingsScreen() {
@@ -147,8 +149,8 @@ export default function NotificationSettingsScreen() {
           {saveError === 'phone' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
         </View>
         <View style={styles.section}>
-          <Text accessibilityRole="header" style={styles.heading}>Notify me about</Text>
-          <Text style={styles.sectionDescription}>Choose who you hear from for each type of update.</Text>
+          <Text accessibilityRole="header" style={styles.heading}>New requests</Text>
+          <Text style={styles.sectionDescription}>Choose whose item and service requests you hear about.</Text>
           <View style={[styles.cardBox, styles.settingsGroup]}>
             {CORE_SETTINGS.map((setting, index) => <View key={setting.key} style={[styles.coreRow, index < CORE_SETTINGS.length - 1 && styles.settingRowBorder]}>
               <Text style={styles.settingLabel}>{setting.label}</Text>
@@ -169,6 +171,18 @@ export default function NotificationSettingsScreen() {
             </View>)}
           </View>
           <Text style={styles.audienceHint}>Friends use your Friends choice, even if they also live nearby. Neighbors are people in your neighborhoods; Town covers everyone else in your town.</Text>
+        </View>
+        <View style={styles.section}>
+          <Text accessibilityRole="header" style={styles.heading}>Your activity</Text>
+          <View style={[styles.cardBox, styles.settingsGroup]}>
+            {ACTIVITY_SETTINGS.map((setting, index) => <View key={setting.key} style={[styles.settingRow, index < ACTIVITY_SETTINGS.length - 1 && styles.settingRowBorder]}>
+              <Text style={[styles.settingLabel, styles.settingInfo]}>{setting.label}</Text>
+              <Switch accessibilityLabel={setting.label} accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
+                value={preferences[setting.key] ?? true} onValueChange={value => handleChange({ [setting.key]: value }, 'activity')}
+                trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }} thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+            </View>)}
+          </View>
+          {saveError === 'activity' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
         </View>
       </>}
 

@@ -276,8 +276,10 @@ export default function CreateRequestScreen({ navigation, route }) {
       {formData.type === 'item' && <RequestPhotoPicker uri={formData.photoUri} onChange={uri => updateField('photoUri', uri)} disabled={isSubmitting} />}
 
       {/* Description */}
-      <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(!showDetails)} style={{ minHeight: 48, justifyContent: 'center' }}>
-        <Text style={{ color: COLORS.primary }}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
+      <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(!showDetails)} style={{ minHeight: 56, paddingHorizontal: 16, marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface }}>
+        <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
+        <Text style={{ ...TYPOGRAPHY.body, fontWeight: '600', color: COLORS.primary, flex: 1 }}>{showDetails ? 'Hide details' : 'Add details'}</Text>
+        <Ionicons name={showDetails ? 'chevron-up' : 'add'} size={20} color={COLORS.primary} />
       </HapticPressable>
       {showDetails && <>
       {draft.restored && !draft.error && <DraftStatus draft={draft} allowDiscard quiet />}

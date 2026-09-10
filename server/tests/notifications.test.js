@@ -338,7 +338,7 @@ describe('Granular notification delivery', () => {
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ source_friends: false, source_town: true });
       await send('item_match');
-      expect(push).not.toHaveBeenCalled();
+      expect(push).toHaveBeenCalledTimes(1);
       // After removing the friendship, shared neighborhood takes precedence over town.
       await query('DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2', [sender.userId, recipient.userId]);
       await query('INSERT INTO community_memberships (user_id, community_id) VALUES ($1, $3), ($2, $3)', [sender.userId, recipient.userId, communityId]);
@@ -359,10 +359,13 @@ describe('Granular notification delivery', () => {
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ new_message_source_neighborhood: false, new_service_requests_source_neighborhood: true });
       await send('new_message');
-      expect(push).not.toHaveBeenCalled();
+      expect(push).toHaveBeenCalledTimes(1);
       await send('new_request', 'service');
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ post_replies_source_neighborhood: false });
+      await send('listing_comment');
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ post_replies: false });
       await send('listing_comment');
       expect(push).not.toHaveBeenCalled();
       await setPrefs({ push_enabled: false });
