@@ -142,7 +142,7 @@ export default function MyItemsScreen({ navigation }) {
         <LayeredCard style={styles.cardDepth}>
           <HapticPressable
             style={styles.card}
-            onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
+            onPress={() => item.pendingRequests > 0 ? navigation.navigate('RequestQueue', { listingId: item.id }) : navigation.navigate('ListingDetail', { id: item.id })}
             haptic="light"
           >
             {item.photoUrl ? (
@@ -194,7 +194,7 @@ export default function MyItemsScreen({ navigation }) {
                 </View>
                 {item.pendingRequests > 0 && (
                   <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingText}>{item.pendingRequests} pending</Text>
+                    <Text style={styles.pendingText}>{item.pendingRequests} waiting · View queue</Text>
                   </View>
                 )}
               </View>

@@ -231,7 +231,7 @@ describe('FeedScreen', () => {
     const FeedScreen = require('../../src/screens/FeedScreen').default;
     const { findByText } = render(<FeedScreen navigation={mockNavigation} />);
     await findByText('Power Drill');
-    expect(api.getFeed).toHaveBeenCalledWith({ page: 1, limit: 20, session: expect.any(String) });
+    expect(api.getFeed).toHaveBeenCalledWith({ layout:'sections', page: 1, limit: 20, session: expect.any(String) });
   });
 
   it('offers both sharing and asking without competing filters or a join banner', async () => {
@@ -299,4 +299,17 @@ it('lets an unverified member select Town and makes hidden identities explicit',
     fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
   } finally { mockUser.isVerified = true; }
+});
+
+it('keeps requests in a swipe row and opens all requests with one tap',async()=>{
+ const user={id:'neighbor',firstName:'Alex'};
+ api.getFeed.mockImplementation(async params=>params.type==='requests' ? {items:[{id:'ask',type:'request',title:'Need a ladder',user}],hasMore:false} : {items:[{id:'item',type:'listing',title:'Drill',user}],requests:[{id:'ask',type:'request',title:'Need a ladder',user}],hasMore:false});
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ await screen.findByText('Neighbors need');
+ expect(screen.getByTestId('Feed.requests.carousel').props.horizontal).toBe(true);
+ expect(screen.getByTestId('Feed.list').props.data.some(item=>item.type==='request')).toBe(false);
+ fireEvent.press(screen.getByLabelText('See all requests'));
+ await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'requests'})));
+ expect(screen.queryByText('Neighbors need')).toBeNull();
 });

@@ -43,6 +43,7 @@ router.get('/', authenticate, async (req, res) => {
   if (!Number.isInteger(Number(page)) || Number(page) < 1 || !Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) return res.status(400).json({ error: 'Invalid page' });
   const token = req.query.session;
   const summary = req.query.summary === 'true';
+  const sections = req.query.layout === 'sections' && !type && !search;
   if (token && !UUID.test(token)) return res.status(400).json({ error: 'Invalid session' });
 
   try {
@@ -273,7 +274,7 @@ router.get('/', authenticate, async (req, res) => {
     }));
 
     const candidates = [...listings, ...requests];
-    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '']);
+    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '', sections]);
     let keys;
     if (token) {
       const stored = await query('SELECT item_keys FROM feed_sessions WHERE user_id=$1 AND token=$2 AND filter_key=$3 AND created_at > NOW() - INTERVAL \'1 day\'', [req.user.id, token, filterKey]);
@@ -295,14 +296,17 @@ router.get('/', authenticate, async (req, res) => {
     }
     // Reapply current access rules on every page; snapshots never grant access.
     const permitted = new Map(candidates.map(item => [item.type + ':' + item.id, item]));
-    const pageKeys = keys.slice(offset, offset + Number(limit));
+    const listingKeys = sections ? keys.filter(key => key.startsWith('listing:')) : keys;
+    const requestCards = sections ? keys.filter(key => key.startsWith('request:')).map(key => permitted.get(key)).filter(Boolean) : [];
+    const pageKeys = listingKeys.slice(offset, offset + Number(limit));
     const feed = pageKeys.map(key => permitted.get(key)).filter(Boolean);
     res.json({
       items: feed,
+      ...(sections ? { requests: requestCards.slice(0,8), requestCount: requestCards.length } : {}),
       latestPostAt,
       page: parseInt(page),
       limit: parseInt(limit),
-      hasMore: keys.length > offset + Number(limit),
+      hasMore: listingKeys.length > offset + Number(limit),
     });
   } catch (err) {
     console.error('Get feed error:', err);

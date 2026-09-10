@@ -1,3 +1,4 @@
+import { ensureEndorsementSchema } from '../services/endorsements.js';
 import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
 import { ensureSignupSchema } from '../services/signupVerification.js';
@@ -684,6 +685,7 @@ export async function runMigrations() {
     await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_request
       ON messages (sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
 
+    await ensureEndorsementSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

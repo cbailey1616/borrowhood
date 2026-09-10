@@ -1,3 +1,4 @@
+import { endorsementState, submitEndorsement } from '../services/endorsements.js';
 import { declineBorrow } from '../services/borrowDecline.js';
 import { confirmBorrowPickup } from '../services/borrowPickup.js';
 import { approveFreeBorrow } from '../services/borrowReservation.js';
@@ -5,7 +6,7 @@ import { cancelBorrow } from '../services/borrowCancellation.js';
 import { canViewListing } from '../services/listingAccess.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import {
@@ -38,6 +39,7 @@ router.post('/', authenticate,
     }
 
     const { listingId, startDate, endDate, message } = req.body;
+    let acquiredPaymentLock = false;
 
     try {
       if (!await canViewListing(listingId, req.user.id)) return res.status(404).json({ error: 'Listing not found' });
@@ -74,7 +76,7 @@ router.post('/', authenticate,
         return res.status(400).json({ error: 'Cannot borrow your own item' });
       }
 
-      if (!item.is_available) {
+      if (!item.is_available || item.status !== 'active') {
         return res.status(400).json({ error: 'Item not available' });
       }
 
@@ -122,10 +124,11 @@ router.post('/', authenticate,
         if (lockResult.rows.length === 0) {
           return res.status(400).json({ error: 'Item was just borrowed by someone else' });
         }
+        acquiredPaymentLock = true;
       }
 
       // Create transaction
-      const result = await query(
+      const insertBorrow = execute => execute(
         `INSERT INTO borrow_transactions (
           listing_id, borrower_id, lender_id,
           requested_start_date, requested_end_date,
@@ -141,6 +144,15 @@ router.post('/', authenticate,
         ]
       );
 
+      const result = requiresPayment ? await insertBorrow(query) : await withTransaction(async client => {
+        // Serialize free requests with approvals on this item's inventory row.
+        const { rows:[current] } = await client.query('SELECT is_available,status FROM listings WHERE id=$1 FOR UPDATE', [listingId]);
+        if (!current?.is_available || current.status !== 'active') throw Object.assign(new Error('This item was just reserved. Please refresh.'), { status:409 });
+        const duplicate = await client.query(`SELECT id FROM borrow_transactions WHERE listing_id=$1 AND borrower_id=$2
+          AND status IN ('pending','approved','paid','picked_up','return_pending') LIMIT 1`, [listingId,req.user.id]);
+        if (duplicate.rows.length) throw Object.assign(new Error('You already have a request for this item.'), { status:409 });
+        return insertBorrow(client.query.bind(client));
+      });
       const transactionId = result.rows[0].id;
 
       // If the borrower included a message, auto-create a DM conversation so the
@@ -259,10 +271,10 @@ router.post('/', authenticate,
     } catch (err) {
       console.error('Create transaction error:', err);
       // Release item lock on any unhandled error
-      if (req.body.listingId) {
+      if (acquiredPaymentLock && req.body.listingId) {
         await query('UPDATE listings SET is_available = true WHERE id = $1', [req.body.listingId]).catch(() => {});
       }
-      res.status(500).json({ error: 'Failed to create borrow request' });
+      res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to create borrow request' });
     }
   }
 );
@@ -431,6 +443,8 @@ router.get('/:id', authenticate, async (req, res) => {
       paymentStatus: t.payment_status || null,
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
+      endorsement: await endorsementState(t.id, req.user.id),
+      queue: t.status === 'pending' ? { waiting: !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       hasDispute: t.has_dispute || false,
       disputeId: t.dispute_id || null,
@@ -712,5 +726,13 @@ router.post('/:id/rate', authenticate,
     }
   }
 );
+
+router.post('/:id/endorse', authenticate, async (req, res) => {
+  if (typeof req.body.positive !== 'boolean') return res.status(400).json({ error: 'Choose thumbs up or thumbs down.' });
+  try {
+    const result = await submitEndorsement(req.params.id, req.user.id, req.body.positive);
+    return res.status(result.status || 200).json(result);
+  } catch { return res.status(500).json({ error: 'Could not save your feedback. Please try again.' }); }
+});
 
 export default router;

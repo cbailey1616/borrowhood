@@ -430,6 +430,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
+          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'700'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
           <View style={styles.footerActions}>
             <HapticPressable
               style={styles.deleteButton}

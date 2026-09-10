@@ -1,3 +1,4 @@
+import ExchangeEndorsement from '../components/ExchangeEndorsement';
 import { isSaleListing, directFeeLabel, isTransferListing } from '../utils/directFee';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -286,12 +287,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
         <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
           <Text style={styles.cardEyebrow}>What happens next</Text>
-          <Text style={styles.heroTitle}>{nextStep.title}</Text>
-          <Text style={styles.heroDescription}>{nextStep.detail}</Text>
+<Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
+          <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This person is still waiting. You can choose them if the item becomes available again.') : nextStep.detail}</Text>
+          {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('RequestQueue', {listingId:transaction.listing.id})} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>View everyone waiting</Text></HapticPressable>}
+          {transaction.isBorrower && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" accessibilityLabel="Leave request queue" onPress={() => setCancelSheetVisible(true)} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>Leave queue</Text></HapticPressable>}
           <View style={transaction.isLender && transaction.status === 'pending' ? styles.decisionRow : undefined}>
           {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
             accessibilityLabel={primaryAction.label} style={[styles.approveButton, transaction.isLender && transaction.status === 'pending' && { flex: 1 }]}
-            disabled={actionLoading} onPress={primaryAction.onPress}>
+            disabled={actionLoading || (transaction.isLender && transaction.status === 'pending' && transaction.queue?.waiting)} onPress={primaryAction.onPress}>
             {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
           </HapticPressable>}
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable
@@ -312,6 +315,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </HapticPressable>}
         </View>
 
+        <ExchangeEndorsement transaction={transaction} onSaved={fetchTransaction} />
         <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
           accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
           onPress={() => setDetailsExpanded(value => !value)}>

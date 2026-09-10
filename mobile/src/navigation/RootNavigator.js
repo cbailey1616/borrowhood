@@ -1,3 +1,4 @@
+import RequestQueueScreen from '../screens/RequestQueueScreen';
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import SafetyReportsScreen from '../screens/SafetyReportsScreen';
@@ -139,6 +140,7 @@ export default function RootNavigator() {
             component={ListingDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Item Details' }}
           />
+          <Stack.Screen name="RequestQueue" component={RequestQueueScreen} options={{ ...sharedScreenOptions, title: 'People waiting' }} />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
           <Stack.Screen name="SafetyReports" component={SafetyReportsScreen} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
           <Stack.Screen
