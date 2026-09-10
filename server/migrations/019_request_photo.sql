@@ -1,0 +1,1 @@
+ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS photo_url TEXT;

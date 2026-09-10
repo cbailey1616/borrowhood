@@ -176,6 +176,7 @@ export default function RequestDetailScreen({ route, navigation }) {
 
         {/* Title */}
         <Text style={styles.title}>{request.title}</Text>
+        {!!request.photoUrl && <ShimmerImage source={{ uri: request.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: 260, borderRadius: RADIUS.md, marginVertical: SPACING.md }} />}
         {request.isExpired && <Text style={styles.description}>This request has expired. The requester can renew it from My Posts.</Text>}
 
         {/* Badges */}

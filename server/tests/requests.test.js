@@ -1,3 +1,5 @@
+import { mkdir, writeFile, unlink } from 'node:fs/promises';
+import { privatePhotoUrl, protectMediaResponses, servePrivatePhoto } from '../src/services/privatePhotos.js';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
@@ -7,6 +9,8 @@ import { query } from '../src/utils/db.js';
 const createTestApp = async () => {
   const app = express();
   app.use(express.json());
+  app.use(protectMediaResponses);
+  app.get('/api/private-photos/:token', servePrivatePhoto);
 
   const { default: requestRoutes } = await import('../src/routes/requests.js');
   app.use('/api/requests', requestRoutes);
@@ -74,6 +78,32 @@ describe('Requests API', () => {
     await query('DELETE FROM users WHERE id IN ($1, $2)', [testUserId, testOtherUserId]);
     await query('DELETE FROM communities WHERE id = $1', [testCommunityId]);
     await query(`DELETE FROM categories WHERE slug = 'test-category-req'`);
+  });
+
+  it('stores item photos, protects delivery, rejects foreign photos, and allows removal', async () => {
+    const filename = `private-listing-${testUserId}-request-test.jpg`;
+    const directory = new URL('../uploads/', import.meta.url);
+    const file = new URL(filename, directory);
+    const source = `${process.env.API_URL || 'http://localhost:3000'}/uploads/${filename}`;
+    await mkdir(directory, { recursive: true });
+    await writeFile(file, Buffer.from('request-photo-test'));
+    try {
+      const created = await request(app).post('/api/requests').set('Authorization', `Bearer ${authToken}`)
+        .send({ title: 'Need this drill', type: 'item', visibility: ['close_friends'], photoUrl: source });
+      expect(created.status).toBe(201);
+      const id = created.body.id;
+      const detail = await request(app).get(`/api/requests/${id}`).set('Authorization', `Bearer ${authToken}`);
+      expect(detail.body.photoUrl).toContain('/api/private-photos/');
+      expect((await request(app).get(new URL(detail.body.photoUrl).pathname)).status).toBe(200);
+      const strangerUrl = privatePhotoUrl(source, testOtherUserId);
+      expect((await request(app).get(new URL(strangerUrl).pathname)).status).toBe(404);
+      const foreign = await request(app).post('/api/requests').set('Authorization', `Bearer ${otherAuthToken}`)
+        .send({ title: 'Foreign photo', photoUrl: source });
+      expect(foreign.status).toBe(400);
+      expect((await request(app).patch(`/api/requests/${id}`).set('Authorization', `Bearer ${authToken}`).send({ photoUrl: null })).status).toBe(200);
+      expect((await request(app).get(new URL(detail.body.photoUrl).pathname)).status).toBe(404);
+      expect((await query('SELECT photo_url FROM item_requests WHERE id=$1', [id])).rows[0].photo_url).toBeNull();
+    } finally { await unlink(file); }
   });
 
   describe('POST /api/requests (create with expiration)', () => {

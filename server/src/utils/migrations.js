@@ -32,6 +32,7 @@ export async function runMigrations() {
     await ensureSafetyReviewSchema();
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
+    await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS photo_url TEXT');
     // A displayed offline price is separate from Stripe rental amounts.
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS direct_fee JSONB');
     await query(`CREATE TABLE IF NOT EXISTS feed_events (

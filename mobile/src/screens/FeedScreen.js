@@ -518,6 +518,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
+            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>

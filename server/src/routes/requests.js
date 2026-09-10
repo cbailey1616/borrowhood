@@ -1,3 +1,4 @@
+import { ownedPhotoReferences } from '../services/privatePhotos.js';
 import { townPreviewSql, canPreviewTownPost, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { canViewRequest, offerListing } from '../services/listingAccess.js';
@@ -66,6 +67,7 @@ router.get('/', authenticate, async (req, res) => {
       id: r.id,
       title: r.title,
       description: r.description,
+      photoUrl: r.photo_url || null,
       type: r.type,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
@@ -106,6 +108,7 @@ router.get('/mine', authenticate, async (req, res) => {
       id: r.id,
       title: r.title,
       description: r.description,
+      photoUrl: r.photo_url || null,
       type: r.type,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
@@ -234,6 +237,7 @@ router.get('/:id', authenticate, async (req, res) => {
       id: r.id,
       title: r.title,
       description: r.description,
+      photoUrl: r.photo_url || null,
       type: r.type,
       neededFrom: r.needed_from,
       neededUntil: r.needed_until,
@@ -270,6 +274,7 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate,
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
+  body('photoUrl').optional({ nullable: true }).isString().isLength({ max: 4096 }),
   body('communityId').optional({ nullable: true }).isUUID(),
   body('categoryId').optional({ nullable: true }).isUUID(),
   body('type').optional().isIn(['item', 'service']),
@@ -289,6 +294,12 @@ router.post('/', authenticate,
     } = req.body;
 
     type = type || 'item';
+    let photoUrl = null;
+    if (req.body.photoUrl) {
+      if (type !== 'item') return res.status(400).json({ error: 'Photos are for item requests.' });
+      try { [photoUrl] = await ownedPhotoReferences([req.body.photoUrl], req.user.id); }
+      catch { return res.status(400).json({ error: 'Choose a photo you uploaded for this request.' }); }
+    }
 
     // Compute expires_at value
     let expiresAtValue = null;
@@ -372,6 +383,7 @@ router.post('/', authenticate,
         }
 
         const requestId = result.rows[0].id;
+        if (photoUrl) await client.query('UPDATE item_requests SET photo_url=$1 WHERE id=$2', [photoUrl, requestId]);
         if (req.body.townPreviewEnabled === true && visibility.split(',').includes('town')) {
           await client.query('UPDATE item_requests SET town_preview_enabled=true WHERE id=$1', [requestId]);
         }
@@ -512,7 +524,7 @@ router.patch('/:id', authenticate,
       if (req.body.timeZone !== undefined && !validRequestTimeZone(req.body.timeZone)) return res.status(400).json({ error: 'Choose a valid timezone.' });
       // Verify ownership
       const request = await query(
-        'SELECT user_id, community_id FROM item_requests WHERE id = $1',
+        'SELECT user_id, community_id, type FROM item_requests WHERE id = $1',
         [req.params.id]
       );
 
@@ -544,9 +556,16 @@ router.patch('/:id', authenticate,
         if (!member.rows.length) return res.status(403).json({ error: 'Choose a neighborhood you belong to.' });
         req.body.communityId = communityId;
       }
+      if (req.body.photoUrl !== undefined && req.body.photoUrl !== null) {
+        if (typeof req.body.photoUrl !== 'string' || req.body.photoUrl.length > 4096) return res.status(400).json({ error: 'Choose a valid photo.' });
+        if ((req.body.type || request.rows[0].type) !== 'item') return res.status(400).json({ error: 'Photos are for item requests.' });
+        try { [req.body.photoUrl] = await ownedPhotoReferences([req.body.photoUrl], req.user.id); }
+        catch { return res.status(400).json({ error: 'Choose a photo you uploaded for this request.' }); }
+      }
+      if (req.body.type === 'service') req.body.photoUrl = null;
       const allowedFields = [
         'community_id', 'title', 'description', 'category_id', 'needed_from',
-        'needed_until', 'visibility', 'status', 'type', 'time_zone'
+        'needed_until', 'visibility', 'status', 'type', 'time_zone', 'photo_url'
       ];
 
       const updates = [];

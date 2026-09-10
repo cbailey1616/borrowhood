@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import { townPreviewSql } from './townPreview.js';
 import { S3Client, GetObjectCommand, GetPublicAccessBlockCommand } from '@aws-sdk/client-s3';
 import { query } from '../utils/db.js';
-import { listingAccessSql } from '../utils/sharingPolicy.js';
+import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, stat } from 'node:fs/promises';
@@ -125,8 +125,9 @@ export async function servePrivatePhoto(req, res) {
     const allowed = reference.rows.length ? await query(`SELECT 1 FROM listing_photos p JOIN listings l ON l.id = p.listing_id
       JOIN users viewer ON viewer.id = $2 WHERE p.url = $1 AND viewer.status != 'suspended'
         AND (viewer.token_invalidated_at IS NULL OR viewer.token_invalidated_at <= to_timestamp($3))
-        AND (${listingAccessSql('l', '$2')} OR ${townPreviewSql('l', 'owner_id', '$2', { listing: true })}) LIMIT 1`, [data.src, data.sub, data.iat]) : await query(`
-      SELECT 1 FROM users WHERE profile_photo_url = $1
+        AND (${listingAccessSql('l', '$2')} OR ${townPreviewSql('l', 'owner_id', '$2', { listing: true })} OR EXISTS (SELECT 1 FROM item_requests rp WHERE rp.photo_url = $1 AND (${requestAccessSql('rp', '$2')} OR ${townPreviewSql('rp', 'user_id', '$2')}))) LIMIT 1`, [data.src, data.sub, data.iat]) : await query(`
+      SELECT 1 FROM item_requests rp WHERE rp.photo_url = $1 AND (${requestAccessSql('rp', '$2')} OR ${townPreviewSql('rp', 'user_id', '$2')})
+      UNION ALL SELECT 1 FROM users WHERE profile_photo_url = $1
       UNION ALL SELECT 1 FROM messages m JOIN conversations c ON c.id = m.conversation_id
         WHERE m.image_url = $1 AND m.deleted_at IS NULL AND (c.user1_id = $2 OR c.user2_id = $2)
       UNION ALL SELECT 1 FROM communities WHERE banner_url = $1
@@ -172,7 +173,7 @@ export async function blockPublicListingPhoto(req, res, next) {
   try {
     if (req.path.startsWith('/private-listing-')) return res.sendStatus(404);
     const filename = path.basename(req.path);
-    const rows = await query(`SELECT 1 FROM listing_photos WHERE split_part(url, '?', 1) LIKE $1 LIMIT 1`, [`%/${filename}`]);
+    const rows = await query(`SELECT 1 FROM listing_photos WHERE split_part(url, '?', 1) LIKE $1 UNION ALL SELECT 1 FROM item_requests WHERE split_part(photo_url, '?', 1) LIKE $1 LIMIT 1`, [`%/${filename}`]);
     if (rows.rows.length) return res.sendStatus(404);
     next();
   } catch { res.sendStatus(503); }

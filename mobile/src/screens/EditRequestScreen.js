@@ -1,3 +1,4 @@
+import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import SharingPicker from '../components/SharingPicker';
 import { useFocusEffect } from '@react-navigation/native';
 import { useState, useEffect, useCallback } from 'react';
@@ -41,6 +42,7 @@ export default function EditRequestScreen({ navigation, route }) {
   const { showError } = useError();
   const [formData, setFormData] = useState({
     type: request.type || 'item',
+    photoUri: request.photoUrl || null,
     title: request.title || '',
     description: request.description || '',
     categoryId: request.categoryId || null,
@@ -91,12 +93,12 @@ export default function EditRequestScreen({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     const errors = {
       title: !formData.title.trim(),
-      categoryId: !formData.categoryId,
     };
 
-    if (errors.title || errors.categoryId) {
+    if (errors.title) {
       setFieldErrors(errors);
       haptics.warning();
       showError({
@@ -109,7 +111,11 @@ export default function EditRequestScreen({ navigation, route }) {
 
     setIsSubmitting(true);
     try {
+      let photoUrl;
+      if (formData.type === 'service' || !formData.photoUri) photoUrl = null;
+      else if (formData.photoUri !== request.photoUrl) [photoUrl] = await api.uploadImages([formData.photoUri], 'listings');
       const data = {
+        ...(photoUrl !== undefined ? { photoUrl } : {}),
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         type: formData.type,
@@ -192,6 +198,8 @@ export default function EditRequestScreen({ navigation, route }) {
           spellCheck={true}
         />
       </View>
+
+      {formData.type === 'item' && <RequestPhotoPicker uri={formData.photoUri} onChange={uri => updateField('photoUri', uri)} disabled={isSubmitting} />}
 
       {/* Description */}
       <View style={styles.section}>

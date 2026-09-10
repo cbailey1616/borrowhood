@@ -1,3 +1,4 @@
+import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -44,6 +45,7 @@ export default function CreateRequestScreen({ navigation, route }) {
   const draftScope = user?.id ? `${user.id}.request.new` : null;
   const [formData, setFormData, draft] = useFormDraft(draftScope, {
     type: 'item',
+    photoUri: null,
     title: route?.params?.initialTitle || '',
     description: '',
     categoryId: null,
@@ -121,7 +123,9 @@ export default function CreateRequestScreen({ navigation, route }) {
 
     setIsSubmitting(true);
     try {
+      const photoUrls = formData.type === 'item' && formData.photoUri ? await api.uploadImages([formData.photoUri], 'listings') : [];
       const requestData = {
+        photoUrl: photoUrls[0] || undefined,
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         type: formData.type,
@@ -268,6 +272,8 @@ export default function CreateRequestScreen({ navigation, route }) {
           spellCheck={true}
         />
       </View>
+
+      {formData.type === 'item' && <RequestPhotoPicker uri={formData.photoUri} onChange={uri => updateField('photoUri', uri)} disabled={isSubmitting} />}
 
       {/* Description */}
       <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(!showDetails)} style={{ minHeight: 48, justifyContent: 'center' }}>

@@ -173,6 +173,7 @@ export default function BrowseScreen({ navigation }) {
           </View>
 
           <Text style={styles.requestTitle}>{item.title}</Text>
+          {!!item.photoUrl && <Image source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" resizeMode="contain" style={{ width: '100%', height: 180, marginBottom: SPACING.md }} />}
           <View style={styles.requestTypeBadge}>
             <Ionicons
               name={item.type === 'service' ? 'construct-outline' : 'cube-outline'}
