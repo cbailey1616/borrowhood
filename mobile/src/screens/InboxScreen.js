@@ -193,7 +193,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   };
 
   const renderNotification = ({ item, index }) => (
-    <LayeredCard style={styles.cardDepth} stacked={false}>
+    <LayeredCard style={styles.cardDepth}>
       <HapticPressable
         style={[styles.card, !item.isRead && styles.cardUnread]}
         onPress={() => handleNotificationPress(item)}
@@ -229,7 +229,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   );
 
   const renderConversation = ({ item, index }) => (
-    <LayeredCard style={styles.cardDepth} stacked={false}>
+    <LayeredCard style={styles.cardDepth}>
       <HapticPressable
         style={styles.card}
         onPress={() => nav.navigate('Chat', { conversationId: item.id })}

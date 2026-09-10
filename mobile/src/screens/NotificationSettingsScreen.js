@@ -15,7 +15,7 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const NOTIFICATION_SETTINGS = [
+const LEGACY_NOTIFICATION_SETTINGS = [
   { category: 'On your phone', settings: [
     { key: 'push_enabled', label: 'Push notifications', description: 'Updates when you’re away from the app' },
     { key: 'push_sound', label: 'Sound', description: 'A sound with each notification' },
@@ -29,6 +29,41 @@ const NOTIFICATION_SETTINGS = [
   { category: 'Your neighborhood', settings: [
     { key: 'community_updates', label: 'Friends & neighbors', description: 'Friend requests and neighborhood invitations' },
     { key: 'item_match', label: 'Matches for your requests', description: 'When an item you’re looking for becomes available' },
+  ]},
+];
+
+const NOTIFICATION_SETTINGS = [
+  LEGACY_NOTIFICATION_SETTINGS[0],
+  { category: 'Messages & replies', settings: [
+    { key: 'new_message', label: 'Messages', description: 'Private messages from your neighbors' },
+    { key: 'post_comments', label: 'Comments on your posts', description: 'Responses on your items and requests' },
+    { key: 'comment_replies', label: 'Replies to your comments', description: 'Someone replies directly to your comment' },
+  ]},
+  { category: 'Requests & matches', settings: [
+    { key: 'new_item_requests', label: 'New item requests', description: 'Someone is looking for an item' },
+    { key: 'new_service_requests', label: 'New service requests', description: 'Someone is looking for help' },
+    { key: 'item_match', label: 'Matches for your requests', description: 'An item you need becomes available or is offered to you' },
+  ]},
+  { category: 'Requests & matches from', description: 'Choose whose new requests and matching items can alert you. Each person uses their closest connection: friends first, then neighborhood, then town.', settings: [
+    { key: 'source_friends', label: 'Friends', description: 'Your accepted friends, wherever they live' },
+    { key: 'source_neighborhood', label: 'Neighborhood', description: 'People in your neighborhoods who aren’t already friends' },
+    { key: 'source_town', label: 'Town', description: 'Other people in your town' },
+  ]},
+  { category: 'Borrowing & lending', settings: [
+    { key: 'incoming_requests', label: 'Requests for your items', description: 'Borrow requests and requests to buy or take your items' },
+    { key: 'request_approvals', label: 'Request approvals', description: 'Your request is accepted' },
+    { key: 'request_declines', label: 'Request declines', description: 'Your request is declined' },
+    { key: 'cancellations', label: 'Cancellations', description: 'An exchange is cancelled' },
+    { key: 'pickup_updates', label: 'Pickup updates', description: 'Pickup confirmations and expired pickup windows' },
+    { key: 'return_updates', label: 'Return confirmations', description: 'An item has been returned' },
+    { key: 'return_reminder', label: 'Return reminders', description: 'An item is due back' },
+    { key: 'expired_requests', label: 'Expired requests', description: 'A request expires before the owner responds' },
+  ]},
+  { category: 'Friends & neighborhoods', settings: [
+    { key: 'friend_requests', label: 'Friend requests', description: 'Someone wants to connect with you' },
+    { key: 'friend_acceptances', label: 'Friend request accepted', description: 'Someone accepts your friend request' },
+    { key: 'neighborhood_requests', label: 'Neighborhood join requests', description: 'Someone asks to join a neighborhood you manage' },
+    { key: 'neighborhood_responses', label: 'Neighborhood approvals', description: 'Your neighborhood join request is approved' },
   ]},
 ];
 
@@ -63,15 +98,9 @@ export default function NotificationSettingsScreen() {
     }
   };
 
-  const getDefaultPreferences = () => {
-    const defaults = {};
-    NOTIFICATION_SETTINGS.forEach(category => {
-      category.settings.forEach(setting => {
-        defaults[setting.key] = true;
-      });
-    });
-    return defaults;
-  };
+  // Keep existing controls functional until the server supports the new keys.
+  const settings = typeof preferences.new_service_requests === 'boolean'
+    ? NOTIFICATION_SETTINGS : LEGACY_NOTIFICATION_SETTINGS;
 
   const handleToggle = async (key, value) => {
     if (isSaving) return;
@@ -120,9 +149,10 @@ export default function NotificationSettingsScreen() {
           </HapticPressable>
         </View>
       )}
-      {!loadError && NOTIFICATION_SETTINGS.map((category, index) => (
+      {!loadError && settings.map((category, index) => (
         <View key={category.category} style={styles.section}>
           <Text style={styles.sectionTitle}>{category.category}</Text>
+          {!!category.description && <Text style={styles.sectionDescription}>{category.description}</Text>}
           <View style={[styles.cardBox, styles.settingsGroup]}>
             {category.settings.map((setting, settingIndex) => (
               <View
@@ -138,6 +168,7 @@ export default function NotificationSettingsScreen() {
                 </View>
                 <Switch
                   accessibilityLabel={setting.label}
+                  accessibilityState={{ disabled: isSaving || (setting.key !== 'push_enabled' && preferences.push_enabled === false) }}
                   disabled={isSaving || (setting.key !== 'push_enabled' && preferences.push_enabled === false)}
                   value={preferences[setting.key] ?? true}
                   onValueChange={(value) => handleToggle(setting.key, value)}
@@ -186,6 +217,7 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.xs,
     textTransform: 'uppercase',
   },
+  sectionDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginBottom: SPACING.md },
   settingsGroup: {
     overflow: 'hidden',
     padding: 0,

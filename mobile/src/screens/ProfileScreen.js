@@ -157,7 +157,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
         {/* Profile Header */}
-        <LayeredCard style={styles.header} radius={RADIUS.xl} stacked={false}>
+        <LayeredCard style={styles.header} radius={RADIUS.xl}>
           <View style={styles.headerInner}>
             <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null}>
               <View style={styles.avatarContainer}>

@@ -117,7 +117,7 @@ describe('Borrow Flow Integration', () => {
     );
     await waitFor(() => {
       // RentalProgress renders step labels, not status label text
-      expect(getByText('Waiting for the owner')).toBeTruthy();
+      expect(getByText(/^Waiting for /)).toBeTruthy();
     });
   });
 

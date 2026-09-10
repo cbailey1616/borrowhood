@@ -3,7 +3,7 @@
  * Tests: list, badge-count, mark read, read-all, push-token, preferences
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { query } from '../src/utils/db.js';
 import { createTestUser, createTestApp, cleanupTestUser } from './helpers/stripe.js';
@@ -275,5 +275,90 @@ describe('Current notification controls', () => {
     expect(shouldSendPush('request_approved', { request_response: false })).toBe(false);
     expect(shouldSendPush('rating_received', {})).toBe(false);
     expect(shouldSendPush('new_rating', {})).toBe(false);
+  });
+});
+
+describe('Granular notification delivery', () => {
+  it('persists independent sources and alert types, including changes from older apps', async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.userId);
+    const patch = body => request(app).patch('/api/notifications/preferences')
+      .set('Authorization', `Bearer ${user.token}`).send(body).expect(200);
+    await patch({ source_town: false, new_service_requests: false, borrow_updates: false });
+    await patch({ request_approvals: true });
+    let res = await request(app).get('/api/notifications/preferences')
+      .set('Authorization', `Bearer ${user.token}`).expect(200);
+    expect(res.body).toMatchObject({ source_town: false, source_friends: true,
+      source_neighborhood: true, new_service_requests: false, new_item_requests: true,
+      request_approvals: true, request_declines: false, push_enabled: true });
+    res = await patch({ borrow_updates: true });
+    expect(res.body.preferences).toMatchObject({ request_approvals: true,
+      request_declines: true, source_town: false, new_service_requests: false });
+    res = await patch({ borrow_updates: false });
+    expect(res.body.preferences.request_approvals).toBe(false);
+  });
+
+  it('uses real relationships to suppress pushes while retaining activity and direct messages', async () => {
+    const { sendNotification } = await import('../src/services/notifications.js');
+    const recipient = await createTestUser({ city: ' Testville ', state: 'TS' });
+    const sender = await createTestUser({ city: 'testville', state: 'ts' });
+    createdUserIds.push(recipient.userId, sender.userId);
+    const community = await query(`INSERT INTO communities (name, slug, city, state)
+      VALUES ('Notification test', $1, 'Testville', 'TS') RETURNING id`, [`notif-${recipient.userId}`]);
+    const communityId = community.rows[0].id;
+    const push = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => ({ data: { status: 'ok' } }) });
+    const setPrefs = prefs => query(`UPDATE users SET push_token = 'ExponentPushToken[test-notifications]',
+      notification_preferences = $2::jsonb WHERE id = $1`, [recipient.userId, JSON.stringify(prefs)]);
+    const send = async (type = 'new_request', requestType = 'service') => {
+      push.mockClear();
+      const id = await sendNotification(recipient.userId, type, { requestType, title: 'Help moving' }, { fromUserId: sender.userId });
+      expect(id).toBeTruthy();
+      const stored = await query('SELECT type, from_user_id FROM notifications WHERE id = $1', [id]);
+      expect(stored.rows[0]).toMatchObject({ type, from_user_id: sender.userId });
+    };
+    try {
+      // Same town, with normalized capitalization and whitespace.
+      await setPrefs({ source_friends: false, source_neighborhood: false, source_town: true });
+      await send();
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(push.mock.calls[0][1].body).data).toMatchObject({ type: 'new_request', requestType: 'service' });
+      await setPrefs({ source_town: false });
+      await send();
+      expect(push).not.toHaveBeenCalled();
+      // A pending invitation is not a friendship. Accepted friendships count in either direction.
+      await query("INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, 'pending')", [sender.userId, recipient.userId]);
+      await send();
+      expect(push).not.toHaveBeenCalled();
+      await query("UPDATE friendships SET status = 'accepted' WHERE user_id = $1 AND friend_id = $2", [sender.userId, recipient.userId]);
+      await send();
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ source_friends: false, source_town: true });
+      await send('item_match');
+      expect(push).not.toHaveBeenCalled();
+      // After removing the friendship, shared neighborhood takes precedence over town.
+      await query('DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2', [sender.userId, recipient.userId]);
+      await query('INSERT INTO community_memberships (user_id, community_id) VALUES ($1, $3), ($2, $3)', [sender.userId, recipient.userId, communityId]);
+      await setPrefs({ source_neighborhood: true, source_town: false });
+      await send('item_match');
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ source_neighborhood: false, source_town: true });
+      await send();
+      expect(push).not.toHaveBeenCalled();
+      // Subtype switches work independently for the same sender.
+      await setPrefs({ new_service_requests: false, new_item_requests: true });
+      await send();
+      expect(push).not.toHaveBeenCalled();
+      await send('new_request', 'item');
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ source_friends: false, source_neighborhood: false, source_town: false });
+      await send('new_message');
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ push_enabled: false });
+      await send('new_message');
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      push.mockRestore();
+      await query('DELETE FROM communities WHERE id = $1', [communityId]);
+    }
   });
 });

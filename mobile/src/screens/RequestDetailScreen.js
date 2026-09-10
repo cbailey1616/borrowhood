@@ -1,6 +1,6 @@
 import ShimmerImage from '../components/ShimmerImage';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,7 +27,9 @@ export default function RequestDetailScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
-  const [showHaveThisSheet, setShowHaveThisSheet] = useState(false);
+  const openingChat = useRef(false);
+  const [isOpeningChat, setIsOpeningChat] = useState(false);
+  const [messageError, setMessageError] = useState('');
   const [offers, setOffers] = useState([]);
   const [offerError, setOfferError] = useState(false);
   const [discussions, setDiscussions] = useState([]);
@@ -55,12 +57,46 @@ export default function RequestDetailScreen({ route, navigation }) {
     try {
       const data = await api.getRequest(id);
       setRequest(data);
-      if (!data.ownerMasked) { fetchDiscussions(); fetchOffers(); }
+      if (!data.ownerMasked && !data.previewOnly) {
+        fetchDiscussions();
+        if (data.type === 'service') setOffers([]);
+        else fetchOffers();
+      }
       else { setDiscussions([]); setOffers([]); }
     } catch (error) {
       console.error('Failed to fetch request:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const openServiceChat = async () => {
+    if (openingChat.current) return;
+    openingChat.current = true;
+    setIsOpeningChat(true);
+    setMessageError('');
+    try {
+      // Recheck the request before exposing its private response action.
+      const current = await api.getRequest(id);
+      setRequest(current);
+      if (current.ownerMasked || current.previewOnly || current.isOwner || !current.requester?.id
+          || current.type !== 'service' || current.status !== 'open' || current.isExpired) {
+        setMessageError('This request is no longer available for a reply.');
+        return;
+      }
+      const conversations = await api.getConversations();
+      const existing = conversations.find(chat => chat.otherUser?.id === current.requester.id);
+      navigation.navigate('Chat', {
+        conversationId: existing?.id,
+        recipientId: current.requester.id,
+        recipient: current.requester,
+        threadContext: { id: current.id, type: 'request', requestType: 'service', title: current.title },
+      });
+    } catch {
+      setMessageError('Couldn’t open chat. Please try again.');
+    } finally {
+      openingChat.current = false;
+      setIsOpeningChat(false);
     }
   };
 
@@ -140,13 +176,13 @@ export default function RequestDetailScreen({ route, navigation }) {
 
         {/* Title */}
         <Text style={styles.title}>{request.title}</Text>
-        {request.isExpired && <Text style={styles.description}>This request has expired and cannot receive offers. The requester can renew it from My Posts.</Text>}
+        {request.isExpired && <Text style={styles.description}>This request has expired. The requester can renew it from My Posts.</Text>}
 
         {/* Badges */}
         <View style={styles.badges}>
           {request.type === 'service' && (
             <View style={[styles.badge, styles.typeBadge]}>
-              <Ionicons name="construct-outline" size={12} color={COLORS.primary} />
+              <Ionicons name="handshake-outline" size={16} color={COLORS.primary} />
               <Text style={[styles.badgeText, { color: COLORS.primary }]}>Service</Text>
             </View>
           )}
@@ -260,7 +296,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             </View>
           ) : request.status === 'open' ? (
             <Text style={styles.noDiscussions}>
-              No responses yet. Be the first to help!
+              No comments yet.
             </Text>
           ) : null}
 
@@ -276,7 +312,7 @@ export default function RequestDetailScreen({ route, navigation }) {
           )}
         </View>
 
-        <View style={styles.section}>
+        {request.type !== 'service' && <View style={styles.section}>
           <Text style={styles.sectionTitle}>Private offers</Text>
           <Text style={styles.noDiscussions}>Only you and the other person can see each offer. No other inventory is shared.</Text>
           {offerError && <HapticPressable onPress={fetchOffers} style={styles.respondButton}><Text>Could not load offers. Tap to retry.</Text></HapticPressable>}
@@ -286,7 +322,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             </HapticPressable>
             {item.isOwn && <HapticPressable style={styles.respondButton} onPress={() => withdraw(item)}><Text style={styles.respondButtonText}>Withdraw offer</Text></HapticPressable>}
           </View>)}
-        </View>
+        </View>}
 
         {/* Posted date */}
         <Text style={styles.postedDate}>
@@ -295,16 +331,22 @@ export default function RequestDetailScreen({ route, navigation }) {
         </>}
       </ScrollView>
 
+      {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}
+
       {/* Action Buttons */}
-      {!request.ownerMasked && !request.isOwner && acceptingOffers && (
+      {!request.ownerMasked && !request.previewOnly && !request.isOwner && acceptingOffers && (
         <View style={styles.footer}>
           <HapticPressable
             style={styles.haveThisButton}
-            onPress={() => navigation.navigate('OfferItem', { request })}
+            onPress={request.type === 'service' ? openServiceChat : () => navigation.navigate('OfferItem', { request })}
+            disabled={isOpeningChat}
+            accessibilityRole="button"
+            accessibilityLabel={request.type === 'service' ? 'I can help' : 'Offer an item privately'}
+            accessibilityState={{ disabled: isOpeningChat, busy: isOpeningChat }}
             haptic="medium"
           >
-            <Ionicons name="hand-right-outline" size={20} color="#fff" />
-            <Text style={styles.haveThisButtonText}>Offer an item privately</Text>
+            {isOpeningChat ? <ActivityIndicator color="#fff" /> : <Ionicons name={request.type === 'service' ? 'chatbubble-outline' : 'hand-right-outline'} size={20} color="#fff" />}
+            <Text style={styles.haveThisButtonText}>{request.type === 'service' ? 'I can help' : 'Offer an item privately'}</Text>
           </HapticPressable>
         </View>
       )}
@@ -338,30 +380,6 @@ export default function RequestDetailScreen({ route, navigation }) {
       )}
 
       <ActionSheet
-        isVisible={showHaveThisSheet}
-        onClose={() => setShowHaveThisSheet(false)}
-        title="I Can Help"
-        actions={[
-          {
-            label: 'Add a comment',
-            icon: <Ionicons name="chatbubbles-outline" size={20} color={COLORS.text} />,
-            onPress: () => {
-              setShowHaveThisSheet(false);
-              navigation.navigate('ListingDiscussion', { requestId: id, request, autoFocus: true });
-            },
-          },
-          {
-            label: 'Offer a new item privately',
-            icon: <Ionicons name="add-circle-outline" size={20} color={COLORS.text} />,
-            onPress: () => {
-              setShowHaveThisSheet(false);
-              navigation.navigate('CreateListing', { requestMatch: request });
-            },
-          },
-        ]}
-      />
-
-      <ActionSheet
         isVisible={showDeleteSheet}
         onClose={() => setShowDeleteSheet(false)}
         title="Close Request"
@@ -379,6 +397,7 @@ export default function RequestDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  messageError: { color: COLORS.danger, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

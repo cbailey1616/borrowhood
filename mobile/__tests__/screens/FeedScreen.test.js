@@ -44,6 +44,23 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it('shows item and service requests together with their own labels', async () => {
+    const user = { id: 'neighbor', firstName: 'Robin' };
+    api.getFeed.mockResolvedValue({ items: [
+      { id: 'ladder', type: 'request', requestType: 'item', title: 'Need a ladder', user },
+      { id: 'babysitter', type: 'request', requestType: 'service', title: 'Babysitter', user },
+    ], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Item request', {}, { timeout: 5000 });
+    expect(screen.getByText('Service request')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('Feed.request.babysitter'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'babysitter' });
+    fireEvent.press(screen.getByTestId('Feed.type.requests'));
+    await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'requests' })));
+    expect(screen.getByText('Item request')).toBeTruthy();
+    expect(screen.getByText('Service request')).toBeTruthy();
+  });
   it('acknowledges new feed posts only after a successful, visible, unfiltered first page', async () => {
     const markSeen = jest.fn();
     const latestPostAt = '2026-09-09T12:00:00.000Z';

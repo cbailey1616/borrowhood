@@ -16,10 +16,56 @@ const mockRequest = {
   createdAt: new Date().toISOString(),
 };
 
-beforeEach(() => { jest.clearAllMocks(); api.getRequest.mockResolvedValue(mockRequest); });
+beforeEach(() => { jest.clearAllMocks(); api.getRequest.mockResolvedValue(mockRequest); api.getConversations.mockResolvedValue([]); });
 
 describe('RequestDetailScreen', () => {
   const route = { params: { id: 'req-1' } };
+
+  it.each([undefined, 'conv-existing'])('opens a service reply directly in private chat (%s)', async (conversationId) => {
+    const service = { ...mockRequest, type: 'service', title: 'Babysitter' };
+    api.getRequest.mockResolvedValue(service);
+    api.getConversations.mockResolvedValue(conversationId ? [{ id: conversationId, otherUser: service.requester }] : []);
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('I can help'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', {
+      conversationId, recipientId: 'user-2', recipient: service.requester,
+      threadContext: { id: 'req-1', type: 'request', requestType: 'service', title: 'Babysitter' },
+    }));
+    expect(api.getRequest).toHaveBeenCalledTimes(2);
+    expect(api.getRequestOffers).not.toHaveBeenCalled();
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(screen.queryByText('Private offers')).toBeNull();
+    expect(screen.queryByText('Offer an item privately')).toBeNull();
+  });
+
+  it.each([
+    { status: 'closed' }, { isExpired: true }, { isOwner: true },
+    { ownerMasked: true, previewOnly: true, requester: { id: null } },
+  ])('rechecks service availability before opening a private reply: %j', async (changed) => {
+    api.getRequest.mockResolvedValueOnce({ ...mockRequest, type: 'service' })
+      .mockResolvedValue({ ...mockRequest, type: 'service', ...changed });
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('I can help'));
+    await screen.findByText('This request is no longer available for a reply.');
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(api.getConversations).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('I can help')).toBeNull();
+  });
+
+  it('lets a service responder retry if opening chat fails', async () => {
+    api.getRequest.mockResolvedValue({ ...mockRequest, type: 'service' });
+    api.getConversations.mockRejectedValueOnce(new Error('offline')).mockResolvedValue([]);
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('I can help'));
+    await screen.findByText('Couldn’t open chat. Please try again.');
+    expect(screen.getByLabelText('I can help')).not.toBeDisabled();
+    fireEvent.press(screen.getByLabelText('I can help'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.anything()));
+    expect(screen.queryByText('Couldn’t open chat. Please try again.')).toBeNull();
+  });
 
   it('shows an expired request honestly and does not offer an action that will fail', async () => {
     api.getRequest.mockResolvedValueOnce({ ...mockRequest, isExpired: true });

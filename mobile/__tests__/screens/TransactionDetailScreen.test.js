@@ -112,7 +112,8 @@ describe('TransactionDetailScreen', () => {
     api.cancelRental.mockResolvedValue({ success: true });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
+    fireEvent.press(await screen.findByLabelText('Exchange details'));
+    fireEvent.press(screen.getByTestId('Transaction.button.cancel'));
     expect(api.cancelRental).not.toHaveBeenCalled();
     expect(screen.getByText('Cancel this borrow?')).toBeTruthy();
     fireEvent.press(screen.getByTestId('Transaction.confirmCancel'));
@@ -125,7 +126,8 @@ describe('TransactionDetailScreen', () => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isLender: true, isBorrower: false });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
+    fireEvent.press(await screen.findByLabelText('Exchange details'));
+    fireEvent.press(screen.getByTestId('Transaction.button.cancel'));
     fireEvent.press(screen.getByText('Keep borrow'));
     expect(api.cancelRental).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
@@ -136,6 +138,34 @@ describe('TransactionDetailScreen', () => {
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     await screen.findByText('Camera');
+    fireEvent.press(screen.getByLabelText('Exchange details'));
     expect(screen.queryByTestId('Transaction.button.cancel')).toBeNull();
   });
+});
+
+
+it.each([[true, 'Waiting for Alice to confirm'], [false, 'Your turn: confirm the return']])('makes the next actor clear for a reported return (borrower=%s)', async (isBorrower, title) => {
+  api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'return_pending', isBorrower, isLender: !isBorrower });
+  const Screen = require('../../src/screens/TransactionDetailScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
+  await screen.findByText(title);
+  expect(!!screen.queryByTestId('Transaction.button.confirmReturn')).toBe(!isBorrower);
+});
+it('keeps details and cancellation secondary while waiting for approval', async () => {
+  api.getTransaction.mockResolvedValue({ ...mockTransaction, borrowerMessage: 'Private pickup notes' });
+  const Screen = require('../../src/screens/TransactionDetailScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
+  await screen.findByText('Waiting for Alice');
+  expect(screen.queryByText('Private pickup notes')).toBeNull();
+  expect(screen.queryByTestId('Transaction.button.cancel')).toBeNull();
+  fireEvent.press(screen.getByLabelText('Exchange details'));
+  expect(screen.getByText('Private pickup notes')).toBeTruthy();
+  expect(screen.getByTestId('Transaction.button.cancel')).toBeTruthy();
+});
+it('shows completion without an invented confirmation step for a fee-free return', async () => {
+  api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'completed', paymentStatus: 'none' });
+  const Screen = require('../../src/screens/TransactionDetailScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
+  await screen.findByText('Exchange complete');
+  expect(screen.queryByTestId('Transaction.button.confirmReturn')).toBeNull();
 });

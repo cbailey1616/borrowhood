@@ -12,7 +12,7 @@ export function GroupedListSection({ header, footer, children }) {
       {header ? (
         <Text style={styles.sectionHeader}>{header}</Text>
       ) : null}
-      <LayeredCard stacked={false}>
+      <LayeredCard>
         <View style={styles.sectionContent}>
           {childArray.map((child, index) =>
             React.cloneElement(child, {

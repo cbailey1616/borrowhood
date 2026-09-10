@@ -4,7 +4,7 @@ import api from '../../src/services/api';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), setParams: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
@@ -153,6 +153,51 @@ describe('ChatScreen', () => {
     await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
     expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ content: 'About request: “Need a ladder”\nReplying to: “I have one you can use.”\n\nCan I pick it up tomorrow?' }));
+    expect(input.props.value).toBe('');
+  });
+
+  it('sends a service reply with its request title and no unrelated item from an existing chat', async () => {
+    api.getConversation.mockResolvedValue({ conversation: {
+      id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' },
+      listing: { id: 'old-private-item', title: 'Old ladder' },
+    }, messages: [] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: {
+      ...route.params, recipientId: 'user-2',
+      threadContext: { id: 'req-1', type: 'request', requestType: 'service', title: 'Babysitter' },
+    } }} />);
+    const input = await screen.findByPlaceholderText('Private message…');
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(screen.getByText('Service request')).toBeTruthy();
+    expect(screen.queryByText('Old ladder')).toBeNull();
+    expect(screen.UNSAFE_queryByType(require('../../src/components/ChatExchangeCard').default)).toBeNull();
+    fireEvent.press(screen.getByLabelText('View Babysitter'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'req-1' });
+    fireEvent.changeText(input, 'I’m available Saturday');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenCalledWith({
+      recipientId: 'user-2', content: 'About request: “Babysitter”\n\nI’m available Saturday',
+    });
+    expect(input.props.value).toBe('');
+  });
+
+  it('starts a new service conversation only when the responder sends a message', async () => {
+    api.sendMessage.mockResolvedValueOnce({ id: 'first-reply', conversationId: 'new-conversation' });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: {
+      recipientId: 'user-2', recipient: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' },
+      threadContext: { id: 'req-1', type: 'request', requestType: 'service', title: 'Babysitter' },
+    } }} />);
+    const input = await screen.findByPlaceholderText('Private message…');
+    expect(api.getConversation).not.toHaveBeenCalled();
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    fireEvent.changeText(input, 'I can help');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenCalledTimes(1);
+    expect(api.sendMessage).toHaveBeenCalledWith({ recipientId: 'user-2', content: 'About request: “Babysitter”\n\nI can help' });
+    expect(mockNavigation.setParams).toHaveBeenCalledWith({ conversationId: 'new-conversation' });
     expect(input.props.value).toBe('');
   });
 

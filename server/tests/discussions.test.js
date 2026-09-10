@@ -198,3 +198,25 @@ describe('DELETE /api/listings/:listingId/discussions/:postId', () => {
     expect(res.body.success).toBe(true);
   });
 });
+
+describe('Comment display names', () => {
+  it('uses the display name alone in new comments, replies, reloads and notifications', async () => {
+    await query("UPDATE users SET display_name = 'GardenNeighbor' WHERE id = $1", [commenter.userId]);
+    try {
+      const post = await request(app).post(`/api/listings/${listingId}/discussions`)
+        .set('Authorization', `Bearer ${commenter.token}`).send({ content: 'Name check' }).expect(201);
+      expect(post.body.user).toMatchObject({ firstName: 'GardenNeighbor', lastName: '' });
+      const reply = await request(app).post(`/api/listings/${listingId}/discussions`)
+        .set('Authorization', `Bearer ${commenter.token}`).send({ content: 'Reply check', parentId: post.body.id }).expect(201);
+      expect(reply.body.user).toMatchObject({ firstName: 'GardenNeighbor', lastName: '' });
+      const reloaded = await request(app).get(`/api/listings/${listingId}/discussions`)
+        .set('Authorization', `Bearer ${owner.token}`).expect(200);
+      expect(reloaded.body.posts.find(p => p.id === post.body.id).user).toMatchObject({ firstName: 'GardenNeighbor', lastName: '' });
+      const notification = await query("SELECT body FROM notifications WHERE user_id = $1 AND from_user_id = $2 ORDER BY created_at DESC LIMIT 1", [owner.userId, commenter.userId]);
+      expect(notification.rows[0].body).toContain('GardenNeighbor asked');
+      expect(notification.rows[0].body).not.toContain('GardenNeighbor C.');
+    } finally {
+      await query('UPDATE users SET display_name = NULL WHERE id = $1', [commenter.userId]);
+    }
+  });
+});

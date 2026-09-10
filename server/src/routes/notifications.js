@@ -3,7 +3,7 @@ import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { currentNotificationBody } from '../services/notificationCopy.js';
 
-import { ACTIVITY_SQL, normalizedPreferences, validPreferenceKeys } from '../services/notificationPreferences.js';
+import { ACTIVITY_SQL, normalizedPreferences, validPreferenceKeys, preferencePatch } from '../services/notificationPreferences.js';
 
 const router = Router();
 
@@ -192,12 +192,11 @@ router.patch('/preferences', authenticate, async (req, res) => {
   }
   // Keep the older master switch in sync; merge atomically so rapid toggles
   // cannot overwrite another preference saved in parallel.
-  if (prefs.push_enabled !== undefined) prefs.push = prefs.push_enabled;
-  else if (prefs.push !== undefined) prefs.push_enabled = prefs.push;
+  const patch = preferencePatch(prefs);
   try {
     const result = await query(`UPDATE users SET notification_preferences =
       COALESCE(notification_preferences, '{}'::jsonb) || $1::jsonb WHERE id = $2 RETURNING notification_preferences`,
-      [JSON.stringify(prefs), req.user.id]);
+      [JSON.stringify(patch), req.user.id]);
     res.json({ success: true, preferences: normalizedPreferences(result.rows[0].notification_preferences) });
   } catch (err) {
     console.error('Update preferences error:', err);

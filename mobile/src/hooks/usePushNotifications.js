@@ -1,3 +1,4 @@
+import { cancelLegacyReturnReminders } from '../utils/returnReminders';
 import { publicReplyRoute } from '../utils/conversationContext';
 import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
@@ -8,9 +9,9 @@ import api from '../services/api';
 
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
+  handleNotification: async notification => ({
     shouldShowAlert: true,
-    shouldPlaySound: true,
+    shouldPlaySound: !!notification.request.content.sound,
     shouldSetBadge: true,
   }),
 });
@@ -64,6 +65,7 @@ export default function usePushNotifications(isAuthenticated, user) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    cancelLegacyReturnReminders();
 
     // Flush any pending cold-start notification now that auth is ready
     if (pendingNotification && navigationRef) {

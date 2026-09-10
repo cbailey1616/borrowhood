@@ -1,5 +1,4 @@
 import { isSaleListing, directFeeLabel, isTransferListing } from '../utils/directFee';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
@@ -24,8 +23,8 @@ import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import RentalProgress from '../components/RentalProgress';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, TRANSACTION_STATUS_LABELS, CONDITION_LABELS } from '../utils/config';
-import { scheduleReturnReminders, cancelReturnReminders } from '../utils/returnReminders';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS } from '../utils/config';
+import { cancelReturnReminders } from '../utils/returnReminders';
 
 async function dismissRelatedNotifications(transactionId) {
   try {
@@ -43,7 +42,6 @@ async function dismissRelatedNotifications(transactionId) {
 }
 
 export default function TransactionDetailScreen({ route, navigation }) {
-  const insets = useSafeAreaInsets();
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
@@ -54,6 +52,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const pollRef = useRef(null);
   const actionInProgress = useRef(false);
 
@@ -67,15 +66,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const isGiveaway = isTransferListing(transaction);
   useEffect(() => { navigation.setOptions({ title: isGiveaway ? 'Exchange details' : 'Borrow details' }); }, [isGiveaway, navigation]);
 
-  // Schedule or cancel return reminders based on transaction status (skip for giveaways)
-  useEffect(() => {
-    if (!transaction) return;
-    if (transaction.status === 'picked_up' && !isGiveaway) {
-      scheduleReturnReminders(id, transaction.endDate, transaction.listing?.title || 'Item');
-    } else if (['returned', 'completed', 'cancelled'].includes(transaction.status)) {
-      cancelReturnReminders(id);
-    }
-  }, [transaction?.status]);
+  // The server schedules reminders and applies the saved push preferences.
+  useEffect(() => { cancelReturnReminders(id); }, [id]);
 
   const fetchTransaction = async () => {
     try {
@@ -221,19 +213,27 @@ export default function TransactionDetailScreen({ route, navigation }) {
     ? (transaction.isBorrower ? 'Giver' : 'Recipient')
     : (transaction.isBorrower ? 'Owner' : 'Borrower');
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return COLORS.warning;
-      case 'approved':
-      case 'paid': return COLORS.primary;
-      case 'picked_up': return COLORS.secondary;
-      case 'completed':
-      case 'returned': return COLORS.secondary;
-      case 'cancelled':
-      case 'disputed': return COLORS.danger;
-      default: return COLORS.gray[500];
-    }
+  const messageNeighbor = async () => {
+                const params = { recipientId: otherPerson.id, recipient: otherPerson, listingId: transaction.listing.id,
+                  listing: transaction.listing, threadContext: { id: transaction.listing.id, title: transaction.listing.title, type: 'listing' } };
+                try {
+                  const conversations = await api.getConversations();
+                  const existing = conversations.find(chat => chat.otherUser?.id === otherPerson.id);
+                  navigation.navigate('Chat', { ...params, conversationId: existing?.id });
+                } catch { navigation.navigate('Chat', params); }
   };
+  const needsReturn = !isGiveaway && ((transaction.isBorrower && transaction.status === 'picked_up')
+    || (transaction.isLender && ['picked_up', 'return_pending'].includes(transaction.status))
+    || (transaction.isLender && transaction.status === 'returned' && transaction.paymentStatus === 'authorized' && !transaction.hasDispute));
+  const primaryIsMessage = !needsReturn && !(transaction.isLender && transaction.status === 'pending');
+  const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
+    || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
+    || (isGiveaway && transaction.status === 'picked_up');
+  const primaryAction = transaction.isLender && transaction.status === 'pending'
+    ? { label: 'Approve request', testID: 'Transaction.button.approve', onPress: handleApprove }
+    : needsReturn ? { label: 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
+    : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
+    : null;
 
   return (
     <KeyboardAvoidingView
@@ -247,13 +247,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
         }
       >
         <Text style={styles.pageEyebrow}>{isSaleListing(transaction) ? 'Your exchange' : isGiveaway ? 'A new home for something good' : transaction.isBorrower ? 'Your borrow, at a glance' : 'Sharing with a neighbor'}</Text>
-        <View style={styles.statusHero} accessibilityLiveRegion="polite">
-          <View style={styles.heroIcon}><Ionicons name={transaction.status === 'pending' ? 'request-note' : ['approved', 'paid'].includes(transaction.status) ? 'chatbubble' : transaction.status === 'cancelled' ? 'close-circle' : ['completed', 'returned'].includes(transaction.status) ? 'home' : isGiveaway ? 'gift' : 'basket'} size={46} illustrated color={COLORS.primary} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>{nextStep.title}</Text>
-            <Text style={styles.heroDescription}>{nextStep.detail}</Text>
-          </View>
-        </View>
 
         <LayeredCard radius={RADIUS.xl}>
           <View style={styles.detailCard}>
@@ -270,6 +263,43 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </HapticPressable>
             <View style={styles.cardDivider} />
             <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />
+
+          </View>
+        </LayeredCard>
+
+        <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
+          <Text style={styles.cardEyebrow}>What happens next</Text>
+          <Text style={styles.heroTitle}>{nextStep.title}</Text>
+          <Text style={styles.heroDescription}>{nextStep.detail}</Text>
+          {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
+            accessibilityLabel={primaryAction.label} style={styles.approveButton}
+            disabled={actionLoading} onPress={primaryAction.onPress}>
+            {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
+          </HapticPressable>}
+          {transaction.isLender && transaction.status === 'pending' && <HapticPressable
+            accessibilityRole="button" accessibilityLabel="Decline request" testID="Transaction.button.decline"
+            disabled={actionLoading} style={styles.secondaryAction} onPress={handleDecline}>
+            <Text style={styles.detailText}>Decline request</Text>
+          </HapticPressable>}
+          {transaction.isBorrower && !transaction.actualPickupAt && ['approved', 'paid'].includes(transaction.status) && <HapticPressable
+            accessibilityRole="button" accessibilityLabel="Confirm pickup" testID="Transaction.button.confirmPickup"
+            disabled={actionLoading} style={styles.secondaryAction} onPress={handleConfirmPickup}>
+            <Text style={styles.neighborMessageTitle}>Confirm pickup</Text>
+            <Text style={styles.detailText}>Only after you have the item</Text>
+          </HapticPressable>}
+          {(!primaryIsMessage || finished) && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+            style={styles.secondaryAction} onPress={messageNeighbor}>
+            <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
+          </HapticPressable>}
+        </View>
+
+        <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
+          accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
+          onPress={() => setDetailsExpanded(value => !value)}>
+          <Text style={styles.neighborMessageTitle}>Exchange details</Text>
+          <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
+        </HapticPressable>
+        {detailsExpanded && <>
             {!isGiveaway && <>
               <View style={styles.cardDivider} />
               <View style={styles.borrowDates}>
@@ -287,8 +317,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
               </View>
               <Text style={styles.durationNote}>{transaction.rentalDays} {transaction.rentalDays === 1 ? 'day' : 'days'} together</Text>
             </>}
-          </View>
-        </LayeredCard>
+          {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
+            && (['approved', 'paid'].includes(transaction.status) || (transaction.isBorrower && transaction.status === 'pending')) &&
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Cancel borrow" testID="Transaction.button.cancel"
+              style={styles.secondaryAction} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
+              <Text style={styles.detailText}>{isGiveaway ? 'Cancel request' : 'Cancel borrow'}</Text>
+            </HapticPressable>}
 
         <LayeredCard radius={RADIUS.xl}>
           <View style={styles.detailCard}>
@@ -303,23 +337,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               </View>
               <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
             </HapticPressable>
-            <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
-              style={styles.neighborMessage} onPress={async () => {
-                const params = { recipientId: otherPerson.id, recipient: otherPerson, listingId: transaction.listing.id,
-                  listing: transaction.listing, threadContext: { id: transaction.listing.id, title: transaction.listing.title, type: 'listing' } };
-                try {
-                  const conversations = await api.getConversations();
-                  const existing = conversations.find(chat => chat.otherUser?.id === otherPerson.id);
-                  navigation.navigate('Chat', { ...params, conversationId: existing?.id });
-                } catch { navigation.navigate('Chat', params); }
-              }}>
-              <Ionicons name="chatbubble" size={26} illustrated />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
-                <Text style={styles.neighborMessageHint}>Private · about {transaction.listing.title}</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color={COLORS.primary} />
-            </HapticPressable>
+
           </View>
         </LayeredCard>
 
@@ -341,241 +359,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>}
         </View></LayeredCard>}
 
-        {/* Dispute Banner */}
-        {false && transaction?.hasDispute && transaction?.disputeId && (() => {
-          const active = ['pending', 'awaitingResponse', 'underReview'].includes(transaction.disputeStatus);
-          const bannerColor = active ? COLORS.danger : COLORS.secondary;
-          return (
-            <HapticPressable
-              haptic="light"
-              style={[styles.disputeBanner, { backgroundColor: bannerColor + '15' }]}
-              onPress={() => navigation.navigate('DisputeDetail', { id: transaction.disputeId })}
-            >
-              <Ionicons name={active ? 'alert-circle' : 'checkmark-circle'} size={20} color={bannerColor} />
-              <View style={styles.disputeBannerContent}>
-                <Text style={[styles.disputeBannerTitle, { color: bannerColor }]}>
-                  {active ? 'Active Dispute' : 'Dispute Resolved'}
-                </Text>
-                <Text style={[styles.disputeBannerSubtitle, { color: bannerColor }]}>Tap to view details</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={bannerColor} />
-            </HapticPressable>
-          );
-        })()}
-
-        {/* Overdue Banner — not for giveaways */}
-        {!isGiveaway && transaction.status === 'picked_up' && new Date() > new Date(transaction.endDate) && (
-          <View style={styles.overdueBanner}>
-            <Ionicons name="warning" size={20} color={COLORS.warning} />
-            <Text style={styles.overdueText}>This item is overdue</Text>
-          </View>
-        )}
-
-        {/* Completed / Returned banner (hide if dispute exists) */}
-        {transaction.status === 'returned' && transaction.actualReturnAt && !transaction.hasDispute && (
-          <View style={styles.returnedBanner}>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.secondary} />
-            <Text style={styles.returnedBannerText}>
-              {isGiveaway
-                ? 'Item received! Enjoy your new item.'
-                : ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0
-                  ? 'Item returned. Discuss any remaining details with your neighbor.'
-                  : 'Item returned. This transaction is complete.'}
-            </Text>
-          </View>
-        )}
+        </>}
       </ScrollView>
-
-      {/* Actions */}
-      {transaction.isLender && transaction.status === 'pending' && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            testID="Transaction.button.decline"
-            accessibilityLabel="Decline request"
-            accessibilityRole="button"
-            haptic="light"
-            style={styles.declineButton}
-            onPress={handleDecline}
-            disabled={actionLoading}
-          >
-            <Text style={styles.declineButtonText}>Decline</Text>
-          </HapticPressable>
-          <HapticPressable
-            testID="Transaction.button.approve"
-            accessibilityLabel="Approve request"
-            accessibilityRole="button"
-            haptic="medium"
-            style={styles.approveButton}
-            onPress={handleApprove}
-            disabled={actionLoading}
-          >
-            {actionLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.approveButtonText}>Approve</Text>
-            )}
-          </HapticPressable>
-        </View>
-      )}
-
-      {/* Borrower: Cancel request before pickup */}
-      {transaction.isBorrower && !transaction.actualPickupAt && transaction.status === 'pending' && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            testID="Transaction.button.cancel"
-            accessibilityLabel="Cancel borrow"
-            accessibilityRole="button"
-            haptic="light"
-            style={styles.declineButton}
-            onPress={() => setCancelSheetVisible(true)}
-            disabled={actionLoading}
-          >
-            {actionLoading ? (
-              <ActivityIndicator color={COLORS.text} size="small" />
-            ) : (
-              <Text style={styles.declineButtonText}>Cancel borrow</Text>
-            )}
-          </HapticPressable>
-        </View>
-      )}
-
-      {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt && ['paid', 'approved'].includes(transaction.status) && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            testID="Transaction.button.cancel"
-            accessibilityRole="button"
-            accessibilityLabel="Cancel borrow"
-            haptic="light"
-            style={styles.declineButton}
-            onPress={() => setCancelSheetVisible(true)}
-            disabled={actionLoading}
-          >
-            {actionLoading ? <ActivityIndicator color={COLORS.text} size="small" /> : <Text style={styles.declineButtonText}>Cancel borrow</Text>}
-          </HapticPressable>
-          {transaction.isBorrower && <HapticPressable
-            testID="Transaction.button.confirmPickup"
-            accessibilityLabel="Confirm pickup"
-            accessibilityRole="button"
-            haptic="medium"
-            style={styles.approveButton}
-            onPress={handleConfirmPickup}
-            disabled={actionLoading}
-          >
-            <Text style={styles.approveButtonText}>Confirm Pickup</Text>
-          </HapticPressable>}
-        </View>
-      )}
-
-      {/* Borrower: Submit return + Report Issue (Report Issue only for paid transactions) */}
-      {transaction.isBorrower && transaction.status === 'picked_up' && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            haptic="medium"
-            style={styles.approveButton}
-            onPress={() => setReturnSheetVisible(true)}
-            disabled={actionLoading}
-          >
-            <Text style={styles.approveButtonText}>Return Item</Text>
-          </HapticPressable>
-          {false && ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
-          <HapticPressable
-            haptic="light"
-            style={styles.reportIssueButton}
-            onPress={() => navigation.navigate('ReportIssue', {
-              transactionId: id,
-              depositAmount: transaction?.depositAmount,
-              rentalFee: transaction?.rentalFee,
-              listingTitle: transaction?.listing?.title,
-              borrowerId: transaction?.borrower?.id,
-              lenderId: transaction?.lender?.id,
-            })}
-          >
-            <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
-            <Text style={styles.reportIssueText}>Report an Issue</Text>
-          </HapticPressable>
-          )}
-        </View>
-      )}
-
-      {/* Lender: Confirm return + Report Issue (Report Issue only for paid transactions) */}
-      {transaction.isLender && ['picked_up', 'return_pending'].includes(transaction.status) && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            testID="Transaction.button.confirmReturn"
-            accessibilityLabel="Confirm return"
-            accessibilityRole="button"
-            haptic="medium"
-            style={styles.approveButton}
-            onPress={() => setReturnSheetVisible(true)}
-            disabled={actionLoading}
-          >
-            <Text style={styles.approveButtonText}>Confirm Return</Text>
-          </HapticPressable>
-          {false && ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 && (
-          <HapticPressable
-            haptic="light"
-            style={styles.reportIssueButton}
-            onPress={() => navigation.navigate('ReportIssue', {
-              transactionId: id,
-              depositAmount: transaction?.depositAmount,
-              rentalFee: transaction?.rentalFee,
-              listingTitle: transaction?.listing?.title,
-              borrowerId: transaction?.borrower?.id,
-              lenderId: transaction?.lender?.id,
-            })}
-          >
-            <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
-            <Text style={styles.reportIssueText}>Report an Issue</Text>
-          </HapticPressable>
-          )}
-        </View>
-      )}
-
-      {/* Lender: Confirm return & release deposit when borrower already reported */}
-      {transaction.isLender && transaction.status === 'returned' &&
-        transaction.paymentStatus === 'authorized' && !transaction.hasDispute && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            haptic="medium"
-            style={styles.approveButton}
-            onPress={() => setReturnSheetVisible(true)}
-            disabled={actionLoading}
-          >
-            <Text style={styles.approveButtonText}>Confirm Return & Release Deposit</Text>
-          </HapticPressable>
-        </View>
-      )}
-
-      {/* Report Issue button — either party can dispute within 7 days of return (paid transactions only) */}
-      {false && ['returned', 'completed'].includes(transaction?.status) &&
-        !transaction?.hasDispute &&
-        transaction?.actualReturnAt &&
-        ((transaction.rentalFee || 0) + (transaction.depositAmount || 0)) > 0 &&
-        (Date.now() - new Date(transaction.actualReturnAt).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <HapticPressable
-            testID="Transaction.button.reportIssue"
-            accessibilityLabel="Report an issue"
-            accessibilityRole="button"
-            haptic="medium"
-            style={styles.reportIssueButton}
-            onPress={() => navigation.navigate('ReportIssue', {
-              transactionId: id,
-              depositAmount: transaction?.depositAmount,
-              rentalFee: transaction?.rentalFee,
-              listingTitle: transaction?.listing?.title,
-              borrowerId: transaction?.borrower?.id,
-              lenderId: transaction?.lender?.id,
-            })}
-          >
-            <Ionicons name="warning-outline" size={20} color={COLORS.danger} />
-            <Text style={styles.reportIssueText}>Report an Issue</Text>
-          </HapticPressable>
-          <Text style={styles.disputeWindowText}>
-            Dispute window closes {new Date(new Date(transaction.actualReturnAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </Text>
-        </View>
-      )}
 
       <ActionSheet
         isVisible={returnSheetVisible && transaction?.isBorrower}
@@ -635,6 +420,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
+  secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
+  detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
   pageContent: { padding: 18, paddingBottom: 28, gap: 24 },
   pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '600', marginTop: 6 },
   statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },
@@ -915,7 +703,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   approveButton: {
-    flex: 1,
+    alignSelf: 'stretch',
     paddingVertical: 14,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,

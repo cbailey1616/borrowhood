@@ -150,7 +150,7 @@ export default function EditRequestScreen({ navigation, route }) {
         <View style={styles.options}>
           {[
             { value: 'item', label: 'Item', icon: 'cube-outline' },
-            { value: 'service', label: 'Service', icon: 'construct-outline' },
+            { value: 'service', label: 'Service', icon: 'handshake-outline' },
           ].map((opt) => {
             const isSelected = formData.type === opt.value;
             return (

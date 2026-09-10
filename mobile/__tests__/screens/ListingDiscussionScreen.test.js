@@ -125,4 +125,37 @@ describe('ListingDiscussionScreen', () => {
     render(<Screen navigation={mockNavigation} route={route} />);
     await waitFor(() => { expect(api.getDiscussions).toHaveBeenCalled(); });
   });
+
+  it('keeps service context when messaging someone from a request comment', async () => {
+    const post = { id: 'post-1', content: 'I can babysit', user: { id: 'user-2', firstName: 'Alice' }, replyCount: 0, isOwn: false };
+    api.getRequestDiscussions.mockResolvedValue({ posts: [post] });
+    api.getConversations.mockResolvedValue([]);
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const ActionSheet = require('../../src/components/ActionSheet').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: {
+      requestId: 'req-service', request: { id: 'req-service', title: 'Babysitter', type: 'service' },
+    } }} />);
+    fireEvent.press(await screen.findByLabelText('Comment options for Alice'));
+    const menu = screen.UNSAFE_getAllByType(ActionSheet).find(sheet => sheet.props.isVisible);
+    await act(async () => menu.props.actions[0].onPress());
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({
+      recipientId: 'user-2', threadContext: {
+        id: 'req-service', title: 'Babysitter', type: 'request', requestType: 'service', replyText: post.content,
+      },
+    }));
+  });
+});
+
+it.each(['listing', 'request'])('uses the display name immediately after posting a %s comment', async kind => {
+  const result = { id: 'display-post', content: 'Available tomorrow?', createdAt: new Date().toISOString(), user: { id: 'user-1', firstName: 'GardenNeighbor', lastName: '' } };
+  api.createDiscussionPost.mockResolvedValueOnce(result);
+  api.createRequestDiscussionPost = jest.fn().mockResolvedValue(result);
+  api.getRequestDiscussions = jest.fn().mockResolvedValue({ posts: [] });
+  const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+  const params = kind === 'request' ? { requestId: 'request-1', request: { title: 'Help', type: 'service' } } : { listingId: 'listing-1', listing: { title: 'Camera' } };
+  const screen = render(<Screen route={{ params }} navigation={mockNavigation} />);
+  fireEvent.changeText(await screen.findByLabelText('Comment'), 'Available tomorrow?');
+  fireEvent.press(screen.getByLabelText('Post comment'));
+  await screen.findByText('GardenNeighbor');
+  expect(screen.queryByText('Test User')).toBeNull();
 });

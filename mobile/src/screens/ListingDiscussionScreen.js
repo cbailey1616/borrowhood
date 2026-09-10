@@ -33,7 +33,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [target, setTarget] = useState(request || listing || null);
   const targetTitle = target?.title;
   const [threadError, setThreadError] = useState('');
-  const threadContext = { id: targetId, title: targetTitle, type: isRequest ? 'request' : 'listing' };
+  const threadContext = { id: targetId, title: targetTitle, type: isRequest ? 'request' : 'listing',
+    ...(isRequest ? { requestType: target?.type } : {}) };
   const isOwner = target?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
@@ -135,8 +136,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             createdAt: result.createdAt,
             user: {
               id: user.id,
-              firstName: user.firstName,
-              lastName: user.lastName,
+              firstName: result.user?.firstName ?? (user.displayName || user.firstName),
+              lastName: result.user?.lastName ?? (user.displayName ? '' : (user.lastName ? `${user.lastName.charAt(0)}.` : '')),
               profilePhotoUrl: user.profilePhotoUrl,
             },
             isOwn: true,
@@ -161,8 +162,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           createdAt: result.createdAt,
           user: {
             id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
+            firstName: result.user?.firstName ?? (user.displayName || user.firstName),
+            lastName: result.user?.lastName ?? (user.displayName ? '' : (user.lastName ? `${user.lastName.charAt(0)}.` : '')),
             profilePhotoUrl: user.profilePhotoUrl,
           },
           isOwn: true,

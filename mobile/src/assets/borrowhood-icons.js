@@ -61,6 +61,12 @@ const DRAWINGS = {
   'happy': c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M10 20C13 25 19 25 22 20'),
   sad: c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M11 23C13 19 19 19 21 23'),
   hammer: c => p('M6 4H16L22 10L17 15L11 10H6Z', panel(c)) + p('M17 14L25 23C28 26 24 30 21 27L13 17Z', accent(c)),
+  handshake: c => p('M7 10L11 8L15 9L21 8L26 12L24 19L19 25C18 26 16 26 15 25L8 19L6 15Z', panel(c))
+    + p('M15 9L12 12C10 14 12 17 14 15L17 13L25 19L22 23L18 26L10 20', accent(c))
+    + p('M17 18L22 22M14 21L18 25')
+    + p('M2 12L6 5L10 7L6 16Z', panel(c))
+    + p('M23 7L27 5L31 12L27 15Z', panel(c))
+    + p('M9 18C7 16 5 19 7 21L10 24C12 26 14 23 12 21Z', panel(c)),
   construct: c => p('M20 3L19 9L23 13L29 12C30 19 23 23 18 19L8 29C4 31 1 27 4 24L14 14C10 8 13 3 20 3Z', panel(c)),
   restaurant: c => p('M7 3V11M3 3V10C3 16 11 16 11 10V3M7 15V29M25 3C19 6 18 15 19 18H25M25 3V29'),
   football: c => p('M27 4C29 14 25 27 7 28C2 11 14 2 27 4Z', panel(c)) + p('M10 23L23 10M13 14L18 19M17 10L22 15'),
@@ -150,6 +156,7 @@ const PALETTES = {
   'rank-ranger': ['#9DBB90', '#D0A27A'],
   'rank-robin': ['#8EB081', '#DFB66F'],
   heart: ['#E6A392', '#D48976'], home: ['#B8CBB0', '#DCA083'],
+  handshake: ['#ABC5B8', '#E7C590'],
   basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],

@@ -1,3 +1,4 @@
+import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
@@ -344,8 +345,6 @@ export default function FeedScreen({ navigation }) {
     },
   ].filter(Boolean);
 
-  const PEEK_HEIGHT = 8;
-
   const onEndReached = () => {
     if (!isLoadingMore && hasMore) {
       setIsLoadingMore(true);
@@ -511,13 +510,13 @@ export default function FeedScreen({ navigation }) {
   };
 
   const renderRequestItem = item => (
-    <LayeredCard style={styles.tileShadow} radius={RADIUS.xl} backingColor={COLORS.primaryMuted}>
+    <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
         <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={[styles.tile, styles.requestTile]} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
-              <View style={styles.requestIcon}><Ionicons name="request-note" size={28} illustrated /></View>
-              <Text style={styles.requestLabelText}>Neighbor request</Text>
+              <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
+              <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
@@ -529,55 +528,36 @@ export default function FeedScreen({ navigation }) {
     </LayeredCard>
   );
 
-  const renderBanners = () => (<>
-    {banners.length > 0 ? (
-      <View style={[styles.bannerDeck, { marginBottom: SPACING.lg, height: 60 + (banners.length - 1) * PEEK_HEIGHT }]}>
-        {banners.map((b, i) => {
-          const isTop = i === 0;
-          return (
-            <View
-              key={b.key}
-              style={[
-                styles.bannerCard,
-                {
-                  top: i * PEEK_HEIGHT,
-                  zIndex: banners.length - i,
-                  borderColor: b.color,
-                  opacity: isTop ? 1 : 0.95,
-                  transform: [{ scale: 1 - i * 0.02 }],
-                },
-              ]}
-            >
-              <HapticPressable
-                style={styles.bannerCardInner}
-                onPress={b.onPress}
-                haptic="light"
-                scaleDown={0.98}
-              >
-                <View style={[styles.bannerIcon, { backgroundColor: b.color + '15' }]}>
-                  <Ionicons name={b.icon} size={20} color={b.color} />
-                </View>
-                <View style={styles.bannerContent}>
-                  <Text style={styles.bannerTitle}>{b.title}</Text>
-                  {isTop && <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>}
-                </View>
-              </HapticPressable>
-              {isTop && (
-                <HapticPressable
-                  style={styles.bannerDismissBtn}
-                  onPress={() => dismissBanner(b.key)}
-                  haptic="light"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close" size={16} color={COLORS.textMuted} />
-                </HapticPressable>
-              )}
-            </View>
-          );
-        })}
+  const renderBanners = () => {
+    const banner = banners[0];
+    if (!banner) return null;
+    return (
+      <View style={[styles.bannerCard, { borderColor: banner.color }]}>
+        <HapticPressable
+          style={styles.bannerCardInner}
+          onPress={banner.onPress}
+          haptic="light"
+          scaleDown={0.98}
+        >
+          <View style={[styles.bannerIcon, { backgroundColor: banner.color + '15' }]}>
+            <Ionicons name={banner.icon} size={20} color={banner.color} />
+          </View>
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerTitle}>{banner.title}</Text>
+            <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
+          </View>
+        </HapticPressable>
+        <HapticPressable
+          style={styles.bannerDismissBtn}
+          onPress={() => dismissBanner(banner.key)}
+          haptic="light"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="close" size={16} color={COLORS.textMuted} />
+        </HapticPressable>
       </View>
-    ) : null}
-  </>);
+    );
+  };
 
   const renderItem = ({ item, index }) => {
     if (item.type === 'feed-banners') return renderBanners();
@@ -982,13 +962,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.text,
   },
-  bannerDeck: {
-    position: 'relative',
-  },
   bannerCard: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    marginBottom: SPACING.lg,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,

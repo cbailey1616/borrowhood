@@ -45,12 +45,30 @@ describe('Feed update indicator', () => {
     const feed = await get('');
     expect(feed.status).toBe(200);
     expect(feed.body.latestPostAt).toBe(summary.body.latestPostAt);
-    expect(feed.body.items.some(item => item.id === wanted)).toBe(true);
+    expect(feed.body.items.find(item => item.id === wanted)).toMatchObject({ type: 'request', requestType: 'item' });
     expect(feed.body.items.some(item => item.id === visible)).toBe(true);
   });
 
   it('does not expose a timestamp without authentication', async () => {
     expect((await request(app).get('/api/feed?summary=true')).status).toBe(401);
+  });
+
+  it('preserves service type in both full and anonymous Town feeds without exposing identity', async () => {
+    await query("UPDATE item_requests SET type='service', town_preview_enabled=true WHERE id=$1", [wanted]);
+    const full = await get('?type=requests');
+    expect(full.status).toBe(200);
+    expect(full.body.items.find(item => item.id === wanted)).toMatchObject({
+      type: 'request', requestType: 'service', user: { id: neighbor.userId },
+    });
+    const unverified = await createTestUser({ email: 'feed-service-preview@borrowhood.test', city: 'FeedDotTown', state: 'MA', isVerified: false });
+    users.push(unverified);
+    const preview = await request(app).get('/api/feed?type=requests').set('Authorization', `Bearer ${unverified.token}`);
+    expect(preview.status).toBe(200);
+    expect(preview.body.items.find(item => item.id === wanted)).toMatchObject({
+      type: 'request', requestType: 'service', ownerMasked: true, previewOnly: true,
+      user: { id: null, firstName: 'Town', lastName: 'neighbor', profilePhotoUrl: null },
+      requester: { id: null },
+    });
   });
 
   it('rechecks visibility and availability each time, including an empty feed', async () => {

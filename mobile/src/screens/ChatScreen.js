@@ -1,3 +1,4 @@
+import { requestPresentation } from '../utils/requestPresentation';
 import { privateMessagePrefix } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
 import UserSafetyActions from '../components/UserSafetyActions';
@@ -235,7 +236,8 @@ export default function ChatScreen({ route, navigation }) {
       }
       await deliver({ retryable: safeRetries, composerText: text, attachmentUri: selected?.uri, payload: {
         recipientId: recipient, ...(text || contextPrefix ? { content: (contextPrefix + text).trim() } : {}),
-        ...(imageUrl ? { imageUrl } : {}), listingId: listingId || conversation?.listing?.id,
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(activeContext?.type === 'request' ? {} : { listingId: listingId || conversation?.listing?.id }),
         ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
       } });
     } catch {
@@ -557,11 +559,11 @@ export default function ChatScreen({ route, navigation }) {
       {threadContext?.id && <HapticPressable style={styles.listingHeader} accessibilityRole="button"
         accessibilityLabel={`View ${threadContext.title || 'original thread'}`}
         onPress={() => navigation.navigate(threadContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: threadContext.id })}>
-        <Ionicons name="chatbubble" size={28} color={COLORS.primary} illustrated />
+        <Ionicons name={threadContext.type === 'request' ? requestPresentation(threadContext.requestType).icon : 'chatbubble'} size={28} color={COLORS.primary} illustrated />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={{ color: COLORS.text, fontWeight: '600' }}>{threadContext.title || 'From the thread'}</Text>
           {!!threadContext.replyText && <Text style={{ color: COLORS.textSecondary, fontSize: 12 }} numberOfLines={2}>Replying to: “{threadContext.replyText}”</Text>}
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>This subject will be included with your message</Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{threadContext.type === 'request' ? requestPresentation(threadContext.requestType).label : 'About this item'}</Text>
         </View>
       </HapticPressable>}
       {!threadContext && conversation?.listing && !hasExchange && (
@@ -582,7 +584,7 @@ export default function ChatScreen({ route, navigation }) {
       )}
 
       {/* Messages List */}
-      <ChatExchangeCard userId={user.id} otherId={recipientId || conversation?.otherUser?.id} listingId={listingId || conversation?.listing?.id} navigation={navigation} focused={isFocused} onActiveChange={setHasExchange} />
+      {threadContext?.requestType !== 'service' && <ChatExchangeCard userId={user.id} otherId={recipientId || conversation?.otherUser?.id} listingId={listingId || conversation?.listing?.id} navigation={navigation} focused={isFocused} onActiveChange={setHasExchange} />}
       <FlatList
         ref={flatListRef}
         data={messages}
