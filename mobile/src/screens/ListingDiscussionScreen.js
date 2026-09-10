@@ -136,8 +136,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             createdAt: result.createdAt,
             user: {
               id: user.id,
-              firstName: user.firstName,
-              lastName: user.lastName,
+              firstName: result.user?.firstName ?? (user.displayName || user.firstName),
+              lastName: result.user?.lastName ?? (user.displayName ? '' : (user.lastName ? `${user.lastName.charAt(0)}.` : '')),
               profilePhotoUrl: user.profilePhotoUrl,
             },
             isOwn: true,
@@ -162,8 +162,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           createdAt: result.createdAt,
           user: {
             id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
+            firstName: result.user?.firstName ?? (user.displayName || user.firstName),
+            lastName: result.user?.lastName ?? (user.displayName ? '' : (user.lastName ? `${user.lastName.charAt(0)}.` : '')),
             profilePhotoUrl: user.profilePhotoUrl,
           },
           isOwn: true,

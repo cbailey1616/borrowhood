@@ -163,8 +163,8 @@ router.post('/:requestId/discussions', authenticate,
         [req.user.id]
       );
       const posterFirst = posterResult.rows[0].display_name || posterResult.rows[0].first_name;
-      const posterLastInitial = posterResult.rows[0].last_name ? posterResult.rows[0].last_name.charAt(0) + '.' : '';
-      const posterName = `${posterFirst} ${posterLastInitial}`;
+      const posterLastInitial = posterResult.rows[0].display_name ? '' : (posterResult.rows[0].last_name ? posterResult.rows[0].last_name.charAt(0) + '.' : '');
+      const posterName = `${posterFirst} ${posterLastInitial}`.trim();
 
       // Send notifications
       if (parentId) {

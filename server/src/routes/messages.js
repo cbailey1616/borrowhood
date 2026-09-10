@@ -37,12 +37,12 @@ router.get('/conversations', authenticate, async (req, res) => {
            ELSE c.user1_id
          END as other_user_id,
          CASE
-           WHEN c.user1_id = $1 THEN COALESCE(u2.display_name, u2.first_name)
-           ELSE COALESCE(u1.display_name, u1.first_name)
+           WHEN c.user1_id = $1 THEN COALESCE(NULLIF(TRIM(u2.display_name), ''), u2.first_name)
+           ELSE COALESCE(NULLIF(TRIM(u1.display_name), ''), u1.first_name)
          END as other_first_name,
          CASE
-           WHEN c.user1_id = $1 THEN CASE WHEN u2.last_name IS NOT NULL THEN LEFT(u2.last_name, 1) || '.' ELSE '' END
-           ELSE CASE WHEN u1.last_name IS NOT NULL THEN LEFT(u1.last_name, 1) || '.' ELSE '' END
+           WHEN c.user1_id = $1 THEN CASE WHEN NULLIF(TRIM(u2.display_name), '') IS NOT NULL THEN '' WHEN u2.last_name IS NOT NULL THEN LEFT(u2.last_name, 1) || '.' ELSE '' END
+           ELSE CASE WHEN NULLIF(TRIM(u1.display_name), '') IS NOT NULL THEN '' WHEN u1.last_name IS NOT NULL THEN LEFT(u1.last_name, 1) || '.' ELSE '' END
          END as other_last_name,
          CASE
            WHEN c.user1_id = $1 THEN u2.profile_photo_url

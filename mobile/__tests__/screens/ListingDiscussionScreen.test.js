@@ -145,3 +145,17 @@ describe('ListingDiscussionScreen', () => {
     }));
   });
 });
+
+it.each(['listing', 'request'])('uses the display name immediately after posting a %s comment', async kind => {
+  const result = { id: 'display-post', content: 'Available tomorrow?', createdAt: new Date().toISOString(), user: { id: 'user-1', firstName: 'GardenNeighbor', lastName: '' } };
+  api.createDiscussionPost.mockResolvedValueOnce(result);
+  api.createRequestDiscussionPost = jest.fn().mockResolvedValue(result);
+  api.getRequestDiscussions = jest.fn().mockResolvedValue({ posts: [] });
+  const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+  const params = kind === 'request' ? { requestId: 'request-1', request: { title: 'Help', type: 'service' } } : { listingId: 'listing-1', listing: { title: 'Camera' } };
+  const screen = render(<Screen route={{ params }} navigation={mockNavigation} />);
+  fireEvent.changeText(await screen.findByLabelText('Comment'), 'Available tomorrow?');
+  fireEvent.press(screen.getByLabelText('Post comment'));
+  await screen.findByText('GardenNeighbor');
+  expect(screen.queryByText('Test User')).toBeNull();
+});

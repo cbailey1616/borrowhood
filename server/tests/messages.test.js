@@ -255,3 +255,20 @@ describe('Photo messages', () => {
     expect(outsider.status).toBe(404);
   });
 });
+
+describe('Chat display names', () => {
+  it('uses the display name alone in both inbox directions and the chat header', async () => {
+    await query("UPDATE users SET display_name = 'GardenNeighbor' WHERE id = ANY($1)", [[userA.userId, userB.userId]]);
+    try {
+      for (const [viewer, other] of [[userA, userB], [userB, userA]]) {
+        const inbox = await request(app).get('/api/messages/conversations').set('Authorization', `Bearer ${viewer.token}`).expect(200);
+        const chat = inbox.body.find(c => c.otherUser.id === other.userId);
+        expect(chat.otherUser).toMatchObject({ firstName: 'GardenNeighbor', lastName: '' });
+        const detail = await request(app).get(`/api/messages/conversations/${chat.id}`).set('Authorization', `Bearer ${viewer.token}`).expect(200);
+        expect(detail.body.conversation.otherUser).toMatchObject({ firstName: 'GardenNeighbor', lastName: '' });
+      }
+    } finally {
+      await query('UPDATE users SET display_name = NULL WHERE id = ANY($1)', [[userA.userId, userB.userId]]);
+    }
+  });
+});
