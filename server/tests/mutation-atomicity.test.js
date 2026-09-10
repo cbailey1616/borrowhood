@@ -93,8 +93,8 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
       VALUES('Request test',$1,'Upton','MA') RETURNING id`, [`requests-${randomUUID()}`])).rows[0].id;
     testCommunityIds.push(community);
     await query('INSERT INTO community_memberships(user_id,community_id) VALUES($1,$3),($2,$3)', [owner,neighbor,community]);
-    const needed = (await query(`INSERT INTO item_requests(user_id,community_id,title,visibility,privacy_version,status,expires_at)
-      VALUES($1,$2,'Cordless drill','town',1,'open',NOW()+INTERVAL '1 day') RETURNING id`, [neighbor,community])).rows[0].id;
+    const needed = (await query(`INSERT INTO item_requests(user_id,community_id,title,visibility,status,expires_at)
+      VALUES($1,$2,'Cordless drill','town','open',NOW()+INTERVAL '1 day') RETURNING id`, [neighbor,community])).rows[0].id;
     const listed = await createListing({ title: 'Cordless drill', communityId: community, visibility: ['town'], sharingConfirmed: true });
     expect(listed.status).toBe(201);
     expect((await query('SELECT id FROM notifications WHERE listing_id=$1', [listed.body.id])).rows).toHaveLength(0);
