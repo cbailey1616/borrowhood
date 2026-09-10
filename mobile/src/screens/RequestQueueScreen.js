@@ -53,7 +53,7 @@ export default function RequestQueueScreen({ route, navigation }) {
       {!!item.message && <Text style={styles.body}>{item.message}</Text>}
       <View style={{flexDirection:'row',gap:12}}>
         <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${item.borrower.firstName}`} style={[styles.outline,{flex:1}]} onPress={()=>navigation.navigate('Chat',{recipientId:item.borrower.id,recipient:item.borrower,listingId,listing:data.listing})}><Text style={styles.action}>Message</Text></HapticPressable>
-        <HapticPressable accessibilityRole="button" accessibilityLabel={`Choose ${item.borrower.firstName}`} disabled={!available || !!busy || error} onPress={()=>choose(item)} style={[styles.choose,{flex:1,opacity:available && !busy && !error ? 1 : 0.45}]}>{busy===item.id ? <ActivityIndicator color={COLORS.surface} /> : <Text style={{color:COLORS.surface,fontWeight:'700'}}>Choose</Text>}</HapticPressable>
+        <HapticPressable accessibilityRole="button" accessibilityLabel={`Choose ${item.borrower.firstName}`} disabled={!(item.canChoose ?? available) || !!busy || error} onPress={()=>choose(item)} style={[styles.choose,{flex:1,opacity:(item.canChoose ?? available) && !busy && !error ? 1 : 0.45}]}>{busy===item.id ? <ActivityIndicator color={COLORS.surface} /> : <Text style={{color:COLORS.surface,fontWeight:'700'}}>Choose</Text>}</HapticPressable>
       </View>
       <HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s request`} style={{minHeight:44,justifyContent:'center'}} onPress={()=>navigation.navigate('TransactionDetail',{id:item.id})}><Text style={styles.action}>View request</Text></HapticPressable>
     </View>} />;

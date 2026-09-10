@@ -444,7 +444,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
       endorsement: await endorsementState(t.id, req.user.id),
-      queue: t.status === 'pending' ? { waiting: !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
+      queue: t.status === 'pending' ? { waiting: !t.stripe_payment_intent_id && !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       hasDispute: t.has_dispute || false,
       disputeId: t.dispute_id || null,
