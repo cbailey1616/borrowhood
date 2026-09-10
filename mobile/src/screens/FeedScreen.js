@@ -565,7 +565,8 @@ export default function FeedScreen({ navigation }) {
 
   const carouselRequests = !search.trim() && activeFilters.length === 0
     ? [...requestCards, ...feed.filter(item => item.type === 'request')].filter((item,index,all) => all.findIndex(other => other.id === item.id) === index) : [];
-  const verticalFeed = carouselRequests.length ? feed.filter(item => item.type !== 'request') : feed;
+  const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
+  const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),

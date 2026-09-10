@@ -99,7 +99,10 @@ router.get('/', authenticate, async (req, res) => {
         LEFT JOIN categories cat ON l.category_id = cat.id
         WHERE l.status = 'active'
           ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
-          AND (l.listing_type NOT IN ('giveaway', 'sell') OR l.is_available = true)`;
+          AND l.is_available = true
+          AND NOT EXISTS (SELECT 1 FROM borrow_transactions active_exchange
+            WHERE active_exchange.listing_id = l.id
+              AND active_exchange.status IN ('approved', 'paid', 'picked_up', 'return_pending'))`;
 
       const listingParams = [];
 

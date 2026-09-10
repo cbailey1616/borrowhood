@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -40,7 +40,8 @@ export default function NotificationSettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const savingRef = useRef(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
 
   useEffect(() => {
@@ -66,9 +67,10 @@ export default function NotificationSettingsScreen() {
     }
   };
 
-  const handleChange = async (patch) => {
-    if (isSaving) return;
-    setSaveError(false);
+  const handleChange = async (patch, section = 'phone') => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaveError(null);
     const newPreferences = { ...preferences, ...patch };
     setPreferences(newPreferences);
 
@@ -79,9 +81,10 @@ export default function NotificationSettingsScreen() {
     } catch (error) {
       // Revert on error
       setPreferences(preferences);
-      setSaveError(true);
+      setSaveError(section);
       haptics.error();
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -92,12 +95,12 @@ export default function NotificationSettingsScreen() {
     const discovery = ['new_item_requests', 'new_service_requests', 'item_match'].includes(core);
     return preferences[core] !== false && (!discovery || preferences[source] !== false);
   };
-  const toggleSource = (core, source) => {
+  const toggleSource = (core, source, value) => {
     // Save the entire visible row so turning one source on cannot enable the others.
     const patch = Object.fromEntries(SOURCES.map(item => [
-      `${core}_${item.key}`, item.key === source ? !sourceEnabled(core, source) : sourceEnabled(core, item.key),
+      `${core}_${item.key}`, item.key === source ? value : sourceEnabled(core, item.key),
     ]));
-    handleChange({ ...patch, [core]: true });
+    handleChange({ ...patch, [core]: true }, core);
   };
   const childDisabled = isSaving || preferences.push_enabled === false;
 
@@ -112,7 +115,6 @@ export default function NotificationSettingsScreen() {
   return (
     <ScrollView style={styles.container}>
       {loadError ? <HapticPressable accessibilityRole="button" onPress={fetchPreferences} style={styles.section}><Text style={styles.settingLabel}>Couldn’t load settings. Tap to try again.</Text></HapticPressable> : null}
-      {saveError && <Text accessibilityRole="alert" style={styles.footerText}>Couldn’t save that change. Please try again.</Text>}
       {notifsDenied && (
         <View style={styles.section}>
           <HapticPressable
@@ -142,6 +144,7 @@ export default function NotificationSettingsScreen() {
                 thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
             </View>)}
           </View>
+          {saveError === 'phone' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
         </View>
         <View style={styles.section}>
           <Text accessibilityRole="header" style={styles.heading}>Notify me about</Text>
@@ -152,16 +155,17 @@ export default function NotificationSettingsScreen() {
               <View style={styles.sourceRow}>
                 {SOURCES.map(source => {
                   const enabled = sourceEnabled(setting.key, source.key);
-                  return <HapticPressable key={source.key} accessibilityRole="switch"
-                    accessibilityLabel={`${setting.label}: ${source.label}`}
-                    accessibilityState={{ checked: enabled, disabled: childDisabled }}
-                    disabled={childDisabled} onPress={() => toggleSource(setting.key, source.key)}
-                    style={[styles.sourceControl, enabled && styles.sourceControlOn, childDisabled && styles.disabled]}>
-                    <Ionicons name={enabled ? 'checkmark' : 'remove'} size={16} color={enabled ? COLORS.primary : COLORS.textMuted} />
-                    <Text style={[styles.sourceLabel, enabled && styles.sourceLabelOn]}>{source.label}</Text>
-                  </HapticPressable>;
+                  return <View key={source.key} style={styles.sourceControl}>
+                    <Text style={styles.sourceLabel}>{source.label}</Text>
+                    <Switch accessibilityLabel={`${setting.label}: ${source.label}`}
+                      accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
+                      value={enabled} onValueChange={value => toggleSource(setting.key, source.key, value)}
+                      trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+                      thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+                  </View>;
                 })}
               </View>
+              {saveError === setting.key && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
             </View>)}
           </View>
           <Text style={styles.audienceHint}>Friends use your Friends choice, even if they also live nearby. Neighbors are people in your neighborhoods; Town covers everyone else in your town.</Text>
@@ -179,11 +183,8 @@ const styles = StyleSheet.create({
   heading: { ...TYPOGRAPHY.title3, color: COLORS.primary, fontWeight: '700', marginBottom: SPACING.sm },
   coreRow: { padding: SPACING.md, gap: SPACING.sm },
   sourceRow: { flexDirection: 'row', gap: SPACING.sm },
-  sourceControl: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderBrown },
-  sourceControlOn: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryMuted },
-  sourceLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textMuted, flexShrink: 1 },
-  sourceLabelOn: { color: COLORS.primary, fontWeight: '600' },
-  disabled: { opacity: 0.45 },
+  sourceControl: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm },
+  sourceLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
   audienceHint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.md },
   container: {
     flex: 1,

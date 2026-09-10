@@ -21,21 +21,21 @@ it('shows core audience choices immediately without expandable menus', async () 
 it('changes one audience without enabling the other audiences or categories', async () => {
   api.getNotificationPreferences.mockResolvedValueOnce({ new_service_requests: false, source_town: false });
   const view = render(<Screen />);
-  fireEvent.press(await view.findByLabelText('Service requests: Friends'));
+  fireEvent(await view.findByLabelText('Service requests: Friends'), 'valueChange', true);
   await waitFor(() => expect(api.updateNotificationPreferences).toHaveBeenCalledWith({
     new_service_requests: true, new_service_requests_source_friends: true,
     new_service_requests_source_neighborhood: false, new_service_requests_source_town: false,
   }));
-  expect(view.getByLabelText('Service requests: Friends').props.accessibilityState.checked).toBe(true);
-  expect(view.getByLabelText('Service requests: Town').props.accessibilityState.checked).toBe(false);
-  expect(view.getByLabelText('Messages: Town').props.accessibilityState.checked).toBe(true);
+  expect(view.getByLabelText('Service requests: Friends').props.value).toBe(true);
+  expect(view.getByLabelText('Service requests: Town').props.value).toBe(false);
+  expect(view.getByLabelText('Messages: Town').props.value).toBe(true);
 });
 it('restores the whole row if saving fails', async () => {
   api.updateNotificationPreferences.mockRejectedValueOnce(new Error('offline'));
   const view = render(<Screen />);
-  fireEvent.press(await view.findByLabelText('Messages: Town'));
+  fireEvent(await view.findByLabelText('Messages: Town'), 'valueChange', false);
   await view.findByText('Couldn’t save that change. Please try again.');
-  expect(view.getByLabelText('Messages: Town').props.accessibilityState.checked).toBe(true);
+  expect(view.getByLabelText('Messages: Town').props.value).toBe(true);
 });
 it('disables child controls while push is off and saves the master switch', async () => {
   api.getNotificationPreferences.mockResolvedValueOnce({ push_enabled: false });
