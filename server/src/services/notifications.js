@@ -170,12 +170,10 @@ const NOTIFICATION_TEMPLATES = {
       : 'You\'re in! Tap to start browsing items from your neighbors.',
   },
 
-  // Item requests (wanted items)
-  item_match: {
-    title: 'We found a match!',
-    body: (data) => data.itemTitle
-      ? `A neighbor has ${data.itemTitle} — just what you were looking for! Tap to check it out.`
-      : 'An item matching your request is available nearby! Tap to check it out.',
+  // A neighbor deliberately responded to an item request.
+  request_offer: {
+    title: 'New private offer',
+    body: () => 'A neighbor offered an item for your request. Tap to view their offer.',
   },
 
   // New request posted
@@ -261,6 +259,7 @@ const NOTIFICATION_TEMPLATES = {
  * @param {object} options - Additional options (fromUserId, transactionId, listingId)
  */
 export async function sendNotification(userId, type, data, options = {}) {
+  if (type === 'item_match') return null;
   try {
     const template = NOTIFICATION_TEMPLATES[type];
     if (!template) {
@@ -308,7 +307,7 @@ export async function sendNotification(userId, type, data, options = {}) {
             query, userId, options.fromUserId || data.fromUserId, audiencePreferences(type, prefs, data))) {
         // Get unread count for app icon badge
         const unreadResult = await query(
-          'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+          "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false AND type != 'item_match'",
           [userId]
         );
         const badge = parseInt(unreadResult.rows[0].count) || 1;

@@ -17,7 +17,7 @@ it('shows core audience choices immediately without expandable menus', async () 
   }
   expect(view.queryByLabelText('Messages: Friends')).toBeNull();
   expect(view.getByLabelText('Messages')).toBeTruthy();
-  expect(view.getByLabelText('Matches for your requests')).toBeTruthy();
+  expect(view.queryByLabelText('Matches for your requests')).toBeNull();
   expect(view.queryByText('Request approvals')).toBeNull();
   expect(api.updateNotificationPreferences).not.toHaveBeenCalled();
 });

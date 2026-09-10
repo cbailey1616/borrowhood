@@ -237,6 +237,15 @@ describe('PATCH /api/notifications/preferences', () => {
 });
 
 describe('Current notification controls', () => {
+  it('hides old match alerts and excludes them from the unread badge', async () => {
+    const before = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    const id = await createTestNotification(userA.userId, 'item_match', { title: 'We found a match!' });
+    const after = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    expect(after.body.notifications.some(item => item.id === id)).toBe(false);
+    expect(after.body.unreadCount).toBe(before.body.unreadCount);
+    const badges = await request(app).get('/api/notifications/badge-count').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    expect(badges.body.notifications).toBe(after.body.unreadCount);
+  });
   it('corrects a stored return prompt while preserving its read state and identity', async () => {
     const id = await createTestNotification(userA.userId, 'return_confirmed', {
       title: 'Return Complete', body: 'Drill has been returned. Tap to leave a rating for your neighbor.',
@@ -337,13 +346,13 @@ describe('Granular notification delivery', () => {
       await send();
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ source_friends: false, source_town: true });
-      await send('item_match');
+      await send('request_offer');
       expect(push).toHaveBeenCalledTimes(1);
       // After removing the friendship, shared neighborhood takes precedence over town.
       await query('DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2', [sender.userId, recipient.userId]);
       await query('INSERT INTO community_memberships (user_id, community_id) VALUES ($1, $3), ($2, $3)', [sender.userId, recipient.userId, communityId]);
       await setPrefs({ source_neighborhood: true, source_town: false });
-      await send('item_match');
+      await send('request_offer');
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ source_neighborhood: false, source_town: true });
       await send();

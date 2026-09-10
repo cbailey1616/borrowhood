@@ -45,7 +45,7 @@ const NOTIFICATION_ICONS = {
   new_rating: 'star',
   rating_received: 'star',
   join_approved: 'people',
-  item_match: 'sparkles',
+  request_offer: 'cube',
   new_request: 'search',
   new_message: 'chatbubble',
   friend_request: 'person-add',
@@ -80,7 +80,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         api.getConversations(),
         api.getTransactions(),
       ]);
-      setNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute') && !['new_message', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(n.type)));
+      setNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute') && !['item_match', 'new_message', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(n.type)));
       setConversations(convData || []);
       setActiveBorrows((transactions || []).filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
       setLoadError(false);
@@ -167,7 +167,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       return;
     } else if (item.type === 'friend_request' || item.type === 'friend_accepted') {
       nav.navigate('Friends');
-    } else if (item.type === 'new_request' && item.requestId) {
+    } else if (['new_request', 'request_offer'].includes(item.type) && item.requestId) {
       nav.navigate('RequestDetail', { id: item.requestId });
     } else if (item.type === 'join_request') {
       if (item.communityId) nav.navigate('CommunityMembers', { id: item.communityId });
@@ -182,8 +182,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
       nav.navigate('TransactionDetail', { id: item.transactionId });
     } else if (item.listingId) {
       nav.navigate('ListingDetail', { id: item.listingId });
-    } else if (item.type === 'item_match' && item.requestId) {
-      nav.navigate('RequestDetail', { id: item.requestId });
     } else if (item.type === 'payment_failed') {
       nav.navigate('SetupPayout');
     } else if (['borrow_request', 'request_approved', 'request_declined', 'pickup_confirmed',

@@ -5,6 +5,7 @@ import api from '../../../src/services/api';
 jest.unmock('../../../src/hooks/usePushNotifications');
 const usePushNotifications = jest.requireActual('../../../src/hooks/usePushNotifications').default;
 const foregroundHandler = Notifications.setNotificationHandler.mock.calls.at(-1)[0];
+const { setNavigationRef } = jest.requireActual('../../../src/hooks/usePushNotifications');
 
 describe('usePushNotifications', () => {
   beforeEach(() => {
@@ -39,6 +40,18 @@ describe('usePushNotifications', () => {
   it('does not register when not authenticated', () => {
     renderHook(() => usePushNotifications(false));
     expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+  it('ignores retired match pushes and opens explicit offers in the request', async () => {
+    const navigation = { navigate: jest.fn() };
+    setNavigationRef(navigation);
+    renderHook(() => usePushNotifications(true, { onboardingCompleted: true }));
+    await act(async () => {});
+    const respond = Notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)[0];
+    respond({ notification: { request: { content: { data: { type: 'item_match', listingId: 'item-1' } } } } });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    respond({ notification: { request: { content: { data: { type: 'request_offer', listingId: 'item-1', requestId: 'request-1' } } } } });
+    expect(navigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'request-1' });
+    expect(await foregroundHandler.handleNotification({ request: { content: { sound: 'default', data: { type: 'item_match' } } } })).toEqual({ shouldShowAlert: false, shouldPlaySound: false, shouldSetBadge: false });
   });
 });
 

@@ -146,23 +146,6 @@ export default function CreateRequestScreen({ navigation, route }) {
         requestData.expiresIn = formData.expiresIn;
       }
 
-      // Check for matching listings before creating
-      try {
-        const { suggestions } = await api.searchListingSuggestions(requestData.title);
-        if (suggestions && suggestions.length > 0) {
-          haptics.success();
-          navigation.replace('RequestSuggestions', {
-            draftScope,
-            requestData,
-            requestTitle: formData.title.trim(),
-            suggestions,
-          });
-          return;
-        }
-      } catch (e) {
-        // Suggestions are best-effort, don't block
-      }
-
       await api.createRequest(requestData);
       await draft.clear().catch(() => showToast('Request posted. The local draft could not be cleared.', 'info'));
       haptics.success();

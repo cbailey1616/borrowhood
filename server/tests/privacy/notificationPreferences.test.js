@@ -28,6 +28,10 @@ describe('granular push preferences', () => {
     expect(shouldSendPush('new_message', { push_enabled: false, new_message: true })).toBe(false);
     expect(shouldSendPush('request_approved', { push: false, request_approvals: true })).toBe(false);
     expect(shouldSendPush('new_rating', { new_rating: true })).toBe(false);
+    expect(shouldSendPush('item_match', { item_match: true })).toBe(false);
+    expect(normalizedPreferences({ item_match: true, item_match_source_friends: true })).toMatchObject({ item_match: false, item_match_source_friends: false });
+    expect(shouldSendPush('request_offer', { post_replies: false })).toBe(false);
+    expect(shouldSendPush('request_offer', { post_replies: true })).toBe(true);
   });
   it('honors a later group toggle from an older app after granular choices were saved', () => {
     const original = { request_approvals: true, request_declines: false, new_service_requests: false };

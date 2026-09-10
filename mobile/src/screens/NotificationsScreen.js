@@ -31,7 +31,7 @@ const NOTIFICATION_ICONS = {
   new_rating: 'star',
   rating_received: 'star',
   join_approved: 'people',
-  item_match: 'sparkles',
+  request_offer: 'cube',
   new_request: 'search',
   new_message: 'chatbubble',
   discussion_reply: 'chatbubble-ellipses',
@@ -52,8 +52,9 @@ export default function NotificationsScreen({ navigation }) {
   const fetchNotifications = useCallback(async () => {
     try {
       const data = await api.getNotifications();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      const visible = data.notifications.filter(item => item.type !== 'item_match');
+      setNotifications(visible);
+      setUnreadCount(Math.max(0, data.unreadCount - data.notifications.filter(item => item.type === 'item_match' && !item.isRead).length));
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -118,7 +119,7 @@ export default function NotificationsScreen({ navigation }) {
         navigation.navigate('Conversations');
       }
       return;
-    } else if (notification.type === 'new_request' && notification.requestId) {
+    } else if (['new_request', 'request_offer'].includes(notification.type) && notification.requestId) {
       navigation.navigate('RequestDetail', { id: notification.requestId });
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
       navigation.navigate('Friends');
@@ -126,8 +127,6 @@ export default function NotificationsScreen({ navigation }) {
       navigation.navigate('TransactionDetail', { id: notification.transactionId });
     } else if (notification.listingId) {
       navigation.navigate('ListingDetail', { id: notification.listingId });
-    } else if (notification.type === 'item_match' && notification.requestId) {
-      navigation.navigate('RequestDetail', { id: notification.requestId });
     }
   };
 

@@ -10,9 +10,9 @@ import api from '../services/api';
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async notification => ({
-    shouldShowAlert: true,
-    shouldPlaySound: !!notification.request.content.sound,
-    shouldSetBadge: true,
+    shouldShowAlert: notification.request.content.data?.type !== 'item_match',
+    shouldPlaySound: notification.request.content.data?.type !== 'item_match' && !!notification.request.content.sound,
+    shouldSetBadge: notification.request.content.data?.type !== 'item_match',
   }),
 });
 
@@ -146,6 +146,7 @@ async function registerForPushNotifications({ skipRequest = false } = {}) {
 }
 
 function handleNotificationResponse(data) {
+  if (data?.type === 'item_match') return;
   if (!navigationRef || !data?.type) {
     console.log('Notification tapped (no navigation):', data);
     return;
@@ -184,12 +185,7 @@ function handleNotificationResponse(data) {
       navigationRef.navigate('Profile');
       break;
 
-    case 'item_match':
-      if (data.listingId) {
-        navigationRef.navigate('ListingDetail', { id: data.listingId });
-      }
-      break;
-
+    case 'request_offer':
     case 'new_request':
       if (data.requestId) {
         navigationRef.navigate('RequestDetail', { id: data.requestId });

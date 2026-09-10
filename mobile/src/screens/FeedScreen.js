@@ -266,7 +266,7 @@ export default function FeedScreen({ navigation }) {
       fetchBannerData();
     };
     const received = Notifications.addNotificationReceivedListener(notification => {
-      if (['new_request', 'item_match'].includes(notification.request?.content?.data?.type)) refreshVisibleFeed();
+      if (notification.request?.content?.data?.type === 'new_request') refreshVisibleFeed();
     });
     let previousState = AppState.currentState;
     const resumed = AppState.addEventListener('change', nextState => {

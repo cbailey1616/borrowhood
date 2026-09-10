@@ -474,48 +474,23 @@ router.post('/', authenticate, freeListingOnly,
         return listingId;
       });
 
-      // Direct request match notification (from "I Have This" flow)
+      // Notify the requester only when a neighbor explicitly offers this item.
       if (requestMatchId) {
         try {
-          const matchedRequest = await query(
+          const offeredRequest = await query(
             'SELECT user_id, title FROM item_requests WHERE id = $1 AND status = $2',
             [requestMatchId, 'open']
           );
-          if (matchedRequest.rows.length > 0 && matchedRequest.rows[0].user_id !== req.user.id) {
+          if (offeredRequest.rows.length > 0 && offeredRequest.rows[0].user_id !== req.user.id) {
             await sendNotification(
-              matchedRequest.rows[0].user_id,
-              'item_match',
-              { itemTitle: title, requestTitle: matchedRequest.rows[0].title },
+              offeredRequest.rows[0].user_id,
+              'request_offer',
+              { itemTitle: title, requestTitle: offeredRequest.rows[0].title },
               { listingId, requestId: requestMatchId, fromUserId: req.user.id }
             );
           }
-        } catch (matchErr) {
-          console.error('Error sending request match notification:', matchErr);
-        }
-      } else {
-        // Fuzzy text match — find matching open requests and notify their owners
-        try {
-          const matchingRequests = communityId ? await query(
-            `SELECT r.id, r.user_id, r.title as request_title
-             FROM item_requests r
-             WHERE r.status = 'open'
-               AND r.community_id = $1
-               AND r.user_id != $2
-               AND to_tsvector('english', r.title || ' ' || COALESCE(r.description, '')) @@ plainto_tsquery($3)`,
-            [communityId, req.user.id, title]
-          ) : { rows: [] };
-
-          for (const match of matchingRequests.rows) {
-            if (!await canViewListing(listingId, match.user_id, { discovery: true })) continue;
-            await sendNotification(
-              match.user_id,
-              'item_match',
-              { itemTitle: title, requestTitle: match.request_title },
-              { listingId, fromUserId: req.user.id }
-            );
-          }
-        } catch (matchErr) {
-          console.error('Error finding matching requests:', matchErr);
+        } catch (offerErr) {
+          console.error('Error sending private offer notification:', offerErr);
         }
       }
 

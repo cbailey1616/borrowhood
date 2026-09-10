@@ -25,7 +25,6 @@ import BorrowRequestScreen from '../screens/BorrowRequestScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import WantedPostsScreen from '../screens/WantedPostsScreen';
 import CreateRequestScreen from '../screens/CreateRequestScreen';
-import RequestSuggestionsScreen from '../screens/RequestSuggestionsScreen';
 import RequestDetailScreen from '../screens/RequestDetailScreen';
 import ConversationsScreen from '../screens/ConversationsScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -189,11 +188,6 @@ export default function RootNavigator() {
             name="CreateRequest"
             component={CreateRequestScreen}
             options={modalScreenOptions('Post a Request')}
-          />
-          <Stack.Screen
-            name="RequestSuggestions"
-            component={RequestSuggestionsScreen}
-            options={modalScreenOptions('Suggestions')}
           />
           <Stack.Screen
             name="RequestDetail"

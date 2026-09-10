@@ -6,6 +6,18 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getNotifications.mockResolvedValue({ notifications: [], unreadCount: 0 }); });
 describe('NotificationsScreen', () => {
+  it('hides automatic matches while opening private offers in the request', async () => {
+    api.getNotifications.mockResolvedValue({ notifications: [
+      { id: 'old-1', type: 'item_match', title: 'We found a match!', isRead: false },
+      { id: 'offer-1', type: 'request_offer', title: 'New private offer', requestId: 'request-1', listingId: 'item-1', isRead: true },
+    ], unreadCount: 1 });
+    const Screen = require('../../src/screens/NotificationsScreen').default;
+    const view = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await view.findByText('New private offer'));
+    expect(view.queryByText('We found a match!')).toBeNull();
+    expect(view.queryByText(/Mark all/i)).toBeNull();
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'request-1' });
+  });
   it('fetches notifications on mount', async () => { const S = require('../../src/screens/NotificationsScreen').default; render(<S navigation={mockNavigation} />); await waitFor(() => { expect(api.getNotifications).toHaveBeenCalled(); }); });
   it('shows empty state', async () => { const S = require('../../src/screens/NotificationsScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText(/no notification/i); });
   it('displays notifications', async () => { api.getNotifications.mockResolvedValue({ notifications: [{ id: 'n-1', type: 'borrow_request', title: 'New request', body: 'Alice wants your drill', isRead: false, createdAt: new Date().toISOString(), transactionId: 'txn-1' }], unreadCount: 1 }); const S = require('../../src/screens/NotificationsScreen').default; const { findByText } = render(<S navigation={mockNavigation} />); await findByText('New request'); });

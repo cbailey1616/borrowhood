@@ -11,6 +11,18 @@ beforeEach(() => {
 });
 
 describe('completion notifications', () => {
+  it('discards automatic item matches without saving or sending them', async () => {
+    expect(await sendNotification('neighbor-1', 'item_match', { itemTitle: 'Drill' })).toBeNull();
+    expect(query).not.toHaveBeenCalled();
+  });
+  it('keeps explicit private offers linked to the request and item', async () => {
+    await sendNotification('neighbor-1', 'request_offer', {}, { requestId: 'request-1', listingId: 'item-1' });
+    const saved = query.mock.calls[0][1];
+    expect(saved[1]).toBe('request_offer');
+    expect(saved[3]).toContain('offered an item');
+    expect(saved[6]).toBe('item-1');
+    expect(saved[7]).toBe('request-1');
+  });
   it.each(['return_confirmed', 'giveaway_complete'])('keeps %s tied to the exchange without asking for a rating', async type => {
     await sendNotification('neighbor-1', type, { itemTitle: 'Garden tools' }, { transactionId: 'exchange-1', listingId: 'item-1' });
     const saved = query.mock.calls[0][1];

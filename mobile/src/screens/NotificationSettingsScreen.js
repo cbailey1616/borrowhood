@@ -24,7 +24,6 @@ const ACTIVITY_SETTINGS = [
   { key: 'post_replies', label: 'Comments & replies' },
   { key: 'borrow_updates', label: 'Borrowing & lending' },
   { key: 'return_reminder', label: 'Return reminders' },
-  { key: 'item_match', label: 'Matches for your requests' },
   { key: 'community_updates', label: 'Friends & neighborhood activity' },
 ];
 const SOURCES = [
@@ -94,8 +93,7 @@ export default function NotificationSettingsScreen() {
   const sourceEnabled = (core, source) => {
     const saved = preferences[`${core}_${source}`];
     if (typeof saved === 'boolean') return saved;
-    const discovery = ['new_item_requests', 'new_service_requests', 'item_match'].includes(core);
-    return preferences[core] !== false && (!discovery || preferences[source] !== false);
+    return preferences[core] !== false && preferences[source] !== false;
   };
   const toggleSource = (core, source, value) => {
     // Save the entire visible row so turning one source on cannot enable the others.
