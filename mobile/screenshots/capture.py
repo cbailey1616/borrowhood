@@ -20,6 +20,24 @@ review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
 def run(*args, check=True, timeout=180):
     return subprocess.run(['xcrun', 'simctl', *args], check=check, timeout=timeout)
 
+def prepare_device(udid):
+    run('bootstatus', udid, '-b', timeout=300)
+    run('ui', udid, 'appearance', 'light')
+    run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
+
+def launch_capture(udid, route):
+    args = ('launch', '--terminate-running-process', udid, 'com.borrowhood.app', '-BorrowhoodCaptureScreen', route)
+    try:
+        run(*args)
+    except subprocess.TimeoutExpired:
+        # A cold hosted simulator can stall in simctl before the app launches.
+        # Retry once after a clean boot; a second failure still fails the job.
+        print(f'Launch timed out for {route}; restarting the simulator once', flush=True)
+        run('shutdown', udid, check=False)
+        run('boot', udid)
+        prepare_device(udid)
+        run(*args)
+
 for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752)), ('iphone-se', 'iPhone SE (3rd generation)', (750, 1334))]:
     if review_only and folder == 'ipad-pro-13':
         continue
@@ -45,16 +63,14 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
     try:
         if device['state'] != 'Booted':
             run('boot', udid)
-        run('bootstatus', udid, '-b', timeout=300)
-        run('ui', udid, 'appearance', 'light')
-        run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
+        prepare_device(udid)
         run('install', udid, str(app))
         hashes = set()
         device_screens = review_screens if review_only or folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
         for filename, route in device_screens:
             # A launch argument selects the screen without an iOS open-link dialog.
             print(f'Capturing {name}: {route}', flush=True)
-            run('launch', '--terminate-running-process', udid, 'com.borrowhood.app', '-BorrowhoodCaptureScreen', route)
+            launch_capture(udid, route)
             time.sleep(15)
             target = destination / f'{filename}.png'
             target.parent.mkdir(parents=True, exist_ok=True)
