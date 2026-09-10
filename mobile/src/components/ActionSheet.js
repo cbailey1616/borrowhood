@@ -86,7 +86,7 @@ export default function ActionSheet({
           exiting={SlideOutDown.duration(150)}
           style={[styles.sheetContainer, { paddingBottom: bottomPad, maxHeight: height - insets.top - SPACING.md }]}
         >
-          <LayeredCard stacked={false} style={styles.sheetDepth} radius={RADIUS.xl}>
+          <LayeredCard style={styles.sheetDepth} radius={RADIUS.xl}>
             <ScrollView style={styles.sheetCard} contentContainerStyle={confirmation && styles.confirmationCard} bounces={false}>
               {confirmation ? <>
                 <View style={styles.confirmationHeader}>

@@ -254,7 +254,7 @@ export default function ListingDetailScreen({ route, navigation }) {
           </View>
 
           {listingPrice(listing).paid || isSaleListing(listing) ? (
-            <LayeredCard style={styles.priceDepth} radius={RADIUS.xl} backingColor={COLORS.primaryMuted}>
+            <LayeredCard style={styles.priceDepth} radius={RADIUS.xl}>
               <View style={styles.pricingCard}>
                 <Text style={styles.priceEyebrow}>{listingPrice(listing).kind}</Text>
                 <ListingPrice listing={listing} />

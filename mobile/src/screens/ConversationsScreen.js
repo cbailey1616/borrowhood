@@ -71,7 +71,7 @@ export default function ConversationsScreen({ navigation, onRead }) {
   };
 
   const renderItem = ({ item }) => (
-    <LayeredCard style={styles.cardDepth} stacked={false}>
+    <LayeredCard style={styles.cardDepth}>
       <HapticPressable
         haptic="light"
         style={styles.card}

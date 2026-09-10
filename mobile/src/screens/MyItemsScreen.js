@@ -229,7 +229,7 @@ export default function MyItemsScreen({ navigation }) {
           if (direction === 'right') handleSwipeDelete(item, 'request');
         }}
       >
-        <LayeredCard style={styles.cardDepth} backingColor={COLORS.primaryMuted}>
+        <LayeredCard style={styles.cardDepth}>
           <HapticPressable
             style={[styles.requestCard, item.isExpired && styles.requestCardExpired]}
             onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
