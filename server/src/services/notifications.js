@@ -2,6 +2,7 @@ import { query } from '../utils/db.js';
 import logger from '../utils/logger.js';
 import { shouldSendPush } from './notificationPreferences.js';
 import { notificationAudienceAllowsPush } from './notificationAudience.js';
+import { audiencePreferences } from './notificationPreferences.js';
 import { returnCompleteBody, giveawayCompleteBody } from './notificationCopy.js';
 
 // Notification types and their templates
@@ -303,8 +304,8 @@ export async function sendNotification(userId, type, data, options = {}) {
 
       // Send push notification if enabled and token exists
       if (push_token && shouldSendPush(type, prefs, data)
-          && (!['new_request', 'item_match'].includes(type) || await notificationAudienceAllowsPush(
-            query, userId, options.fromUserId || data.fromUserId, prefs))) {
+          && await notificationAudienceAllowsPush(
+            query, userId, options.fromUserId || data.fromUserId, audiencePreferences(type, prefs, data))) {
         // Get unread count for app icon badge
         const unreadResult = await query(
           'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',

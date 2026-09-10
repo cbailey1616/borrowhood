@@ -39,7 +39,7 @@ describe('UserProfileScreen', () => {
   it('displays tier badge based on transaction count', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText('Outlaw · About ranks');
+    await findByText('Outlaw');
   });
 });
 

@@ -36,6 +36,7 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  expect((await request(app).get(`/listings/${listing}/requests`).set(auth(first))).status).toBe(404);
  let queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
  expect(queue.status).toBe(200);expect(queue.body.requests.map(r=>r.id)).toEqual([firstRequest,secondRequest]);
+ expect(queue.body.requests[0].borrower).toMatchObject({isVerified:true,totalTransactions:0,endorsement:{count:0,percent:null}});
  const approvals=await Promise.all([request(app).post(`/rentals/${firstRequest}/approve`).set(auth(owner)).send({}),request(app).post(`/rentals/${secondRequest}/approve`).set(auth(owner)).send({})]);
  expect(approvals.filter(r=>r.status===200)).toHaveLength(1);
  const chosen=approvals[0].status===200 ? firstRequest : secondRequest;
@@ -48,6 +49,15 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  const own=await request(app).get(`/transactions/${chosen}`).set(auth(owner));expect(own.body.endorsement.submitted).toBe(true);
 });
 it('paginates items independently so many requests cannot bury them',async()=>{
+ const reserved=await request(app).get('/feed?layout=sections').set(auth(first));
+ expect(reserved.status).toBe(200);expect(reserved.body.items.some(item=>item.id===listing)).toBe(false);
+ const active=(await query("SELECT id,status FROM borrow_transactions WHERE listing_id=$1 AND status IN ('approved','paid')",[listing])).rows[0];
+ await query("UPDATE borrow_transactions SET status='picked_up' WHERE id=$1",[active.id]);
+ const borrowed=await request(app).get('/feed?layout=sections').set(auth(first));
+ expect(borrowed.body.items.some(item=>item.id===listing)).toBe(false);
+ expect((await request(app).get(`/listings/${listing}`).set(auth(owner))).status).toBe(200);
+ await query('UPDATE borrow_transactions SET status=$2 WHERE id=$1',[active.id,active.status]);
+ expect((await request(app).post(`/transactions/${active.id}/cancel`).set(auth(owner))).status).toBe(200);
  for(let i=0;i<12;i++) await query("INSERT INTO item_requests(user_id,title,type,visibility,status,expires_at) VALUES($1,$2,'item','close_friends','open',NOW()+INTERVAL '1 day')",[owner,`Need tool ${i}`]);
  const result=await request(app).get('/feed?layout=sections&limit=1').set(auth(first));
  expect(result.status).toBe(200);expect(result.body.items).toHaveLength(1);expect(result.body.items[0].type).toBe('listing');

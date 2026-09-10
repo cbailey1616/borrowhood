@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { normalizedPreferences, shouldSendPush, preferencePatch } from '../../src/services/notificationPreferences.js';
+import { normalizedPreferences, shouldSendPush, preferencePatch, audiencePreferences, validPreferenceKeys } from '../../src/services/notificationPreferences.js';
 import { notificationAudienceAllowsPush } from '../../src/services/notificationAudience.js';
 
 describe('granular push preferences', () => {
@@ -69,5 +69,32 @@ describe('notification source choices', () => {
     expect(await notificationAudienceAllowsPush(query, 'recipient', 'sender', { source_friends: false, source_neighborhood: false, source_town: false })).toBe(false);
     expect(await notificationAudienceAllowsPush(query, 'recipient', null, { source_town: false })).toBe(false);
     expect(query).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('core notification audiences', () => {
+  it('inherits legacy mutes and limits old global sources to discovery', () => {
+    const prefs = normalizedPreferences({ borrow_updates: false, source_town: false });
+    expect(prefs.borrow_updates_source_friends).toBe(false);
+    expect(prefs.new_service_requests_source_town).toBe(false);
+    expect(prefs.new_message_source_town).toBe(true);
+    expect(audiencePreferences('new_message', { source_town: false }).source_town).toBe(true);
+  });
+  it('keeps audience choices independent across core types', async () => {
+    const prefs = { new_message_source_friends: false, new_service_requests_source_friends: true };
+    const query = vi.fn().mockResolvedValue({ rows: [{ is_friend: true, is_neighbor: true, is_town: true }] });
+    expect(await notificationAudienceAllowsPush(query, 'recipient', 'sender', audiencePreferences('new_message', prefs))).toBe(false);
+    expect(await notificationAudienceAllowsPush(query, 'recipient', 'sender', audiencePreferences('new_request', prefs, { requestType: 'service' }))).toBe(true);
+    expect(audiencePreferences('return_reminder', prefs)).toEqual({ source_friends: true, source_neighborhood: true, source_town: true });
+  });
+  it('enables only one source of a previously muted core category', () => {
+    const prefs = { borrow_updates: false, ...preferencePatch({ borrow_updates: true,
+      borrow_updates_source_friends: true, borrow_updates_source_neighborhood: false, borrow_updates_source_town: false }) };
+    expect(shouldSendPush('request_approved', prefs)).toBe(true);
+    expect(audiencePreferences('request_approved', prefs)).toEqual({ source_friends: true, source_neighborhood: false, source_town: false });
+    expect(normalizedPreferences(prefs).borrow_updates_source_town).toBe(false);
+    expect(validPreferenceKeys.has('borrow_updates_source_town')).toBe(true);
+    expect(validPreferenceKeys.has('arbitrary_source_town')).toBe(false);
   });
 });

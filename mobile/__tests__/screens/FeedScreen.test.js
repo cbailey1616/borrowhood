@@ -307,9 +307,25 @@ it('keeps requests in a swipe row and opens all requests with one tap',async()=>
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
  await screen.findByText('Neighbors need');
+ expect(screen.getByText('Available nearby')).toBeTruthy();
  expect(screen.getByTestId('Feed.requests.carousel').props.horizontal).toBe(true);
  expect(screen.getByTestId('Feed.list').props.data.some(item=>item.type==='request')).toBe(false);
  fireEvent.press(screen.getByLabelText('See all requests'));
  await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'requests'})));
  expect(screen.queryByText('Neighbors need')).toBeNull();
+ expect(screen.queryByText('Available nearby')).toBeNull();
+});
+
+it('keeps reserved and borrowed items out of Available nearby even on an older server', async () => {
+ const user={id:'neighbor',firstName:'Alex'};
+ api.getFeed.mockResolvedValue({items:[
+  {id:'available',type:'listing',title:'Available drill',user,isAvailable:true},
+  {id:'reserved',type:'listing',title:'Reserved ladder',user,availabilityStatus:'reserved'},
+  {id:'borrowed',type:'listing',title:'Borrowed saw',user,isBorrowed:true},
+  {id:'paused',type:'listing',title:'Paused mower',user,isAvailable:false},
+ ],requests:[],hasMore:false});
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ await screen.findByText('Available drill');
+ for(const title of ['Reserved ladder','Borrowed saw','Paused mower']) expect(screen.queryByText(title)).toBeNull();
 });

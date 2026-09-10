@@ -296,6 +296,10 @@ describe('Granular notification delivery', () => {
       request_declines: true, source_town: false, new_service_requests: false });
     res = await patch({ borrow_updates: false });
     expect(res.body.preferences.request_approvals).toBe(false);
+    await patch({ new_message_source_friends: true, new_message_source_neighborhood: false, new_message_source_town: false });
+    res = await request(app).get('/api/notifications/preferences').set('Authorization', `Bearer ${user.token}`).expect(200);
+    expect(res.body).toMatchObject({ new_message_source_friends: true, new_message_source_neighborhood: false,
+      new_message_source_town: false, new_item_requests_source_neighborhood: true });
   });
 
   it('uses real relationships to suppress pushes while retaining activity and direct messages', async () => {
@@ -353,6 +357,14 @@ describe('Granular notification delivery', () => {
       await setPrefs({ source_friends: false, source_neighborhood: false, source_town: false });
       await send('new_message');
       expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ new_message_source_neighborhood: false, new_service_requests_source_neighborhood: true });
+      await send('new_message');
+      expect(push).not.toHaveBeenCalled();
+      await send('new_request', 'service');
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ post_replies_source_neighborhood: false });
+      await send('listing_comment');
+      expect(push).not.toHaveBeenCalled();
       await setPrefs({ push_enabled: false });
       await send('new_message');
       expect(push).not.toHaveBeenCalled();

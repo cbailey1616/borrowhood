@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,74 +15,33 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const LEGACY_NOTIFICATION_SETTINGS = [
-  { category: 'On your phone', settings: [
-    { key: 'push_enabled', label: 'Push notifications', description: 'Updates when you’re away from the app' },
-    { key: 'push_sound', label: 'Sound', description: 'A sound with each notification' },
-  ]},
-  { category: 'Your activity', settings: [
-    { key: 'new_message', label: 'Messages', description: 'Private messages from your neighbors' },
-    { key: 'borrow_updates', label: 'Borrowing & lending', description: 'Requests, cancellations, pickups and returns' },
-    { key: 'return_reminder', label: 'Return reminders', description: 'A reminder when an item is due back' },
-    { key: 'post_replies', label: 'Replies to your posts', description: 'Questions and responses on items and requests' },
-  ]},
-  { category: 'Your neighborhood', settings: [
-    { key: 'community_updates', label: 'Friends & neighbors', description: 'Friend requests and neighborhood invitations' },
-    { key: 'item_match', label: 'Matches for your requests', description: 'When an item you’re looking for becomes available' },
-  ]},
+const CORE_SETTINGS = [
+  { key: 'new_message', label: 'Messages' },
+  { key: 'post_replies', label: 'Comments & replies' },
+  { key: 'borrow_updates', label: 'Borrowing & lending' },
+  { key: 'new_item_requests', label: 'Item requests' },
+  { key: 'new_service_requests', label: 'Service requests' },
+  { key: 'item_match', label: 'Matches for your requests' },
+  { key: 'community_updates', label: 'Friends & neighborhood activity' },
 ];
-
-const NOTIFICATION_SETTINGS = [
-  LEGACY_NOTIFICATION_SETTINGS[0],
-  { category: 'Messages & replies', settings: [
-    { key: 'new_message', label: 'Messages', description: 'Private messages from your neighbors' },
-    { key: 'post_comments', label: 'Comments on your posts', description: 'Responses on your items and requests' },
-    { key: 'comment_replies', label: 'Replies to your comments', description: 'Someone replies directly to your comment' },
-  ]},
-  { category: 'Requests & matches', settings: [
-    { key: 'new_item_requests', label: 'New item requests', description: 'Someone is looking for an item' },
-    { key: 'new_service_requests', label: 'New service requests', description: 'Someone is looking for help' },
-    { key: 'item_match', label: 'Matches for your requests', description: 'An item you need becomes available or is offered to you' },
-  ]},
-  { category: 'Requests & matches from', description: 'Choose whose new requests and matching items can alert you. Each person uses their closest connection: friends first, then neighborhood, then town.', settings: [
-    { key: 'source_friends', label: 'Friends', description: 'Your accepted friends, wherever they live' },
-    { key: 'source_neighborhood', label: 'Neighborhood', description: 'People in your neighborhoods who aren’t already friends' },
-    { key: 'source_town', label: 'Town', description: 'Other people in your town' },
-  ]},
-  { category: 'Borrowing & lending', settings: [
-    { key: 'incoming_requests', label: 'Requests for your items', description: 'Borrow requests and requests to buy or take your items' },
-    { key: 'request_approvals', label: 'Request approvals', description: 'Your request is accepted' },
-    { key: 'request_declines', label: 'Request declines', description: 'Your request is declined' },
-    { key: 'cancellations', label: 'Cancellations', description: 'An exchange is cancelled' },
-    { key: 'pickup_updates', label: 'Pickup updates', description: 'Pickup confirmations and expired pickup windows' },
-    { key: 'return_updates', label: 'Return confirmations', description: 'An item has been returned' },
-    { key: 'return_reminder', label: 'Return reminders', description: 'An item is due back' },
-    { key: 'expired_requests', label: 'Expired requests', description: 'A request expires before the owner responds' },
-  ]},
-  { category: 'Friends & neighborhoods', settings: [
-    { key: 'friend_requests', label: 'Friend requests', description: 'Someone wants to connect with you' },
-    { key: 'friend_acceptances', label: 'Friend request accepted', description: 'Someone accepts your friend request' },
-    { key: 'neighborhood_requests', label: 'Neighborhood join requests', description: 'Someone asks to join a neighborhood you manage' },
-    { key: 'neighborhood_responses', label: 'Neighborhood approvals', description: 'Your neighborhood join request is approved' },
-  ]},
+const SOURCES = [
+  { key: 'source_friends', label: 'Friends' },
+  { key: 'source_neighborhood', label: 'Neighbors' },
+  { key: 'source_town', label: 'Town' },
 ];
-
-// Four expandable groups preserve the detailed choices without a wall of switches.
-const COMPACT_SETTINGS = [
-  NOTIFICATION_SETTINGS[0],
-  NOTIFICATION_SETTINGS[1],
-  { ...NOTIFICATION_SETTINGS[2], settings: [...NOTIFICATION_SETTINGS[2].settings, ...NOTIFICATION_SETTINGS[3].settings] },
-  { ...NOTIFICATION_SETTINGS[4], category: 'Exchanges' },
-  NOTIFICATION_SETTINGS[5],
+const PHONE_SETTINGS = [
+  { key: 'push_enabled', label: 'Push notifications' },
+  { key: 'push_sound', label: 'Sound' },
+  { key: 'return_reminder', label: 'Return reminders' },
 ];
 
 export default function NotificationSettingsScreen() {
   const [preferences, setPreferences] = useState({});
-  const [expanded, setExpanded] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const savingRef = useRef(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
 
   useEffect(() => {
@@ -108,29 +67,42 @@ export default function NotificationSettingsScreen() {
     }
   };
 
-  // Keep existing controls functional until the server supports the new keys.
-  const settings = typeof preferences.new_service_requests === 'boolean'
-    ? COMPACT_SETTINGS : LEGACY_NOTIFICATION_SETTINGS;
-
-  const handleToggle = async (key, value) => {
-    if (isSaving) return;
-    setSaveError(false);
-    const newPreferences = { ...preferences, [key]: value };
+  const handleChange = async (patch, section = 'phone') => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaveError(null);
+    const newPreferences = { ...preferences, ...patch };
     setPreferences(newPreferences);
 
     try {
       setIsSaving(true);
-      await api.updateNotificationPreferences({ [key]: value });
+      await api.updateNotificationPreferences(patch);
       haptics.selection();
     } catch (error) {
       // Revert on error
       setPreferences(preferences);
-      setSaveError(true);
+      setSaveError(section);
       haptics.error();
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
+
+  const sourceEnabled = (core, source) => {
+    const saved = preferences[`${core}_${source}`];
+    if (typeof saved === 'boolean') return saved;
+    const discovery = ['new_item_requests', 'new_service_requests', 'item_match'].includes(core);
+    return preferences[core] !== false && (!discovery || preferences[source] !== false);
+  };
+  const toggleSource = (core, source, value) => {
+    // Save the entire visible row so turning one source on cannot enable the others.
+    const patch = Object.fromEntries(SOURCES.map(item => [
+      `${core}_${item.key}`, item.key === source ? value : sourceEnabled(core, item.key),
+    ]));
+    handleChange({ ...patch, [core]: true }, core);
+  };
+  const childDisabled = isSaving || preferences.push_enabled === false;
 
   if (isLoading) {
     return (
@@ -143,7 +115,6 @@ export default function NotificationSettingsScreen() {
   return (
     <ScrollView style={styles.container}>
       {loadError ? <HapticPressable accessibilityRole="button" onPress={fetchPreferences} style={styles.section}><Text style={styles.settingLabel}>Couldn’t load settings. Tap to try again.</Text></HapticPressable> : null}
-      {saveError && <Text accessibilityRole="alert" style={styles.footerText}>Couldn’t save that change. Please try again.</Text>}
       {notifsDenied && (
         <View style={styles.section}>
           <HapticPressable
@@ -159,50 +130,47 @@ export default function NotificationSettingsScreen() {
           </HapticPressable>
         </View>
       )}
-      {!loadError && settings.map((category, index) => (
-        <View key={category.category} style={styles.section}>
-          {settings === COMPACT_SETTINGS && index > 0 ? <HapticPressable
-            accessibilityRole="button" accessibilityLabel={category.category}
-            accessibilityState={{ expanded: !!expanded[category.category] }}
-            style={styles.groupHeader} onPress={() => setExpanded(previous => ({ ...previous, [category.category]: !previous[category.category] }))}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sectionTitle}>{category.category}</Text>
-              <Text style={styles.settingDescription}>{category.settings.filter(setting => preferences[setting.key] !== false).length} of {category.settings.length} on</Text>
-            </View>
-            <Ionicons name={expanded[category.category] ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
-          </HapticPressable> : <Text style={styles.sectionTitle}>{category.category}</Text>}
-          {(settings !== COMPACT_SETTINGS || index === 0 || expanded[category.category]) && <>
-          {!!category.description && <Text style={styles.sectionDescription}>{category.description}</Text>}
+      {!loadError && <>
+        <View style={styles.section}>
           <View style={[styles.cardBox, styles.settingsGroup]}>
-            {category.settings.map((setting, settingIndex) => (
-              <View
-                key={setting.key}
-                style={[
-                  styles.settingRow,
-                  settingIndex < category.settings.length - 1 && styles.settingRowBorder,
-                ]}
-              >
-                <View style={styles.settingInfo}>
-                  {setting.key === 'source_friends' && <Text style={styles.settingDescription}>From friends, your neighborhood or town. Friends count first, then neighborhood, then town.</Text>}
-                  <Text style={styles.settingLabel}>{setting.label}</Text>
-                  <Text style={styles.settingDescription}>{setting.description}</Text>
-                </View>
-                <Switch
-                  accessibilityLabel={setting.label}
-                  accessibilityState={{ disabled: isSaving || (setting.key !== 'push_enabled' && preferences.push_enabled === false) }}
-                  disabled={isSaving || (setting.key !== 'push_enabled' && preferences.push_enabled === false)}
-                  value={preferences[setting.key] ?? true}
-                  onValueChange={(value) => handleToggle(setting.key, value)}
-                  trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-                  thumbColor="#fff"
-                  ios_backgroundColor={COLORS.primaryMuted}
-                />
-              </View>
-            ))}
+            {PHONE_SETTINGS.map((setting, index) => <View key={setting.key} style={[styles.settingRow, index < PHONE_SETTINGS.length - 1 && styles.settingRowBorder]}>
+              <Text style={[styles.settingLabel, styles.settingInfo]}>{setting.label}</Text>
+              <Switch accessibilityLabel={setting.label}
+                accessibilityState={{ disabled: setting.key === 'push_enabled' ? isSaving : childDisabled }}
+                disabled={setting.key === 'push_enabled' ? isSaving : childDisabled}
+                value={preferences[setting.key] ?? true}
+                onValueChange={value => handleChange({ [setting.key]: value })}
+                trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+                thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+            </View>)}
           </View>
-          </>}
+          {saveError === 'phone' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
         </View>
-      ))}
+        <View style={styles.section}>
+          <Text accessibilityRole="header" style={styles.heading}>Notify me about</Text>
+          <Text style={styles.sectionDescription}>Choose who you hear from for each type of update.</Text>
+          <View style={[styles.cardBox, styles.settingsGroup]}>
+            {CORE_SETTINGS.map((setting, index) => <View key={setting.key} style={[styles.coreRow, index < CORE_SETTINGS.length - 1 && styles.settingRowBorder]}>
+              <Text style={styles.settingLabel}>{setting.label}</Text>
+              <View style={styles.sourceRow}>
+                {SOURCES.map(source => {
+                  const enabled = sourceEnabled(setting.key, source.key);
+                  return <View key={source.key} style={styles.sourceControl}>
+                    <Text style={styles.sourceLabel}>{source.label}</Text>
+                    <Switch accessibilityLabel={`${setting.label}: ${source.label}`}
+                      accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
+                      value={enabled} onValueChange={value => toggleSource(setting.key, source.key, value)}
+                      trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+                      thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+                  </View>;
+                })}
+              </View>
+              {saveError === setting.key && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
+            </View>)}
+          </View>
+          <Text style={styles.audienceHint}>Friends use your Friends choice, even if they also live nearby. Neighbors are people in your neighborhoods; Town covers everyone else in your town.</Text>
+        </View>
+      </>}
 
       <Text style={styles.footerText}>
         These settings control push notifications. Your messages and activity stay in the app.
@@ -212,7 +180,12 @@ export default function NotificationSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  groupHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  heading: { ...TYPOGRAPHY.title3, color: COLORS.primary, fontWeight: '700', marginBottom: SPACING.sm },
+  coreRow: { padding: SPACING.md, gap: SPACING.sm },
+  sourceRow: { flexDirection: 'row', gap: SPACING.sm },
+  sourceControl: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm },
+  sourceLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
+  audienceHint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.md },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -231,7 +204,7 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: SPACING.lg,
-    paddingTop: SPACING.xl,
+    paddingTop: SPACING.md,
   },
   sectionTitle: {
     ...TYPOGRAPHY.caption,

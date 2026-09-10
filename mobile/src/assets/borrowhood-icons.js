@@ -19,6 +19,8 @@ const basket = (c) => p('M4 13H28L25 26C25 28 7 28 7 26Z', panel(c)) + p('M10 13
 const clock = (c) => circle(16, 17, 11, panel(c)) + p('M16 10V17L21 20');
 const tag = (c) => p('M5 5H16L28 17C29 18 29 19 28 20L20 28C19 29 18 29 17 28L5 16Z', panel(c)) + circle(11, 11, 1.7);
 const book = (c) => rect(7, 3, 19, 26, 3, panel(c)) + p('M7 24H26M11 3V24M15 10H21M15 15H21');
+const thumbUp = (c) => p('M11 14L15 8V4C15 1 20 2 20 6L19 12H26C28 12 29 14 28 17L25 26C25 28 23 29 21 29H15L11 27Z', accent(c))
+  + rect(3, 14, 8, 15, 2, panel(c)) + dot(7, 25, c);
 
 const DRAWINGS = {
   // A woodland progression drawn for Borrowhood, rather than generic medals.
@@ -81,6 +83,8 @@ const DRAWINGS = {
   megaphone: c => p('M5 12H11L26 5V25L11 18H5Z', panel(c)) + p('M9 18L12 28H17L14 20M11 12V18'),
   'hand-right': c => p('M9 17V8C9 5 13 5 13 8V15V4C13 1 17 1 17 4V15V6C17 3 21 3 21 6V16V10C21 7 25 7 25 10V21C25 32 12 33 8 25L3 18C1 14 5 12 8 16L11 19', panel(c)),
   'hand-left': c => `<g transform="translate(32 0) scale(-1 1)">${DRAWINGS['hand-right'](c)}</g>`,
+  'thumbs-up': thumbUp,
+  'thumbs-down': c => `<g transform="rotate(180 16 16)">${thumbUp(c)}</g>`,
   'swap-horizontal': () => p('M4 10H27L21 4M28 22H5L11 28'),
   send: c => p('M3 5L29 16L3 27L7 16Z', panel(c)) + p('M7 16H29'),
   navigate: c => p('M28 4L19 29L14 18L3 13Z', panel(c)),
@@ -122,6 +126,7 @@ const DRAWINGS = {
   'chevron-up': () => chevron(-90),
   'chevron-down': () => chevron(90),
   add: () => p('M16 5V27M5 16H27'),
+  remove: () => p('M5 16H27'),
   close: () => p('M7 7L25 25M7 25L25 7'),
   checkmark: () => p('M5 16L12 23L27 8'),
   'checkmark-done': () => p('M2 16L8 22L22 8M14 20L18 24L30 12'),
@@ -157,6 +162,8 @@ const PALETTES = {
   'rank-robin': ['#8EB081', '#DFB66F'],
   heart: ['#E6A392', '#D48976'], home: ['#B8CBB0', '#DCA083'],
   handshake: ['#ABC5B8', '#E7C590'],
+  'thumbs-up': ['#ABC5B8', '#E7C590'],
+  'thumbs-down': ['#DEA088', '#E7C590'],
   basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],

@@ -112,8 +112,7 @@ describe('TransactionDetailScreen', () => {
     api.cancelRental.mockResolvedValue({ success: true });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('Exchange details'));
-    fireEvent.press(screen.getByTestId('Transaction.button.cancel'));
+    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
     expect(api.cancelRental).not.toHaveBeenCalled();
     expect(screen.getByText('Cancel this borrow?')).toBeTruthy();
     fireEvent.press(screen.getByTestId('Transaction.confirmCancel'));
@@ -126,8 +125,7 @@ describe('TransactionDetailScreen', () => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isLender: true, isBorrower: false });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('Exchange details'));
-    fireEvent.press(screen.getByTestId('Transaction.button.cancel'));
+    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
     fireEvent.press(screen.getByText('Keep borrow'));
     expect(api.cancelRental).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).not.toHaveBeenCalled();

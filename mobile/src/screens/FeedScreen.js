@@ -565,10 +565,12 @@ export default function FeedScreen({ navigation }) {
 
   const carouselRequests = !search.trim() && activeFilters.length === 0
     ? [...requestCards, ...feed.filter(item => item.type === 'request')].filter((item,index,all) => all.findIndex(other => other.id === item.id) === index) : [];
-  const verticalFeed = carouselRequests.length ? feed.filter(item => item.type !== 'request') : feed;
+  const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
+  const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
-    ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []), ...verticalFeed,
+    ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
+    ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
   const renderItem = ({ item, index }) => {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
@@ -584,6 +586,9 @@ export default function FeedScreen({ navigation }) {
         renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRequestItem(request, true)}</View>} />
     </View>;
     if (item.type === 'feed-banners') return renderBanners();
+    if (item.type === 'listing-heading') return <View style={{ borderTopWidth:1,borderTopColor:COLORS.borderBrown,paddingTop:SPACING.lg,marginBottom:SPACING.md }}>
+      <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Available nearby</Text>
+    </View>;
     if (item.type === 'listing') {
       return renderListingItem(item, index);
     }

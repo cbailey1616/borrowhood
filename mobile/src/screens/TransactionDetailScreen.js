@@ -291,6 +291,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This person is still waiting. You can choose them if the item becomes available again.') : nextStep.detail}</Text>
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('RequestQueue', {listingId:transaction.listing.id})} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>View everyone waiting</Text></HapticPressable>}
           {transaction.isBorrower && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" accessibilityLabel="Leave request queue" onPress={() => setCancelSheetVisible(true)} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>Leave queue</Text></HapticPressable>}
+          {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button"
+            accessibilityLabel={`View ${otherPerson.firstName}'s profile`} style={styles.outlinedAction}
+            onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
+            <Text style={styles.neighborMessageTitle}>View {otherPerson.firstName}'s profile</Text>
+          </HapticPressable>}
           <View style={transaction.isLender && transaction.status === 'pending' ? styles.decisionRow : undefined}>
           {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
             accessibilityLabel={primaryAction.label} style={[styles.approveButton, transaction.isLender && transaction.status === 'pending' && { flex: 1 }]}
@@ -315,6 +320,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </HapticPressable>}
         </View>
 
+          {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
+            && ['approved', 'paid'].includes(transaction.status) &&
+            <HapticPressable accessibilityRole="button" accessibilityLabel={isGiveaway ? 'Cancel request' : 'Cancel borrow'} testID="Transaction.button.cancel"
+              style={[styles.outlinedAction, { marginBottom: SPACING.md }]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
+              <Text style={styles.neighborMessageTitle}>{isGiveaway ? 'Cancel request' : 'Cancel borrow'}</Text>
+            </HapticPressable>}
+
         <ExchangeEndorsement transaction={transaction} onSaved={fetchTransaction} />
         <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
           accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
@@ -323,12 +335,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
         </HapticPressable>
         {detailsExpanded && <>
-
-          {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
-            && (['approved', 'paid'].includes(transaction.status) || (transaction.isBorrower && transaction.status === 'pending')) &&
-            <HapticPressable accessibilityRole="button" accessibilityLabel="Cancel borrow" testID="Transaction.button.cancel"
-              style={styles.secondaryAction} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
-              <Text style={styles.detailText}>{isGiveaway ? 'Cancel request' : 'Cancel borrow'}</Text>
+          {transaction.isBorrower && transaction.status === 'pending' && !transaction.actualPickupAt &&
+            <HapticPressable accessibilityRole="button" accessibilityLabel={isGiveaway ? 'Cancel request' : 'Cancel borrow'} testID="Transaction.button.cancel"
+              style={[styles.outlinedAction, { marginBottom: SPACING.md }]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
+              <Text style={styles.neighborMessageTitle}>{isGiveaway ? 'Cancel request' : 'Cancel borrow'}</Text>
             </HapticPressable>}
 
         <LayeredCard radius={RADIUS.xl}>

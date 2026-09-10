@@ -2,6 +2,14 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 
 describe('Icon', () => {
+  it('draws distinct thumbs and the notification off control instead of fallback tags', () => {
+    const { hasBorrowhoodIcon, resolveIconName, iconSvg } = require('../../../src/assets/borrowhood-icons');
+    for (const name of ['thumbs-up-outline', 'thumbs-down-outline', 'remove']) {
+      expect(hasBorrowhoodIcon(name)).toBe(true);
+      expect(resolveIconName(name)).not.toBe('pricetag');
+    }
+    expect(iconSvg('thumbs-up-outline', { illustrated: true })).not.toEqual(iconSvg('thumbs-down-outline', { illustrated: true }));
+  });
   it('warms object icons without recoloring white controls or warnings', () => {
     const { usesWarmIllustration } = require('../../../src/components/Icon');
     expect(usesWarmIllustration('cube-outline', '#42594C')).toBe(true);
