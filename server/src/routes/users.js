@@ -1,3 +1,4 @@
+import { endorsementSummary } from '../services/endorsements.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
@@ -1017,6 +1018,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isVerified: user.is_verified || false,
       rating: parseFloat(user.rating) || 0,
       ratingCount: user.rating_count,
+      endorsement: await endorsementSummary(user.id),
       totalTransactions: user.total_transactions,
       memberSince: user.created_at,
     });

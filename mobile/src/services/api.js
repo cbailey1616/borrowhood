@@ -309,6 +309,8 @@ const confirmPickup = (id, condition) =>
 const cancelTransaction = (id) =>
   post(`/transactions/${id}/cancel`);
 
+const getRequestQueue = id => get(`/listings/${id}/requests`);
+const endorseTransaction = (id, positive) => post(`/transactions/${id}/endorse`, { positive });
 const rateTransaction = (id, rating, comment) =>
   post(`/transactions/${id}/rate`, { rating, comment });
 
@@ -855,6 +857,8 @@ export default {
   confirmPickup,
   cancelTransaction,
   rateTransaction,
+  getRequestQueue,
+  endorseTransaction,
   // Disputes
   getDisputes,
   getDispute,

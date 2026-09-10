@@ -1,3 +1,4 @@
+import { listingAvailabilitySql } from '../utils/listingAvailability.js';
 import { townPreviewSql, canPreviewTownPost, townListingPreview, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
@@ -42,6 +43,7 @@ router.get('/', authenticate, async (req, res) => {
   if (!Number.isInteger(Number(page)) || Number(page) < 1 || !Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) return res.status(400).json({ error: 'Invalid page' });
   const token = req.query.session;
   const summary = req.query.summary === 'true';
+  const sections = req.query.layout === 'sections' && !type && !search;
   if (token && !UUID.test(token)) return res.status(400).json({ error: 'Invalid session' });
 
   try {
@@ -71,6 +73,7 @@ router.get('/', authenticate, async (req, res) => {
           l.is_free,
           l.direct_fee,
           l.is_available,
+          ${listingAvailabilitySql()} as availability_status,
           EXISTS (SELECT 1 FROM borrow_transactions t WHERE t.listing_id = l.id
             AND t.status IN ('picked_up', 'return_pending')) as is_borrowed,
           l.price_per_day,
@@ -146,6 +149,7 @@ router.get('/', authenticate, async (req, res) => {
           r.type as request_type,
           r.title,
           r.description,
+          r.photo_url,
           r.needed_from,
           r.needed_until,
           r.expires_at,
@@ -225,6 +229,7 @@ router.get('/', authenticate, async (req, res) => {
       directFee: l.direct_fee || null,
         listingType: l.listing_type || 'lend',
         isAvailable: l.is_available,
+        availabilityStatus: l.availability_status,
         isBorrowed: l.is_borrowed === true,
         pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
         photoUrl: l.photo_url,
@@ -252,6 +257,7 @@ router.get('/', authenticate, async (req, res) => {
       id: r.id,
       type: 'request',
       requestType: r.request_type,
+      photoUrl: r.photo_url || null,
       title: r.title,
       description: r.description,
       neededFrom: r.needed_from,
@@ -268,7 +274,7 @@ router.get('/', authenticate, async (req, res) => {
     }));
 
     const candidates = [...listings, ...requests];
-    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '']);
+    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '', sections]);
     let keys;
     if (token) {
       const stored = await query('SELECT item_keys FROM feed_sessions WHERE user_id=$1 AND token=$2 AND filter_key=$3 AND created_at > NOW() - INTERVAL \'1 day\'', [req.user.id, token, filterKey]);
@@ -290,14 +296,17 @@ router.get('/', authenticate, async (req, res) => {
     }
     // Reapply current access rules on every page; snapshots never grant access.
     const permitted = new Map(candidates.map(item => [item.type + ':' + item.id, item]));
-    const pageKeys = keys.slice(offset, offset + Number(limit));
+    const listingKeys = sections ? keys.filter(key => key.startsWith('listing:')) : keys;
+    const requestCards = sections ? keys.filter(key => key.startsWith('request:')).map(key => permitted.get(key)).filter(Boolean) : [];
+    const pageKeys = listingKeys.slice(offset, offset + Number(limit));
     const feed = pageKeys.map(key => permitted.get(key)).filter(Boolean);
     res.json({
       items: feed,
+      ...(sections ? { requests: requestCards.slice(0,8), requestCount: requestCards.length } : {}),
       latestPostAt,
       page: parseInt(page),
       limit: parseInt(limit),
-      hasMore: keys.length > offset + Number(limit),
+      hasMore: listingKeys.length > offset + Number(limit),
     });
   } catch (err) {
     console.error('Get feed error:', err);

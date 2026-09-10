@@ -1,3 +1,4 @@
+import { listingAvailability } from '../utils/listingAvailability';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice, { listingPrice } from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
@@ -206,6 +207,10 @@ export default function ListingDetailScreen({ route, navigation }) {
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
+            {!listingAvailability(listing).available && <View accessibilityLiveRegion="polite" style={styles.descriptionSection}>
+              <Text style={styles.sectionTitle}>{listingAvailability(listing).label}</Text>
+              <Text style={styles.description}>{listingAvailability(listing).detail}</Text>
+            </View>}
             {!listing.ownerMasked && (
               <View style={styles.actionButtons}>
                 <HapticPressable testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
@@ -347,9 +352,6 @@ export default function ListingDetailScreen({ route, navigation }) {
       {/* Footer Action Bar — hide for completed giveaways (nothing useful to show) */}
       {!listing.isOwner && !listing.ownerMasked && !(isTransferListing(listing) && !listing.isAvailable && !listing.activeTransaction) && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          {!listing.isAvailable && !listing.activeTransaction && (
-            <Text style={styles.availabilityHint}>Not available to borrow right now</Text>
-          )}
           <View style={styles.footerActions}>
             <HapticPressable
               style={[styles.messageButton, messageLoading && { opacity: 0.5 }]}
@@ -399,7 +401,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 {messageLoading ? 'Opening…' : !listing.isAvailable && !listing.activeTransaction ? 'Message owner' : 'Message'}
               </Text>
             </HapticPressable>
-            {listing.isAvailable && !listing.activeTransaction && (
+            {listingAvailability(listing).available && !listing.activeTransaction && (
               <HapticPressable
                 testID="ListingDetail.button.borrow"
                 accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : isTransferListing(listing) ? 'Claim this item' : 'Request to borrow'}
@@ -428,6 +430,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
+          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'700'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
           <View style={styles.footerActions}>
             <HapticPressable
               style={styles.deleteButton}

@@ -50,18 +50,21 @@ beforeEach(() => {
 });
 
 describe('MyItemsScreen', () => {
-  it('keeps available inventory and hides sold, claimed, and borrowed items', async () => {
+  it('keeps borrowed and paused inventory visible while completed transfers stay in History', async () => {
     const base = { condition: 'good', status: 'active', isAvailable: true, listingType: 'lend' };
     api.getMyListings.mockResolvedValue([
       { ...base, id: 'available', title: 'Available ladder' },
       { ...base, id: 'sold', title: 'Sold bike', listingType: 'sell', status: 'given_away', isAvailable: false },
       { ...base, id: 'claimed', title: 'Claimed books', listingType: 'giveaway', status: 'given_away', isAvailable: false },
-      { ...base, id: 'borrowed', title: 'Borrowed drill', isAvailable: false },
+      { ...base, id: 'borrowed', title: 'Borrowed drill', isAvailable: false, availabilityStatus: 'borrowed' },
+      { ...base, id: 'paused', title: 'Paused mower', status: 'paused', isAvailable: false },
     ]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await screen.findByText('Available ladder');
-    for (const text of ['Sold bike', 'Claimed books', 'Borrowed drill', 'Good']) expect(screen.queryByText(text)).toBeNull();
+    expect(screen.getByText('Borrowed drill')).toBeTruthy();
+    expect(screen.getByText('Paused mower')).toBeTruthy();
+    for (const text of ['Sold bike', 'Claimed books', 'Good']) expect(screen.queryByText(text)).toBeNull();
   });
 
   it('retains its loaded image during refresh, fresh API objects, a focus fetch, and a failed refresh', async () => {

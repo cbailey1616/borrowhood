@@ -1,3 +1,4 @@
+import { listingAvailability } from '../utils/listingAvailability';
 import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
@@ -19,6 +20,7 @@ import {
   AppState,
   InteractionManager,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
@@ -69,6 +71,8 @@ export default function FeedScreen({ navigation }) {
   const { showToast, showError } = useError();
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
   const [feed, setFeed] = useState([]);
+  const [requestCards, setRequestCards] = useState([]);
+  const { width } = useWindowDimensions();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -120,7 +124,7 @@ export default function FeedScreen({ navigation }) {
     setIsFetching(true);
     try {
       if (pageNum === 1 || !feedSession.current) { feedSession.current = randomUUID(); impressions.current.clear(); }
-      const params = { page: pageNum, limit: 20, session: feedSession.current };
+      const params = { layout: 'sections', page: pageNum, limit: 20, session: feedSession.current };
       if (!clear && search.trim()) params.search = search.trim();
       if (!clear && activeFilters.length > 0) params.type = activeFilters.join(',');
       if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
@@ -129,6 +133,7 @@ export default function FeedScreen({ navigation }) {
       const data = await api.getFeed(params);
       if (requestId !== feedRequest.current) return;
 
+      if (!append) setRequestCards(data.requests || []);
       if (append) {
         setFeed(prev => [...prev, ...data.items.filter(item => !prev.some(existing => existing.id === item.id && existing.type === item.type))]);
       } else {
@@ -232,7 +237,7 @@ export default function FeedScreen({ navigation }) {
 
       // Pending borrow requests (someone wants to borrow your item)
       const txList = txData?.transactions || txData || [];
-      const pending = txList.filter(t => t.status === 'pending' && t.ownerId === user?.id);
+      const pending = txList.filter(t => t.status === 'pending' && (t.lender?.id === user?.id || t.ownerId === user?.id));
       setPendingRequests(pending);
 
       // Items you've borrowed that are due back within 2 days
@@ -465,9 +470,8 @@ export default function FeedScreen({ navigation }) {
 
   const renderListingItem = item => {
     const transfer = isTransferListing(item);
-    const unavailable = item.isBorrowed === true || item.isAvailable === false;
-    const typeLabel = isSaleListing(item) ? 'For sale' : transfer ? 'Giveaway'
-      : item.isBorrowed === true ? 'Borrowed' : unavailable ? 'Unavailable' : 'Borrowable';
+    const typeLabel = listingAvailability(item).label;
+
     return (
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
@@ -496,7 +500,6 @@ export default function FeedScreen({ navigation }) {
                   <Ionicons name={isSaleListing(item) ? 'pricetag' : transfer ? 'gift' : 'basket'} size={18} illustrated />
                   <Text style={styles.tilePillText}>{typeLabel}</Text>
                 </View>
-                {transfer && unavailable && <Text style={styles.availabilityText}>Unavailable</Text>}
               </View>
               <ListingPrice listing={item} compact />
               <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
@@ -509,16 +512,17 @@ export default function FeedScreen({ navigation }) {
     );
   };
 
-  const renderRequestItem = item => (
+  const renderRequestItem = (item, compact = false) => (
     <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
-        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={[styles.tile, styles.requestTile]} testID={`Feed.request.${item.id}`}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
               <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
               <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
+            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: compact ? 96 : 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>
@@ -559,7 +563,26 @@ export default function FeedScreen({ navigation }) {
     );
   };
 
+  const carouselRequests = !search.trim() && activeFilters.length === 0
+    ? [...requestCards, ...feed.filter(item => item.type === 'request')].filter((item,index,all) => all.findIndex(other => other.id === item.id) === index) : [];
+  const verticalFeed = carouselRequests.length ? feed.filter(item => item.type !== 'request') : feed;
+  const displayFeed = [
+    ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
+    ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []), ...verticalFeed,
+  ];
   const renderItem = ({ item, index }) => {
+    if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
+      <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
+        <Text style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Neighbors need</Text>
+        <HapticPressable accessibilityRole="button" accessibilityLabel="See all requests" onPress={() => setActiveFilters(['requests'])} style={{ minHeight:44,justifyContent:'center' }}>
+          <Text style={{ color:COLORS.primary }}>See all</Text>
+        </HapticPressable>
+      </View>
+      <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
+        showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged} viewabilityConfig={{ itemVisiblePercentThreshold:50,minimumViewTime:800 }}
+        renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRequestItem(request, true)}</View>} />
+    </View>;
     if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing') {
       return renderListingItem(item, index);
@@ -586,7 +609,7 @@ export default function FeedScreen({ navigation }) {
         viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
         ref={listRef}
         testID="Feed.list"
-        data={feed.length > 0 && banners.length > 0 ? [{ id: 'banners', type: 'feed-banners' }, ...feed] : feed}
+        data={displayFeed}
         renderItem={renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}
         contentContainerStyle={styles.listContent}
@@ -615,7 +638,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.addButtonText}>Post</Text>
             </HapticPressable>}
           >
-            {(isFetching || feed.length > 0 || hasFilters || feedError || !user?.city) && <>
+            {(isFetching || feed.length > 0 || requestCards.length > 0 || hasFilters || feedError || !user?.city) && <>
               <View style={styles.searchRow}>
                 <SearchBar value={search} onChangeText={setSearch} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
                 <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
@@ -1022,7 +1045,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl, overflow: 'hidden', borderWidth: 0, backgroundColor: FEED.card,
   },
   requestTile: {
-    backgroundColor: COLORS.requestSurface,
+    backgroundColor: FEED.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
   },
   requestTopRow: {
     flexWrap: 'wrap',

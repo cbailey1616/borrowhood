@@ -7,11 +7,11 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 // Original woodland emblems, with activity thresholds kept separate from identity.
 const TIERS = [
-  { key: 'squire', label: 'Squire', min: 0, max: 24, icon: 'rank-squire', color: '#756044', description: 'New to the Borrowhood' },
-  { key: 'archer', label: 'Archer', min: 25, max: 99, icon: 'rank-archer', color: '#756044', description: 'Learning the ropes' },
-  { key: 'outlaw', label: 'Outlaw', min: 100, max: 249, icon: 'rank-outlaw', color: '#42594C', description: 'Active member of the crew' },
-  { key: 'ranger', label: 'Sherwood Ranger', min: 250, max: 999, icon: 'rank-ranger', color: '#42594C', description: 'Experienced community member' },
-  { key: 'robin', label: 'Robin', min: 1000, max: Infinity, icon: 'rank-robin', color: '#946B28', description: 'Legendary Borrowhood member' },
+  { key: 'squire', label: 'Squire', min: 0, max: 4, icon: 'rank-squire', color: '#756044', description: 'New to the Borrowhood' },
+  { key: 'archer', label: 'Archer', min: 5, max: 9, icon: 'rank-archer', color: '#756044', description: 'Learning the ropes' },
+  { key: 'outlaw', label: 'Outlaw', min: 10, max: 24, icon: 'rank-outlaw', color: '#42594C', description: 'Active member of the crew' },
+  { key: 'ranger', label: 'Sherwood Ranger', min: 25, max: 99, icon: 'rank-ranger', color: '#42594C', description: 'Experienced community member' },
+  { key: 'robin', label: 'Robin', min: 100, max: Infinity, icon: 'rank-robin', color: '#946B28', description: 'Legendary Borrowhood member' },
 ];
 
 export function getTier(totalTransactions) {

@@ -1,3 +1,4 @@
+import EndorsementSummary from '../components/EndorsementSummary';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -129,6 +130,7 @@ export default function UserProfileScreen({ route, navigation }) {
             size="medium"
           />
 
+          <EndorsementSummary value={user.endorsement} />
           <View style={styles.metaRow}>
             {user.city && user.state && (
               <View style={styles.metaItem}>

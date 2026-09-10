@@ -1,3 +1,4 @@
+import { ensureEndorsementSchema } from '../services/endorsements.js';
 import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
 import { ensureSignupSchema } from '../services/signupVerification.js';
@@ -32,6 +33,7 @@ export async function runMigrations() {
     await ensureSafetyReviewSchema();
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
+    await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS photo_url TEXT');
     // A displayed offline price is separate from Stripe rental amounts.
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS direct_fee JSONB');
     await query(`CREATE TABLE IF NOT EXISTS feed_events (
@@ -683,6 +685,7 @@ export async function runMigrations() {
     await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_request
       ON messages (sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
 
+    await ensureEndorsementSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

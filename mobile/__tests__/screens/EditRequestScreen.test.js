@@ -14,6 +14,15 @@ describe('EditRequestScreen', () => {
   const request = { id: 'req-1', type: 'item', title: 'Need a Drill', description: 'For home project', categoryId: 'cat-1', visibility: ['close_friends'], neededFrom: null, neededUntil: null };
   const route = { params: { request } };
 
+  it('removes an attached photo without uploading it again', async () => {
+    const Screen = require('../../src/screens/EditRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { request: { ...request, categoryId: null, photoUrl: 'https://test.example/photo.jpg' } } }} />);
+    fireEvent.press(screen.getByLabelText('Remove request photo'));
+    await act(async () => { fireEvent.press(screen.getByText(/Save/i)); });
+    expect(api.updateRequest).toHaveBeenCalledWith(request.id, expect.objectContaining({ photoUrl: null }));
+    expect(api.uploadImages).not.toHaveBeenCalled();
+  });
+
   it('pre-populates title from route.params', () => {
     const Screen = require('../../src/screens/EditRequestScreen').default;
     const { getByDisplayValue } = render(<Screen navigation={mockNavigation} route={route} />);

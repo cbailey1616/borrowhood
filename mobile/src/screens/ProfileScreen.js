@@ -1,3 +1,4 @@
+import EndorsementSummary from '../components/EndorsementSummary';
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
 import BiometricIcon from '../components/BiometricIcon';
@@ -179,6 +180,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.headerInfo}>
               <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
               <Text style={styles.email}>{user?.email}</Text>
+              <EndorsementSummary value={user?.endorsement} />
               {user?.isVerified && (
                 <UserBadges
                   isVerified={user?.isVerified}

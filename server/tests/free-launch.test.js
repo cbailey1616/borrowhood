@@ -34,7 +34,7 @@ app.post('/validate-listing', freeListingOnly, (req, res) => res.sendStatus(204)
 const listingId = '6f9028a4-5105-4aa6-b62a-9f4465b966b8';
 const freeItem = { id: listingId, owner_id: 'owner', is_free: true, price_per_day: null,
   deposit_amount: 0, listing_type: 'lend', visibility: 'town', lender_city: 'Upton',
-  is_available: true, min_duration: 1, max_duration: 14, title: 'Drill' };
+  status: 'active', is_available: true, min_duration: 1, max_duration: 14, title: 'Drill' };
 const borrow = () => request(app).post('/transactions').send({ listingId, startDate: '2026-10-01', endDate: '2026-10-03' });
 beforeEach(() => { vi.clearAllMocks(); query.mockReset(); });
 describe('free launch', () => {
@@ -53,6 +53,8 @@ describe('free launch', () => {
   it('allows an authorized viewer to request a free item without Stripe', async () => {
     query.mockResolvedValueOnce({ rows: [{ id: listingId }] })
       .mockResolvedValueOnce({ rows: [freeItem] })
+      .mockResolvedValueOnce({ rows: [freeItem] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: 'transaction' }] });
     const response = await borrow(); expect(response.status).toBe(201);
     expect(response.body.freeRental).toBe(true); expect(response.body.clientSecret).toBeUndefined();
@@ -152,6 +154,8 @@ describe('separate sale exchanges', () => {
   });
   it('creates a sale request without dates or payment processing', async () => {
     query.mockResolvedValueOnce({ rows: [{ id: listingId }] }).mockResolvedValueOnce({ rows: [sale] })
+      .mockResolvedValueOnce({ rows: [sale] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: 'sale-transaction' }] });
     const result = await request(app).post('/transactions').send({ listingId, salePrice: 25 });
     expect(result.status).toBe(201);

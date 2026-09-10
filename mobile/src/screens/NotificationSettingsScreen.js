@@ -67,8 +67,18 @@ const NOTIFICATION_SETTINGS = [
   ]},
 ];
 
+// Four expandable groups preserve the detailed choices without a wall of switches.
+const COMPACT_SETTINGS = [
+  NOTIFICATION_SETTINGS[0],
+  NOTIFICATION_SETTINGS[1],
+  { ...NOTIFICATION_SETTINGS[2], settings: [...NOTIFICATION_SETTINGS[2].settings, ...NOTIFICATION_SETTINGS[3].settings] },
+  { ...NOTIFICATION_SETTINGS[4], category: 'Exchanges' },
+  NOTIFICATION_SETTINGS[5],
+];
+
 export default function NotificationSettingsScreen() {
   const [preferences, setPreferences] = useState({});
+  const [expanded, setExpanded] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -100,7 +110,7 @@ export default function NotificationSettingsScreen() {
 
   // Keep existing controls functional until the server supports the new keys.
   const settings = typeof preferences.new_service_requests === 'boolean'
-    ? NOTIFICATION_SETTINGS : LEGACY_NOTIFICATION_SETTINGS;
+    ? COMPACT_SETTINGS : LEGACY_NOTIFICATION_SETTINGS;
 
   const handleToggle = async (key, value) => {
     if (isSaving) return;
@@ -151,7 +161,17 @@ export default function NotificationSettingsScreen() {
       )}
       {!loadError && settings.map((category, index) => (
         <View key={category.category} style={styles.section}>
-          <Text style={styles.sectionTitle}>{category.category}</Text>
+          {settings === COMPACT_SETTINGS && index > 0 ? <HapticPressable
+            accessibilityRole="button" accessibilityLabel={category.category}
+            accessibilityState={{ expanded: !!expanded[category.category] }}
+            style={styles.groupHeader} onPress={() => setExpanded(previous => ({ ...previous, [category.category]: !previous[category.category] }))}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionTitle}>{category.category}</Text>
+              <Text style={styles.settingDescription}>{category.settings.filter(setting => preferences[setting.key] !== false).length} of {category.settings.length} on</Text>
+            </View>
+            <Ionicons name={expanded[category.category] ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
+          </HapticPressable> : <Text style={styles.sectionTitle}>{category.category}</Text>}
+          {(settings !== COMPACT_SETTINGS || index === 0 || expanded[category.category]) && <>
           {!!category.description && <Text style={styles.sectionDescription}>{category.description}</Text>}
           <View style={[styles.cardBox, styles.settingsGroup]}>
             {category.settings.map((setting, settingIndex) => (
@@ -163,6 +183,7 @@ export default function NotificationSettingsScreen() {
                 ]}
               >
                 <View style={styles.settingInfo}>
+                  {setting.key === 'source_friends' && <Text style={styles.settingDescription}>From friends, your neighborhood or town. Friends count first, then neighborhood, then town.</Text>}
                   <Text style={styles.settingLabel}>{setting.label}</Text>
                   <Text style={styles.settingDescription}>{setting.description}</Text>
                 </View>
@@ -179,6 +200,7 @@ export default function NotificationSettingsScreen() {
               </View>
             ))}
           </View>
+          </>}
         </View>
       ))}
 
@@ -190,6 +212,7 @@ export default function NotificationSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  groupHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

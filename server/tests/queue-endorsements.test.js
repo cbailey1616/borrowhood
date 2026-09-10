@@ -1,0 +1,55 @@
+import { beforeAll,afterAll,it,expect } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
+import { query } from '../src/utils/db.js';
+const owner=randomUUID(),first=randomUUID(),second=randomUUID();
+const users=[owner,first,second];let app,listing,firstRequest,secondRequest;
+const auth=id=>({Authorization:`Bearer ${jwt.sign({userId:id},process.env.JWT_SECRET,{expiresIn:'1h'})}`});
+beforeAll(async()=>{
+ app=express();app.use(express.json());
+ app.use('/listings',(await import('../src/routes/listings.js')).default);
+ app.use('/transactions',(await import('../src/routes/transactions.js')).default);
+ app.use('/rentals',(await import('../src/routes/rentals.js')).default);
+ app.use('/feed',(await import('../src/routes/feed.js')).default);
+ for(const [id,name] of [[owner,'Owner'],[first,'Alex'],[second,'Sam']]) await query("INSERT INTO users(id,email,password_hash,first_name,last_name,status,is_verified) VALUES($1,$2,'test',$3,'Test','verified',true)",[id,`${id}@queue.invalid`,name]);
+ await query("INSERT INTO friendships(user_id,friend_id,status) VALUES($1,$2,'accepted'),($1,$3,'accepted')",users);
+ listing=(await query("INSERT INTO listings(owner_id,title,condition,is_free,price_per_day,deposit_amount,visibility,privacy_version) VALUES($1,'Queue drill','good',true,0,0,'close_friends',1) RETURNING id",[owner])).rows[0].id;
+},15000);
+afterAll(async()=>{
+ await query('DELETE FROM feed_events WHERE user_id=ANY($1::uuid[])',[users]);
+ await query('DELETE FROM feed_sessions WHERE user_id=ANY($1::uuid[])',[users]);
+ await query('DELETE FROM notifications WHERE user_id=ANY($1::uuid[]) OR from_user_id=ANY($1::uuid[])',[users]);
+ await query('DELETE FROM borrow_transactions WHERE listing_id=$1',[listing]);
+ await query('DELETE FROM listings WHERE id=$1',[listing]);
+ await query('DELETE FROM friendships WHERE user_id=ANY($1::uuid[]) OR friend_id=ANY($1::uuid[])',[users]);
+ await query('DELETE FROM item_requests WHERE user_id=ANY($1::uuid[])',[users]);
+ await query('DELETE FROM users WHERE id=ANY($1::uuid[])',[users]);
+});
+it('deduplicates simultaneous requests, keeps FIFO private, and preserves the queue through cancellation',async()=>{
+ const body={listingId:listing,startDate:'2026-11-01',endDate:'2026-11-03'};
+ const duplicate=await Promise.all([request(app).post('/transactions').set(auth(first)).send(body),request(app).post('/transactions').set(auth(first)).send(body)]);
+ expect(duplicate.map(r=>r.status).sort()).toEqual([201,409]);firstRequest=duplicate.find(r=>r.status===201).body.id;
+ const next=await request(app).post('/transactions').set(auth(second)).send(body);expect(next.status).toBe(201);secondRequest=next.body.id;
+ await query("UPDATE borrow_transactions SET created_at=NOW()-INTERVAL '1 hour' WHERE id=$1",[firstRequest]);
+ expect((await request(app).get(`/listings/${listing}/requests`).set(auth(first))).status).toBe(404);
+ let queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
+ expect(queue.status).toBe(200);expect(queue.body.requests.map(r=>r.id)).toEqual([firstRequest,secondRequest]);
+ const approvals=await Promise.all([request(app).post(`/rentals/${firstRequest}/approve`).set(auth(owner)).send({}),request(app).post(`/rentals/${secondRequest}/approve`).set(auth(owner)).send({})]);
+ expect(approvals.filter(r=>r.status===200)).toHaveLength(1);
+ const chosen=approvals[0].status===200 ? firstRequest : secondRequest;
+ const waiting=chosen===firstRequest ? secondRequest:firstRequest;
+ queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
+ expect(queue.body.requests.map(r=>r.id)).toEqual([waiting]);expect(queue.body.listing.availabilityStatus).toBe('reserved');
+ expect((await request(app).post(`/transactions/${chosen}/cancel`).set(auth(owner))).status).toBe(200);
+ expect((await request(app).post(`/rentals/${waiting}/approve`).set(auth(owner)).send({})).status).toBe(200);
+ expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(owner)).send({positive:false})).status).toBe(200);
+ const own=await request(app).get(`/transactions/${chosen}`).set(auth(owner));expect(own.body.endorsement.submitted).toBe(true);
+});
+it('paginates items independently so many requests cannot bury them',async()=>{
+ for(let i=0;i<12;i++) await query("INSERT INTO item_requests(user_id,title,type,visibility,status,expires_at) VALUES($1,$2,'item','close_friends','open',NOW()+INTERVAL '1 day')",[owner,`Need tool ${i}`]);
+ const result=await request(app).get('/feed?layout=sections&limit=1').set(auth(first));
+ expect(result.status).toBe(200);expect(result.body.items).toHaveLength(1);expect(result.body.items[0].type).toBe('listing');
+ expect(result.body.requests).toHaveLength(8);expect(result.body.requestCount).toBe(12);
+});

@@ -26,7 +26,7 @@ export function townListingPreview(row, photos) {
     id: row.id, type: 'listing', title: row.title, description: row.description,
     condition: row.condition, listingType: row.listing_type || 'lend',
     isFree: row.is_free, directFee: row.direct_fee || null, isAvailable: row.is_available,
-    isBorrowed: row.is_borrowed === true, photoUrl: row.photo_url || null,
+    availabilityStatus: row.availability_status, isBorrowed: row.is_borrowed === true, photoUrl: row.photo_url || null,
     ...(photos ? { photos } : {}), category: row.category_name || null,
     categoryId: row.category_id || null, createdAt: row.created_at,
     user: hiddenMember(), owner: hiddenMember(), ownerMasked: true, previewOnly: true,
@@ -37,6 +37,7 @@ export function townRequestPreview(row, feed = false) {
   return {
     id: row.id, type: feed ? 'request' : row.type, title: row.title, description: row.description,
     ...(feed ? { requestType: row.request_type || row.type } : {}),
+    photoUrl: row.photo_url || null,
     neededFrom: row.needed_from, neededUntil: row.needed_until, createdAt: row.created_at,
     category: row.category_name || null, categoryId: row.category_id || null,
     status: row.status || 'open', visibility: 'town', isOwner: false,

@@ -495,7 +495,7 @@ describe('EditProfile', () => {
     });
 
     // Verified legal names stay locked; the public display name remains editable.
-    fireEvent.changeText(getByPlaceholderText('Test'), 'Updated');
+    fireEvent.changeText(getByPlaceholderText('Choose a name neighbors will see'), 'Updated');
 
     await act(async () => {
       fireEvent.press(getByText('Save Changes'));
