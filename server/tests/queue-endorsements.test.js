@@ -51,12 +51,12 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
 it('paginates items independently so many requests cannot bury them',async()=>{
  const reserved=await request(app).get('/feed?layout=sections').set(auth(first));
  expect(reserved.status).toBe(200);expect(reserved.body.items.some(item=>item.id===listing)).toBe(false);
- const active=(await query("SELECT id FROM borrow_transactions WHERE listing_id=$1 AND status='approved'",[listing])).rows[0];
+ const active=(await query("SELECT id,status FROM borrow_transactions WHERE listing_id=$1 AND status IN ('approved','paid')",[listing])).rows[0];
  await query("UPDATE borrow_transactions SET status='picked_up' WHERE id=$1",[active.id]);
  const borrowed=await request(app).get('/feed?layout=sections').set(auth(first));
  expect(borrowed.body.items.some(item=>item.id===listing)).toBe(false);
  expect((await request(app).get(`/listings/${listing}`).set(auth(owner))).status).toBe(200);
- await query("UPDATE borrow_transactions SET status='approved' WHERE id=$1",[active.id]);
+ await query('UPDATE borrow_transactions SET status=$2 WHERE id=$1',[active.id,active.status]);
  expect((await request(app).post(`/transactions/${active.id}/cancel`).set(auth(owner))).status).toBe(200);
  for(let i=0;i<12;i++) await query("INSERT INTO item_requests(user_id,title,type,visibility,status,expires_at) VALUES($1,$2,'item','close_friends','open',NOW()+INTERVAL '1 day')",[owner,`Need tool ${i}`]);
  const result=await request(app).get('/feed?layout=sections&limit=1').set(auth(first));
