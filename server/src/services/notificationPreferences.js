@@ -26,6 +26,21 @@ export const GRANULAR_NOTIFICATION_TYPES = {
   new_item_requests: ['new_request'], new_service_requests: ['new_request'],
 };
 export const SOURCE_PREFERENCES = ['source_friends', 'source_neighborhood', 'source_town'];
+export const CORE_NOTIFICATION_KEYS = ['new_message', 'post_replies', 'borrow_updates', 'community_updates', 'new_item_requests', 'new_service_requests', 'item_match'];
+export const coreSourceKey = (core, source) => `${core}_${source}`;
+export function notificationCore(type, data = {}) {
+  if (type === 'new_request') return data.requestType === 'service' ? 'new_service_requests'
+    : data.requestType === 'item' ? 'new_item_requests' : null;
+  return groups[type] || (CORE_NOTIFICATION_KEYS.includes(type) ? type : null);
+}
+
+export function audiencePreferences(type, prefs = {}, data = {}) {
+  const core = notificationCore(type, data);
+  const isDiscovery = ['new_request', 'item_match'].includes(type);
+  return Object.fromEntries(SOURCE_PREFERENCES.map(source => [source,
+    core && typeof prefs[coreSourceKey(core, source)] === 'boolean'
+      ? prefs[coreSourceKey(core, source)] : isDiscovery ? prefs[source] !== false : true]));
+}
 const granularKey = Object.fromEntries(Object.entries(GRANULAR_NOTIFICATION_TYPES)
   .filter(([key]) => !['new_item_requests', 'new_service_requests'].includes(key))
   .flatMap(([key, types]) => types.map(type => [type, key])));
@@ -46,6 +61,13 @@ export function normalizedPreferences(prefs = {}) {
   for (const group of ['borrow_updates', 'post_replies', 'community_updates']) {
     normalized[group] = Object.entries(granularKey).filter(([type]) => groups[type] === group)
       .every(([, key]) => normalized[key]);
+  }
+  for (const core of CORE_NOTIFICATION_KEYS) {
+    for (const source of SOURCE_PREFERENCES) {
+      const key = coreSourceKey(core, source);
+      const discovery = ['new_item_requests', 'new_service_requests', 'item_match'].includes(core);
+      normalized[key] = normalized[core] !== false && (prefs[key] ?? (discovery ? prefs[source] !== false : true));
+    }
   }
   return normalized;
 }
@@ -74,6 +96,7 @@ export function preferencePatch(prefs) {
 }
 export const validPreferenceKeys = new Set([...Object.keys(DEFAULT_NOTIFICATION_PREFERENCES),
   ...Object.keys(GRANULAR_NOTIFICATION_TYPES), ...SOURCE_PREFERENCES,
+  ...CORE_NOTIFICATION_KEYS.flatMap(core => SOURCE_PREFERENCES.map(source => coreSourceKey(core, source))),
   'email', 'push', 'borrow_request', 'request_response', 'pickup_return', 'new_request', 'payment_updates']);
 // Messages already have their own unread count and conversation list. Keep the
 // historical rows, but remove duplicate alerts and retired promotion/dispute UI.

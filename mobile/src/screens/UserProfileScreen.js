@@ -1,4 +1,4 @@
-import EndorsementSummary from '../components/EndorsementSummary';
+import MemberSummary from '../components/MemberSummary';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -11,7 +11,6 @@ import {
 import { Ionicons } from '../components/Icon';
 import ShimmerImage from '../components/ShimmerImage';
 import HapticPressable from '../components/HapticPressable';
-import UserBadges from '../components/UserBadges';
 import ActionSheet from '../components/ActionSheet';
 import UserSafetyActions from '../components/UserSafetyActions';
 import { useAuth } from '../context/AuthContext';
@@ -123,14 +122,8 @@ export default function UserProfileScreen({ route, navigation }) {
           />
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
 
-          <UserBadges
-            centered
-            isVerified={user.isVerified}
-            totalTransactions={user.totalTransactions || 0}
-            size="medium"
-          />
-
-          <EndorsementSummary value={user.endorsement} />
+          <MemberSummary user={user} />
+          <Text style={styles.metaText}>{user.totalTransactions || 0} completed exchanges</Text>
           <View style={styles.metaRow}>
             {user.city && user.state && (
               <View style={styles.metaItem}>

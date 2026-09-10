@@ -3,7 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-n
 import { useFocusEffect } from '@react-navigation/native';
 import HapticPressable from '../components/HapticPressable';
 import ShimmerImage from '../components/ShimmerImage';
-import EndorsementSummary from '../components/EndorsementSummary';
+import MemberSummary from '../components/MemberSummary';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -46,9 +46,10 @@ export default function RequestQueueScreen({ route, navigation }) {
     renderItem={({item})=><View style={styles.card}>
       <View style={{flexDirection:'row',gap:12,alignItems:'center'}}>
         <ShimmerImage source={item.borrower.profilePhotoUrl ? {uri:item.borrower.profilePhotoUrl} : null} placeholderIcon="person" style={{width:44,height:44,borderRadius:22}} />
-        <View style={{flex:1}}><HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile`} onPress={()=>navigation.navigate('UserProfile',{id:item.borrower.id})}><Text style={{...TYPOGRAPHY.headline,color:COLORS.primary}}>{item.borrower.firstName}</Text></HapticPressable><EndorsementSummary value={item.borrower.endorsement} /></View>
+        <View style={{flex:1}}><HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile`} onPress={()=>navigation.navigate('UserProfile',{id:item.borrower.id})}><Text style={{...TYPOGRAPHY.headline,color:COLORS.primary}}>{item.borrower.firstName}</Text></HapticPressable></View>
         <Text style={styles.body}>#{item.position}</Text>
       </View>
+      <MemberSummary user={item.borrower} />
       {!['giveaway','sell'].includes(data.listing.listingType) && <Text style={styles.body}>{date(item.startDate)} – {date(item.endDate)}</Text>}
       {!!item.message && <Text style={styles.body}>{item.message}</Text>}
       <View style={{flexDirection:'row',gap:12}}>

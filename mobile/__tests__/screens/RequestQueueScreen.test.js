@@ -3,11 +3,15 @@ import { render,fireEvent,waitFor } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import Screen from '../../src/screens/RequestQueueScreen';
 const navigation={navigate:jest.fn()};
-const item={id:'request-1',position:1,startDate:'2026-10-01',endDate:'2026-10-03',borrower:{id:'neighbor',firstName:'Alex',endorsement:{percent:96,count:25}}};
+const item={id:'request-1',position:1,startDate:'2026-10-01',endDate:'2026-10-03',borrower:{id:'neighbor',firstName:'Alex',isVerified:true,totalTransactions:100,endorsement:{percent:96,count:25}}};
 beforeEach(()=>{jest.clearAllMocks();api.getRequestQueue=jest.fn().mockResolvedValue({listing:{id:'item-1',title:'Drill',isAvailable:true,status:'active'},requests:[item]});api.approveRental.mockResolvedValue({});});
 it('messages the selected person and chooses their request',async()=>{
  const screen=render(<Screen route={{params:{listingId:'item-1'}}} navigation={navigation}/>);
- await screen.findByText('96% endorsed · 25 exchanges rated');
+ await screen.findByText('96%');
+ expect(screen.getByText('Verified')).toBeTruthy();
+ expect(screen.getByText('Robin')).toBeTruthy();
+ fireEvent.press(screen.getByLabelText("View Alex's profile"));
+ expect(navigation.navigate).toHaveBeenCalledWith('UserProfile',{id:'neighbor'});
  fireEvent.press(screen.getByLabelText('Message Alex'));
  expect(navigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'neighbor',listingId:'item-1'}));
  fireEvent.press(screen.getByLabelText('Choose Alex'));

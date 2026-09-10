@@ -36,6 +36,7 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  expect((await request(app).get(`/listings/${listing}/requests`).set(auth(first))).status).toBe(404);
  let queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
  expect(queue.status).toBe(200);expect(queue.body.requests.map(r=>r.id)).toEqual([firstRequest,secondRequest]);
+ expect(queue.body.requests[0].borrower).toMatchObject({isVerified:true,totalTransactions:0,endorsement:{count:0,percent:null}});
  const approvals=await Promise.all([request(app).post(`/rentals/${firstRequest}/approve`).set(auth(owner)).send({}),request(app).post(`/rentals/${secondRequest}/approve`).set(auth(owner)).send({})]);
  expect(approvals.filter(r=>r.status===200)).toHaveLength(1);
  const chosen=approvals[0].status===200 ? firstRequest : secondRequest;

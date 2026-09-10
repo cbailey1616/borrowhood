@@ -196,7 +196,7 @@ router.get('/:id/requests', authenticate, async (req, res) => {
       ${listingAvailabilitySql()} AS availability_status FROM listings l WHERE l.id=$1 AND l.owner_id=$2`, [req.params.id,req.user.id]);
     if (!listing) return res.status(404).json({ error: 'Item not found.' });
     const { rows } = await query(`SELECT t.id,t.created_at,t.requested_start_date,t.requested_end_date,t.borrower_message,t.stripe_payment_intent_id,
-      b.id AS borrower_id,COALESCE(NULLIF(b.display_name,''),b.first_name) AS name,b.profile_photo_url,b.is_verified
+      b.id AS borrower_id,COALESCE(NULLIF(b.display_name,''),b.first_name) AS name,b.profile_photo_url,b.is_verified,b.total_transactions
       FROM borrow_transactions t JOIN users b ON b.id=t.borrower_id
       WHERE t.listing_id=$1 AND t.lender_id=$2 AND t.status='pending'
       ORDER BY t.created_at ASC,t.id ASC`, [listing.id,req.user.id]);
@@ -208,7 +208,7 @@ router.get('/:id/requests', authenticate, async (req, res) => {
       requests:await Promise.all(rows.map(async (t,index) => ({ id:t.id,position:index+1,createdAt:t.created_at,
         canChoose:listing.status === 'active' && (listing.is_available || !!t.stripe_payment_intent_id),
         startDate:t.requested_start_date,endDate:t.requested_end_date,message:t.borrower_message,
-        borrower:{ id:t.borrower_id,firstName:t.name,profilePhotoUrl:t.profile_photo_url,isVerified:t.is_verified,
+        borrower:{ id:t.borrower_id,firstName:t.name,profilePhotoUrl:t.profile_photo_url,isVerified:t.is_verified,totalTransactions:t.total_transactions,
           endorsement:await endorsementSummary(t.borrower_id) } }))) });
   } catch { res.status(500).json({ error: 'Could not load the request queue.' }); }
 });

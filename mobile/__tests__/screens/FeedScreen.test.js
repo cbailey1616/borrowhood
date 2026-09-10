@@ -307,9 +307,11 @@ it('keeps requests in a swipe row and opens all requests with one tap',async()=>
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
  await screen.findByText('Neighbors need');
+ expect(screen.getByText('Available nearby')).toBeTruthy();
  expect(screen.getByTestId('Feed.requests.carousel').props.horizontal).toBe(true);
  expect(screen.getByTestId('Feed.list').props.data.some(item=>item.type==='request')).toBe(false);
  fireEvent.press(screen.getByLabelText('See all requests'));
  await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'requests'})));
  expect(screen.queryByText('Neighbors need')).toBeNull();
+ expect(screen.queryByText('Available nearby')).toBeNull();
 });
