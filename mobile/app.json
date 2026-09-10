@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.borrowhood.app",
-      "buildNumber": "234",
+      "buildNumber": "235",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Borrowhood to take photos for your listings and private chats.",
         "NSPhotoLibraryUsageDescription": "Allow Borrowhood to select photos for your listings and private chats.",
