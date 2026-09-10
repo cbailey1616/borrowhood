@@ -169,7 +169,7 @@ export default function SustainabilityScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Rank</Text>
+        <Text style={styles.sectionTitle}>Sharing milestones</Text>
         <AnimatedCard index={6}>
           <View style={[styles.cardBox, styles.rankCard]}>
             <Icon name={stats?.totalLends >= 20 ? 'rank-ranger' : stats?.totalLends >= 5 ? 'leaf' : 'rank-squire'} size={52} illustrated style={styles.rankArt} />
@@ -185,7 +185,7 @@ export default function SustainabilityScreen() {
                 : stats?.totalLends >= 20
                 ? 'Amazing work! You\'re helping build a sustainable community.'
                 : stats?.totalLends >= 10
-                ? 'Great progress! Keep sharing to level up.'
+                ? 'Your completed lends are making a difference.'
                 : stats?.totalLends >= 5
                 ? 'You\'re off to a great start on your sharing journey.'
                 : 'Start lending to track your sustainability impact!'}
