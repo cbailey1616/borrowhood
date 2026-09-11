@@ -244,7 +244,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     if (!fullAccess) return res.json(townListingPreview(l, photos.rows.map(p => p.url)));
 
-    // Check if the current user has an active transaction for this listing
+    // Keep the current handoff visible when newer requests join the owner's queue.
     const activeTransaction = await query(
       `SELECT id, status, payment_status, borrower_id, lender_id,
               requested_start_date, requested_end_date
@@ -252,7 +252,7 @@ router.get('/:id', authenticate, async (req, res) => {
        WHERE listing_id = $1
          AND (borrower_id = $2 OR lender_id = $2)
          AND status IN ('pending', 'approved', 'paid', 'picked_up', 'return_pending')
-       ORDER BY created_at DESC
+       ORDER BY CASE WHEN status = 'pending' THEN 1 ELSE 0 END, created_at DESC, id DESC
        LIMIT 1`,
       [l.id, req.user.id]
     );

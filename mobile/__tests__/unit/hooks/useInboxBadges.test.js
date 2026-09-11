@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../../src/services/api';
 import useInboxBadges from '../../../src/hooks/useInboxBadges';
+import { notifyInboxChanged } from '../../../src/utils/inboxUpdates';
 
 let mockFocus;
 jest.mock('@react-navigation/native', () => ({
@@ -66,6 +67,26 @@ it('does not restore a stale unread count or clear indicators on a failed refres
   await act(async () => result.current.refresh());
   expect(result.current.badgeCounts.messages).toBe(1);
   expect(result.current.hasNewFeed).toBe(true);
+});
+
+it('does not restore a pre-read push badge after a tapped alert is acknowledged', async () => {
+  const { result, unmount } = renderHook(() => useInboxBadges('user-a'));
+  await waitFor(() => expect(result.current.badgeCounts.messages).toBe(2));
+  let finishBeforeRead;
+  api.getBadgeCount.mockImplementationOnce(() => new Promise(resolve => { finishBeforeRead = resolve; }));
+  // The response listener starts refreshing before the push handler finishes
+  // marking the tapped notification read on the server.
+  act(() => { Notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)[0]({}); });
+  api.getBadgeCount.mockResolvedValue({ messages: 2, notifications: 5, actions: 1, total: 8 });
+  await act(async () => expect(notifyInboxChanged('user-a')).toBe(true));
+  expect(result.current.badgeCounts.notifications).toBe(5);
+  expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(7);
+  await act(async () => finishBeforeRead(counts(2)));
+  expect(result.current.badgeCounts.notifications).toBe(5);
+  expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(7);
+  expect(notifyInboxChanged('another-user')).toBe(false);
+  unmount();
+  expect(notifyInboxChanged('user-a')).toBe(false);
 });
 
 it('refreshes immediately on resume and removes subscriptions on unmount', async () => {

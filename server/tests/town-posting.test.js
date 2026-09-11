@@ -52,15 +52,21 @@ describe.each(['listings', 'requests'])('Unverified Town posting: %s', type => {
       .toMatchObject({ visibility: 'town', town_preview_enabled: true });
     expect((await query('SELECT is_verified FROM users WHERE id=$1', [poster.userId])).rows[0].is_verified).toBe(false);
   });
-  it('shows previews while hiding the poster from unverified viewers', async () => {
+  it(type === 'listings' ? 'hides the borrow-listing poster from unverified viewers' : 'shows opted-in Town request identities to unverified viewers', async () => {
     for (const route of [type + '/' + id, type, 'feed?visibility=town']) {
       const response = await access('get', route, viewer);
       expect(response.status).toBe(200);
       const post = response.body.items ? response.body.items.find(post => post.id === id)
         : Array.isArray(response.body) ? response.body.find(post => post.id === id) : response.body;
-      expect(post).toMatchObject({ ownerMasked: true, previewOnly: true });
-      expect(JSON.stringify(post)).not.toContain(poster.userId);
-      expect(JSON.stringify(post)).not.toContain('UnverifiedPoster');
+      if (type === 'listings') {
+        expect(post).toMatchObject({ ownerMasked: true, previewOnly: true });
+        expect(JSON.stringify(post)).not.toContain(poster.userId);
+        expect(JSON.stringify(post)).not.toContain('UnverifiedPoster');
+      } else {
+        expect(post.user || post.requester).toMatchObject({ id: poster.userId, firstName: 'UnverifiedPoster', isVerified: false });
+        expect(post.ownerMasked).not.toBe(true);
+        expect(post.previewOnly).not.toBe(true);
+      }
     }
   });
   it('shows the poster to verified viewers without adding a false verified badge', async () => {
@@ -83,7 +89,25 @@ describe.each(['listings', 'requests'])('Unverified Town posting: %s', type => {
       visibility: ['town'], sharingConfirmed: true, townPreviewEnabled: true,
     });
     expect(response.status).toBe(200);
-    expect((await access('get', type + '/' + existing, viewer)).body.previewOnly).toBe(true);
+    const changed = await access('get', type + '/' + existing, viewer);
+    expect(changed.status).toBe(200);
+    if (type === 'listings') {
+      expect(changed.body).toMatchObject({ ownerMasked: true, previewOnly: true, owner: { id: null } });
+      expect(JSON.stringify(changed.body)).not.toContain(poster.userId);
+    } else {
+      expect(changed.body.requester).toMatchObject({ id: poster.userId, isVerified: false });
+      expect(changed.body.previewOnly).not.toBe(true);
+    }
+  });
+  it('requires the owner’s Town opt-in before showing the post to unverified strangers', async () => {
+    const table = type === 'listings' ? 'listings' : 'item_requests';
+    await query(`UPDATE ${table} SET town_preview_enabled=false WHERE id=$1`, [id]);
+    try {
+      expect((await access('get', type + '/' + id, viewer)).status).toBe(404);
+      expect((await access('get', type + '/' + id, verified)).status).toBe(200);
+    } finally {
+      await query(`UPDATE ${table} SET town_preview_enabled=true WHERE id=$1`, [id]);
+    }
   });
   it('does not let a different member change the audience', async () => {
     expect((await access('patch', type + '/' + id, viewer, {

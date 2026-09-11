@@ -288,7 +288,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                     isSale={isSaleListing(listing)}
                   />
                   <View style={styles.viewTransactionRow}>
-                    <Text style={styles.viewTransactionText}>Go to Transaction</Text>
+                    <Text style={styles.viewTransactionText}>View exchange</Text>
                     <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                   </View>
                 </View>
@@ -438,19 +438,27 @@ export default function ListingDetailScreen({ route, navigation }) {
           <View style={styles.footerActions}>
             <HapticPressable
               style={styles.deleteButton}
+              accessibilityRole="button"
+              accessibilityLabel="Delete item"
               onPress={() => setDeleteSheetVisible(true)}
               haptic="light"
             >
               <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
             </HapticPressable>
             <HapticPressable
-              style={[styles.borrowButton, styles.editButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Edit item"
+              style={[styles.borrowButton, styles.editButton, listing.activeTransaction?.status !== 'pending' && listing.activeTransaction && styles.editSecondary]}
               onPress={() => navigation.navigate('EditListing', { listing })}
               haptic="light"
             >
-              <Ionicons name="create-outline" size={20} color="#fff" />
-              <Text style={styles.borrowButtonText}>Edit</Text>
+              <Text style={[styles.borrowButtonText, listing.activeTransaction?.status !== 'pending' && listing.activeTransaction && { color: COLORS.primary }]}>Edit</Text>
             </HapticPressable>
+            {listing.activeTransaction && listing.activeTransaction.status !== 'pending' && <HapticPressable
+              accessibilityRole="button" accessibilityLabel="View active exchange" testID="ListingDetail.button.exchange"
+              style={styles.borrowButton} onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}>
+              <Text style={styles.borrowButtonText}>View exchange</Text>
+            </HapticPressable>}
           </View>
         </View>
       )}
@@ -474,6 +482,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  editSecondary: { flex: 0, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, paddingHorizontal: 16 },
   cardBox: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,

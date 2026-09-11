@@ -1,4 +1,4 @@
-import { publicReplyRoute } from '../utils/conversationContext';
+import { notificationDestination } from '../utils/notificationDestination';
 import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -113,30 +113,8 @@ export default function NotificationsScreen({ navigation }) {
     }
     haptics.light();
 
-    // Navigate based on notification type
-    const publicRoute = publicReplyRoute(notification);
-    if (publicRoute) { navigation.navigate('ListingDiscussion', publicRoute); return; }
-    if (notification.queueListingId) { navigation.navigate('RequestQueue', { listingId: notification.queueListingId }); return; }
-    if (['rank_up', 'rank_down', 'rank_ready'].includes(notification.type)) {
-      navigation.navigate('Main', { screen: 'Profile', params: { openRating: true } });
-      return;
-    }
-    if (notification.type === 'new_message') {
-      if (notification.conversationId) {
-        navigation.navigate('Chat', { conversationId: notification.conversationId });
-      } else {
-        navigation.navigate('Conversations');
-      }
-      return;
-    } else if (['new_request', 'request_offer'].includes(notification.type) && notification.requestId) {
-      navigation.navigate('RequestDetail', { id: notification.requestId });
-    } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
-      navigation.navigate('Friends');
-    } else if (notification.transactionId) {
-      navigation.navigate('TransactionDetail', { id: notification.transactionId });
-    } else if (notification.listingId) {
-      navigation.navigate('ListingDetail', { id: notification.listingId });
-    }
+    const destination = notificationDestination(notification);
+    if (destination) navigation.navigate(destination.name, destination.params);
   };
 
   const getTimeAgo = (date) => {

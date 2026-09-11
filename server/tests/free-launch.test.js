@@ -111,7 +111,7 @@ describe('first-borrow improvements', () => {
   });
   it('gives each side appropriate pending-request guidance', () => {
     expect(borrowGuidance({ status: 'pending', isBorrower: true }).title).toBe('Waiting for the owner');
-    expect(borrowGuidance({ status: 'pending', isBorrower: false }).title).toBe('Your turn: review the request');
+    expect(borrowGuidance({ status: 'pending', isBorrower: false }).title).toBe('Review your queue');
   });
   it('does not describe a pending return as completed', () => {
     expect(borrowGuidance({ status: 'return_pending' }).detail).toContain('Confirm only once you have the item back');

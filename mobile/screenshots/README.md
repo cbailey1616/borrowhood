@@ -22,6 +22,11 @@ a short service request in front, to check spacing and consistent height.
 Review every image before uploading to App Store Connect. The photos are
 sample listing images from Unsplash; source URLs are in `assets.json`.
 
+Usability review captures include Home with an item due back tomorrow and a
+request to review, Inbox with unread messages only, an owner's pickup screen,
+and an owner's borrowed item with requests still waiting. These are actual app
+screens with offline fixtures; the Inbox capture chooses its initial tab itself.
+
 Apple's specifications:
 https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/
 

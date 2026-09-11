@@ -41,6 +41,8 @@ beforeEach(() => {
   api.unsaveListing.mockResolvedValue({ saved: false });
   api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools', slug: 'tools-hardware' }]);
   api.getBadgeCount.mockResolvedValue({ messages: 0, notifications: 0, actions: 0, total: 0 });
+  api.getTransactions.mockResolvedValue([]);
+  api.getNotifications.mockResolvedValue({ notifications: [], unreadCount: 0 });
 });
 
 describe('FeedScreen', () => {
@@ -350,15 +352,45 @@ it('aligns ribbon cards with photos and long text with cards that have neither',
  expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestDetail',{id:'plain'});
 });
 
-it('keeps the notification ribbon ahead of requests and available items', async () => {
+it('keeps your exchanges ahead of requests and opens their activity screen', async () => {
  api.getTransactions.mockResolvedValueOnce([{id:'pending',status:'pending',lender:{id:mockUser.id}}]);
  api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],requests:[{id:'ask',type:'request',title:'Need a ladder',user:{firstName:'Alex'}}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('1 pending request');
+ await screen.findByText('Your exchanges');
+ expect(screen.getByText('1 to review')).toBeTruthy();
  expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
- fireEvent.press(screen.getByText('1 pending request'));
- expect(mockNavigation.navigate).toHaveBeenCalledWith('MyItems');
+ fireEvent.press(screen.getByText('Your exchanges'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('Activity', { tab: 'activity' });
+});
+
+it('shows overdue returns and pending reviews together without hiding other updates', async () => {
+ const overdue = new Date(Date.now() - 7 * 86400000).toISOString();
+ api.getTransactions.mockResolvedValue([
+  { id:'return',status:'picked_up',isBorrower:true,endDate:overdue,listing:{id:'ladder'} },
+  { id:'pending',status:'pending',isBorrower:false,lender:{id:mockUser.id},listing:{id:'drill'} },
+  { id:'sold',status:'picked_up',isBorrower:true,listingType:'sell',endDate:overdue,listing:{id:'bike'} },
+  { id:'done',status:'returned',isBorrower:true,endDate:overdue,listing:{id:'rake'} },
+ ]);
+ api.getNotifications.mockResolvedValue({ notifications:[],unreadCount:2 });
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ await screen.findByText('1 due back · 1 to review');
+ expect(screen.getByText('2 unread notifications')).toBeTruthy();
+ fireEvent.press(screen.getByLabelText('Dismiss 2 unread notifications'));
+ expect(screen.getByText('Your exchanges')).toBeTruthy();
+ expect(screen.getByText('1 due back · 1 to review')).toBeTruthy();
+});
+
+it('opens the dispute list when more than one dispute needs attention', async () => {
+ api.getDisputes.mockResolvedValueOnce([
+  { id:'dispute-1',status:'awaitingResponse' },
+  { id:'dispute-2',status:'underReview' },
+ ]);
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ fireEvent.press(await screen.findByText('2 active disputes'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('Disputes');
 });
 
 it('hides own posts from the carousel, filters and older server pages', async () => {

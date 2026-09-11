@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
-import { currentNotificationBody } from '../services/notificationCopy.js';
+import { currentNotificationBody, currentNotificationTitle } from '../services/notificationCopy.js';
 import { GROUPED_ACTIVITY_SQL, UNREAD_ACTIVITY_SQL, requestQueueCopy } from '../services/requestActivity.js';
 
 import { normalizedPreferences, validPreferenceKeys, preferencePatch } from '../services/notificationPreferences.js';
@@ -49,7 +49,7 @@ router.get('/', authenticate, async (req, res) => {
       notifications: result.rows.map(n => ({
         id: n.id,
         type: n.type,
-        title: n.title,
+        title: currentNotificationTitle(n.type, n.title),
         body: currentNotificationBody(n.type, n.body),
         ...(n.queue_listing_id ? requestQueueCopy(Number(n.request_count), n.listing_title, n.from_display_name || n.from_first_name) : {}),
         transactionId: n.transaction_id,

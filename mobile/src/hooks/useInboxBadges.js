@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
+import { subscribeInboxChanges } from '../utils/inboxUpdates';
 
 const EMPTY_COUNTS = { messages: 0, notifications: 0, actions: 0, total: 0 };
 export const FeedSeenContext = createContext(() => {});
@@ -79,6 +80,7 @@ export default function useInboxBadges(userId) {
     });
     const received = Notifications.addNotificationReceivedListener(refresh);
     const opened = Notifications.addNotificationResponseReceivedListener(refresh);
+    const unsubscribeInbox = subscribeInboxChanges(userId, refresh);
     // Also works when push notifications are disabled; stop polling in the
     // background and refresh immediately when the app becomes active again.
     const interval = setInterval(() => {
@@ -91,8 +93,9 @@ export default function useInboxBadges(userId) {
       appStateListener.remove();
       received.remove();
       opened.remove();
+      unsubscribeInbox();
     };
-  }, [refresh]);
+  }, [refresh, userId]);
 
   // Returning from Chat to any main tab refreshes the server's read counts.
   // Merely opening Inbox does not mark any conversation as read.

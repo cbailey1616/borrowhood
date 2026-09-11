@@ -1,5 +1,6 @@
 import { cancelLegacyReturnReminders } from '../utils/returnReminders';
-import { publicReplyRoute } from '../utils/conversationContext';
+import { notificationDestination } from '../utils/notificationDestination';
+import { notifyInboxChanged } from '../utils/inboxUpdates';
 import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -19,32 +20,29 @@ Notifications.setNotificationHandler({
 // Navigation ref will be set from App.js
 let navigationRef = null;
 let currentUser = null;
+let hasAuthenticatedSession = false;
 let pendingNotification = null;
 
 export function setNavigationRef(ref) {
   navigationRef = ref;
-
-  // Handle cold start — check if the app was launched by tapping a notification
+  if (pendingNotification) {
+    flushPendingNotification();
+    return;
+  }
+  // A cold-start tap may arrive before authentication or onboarding finishes.
   Notifications.getLastNotificationResponseAsync().then(response => {
-    if (response) {
-      const data = response.notification.request.content.data;
-      if (data?.type) {
-        // If user isn't authenticated yet, store as pending — will flush when auth loads
-        if (!currentUser) {
-          pendingNotification = data;
-        } else {
-          handleNotificationResponse(data);
-        }
-      }
-    }
-  });
+    if (response) handleNotificationResponse(response.notification.request.content.data);
+  }).catch(() => {});
 }
 
+const canOpenNotification = () => hasAuthenticatedSession && currentUser?.onboardingCompleted
+  && navigationRef && navigationRef.isReady?.() !== false;
+
 export function flushPendingNotification() {
-  if (pendingNotification && navigationRef) {
-    handleNotificationResponse(pendingNotification);
-    pendingNotification = null;
-  }
+  if (!pendingNotification || !canOpenNotification()) return;
+  const data = pendingNotification;
+  pendingNotification = null;
+  handleNotificationResponse(data);
 }
 
 export default function usePushNotifications(isAuthenticated, user) {
@@ -53,15 +51,12 @@ export default function usePushNotifications(isAuthenticated, user) {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  // Keep module-level user ref in sync
+  // Track the actual account, not only its onboarding flag.
   useEffect(() => {
     currentUser = user || null;
-
-    // If onboarding just completed and there's a pending notification, flush it
-    if (user?.onboardingCompleted && pendingNotification) {
-      flushPendingNotification();
-    }
-  }, [user?.onboardingCompleted]);
+    hasAuthenticatedSession = isAuthenticated;
+    flushPendingNotification();
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -103,7 +98,7 @@ export default function usePushNotifications(isAuthenticated, user) {
         responseListener.current.remove();
       }
     };
-  }, [isAuthenticated, user?.onboardingCompleted]);
+  }, [isAuthenticated, user?.id, user?.onboardingCompleted]);
 
   return { expoPushToken, notification };
 }
@@ -145,101 +140,34 @@ async function registerForPushNotifications({ skipRequest = false } = {}) {
   return token;
 }
 
-function handleNotificationResponse(data) {
-  if (data?.type === 'item_match') return;
-  if (!navigationRef || !data?.type) {
-    console.log('Notification tapped (no navigation):', data);
-    return;
+async function acknowledgeNotification(data) {
+  if (!data.notificationId) return;
+  const accountId = currentUser?.id;
+  try {
+    // Only the alert that was tapped was seen. Other messages and requests
+    // retain their unread status, including newer alerts in the same queue.
+    await api.markNotificationRead(data.notificationId);
+    if (!hasAuthenticatedSession || currentUser?.id !== accountId) return;
+    if (notifyInboxChanged(accountId)) return;
+    // Before the main tabs mount, keep the native icon in sync directly.
+    const counts = await api.getBadgeCount();
+    if (!hasAuthenticatedSession || currentUser?.id !== accountId) return;
+    await Notifications.setBadgeCountAsync((counts.messages || 0) + (counts.notifications || 0));
+  } catch {
+    // Opening the exchange must still work if acknowledging the alert fails.
   }
+}
 
-  // During onboarding, store the notification and defer navigation
-  if (currentUser && !currentUser.onboardingCompleted) {
+function handleNotificationResponse(data) {
+  if (!data?.type || data.type === 'item_match') return;
+  if (!canOpenNotification()) {
     pendingNotification = data;
     return;
   }
-
-  switch (data.type) {
-    case 'borrow_request':
-    case 'giveaway_claim':
-      if (data.queueListingId || data.listingId) {
-        navigationRef.navigate('RequestQueue', { listingId: data.queueListingId || data.listingId });
-      } else if (data.transactionId) {
-        navigationRef.navigate('TransactionDetail', { id: data.transactionId });
-      }
-      break;
-    case 'request_approved':
-    case 'request_declined':
-    case 'pickup_confirmed':
-    case 'return_confirmed':
-    case 'deposit_released':
-    case 'giveaway_complete':
-    case 'payment_confirmed':
-    case 'return_reminder':
-      if (data.transactionId) {
-        navigationRef.navigate('TransactionDetail', { id: data.transactionId });
-      }
-      break;
-
-    case 'new_message':
-      if (data.conversationId) {
-        navigationRef.navigate('Chat', { conversationId: data.conversationId });
-      }
-      break;
-
-    case 'rating_received':
-    case 'new_rating':
-      navigationRef.navigate('Profile');
-      break;
-
-    case 'rank_up':
-    case 'rank_down':
-    case 'rank_ready':
-      navigationRef.navigate('Main', { screen: 'Profile', params: { openRating: true } });
-      break;
-
-    case 'request_offer':
-    case 'new_request':
-      if (data.requestId) {
-        navigationRef.navigate('RequestDetail', { id: data.requestId });
-      }
-      break;
-
-    case 'discussion_reply':
-    case 'listing_comment':
-    case 'request_comment': {
-      const target = publicReplyRoute(data);
-      if (target) navigationRef.navigate('ListingDiscussion', target);
-      break;
-    }
-
-    case 'dispute_opened':
-    case 'dispute_resolved':
-    case 'dispute_auto_advanced':
-      if (data.disputeId) {
-        navigationRef.navigate('DisputeDetail', { id: data.disputeId });
-      }
-      break;
-
-    case 'friend_request':
-    case 'friend_accepted':
-      navigationRef.navigate('Friends');
-      break;
-
-    case 'verification_expiring':
-      navigationRef.navigate('IdentityVerification', { source: 'generic' });
-      break;
-
-    case 'giveaway_expired':
-    case 'giveaway_pickup_expired':
-      if (data.transactionId) {
-        navigationRef.navigate('TransactionDetail', { id: data.transactionId });
-      } else {
-        navigationRef.navigate('Main', { screen: 'Activity' });
-      }
-      break;
-
-    default:
-      navigationRef.navigate('Main', { screen: 'Activity' });
-      break;
-  }
+  const destination = notificationDestination(data);
+  if (!destination) return;
+  navigationRef.navigate(destination.name, destination.params);
+  acknowledgeNotification(data);
+  // A handled notification must not reopen an old exchange next app launch.
+  Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
 }

@@ -96,8 +96,7 @@ export default function FeedScreen({ navigation }) {
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [hasNeighborhood, setHasNeighborhood] = useState(true); // assume yes until checked
   const [activeDisputes, setActiveDisputes] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [dueSoonItems, setDueSoonItems] = useState([]);
+  const [activeExchanges, setActiveExchanges] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [dismissedBanners, setDismissedBanners] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -267,25 +266,13 @@ export default function FeedScreen({ navigation }) {
         api.getNotifications({ limit: 1 }).catch(() => null),
       ]);
 
-      // Pending borrow requests (someone wants to borrow your item)
-      const txList = txData?.transactions || txData || [];
-      const pending = txList.filter(t => t.status === 'pending' && (t.lender?.id === user?.id || t.ownerId === user?.id));
-      setPendingRequests(pending);
-
-      // Items you've borrowed that are due back within 2 days
-      const now = new Date();
-      const twoDays = 2 * 24 * 60 * 60 * 1000;
-      const dueSoon = txList.filter(t => {
-        if (t.status !== 'active' || t.borrowerId !== user?.id) return false;
-        const returnDate = t.returnDate || t.endDate;
-        if (!returnDate) return false;
-        const due = new Date(returnDate);
-        return due - now < twoDays && due - now > -twoDays; // within 2 days before or after
-      });
-      setDueSoonItems(dueSoon);
+      if (txData !== null) {
+        const txList = txData?.transactions || txData || [];
+        setActiveExchanges(txList.filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
+      }
 
       // Unread notification count
-      setUnreadCount(notifData?.unreadCount || 0);
+      if (notifData !== null) setUnreadCount(notifData?.unreadCount || 0);
     } catch (e) {
       // Keep current state
     }
@@ -299,6 +286,7 @@ export default function FeedScreen({ navigation }) {
     };
     const received = Notifications.addNotificationReceivedListener(notification => {
       if (notification.request?.content?.data?.type === 'new_request') refreshVisibleFeed();
+      else if (navigation.isFocused?.()) fetchBannerData();
     });
     let previousState = AppState.currentState;
     const resumed = AppState.addEventListener('change', nextState => {
@@ -312,7 +300,8 @@ export default function FeedScreen({ navigation }) {
     if (!navigation.isFocused?.()) return;
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
     fetchFeed(1, false);
-  }), [navigation, fetchFeed]);
+    fetchBannerData();
+  }), [navigation, fetchFeed, fetchBannerData]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -329,8 +318,19 @@ export default function FeedScreen({ navigation }) {
     haptics.medium();
   };
 
-  const pendingQueues = groupPendingExchanges(pendingRequests, user?.id);
-  const singleQueue = pendingQueues.length === 1 && pendingQueues[0].queueListingId ? pendingQueues[0] : null;
+  const exchangeGroups = groupPendingExchanges(activeExchanges, user?.id);
+  const reviewCount = activeExchanges.filter(t => t.status === 'pending' && (t.isBorrower === false || t.lender?.id === user?.id)).length;
+  const pickupCount = activeExchanges.filter(t => ['approved', 'paid'].includes(t.status)).length;
+  const dueCount = activeExchanges.filter(t => t.status === 'picked_up' && !isTransferListing(t)
+    && (t.isBorrower === true || t.borrower?.id === user?.id)
+    && t.endDate && new Date(t.endDate).getTime() <= Date.now() + 2 * 24 * 60 * 60 * 1000).length;
+  const returnCount = activeExchanges.filter(t => t.status === 'return_pending' && (t.isBorrower === false || t.lender?.id === user?.id)).length;
+  const exchangeSummary = [
+    dueCount > 0 && `${dueCount} due back`,
+    returnCount > 0 && `${returnCount} return${returnCount === 1 ? '' : 's'} to confirm`,
+    reviewCount > 0 && `${reviewCount} to review`,
+    pickupCount > 0 && `${pickupCount} ready for pickup`,
+  ].filter(Boolean).join(' · ') || `${exchangeGroups.length} in progress`;
   const banners = [
     activeDisputes.length > 0 && !dismissedBanners.disputes && {
       key: 'disputes',
@@ -340,23 +340,7 @@ export default function FeedScreen({ navigation }) {
       subtitle: 'Tap to review and respond',
       onPress: () => activeDisputes.length === 1
         ? navigation.navigate('DisputeDetail', { id: activeDisputes[0].id })
-        : navigation.navigate('MyItems'),
-    },
-    pendingRequests.length > 0 && !dismissedBanners.pending && {
-      key: 'pending',
-      icon: 'hand-left',
-      color: COLORS.warning,
-      title: singleQueue ? `${singleQueue.requestCount} ${singleQueue.requestCount === 1 ? 'person requested' : 'people requested'} ${singleQueue.listing.title}` : `${pendingRequests.length} pending request${pendingRequests.length !== 1 ? 's' : ''}`,
-      subtitle: singleQueue ? 'See queue' : 'Review your item requests',
-      onPress: () => singleQueue ? navigation.navigate('RequestQueue', { listingId: singleQueue.queueListingId }) : navigation.navigate('MyItems'),
-    },
-    dueSoonItems.length > 0 && !dismissedBanners.dueSoon && {
-      key: 'dueSoon',
-      icon: 'time',
-      color: COLORS.info || COLORS.info,
-      title: `${dueSoonItems.length} item${dueSoonItems.length !== 1 ? 's' : ''} due back soon`,
-      subtitle: "Don't forget to return on time",
-      onPress: () => navigation.navigate('MyItems'),
+        : navigation.navigate('Disputes'),
     },
     unreadCount > 0 && !dismissedBanners.unread && {
       key: 'unread',
@@ -364,7 +348,7 @@ export default function FeedScreen({ navigation }) {
       color: COLORS.primary,
       title: `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`,
       subtitle: 'Tap to catch up',
-      onPress: () => navigation.navigate('Activity'),
+      onPress: () => navigation.navigate('Activity', { tab: 'activity' }),
     },
     !user?.city && !dismissedBanners.location && {
       key: 'location',
@@ -593,10 +577,26 @@ export default function FeedScreen({ navigation }) {
   );
 
   const renderBanners = () => {
-    const banner = banners[0];
-    if (!banner) return null;
     return (
-      <View style={[styles.bannerCard, { borderColor: banner.color }]}>
+      <View>
+        {exchangeGroups.length > 0 && <LayeredCard style={{ marginBottom: SPACING.md }}>
+          <HapticPressable
+            testID="Feed.exchanges"
+            accessibilityRole="button"
+            accessibilityLabel={`Your exchanges, ${exchangeSummary}`}
+            onPress={() => navigation.navigate('Activity', { tab: 'activity' })}
+            style={styles.exchangeCard}
+            haptic="light"
+          >
+            <Ionicons name="basket" size={30} illustrated color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>Your exchanges</Text>
+              <Text style={styles.bannerSubtitle}>{exchangeSummary}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+          </HapticPressable>
+        </LayeredCard>}
+        {banners.map(banner => <View key={banner.key} style={[styles.bannerCard, { borderColor: banner.color }]}>
         <HapticPressable
           style={styles.bannerCardInner}
           onPress={banner.onPress}
@@ -613,12 +613,15 @@ export default function FeedScreen({ navigation }) {
         </HapticPressable>
         <HapticPressable
           style={styles.bannerDismissBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Dismiss ${banner.title}`}
           onPress={() => dismissBanner(banner.key)}
           haptic="light"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="close" size={16} color={COLORS.textMuted} />
         </HapticPressable>
+      </View>)}
       </View>
     );
   };
@@ -628,7 +631,7 @@ export default function FeedScreen({ navigation }) {
   const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
   const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
-    ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
+    ...((banners.length || exchangeGroups.length) && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
@@ -1079,12 +1082,21 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.text,
   },
+  exchangeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    padding: SPACING.md,
+    minHeight: 72,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.primaryMuted,
+  },
   bannerCard: {
     marginBottom: SPACING.lg,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,
-    height: 60,
+    minHeight: 60,
   },
   bannerCardInner: {
     flex: 1,

@@ -4,6 +4,21 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import api from '../../src/services/api';
 
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    GestureHandlerRootView: View,
+    Swipeable: React.forwardRef(({ children, renderRightActions, onSwipeableOpen }, ref) => {
+      React.useImperativeHandle(ref, () => ({ close: jest.fn() }));
+      return <View testID="post-swipe" onSwipe={() => onSwipeableOpen?.('right')}>
+        {children}
+        {renderRightActions?.({}, { interpolate: () => 1 })}
+      </View>;
+    }),
+  };
+});
+
 jest.mock('expo-image', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -50,6 +65,30 @@ beforeEach(() => {
 });
 
 describe('MyItemsScreen', () => {
+  it.each(['listing', 'request'])('requires confirmation to delete a %s and lets the owner keep it', async type => {
+    const post = { id:'post-1',title:'My ladder',status:type === 'listing' ? 'active' : 'open',isAvailable:true };
+    (type === 'listing' ? api.getMyListings : api.getMyRequests).mockResolvedValue([post]);
+    const deletePost = type === 'listing' ? api.deleteListing : api.deleteRequest;
+    deletePost.mockResolvedValue({ success:true });
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    if (type === 'request') await act(async () => fireEvent.press(screen.getByTestId('MyItems.segment.1')));
+    await screen.findByText('My ladder');
+    fireEvent(screen.getByTestId('post-swipe'), 'swipe');
+    expect(deletePost).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText('Delete'));
+    await screen.findByText('Delete this post?');
+    expect(deletePost).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText('Keep post'));
+    await waitFor(() => expect(screen.queryByText('Delete this post?')).toBeNull());
+    expect(deletePost).not.toHaveBeenCalled();
+    expect(screen.getByText('My ladder')).toBeTruthy();
+    fireEvent.press(screen.getByText('Delete'));
+    fireEvent.press(await screen.findByText('Delete post'));
+    await waitFor(() => expect(deletePost).toHaveBeenCalledWith('post-1'));
+    expect(screen.queryByText('My ladder')).toBeNull();
+  });
+
   it('keeps borrowed and paused inventory visible while completed transfers stay in History', async () => {
     const base = { condition: 'good', status: 'active', isAvailable: true, listingType: 'lend' };
     api.getMyListings.mockResolvedValue([

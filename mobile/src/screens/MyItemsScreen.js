@@ -19,6 +19,7 @@ import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
+import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -43,6 +44,7 @@ export default function MyItemsScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const swipeableRefs = useRef({});
 
 
@@ -107,6 +109,11 @@ export default function MyItemsScreen({ navigation }) {
     }
   };
 
+  const requestDelete = (item, type) => {
+    swipeableRefs.current[item.id]?.close();
+    setPendingDelete({ item, type });
+  };
+
   const renderRightActions = (progress, dragX, onDelete) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
@@ -117,6 +124,7 @@ export default function MyItemsScreen({ navigation }) {
     return (
       <HapticPressable
         style={styles.deleteAction}
+        accessibilityRole="button"
         onPress={onDelete}
         haptic="warning"
       >
@@ -133,11 +141,8 @@ export default function MyItemsScreen({ navigation }) {
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, () => handleSwipeDelete(item, 'listing'))
+          renderRightActions(progress, dragX, () => requestDelete(item, 'listing'))
         }
-        onSwipeableOpen={(direction) => {
-          if (direction === 'right') handleSwipeDelete(item, 'listing');
-        }}
       >
         <LayeredCard style={styles.cardDepth}>
           <HapticPressable
@@ -224,11 +229,8 @@ export default function MyItemsScreen({ navigation }) {
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, () => handleSwipeDelete(item, 'request'))
+          renderRightActions(progress, dragX, () => requestDelete(item, 'request'))
         }
-        onSwipeableOpen={(direction) => {
-          if (direction === 'right') handleSwipeDelete(item, 'request');
-        }}
       >
         <LayeredCard style={styles.cardDepth}>
           <HapticPressable
@@ -451,7 +453,21 @@ export default function MyItemsScreen({ navigation }) {
           )
         }
       />
-
+      <ActionSheet
+        isVisible={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        variant="confirmation"
+        title="Delete this post?"
+        message={pendingDelete ? `“${pendingDelete.item.title}” will be removed. This can’t be undone.` : ''}
+        actions={[
+          { label: 'Keep post', onPress: () => setPendingDelete(null) },
+          {
+            label: 'Delete post',
+            destructive: true,
+            onPress: () => pendingDelete && handleSwipeDelete(pendingDelete.item, pendingDelete.type),
+          },
+        ]}
+      />
     </View>
   );
 }

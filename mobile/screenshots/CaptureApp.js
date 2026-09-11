@@ -49,7 +49,7 @@ function KeyboardCapture() {
 }
 function openCapture() {
   if (!navigation.isReady() || ['feedback', 'keyboard', 'keyboard-number'].includes(requested)) return;
-  const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
+  const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', 'inbox-messages': 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
     giveaway: { name: 'ListingDetail', params: { id: 'demo-books' } },
@@ -62,6 +62,8 @@ function openCapture() {
     'request-queue': { name: 'RequestQueue', params: { listingId: 'demo-plants' } },
     'reserved-queue': { name: 'RequestQueue', params: { listingId: 'demo-plants' } },
     'owner-pending-request': { name: 'TransactionDetail', params: { id: 'demo-queue-0' } },
+    'owner-pickup': { name: 'TransactionDetail', params: { id: 'demo-owner-pickup' } },
+    'owner-active-item': { name: 'ListingDetail', params: { id: 'demo-tent' } },
   }[requested];
   navigation.resetRoot({ index: detail ? 1 : 0, routes: detail ? [main, detail] : [main] });
 }

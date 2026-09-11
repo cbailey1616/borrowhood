@@ -26,6 +26,27 @@ beforeEach(() => { jest.clearAllMocks(); api.getTransaction.mockResolvedValue(mo
 describe('TransactionDetailScreen', () => {
   const route = { params: { id: 'txn-1' } };
 
+  it.each([true, false])('requires a handoff confirmation for pickup (borrower=%s)', async isBorrower => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isBorrower, isLender: !isBorrower });
+    api.confirmRentalPickup.mockResolvedValue({ success: true });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.confirmPickup'));
+    expect(api.confirmRentalPickup).not.toHaveBeenCalled();
+    expect(screen.getByText(isBorrower ? 'Confirm only after you have received the item.' : 'Confirm only after you have handed the item to Test.')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('Transaction.confirmPickup'));
+    await waitFor(() => expect(api.confirmRentalPickup).toHaveBeenCalledWith('txn-1'));
+  });
+
+  it('offers a visible retry when exchange loading fails', async () => {
+    api.getTransaction.mockRejectedValueOnce(new Error('Offline'));
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByText('Try again'));
+    await screen.findByText('Camera');
+    expect(api.getTransaction).toHaveBeenCalledTimes(2);
+  });
+
   it('confirms the return only after the owner explicitly confirms in the sheet', async () => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'picked_up', isLender: true, isBorrower: false });
     api.confirmRentalReturn.mockResolvedValue({});

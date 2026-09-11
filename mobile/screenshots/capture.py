@@ -16,6 +16,7 @@ screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'se
 review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
 review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/reserved-queue', 'reserved-queue'), ('ui-review/owner-pending-request', 'owner-pending-request'), ('ui-review/inbox', 'inbox')]
+review_screens += [('ui-review/home-exchanges', 'home-exchanges'), ('ui-review/inbox-messages', 'inbox-messages'), ('ui-review/owner-pickup', 'owner-pickup'), ('ui-review/owner-active-item', 'owner-active-item')]
 # Capture both immediate text focus and a later number-field focus. The latter
 # has no return key, so the keyboard accessory is its explicit dismissal control.
 review_screens = [('ui-review/keyboard', 'keyboard'), ('ui-review/keyboard-number', 'keyboard-number')] + [screen for screen in review_screens if screen[1] != 'keyboard']

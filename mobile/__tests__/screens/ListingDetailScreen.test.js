@@ -102,6 +102,17 @@ describe('ListingDetailScreen', () => {
     expect(queryByText('Request to Borrow')).toBeNull();
   });
 
+  it('keeps the owner’s active exchange in the footer even when more requests are waiting', async () => {
+    api.getListing.mockResolvedValue({ ...mockListing, isOwner: true, pendingRequests: 2,
+      activeTransaction: { id: 'active-1', status: 'picked_up', isBorrower: false } });
+    const Screen = require('../../src/screens/ListingDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('ListingDetail.button.exchange'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'active-1' });
+    expect(screen.getByLabelText('View request queue')).toBeTruthy();
+    expect(screen.getByLabelText('Edit item')).toBeTruthy();
+  });
+
   it('explains unavailable items and keeps a labeled message action', async () => {
     api.getListing.mockResolvedValue({ ...mockListing, isAvailable: false });
     api.getConversations.mockResolvedValue([]);

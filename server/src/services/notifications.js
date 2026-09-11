@@ -25,14 +25,14 @@ const NOTIFICATION_TEMPLATES = {
       : 'Someone wants your item. Tap to review.',
   },
   request_approved: {
-    title: 'Congrats! Your request was accepted',
-    body: (data) => `Your request${data.itemTitle ? ` for ${data.itemTitle}` : ''} was accepted! Contact ${data.lenderName || 'your neighbor'} to arrange pickup. Tap to get in touch.`,
+    title: 'Request approved',
+    body: (data) => `${data.lenderName || 'Your neighbor'} approved your request${data.itemTitle ? ` for ${data.itemTitle}` : ''}. Tap to arrange pickup.`,
   },
   request_declined: {
-    title: 'Request Update',
+    title: 'Request declined',
     body: (data) => data.itemTitle
-      ? `${data.itemTitle} isn't available right now. Tap to browse similar items nearby.`
-      : 'This item isn\'t available right now. Tap to browse similar items nearby.',
+      ? `Your request for ${data.itemTitle} was declined. Tap to view your request.`
+      : 'Your request was declined. Tap to view your request.',
   },
   borrow_cancelled: {
     title: 'Borrow cancelled',
@@ -49,14 +49,14 @@ const NOTIFICATION_TEMPLATES = {
       : 'You\'re all set! Your item is ready for pickup. Tap to see details.',
   },
   pickup_confirmed: {
-    title: 'Enjoy your borrow!',
+    title: 'Pickup confirmed',
     body: (data) => {
       const returnBy = data.returnDate
-        ? ` Remember to return it by ${new Date(data.returnDate).toLocaleDateString()}.`
+        ? ` Return due ${new Date(data.returnDate).toLocaleDateString()}.`
         : '';
       return data.itemTitle
-        ? `${data.itemTitle} is now in your hands.${returnBy} Tap to view details.`
-        : `Your item is now in your hands.${returnBy} Tap to view details.`;
+        ? `${data.itemTitle} has been picked up.${returnBy} Tap to view your exchange.`
+        : `The item has been picked up.${returnBy} Tap to view your exchange.`;
     },
   },
   return_confirmed: {
@@ -70,7 +70,7 @@ const NOTIFICATION_TEMPLATES = {
       : 'Your security deposit has been refunded. Tap to view details.',
   },
   giveaway_complete: {
-    title: 'Item is Yours!',
+    title: 'Pickup complete',
     body: giveawayCompleteBody,
   },
   giveaway_expired: {
@@ -86,9 +86,9 @@ const NOTIFICATION_TEMPLATES = {
       : 'The pickup window has expired. The item has been relisted.',
   },
   return_reminder: {
-    title: 'Friendly Reminder',
+    title: 'Return reminder',
     body: (data) => {
-      const when = data.dueDate === 'today' ? 'today' : `on ${data.dueDate || 'soon'}`;
+      const when = ['today', 'tomorrow'].includes(data.dueDate) ? data.dueDate : data.dueDate ? `on ${data.dueDate}` : 'soon';
       return data.itemTitle
         ? `${data.itemTitle} is due back ${when}. Tap to coordinate the return.`
         : `Your borrowed item is due back ${when}. Tap to coordinate the return.`;
@@ -168,10 +168,8 @@ const NOTIFICATION_TEMPLATES = {
       : 'Someone wants to join your community. Tap to review their request.',
   },
   join_approved: {
-    title: 'Welcome to the neighborhood!',
-    body: (data) => data.communityName
-      ? `You've been approved to join ${data.communityName}. Tap to start browsing items nearby.`
-      : 'You\'re in! Tap to start browsing items from your neighbors.',
+    title: 'Welcome to Borrowhood',
+    body: () => 'You’re ready to browse and share with your neighbors. Tap to see nearby items.',
   },
 
   // A neighbor deliberately responded to an item request.

@@ -5,7 +5,7 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null, onboardingCompleted: true, rating: 4.5, ratingCount: 10, totalTransactions: 5 };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
+const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
 const mockShowError = jest.fn();
 
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
@@ -58,6 +58,9 @@ describe('BorrowRequestScreen', () => {
     fireEvent.changeText(input, 'Need it for a trip!');
     await act(async () => { fireEvent.press(getByText('Send Request')); });
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1' }));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockShowError).not.toHaveBeenCalled();
   });
 
   it('sends the typed message while the keyboard is open', async () => {
@@ -97,6 +100,7 @@ describe('BorrowRequestScreen', () => {
     await screen.findByText('$25.00');
     await act(async () => fireEvent.press(screen.getByText('Request to Buy')));
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1', salePrice: 25 }));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
   });
 
   it('submits without message (message is optional)', async () => {
