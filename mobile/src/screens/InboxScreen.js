@@ -67,7 +67,7 @@ export default function InboxScreen({ navigation, onRead }) {
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
-  const [activityUnread, setActivityUnread] = useState(0);
+  const [unseenActivityUnread, setUnseenActivityUnread] = useState(0);
   const requestVersion = useRef(0);
 
 
@@ -88,7 +88,10 @@ export default function InboxScreen({ navigation, onRead }) {
       if (version !== requestVersion.current) return;
       const visible = groupRequestNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute') && !['item_match', 'new_message', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(n.type)), transactions || [], user?.id);
       setNotifications(visible);
-      setActivityUnread(Math.max(visible.filter(n => !n.isRead).length, (notifData?.unreadCount || 0) - ((notifData?.notifications || []).filter(n => !n.isRead).length - visible.filter(n => !n.isRead).length)));
+      // Derive the visible count from the actual rows. Only the unread groups
+      // beyond this page need a separate count, so a refreshed group cannot
+      // lose its badge when an earlier notification finishes being read.
+      setUnseenActivityUnread(Math.max(0, (notifData?.unreadCount || 0) - (notifData?.notifications || []).filter(n => !n.isRead).length));
       setConversations(convData || []);
       setActiveBorrows(groupPendingExchanges((transactions || []).filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)), user?.id));
       setLoadError(false);
@@ -119,7 +122,7 @@ export default function InboxScreen({ navigation, onRead }) {
     fetchData();
   };
 
-  const unreadCount = activityUnread;
+  const unreadCount = unseenActivityUnread + notifications.filter(n => !n.isRead).length;
   const unreadMessages = conversations.reduce((count, conversation) => count + (conversation.unreadCount || 0), 0);
 
   const handleMarkAllRead = async () => {
@@ -127,7 +130,7 @@ export default function InboxScreen({ navigation, onRead }) {
       await api.markAllNotificationsRead();
       requestVersion.current += 1;
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setActivityUnread(0);
+      setUnseenActivityUnread(0);
       haptics.success();
       if (onRead) onRead();
     } catch (e) {
@@ -159,10 +162,10 @@ export default function InboxScreen({ navigation, onRead }) {
       try {
         await readActivity(api, item);
         requestVersion.current += 1;
+        const readIds = new Set(item.notificationIds || [item.id]);
         setNotifications(prev =>
-          prev.map(n => n.id === item.id ? { ...n, isRead: true } : n)
+          prev.map(n => n.id === item.id && (n.notificationIds || [n.id]).every(id => readIds.has(id)) ? { ...n, isRead: true } : n)
         );
-        setActivityUnread(prev => Math.max(0, prev - 1));
         onRead?.();
       } catch (e) {}
     }

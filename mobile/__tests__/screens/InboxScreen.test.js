@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import * as Notifications from 'expo-notifications';
+import { RefreshControl } from 'react-native';
 
 const mockUser = {
   id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@test.com',
@@ -32,6 +33,24 @@ beforeEach(() => {
 });
 
 describe('InboxScreen', () => {
+  it('retains the unread badge when a refreshed group arrives while the earlier alert is being read', async () => {
+    const first = { id: 'first', type: 'giveaway_claim', queueListingId: 'tea', listingId: 'tea', listingTitle: 'Tea',
+      notificationIds: ['first'], requestCount: 1, fromUser: { firstName: 'Alex' }, isRead: false };
+    api.getNotifications.mockResolvedValue({ notifications: [first], unreadCount: 1 });
+    let finishRead;
+    api.markNotificationRead.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByText('Alex requested Tea'));
+    api.getNotifications.mockResolvedValue({ notifications: [{ ...first, id: 'arrived', notificationIds: ['first', 'arrived'], requestCount: 2 }], unreadCount: 1 });
+    await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());
+    await screen.findByText('2 people requested Tea');
+    await act(async () => finishRead({}));
+    expect(screen.getByText('Activity (1)')).toBeTruthy();
+    expect(api.markNotificationRead).toHaveBeenCalledTimes(1);
+    expect(api.markNotificationRead).toHaveBeenCalledWith('first');
+  });
+
   it('opens Activity, groups one item’s requests, and keeps message and activity counts separate', async () => {
     const pending = ['alice', 'bob'].map((id, index) => ({ id: `request-${index}`, status: 'pending', isBorrower: false,
       listing: { id: 'tea', title: 'Tea' }, borrower: { id, firstName: id }, lender: mockUser }));
