@@ -205,9 +205,10 @@ export async function runPrivacyHttpChecks(client, owner, neighbor) {
     const replay = await call('post', '/api/messages', owner, sendAttempt);
     assert.equal(replay.id, concurrent[0].body.id);
     // Exercise the actual SQL for stable pages, refresh, and permission changes.
+    // Discovery shows a neighbor's posts; the viewer manages their own in My Posts.
     const seeded = await client.query(`INSERT INTO listings(owner_id,title,condition,is_free,visibility,privacy_version,status,created_at)
-      SELECT $1, 'Feed item ' || n, 'good', true, 'close_friends', 1, 'active', NOW()-INTERVAL '10 days'
-      FROM generate_series(1,65) n RETURNING id`, [owner]);
+      SELECT $1, 'Feed item ' || n, 'good', true, 'town', 1, 'active', NOW()-INTERVAL '10 days'
+      FROM generate_series(1,65) n RETURNING id`, [neighbor]);
     const session = randomUUID();
     const page1 = await call('get', `/api/feed?session=${session}&page=1&limit=20`, owner);
     const page2 = await call('get', `/api/feed?session=${session}&page=2&limit=20`, owner);
