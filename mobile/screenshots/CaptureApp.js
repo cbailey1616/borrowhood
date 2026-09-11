@@ -60,6 +60,8 @@ function openCapture() {
     'pending-exchange': { name: 'TransactionDetail', params: { id: 'demo-pending-exchange' } },
     'reserved-item': { name: 'ListingDetail', params: { id: 'demo-drill' } },
     'request-queue': { name: 'RequestQueue', params: { listingId: 'demo-plants' } },
+    'reserved-queue': { name: 'RequestQueue', params: { listingId: 'demo-plants' } },
+    'owner-pending-request': { name: 'TransactionDetail', params: { id: 'demo-queue-0' } },
   }[requested];
   navigation.resetRoot({ index: detail ? 1 : 0, routes: detail ? [main, detail] : [main] });
 }

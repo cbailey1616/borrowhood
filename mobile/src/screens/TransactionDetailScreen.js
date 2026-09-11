@@ -89,41 +89,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
     fetchTransaction();
   };
 
-  const handleApprove = async () => {
-    if (actionInProgress.current) return;
-    actionInProgress.current = true;
-    setActionLoading(true);
-    try {
-      await api.approveRental(id);
-      await fetchTransaction();
-      haptics.success();
-      showToast('Request approved! The borrower has been notified.', 'success');
-    } catch (error) {
-      haptics.error();
-      showError({ message: error.message || 'Something went wrong approving this request. Please check your connection and try again.' });
-    } finally {
-      actionInProgress.current = false;
-      setActionLoading(false);
-    }
-  };
-
-  const handleDecline = async () => {
-    if (actionInProgress.current) return;
-    actionInProgress.current = true;
-    setActionLoading(true);
-    try {
-      await api.declineRental(id);
-      haptics.success();
-      navigation.goBack();
-    } catch (error) {
-      haptics.error();
-      showError({ message: error.message || 'Something went wrong declining this request. Please check your connection and try again.' });
-    } finally {
-      actionInProgress.current = false;
-      setActionLoading(false);
-    }
-  };
-
   const handleConfirmPickup = async () => {
     if (actionInProgress.current) return;
     actionInProgress.current = true;
@@ -236,8 +201,17 @@ export default function TransactionDetailScreen({ route, navigation }) {
   );
   const cancelAsRequest = isGiveaway || transaction.status === 'pending';
   const cancelLabel = cancelAsRequest ? 'Cancel request' : 'Cancel borrow';
+  const viewQueue = () => {
+    const params = { listingId: transaction.listing.id };
+    // Return to the queue we came from; old notification links can start here.
+    if (navigation.getState().routes.some(route => route.name === 'RequestQueue')) {
+      navigation.navigate('RequestQueue', params);
+    } else {
+      navigation.replace('RequestQueue', params);
+    }
+  };
   const primaryAction = transaction.isLender && transaction.status === 'pending'
-    ? { label: 'Approve request', testID: 'Transaction.button.approve', onPress: handleApprove }
+    ? { label: 'View queue', testID: 'Transaction.button.queue', onPress: viewQueue }
     : needsReturn ? { label: 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
     : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
     : null;
@@ -293,26 +267,18 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
         <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
           <Text style={styles.cardEyebrow}>What happens next</Text>
-<Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
-          <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This person is still waiting. You can choose them if the item becomes available again.') : nextStep.detail}</Text>
-          {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('RequestQueue', {listingId:transaction.listing.id})} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>View everyone waiting</Text></HapticPressable>}
+          <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
+          <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button"
             accessibilityLabel={`View ${otherPerson.firstName}'s profile`} style={styles.outlinedAction}
             onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
             <Text style={styles.neighborMessageTitle}>View {otherPerson.firstName}'s profile</Text>
           </HapticPressable>}
-          <View style={transaction.isLender && transaction.status === 'pending' ? styles.decisionRow : undefined}>
           {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
-            accessibilityLabel={primaryAction.label} style={[styles.approveButton, transaction.isLender && transaction.status === 'pending' && { flex: 1 }]}
-            disabled={actionLoading || (transaction.isLender && transaction.status === 'pending' && transaction.queue?.waiting)} onPress={primaryAction.onPress}>
+            accessibilityLabel={primaryAction.label} style={styles.approveButton}
+            disabled={actionLoading} onPress={primaryAction.onPress}>
             {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
           </HapticPressable>}
-          {transaction.isLender && transaction.status === 'pending' && <HapticPressable
-            accessibilityRole="button" accessibilityLabel="Decline request" testID="Transaction.button.decline"
-            disabled={actionLoading} style={[styles.outlinedAction, { flex: 1 }]} onPress={handleDecline}>
-            <Text style={styles.neighborMessageTitle}>Decline</Text>
-          </HapticPressable>}
-          </View>
           {transaction.isBorrower && !transaction.actualPickupAt && ['approved', 'paid'].includes(transaction.status) && <HapticPressable
             accessibilityRole="button" accessibilityLabel="Confirm pickup" testID="Transaction.button.confirmPickup"
             disabled={actionLoading} style={styles.secondaryAction} onPress={handleConfirmPickup}>

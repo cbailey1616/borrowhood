@@ -34,6 +34,7 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   const action = exchangeAction(exchange, userId);
   const details = () => navigation.navigate('TransactionDetail', { id: exchange.id });
   const perform = () => {
+    if (action.screen) return navigation.navigate(action.screen, action.params);
     if (!action.method) return details();
     Alert.alert(action.label, action.confirmation, [
       { text: 'Not yet', style: 'cancel' },

@@ -9,13 +9,32 @@ beforeEach(() => { jest.clearAllMocks(); api.getTransactions.mockResolvedValue([
 afterEach(() => jest.restoreAllMocks());
 const screen = props => render(<ChatExchangeCard userId="owner" otherId="neighbor" navigation={{ navigate }} focused {...props} />);
 
-it('requires an explicit confirmation before approving in chat', async () => {
+it('opens the owner queue without approving from chat', async () => {
   const alert = jest.spyOn(Alert, 'alert');
   const view = screen();
-  fireEvent.press(await view.findByText('Approve request'));
+  fireEvent.press(await view.findByText('View queue'));
+  expect(navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'drill' });
+  expect(view.queryByText('Approve request')).toBeNull();
+  expect(alert).not.toHaveBeenCalled();
   expect(api.approveRental).not.toHaveBeenCalled();
-  await act(async () => { await alert.mock.calls[0][2].find(button => button.text === 'Approve request').onPress(); });
-  expect(api.approveRental).toHaveBeenCalledWith('exchange-1');
+});
+it('keeps a pending borrower on their own exchange details', async () => {
+  const view = screen({ userId: 'neighbor', otherId: 'owner' });
+  fireEvent.press(await view.findByText('Borrow details'));
+  expect(navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'exchange-1' });
+  expect(view.queryByText('View queue')).toBeNull();
+  expect(api.approveRental).not.toHaveBeenCalled();
+});
+it('still requires confirmation before a borrower confirms pickup', async () => {
+  api.getTransactions.mockResolvedValue([{ ...exchange, status: 'approved' }]);
+  const alert = jest.spyOn(Alert, 'alert');
+  const view = screen({ userId: 'neighbor', otherId: 'owner' });
+  fireEvent.press(await view.findByText('Confirm pickup'));
+  expect(api.confirmRentalPickup).not.toHaveBeenCalled();
+  await act(async () => { await alert.mock.calls[0][2].find(button => button.text === 'Confirm pickup').onPress(); });
+  expect(api.confirmRentalPickup).toHaveBeenCalledWith('exchange-1');
+  expect(navigate).not.toHaveBeenCalled();
+  expect(api.approveRental).not.toHaveBeenCalled();
 });
 it('opens full details for returns so condition review stays intact', async () => {
   api.getTransactions.mockResolvedValue([{ ...exchange, status: 'return_pending' }]);
@@ -25,10 +44,17 @@ it('opens full details for returns so condition review stays intact', async () =
   expect(api.confirmRentalReturn).not.toHaveBeenCalled();
 });
 it('does not add inline payment actions to legacy paid exchanges', async () => {
-  api.getTransactions.mockResolvedValue([{ ...exchange, rentalFee: 5 }]);
+  api.getTransactions.mockResolvedValue([{ ...exchange, status: 'approved', rentalFee: 5 }]);
   const view = screen();
   await view.findByText('Borrow details');
   expect(view.queryByText('Approve request')).toBeNull();
+});
+it('sends a legacy pending owner request to its queue', async () => {
+  api.getTransactions.mockResolvedValue([{ ...exchange, rentalFee: 5 }]);
+  const view = screen();
+  fireEvent.press(await view.findByText('View queue'));
+  expect(navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'drill' });
+  expect(api.approveRental).not.toHaveBeenCalled();
 });
 it('shows a retry for failed exchange loading, without hiding chat', async () => {
   api.getTransactions.mockRejectedValueOnce(new Error('offline'));

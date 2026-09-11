@@ -10,7 +10,7 @@ let preferences = {
 const captureScreen = Settings.get('BorrowhoodCaptureScreen');
 const waiting = [listings[0].owner, { ...listings[2].owner, isVerified: false }].map((borrower, index) => ({
   id: `demo-queue-${index}`, status: 'pending', listingType: 'giveaway', listing: listings[4], borrower, lender: user, isBorrower: false,
-  position: index + 1, canChoose: true, createdAt: new Date(Date.now() - (2-index)*60000).toISOString(),
+  isLender: true, position: index + 1, canChoose: captureScreen !== 'reserved-queue', message: index === 0 ? 'Could I pick it up this afternoon?' : 'Tomorrow morning works for me.', createdAt: new Date(Date.now() - (2-index)*60000).toISOString(),
 }));
 const notices = waiting.map(item => ({ id: `demo-notice-${item.id}`, type: 'giveaway_claim', transactionId: item.id, listingId: item.listing.id,
   title: 'New request', body: `${item.borrower.firstName} requested your item`, fromUser: item.borrower, fromUserId: item.borrower.id,
@@ -24,7 +24,7 @@ const api = {
   getFriends: async () => [],
   getUserSafety: async () => ({ blocked: false }),
   endorseTransaction: async (_id, positive) => { feedback = { canRate: false, submitted: true, positive }; return { success: true }; },
-  getTransaction: async id => id === 'demo-pending-exchange' ? {
+  getTransaction: async id => waiting.some(item => item.id === id) ? { ...waiting.find(item => item.id === id), queue: { waiting: captureScreen === 'reserved-queue' } } : id === 'demo-pending-exchange' ? {
     id, status: 'pending', listingType: 'giveaway', listing: listings[1],
     borrower: user, lender: listings[1].owner, isBorrower: true, isLender: false,
     queue: { waiting: false }, endorsement: null,
@@ -40,7 +40,7 @@ const api = {
   getMyListings: async () => listings.map(item => ({ ...item, owner: user, user, ownerId: user.id })),
   getMyRequests: async () => requests,
   getTransactions: async () => captureScreen === 'inbox' ? waiting : [],
-  getRequestQueue: async () => ({ listing: listings[4], requests: waiting }),
+  getRequestQueue: async () => ({ listing: captureScreen === 'reserved-queue' ? { ...listings[4], availabilityStatus: 'reserved' } : listings[4], requests: waiting, activeTransactionId: captureScreen === 'reserved-queue' ? 'demo-active' : null }),
   getDisputes: async () => [],
   getSavedListings: async () => [listings[0], listings[3], listings[1], listings[2]],
   checkSaved: async id => ({ saved: ['demo-drill', 'demo-tent', 'demo-books', 'demo-bike'].includes(id) }),

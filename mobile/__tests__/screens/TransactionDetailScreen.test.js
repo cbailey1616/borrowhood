@@ -4,7 +4,7 @@ import { render, fireEvent, waitFor, act, within } from '@testing-library/react-
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const mockNavigation = { getState: jest.fn(() => ({ routes: [{ name: 'RequestQueue' }, { name: 'TransactionDetail' }] })), replace: jest.fn(), navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
 
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
@@ -73,22 +73,36 @@ describe('TransactionDetailScreen', () => {
     await findByText('Returned');
   });
 
-  it('lender sees approve/decline buttons for pending requests', async () => {
-    api.getTransaction.mockResolvedValue({ ...mockTransaction, isBorrower: false, isLender: true, borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S', profilePhotoUrl: null }, lender: { id: 'user-1', firstName: 'Test', lastName: 'User', profilePhotoUrl: null } });
-    const TransactionDetailScreen = require('../../src/screens/TransactionDetailScreen').default;
-    const { findByTestId } = render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);
-    const approveBtn = await findByTestId('Transaction.button.approve');
-    expect(approveBtn).toBeTruthy();
+  it.each(['lend', 'giveaway', 'sell'])('routes pending %s owner decisions to the queue', async listingType => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, listingType, isBorrower: false, isLender: true });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.queue'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'l-1' });
+    expect(screen.queryByTestId('Transaction.button.approve')).toBeNull();
+    expect(screen.queryByTestId('Transaction.button.decline')).toBeNull();
+    expect(api.approveRental).not.toHaveBeenCalled();
+    expect(api.declineRental).not.toHaveBeenCalled();
   });
 
-  it('approve button calls api.approveRental', async () => {
-    api.getTransaction.mockResolvedValue({ ...mockTransaction, isBorrower: false, isLender: true, borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S', profilePhotoUrl: null }, lender: { id: 'user-1', firstName: 'Test', lastName: 'User', profilePhotoUrl: null } });
-    api.approveRental.mockResolvedValue({});
-    const TransactionDetailScreen = require('../../src/screens/TransactionDetailScreen').default;
-    const { findByTestId } = render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);
-    const approveBtn = await findByTestId('Transaction.button.approve');
-    await act(async () => { fireEvent.press(approveBtn); });
-    expect(api.approveRental).toHaveBeenCalledWith('txn-1');
+  it('lets the owner open the queue while another exchange is reserved', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, isBorrower: false, isLender: true, queue: { waiting: true } });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const queue = await screen.findByLabelText('View queue');
+    expect(queue).not.toBeDisabled();
+    fireEvent.press(queue);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'l-1' });
+  });
+
+  it('replaces a pending detail opened from an old notification when no queue is on the stack', async () => {
+    mockNavigation.getState.mockReturnValueOnce({ routes: [{ name: 'Main' }, { name: 'TransactionDetail' }] });
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, isBorrower: false, isLender: true });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('View queue'));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('RequestQueue', { listingId: 'l-1' });
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
   it('displays other party info', async () => {
@@ -178,7 +192,7 @@ it('shows completion without an invented confirmation step for a fee-free return
   expect(screen.queryByTestId('Transaction.button.confirmReturn')).toBeNull();
 });
 
-it('shows dates and clear decline/message actions before opening Exchange details', async () => {
+it('shows dates, queue and message actions before opening Exchange details', async () => {
   api.getTransaction.mockResolvedValue({ ...mockTransaction, isBorrower: false, isLender: true });
   api.getConversations.mockResolvedValue([]);
   const Screen = require('../../src/screens/TransactionDetailScreen').default;
@@ -189,7 +203,6 @@ it('shows dates and clear decline/message actions before opening Exchange detail
   fireEvent.press(screen.getByLabelText('Message Test privately'));
   await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: 'user-1' })));
   expect(api.declineRental).not.toHaveBeenCalled();
-  api.declineRental.mockResolvedValue({});
-  fireEvent.press(screen.getByTestId('Transaction.button.decline'));
-  await waitFor(() => expect(api.declineRental).toHaveBeenCalledWith('txn-1'));
+  fireEvent.press(screen.getByTestId('Transaction.button.queue'));
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'l-1' });
 });
