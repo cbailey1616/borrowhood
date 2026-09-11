@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal } from 'react-native';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
@@ -149,16 +149,26 @@ it.each([[true, 'Waiting for Alice to confirm'], [false, 'Your turn: confirm the
   await screen.findByText(title);
   expect(!!screen.queryByTestId('Transaction.button.confirmReturn')).toBe(!isBorrower);
 });
-it('keeps details and cancellation secondary while waiting for approval', async () => {
-  api.getTransaction.mockResolvedValue({ ...mockTransaction, borrowerMessage: 'Private pickup notes' });
+it.each(['lend', 'giveaway', 'sell'])('shows one cancel request action above details for a pending %s', async listingType => {
+  api.getTransaction.mockResolvedValue({ ...mockTransaction, listingType, borrowerMessage: 'Private pickup notes' });
+  api.cancelRental.mockResolvedValue({ success: true });
   const Screen = require('../../src/screens/TransactionDetailScreen').default;
   const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
   await screen.findByText('Waiting for Alice');
   expect(screen.queryByText('Private pickup notes')).toBeNull();
-  expect(screen.queryByTestId('Transaction.button.cancel')).toBeNull();
+  const nextActions = within(screen.getByTestId('Transaction.nextStep'));
+  expect(nextActions.getByLabelText('Cancel request')).toBeTruthy();
+  expect(nextActions.getByLabelText('Message Alice privately')).toBeTruthy();
+  expect(screen.queryByText('Leave queue')).toBeNull();
   fireEvent.press(screen.getByLabelText('Exchange details'));
   expect(screen.getByText('Private pickup notes')).toBeTruthy();
-  expect(screen.getByTestId('Transaction.button.cancel')).toBeTruthy();
+  expect(screen.getAllByTestId('Transaction.button.cancel')).toHaveLength(1);
+  fireEvent.press(nextActions.getByLabelText('Cancel request'));
+  expect(screen.getByText('Cancel this request?')).toBeTruthy();
+  expect(screen.getByText('Keep request')).toBeTruthy();
+  expect(api.cancelRental).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByTestId('Transaction.confirmCancel'));
+  await waitFor(() => expect(api.cancelRental).toHaveBeenCalledWith('txn-1'));
 });
 it('shows completion without an invented confirmation step for a fee-free return', async () => {
   api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'completed', paymentStatus: 'none' });

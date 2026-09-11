@@ -63,3 +63,21 @@ it('saves a simple activity switch without audience choices', async () => {
  fireEvent(await view.findByLabelText('Messages'),'valueChange',false);
  await waitFor(()=>expect(api.updateNotificationPreferences).toHaveBeenCalledWith({new_message:false}));
 });
+
+it('restores each request audience after leaving and reopening settings', async () => {
+  let saved = { push_enabled: true };
+  api.getNotificationPreferences.mockImplementation(async () => saved);
+  api.updateNotificationPreferences.mockImplementation(async patch => { saved = { ...saved, ...patch }; return { success: true, preferences: saved }; });
+  const first = render(<Screen />);
+  fireEvent(await first.findByLabelText('Item requests: Town'), 'valueChange', false);
+  await waitFor(() => expect(first.getByLabelText('Item requests: Town')).not.toBeDisabled());
+  fireEvent(first.getByLabelText('Service requests: Neighbors'), 'valueChange', false);
+  await waitFor(() => expect(first.getByLabelText('Service requests: Neighbors')).not.toBeDisabled());
+  first.unmount();
+  const reopened = render(<Screen />);
+  await reopened.findByLabelText('Item requests: Town');
+  expect(reopened.getByLabelText('Item requests: Town').props.value).toBe(false);
+  expect(reopened.getByLabelText('Service requests: Neighbors').props.value).toBe(false);
+  expect(reopened.getByLabelText('Item requests: Neighbors').props.value).toBe(true);
+  expect(reopened.getByLabelText('Messages').props.value).toBe(true);
+});

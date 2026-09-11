@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +11,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   ScrollView,
   Keyboard,
   ActivityIndicator,

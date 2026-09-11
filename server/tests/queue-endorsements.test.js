@@ -53,9 +53,9 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  const publicProfile=await request(app).get(`/users/${recipient}`).set(auth(owner));
  expect(publicProfile.status).toBe(200);expect(publicProfile.body.endorsement).toEqual({percent:0,count:1,score:63});
  const ownProfile=await request(app).get(`/users/${recipient}`).set(auth(recipient));
- expect(ownProfile.status).toBe(200);expect(ownProfile.body.endorsement).toBeNull();
+ expect(ownProfile.status).toBe(200);expect(ownProfile.body.endorsement).toEqual(publicProfile.body.endorsement);
  const ownAccount=await request(app).get('/auth/me').set(auth(recipient));
- expect(ownAccount.status).toBe(200);expect(ownAccount.body.endorsement).toBeNull();
+ expect(ownAccount.status).toBe(200);expect(ownAccount.body.endorsement).toEqual(publicProfile.body.endorsement);
  expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(recipient)).send({})).status).toBe(400);
  expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(recipient)).send({positive:null})).status).toBe(200);
  const neutral=await request(app).get(`/transactions/${chosen}`).set(auth(recipient));

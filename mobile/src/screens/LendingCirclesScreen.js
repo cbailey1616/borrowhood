@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -7,7 +8,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  TextInput,
   Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';

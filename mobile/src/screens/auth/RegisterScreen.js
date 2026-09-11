@@ -1,9 +1,9 @@
+import TextInput from '../../components/AppTextInput';
 import { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,

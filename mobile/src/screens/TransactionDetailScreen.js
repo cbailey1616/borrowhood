@@ -172,7 +172,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     try {
       await api.cancelRental(id);
       haptics.success();
-      showToast('Borrow cancelled.', 'success');
+      showToast(cancelAsRequest ? 'Request cancelled.' : 'Borrow cancelled.', 'success');
       navigation.goBack();
     } catch (error) {
       haptics.error();
@@ -230,6 +230,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
     || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
     || (isGiveaway && transaction.status === 'picked_up');
+  const canCancel = !transaction.actualPickupAt && (
+    (transaction.isBorrower && transaction.status === 'pending')
+    || ((transaction.isBorrower || transaction.isLender) && ['approved', 'paid'].includes(transaction.status))
+  );
+  const cancelAsRequest = isGiveaway || transaction.status === 'pending';
+  const cancelLabel = cancelAsRequest ? 'Cancel request' : 'Cancel borrow';
   const primaryAction = transaction.isLender && transaction.status === 'pending'
     ? { label: 'Approve request', testID: 'Transaction.button.approve', onPress: handleApprove }
     : needsReturn ? { label: 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
@@ -290,7 +296,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
 <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
           <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This person is still waiting. You can choose them if the item becomes available again.') : nextStep.detail}</Text>
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" onPress={() => navigation.navigate('RequestQueue', {listingId:transaction.listing.id})} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>View everyone waiting</Text></HapticPressable>}
-          {transaction.isBorrower && transaction.status === 'pending' && <HapticPressable accessibilityRole="button" accessibilityLabel="Leave request queue" onPress={() => setCancelSheetVisible(true)} style={styles.outlinedAction}><Text style={styles.neighborMessageTitle}>Leave queue</Text></HapticPressable>}
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button"
             accessibilityLabel={`View ${otherPerson.firstName}'s profile`} style={styles.outlinedAction}
             onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
@@ -318,14 +323,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
             style={styles.outlinedAction} onPress={messageNeighbor}>
             <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
           </HapticPressable>}
+          {canCancel && <HapticPressable accessibilityRole="button" accessibilityLabel={cancelLabel} testID="Transaction.button.cancel"
+            style={styles.outlinedAction} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
+            <Text style={styles.neighborMessageTitle}>{cancelLabel}</Text>
+          </HapticPressable>}
         </View>
-
-          {(transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
-            && ['approved', 'paid'].includes(transaction.status) &&
-            <HapticPressable accessibilityRole="button" accessibilityLabel={isGiveaway ? 'Cancel request' : 'Cancel borrow'} testID="Transaction.button.cancel"
-              style={[styles.outlinedAction, { marginBottom: SPACING.md }]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
-              <Text style={styles.neighborMessageTitle}>{isGiveaway ? 'Cancel request' : 'Cancel borrow'}</Text>
-            </HapticPressable>}
 
         <ExchangeEndorsement transaction={transaction} onSaved={fetchTransaction} />
         <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
@@ -335,12 +337,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
         </HapticPressable>
         {detailsExpanded && <>
-          {transaction.isBorrower && transaction.status === 'pending' && !transaction.actualPickupAt &&
-            <HapticPressable accessibilityRole="button" accessibilityLabel={isGiveaway ? 'Cancel request' : 'Cancel borrow'} testID="Transaction.button.cancel"
-              style={[styles.outlinedAction, { marginBottom: SPACING.md }]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
-              <Text style={styles.neighborMessageTitle}>{isGiveaway ? 'Cancel request' : 'Cancel borrow'}</Text>
-            </HapticPressable>}
-
         <LayeredCard radius={RADIUS.xl}>
           <View style={styles.detailCard}>
             <Text style={styles.cardEyebrow}>Your neighbor</Text>
@@ -420,17 +416,17 @@ export default function TransactionDetailScreen({ route, navigation }) {
       <ActionSheet
         isVisible={cancelSheetVisible}
         onClose={() => setCancelSheetVisible(false)}
-        title="Cancel this borrow?"
-        message="Plans changed? This will cancel the pickup and let your neighbor know."
+        title={cancelAsRequest ? 'Cancel this request?' : 'Cancel this borrow?'}
+        message={transaction.status === 'pending' ? 'This will withdraw your request and let your neighbor know.' : 'Plans changed? This will cancel the pickup and let your neighbor know.'}
         actions={[
           {
-            label: 'Cancel borrow',
+            label: cancelLabel,
             testID: 'Transaction.confirmCancel',
             onPress: handleCancel,
             destructive: true,
           },
         ]}
-        cancelLabel="Keep borrow"
+        cancelLabel={cancelAsRequest ? 'Keep request' : 'Keep borrow'}
       />
     </KeyboardAvoidingView>
   );

@@ -7,7 +7,6 @@ import {
   Switch,
   ActivityIndicator,
   Linking,
-  useWindowDimensions,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
@@ -17,8 +16,8 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const CORE_SETTINGS = [
-  { key: 'new_item_requests', label: 'Item requests', columnLabel: 'Items' },
-  { key: 'new_service_requests', label: 'Service requests', columnLabel: 'Services' },
+  { key: 'new_item_requests', label: 'Item requests', icon: 'cube' },
+  { key: 'new_service_requests', label: 'Service requests', icon: 'handshake' },
 ];
 const ACTIVITY_SETTINGS = [
   { key: 'new_message', label: 'Messages' },
@@ -38,8 +37,6 @@ const PHONE_SETTINGS = [
 ];
 
 export default function NotificationSettingsScreen() {
-  const { fontScale } = useWindowDimensions();
-  const largeText = fontScale > 1.4;
   const [preferences, setPreferences] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,28 +149,26 @@ export default function NotificationSettingsScreen() {
         <View style={styles.section}>
           <Text accessibilityRole="header" style={styles.heading}>New requests</Text>
           <Text style={styles.sectionDescription}>Choose who you hear from.</Text>
-          <View style={[styles.cardBox, styles.settingsGroup]}>
-            {!largeText && <View style={[styles.audienceHeader, styles.settingRowBorder]}>
-              <Text style={[styles.columnLabel, styles.settingInfo]}>From</Text>
-              {CORE_SETTINGS.map(setting => <View key={setting.key} style={styles.switchColumn}>
-                <Text style={styles.columnLabel}>{setting.columnLabel}</Text>
-              </View>)}
-            </View>}
-            {SOURCES.map((source, index) => <View key={source.key} style={[styles.audienceRow, largeText && styles.audienceRowLarge, index < SOURCES.length - 1 && styles.settingRowBorder]}>
-              <Text style={[styles.settingLabel, styles.settingInfo, largeText && styles.audienceLabelLarge]}>{source.label}</Text>
-              {CORE_SETTINGS.map(setting => <View key={setting.key} style={[styles.switchColumn, largeText && styles.switchColumnLarge]}>
-                {largeText && <Text style={styles.columnLabel}>{setting.columnLabel}</Text>}
-                <Switch accessibilityLabel={`${setting.label}: ${source.label}`}
-                  accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
-                  value={sourceEnabled(setting.key, source.key)}
-                  onValueChange={value => toggleSource(setting.key, source.key, value)}
-                  trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-                  thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
-              </View>)}
+          <View style={styles.requestGroups}>
+            {CORE_SETTINGS.map(setting => <View key={setting.key}>
+              <View style={[styles.cardBox, styles.settingsGroup]} testID={`Notifications.${setting.key}`}>
+                <View style={styles.requestHeading}>
+                  <Ionicons name={setting.icon} size={28} illustrated />
+                  <Text accessibilityRole="header" style={styles.requestTitle}>{setting.label}</Text>
+                </View>
+                {SOURCES.map((source, index) => <View key={source.key} style={[styles.settingRow, index < SOURCES.length - 1 && styles.settingRowBorder]}>
+                  <Text style={[styles.settingLabel, styles.settingInfo]}>{source.label}</Text>
+                  <Switch accessibilityLabel={`${setting.label}: ${source.label}`}
+                    accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
+                    value={sourceEnabled(setting.key, source.key)}
+                    onValueChange={value => toggleSource(setting.key, source.key, value)}
+                    trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
+                    thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+                </View>)}
+              </View>
+              {saveError === setting.key && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
             </View>)}
           </View>
-          {CORE_SETTINGS.some(setting => saveError === setting.key) && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
-          <Text style={styles.audienceHint}>Friends use your Friends setting. Town covers people outside your friends and neighborhoods.</Text>
         </View>
         <View style={styles.section}>
           <Text accessibilityRole="header" style={styles.heading}>Your activity</Text>
@@ -198,20 +193,12 @@ export default function NotificationSettingsScreen() {
 
 const styles = StyleSheet.create({
   heading: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.sm },
-  audienceHeader: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm, backgroundColor: COLORS.cardHover,
+  requestGroups: { gap: SPACING.md },
+  requestHeading: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm,
   },
-  audienceRow: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm, minHeight: 56,
-  },
-  switchColumn: { width: '27%', minWidth: 64, alignItems: 'center', justifyContent: 'center' },
-  audienceRowLarge: { flexWrap: 'wrap', paddingVertical: SPACING.md, rowGap: SPACING.md },
-  audienceLabelLarge: { flex: 0, width: '100%' },
-  switchColumnLarge: { width: '50%', gap: SPACING.sm },
-  columnLabel: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', fontWeight: '500', color: COLORS.textSecondary },
-  audienceHint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: SPACING.sm },
+  requestTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -243,8 +230,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: 10,
-    minHeight: 52,
+    paddingVertical: SPACING.sm,
+    minHeight: 48,
     gap: SPACING.md,
   },
   settingRowBorder: {

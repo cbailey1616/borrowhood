@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
@@ -8,7 +9,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Keyboard,
-  TextInput,
   Image,
   ActivityIndicator,
 

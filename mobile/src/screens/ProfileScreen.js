@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Application from 'expo-application';
 import appConfig from '../../app.json';
 import { Ionicons } from '../components/Icon';
-import UserBadges from '../components/UserBadges';
+import MemberSummary from '../components/MemberSummary';
 import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import { GroupedListSection, GroupedListItem } from '../components/GroupedList';
@@ -46,6 +46,11 @@ export default function ProfileScreen({ navigation }) {
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  useEffect(() => {
+    const refreshProfile = () => { refreshUser().catch(() => {}); };
+    refreshProfile();
+    return navigation.addListener('focus', refreshProfile);
+  }, [navigation, refreshUser]);
 
   useEffect(() => {
     setBiometricToggle(isBiometricsEnabled);
@@ -184,10 +189,9 @@ export default function ProfileScreen({ navigation }) {
               </View>}
             </View>
           </View>
-          <UserBadges
-            layout="summary"
-            totalTransactions={user?.totalTransactions || 0}
-          />
+          <View style={styles.reputation}>
+            <MemberSummary user={user || {}} showVerification={false} />
+          </View>
         </LayeredCard>
 
         {/* Verification Banner */}
@@ -438,8 +442,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    paddingBottom: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
+  reputation: { borderTopWidth: 1, borderTopColor: COLORS.separator, paddingTop: SPACING.xs },
   avatarContainer: {
     position: 'relative',
   },

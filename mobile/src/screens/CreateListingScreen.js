@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
 import SharingPicker from '../components/SharingPicker';
@@ -12,7 +13,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Image,
   ActivityIndicator,
   Platform,

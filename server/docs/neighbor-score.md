@@ -2,8 +2,8 @@
 
 The public member summary shows one score from 0 to 100, identity verification,
 and completed exchanges. Its woodland rank is a label for this same score,
-rather than a separate activity rating. Members do not see their
-own score in their account or public profile response.
+rather than a separate activity rating. Members can see their own score and rank
+in their account and profile, using the same summary other members see.
 
 The initial model blends the observed positive-feedback rate with a starting
 prior of 75 over five equivalent rated exchanges:
@@ -25,7 +25,10 @@ It is a product model, not a validated prediction of a member's future behavior.
 | 97–100 | Robin |
 
 The existing woodland emblems are reused, with Outlaw at the bottom and Ranger
-shortening Sherwood Ranger. Own profiles show neither score nor its rank.
+shortening Sherwood Ranger. Tapping a rank shows all levels and ranges with a
+simple message: “Increase your rank with more positive exchanges.” The member
+experience does not explain the calculation or which responses affect it. The
+profile refreshes on return so new feedback is reflected without signing in again.
 
 Each eligible exchange allows one immutable response per participant. Positive
 and negative responses count immediately. Neutral feedback is stored as an

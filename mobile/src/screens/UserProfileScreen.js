@@ -125,7 +125,7 @@ export default function UserProfileScreen({ route, navigation }) {
           />
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
 
-          <MemberSummary user={user} showEndorsement={!isOwnProfile} centered />
+          <MemberSummary user={user} centered />
           <View style={styles.metaRow}>
             {user.city && user.state && (
               <View style={styles.metaItem}>

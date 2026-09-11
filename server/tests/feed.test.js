@@ -8,17 +8,21 @@ import request from 'supertest';
 import { query } from '../src/utils/db.js';
 import { createTestUser, createTestApp, createTestListing, cleanupTestUser } from './helpers/stripe.js';
 import { createTestCommunity, addCommunityMember, createFriendship } from './helpers/fixtures.js';
+import { randomUUID } from 'node:crypto';
 
 let app;
 let freeUser, verifiedPlusUser;
 let communityId;
+let ownListing, ownRequest;
 const createdUserIds = [];
 const createdListingIds = [];
 const createdRequestIds = [];
 
 beforeAll(async () => {
   app = await createTestApp(
-    { path: '/api/feed', module: '../../src/routes/feed.js' }
+    { path: '/api/feed', module: '../../src/routes/feed.js' },
+    { path: '/api/listings', module: '../../src/routes/listings.js' },
+    { path: '/api/requests', module: '../../src/routes/requests.js' }
   );
 
   freeUser = await createTestUser({
@@ -65,12 +69,18 @@ beforeAll(async () => {
     `INSERT INTO item_requests (user_id, community_id, title, description, status)
      VALUES ($1, $2, 'Looking for a ladder', 'Need a ladder for weekend', 'open')
      RETURNING id`,
-    [freeUser.userId, communityId]
+    [verifiedPlusUser.userId, communityId]
   );
   createdRequestIds.push(reqResult.rows[0].id);
+  ownListing = await createTestListing(freeUser.userId, { title: 'My own ladder', isFree: true, visibility: 'close_friends' });
+  createdListingIds.push(ownListing);
+  ownRequest = (await query(`INSERT INTO item_requests(user_id,community_id,title,visibility,status)
+    VALUES($1,$2,'My own ladder request','close_friends','open') RETURNING id`, [freeUser.userId, communityId])).rows[0].id;
+  createdRequestIds.push(ownRequest);
 });
 
 afterAll(async () => {
+  await query('DELETE FROM feed_sessions WHERE user_id = ANY($1::uuid[])', [createdUserIds]);
   for (const lid of createdListingIds) {
     try {
       await query('DELETE FROM listing_photos WHERE listing_id = $1', [lid]);
@@ -91,6 +101,38 @@ afterAll(async () => {
 });
 
 describe('GET /api/feed', () => {
+  it('excludes your listings and requests across Home, search and tabs, while preserving My Posts', async () => {
+    for (const suffix of ['', '?layout=sections', '?search=ladder', '?type=requests', '?type=listings']) {
+      const response = await request(app).get('/api/feed' + suffix).set('Authorization', `Bearer ${freeUser.token}`);
+      expect(response.status).toBe(200);
+      const posts = [...response.body.items, ...(response.body.requests || [])];
+      expect(posts.some(post => [ownListing, ownRequest].includes(post.id))).toBe(false);
+    }
+    const listings = await request(app).get('/api/listings/mine').set('Authorization', `Bearer ${freeUser.token}`);
+    const requests = await request(app).get('/api/requests/mine').set('Authorization', `Bearer ${freeUser.token}`);
+    expect(listings.status).toBe(200);
+    expect(requests.status).toBe(200);
+    expect(JSON.stringify(listings.body)).toContain(ownListing);
+    expect(JSON.stringify(requests.body)).toContain(ownRequest);
+  });
+
+  it('skips hidden pages in an existing session without shifting or repeating the remaining posts', async () => {
+    const token = randomUUID();
+    const keys = [createdListingIds[0], ownListing, ownListing, createdListingIds[1], ownListing].map(id => `listing:${id}`);
+    await query('INSERT INTO feed_sessions(user_id,token,filter_key,item_keys) VALUES($1,$2,$3,$4)',
+      [freeUser.userId, token, JSON.stringify(['', '', '', '', true]), JSON.stringify(keys)]);
+    const getPage = page => request(app).get(`/api/feed?layout=sections&session=${token}&limit=1&page=${page}`)
+      .set('Authorization', `Bearer ${freeUser.token}`);
+    const first = await getPage(1);
+    expect(first.status).toBe(200);
+    expect(first.body.items.map(item => item.id)).toEqual([createdListingIds[0]]);
+    expect(first.body.hasMore).toBe(true);
+    const next = await getPage(2);
+    expect(next.status).toBe(200);
+    expect(next.body.items.map(item => item.id)).toEqual([createdListingIds[1]]);
+    expect(next.body.page).toBe(4);
+    expect(next.body.hasMore).toBe(false);
+  });
   it('should return combined listings and requests', async () => {
     const res = await request(app)
       .get('/api/feed')

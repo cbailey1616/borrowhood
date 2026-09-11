@@ -34,6 +34,6 @@ export default function ExchangeEndorsement({ transaction, onSaved }) {
         {saving ? <ActivityIndicator color={COLORS.surface} /> : <Text style={{ color:COLORS.surface,fontWeight:'700' }}>Send feedback</Text>}
       </HapticPressable>
     </>}
-    <Text style={{ ...TYPOGRAPHY.caption1,color:COLORS.textSecondary }}>Feedback updates their Neighbor Score immediately. Neutral has no effect. Sent feedback can’t be changed.</Text>
+    <Text style={{ ...TYPOGRAPHY.caption1,color:COLORS.textSecondary }}>Sent feedback can’t be changed.</Text>
   </View>;
 }

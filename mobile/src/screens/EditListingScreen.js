@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
@@ -12,7 +13,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   Image,
   ActivityIndicator,
   ScrollView,

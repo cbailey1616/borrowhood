@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import { directFeeLabel } from '../utils/directFee';
 import { useState, useEffect, useCallback } from 'react';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -7,7 +8,6 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TextInput,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';

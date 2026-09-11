@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import RequestQueueScreen from '../screens/RequestQueueScreen';
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
@@ -5,7 +6,7 @@ import SafetyReportsScreen from '../screens/SafetyReportsScreen';
 import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View, Modal, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { ActivityIndicator, View, Modal, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import HapticPressable from '../components/HapticPressable';
 import { ModalHeader } from '../components/ModalControls';
 import api from '../services/api';

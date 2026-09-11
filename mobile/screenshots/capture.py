@@ -13,9 +13,12 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
 screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'sell'), ('04-saved', 'saved'), ('05-my-posts', 'posts'), ('06-messages', 'chat')]
-review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo')]
+review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
+review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
 manifest = []
 review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
+# Keep the software keyboard visible in the native keyboard-accessory capture.
+subprocess.run(['defaults', 'write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'false'], check=True)
 
 def run(*args, check=True, timeout=180):
     return subprocess.run(['xcrun', 'simctl', *args], check=check, timeout=timeout)

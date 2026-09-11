@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import { requestPresentation } from '../utils/requestPresentation';
 import { privateMessagePrefix } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
@@ -11,7 +12,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   Image,
   KeyboardAvoidingView,
   Platform,

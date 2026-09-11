@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -7,7 +8,6 @@ import {
   FlatList,
   RefreshControl,
   Image,
-  TextInput,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';

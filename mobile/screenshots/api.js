@@ -17,10 +17,14 @@ const api = {
   getFriends: async () => [],
   getUserSafety: async () => ({ blocked: false }),
   endorseTransaction: async (_id, positive) => { feedback = { canRate: false, submitted: true, positive }; return { success: true }; },
-  getTransaction: async () => ({ id: 'demo-exchange', endorsement: feedback }),
+  getTransaction: async id => id === 'demo-pending-exchange' ? {
+    id, status: 'pending', listingType: 'giveaway', listing: listings[1],
+    borrower: user, lender: listings[1].owner, isBorrower: true, isLender: false,
+    queue: { waiting: false }, endorsement: null,
+  } : { id: 'demo-exchange', endorsement: feedback },
   getNotificationPreferences: async () => preferences,
   updateNotificationPreferences: async patch => { preferences = { ...preferences, ...patch }; return preferences; },
-  getFeed: async () => captureScreen?.startsWith('requests-')
+  getFeed: async () => captureScreen === 'feed-end' ? { items: [], requests: [plainRequest], hasMore: false } : captureScreen?.startsWith('requests-')
     ? { items: listings, requests: carouselRequests, hasMore: false }
     : { items: [listings[0], requests[0], ...listings.slice(1)], hasMore: false },
   recordFeedEvents: noop,
@@ -32,7 +36,10 @@ const api = {
   getDisputes: async () => [],
   getSavedListings: async () => [listings[0], listings[3], listings[1], listings[2]],
   checkSaved: async id => ({ saved: ['demo-drill', 'demo-tent', 'demo-books', 'demo-bike'].includes(id) }),
-  getListing: async id => listings.find(item => item.id === id),
+  getListing: async id => {
+    const listing = listings.find(item => item.id === id);
+    return captureScreen === 'reserved-item' ? { ...listing, isAvailable: false, availabilityStatus: 'reserved' } : listing;
+  },
   getDiscussions: async () => ({ posts: [], total: 0 }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
   getBadgeCount: async () => ({ messages: 0, notifications: 0, actions: 0, total: 0 }),

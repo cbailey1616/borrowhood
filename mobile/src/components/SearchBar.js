@@ -1,5 +1,6 @@
+import TextInput from './AppTextInput';
 import React, { useCallback } from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from './HapticPressable';

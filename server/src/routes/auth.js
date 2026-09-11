@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { endorsementSummary } from '../services/endorsements.js';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -598,7 +599,7 @@ router.get('/me', authenticate, async (req, res) => {
       lenderRatingCount: user.lender_rating_count || 0,
       borrowerRating: parseFloat(user.borrower_rating) || 0,
       borrowerRatingCount: user.borrower_rating_count || 0,
-      endorsement: null,
+      endorsement: await endorsementSummary(user.id),
       totalTransactions: user.total_transactions,
       subscriptionTier: user.subscription_tier || 'free',
       hasConnectAccount: !!user.stripe_connect_account_id,

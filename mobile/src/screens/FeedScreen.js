@@ -4,6 +4,7 @@ import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -64,9 +65,16 @@ const FEED = {
   thread: COLORS.gray[50], threadDeep: COLORS.surfaceElevated,
 };
 
+// Older servers may still include the viewer's posts or unavailable items.
+const visibleOnHome = (item, userId) => {
+  const authorId = item.user?.id ?? item.owner?.id ?? item.requester?.id ?? item.ownerId ?? item.userId;
+  return !(userId && authorId === userId) && (item.type !== 'listing' || listingAvailability(item).available);
+};
+
 export default function FeedScreen({ navigation }) {
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showToast, showError } = useError();
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
@@ -102,6 +110,8 @@ export default function FeedScreen({ navigation }) {
   const [feedError, setFeedError] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const feedRequest = useRef(0);
+  const feedInFlight = useRef(false);
+  const previousSearch = useRef(search);
   const feedSession = useRef(null);
   const impressions = useRef(new Set());
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
@@ -119,9 +129,12 @@ export default function FeedScreen({ navigation }) {
   const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
   const extraFilterCount = visibilityFilters.length + categoryFilters.length;
   const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
+    if (append && feedInFlight.current) return;
+    feedInFlight.current = true;
     const requestId = ++feedRequest.current;
     setFeedError(false);
     setIsFetching(true);
+    setIsLoadingMore(append);
     try {
       if (pageNum === 1 || !feedSession.current) { feedSession.current = randomUUID(); impressions.current.clear(); }
       const params = { layout: 'sections', page: pageNum, limit: 20, session: feedSession.current };
@@ -130,17 +143,32 @@ export default function FeedScreen({ navigation }) {
       if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
       if (!clear && categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
 
-      const data = await api.getFeed(params);
-      if (requestId !== feedRequest.current) return;
-
-      if (!append) setRequestCards(data.requests || []);
-      if (append) {
-        setFeed(prev => [...prev, ...data.items.filter(item => !prev.some(existing => existing.id === item.id && existing.type === item.type))]);
-      } else {
-        setFeed(data.items || []);
+      let data, nextItems, resolvedPage = pageNum;
+      let nextRequests = [];
+      // Consume empty/hidden pages from older servers, with a bounded retry.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        data = await api.getFeed({ ...params, page: resolvedPage });
+        if (requestId !== feedRequest.current) return;
+        if (data.requests) nextRequests = data.requests;
+        nextItems = (data.items || []).filter(item => visibleOnHome(item, user?.id));
+        resolvedPage = Math.max(resolvedPage, Number(data.page) || resolvedPage);
+        if (nextItems.length || !data.hasMore || attempt === 2) break;
+        resolvedPage += 1;
       }
-      setHasMore(data.hasMore);
-      setPage(pageNum);
+
+      if (!append) {
+        // A fresh session replaces a paginated list. Reset its offset before
+        // shortening the content so it cannot strand the viewport below it.
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+        setRequestCards(nextRequests.filter(item => visibleOnHome(item, user?.id)));
+      }
+      if (append) {
+        setFeed(prev => [...prev, ...nextItems.filter(item => !prev.some(existing => existing.id === item.id && existing.type === item.type))]);
+      } else {
+        setFeed(nextItems);
+      }
+      setHasMore(!!data.hasMore);
+      setPage(resolvedPage);
       if (pageNum === 1 && !params.search && !params.type && !params.visibility && !params.categoryId &&
           navigation.isFocused?.() && (AppState.currentState == null || AppState.currentState === 'active')) {
         markFeedSeen(data.latestPostAt);
@@ -151,12 +179,13 @@ export default function FeedScreen({ navigation }) {
       // Keep the current feed visible when a background refresh fails.
     } finally {
       if (requestId !== feedRequest.current) return;
+      feedInFlight.current = false;
       setIsFetching(false);
       setIsInitialLoad(false);
       setIsRefreshing(false);
       setIsLoadingMore(false);
     }
-  }, [search, activeFilters, visibilityFilters, categoryFilters, navigation, markFeedSeen]);
+  }, [search, activeFilters, visibilityFilters, categoryFilters, navigation, markFeedSeen, user?.id]);
 
 
 
@@ -184,6 +213,8 @@ export default function FeedScreen({ navigation }) {
   }, [activeFilters, visibilityFilters, categoryFilters]);
 
   useEffect(() => {
+    if (previousSearch.current === search) return;
+    previousSearch.current = search;
     const timer = setTimeout(() => fetchFeed(1, false), 350);
     return () => clearTimeout(timer);
   }, [search]);
@@ -351,8 +382,7 @@ export default function FeedScreen({ navigation }) {
   ].filter(Boolean);
 
   const onEndReached = () => {
-    if (!isLoadingMore && hasMore) {
-      setIsLoadingMore(true);
+    if (!feedInFlight.current && !feedError && hasMore) {
       fetchFeed(page + 1, true);
     }
   };
@@ -635,7 +665,7 @@ export default function FeedScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: tabBarHeight }]}>
       <FlatList
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
@@ -649,6 +679,7 @@ export default function FeedScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         bounces
+        removeClippedSubviews={false}
         style={{ backgroundColor: FEED.bg }}
         refreshControl={
           <RefreshControl
@@ -695,11 +726,28 @@ export default function FeedScreen({ navigation }) {
         stickyHeaderHiddenOnScroll={!searchFocused}
         scrollEventThrottle={16}
         ListFooterComponent={
-          isLoadingMore && (
+          isLoadingMore ? (
             <View style={styles.loadingMore}>
               <ActivityIndicator size="small" color={COLORS.primary} />
             </View>
-          )
+          ) : hasMore && !isFetching ? (
+            <View style={styles.feedEnd}>
+              {feedError && <Text style={styles.feedEndText}>Couldn’t load more posts.</Text>}
+              <HapticPressable accessibilityRole="button" style={styles.backToTop}
+                onPress={() => fetchFeed(page + 1, true)}>
+                <Text style={styles.backToTopText}>{feedError ? 'Try again' : 'Load more posts'}</Text>
+              </HapticPressable>
+            </View>
+          ) : !hasMore && (verticalFeed.length > 0 || carouselRequests.length > 0) ? (
+            <View style={styles.feedEnd}>
+              <Text style={styles.feedEndText}>You’re all caught up</Text>
+              <HapticPressable accessibilityRole="button" accessibilityLabel="Back to top" style={styles.backToTop}
+                onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+                <Ionicons name="arrow-up" size={18} color={COLORS.primary} />
+                <Text style={styles.backToTopText}>Back to top</Text>
+              </HapticPressable>
+            </View>
+          ) : null
         }
         ListEmptyComponent={<View>{renderBanners()}{isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
           <View style={styles.welcomeContainer}>
@@ -1075,7 +1123,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: 120, width: '100%', maxWidth: 660, alignSelf: 'center',
+    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.md, width: '100%', maxWidth: 660, alignSelf: 'center',
   },
   gridRow: {
     justifyContent: 'space-between',
@@ -1675,6 +1723,14 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xl,
     alignItems: 'center',
   },
+  feedEnd: { alignItems: 'center', gap: SPACING.sm, paddingBottom: SPACING.sm },
+  feedEndText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  backToTop: {
+    minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm,
+    borderWidth: 1, borderColor: COLORS.borderBrown, borderRadius: RADIUS.full, backgroundColor: COLORS.card,
+  },
+  backToTopText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 80,

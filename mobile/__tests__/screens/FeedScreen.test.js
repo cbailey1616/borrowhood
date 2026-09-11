@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppState, StyleSheet } from 'react-native';
+import { AppState, FlatList, StyleSheet } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
@@ -359,4 +359,96 @@ it('keeps the notification ribbon ahead of requests and available items', async 
  expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
  fireEvent.press(screen.getByText('1 pending borrow request'));
  expect(mockNavigation.navigate).toHaveBeenCalledWith('MyItems');
+});
+
+it('hides own posts from the carousel, filters and older server pages', async () => {
+  const own = { id: mockUser.id, firstName: 'Me' }, neighbor = { id: 'neighbor', firstName: 'Sam' };
+  api.getFeed.mockImplementation(async ({ type }) => ({
+    items: type === 'requests' ? [
+      { id: 'own-request', type: 'request', title: 'My request', user: own },
+      { id: 'their-request', type: 'request', title: 'Need a garden rake', user: neighbor },
+    ] : [
+      { id: 'own-listing', type: 'listing', title: 'My item', owner: own },
+      { id: 'their-listing', type: 'listing', title: 'Neighbor item', user: neighbor },
+    ],
+    requests: [{ id: 'own-request', type: 'request', title: 'My request', user: own }], hasMore: false,
+  }));
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('Neighbor item');
+  expect(screen.queryByText('My item')).toBeNull();
+  expect(screen.queryByText('My request')).toBeNull();
+  expect(screen.queryByText('Neighbors need')).toBeNull();
+  fireEvent.press(screen.getByTestId('Feed.type.requests'));
+  await screen.findByText('Need a garden rake');
+  expect(screen.queryByText('My request')).toBeNull();
+});
+
+it('keeps notifications visible when all returned posts belong to you', async () => {
+  api.getFeed.mockResolvedValue({ items: [{ id: 'mine', type: 'listing', title: 'My item', user: mockUser }], hasMore: false });
+  api.getNotifications.mockResolvedValueOnce({ unreadCount: 2 });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('2 unread notifications');
+  expect(screen.queryByText('My item')).toBeNull();
+  expect(screen.queryByText('Neighbors need')).toBeNull();
+  expect(screen.getByText('What would you like to do?')).toBeTruthy();
+});
+
+it('retains posts through hidden pages and stops loading at the real end', async () => {
+  const item = id => ({ id, type: 'listing', title: id, user: { id: 'neighbor', firstName: 'Sam' } });
+  let finish;
+  api.getFeed.mockImplementation(({ page }) => {
+    if (page === 1) return Promise.resolve({ items: [item('First item')], hasMore: true });
+    if (page === 2) return new Promise(resolve => { finish = resolve; });
+    return Promise.resolve({ items: [item('Last item')], page: 4, hasMore: false });
+  });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('First item');
+  act(() => {
+    fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+    fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  });
+  expect(api.getFeed.mock.calls.filter(([params]) => params.page === 2)).toHaveLength(1);
+  expect(screen.getByText('First item')).toBeTruthy();
+  await act(async () => finish({ items: [], hasMore: true }));
+  await screen.findByText('Last item');
+  expect(screen.getByText('First item')).toBeTruthy();
+  expect(screen.getByText('You’re all caught up')).toBeTruthy();
+  const count = api.getFeed.mock.calls.length;
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  expect(api.getFeed).toHaveBeenCalledTimes(count);
+});
+
+it('returns to the top when a refresh shortens the feed and when Back to top is pressed', async () => {
+  const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
+  api.getFeed.mockResolvedValue({ items: [{ id: 'one', type: 'listing', title: 'One item', user: { firstName: 'Sam' } }], hasMore: false });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('One item');
+  scroll.mockClear();
+  fireEvent.press(screen.getByLabelText('Back to top'));
+  expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: true });
+  scroll.mockClear();
+  const receive = Notifications.addNotificationReceivedListener.mock.calls.at(-1)[0];
+  await act(async () => receive({ request: { content: { data: { type: 'new_request' } } } }));
+  expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: false });
+  expect(screen.getByText('One item')).toBeTruthy();
+  scroll.mockRestore();
+});
+
+it('keeps loaded posts and offers retry when loading the next page fails', async () => {
+  api.getFeed.mockResolvedValueOnce({ items: [{ id: 'one', type: 'listing', title: 'One item', user: { firstName: 'Sam' } }], hasMore: true })
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValue({ items: [{ id: 'two', type: 'listing', title: 'Two items', user: { firstName: 'Sam' } }], hasMore: false });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('One item');
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  await screen.findByText('Couldn’t load more posts.');
+  expect(screen.getByText('One item')).toBeTruthy();
+  fireEvent.press(screen.getByText('Try again'));
+  await screen.findByText('Two items');
+  expect(screen.getByText('One item')).toBeTruthy();
 });

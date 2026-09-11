@@ -1,10 +1,10 @@
+import TextInput from '../../components/AppTextInput';
 import BiometricIcon from '../../components/BiometricIcon';
 import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,

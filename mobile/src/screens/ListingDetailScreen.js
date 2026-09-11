@@ -207,10 +207,6 @@ export default function ListingDetailScreen({ route, navigation }) {
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
-            {!listingAvailability(listing).available && <View accessibilityLiveRegion="polite" style={styles.descriptionSection}>
-              <Text style={styles.sectionTitle}>{listingAvailability(listing).label}</Text>
-              <Text style={styles.description}>{listingAvailability(listing).detail}</Text>
-            </View>}
             {!listing.ownerMasked && (
               <View style={styles.actionButtons}>
                 <HapticPressable testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
@@ -223,12 +219,17 @@ export default function ListingDetailScreen({ route, navigation }) {
                     />
                   </Animated.View>
                 </HapticPressable>
-                <HapticPressable onPress={handleShare} haptic="light" style={styles.actionBtn}>
+                <HapticPressable onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share listing" haptic="light" style={styles.actionBtn}>
                   <Ionicons name="arrow-redo-outline" size={20} color={COLORS.textSecondary} />
                 </HapticPressable>
               </View>
             )}
           </View>
+
+          {!listingAvailability(listing).available && <View accessibilityLiveRegion="polite" style={[styles.descriptionSection, { marginTop: SPACING.md }]}>
+            <Text style={styles.sectionTitle}>{listingAvailability(listing).label}</Text>
+            <Text style={styles.description}>{listingAvailability(listing).detail}</Text>
+          </View>}
 
           {(listing.distanceMiles || (!listing.ownerMasked && listing.owner?.city)) && (
             <View style={styles.locationRow}>
@@ -533,9 +534,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: SPACING.md,
   },
   title: {
     flex: 1,
+    minWidth: 0,
     ...TYPOGRAPHY.h1,
     color: COLORS.text,
     marginBottom: SPACING.sm,
@@ -544,10 +547,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+    flexShrink: 0,
   },
   actionBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: COLORS.borderLight,

@@ -1,5 +1,6 @@
+import TextInput from './AppTextInput';
 import React from 'react';
-import { View, Text, TextInput, Switch, StyleSheet } from 'react-native';
+import { View, Text, Switch, StyleSheet } from 'react-native';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function DirectFeePicker({ enabled, amount, onToggle, onAmountChange }) {

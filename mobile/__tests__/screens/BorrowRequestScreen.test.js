@@ -1,5 +1,6 @@
 import React from 'react';
 import { Keyboard } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
@@ -59,16 +60,14 @@ describe('BorrowRequestScreen', () => {
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1' }));
   });
 
-  it('sends the typed message directly without a keyboard dismissal toolbar', async () => {
+  it('sends the typed message while the keyboard is open', async () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     const input = await screen.findByLabelText('Private message to owner');
     fireEvent(input, 'focus');
     fireEvent.changeText(input, 'Tomorrow afternoon?');
-    expect(screen.queryByLabelText('Dismiss keyboard')).toBeNull();
-    expect(screen.queryByText('Done ×')).toBeNull();
-    expect(screen.queryByLabelText('Hide keyboard')).toBeNull();
+    expect(screen.getByLabelText('Done, close keyboard')).toBeTruthy();
     expect(input.props.value).toBe('Tomorrow afternoon?');
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
     expect(dismiss).toHaveBeenCalled();
@@ -83,9 +82,11 @@ describe('BorrowRequestScreen', () => {
     const endDate = await screen.findByText('End Date');
     fireEvent.press(endDate);
     expect(dismiss).toHaveBeenCalled();
+    expect(screen.UNSAFE_getByType(DateTimePicker)).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
     fireEvent(screen.getByLabelText('Private message to owner'), 'focus');
-    expect(screen.queryByText('Done')).toBeNull();
+    expect(screen.UNSAFE_queryByType(DateTimePicker)).toBeNull();
+    expect(screen.getByLabelText('Done, close keyboard')).toBeTruthy();
     dismiss.mockRestore();
   });
 

@@ -1,4 +1,5 @@
-import { View, Text, TextInput } from 'react-native';
+import TextInput from './AppTextInput';
+import { View, Text, } from 'react-native';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 export default function SalePriceInput({ amount, onChange }) {
   return <View style={{ gap: SPACING.sm, marginVertical: SPACING.md }}>

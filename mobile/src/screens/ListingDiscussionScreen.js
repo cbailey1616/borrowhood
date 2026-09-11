@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -7,7 +8,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   Image,
   ActivityIndicator,
   KeyboardAvoidingView,

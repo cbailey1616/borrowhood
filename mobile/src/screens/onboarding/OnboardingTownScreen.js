@@ -1,5 +1,6 @@
+import TextInput from '../../components/AppTextInput';
 import { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Keyboard, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';

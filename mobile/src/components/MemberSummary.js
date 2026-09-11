@@ -1,14 +1,15 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from './Icon';
-import { useAuth } from '../context/AuthContext';
+import HapticPressable from './HapticPressable';
+import RankInfoSheet from './RankInfoSheet';
 import { reputationRank } from '../utils/reputation';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function MemberSummary({ user, showEndorsement = true, centered = false }) {
-  const { user: viewer } = useAuth();
+export default function MemberSummary({ user, showVerification = true, centered = false }) {
+  const [showRanks, setShowRanks] = useState(false);
   const { fontScale } = useWindowDimensions();
-  const isOwnProfile = viewer?.id != null && String(viewer.id) === String(user.id);
   const endorsement = user.endorsement;
   const exchanges = user.totalTransactions;
   const exchangeLabel = Number.isFinite(exchanges) ? `${exchanges} completed ${exchanges === 1 ? 'exchange' : 'exchanges'}` : 'Exchange count unavailable';
@@ -27,11 +28,11 @@ export default function MemberSummary({ user, showEndorsement = true, centered =
     ${progress > 0 ? `<circle cx="${ringSize / 2}" cy="${ringSize / 2}" r="${radius}" fill="none" stroke="${COLORS.primary}" stroke-width="3" stroke-dasharray="${circumference} ${circumference}" stroke-dashoffset="${circumference * (1 - progress / 100)}" stroke-linecap="round" transform="rotate(-90 ${ringSize / 2} ${ringSize / 2})" />` : ''}
   </svg>`;
   return <View style={[styles.summary, centered && styles.centered]}>
-    <View style={styles.line}>
+    {showVerification && <View style={styles.line}>
       <Ionicons name={user.isVerified ? 'shield-checkmark' : 'shield-outline'} size={18} color={COLORS.primary} />
       <Text style={styles.secondary}>{user.isVerified === true ? 'Verified identity' : user.isVerified === false ? 'Not verified' : 'Verification unavailable'}</Text>
-    </View>
-    {showEndorsement && !isOwnProfile ? <View style={[styles.scoreRow, centered && styles.scoreCentered]}>
+    </View>}
+    <View style={[styles.scoreRow, centered && styles.scoreCentered]}>
       <View style={[styles.ring, { width: ringSize, height: ringSize }]} accessible
         accessibilityLabel={hasScore ? `Neighbor Score ${value} out of 100` : legacyPercent ? `${value} endorsed` : endorsement ? 'Neighbor Score: New' : 'Neighbor Score unavailable'}>
         <Image source={{ uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ringSvg)}` }} style={StyleSheet.absoluteFill}
@@ -42,13 +43,17 @@ export default function MemberSummary({ user, showEndorsement = true, centered =
         </> : <Ionicons name={rank.icon} size={28} illustrated color={COLORS.primary} />}
       </View>
       <View style={styles.scoreCopy}>
-        <View style={styles.line}>
+        <HapticPressable style={[styles.line, styles.rankButton]} accessibilityLabel="About Neighbor Score and ranks"
+          accessibilityHint="See how the score works and all rank levels"
+          onPress={event => { event?.stopPropagation?.(); setShowRanks(true); }}>
           {hasScore && <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />}
           <Text style={styles.rating}>{label}</Text>
-        </View>
+          <Ionicons name="information-circle-outline" size={18} color={COLORS.primary} />
+        </HapticPressable>
         <Text style={styles.secondary}>{exchangeLabel}</Text>
       </View>
-    </View> : <Text style={styles.secondary}>{exchangeLabel}</Text>}
+    </View>
+    {showRanks && <RankInfoSheet isVisible onClose={() => setShowRanks(false)} score={hasScore ? endorsement.score : endorsement && !legacyPercent ? null : undefined} />}
   </View>;
 }
 
@@ -57,6 +62,7 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center' },
   line: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, maxWidth: '100%' },
   rating: { ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 },
+  rankButton: { minHeight: 44 },
   scoreRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.md, width: '100%' },
   scoreCentered: { justifyContent: 'center' },
   ring: { alignItems: 'center', justifyContent: 'center' },

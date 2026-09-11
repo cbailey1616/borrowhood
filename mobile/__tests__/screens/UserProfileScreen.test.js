@@ -61,13 +61,13 @@ describe('UserProfileScreen', () => {
     await screen.findByText('Outlaw');
     expect(screen.queryByText('Squire')).toBeNull();
   });
-  it('hides the percentage when opening your own profile route', async () => {
-    api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 10, percent: 90, score: 85 } });
+  it('shows the same score and rank when opening your own profile route', async () => {
+    api.getUser.mockResolvedValue({ ...mockProfile, id: 'user-1', endorsement: { count: 10, percent: 90, score: 85 } });
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'user-1' } }} />);
     await screen.findByText('Alice Jones');
-    expect(screen.queryByLabelText('Neighbor Score 85 out of 100')).toBeNull();
-    expect(screen.queryByText('Archer')).toBeNull();
+    expect(screen.getByLabelText('Neighbor Score 85 out of 100')).toBeTruthy();
+    expect(screen.getByText('Archer')).toBeTruthy();
     expect(screen.getByText('15 completed exchanges')).toBeTruthy();
   });
 });

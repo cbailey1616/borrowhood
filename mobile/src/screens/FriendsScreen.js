@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -6,7 +7,6 @@ import {
   FlatList,
   RefreshControl,
   Image,
-  TextInput,
   ActivityIndicator,
   Linking,
 } from 'react-native';
