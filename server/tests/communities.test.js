@@ -316,3 +316,45 @@ describe('POST /api/communities/:id/add-admin', () => {
     expect(res.body.error).toContain('member first');
   });
 });
+
+describe('DELETE /api/communities/:id/members/:userId', () => {
+  it('should let a neighborhood moderator remove a regular member', async () => {
+    await addCommunityMember(userC.userId, communityId, 'member');
+
+    const res = await request(app)
+      .delete(`/api/communities/${communityId}/members/${userC.userId}`)
+      .set('Authorization', `Bearer ${userA.token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const membership = await query(
+      'SELECT id FROM community_memberships WHERE community_id = $1 AND user_id = $2',
+      [communityId, userC.userId]
+    );
+    expect(membership.rows).toHaveLength(0);
+  });
+
+  it('should reject removal by a regular member', async () => {
+    await addCommunityMember(userC.userId, communityId, 'member');
+
+    const res = await request(app)
+      .delete(`/api/communities/${communityId}/members/${userA.userId}`)
+      .set('Authorization', `Bearer ${userC.token}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain('moderators');
+  });
+
+  it('should not let a moderator remove themselves or another moderator', async () => {
+    const self = await request(app)
+      .delete(`/api/communities/${communityId}/members/${userA.userId}`)
+      .set('Authorization', `Bearer ${userA.token}`);
+    expect(self.status).toBe(400);
+
+    const otherModerator = await request(app)
+      .delete(`/api/communities/${communityId}/members/${userB.userId}`)
+      .set('Authorization', `Bearer ${userA.token}`);
+    expect(otherModerator.status).toBe(400);
+    expect(otherModerator.body.error).toContain('another moderator');
+  });
+});

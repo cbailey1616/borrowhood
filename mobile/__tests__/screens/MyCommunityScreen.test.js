@@ -41,4 +41,12 @@ describe('MyCommunityScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} />);
     await findByText('Invite Neighbors');
   });
+  it('opens member management directly for neighborhood moderators', async () => {
+    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer' }]);
+    api.getCommunityMembers.mockResolvedValue([{ id: 'user-1', firstName: 'Test', role: 'organizer' }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const { findByText } = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await findByText('Manage'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', { id: 'comm-1', role: 'organizer' });
+  });
 });

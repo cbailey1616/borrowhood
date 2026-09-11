@@ -35,6 +35,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const [isSaving, setIsSaving] = useState(false);
 
   const canEdit = community?.role === 'organizer' || user?.isAdmin;
+  const canManageMembers = community?.role === 'organizer';
 
   useEffect(() => {
     fetchCommunity();
@@ -249,7 +250,17 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
       {/* Actions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Actions</Text>
+        <Text style={styles.sectionTitle}>Neighbors</Text>
+
+        <HapticPressable
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('CommunityMembers', { id, role: community?.role })}
+          haptic="light"
+        >
+          <Ionicons name={canManageMembers ? 'shield-checkmark-outline' : 'people-outline'} size={20} color={COLORS.primary} />
+          <Text style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
+        </HapticPressable>
 
         <HapticPressable
           style={styles.actionButton}
@@ -258,16 +269,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         >
           <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Invite Neighbors</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </HapticPressable>
-
-        <HapticPressable
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('CommunityMembers', { id })}
-          haptic="light"
-        >
-          <Ionicons name="people-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>View All Members</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
       </View>

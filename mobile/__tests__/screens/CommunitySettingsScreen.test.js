@@ -27,6 +27,13 @@ describe('CommunitySettingsScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText('Leave Neighborhood');
   });
+  it('gives moderators a clear member management entry point', async () => {
+    api.getCommunity.mockResolvedValue({ id: 'comm-1', name: 'Test Hood', role: 'organizer' });
+    const Screen = require('../../src/screens/CommunitySettingsScreen').default;
+    const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await findByText('Manage Members'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', { id: 'comm-1', role: 'organizer' });
+  });
   it('opens saved notification settings instead of showing unsaved switches', async () => {
     const Screen = require('../../src/screens/CommunitySettingsScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);

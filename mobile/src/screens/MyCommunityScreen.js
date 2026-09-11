@@ -197,8 +197,8 @@ export default function MyCommunityScreen({ navigation }) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Neighbors</Text>
-          <HapticPressable onPress={() => navigation.navigate('CommunityMembers', { id: community.id })} haptic="light">
-            <Text style={styles.seeAll}>See All</Text>
+          <HapticPressable onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })} haptic="light">
+            <Text style={styles.seeAll}>{community.role === 'organizer' ? 'Manage' : 'See All'}</Text>
           </HapticPressable>
         </View>
         <View style={styles.neighborList}>
