@@ -682,6 +682,9 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   renewButton: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primaryMuted,

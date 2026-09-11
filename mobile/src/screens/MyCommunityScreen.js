@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import ActionButton from '../components/ActionButton';
 import {
   View,
   Text,
@@ -197,9 +198,8 @@ export default function MyCommunityScreen({ navigation }) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Neighbors</Text>
-          <HapticPressable onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })} haptic="light">
-            <Text style={styles.seeAll}>{community.role === 'organizer' ? 'Manage' : 'See All'}</Text>
-          </HapticPressable>
+          <ActionButton onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })}
+            label={community.role === 'organizer' ? 'Manage' : 'See All'} />
         </View>
         <View style={styles.neighborList}>
           {members.slice(0, 5).map((member) => (

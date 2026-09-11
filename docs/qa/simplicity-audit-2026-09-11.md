@@ -22,6 +22,12 @@ This is a code-level audit, not a completed usability study or native-device acc
 - Newly submitted borrow requests open their tracker. Swiping a post no longer immediately deletes it.
 - Listing details prioritize an accepted/collected exchange over a newer pending request.
 
+## Button-clarity follow-up
+
+The subsequent UI pass makes secondary actions visibly outlined in Inbox, chat retries, draft controls, Home discovery links, exchange details, request queues, comments, request renewal and neighborhood member controls. A shared ActionButton provides a 48-point minimum target, wrapping labels, explicit disabled/loading states and a destructive-action color. Moderator promotion now has a visible text label. Existing confirmations and navigation behavior are preserved. This is a core-flow pass, not a claim that every legacy surface or native layout has been visually reviewed.
+
+Verification for this follow-up: 126 mobile suites / 850 tests passed, including disabled/loading and long-label button tests; the production iOS JavaScript export passed. Still local, not deployed or submitted to TestFlight.
+
 ## Highest-priority remaining findings
 
 P1 means fix before calling the experience release-ready. P2 means significant confusion or avoidable work in an otherwise usable path.
@@ -53,7 +59,7 @@ Screen-only paths in the table are relative to `mobile/src/screens/` unless a fu
 - Enable password-manager/new-password autofill during registration; consider moving the optional phone field to Profile.
 - Recheck notification permission after returning from device Settings. The current settings screen only checks at mount.
 - Use consistent user-facing words: **item**, **request**, **exchange**, **moderator**. Past exchanges currently calls everything “Borrowed from”/“Lent to,” including sales and giveaways. A pending request can say View request; an accepted one should say View exchange.
-- Label the moderator-promotion shield and explain the access it grants. Do not silently change moderator permissions.
+- Explain the access that moderator promotion grants. Its shield now has a visible action label; permissions are unchanged.
 - Neighborhood invitations should use the actual navigation labels and say Join, not “ask to join” when membership is immediate.
 - Show the consequential borrowing-duration default beside collapsed optional details, without exposing the entire advanced form.
 - Match local title validation to the server's three-character minimum. Replace generic “Invalid value” failures with field-specific guidance.

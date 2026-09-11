@@ -15,6 +15,7 @@ import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
 import ActionSheet from '../components/ActionSheet';
 
 import { haptics } from '../utils/haptics';
@@ -247,12 +248,7 @@ export default function RequestDetailScreen({ route, navigation }) {
               Comments {discussionCount > 0 && `(${discussionCount})`}
             </Text>
             {discussionCount > 3 && (
-              <HapticPressable
-                onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request })}
-                haptic="light"
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-              </HapticPressable>
+              <ActionButton label="See All" onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request })} />
             )}
           </View>
 

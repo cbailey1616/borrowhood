@@ -1,4 +1,5 @@
 import TextInput from '../components/AppTextInput';
+import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
 import { privateMessagePrefix } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
@@ -608,13 +609,13 @@ export default function ChatScreen({ route, navigation }) {
       {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>New messages ↓</Text></HapticPressable>}
       {!!chatError && <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{chatError}</Text>
-        {!!conversationId && <HapticPressable accessibilityRole="button" onPress={fetchMessages} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Refresh conversation</Text></HapticPressable>}
+        {!!conversationId && <ActionButton onPress={fetchMessages} label="Refresh conversation" style={{ marginTop: 8 }} />}
       </View>}
       {!!composer.pending && !isSending && <View style={{ paddingHorizontal: 16, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 13, paddingTop: 8 }}>Unconfirmed {composer.pending.payload.imageUrl ? 'photo' : 'message'}{composer.pending.payload.content ? `: ${composer.pending.payload.content.slice(0, 90)}` : ''}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
-          {composer.pending.retryable && safeRetries && <HapticPressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => deliver(composer.pending)}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Retry send</Text></HapticPressable>}
-          <HapticPressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={dismissPending}><Text style={{ color: COLORS.textSecondary }}>Clear after checking</Text></HapticPressable>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 8 }}>
+          {composer.pending.retryable && safeRetries && <ActionButton onPress={() => deliver(composer.pending)} label="Retry send" />}
+          <ActionButton onPress={dismissPending} label="Clear after checking" />
         </View>
         {!composer.pending.retryable && <Text style={{ color: COLORS.textSecondary, fontSize: 12, paddingBottom: 8 }}>Check the conversation before sending again. Safe retries need the updated server.</Text>}
       </View>}

@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     paddingBottom: SPACING.xs,
   },
-  textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: SPACING.sm },
+  textButton: { minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexShrink: 1 },
   filterButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
   filterButtonSelected: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
   retryNotice: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.sm, marginBottom: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceElevated },

@@ -1,4 +1,5 @@
 import { listingAvailability } from '../utils/listingAvailability';
+import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingPrice from '../components/ListingPrice';
@@ -639,9 +640,7 @@ export default function FeedScreen({ navigation }) {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
         <Text style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Neighbors need</Text>
-        <HapticPressable accessibilityRole="button" accessibilityLabel="See all requests" onPress={() => setActiveFilters(['requests'])} style={{ minHeight:44,justifyContent:'center' }}>
-          <Text style={{ color:COLORS.primary }}>See all</Text>
-        </HapticPressable>
+        <ActionButton accessibilityLabel="See all requests" label="See all" onPress={() => setActiveFilters(['requests'])} />
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
@@ -790,9 +789,8 @@ export default function FeedScreen({ navigation }) {
             }}>
               <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
             </HapticPressable>
-            {!feedError && user?.city && <HapticPressable accessibilityRole="button" style={{ minHeight: 48, padding: 14, justifyContent: 'center' }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}>
-              <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '600' }}>{hasFilters ? 'Request an item' : 'Invite a neighbor'}</Text>
-            </HapticPressable>}
+            {!feedError && user?.city && <ActionButton style={{ marginTop: SPACING.sm }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}
+              label={hasFilters ? 'Request an item' : 'Invite a neighbor'} />}
           </View>
         }</View>}
       />

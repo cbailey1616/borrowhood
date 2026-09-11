@@ -1,4 +1,5 @@
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
+import ActionButton from '../components/ActionButton';
 import { isSaleListing, directFeeLabel, isTransferListing } from '../utils/directFee';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -253,9 +254,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </LayeredCard>
 
         <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
-          {!!fetchError && <HapticPressable accessibilityRole="button" accessibilityLabel="Could not refresh exchange. Try again" onPress={fetchTransaction}>
-            <Text style={styles.detailText}>Could not refresh. Tap to try again.</Text>
-          </HapticPressable>}
+          {!!fetchError && <View style={{ gap: 8 }}>
+            <Text style={styles.detailText}>Could not refresh this exchange.</Text>
+            <ActionButton label="Try again" onPress={fetchTransaction} />
+          </View>}
           <Text style={styles.cardEyebrow}>What happens next</Text>
           <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
           <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
@@ -415,7 +417,7 @@ const styles = StyleSheet.create({
   cancelActionText: { fontSize: 15, fontWeight: '600', color: COLORS.surface },
   nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
   secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
-  detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+  detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
   pageContent: { padding: 18, paddingBottom: 28, gap: 24 },
   pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '600', marginTop: 6 },
   statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },

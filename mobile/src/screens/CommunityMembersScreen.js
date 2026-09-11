@@ -133,6 +133,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
             onPress={event => { event?.stopPropagation?.(); handlePromote(item); }}
           >
             <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.promoteButtonText}>Make moderator</Text>
           </HapticPressable>
           <HapticPressable
             haptic="medium"
@@ -288,15 +289,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   adminActions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: SPACING.sm,
+    flexShrink: 1,
   },
   promoteButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
     padding: SPACING.sm,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.primaryMuted,
+    backgroundColor: COLORS.surface,
   },
+  promoteButtonText: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: '600', flexShrink: 1 },
   removeButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.danger,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,

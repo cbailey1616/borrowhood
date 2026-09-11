@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { Ionicons } from '../components/Icon';
 import { useFocusEffect } from '@react-navigation/native';
 import HapticPressable from '../components/HapticPressable';
 import ShimmerImage from '../components/ShimmerImage';
@@ -110,9 +111,10 @@ export default function RequestQueueScreen({ route, navigation }) {
             <ShimmerImage source={item.borrower.profilePhotoUrl ? { uri: item.borrower.profilePhotoUrl } : null} placeholderIcon="person" style={{ width: 44, height: 44, borderRadius: 22 }} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <MemberSummary user={item.borrower}>
-                <HapticPressable style={{ flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 }} accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile${item.borrower.isVerified === true ? ', verified identity' : ''}`} onPress={() => navigation.navigate('UserProfile', { id: item.borrower.id })}>
+                <HapticPressable style={{ flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface }} accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile${item.borrower.isVerified === true ? ', verified identity' : ''}`} onPress={() => navigation.navigate('UserProfile', { id: item.borrower.id })}>
                   <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 }}>{item.borrower.firstName}</Text>
                   {item.borrower.isVerified === true && <VerifiedBadge size={18} />}
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                 </HapticPressable>
               </MemberSummary>
             </View>

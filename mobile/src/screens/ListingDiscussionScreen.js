@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   commentRow: { flexDirection: 'row', gap: SPACING.sm },
   commentBody: { flex: 1 },
   commentMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  threadToggle: { marginLeft: 44, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  threadToggle: { marginLeft: 44, marginTop: 8, alignSelf: 'flex-start', minHeight: 48, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 6 },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -524,6 +524,13 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     minHeight: 48,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
@@ -531,7 +538,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     fontWeight: '600',
   },
   repliesContainer: {
