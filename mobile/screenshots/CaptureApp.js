@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Settings, ScrollView, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,15 +32,22 @@ function FeedbackCapture() {
   </ScrollView>;
 }
 function KeyboardCapture() {
-  const [text, setText] = useState('Could I pick it up tomorrow?');
+  const numberKeyboard = requested === 'keyboard-number';
+  const [text, setText] = useState(numberKeyboard ? '12.50' : 'Could I pick it up tomorrow?');
+  const input = useRef(null);
+  useEffect(() => {
+    if (!numberKeyboard) return;
+    const timer = setTimeout(() => input.current?.focus(), 1000);
+    return () => clearTimeout(timer);
+  }, [numberKeyboard]);
   return <ScrollView style={{ backgroundColor: COLORS.background }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20 }}>
-    <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: 12 }}>Your message</Text>
-    <AppTextInput autoFocus multiline value={text} onChangeText={setText}
+    <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: 12 }}>{numberKeyboard ? 'Price' : 'Your message'}</Text>
+    <AppTextInput ref={input} autoFocus={!numberKeyboard} multiline={!numberKeyboard} keyboardType={numberKeyboard ? 'decimal-pad' : 'default'} value={text} onChangeText={setText}
       style={{ ...TYPOGRAPHY.body, minHeight: 100, padding: 16, borderWidth: 1, borderColor: COLORS.borderBrown, borderRadius: 14, color: COLORS.text, backgroundColor: COLORS.card }} />
   </ScrollView>;
 }
 function openCapture() {
-  if (!navigation.isReady() || ['feedback', 'keyboard'].includes(requested)) return;
+  if (!navigation.isReady() || ['feedback', 'keyboard', 'keyboard-number'].includes(requested)) return;
   const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
@@ -65,8 +72,8 @@ export default function CaptureApp() {
       <ErrorBoundary><SafeAreaProvider><AuthProvider>
         <NavigationContainer ref={navigation} theme={theme} onReady={openCapture}>
           <ErrorProvider navigationRef={navigation}>
-            {['feedback', 'keyboard'].includes(requested) ? <ReviewStack.Navigator screenOptions={{ headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary }}>
-              <ReviewStack.Screen name="ComponentPreview" component={requested === 'keyboard' ? KeyboardCapture : FeedbackCapture} options={{ title: requested === 'keyboard' ? 'Message neighbor' : 'Exchange feedback' }} />
+            {['feedback', 'keyboard', 'keyboard-number'].includes(requested) ? <ReviewStack.Navigator screenOptions={{ headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary }}>
+              <ReviewStack.Screen name="ComponentPreview" component={requested.startsWith('keyboard') ? KeyboardCapture : FeedbackCapture} options={{ title: requested === 'keyboard-number' ? 'Post an item' : requested === 'keyboard' ? 'Message neighbor' : 'Exchange feedback' }} />
             </ReviewStack.Navigator> : <RootNavigator />}
             {requested === 'ranks' && <RankInfoSheet isVisible onClose={() => {}} score={user.endorsement.score} />}
             <ThemedAlertHost />

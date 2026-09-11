@@ -1,5 +1,5 @@
 import React from 'react';
-import { InputAccessoryView, Keyboard, TextInput } from 'react-native';
+import { InputAccessoryView, Keyboard, TextInput, View } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import AppTextInput from '../../../src/components/AppTextInput';
 
@@ -31,4 +31,26 @@ it('preserves refs, focus callbacks and the search key', () => {
   fireEvent(screen.getByTestId('input'), 'blur', {});
   expect(focus).toHaveBeenCalledTimes(1);
   expect(blur).toHaveBeenCalledTimes(1);
+});
+
+it('waits for the native toolbar before auto-focusing and does not refocus after dismissal', () => {
+  const ref = React.createRef();
+  const screen = render(<AppTextInput ref={ref} autoFocus multiline testID="input" />);
+  const focus = jest.spyOn(ref.current, 'focus');
+  expect(screen.getByTestId('input').props.autoFocus).toBe(false);
+  expect(focus).not.toHaveBeenCalled();
+  const toolbar = screen.UNSAFE_getAllByType(View).find(view => view.props.onLayout);
+  fireEvent(toolbar, 'layout', { nativeEvent: { layout: { width: 375, height: 44 } } });
+  expect(focus).toHaveBeenCalledTimes(1);
+  fireEvent(screen.getByTestId('input'), 'focus', {});
+  fireEvent(screen.getByTestId('input'), 'blur', {});
+  fireEvent(toolbar, 'layout', { nativeEvent: { layout: { width: 812, height: 44 } } });
+  expect(focus).toHaveBeenCalledTimes(1);
+});
+
+it('preserves a caller-owned accessory and its native autofocus', () => {
+  const screen = render(<AppTextInput autoFocus inputAccessoryViewID="custom-toolbar" testID="input" />);
+  expect(screen.getByTestId('input').props.inputAccessoryViewID).toBe('custom-toolbar');
+  expect(screen.getByTestId('input').props.autoFocus).toBe(true);
+  expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
 });

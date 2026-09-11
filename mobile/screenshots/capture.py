@@ -16,6 +16,9 @@ screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'se
 review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
 review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/inbox', 'inbox')]
+# Capture both immediate text focus and a later number-field focus. The latter
+# has no return key, so the keyboard accessory is its explicit dismissal control.
+review_screens = [('ui-review/keyboard', 'keyboard'), ('ui-review/keyboard-number', 'keyboard-number')] + [screen for screen in review_screens if screen[1] != 'keyboard']
 manifest = []
 review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
 # Keep the software keyboard visible in the native keyboard-accessory capture.
