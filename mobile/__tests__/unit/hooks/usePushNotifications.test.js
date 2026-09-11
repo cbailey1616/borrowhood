@@ -66,6 +66,15 @@ describe('usePushNotifications', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'request-1' });
     expect(await foregroundHandler.handleNotification({ request: { content: { sound: 'default', data: { type: 'item_match' } } } })).toEqual({ shouldShowAlert: false, shouldPlaySound: false, shouldSetBadge: false });
   });
+  it('opens the personal rating explanation from a tier notification', async () => {
+    const navigation = { navigate: jest.fn() };
+    setNavigationRef(navigation);
+    renderHook(() => usePushNotifications(true, { onboardingCompleted: true }));
+    await act(async () => {});
+    const respond = Notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)[0];
+    respond({ notification: { request: { content: { data: { type: 'rank_up' } } } } });
+    expect(navigation.navigate).toHaveBeenCalledWith('Main', { screen: 'Profile', params: { openRating: true } });
+  });
 });
 
 it.each([[null, false], ['default', true]])('honors foreground notification sound %s', async (sound, expected) => {

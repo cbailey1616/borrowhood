@@ -124,12 +124,10 @@ export default function UserProfileScreen({ route, navigation }) {
             source={{ uri: user.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,maxWidth:'100%'}}>
+          <MemberSummary user={user} centered>
             <Text style={[styles.name,{flexShrink:1}]}>{user.firstName} {user.lastName}</Text>
             {user.isVerified === true && <VerifiedBadge size={20} interactive />}
-          </View>
-
-          <MemberSummary user={user} centered />
+          </MemberSummary>
           <View style={styles.metaRow}>
             {user.city && user.state && (
               <View style={styles.metaItem}>
@@ -258,6 +256,7 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.h1,
+    letterSpacing: 0,
     fontSize: 24,
     textAlign: 'center',
     color: COLORS.text,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import api from '../../src/services/api';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
@@ -37,29 +37,33 @@ describe('UserProfileScreen', () => {
     expect(queryByText(/Items \(/)).toBeNull();
     expect(api.getUserListings).not.toHaveBeenCalled();
   });
-  it('shows one score and its woodland rank with completed exchanges for context', async () => {
+  it('keeps the rank and verification beside the name without a separate rating block', async () => {
     api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 10, percent: 90, score: 85 } });
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByLabelText('Neighbor Score 85 out of 100');
-    expect(screen.getByText('Archer')).toBeTruthy();
+    await screen.findByLabelText('Neighbor rating: Good, Archer');
+    const identity = within(screen.getByTestId('MemberSummary.identity'));
+    expect(identity.getByText('Alice Jones')).toBeTruthy();
+    expect(identity.getByLabelText('Verified identity')).toBeTruthy();
+    expect(identity.getByLabelText('Neighbor rating: Good, Archer')).toBeTruthy();
+    expect(screen.queryByText('Archer')).toBeNull();
     expect(screen.getByText('15 completed exchanges')).toBeTruthy();
     expect(screen.queryByText('Rank')).toBeNull();
   });
   it('shows new members as New and refreshes their score when returning', async () => {
-    api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 0, percent: null, score: null } });
+    api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 0, percent: null, score: null, completedCount: 2 } });
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByText('New neighbor');
-    api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 1, percent: 0, score: 63 } });
+    await screen.findByLabelText('Neighbor rating: New neighbor');
+    api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 3, percent: 0, score: 66, completedCount: 3 } });
     const onFocus = mockNavigation.addListener.mock.calls.find(([event]) => event === 'focus')[1];
     await act(async () => { onFocus(); });
-    await screen.findByLabelText('Neighbor Score 63 out of 100');
-    expect(screen.getByText('Squire')).toBeTruthy();
+    await screen.findByLabelText('Neighbor rating: Fair, Squire');
+    expect(screen.queryByLabelText('Neighbor rating: New neighbor')).toBeNull();
     expect(screen.queryByText('New neighbor')).toBeNull();
     api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 10, percent: 40, score: 52 } });
     await act(async () => { onFocus(); });
-    await screen.findByText('Outlaw');
+    await screen.findByLabelText('Neighbor rating: Needs work, Outlaw');
     expect(screen.queryByText('Squire')).toBeNull();
   });
   it('shows the same score and rank when opening your own profile route', async () => {
@@ -67,8 +71,8 @@ describe('UserProfileScreen', () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'user-1' } }} />);
     await screen.findByText('Alice Jones');
-    expect(screen.getByLabelText('Neighbor Score 85 out of 100')).toBeTruthy();
-    expect(screen.getByText('Archer')).toBeTruthy();
+    expect(screen.getByLabelText('Neighbor rating: Good, Archer')).toBeTruthy();
+    expect(screen.queryByText('Archer')).toBeNull();
     expect(screen.getByText('15 completed exchanges')).toBeTruthy();
   });
 });

@@ -124,7 +124,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
           </View>
           <Text style={styles.title}>Already Verified</Text>
           <Text style={styles.subtitle}>
-            Your identity has been verified. You can now see who’s sharing in Town, and your profile has a verified badge. Private inventories stay private.
+            Your identity has been verified. You can now see who’s lending in Town borrow listings, and your profile has a verified badge. Private inventories stay private.
           </Text>
         </ScrollView>
 
@@ -163,9 +163,10 @@ export default function OnboardingVerifyScreen({ navigation }) {
         </View>
 
         <Text style={styles.title}>Build town trust. Get verified.</Text>
-        <Text style={styles.subtitle}>See who’s posting in Town and let neighbors know your identity has been checked. A little reassurance before you share.</Text>
+        <Text style={styles.subtitle}>See who’s lending in Town borrow listings and let neighbors know your identity has been checked.</Text>
+        <Text style={styles.subtitle}>Powered by Stripe Identity · A quick ID and selfie check</Text>
         <View style={[styles.tierCard, styles.tierCardHighlight]}>
-          <Text style={styles.tierDescription}>Browse Town listings. Get verified to see who’s sharing.</Text>
+          <Text style={styles.tierDescription}>Names and profiles are already visible on Town requests, giveaways, and sale posts.</Text>
         </View>
 
         <View style={styles.trustRow}>

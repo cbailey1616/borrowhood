@@ -1,6 +1,7 @@
 import { query, withTransaction } from '../utils/db.js';
 import { sendNotification } from './notifications.js';
 import logger from '../utils/logger.js';
+import { checkRankChanges } from './rankNotifications.js';
 
 /**
  * Check for rentals due back tomorrow or today and send reminders.
@@ -296,6 +297,8 @@ export async function expireGiveawayPickups() {
  * Start the scheduler — runs checks every hour.
  */
 export function startScheduler() {
+  checkRankChanges();
+  setInterval(checkRankChanges, 60 * 1000);
   // Run immediately on startup
   sendReturnReminders();
   autoAdvanceDisputes();

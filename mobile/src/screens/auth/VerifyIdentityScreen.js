@@ -84,7 +84,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       } else {
         showError({
           title: 'Not Started Yet',
-          message: 'Looks like verification hasn\'t been completed. Tap "Verify with ID" to get started — it only takes a minute.',
+          message: 'Looks like verification hasn\'t been completed. Tap "Verify with ID" to start a quick ID and selfie check powered by Stripe Identity.',
           primaryAction: 'OK',
         });
       }
@@ -111,7 +111,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
 
         <Text style={styles.title}>Verify Your Identity</Text>
         <Text style={styles.subtitle}>
-          Verify your identity with an ID and selfie check. Add the verified badge to your profile and see who’s sharing in Town.
+          Powered by Stripe Identity. A quick ID and selfie check adds the verified badge to your profile and lets you see who’s lending in Town borrow listings.
           {fromSubscription ? ' We\'ll notify you once your verification is complete — it usually only takes a few minutes.' : ''}
         </Text>
 
@@ -172,7 +172,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
         isVisible={skipSheetVisible}
         onClose={() => setSkipSheetVisible(false)}
         title="Skip Verification?"
-        message="You can explore now and verify later. Get verified to see who’s sharing in Town."
+        message="You can explore now and verify later. Get verified to see who’s lending in Town borrow listings."
         actions={[
           {
             label: 'Skip',

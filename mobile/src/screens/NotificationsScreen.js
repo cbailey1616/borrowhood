@@ -31,6 +31,9 @@ const NOTIFICATION_ICONS = {
   dispute_resolved: 'checkmark-done',
   new_rating: 'star',
   rating_received: 'star',
+  rank_up: 'trophy',
+  rank_down: 'ribbon',
+  rank_ready: 'ribbon',
   join_approved: 'people',
   request_offer: 'cube',
   new_request: 'search',
@@ -114,6 +117,10 @@ export default function NotificationsScreen({ navigation }) {
     const publicRoute = publicReplyRoute(notification);
     if (publicRoute) { navigation.navigate('ListingDiscussion', publicRoute); return; }
     if (notification.queueListingId) { navigation.navigate('RequestQueue', { listingId: notification.queueListingId }); return; }
+    if (['rank_up', 'rank_down', 'rank_ready'].includes(notification.type)) {
+      navigation.navigate('Main', { screen: 'Profile', params: { openRating: true } });
+      return;
+    }
     if (notification.type === 'new_message') {
       if (notification.conversationId) {
         navigation.navigate('Chat', { conversationId: notification.conversationId });

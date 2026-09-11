@@ -51,7 +51,7 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  const own=await request(app).get(`/transactions/${chosen}`).set(auth(owner));expect(own.body.endorsement.submitted).toBe(true);
  const recipient=chosen===firstRequest ? first : second;
  const publicProfile=await request(app).get(`/users/${recipient}`).set(auth(owner));
- expect(publicProfile.status).toBe(200);expect(publicProfile.body.endorsement).toEqual({percent:0,count:1,score:63});
+ expect(publicProfile.status).toBe(200);expect(publicProfile.body.endorsement).toEqual({percent:0,count:1,score:null,completedCount:0});
  const ownProfile=await request(app).get(`/users/${recipient}`).set(auth(recipient));
  expect(ownProfile.status).toBe(200);expect(ownProfile.body.endorsement).toEqual(publicProfile.body.endorsement);
  const ownAccount=await request(app).get('/auth/me').set(auth(recipient));
@@ -61,7 +61,7 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  const neutral=await request(app).get(`/transactions/${chosen}`).set(auth(recipient));
  expect(neutral.body.endorsement).toMatchObject({submitted:true,positive:null,canRate:false});
  const neutralRecipient=await request(app).get(`/users/${owner}`).set(auth(recipient));
- expect(neutralRecipient.body.endorsement).toEqual({percent:null,count:0,score:null});
+ expect(neutralRecipient.body.endorsement).toEqual({percent:null,count:0,score:null,completedCount:0});
 });
 it('paginates items independently so many requests cannot bury them',async()=>{
  const reserved=await request(app).get('/feed?layout=sections').set(auth(first));

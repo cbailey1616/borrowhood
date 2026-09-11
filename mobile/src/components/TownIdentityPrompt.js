@@ -3,7 +3,7 @@ import { Text, View, StyleSheet } from 'react-native';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
-export const TOWN_PREVIEW_COPY = 'Browse Town listings. Get verified to see who’s sharing.';
+export const TOWN_PREVIEW_COPY = 'Browse Town borrow listings. Get verified to see who’s lending.';
 export default function TownIdentityPrompt({ compact = false, onVerify }) {
   return <HapticPressable accessibilityRole="button" accessibilityLabel="Identity hidden. Get verified to see who’s sharing"
     onPress={event => { event?.stopPropagation?.(); onVerify(); }} style={compact ? styles.compact : styles.card}>

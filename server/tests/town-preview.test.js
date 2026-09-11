@@ -32,21 +32,25 @@ const hidden = body => {
   expect(JSON.stringify(body)).not.toContain('Poster');
   expect(body.owner || body.requester).toMatchObject({ id: null, profilePhotoUrl: null });
 };
-describe('Town previews do not grant identity or contact access', () => {
+describe('Town borrow previews hide identity; Town requests show it', () => {
   it('shows opted-in previews in the feed without identity fields', async () => {
     const res = await get('feed?visibility=town');
     expect(res.status).toBe(200);
     hidden(res.body.items.find(r => r.id === item));
-    hidden(res.body.items.find(r => r.id === wanted));
+    expect(res.body.items.find(r => r.id === wanted).user.id).toBe(owner.userId);
     expect(res.body.items.some(r => [legacy,privateItem].includes(r.id))).toBe(false);
   });
-  it.each(['listings','requests'])('masks every %s browse preview', async route => {
+  it.each(['listings','requests'])('uses the correct identity rule for %s', async route => {
     const res = await get(route); expect(res.status).toBe(200);
-    hidden(res.body.find(r => r.id === (route === 'listings' ? item : wanted)));
+    const post = res.body.find(r => r.id === (route === 'listings' ? item : wanted));
+    if (route === 'listings') hidden(post);
+    else expect(post.requester.id).toBe(owner.userId);
   });
-  it('masks listing and request details', async () => {
+  it('masks borrow details and reveals request details', async () => {
     for (const path of [`listings/${item}`,`requests/${wanted}`]) {
-      const res = await get(path); expect(res.status).toBe(200); hidden(res.body);
+      const res = await get(path); expect(res.status).toBe(200);
+      if (path.startsWith('listings')) hidden(res.body);
+      else expect(res.body.requester.id).toBe(owner.userId);
     }
   });
   it('does not broaden older posts or expose an inventory', async () => {
@@ -72,9 +76,10 @@ describe('Town previews do not grant identity or contact access', () => {
   });
   it('keeps the full-access policy closed for preview-only viewers', async () => {
     expect(await canViewListing(item,viewer.userId)).toBe(false);
-    expect(await canViewRequest(wanted,viewer.userId)).toBe(false);
+    expect(await canViewRequest(wanted,viewer.userId)).toBe(true);
     expect((await get(`listings/${item}/discussions`)).status).toBe(404);
-    expect((await get(`requests/${wanted}/offers`)).status).toBe(404);
+    // Viewing a request still does not grant access to another member's private offers.
+    expect((await get(`requests/${wanted}/offers`)).body).toEqual([]);
   });
   it('does not let a preview grant borrowing or listing-linked contact', async () => {
     const body = { listingId: item, startDate: '2027-01-01', endDate: '2027-01-02' };

@@ -4,6 +4,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES = {
   return_reminder: true, post_replies: true, community_updates: true,
 };
 const groups = {
+  rank_up: 'borrow_updates',
   borrow_request: 'borrow_updates', giveaway_claim: 'borrow_updates', request_approved: 'borrow_updates',
   request_declined: 'borrow_updates', borrow_cancelled: 'borrow_updates', pickup_confirmed: 'borrow_updates',
   return_confirmed: 'borrow_updates', giveaway_complete: 'borrow_updates', giveaway_expired: 'borrow_updates',
@@ -79,6 +80,7 @@ export function normalizedPreferences(prefs = {}) {
   return normalized;
 }
 export function shouldSendPush(type, prefs = {}, data = {}) {
+  if (['rank_down', 'rank_ready'].includes(type)) return false;
   if (['item_match', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(type)) return false;
   if (!(prefs.push_enabled ?? prefs.push ?? true)) return false;
   const core = notificationCore(type, data);

@@ -33,6 +33,14 @@ beforeEach(() => {
 });
 
 describe('InboxScreen', () => {
+  it.each(['rank_up', 'rank_down', 'rank_ready'])('opens %s in the personal rating explanation', async type => {
+    api.getNotifications.mockResolvedValue({ notifications: [{ id: 'rank-alert', type, title: 'Neighbor rating update', isRead: false }], unreadCount: 1 });
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByText('Neighbor rating update'));
+    await waitFor(() => expect(mockParentNavigate).toHaveBeenCalledWith('Main', { screen: 'Profile', params: { openRating: true } }));
+    expect(api.markNotificationRead).toHaveBeenCalledWith('rank-alert');
+  });
   it('keeps an alert that arrives after the server processes Mark all read unread', async () => {
     const first = { id: 'first', type: 'friend_accepted', title: 'Alex accepted', isRead: false };
     api.getNotifications.mockResolvedValue({ notifications: [first], unreadCount: 1 });

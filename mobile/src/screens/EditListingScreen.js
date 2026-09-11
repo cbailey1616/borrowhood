@@ -425,7 +425,7 @@ export default function EditListingScreen({ navigation, route }) {
       <View style={styles.section}>
         {listing.sharingReviewRequired && <Text style={styles.label}>This item is private until you review its audience.</Text>}
 
-        <SharingPicker value={formData.visibility} circleId={formData.circleId}
+        <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={listing.listingType}
           neighborhoodAvailable={Boolean(formData.communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}

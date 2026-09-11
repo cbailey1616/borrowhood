@@ -519,7 +519,7 @@ export default function CreateListingScreen({ navigation, route }) {
       <View style={styles.section}>
 
         {requestMatchId ? <Text style={styles.hint}>Private offer: only this requester can see this item for up to 14 days while their request is open. Your other items stay private.</Text> : (
-        <SharingPicker value={formData.visibility} circleId={formData.circleId}
+        <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={formData.listingType}
           neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}

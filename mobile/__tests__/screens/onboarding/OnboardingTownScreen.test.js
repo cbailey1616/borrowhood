@@ -39,7 +39,7 @@ describe('town setup', () => {
   });
   it('does not request device location without a tap', () => {
     const { getByText } = render(<Screen />);
-    expect(getByText('Browse Town listings. Get verified to see who’s sharing.')).toBeTruthy();
+    expect(getByText('Explore Town requests, giveaways, and sale posts. Verify to see who’s lending in Town borrow listings.')).toBeTruthy();
     expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
   });
   it('requires town and state and does not finish an empty form', () => {

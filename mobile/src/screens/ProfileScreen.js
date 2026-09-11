@@ -27,7 +27,7 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS, ENABLE_PAYMENTS } from '../utils/config';
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, route }) {
   const { user, logout, refreshUser } = useAuth();
   const { showError, showToast } = useError();
   const {
@@ -182,14 +182,12 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </HapticPressable>
             <View style={styles.headerInfo}>
-              <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+              <MemberSummary user={user || {}} openRating={route?.params?.openRating === true}
+                onRatingClose={() => { if (route?.params?.openRating) navigation.setParams({ openRating: false }); }}>
                 <Text style={[styles.name,{flexShrink:1}]} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
                 {user?.isVerified === true && <VerifiedBadge size={18} interactive />}
-              </View>
+              </MemberSummary>
             </View>
-          </View>
-          <View style={styles.reputation}>
-            <MemberSummary user={user || {}} />
           </View>
         </LayeredCard>
 
@@ -208,6 +206,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.verifyBannerText}>
               <Text style={styles.verifyBannerTitle}>Verify Your Identity</Text>
               <Text style={styles.verifyBannerSubtitle}>Optional · Free during launch</Text>
+              <Text style={styles.verifyBannerSubtitle}>Powered by Stripe Identity</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </HapticPressable>
@@ -441,9 +440,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    paddingBottom: SPACING.md,
   },
-  reputation: { borderTopWidth: 1, borderTopColor: COLORS.separator, paddingTop: SPACING.xs },
   avatarContainer: {
     position: 'relative',
   },
@@ -480,6 +477,7 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.h2,
+    letterSpacing: 0,
     color: COLORS.text,
   },
   verifyBanner: {

@@ -14,7 +14,7 @@ export function normalizeSharing(value) {
   return [...new Set(scopes)];
 }
 
-export function audienceSql(alias, ownerColumn, viewer, { circle = false, town = true } = {}) {
+export function audienceSql(alias, ownerColumn, viewer, { circle = false, town = true, townIdentityRequired = 'true' } = {}) {
   const owner = `${alias}.${ownerColumn}`;
   const scope = s => `'${s}' = ANY(string_to_array(${alias}.visibility::text, ','))`;
   return `(EXISTS (SELECT 1 FROM users audience_owner WHERE audience_owner.id=${owner} AND audience_owner.status != 'suspended') AND (
@@ -35,7 +35,7 @@ export function audienceSql(alias, ownerColumn, viewer, { circle = false, town =
         AND so.user_id = ${owner})) OR
     ${town ? `(${scope('town')} AND EXISTS (
       SELECT 1 FROM users sv JOIN users so ON so.id = ${owner}
-      WHERE sv.id = ${viewer} AND sv.is_verified = true
+      WHERE sv.id = ${viewer} AND (sv.is_verified = true OR (NOT (${townIdentityRequired}) AND ${alias}.town_preview_enabled = true))
         AND sv.status != 'suspended' AND so.status != 'suspended'
         AND NULLIF(TRIM(sv.city), '') IS NOT NULL AND NULLIF(TRIM(sv.state), '') IS NOT NULL
         AND LOWER(TRIM(sv.city)) = LOWER(TRIM(so.city))
@@ -46,7 +46,7 @@ export function audienceSql(alias, ownerColumn, viewer, { circle = false, town =
 export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
   return `COALESCE((${alias}.status != 'deleted' AND (
     ${alias}.owner_id = ${viewer} OR
-    (${alias}.privacy_version = 1 AND ${audienceSql(alias, 'owner_id', viewer, { circle: true })})
+    (${alias}.privacy_version = 1 AND ${audienceSql(alias, 'owner_id', viewer, { circle: true, townIdentityRequired: `COALESCE(${alias}.listing_type, 'lend') NOT IN ('giveaway', 'sell')` })})
     ${discovery ? '' : `OR EXISTS (SELECT 1 FROM listing_shares ss
       JOIN item_requests sr ON sr.id = ss.request_id
       WHERE ss.listing_id = ${alias}.id AND ss.user_id = ${viewer}
@@ -58,4 +58,4 @@ export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
   )), false)`;
 }
 
-export const requestAccessSql = (alias, viewer) => audienceSql(alias, 'user_id', viewer);
+export const requestAccessSql = (alias, viewer) => audienceSql(alias, 'user_id', viewer, { townIdentityRequired: 'false' });

@@ -84,7 +84,7 @@ export default function OnboardingTownScreen() {
         <HapticPressable accessibilityRole="button" disabled={busy || locating} onPress={finish} style={styles.button}>
           {busy ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue to Borrowhood</Text>}
         </HapticPressable>
-        <Text style={styles.note}>Browse Town listings. Get verified to see who’s sharing.</Text>
+        <Text style={styles.note}>Explore Town requests, giveaways, and sale posts. Verify to see who’s lending in Town borrow listings.</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

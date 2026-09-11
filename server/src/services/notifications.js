@@ -8,6 +8,9 @@ import { INCOMING_REQUEST_TYPES, UNREAD_ACTIVITY_SQL, requestQueueCopy } from '.
 
 // Notification types and their templates
 const NOTIFICATION_TEMPLATES = {
+  rank_ready: { title: 'Your neighbor rating is ready', body: data => data.body },
+  rank_up: { title: 'You moved up!', body: data => data.body },
+  rank_down: { title: 'Neighbor rating update', body: data => data.body },
   // Borrow requests
   borrow_request: {
     title: 'New Borrow Request',
@@ -284,7 +287,7 @@ export async function sendNotification(userId, type, data, options = {}) {
     }
 
     // Create notification record
-    const result = await query(
+    const result = options.existingNotificationId ? { rows: [{ id: options.existingNotificationId }] } : await (options.runQuery || query)(
       `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id, dispute_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
@@ -303,6 +306,7 @@ export async function sendNotification(userId, type, data, options = {}) {
     );
 
     const notificationId = result.rows[0].id;
+    if (options.activityOnly) return notificationId;
 
     // Get user's push token and preferences
     const user = await query(
@@ -333,6 +337,7 @@ export async function sendNotification(userId, type, data, options = {}) {
 
     return notificationId;
   } catch (err) {
+    if (options.throwOnError) throw err;
     logger.error('Send notification error:', err);
     return null;
   }

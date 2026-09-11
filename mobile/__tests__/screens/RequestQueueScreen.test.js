@@ -1,5 +1,5 @@
 import React from 'react';
-import { render,fireEvent,waitFor } from '@testing-library/react-native';
+import { render,fireEvent,waitFor,within } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import Screen from '../../src/screens/RequestQueueScreen';
 const navigation={navigate:jest.fn()};
@@ -7,12 +7,19 @@ const item={id:'request-1',position:1,startDate:'2026-10-01',endDate:'2026-10-03
 beforeEach(()=>{jest.clearAllMocks();api.getRequestQueue=jest.fn().mockResolvedValue({listing:{id:'item-1',title:'Drill',isAvailable:true,status:'active'},requests:[item]});api.approveRental.mockResolvedValue({});});
 it('messages the selected person and chooses their request',async()=>{
  const screen=render(<Screen route={{params:{listingId:'item-1'}}} navigation={navigation}/>);
- await screen.findByLabelText('Neighbor Score 93 out of 100');
+ await screen.findByLabelText('Neighbor rating: Great, Ranger');
  expect(screen.queryByText('Verified identity')).toBeNull();
  expect(screen.getByLabelText("View Alex's profile, verified identity")).toBeTruthy();
  expect(screen.getByText('100 completed exchanges')).toBeTruthy();
- expect(screen.getByText('Ranger')).toBeTruthy();
+ const identity=within(screen.getByTestId('MemberSummary.identity'));
+ expect(identity.getByText('Alex')).toBeTruthy();
+ expect(identity.getByLabelText('Neighbor rating: Great, Ranger')).toBeTruthy();
+ expect(screen.queryByText('Ranger')).toBeNull();
  expect(screen.queryByText('Rank')).toBeNull();
+ fireEvent.press(screen.getByLabelText('Neighbor rating: Great, Ranger'));
+ expect(screen.getByText('Neighbor rating')).toBeTruthy();
+ expect(navigation.navigate).not.toHaveBeenCalled();
+ fireEvent.press(screen.getByLabelText('Close rank explanation'));
  fireEvent.press(screen.getByLabelText("View Alex's profile, verified identity"));
  expect(navigation.navigate).toHaveBeenCalledWith('UserProfile',{id:'neighbor'});
  fireEvent.press(screen.getByLabelText('Message Alex'));

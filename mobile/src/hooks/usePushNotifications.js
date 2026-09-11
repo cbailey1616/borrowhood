@@ -191,6 +191,12 @@ function handleNotificationResponse(data) {
       navigationRef.navigate('Profile');
       break;
 
+    case 'rank_up':
+    case 'rank_down':
+    case 'rank_ready':
+      navigationRef.navigate('Main', { screen: 'Profile', params: { openRating: true } });
+      break;
+
     case 'request_offer':
     case 'new_request':
       if (data.requestId) {

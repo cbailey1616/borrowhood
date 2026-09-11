@@ -18,6 +18,7 @@ import { user } from './fixtures';
 import api from '../src/services/api';
 import RootNavigator from '../src/navigation/RootNavigator';
 import { COLORS, TYPOGRAPHY } from '../src/utils/config';
+import { memberReputation } from '../src/utils/reputation';
 
 const navigation = createNavigationContainerRef();
 const tabs = ['Feed', 'Saved', 'MyItems', 'Activity', 'Profile'];
@@ -75,7 +76,7 @@ export default function CaptureApp() {
             {['feedback', 'keyboard', 'keyboard-number'].includes(requested) ? <ReviewStack.Navigator screenOptions={{ headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary }}>
               <ReviewStack.Screen name="ComponentPreview" component={requested.startsWith('keyboard') ? KeyboardCapture : FeedbackCapture} options={{ title: requested === 'keyboard-number' ? 'Post an item' : requested === 'keyboard' ? 'Message neighbor' : 'Exchange feedback' }} />
             </ReviewStack.Navigator> : <RootNavigator />}
-            {requested === 'ranks' && <RankInfoSheet isVisible onClose={() => {}} score={user.endorsement.score} />}
+            {requested === 'ranks' && <RankInfoSheet isVisible onClose={() => {}} currentRank={memberReputation(user).rank} isNew={memberReputation(user).isNew} />}
             <ThemedAlertHost />
             <StatusBar style="dark" />
           </ErrorProvider>
