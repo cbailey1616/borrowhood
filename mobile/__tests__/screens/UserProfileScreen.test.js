@@ -21,8 +21,9 @@ describe('UserProfileScreen', () => {
   });
   it('shows verified badge', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText(/Verified/i);
+    const { findByLabelText, queryByText } = render(<Screen navigation={mockNavigation} route={route} />);
+    await findByLabelText('Verified identity');
+    expect(queryByText('Verified identity')).toBeNull();
   });
   it('shows Add Friend button for non-friend', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;

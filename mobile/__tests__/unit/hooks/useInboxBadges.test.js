@@ -28,6 +28,7 @@ beforeEach(() => {
 it('refreshes on an incoming notification and clears messages after returning from Chat', async () => {
   const { result } = renderHook(() => useInboxBadges('user-a'));
   await waitFor(() => expect(result.current.badgeCounts.messages).toBe(2));
+  expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(8);
   api.getBadgeCount.mockResolvedValue(counts(3));
   await act(async () => Notifications.addNotificationReceivedListener.mock.calls.at(-1)[0]({}));
   expect(result.current.badgeCounts.messages).toBe(3);
@@ -35,6 +36,7 @@ it('refreshes on an incoming notification and clears messages after returning fr
   await act(async () => mockFocus());
   expect(result.current.badgeCounts.messages).toBe(0);
   expect(result.current.badgeCounts.notifications).toBe(6);
+  expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(6);
   expect(api.markConversationRead).not.toHaveBeenCalled();
 });
 

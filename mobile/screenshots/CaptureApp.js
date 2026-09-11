@@ -51,6 +51,7 @@ function openCapture() {
     'member-profile': { name: 'UserProfile', params: { id: 'demo-jamie' } },
     'pending-exchange': { name: 'TransactionDetail', params: { id: 'demo-pending-exchange' } },
     'reserved-item': { name: 'ListingDetail', params: { id: 'demo-drill' } },
+    'request-queue': { name: 'RequestQueue', params: { listingId: 'demo-plants' } },
   }[requested];
   navigation.resetRoot({ index: detail ? 1 : 0, routes: detail ? [main, detail] : [main] });
 }

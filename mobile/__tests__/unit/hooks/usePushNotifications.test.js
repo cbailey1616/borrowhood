@@ -41,6 +41,19 @@ describe('usePushNotifications', () => {
     renderHook(() => usePushNotifications(false));
     expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
   });
+  it('opens incoming item requests in the queue and accepted requests in the tracker', async () => {
+    const navigation = { navigate: jest.fn() };
+    setNavigationRef(navigation);
+    renderHook(() => usePushNotifications(true, { onboardingCompleted: true }));
+    await act(async () => {});
+    const respond = Notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)[0];
+    for (const type of ['borrow_request', 'giveaway_claim']) {
+      respond({ notification: { request: { content: { data: { type, listingId: 'tea', transactionId: 'request-1' } } } } });
+      expect(navigation.navigate).toHaveBeenLastCalledWith('RequestQueue', { listingId: 'tea' });
+    }
+    respond({ notification: { request: { content: { data: { type: 'request_approved', listingId: 'tea', transactionId: 'request-1' } } } } });
+    expect(navigation.navigate).toHaveBeenLastCalledWith('TransactionDetail', { id: 'request-1' });
+  });
   it('ignores retired match pushes and opens explicit offers in the request', async () => {
     const navigation = { navigate: jest.fn() };
     setNavigationRef(navigation);

@@ -8,11 +8,12 @@ beforeEach(()=>{jest.clearAllMocks();api.getRequestQueue=jest.fn().mockResolvedV
 it('messages the selected person and chooses their request',async()=>{
  const screen=render(<Screen route={{params:{listingId:'item-1'}}} navigation={navigation}/>);
  await screen.findByLabelText('Neighbor Score 93 out of 100');
- expect(screen.getByText('Verified identity')).toBeTruthy();
+ expect(screen.queryByText('Verified identity')).toBeNull();
+ expect(screen.getByLabelText("View Alex's profile, verified identity")).toBeTruthy();
  expect(screen.getByText('100 completed exchanges')).toBeTruthy();
  expect(screen.getByText('Ranger')).toBeTruthy();
  expect(screen.queryByText('Rank')).toBeNull();
- fireEvent.press(screen.getByLabelText("View Alex's profile"));
+ fireEvent.press(screen.getByLabelText("View Alex's profile, verified identity"));
  expect(navigation.navigate).toHaveBeenCalledWith('UserProfile',{id:'neighbor'});
  fireEvent.press(screen.getByLabelText('Message Alex'));
  expect(navigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'neighbor',listingId:'item-1'}));
@@ -31,3 +32,12 @@ it('keeps everyone visible but prevents choosing while reserved',async()=>{
 
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'owner' } }) }));
+
+it.each([false, undefined])('omits the verification badge and label for %s', async isVerified => {
+ api.getRequestQueue.mockResolvedValue({listing:{id:'item-1',title:'Drill',isAvailable:true,status:'active'},requests:[{...item,borrower:{...item.borrower,isVerified}}]});
+ const screen=render(<Screen route={{params:{listingId:'item-1'}}} navigation={navigation}/>);
+ await screen.findByText('Alex');
+ expect(screen.queryByLabelText('Verified identity')).toBeNull();
+ expect(screen.queryByText(/Not verified|Verification unavailable|Verified identity/)).toBeNull();
+ expect(screen.getByLabelText("View Alex's profile")).toBeTruthy();
+});

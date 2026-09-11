@@ -161,6 +161,12 @@ function handleNotificationResponse(data) {
   switch (data.type) {
     case 'borrow_request':
     case 'giveaway_claim':
+      if (data.queueListingId || data.listingId) {
+        navigationRef.navigate('RequestQueue', { listingId: data.queueListingId || data.listingId });
+      } else if (data.transactionId) {
+        navigationRef.navigate('TransactionDetail', { id: data.transactionId });
+      }
+      break;
     case 'request_approved':
     case 'request_declined':
     case 'pickup_confirmed':

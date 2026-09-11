@@ -55,7 +55,10 @@ export default function useInboxBadges(userId) {
       api.getBadgeCount().then(data => {
         // A slower request from before a conversation was read must not restore
         // its old unread count after the latest refresh has completed.
-        if (isCurrent()) setBadgeCounts(data);
+        if (isCurrent()) {
+          setBadgeCounts(data);
+          Notifications.setBadgeCountAsync((data.messages || 0) + (data.notifications || 0)).catch(() => {});
+        }
       }),
       api.getFeed({ summary: 'true' }).then(data => {
         if (isCurrent() && data.latestPostAt !== undefined) {

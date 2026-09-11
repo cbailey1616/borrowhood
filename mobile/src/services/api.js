@@ -350,8 +350,8 @@ const addDisputeEvidence = (id, urls) =>
 const getNotifications = (params) =>
   get('/notifications', params);
 
-const markNotificationRead = (id) =>
-  post(`/notifications/${id}/read`);
+const markNotificationRead = (id, notificationIds) =>
+  post(`/notifications/${id}/read`, notificationIds ? { notificationIds } : undefined);
 
 const markAllNotificationsRead = () =>
   post('/notifications/read-all');

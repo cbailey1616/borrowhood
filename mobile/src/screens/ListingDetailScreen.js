@@ -22,6 +22,7 @@ import Animated, {
 import { Ionicons } from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import UserBadges from '../components/UserBadges';
+import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import RentalProgress from '../components/RentalProgress';
@@ -331,11 +332,13 @@ export default function ListingDetailScreen({ route, navigation }) {
                     </View>
                   )}
                   <View style={styles.ownerInfo}>
-                    <Text style={styles.ownerName}>
-                      {listing.owner.firstName} {listing.owner.lastName}
-                    </Text>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+                      <Text style={[styles.ownerName,{flexShrink:1}]}>
+                        {listing.owner.firstName} {listing.owner.lastName}
+                      </Text>
+                      {listing.owner.isVerified === true && <VerifiedBadge size={18} />}
+                    </View>
                     <UserBadges
-                      isVerified={listing.owner.isVerified}
                       totalTransactions={listing.owner.totalTransactions || 0}
                       size="small"
                     />

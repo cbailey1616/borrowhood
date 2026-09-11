@@ -355,9 +355,9 @@ it('keeps the notification ribbon ahead of requests and available items', async 
  api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],requests:[{id:'ask',type:'request',title:'Need a ladder',user:{firstName:'Alex'}}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('1 pending borrow request');
+ await screen.findByText('1 pending request');
  expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
- fireEvent.press(screen.getByText('1 pending borrow request'));
+ fireEvent.press(screen.getByText('1 pending request'));
  expect(mockNavigation.navigate).toHaveBeenCalledWith('MyItems');
 });
 

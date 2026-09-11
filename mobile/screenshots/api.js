@@ -8,6 +8,13 @@ let preferences = {
   new_service_requests_source_friends: true, new_service_requests_source_neighborhood: false, new_service_requests_source_town: false,
 };
 const captureScreen = Settings.get('BorrowhoodCaptureScreen');
+const waiting = [listings[0].owner, { ...listings[2].owner, isVerified: false }].map((borrower, index) => ({
+  id: `demo-queue-${index}`, status: 'pending', listingType: 'giveaway', listing: listings[4], borrower, lender: user, isBorrower: false,
+  position: index + 1, canChoose: true, createdAt: new Date(Date.now() - (2-index)*60000).toISOString(),
+}));
+const notices = waiting.map(item => ({ id: `demo-notice-${item.id}`, type: 'giveaway_claim', transactionId: item.id, listingId: item.listing.id,
+  title: 'New request', body: `${item.borrower.firstName} requested your item`, fromUser: item.borrower, fromUserId: item.borrower.id,
+  isRead: false, createdAt: item.createdAt }));
 const photoRequest = { ...requests[0], id: 'demo-photo-request', title: 'A cordless drill for a weekend project', description: 'Putting up shelves. Happy to collect it.', requestType: 'item', photoUrl: listings[0].photoUrl };
 const plainRequest = { ...requests[0], id: 'demo-service-request', title: 'Help with dinner', description: '', requestType: 'service' };
 const carouselRequests = captureScreen === 'requests-photo' ? [photoRequest, plainRequest] : [plainRequest, photoRequest];
@@ -32,7 +39,8 @@ const api = {
   getCommunities: async () => [{ id: 'demo-town', name: 'Maplewood' }],
   getMyListings: async () => listings.map(item => ({ ...item, owner: user, user, ownerId: user.id })),
   getMyRequests: async () => requests,
-  getTransactions: async () => [],
+  getTransactions: async () => captureScreen === 'inbox' ? waiting : [],
+  getRequestQueue: async () => ({ listing: listings[4], requests: waiting }),
   getDisputes: async () => [],
   getSavedListings: async () => [listings[0], listings[3], listings[1], listings[2]],
   checkSaved: async id => ({ saved: ['demo-drill', 'demo-tent', 'demo-books', 'demo-bike'].includes(id) }),
@@ -42,9 +50,9 @@ const api = {
   },
   getDiscussions: async () => ({ posts: [], total: 0 }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
-  getBadgeCount: async () => ({ messages: 0, notifications: 0, actions: 0, total: 0 }),
-  getNotifications: async () => ({ notifications: [], unreadCount: 0 }),
-  getConversations: async () => [conversation],
+  getBadgeCount: async () => captureScreen === 'inbox' ? { messages: 2, notifications: 1, actions: 1, total: 4 } : { messages: 0, notifications: 0, actions: 0, total: 0 },
+  getNotifications: async () => captureScreen === 'inbox' ? { notifications: notices, unreadCount: 2 } : { notifications: [], unreadCount: 0 },
+  getConversations: async () => [{ ...conversation, unreadCount: captureScreen === 'inbox' ? 2 : 0 }],
   getMessageCapabilities: async () => ({ idempotentMessages: false }),
   getConversation: async () => ({ conversation, messages }),
   markConversationRead: noop, markAllNotificationsRead: noop, markNotificationRead: noop,

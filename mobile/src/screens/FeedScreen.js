@@ -26,6 +26,7 @@ import {
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
 import VerifiedBadge from '../components/VerifiedBadge';
+import { groupPendingExchanges } from '../utils/requestActivity';
 import useSavedListings from '../hooks/useSavedListings';
 import { useError } from '../context/ErrorContext';
 import HeroIcon from '../components/HeroIcon';
@@ -328,6 +329,8 @@ export default function FeedScreen({ navigation }) {
     haptics.medium();
   };
 
+  const pendingQueues = groupPendingExchanges(pendingRequests, user?.id);
+  const singleQueue = pendingQueues.length === 1 && pendingQueues[0].queueListingId ? pendingQueues[0] : null;
   const banners = [
     activeDisputes.length > 0 && !dismissedBanners.disputes && {
       key: 'disputes',
@@ -343,9 +346,9 @@ export default function FeedScreen({ navigation }) {
       key: 'pending',
       icon: 'hand-left',
       color: COLORS.warning,
-      title: `${pendingRequests.length} pending borrow request${pendingRequests.length !== 1 ? 's' : ''}`,
-      subtitle: 'Someone wants to borrow your item',
-      onPress: () => navigation.navigate('MyItems'),
+      title: singleQueue ? `${singleQueue.requestCount} ${singleQueue.requestCount === 1 ? 'person requested' : 'people requested'} ${singleQueue.listing.title}` : `${pendingRequests.length} pending request${pendingRequests.length !== 1 ? 's' : ''}`,
+      subtitle: singleQueue ? 'See queue' : 'Review your item requests',
+      onPress: () => singleQueue ? navigation.navigate('RequestQueue', { listingId: singleQueue.queueListingId }) : navigation.navigate('MyItems'),
     },
     dueSoonItems.length > 0 && !dismissedBanners.dueSoon && {
       key: 'dueSoon',

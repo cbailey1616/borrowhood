@@ -15,6 +15,7 @@ devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'device
 screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'sell'), ('04-saved', 'saved'), ('05-my-posts', 'posts'), ('06-messages', 'chat')]
 review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
+review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/inbox', 'inbox')]
 manifest = []
 review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
 # Keep the software keyboard visible in the native keyboard-accessory capture.
@@ -25,6 +26,9 @@ def run(*args, check=True, timeout=180):
 
 def prepare_device(udid):
     run('bootstatus', udid, '-b', timeout=300)
+    # Dismiss the simulator's first-use swipe-typing introduction so the
+    # capture shows the real keyboard and its accessory toolbar.
+    run('spawn', udid, 'defaults', 'write', 'com.apple.keyboard.preferences', 'DidShowContinuousPathIntroduction', '-bool', 'true')
     run('ui', udid, 'appearance', 'light')
     run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
 

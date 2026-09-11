@@ -1,7 +1,9 @@
 import ShimmerImage from '../components/ShimmerImage';
 import { isTransferListing, isSaleListing } from '../utils/directFee';
 import { publicReplyRoute } from '../utils/conversationContext';
-import { useState, useCallback } from 'react';
+import { groupPendingExchanges, groupRequestNotifications, readActivity } from '../utils/requestActivity';
+import VerifiedBadge from '../components/VerifiedBadge';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -55,16 +57,18 @@ const NOTIFICATION_ICONS = {
   payment_failed: 'card',
 };
 
-export default function InboxScreen({ navigation, badgeCounts, onRead }) {
+export default function InboxScreen({ navigation, onRead }) {
   const { user } = useAuth();
   const [activeBorrows, setActiveBorrows] = useState([]);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
+  const [activityUnread, setActivityUnread] = useState(0);
+  const requestVersion = useRef(0);
 
 
   const checkNotifPermission = useCallback(async () => {
@@ -74,23 +78,29 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
   }, []);
 
   const fetchData = useCallback(async () => {
+    const version = ++requestVersion.current;
     try {
       const [notifData, convData, transactions] = await Promise.all([
         api.getNotifications(),
         api.getConversations(),
         api.getTransactions(),
       ]);
-      setNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute') && !['item_match', 'new_message', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(n.type)));
+      if (version !== requestVersion.current) return;
+      const visible = groupRequestNotifications((notifData?.notifications || []).filter(n => !n.disputeId && !n.type?.startsWith('dispute') && !['item_match', 'new_message', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(n.type)), transactions || [], user?.id);
+      setNotifications(visible);
+      setActivityUnread(Math.max(visible.filter(n => !n.isRead).length, (notifData?.unreadCount || 0) - ((notifData?.notifications || []).filter(n => !n.isRead).length - visible.filter(n => !n.isRead).length)));
       setConversations(convData || []);
-      setActiveBorrows((transactions || []).filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
+      setActiveBorrows(groupPendingExchanges((transactions || []).filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)), user?.id));
       setLoadError(false);
     } catch (error) {
-      setLoadError(true);
+      if (version === requestVersion.current) setLoadError(true);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (version === requestVersion.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -98,9 +108,6 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         fetchData();
         checkNotifPermission();
         if (onRead) onRead();
-        // Clear iOS badge when viewing activity
-        Notifications.setBadgeCountAsync(0).catch(() => {});
-        Notifications.dismissAllNotificationsAsync().catch(() => {});
       });
       const timer = setInterval(fetchData, 10000);
       return () => { task.cancel(); clearInterval(timer); };
@@ -112,12 +119,15 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
     fetchData();
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = activityUnread;
+  const unreadMessages = conversations.reduce((count, conversation) => count + (conversation.unreadCount || 0), 0);
 
   const handleMarkAllRead = async () => {
     try {
       await api.markAllNotificationsRead();
+      requestVersion.current += 1;
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setActivityUnread(0);
       haptics.success();
       if (onRead) onRead();
     } catch (e) {
@@ -147,16 +157,19 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
 
     if (!item.isRead) {
       try {
-        await api.markNotificationRead(item.id);
+        await readActivity(api, item);
+        requestVersion.current += 1;
         setNotifications(prev =>
           prev.map(n => n.id === item.id ? { ...n, isRead: true } : n)
         );
+        setActivityUnread(prev => Math.max(0, prev - 1));
         onRead?.();
       } catch (e) {}
     }
 
     const publicRoute = publicReplyRoute(item);
     if (publicRoute) { nav.navigate('ListingDiscussion', publicRoute); return; }
+    if (item.queueListingId) { nav.navigate('RequestQueue', { listingId: item.queueListingId }); return; }
     if (item.type === 'new_message') {
       if (item.conversationId) {
         nav.navigate('Chat', { conversationId: item.conversationId });
@@ -205,7 +218,7 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
             />
           ) : (
             <Ionicons
-              name={NOTIFICATION_ICONS[item.type] || 'notifications'}
+              name={item.queueListingId ? 'people' : NOTIFICATION_ICONS[item.type] || 'notifications'}
               size={20}
               color={!item.isRead ? COLORS.primary : COLORS.gray[400]}
             />
@@ -213,12 +226,12 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         </View>
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.name, !item.isRead && styles.nameUnread]} numberOfLines={1}>
+            <Text style={[styles.name, !item.isRead && styles.nameUnread]} numberOfLines={2}>
               {item.title}
             </Text>
             <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
           </View>
-          <Text style={styles.lastMessage} numberOfLines={2}>{item.body}</Text>
+          <Text style={[styles.lastMessage, item.queueListingId && {color:COLORS.primary,fontWeight:'600'}]} numberOfLines={2}>{item.body}</Text>
           {!!publicReplyRoute(item) && <Text style={styles.listingText}>Comment on a post</Text>}
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
@@ -248,9 +261,12 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         </View>
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
-              {item.otherUser?.firstName} {item.otherUser?.lastName}
-            </Text>
+            <View style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:5}}>
+              <Text style={[styles.name, {flex:undefined,flexShrink:1}, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
+                {item.otherUser?.firstName} {item.otherUser?.lastName}
+              </Text>
+              {item.otherUser?.isVerified === true && <VerifiedBadge size={16} />}
+            </View>
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
           <Text style={styles.listingText}>Private conversation</Text>
@@ -292,11 +308,11 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
-            `Messages${badgeCounts?.messages > 0 ? ` (${badgeCounts.messages})` : ''}`,
-            `Activity${badgeCounts?.notifications > 0 ? ` (${badgeCounts.notifications})` : ''}`,
+            `Activity${unreadCount > 0 ? ` (${unreadCount})` : ''}`,
+            `Messages${unreadMessages > 0 ? ` (${unreadMessages})` : ''}`,
           ]}
-          selectedIndex={activeTab}
-          onIndexChange={setActiveTab}
+          selectedIndex={activeTab === 1 ? 0 : 1}
+          onIndexChange={index => setActiveTab(index === 0 ? 1 : 0)}
           style={styles.segmented}
         />
       </NativeHeader>
@@ -320,14 +336,22 @@ export default function InboxScreen({ navigation, badgeCounts, onRead }) {
                 <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>Active exchanges</Text>
                 {activeBorrows.map(transaction => {
                   const other = transaction.isBorrower ? transaction.lender : transaction.borrower;
-                  return <HapticPressable key={transaction.id} accessibilityRole="button" accessibilityLabel={`View exchange for ${transaction.listing?.title || 'item'}`}
-                    onPress={() => nav.navigate('TransactionDetail', { id: transaction.id })}
+                  return <HapticPressable key={transaction.id} accessibilityRole="button" accessibilityLabel={transaction.queueListingId ? `See queue for ${transaction.listing?.title || 'item'}, ${transaction.requestCount} waiting` : `View exchange for ${transaction.listing?.title || 'item'}`}
+                    onPress={() => {
+                      if (!transaction.queueListingId) { nav.navigate('TransactionDetail', { id: transaction.id }); return; }
+                      const alert = notifications.find(item => item.queueListingId === transaction.queueListingId);
+                      if (alert) handleNotificationPress(alert);
+                      else nav.navigate('RequestQueue', { listingId: transaction.queueListingId });
+                    }}
                     style={{ padding: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
                     <Ionicons name={isSaleListing(transaction) ? 'pricetag' : isTransferListing(transaction) ? 'gift' : 'basket'} size={32} illustrated />
                     <View style={{ flex: 1 }}>
                       <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>{transaction.listing?.title || 'Shared item'}</Text>
-                      <Text style={{ color: COLORS.textSecondary }}>With {other?.firstName || 'your neighbor'}</Text>
-                      <Text style={{ color: COLORS.primary, marginTop: 4 }}>View details</Text>
+                      {transaction.queueListingId ? <Text style={{color:COLORS.textSecondary}}>{transaction.requestCount} {transaction.requestCount === 1 ? 'person waiting' : 'people waiting'}</Text> : <View style={{flexDirection:'row',alignItems:'center',gap:5}}>
+                        <Text style={{ color: COLORS.textSecondary,flexShrink:1 }}>With {other?.firstName || 'your neighbor'}</Text>
+                        {other?.isVerified === true && <VerifiedBadge size={16} />}
+                      </View>}
+                      <Text style={{ color: COLORS.primary, marginTop: 4 }}>{transaction.queueListingId ? 'See queue' : 'View details'}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
                   </HapticPressable>;

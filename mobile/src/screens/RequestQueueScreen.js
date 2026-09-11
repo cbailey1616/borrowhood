@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import HapticPressable from '../components/HapticPressable';
 import ShimmerImage from '../components/ShimmerImage';
 import MemberSummary from '../components/MemberSummary';
+import VerifiedBadge from '../components/VerifiedBadge';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -46,7 +47,10 @@ export default function RequestQueueScreen({ route, navigation }) {
     renderItem={({item})=><View style={styles.card}>
       <View style={{flexDirection:'row',gap:12,alignItems:'center'}}>
         <ShimmerImage source={item.borrower.profilePhotoUrl ? {uri:item.borrower.profilePhotoUrl} : null} placeholderIcon="person" style={{width:44,height:44,borderRadius:22}} />
-        <View style={{flex:1}}><HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile`} onPress={()=>navigation.navigate('UserProfile',{id:item.borrower.id})}><Text style={{...TYPOGRAPHY.headline,color:COLORS.primary}}>{item.borrower.firstName}</Text></HapticPressable></View>
+        <HapticPressable style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:6,minHeight:44}} accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile${item.borrower.isVerified === true ? ', verified identity' : ''}`} onPress={()=>navigation.navigate('UserProfile',{id:item.borrower.id})}>
+          <Text style={{...TYPOGRAPHY.headline,color:COLORS.primary,flexShrink:1}}>{item.borrower.firstName}</Text>
+          {item.borrower.isVerified === true && <VerifiedBadge size={18} />}
+        </HapticPressable>
         <Text style={styles.body}>#{item.position}</Text>
       </View>
       <MemberSummary user={item.borrower} />

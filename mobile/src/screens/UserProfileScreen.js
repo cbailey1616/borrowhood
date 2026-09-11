@@ -1,4 +1,5 @@
 import MemberSummary from '../components/MemberSummary';
+import VerifiedBadge from '../components/VerifiedBadge';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -123,7 +124,10 @@ export default function UserProfileScreen({ route, navigation }) {
             source={{ uri: user.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
+          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,maxWidth:'100%'}}>
+            <Text style={[styles.name,{flexShrink:1}]}>{user.firstName} {user.lastName}</Text>
+            {user.isVerified === true && <VerifiedBadge size={20} interactive />}
+          </View>
 
           <MemberSummary user={user} centered />
           <View style={styles.metaRow}>

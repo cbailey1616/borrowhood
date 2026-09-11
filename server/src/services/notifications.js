@@ -4,6 +4,7 @@ import { shouldSendPush } from './notificationPreferences.js';
 import { notificationAudienceAllowsPush } from './notificationAudience.js';
 import { audiencePreferences } from './notificationPreferences.js';
 import { returnCompleteBody, giveawayCompleteBody } from './notificationCopy.js';
+import { INCOMING_REQUEST_TYPES, UNREAD_ACTIVITY_SQL, requestQueueCopy } from './requestActivity.js';
 
 // Notification types and their templates
 const NOTIFICATION_TEMPLATES = {
@@ -267,8 +268,20 @@ export async function sendNotification(userId, type, data, options = {}) {
       return null;
     }
 
-    const title = template.title;
-    const body = typeof template.body === 'function' ? template.body(data) : template.body;
+    let title = template.title;
+    let body = typeof template.body === 'function' ? template.body(data) : template.body;
+    let queue = null;
+    const listingId = options.listingId || data.listingId;
+    if (INCOMING_REQUEST_TYPES.includes(type) && listingId) {
+      const pending = await query(`SELECT l.title, COUNT(DISTINCT t.borrower_id) AS count
+        FROM listings l JOIN borrow_transactions t ON t.listing_id = l.id
+        WHERE l.id = $1 AND l.owner_id = $2 AND t.lender_id = $2 AND t.status = 'pending'
+        GROUP BY l.id, l.title`, [listingId, userId]);
+      if (Number(pending.rows[0]?.count) > 0) {
+        queue = { queueListingId: listingId, requestCount: Number(pending.rows[0].count) };
+        ({ title, body } = requestQueueCopy(queue.requestCount, pending.rows[0].title, data.borrowerName));
+      }
+    }
 
     // Create notification record
     const result = await query(
@@ -307,12 +320,14 @@ export async function sendNotification(userId, type, data, options = {}) {
             query, userId, options.fromUserId || data.fromUserId, audiencePreferences(type, prefs, data))) {
         // Get unread count for app icon badge
         const unreadResult = await query(
-          "SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false AND type != 'item_match'",
+          `SELECT (${UNREAD_ACTIVITY_SQL}) + (SELECT COUNT(*) FROM messages m
+            JOIN conversations c ON c.id = m.conversation_id
+            WHERE m.is_read = false AND m.sender_id != $1 AND (c.user1_id = $1 OR c.user2_id = $1)) AS count`,
           [userId]
         );
         const badge = parseInt(unreadResult.rows[0].count) || 1;
 
-        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data, listingId: options.listingId || data.listingId, requestId: options.requestId || data.requestId, conversationId: options.conversationId || data.conversationId, transactionId: options.transactionId || data.transactionId, disputeId: options.disputeId || data.disputeId }, badge, sound: prefs.push_sound !== false });
+        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data, ...queue, listingId: options.listingId || data.listingId, requestId: options.requestId || data.requestId, conversationId: options.conversationId || data.conversationId, transactionId: options.transactionId || data.transactionId, disputeId: options.disputeId || data.disputeId }, badge, sound: prefs.push_sound !== false });
       }
     }
 

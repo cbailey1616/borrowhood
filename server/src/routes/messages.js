@@ -48,6 +48,7 @@ router.get('/conversations', authenticate, async (req, res) => {
            WHEN c.user1_id = $1 THEN u2.profile_photo_url
            ELSE u1.profile_photo_url
          END as other_photo_url,
+         CASE WHEN c.user1_id = $1 THEN u2.is_verified ELSE u1.is_verified END AS other_verified,
          m.content as last_message,
          m.created_at as last_message_at,
          m.sender_id as last_message_sender,
@@ -82,6 +83,7 @@ router.get('/conversations', authenticate, async (req, res) => {
         firstName: c.other_first_name,
         lastName: c.other_last_name,
         profilePhotoUrl: c.other_photo_url,
+        isVerified: c.other_verified === true,
       },
       lastMessage: c.last_message_deleted_at ? 'This message was deleted' : c.last_message_image_url && !c.last_message ? 'Sent a photo' : c.last_message,
       lastMessageAt: c.last_message_at,

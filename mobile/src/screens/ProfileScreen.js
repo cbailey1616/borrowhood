@@ -182,15 +182,14 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </HapticPressable>
             <View style={styles.headerInfo}>
-              <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
-              {user?.isVerified && <View style={styles.verifiedRow}>
-                <VerifiedBadge size={18} interactive />
-                <Text style={styles.verifiedText}>Verified</Text>
-              </View>}
+              <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+                <Text style={[styles.name,{flexShrink:1}]} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
+                {user?.isVerified === true && <VerifiedBadge size={18} interactive />}
+              </View>
             </View>
           </View>
           <View style={styles.reputation}>
-            <MemberSummary user={user || {}} showVerification={false} />
+            <MemberSummary user={user || {}} />
           </View>
         </LayeredCard>
 
@@ -483,8 +482,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
   },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
-  verifiedText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   verifyBanner: {
     flexDirection: 'row',
     alignItems: 'center',

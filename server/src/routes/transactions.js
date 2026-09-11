@@ -309,10 +309,10 @@ router.get('/', authenticate, async (req, res) => {
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
               COALESCE(b.display_name, b.first_name) as borrower_first_name,
               CASE WHEN b.display_name IS NOT NULL THEN '' ELSE b.last_name END as borrower_last_name,
-              b.profile_photo_url as borrower_photo,
+              b.profile_photo_url as borrower_photo, b.is_verified AS borrower_verified,
               COALESCE(lnd.display_name, lnd.first_name) as lender_first_name,
               CASE WHEN lnd.display_name IS NOT NULL THEN '' ELSE lnd.last_name END as lender_last_name,
-              lnd.profile_photo_url as lender_photo
+              lnd.profile_photo_url as lender_photo, lnd.is_verified AS lender_verified
        FROM borrow_transactions t
        JOIN listings l ON t.listing_id = l.id
        JOIN users b ON t.borrower_id = b.id
@@ -337,12 +337,14 @@ router.get('/', authenticate, async (req, res) => {
         firstName: t.borrower_first_name,
         lastName: t.borrower_last_name,
         profilePhotoUrl: t.borrower_photo,
+        isVerified: t.borrower_verified === true,
       },
       lender: {
         id: t.lender_id,
         firstName: t.lender_first_name,
         lastName: t.lender_last_name,
         profilePhotoUrl: t.lender_photo,
+        isVerified: t.lender_verified === true,
       },
       startDate: t.requested_start_date,
       endDate: t.requested_end_date,

@@ -1,4 +1,5 @@
 import { publicReplyRoute } from '../utils/conversationContext';
+import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -51,10 +52,10 @@ export default function NotificationsScreen({ navigation }) {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const data = await api.getNotifications();
-      const visible = data.notifications.filter(item => item.type !== 'item_match');
+      const [data, transactions] = await Promise.all([api.getNotifications(), api.getTransactions().catch(() => [])]);
+      const visible = groupRequestNotifications(data.notifications.filter(item => item.type !== 'item_match'), transactions || []);
       setNotifications(visible);
-      setUnreadCount(Math.max(0, data.unreadCount - data.notifications.filter(item => item.type === 'item_match' && !item.isRead).length));
+      setUnreadCount(Math.max(0, data.unreadCount - (data.notifications.filter(item => !item.isRead).length - visible.filter(item => !item.isRead).length)));
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -79,11 +80,11 @@ export default function NotificationsScreen({ navigation }) {
     fetchNotifications();
   };
 
-  const handleMarkRead = async (id) => {
+  const handleMarkRead = async (item) => {
     try {
-      await api.markNotificationRead(id);
+      await readActivity(api, item);
       setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+        prev.map(n => n.id === item.id ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
@@ -105,13 +106,14 @@ export default function NotificationsScreen({ navigation }) {
 
   const handleNotificationPress = (notification) => {
     if (!notification.isRead) {
-      handleMarkRead(notification.id);
+      handleMarkRead(notification);
     }
     haptics.light();
 
     // Navigate based on notification type
     const publicRoute = publicReplyRoute(notification);
     if (publicRoute) { navigation.navigate('ListingDiscussion', publicRoute); return; }
+    if (notification.queueListingId) { navigation.navigate('RequestQueue', { listingId: notification.queueListingId }); return; }
     if (notification.type === 'new_message') {
       if (notification.conversationId) {
         navigation.navigate('Chat', { conversationId: notification.conversationId });

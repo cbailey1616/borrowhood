@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import * as Notifications from 'expo-notifications';
 
 const mockUser = {
   id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@test.com',
@@ -25,11 +26,43 @@ jest.mock('../../src/context/ErrorContext', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   api.getConversations.mockResolvedValue([]);
+  api.getNotifications.mockResolvedValue({ notifications: [], unreadCount: 0 });
   api.getTransactions.mockResolvedValue([]);
   api.getBadgeCount.mockResolvedValue({ messages: 0, notifications: 0, actions: 0, total: 0 });
 });
 
 describe('InboxScreen', () => {
+  it('opens Activity, groups one item’s requests, and keeps message and activity counts separate', async () => {
+    const pending = ['alice', 'bob'].map((id, index) => ({ id: `request-${index}`, status: 'pending', isBorrower: false,
+      listing: { id: 'tea', title: 'Tea' }, borrower: { id, firstName: id }, lender: mockUser }));
+    api.getTransactions.mockResolvedValue([...pending, { id: 'accepted', status: 'approved', isBorrower: false,
+      listing: { id: 'drill', title: 'Drill' }, borrower: { id: 'sam', firstName: 'Sam', isVerified: true } }]);
+    api.getNotifications.mockResolvedValue({ notifications: pending.map((t, index) => ({ id: `n-${index}`, type: 'giveaway_claim',
+      transactionId: t.id, listingId: 'tea', fromUserId: t.borrower.id, fromUser: t.borrower,
+      title: 'Someone wants your item', isRead: false, createdAt: new Date().toISOString() })), unreadCount: 2 });
+    api.getConversations.mockResolvedValue([{ id: 'chat', otherUser: { firstName: 'Alex' }, unreadCount: 2 }]);
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('2 people requested Tea');
+    expect(screen.getByText('Activity (1)')).toBeTruthy();
+    expect(screen.getByText('Messages (2)')).toBeTruthy();
+    expect(screen.getAllByText('Tea')).toHaveLength(1);
+    expect(screen.getByText('2 people waiting')).toBeTruthy();
+    expect(api.markNotificationRead).not.toHaveBeenCalled();
+    expect(api.markConversationRead).not.toHaveBeenCalled();
+    expect(Notifications.dismissAllNotificationsAsync).not.toHaveBeenCalled();
+    expect(Notifications.setBadgeCountAsync).not.toHaveBeenCalledWith(0);
+    await act(async () => fireEvent.press(screen.getByLabelText('See queue for Tea, 2 waiting')));
+    expect(mockParentNavigate).toHaveBeenLastCalledWith('RequestQueue', { listingId: 'tea' });
+    fireEvent.press(screen.getByLabelText('View exchange for Drill'));
+    expect(mockParentNavigate).toHaveBeenLastCalledWith('TransactionDetail', { id: 'accepted' });
+    await act(async () => fireEvent.press(screen.getByText('2 people requested Tea')));
+    expect(api.markNotificationRead).toHaveBeenCalledWith('n-0');
+    expect(api.markNotificationRead).toHaveBeenCalledWith('n-1');
+    expect(screen.getByText('Activity')).toBeTruthy();
+    expect(screen.getByText('Messages (2)')).toBeTruthy();
+  });
+
   it('renders SegmentedControl with Messages/Activity tabs', async () => {
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByTestId } = render(<InboxScreen navigation={mockNavigation} />);
@@ -54,7 +87,7 @@ describe('InboxScreen', () => {
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
     // Switch to Messages tab (index 1)
-    const messagesTab = await findByText('Messages');
+    const messagesTab = await findByText(/^Messages/);
     await act(async () => {
       fireEvent.press(messagesTab);
     });
@@ -74,7 +107,7 @@ describe('InboxScreen', () => {
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
     // Switch to Messages tab
-    const messagesTab = await findByText('Messages');
+    const messagesTab = await findByText(/^Messages/);
     await act(async () => {
       fireEvent.press(messagesTab);
     });
@@ -95,7 +128,7 @@ describe('InboxScreen', () => {
     api.getTransactions.mockResolvedValue([{ id: 'exchange-1', status: 'pending', isBorrower: true, listing: { title: 'TheraGun' }, lender: { firstName: 'Sam' } }]);
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await screen.findByText('Messages');
+    fireEvent.press(await screen.findByText('Messages'));
     expect(screen.queryByText('TheraGun')).toBeNull();
     fireEvent.press(screen.getByText('Activity'));
     fireEvent.press(await screen.findByText('TheraGun'));
@@ -112,7 +145,7 @@ describe('InboxScreen', () => {
     const InboxScreen = require('../../src/screens/InboxScreen').default;
     const { findByText } = render(<InboxScreen navigation={mockNavigation} />);
     // Switch to Messages tab first
-    const messagesTab = await findByText('Messages');
+    const messagesTab = await findByText(/^Messages/);
     await act(async () => {
       fireEvent.press(messagesTab);
     });

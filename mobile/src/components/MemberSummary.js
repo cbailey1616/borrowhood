@@ -7,7 +7,7 @@ import RankInfoSheet from './RankInfoSheet';
 import { reputationRank } from '../utils/reputation';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function MemberSummary({ user, showVerification = true, centered = false }) {
+export default function MemberSummary({ user, centered = false }) {
   const [showRanks, setShowRanks] = useState(false);
   const { fontScale } = useWindowDimensions();
   const endorsement = user.endorsement;
@@ -28,10 +28,6 @@ export default function MemberSummary({ user, showVerification = true, centered 
     ${progress > 0 ? `<circle cx="${ringSize / 2}" cy="${ringSize / 2}" r="${radius}" fill="none" stroke="${COLORS.primary}" stroke-width="3" stroke-dasharray="${circumference} ${circumference}" stroke-dashoffset="${circumference * (1 - progress / 100)}" stroke-linecap="round" transform="rotate(-90 ${ringSize / 2} ${ringSize / 2})" />` : ''}
   </svg>`;
   return <View style={[styles.summary, centered && styles.centered]}>
-    {showVerification && <View style={styles.line}>
-      <Ionicons name={user.isVerified ? 'shield-checkmark' : 'shield-outline'} size={18} color={COLORS.primary} />
-      <Text style={styles.secondary}>{user.isVerified === true ? 'Verified identity' : user.isVerified === false ? 'Not verified' : 'Verification unavailable'}</Text>
-    </View>}
     <View style={[styles.scoreRow, centered && styles.scoreCentered]}>
       <View style={[styles.ring, { width: ringSize, height: ringSize }]} accessible
         accessibilityLabel={hasScore ? `Neighbor Score ${value} out of 100` : legacyPercent ? `${value} endorsed` : endorsement ? 'Neighbor Score: New' : 'Neighbor Score unavailable'}>
