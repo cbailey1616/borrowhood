@@ -128,11 +128,11 @@ export default function InboxScreen({ navigation, onRead }) {
   const handleMarkAllRead = async () => {
     try {
       await api.markAllNotificationsRead();
-      requestVersion.current += 1;
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnseenActivityUnread(0);
       haptics.success();
       if (onRead) onRead();
+      // Reconcile with the server after the bulk read. An alert can arrive
+      // after that update but before its response reaches this screen.
+      await fetchData();
     } catch (e) {
       haptics.error();
     }

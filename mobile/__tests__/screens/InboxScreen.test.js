@@ -33,6 +33,25 @@ beforeEach(() => {
 });
 
 describe('InboxScreen', () => {
+  it('keeps an alert that arrives after the server processes Mark all read unread', async () => {
+    const first = { id: 'first', type: 'friend_accepted', title: 'Alex accepted', isRead: false };
+    api.getNotifications.mockResolvedValue({ notifications: [first], unreadCount: 1 });
+    api.getConversations.mockResolvedValue([{ id: 'chat', otherUser: { firstName: 'Alex' }, unreadCount: 2 }]);
+    let finishRead;
+    api.markAllNotificationsRead.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByText('Mark all read'));
+    api.getNotifications.mockResolvedValue({ notifications: [{ ...first, isRead: true },
+      { id: 'new', type: 'friend_accepted', title: 'Sam accepted', isRead: false }], unreadCount: 1 });
+    await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());
+    await screen.findByText('Sam accepted');
+    await act(async () => finishRead({}));
+    expect(screen.getByText('Activity (1)')).toBeTruthy();
+    expect(screen.getByText('Messages (2)')).toBeTruthy();
+    expect(api.markAllNotificationsRead).toHaveBeenCalledTimes(1);
+  });
+
   it('retains the unread badge when a refreshed group arrives while the earlier alert is being read', async () => {
     const first = { id: 'first', type: 'giveaway_claim', queueListingId: 'tea', listingId: 'tea', listingTitle: 'Tea',
       notificationIds: ['first'], requestCount: 1, fromUser: { firstName: 'Alex' }, isRead: false };
