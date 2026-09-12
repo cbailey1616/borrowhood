@@ -6,7 +6,7 @@ export const NEIGHBOR_RANKS = [
   { label: 'Ranger', tone: 'Great', icon: 'rank-ranger', min: 90, max: 96 },
   { label: 'Robin', tone: 'Excellent', icon: 'rank-robin', min: 97, max: 100 },
 ];
-export const NEW_NEIGHBOR_RANK = { label: 'New neighbor', icon: 'rank-squire' };
+export const NEW_NEIGHBOR_RANK = { label: 'New neighbor', icon: 'neighbor-sprout' };
 export const RATING_UNLOCK_EXCHANGES = 3;
 
 export function reputationRank(score) {

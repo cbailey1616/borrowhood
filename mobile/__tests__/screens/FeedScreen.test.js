@@ -71,7 +71,7 @@ describe('FeedScreen', () => {
     expect(api.getFeed).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the acorn for new neighbors while keeping missing rank data distinct', async () => {
+  it('shows the new-neighbor badge while keeping missing rank data distinct', async () => {
     api.getFeed.mockResolvedValue({ items: [
       { id: 'new', type: 'listing', title: 'New neighbor’s ladder', user: { firstName: 'Sam', endorsement: { completedCount: 1, score: null } } },
       { id: 'legacy', type: 'listing', title: 'Garden tools', user: { firstName: 'Jo', totalTransactions: 20, endorsement: { count: 20, percent: 100 } } },

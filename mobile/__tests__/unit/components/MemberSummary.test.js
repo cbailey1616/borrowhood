@@ -7,7 +7,7 @@ import VerifiedBadge from '../../../src/components/VerifiedBadge';
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
 jest.mock('../../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 
-it('shows the acorn beside a new neighbor’s profile name using the actual completed count', () => {
+it('shows the new-neighbor badge beside the profile name using the actual completed count', () => {
   const screen = render(<MemberSummary profileHeader user={{ totalTransactions: 6, endorsement: { completedCount: 1, score: null } }}>
     <Text>Chris Bailey</Text>
   </MemberSummary>);

@@ -24,6 +24,9 @@ const thumbUp = (c) => p('M11 14L15 8V4C15 1 20 2 20 6L19 12H26C28 12 29 14 28 1
 
 const DRAWINGS = {
   // A woodland progression drawn for Borrowhood, rather than generic medals.
+  'neighbor-sprout': c => p('M16 18C9 19 5 15 5 9C12 8 17 12 16 18Z', panel(c))
+    + p('M16 14C15 7 20 3 27 4C28 11 23 15 16 14Z', accent(c))
+    + p('M16 26V17C16 13 19 10 23 8M16 20L10 14M9 28C12 25 20 25 23 28'),
   'rank-squire': c => p('M9 15H24V18C24 24 20 28 16.5 29C13 28 9 24 9 18Z', panel(c)) + p('M6 15C6 8 26 8 27 15L26 17H7Z', accent(c)) + p('M16 9V5C19 3 23 4 24 6C21 8 18 8 16 6M12 21C12 23 13 24 14 25'),
   'rank-archer': c => p('M7 5C26 6 26 26 7 27L9 24C23 21 23 11 9 8Z', panel(c)) + p('M7 5L11 16L7 27M5 16H29M25 12L29 16L25 20M4 12L8 16L4 20'),
   // A tied neckerchief gives Outlaw its own silhouette beside Robin's cap.
@@ -161,6 +164,7 @@ const ALIASES = {
 const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
   pencil: ['#DFB66F', '#DEA088'],
+  'neighbor-sprout': ['#B8CBA8', '#98B68B'],
   'rank-squire': ['#DBBB8E', '#A7BF98'],
   'rank-archer': ['#DDB483', '#DDB483'],
   'rank-outlaw': ['#DEA088', '#E9BC96'],
