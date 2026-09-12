@@ -165,7 +165,7 @@ export default function WelcomeScreen({ navigation }) {
           <View style={styles.content}>
             <View style={styles.logoContainer}>
               <Text style={styles.wordmark}>Borrowhood</Text>
-              {!pendingLink && !showEmail && <WoodlandIllustration scene="neighborhood" width={218} />}
+              {!pendingLink && <WoodlandIllustration scene="neighborhood" width={218} />}
               <Text accessibilityRole="header" style={styles.authTitle}>{pendingLink ? 'Connect your account' : showEmail ? 'Welcome back' : 'Sign up or sign in'}</Text>
               {!showEmail && <Text style={styles.welcomeLine}>Apple and Google work for both.</Text>}
             </View>
