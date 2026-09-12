@@ -142,9 +142,6 @@ export default function ActionSheet({
                     >
                       {action.label}
                     </Text>
-                    {options && typeof action.selected === 'boolean' && <View accessible={false} style={[styles.optionCheck, action.selected && styles.optionChecked]}>
-                      {action.selected && <Ionicons name="checkmark" size={16} color={COLORS.surface} />}
-                    </View>}
                   </HapticPressable>
                 ))}
               </View>
@@ -171,8 +168,6 @@ const styles = StyleSheet.create({
   selectedOption: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.borderGreen },
   optionIcon: { width: 40, height: 40, borderRadius: RADIUS.sm, backgroundColor: COLORS.primaryMuted, marginRight: SPACING.sm },
   optionText: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 },
-  optionCheck: { width: 24, height: 24, borderWidth: 1.5, borderColor: COLORS.primaryLight, borderRadius: 7, marginLeft: SPACING.sm, alignItems: 'center', justifyContent: 'center' },
-  optionChecked: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   confirmationCard: { paddingVertical: 20 },
   confirmationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   confirmationIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
