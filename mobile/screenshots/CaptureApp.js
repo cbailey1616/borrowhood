@@ -52,6 +52,8 @@ function openCapture() {
   const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', 'inbox-messages': 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
+    borrow: { name: 'ListingDetail', params: { id: 'demo-drill' } },
+    neighborhood: { name: 'MyCommunity' },
     giveaway: { name: 'ListingDetail', params: { id: 'demo-books' } },
     sell: { name: 'ListingDetail', params: { id: 'demo-bike' } },
     chat: { name: 'Chat', params: { conversationId: 'demo-chat' } },
