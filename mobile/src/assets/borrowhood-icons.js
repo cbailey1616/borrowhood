@@ -43,6 +43,12 @@ const DRAWINGS = {
   people: c => circle(12, 10, 4, panel(c)) + circle(23, 11, 3, accent(c)) + p('M3 27V24C3 15 21 15 21 24V27Z', panel(c)) + p('M23 18C27 18 30 21 30 25V27H25'),
   chatbubble: chat,
   mail: c => rect(3, 7, 26, 20, 4, panel(c)) + p('M4 9L14 17C15 18 17 18 18 17L28 9M4 25L11 19M28 25L21 19'),
+  'mail-unread': c => rect(3, 9, 26, 18, 4, panel(c))
+    + p('M4 11L14 18C15 19 17 19 18 18L28 11')
+    + circle(25, 8, 4.5, accent(c)),
+  'messages-read': c => p('M9 4H25C28 4 29 6 29 9V19')
+    + p('M7 9H21C24 9 25 11 25 14V21C25 24 23 25 20 25H12L7 29V25C4 25 3 23 3 20V14C3 11 4 9 7 9Z', panel(c))
+    + p('M9 17L13 21L20 14'),
   search: c => circle(14, 14, 9, panel(c)) + p('M21 21L29 29'),
   filter: c => p('M4 8H8M16 8H28M4 16H18M26 16H28M4 24H6M14 24H28') + circle(12, 8, 4, panel(c)) + circle(22, 16, 4, panel(c)) + circle(10, 24, 4, panel(c)),
   bookmark: c => p('M8 4H24V28L16 23L8 28Z', panel(c)),
@@ -166,6 +172,8 @@ const PALETTES = {
   'thumbs-down': ['#DEA088', '#E7C590'],
   basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
+  'mail-unread': ['#E7C590', '#DEA088'],
+  'messages-read': ['#AFCABB', '#D8E5DA'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
   gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
   notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'],
