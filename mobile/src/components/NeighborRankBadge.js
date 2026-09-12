@@ -18,7 +18,8 @@ export default function NeighborRankBadge({ rank, showName = false, onPress, acc
 }
 
 const styles = StyleSheet.create({
-  button: { width: 44, minHeight: 44, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
-  namedButton: { width: 'auto', maxWidth: '45%', minHeight: 48, flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.xs, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
+  // Keep the icon next to the identity marks; retain the full tap area to its right.
+  button: { width: 44, minHeight: 44, flexShrink: 0, alignItems: 'flex-start', justifyContent: 'center' },
+  namedButton: { alignItems: 'center', width: 'auto', maxWidth: '45%', minHeight: 48, flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.xs, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
   name: { ...TYPOGRAPHY.footnote, fontWeight: '600', color: COLORS.primary, flexShrink: 1 },
 });
