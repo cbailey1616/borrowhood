@@ -11,7 +11,7 @@ describe('MyCommunityScreen', () => {
     api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer', bannerUrl }]);
     const Screen = require('../../src/screens/MyCommunityScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    fireEvent.press(await screen.findByText(bannerUrl ? 'Change cover photo' : 'Add cover photo'));
+    fireEvent.press(await screen.findByRole('button', { name: bannerUrl ? 'Change cover photo' : 'Add cover photo' }));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunitySettings', { id: 'comm-1', editCover: true });
   });
 
@@ -20,8 +20,8 @@ describe('MyCommunityScreen', () => {
     const Screen = require('../../src/screens/MyCommunityScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await screen.findByText('Test Hood');
-    expect(screen.queryByText('Add cover photo')).toBeNull();
-    expect(screen.queryByText('Change cover photo')).toBeNull();
+    expect(screen.queryByLabelText('Add cover photo')).toBeNull();
+    expect(screen.queryByLabelText('Change cover photo')).toBeNull();
   });
 
   it('hides legacy pinned announcements and uses member display names', async () => {

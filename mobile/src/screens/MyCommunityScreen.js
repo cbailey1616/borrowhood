@@ -155,6 +155,7 @@ export default function MyCommunityScreen({ navigation }) {
 
       <View style={styles.heroCard}>
       {/* Keep the name on parchment, never competing with a photo. */}
+      <View style={styles.cover}>
       {community.bannerUrl ? (
         <View style={styles.bannerContainer}>
           <Image source={{ uri: community.bannerUrl }} style={styles.bannerImage} />
@@ -166,13 +167,17 @@ export default function MyCommunityScreen({ navigation }) {
           </View>
         </View>
       )}
+        {(community.role === 'organizer' || user?.isAdmin) && (
+          <HapticPressable accessibilityRole="button"
+            accessibilityLabel={community.bannerUrl ? 'Change cover photo' : 'Add cover photo'}
+            style={styles.coverEdit} haptic="light"
+            onPress={() => navigation.navigate('CommunitySettings', { id: community.id, editCover: true })}>
+            <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
+          </HapticPressable>
+        )}
+      </View>
 
       <View style={styles.heroCopy}>
-        {(community.role === 'organizer' || user?.isAdmin) && (
-          <ActionButton label={community.bannerUrl ? 'Change cover photo' : 'Add cover photo'}
-            style={{ marginBottom: SPACING.md }}
-            onPress={() => navigation.navigate('CommunitySettings', { id: community.id, editCover: true })} />
-        )}
         <Text style={styles.eyebrow}>A little closer to home</Text>
         <Text style={styles.communityName}>{community.name}</Text>
         {!!community.description && <Text style={styles.communityDescription}>{community.description}</Text>}
@@ -259,6 +264,8 @@ export default function MyCommunityScreen({ navigation }) {
 const styles = StyleSheet.create({
   heroCard: { margin: SPACING.lg, backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
   heroCopy: { padding: SPACING.lg },
+  cover: { position: 'relative' },
+  coverEdit: { position: 'absolute', right: SPACING.md, bottom: SPACING.md, width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.borderGreen, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   neighborList: { backgroundColor: COLORS.surface, padding: SPACING.md, borderRadius: RADIUS.lg, gap: SPACING.md, borderWidth: 1, borderColor: COLORS.borderLight },
   memberRole: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: 3 },
