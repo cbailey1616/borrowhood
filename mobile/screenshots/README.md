@@ -48,3 +48,5 @@ The workflow can reuse a previous simulator binary from an ancestor commit when
 its native project and dependency files are unchanged. It rebuilds the JavaScript
 bundle with the current fixtures before capturing. New native changes or expired
 artifacts trigger a fresh native build.
+
+Tablet captures use responsive grids, side-by-side listing photos and details, and a conversation sidebar. Narrow Split View windows retain the compact layout.

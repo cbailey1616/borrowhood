@@ -10,7 +10,6 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Dimensions,
   Share,
   useWindowDimensions,
 } from 'react-native';
@@ -34,18 +33,22 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
-const { width } = Dimensions.get('window');
 
 export default function ListingDetailScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth, fontScale } = useWindowDimensions();
-  const stackSummary = windowWidth / fontScale < 360;
+  const wide = windowWidth >= 768 && fontScale < 1.5;
+  const pageWidth = Math.min(windowWidth, 1200);
+  const galleryWidth = wide ? (pageWidth - 72) * 0.52 : windowWidth;
+  const photoStyle = { width: galleryWidth, height: wide ? galleryWidth * 1.1 : 300 };
+  const stackSummary = (wide ? (pageWidth - 72) * 0.48 : windowWidth) / fontScale < (wide ? 420 : 360);
   const { id } = route.params;
   const { user } = useAuth();
   const { showToast, showError } = useError();
   const [listing, setListing] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPhoto, setCurrentPhoto] = useState(0);
+  useEffect(() => { setCurrentPhoto(0); }, [galleryWidth]);
   const [isSaved, setIsSaved] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
@@ -168,15 +171,16 @@ export default function ListingDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: SPACING.lg }}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={[{ paddingBottom: SPACING.lg }, wide && { flexDirection: 'row', alignItems: 'flex-start', padding: 24, gap: 24, width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
         {/* Photo Gallery */}
-        <View style={styles.gallery}>
+        <View style={[styles.gallery, wide && { width: galleryWidth, borderRadius: RADIUS.xl, overflow: 'hidden' }]}>
           <ScrollView
+            key={galleryWidth}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={(e) => {
-              const page = Math.round(e.nativeEvent.contentOffset.x / width);
+              const page = Math.round(e.nativeEvent.contentOffset.x / galleryWidth);
               setCurrentPhoto(page);
             }}
             scrollEventThrottle={16}
@@ -186,12 +190,12 @@ export default function ListingDetailScreen({ route, navigation }) {
                 <ShimmerImage
                   key={index}
                   source={{ uri: photo }}
-                  style={styles.photo}
+                  style={[styles.photo, photoStyle]}
                   sharedTransitionTag={index === 0 ? `listing-photo-${id}` : undefined}
                 />
               ))
             ) : (
-              <View style={[styles.photo, styles.noPhoto]}>
+              <View style={[styles.photo, photoStyle, styles.noPhoto]}>
                 <Ionicons name="image-outline" size={48} color={COLORS.gray[300]} />
               </View>
             )}
@@ -231,7 +235,7 @@ export default function ListingDetailScreen({ route, navigation }) {
         </View>
 
         {/* Content */}
-        <View style={styles.content}>
+        <View style={[styles.content, wide && { flex: 1, padding: 0, minWidth: 0 }]}>
           <View style={styles.itemSummary}>
             <View style={[styles.summaryHeading, stackSummary && styles.summaryHeadingStacked]}>
               <View style={styles.titleBlock}>
@@ -349,7 +353,7 @@ export default function ListingDetailScreen({ route, navigation }) {
       {/* Footer Action Bar — hide for completed giveaways (nothing useful to show) */}
       {!listing.isOwner && !listing.ownerMasked && !(isTransferListing(listing) && !listing.isAvailable && !listing.activeTransaction) && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          <View style={styles.footerActions}>
+          <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
             <HapticPressable
               style={[styles.messageButton, messageLoading && { opacity: 0.5 }]}
               testID="ListingDetail.button.message"
@@ -428,7 +432,7 @@ export default function ListingDetailScreen({ route, navigation }) {
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
           {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'700'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
-          <View style={styles.footerActions}>
+          <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
             <HapticPressable
               style={styles.deleteButton}
               accessibilityRole="button"
@@ -486,7 +490,7 @@ const styles = StyleSheet.create({
   },
   errorText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
   gallery: { position: 'relative' },
-  photo: { width, height: 300, backgroundColor: COLORS.separator },
+  photo: { height: 300, backgroundColor: COLORS.separator },
   noPhoto: { justifyContent: 'center', alignItems: 'center' },
   photoActions: {
     position: 'absolute',

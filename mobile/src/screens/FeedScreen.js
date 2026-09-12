@@ -86,6 +86,9 @@ export default function FeedScreen({ navigation }) {
   const [feed, setFeed] = useState([]);
   const [requestCards, setRequestCards] = useState([]);
   const { width, fontScale } = useWindowDimensions();
+  const columns = width >= 768 && fontScale < 1.5 ? (width >= 1200 ? 3 : 2) : 1;
+  const feedWidth = Math.min(width, columns > 1 ? 1440 : 660);
+  const tileWidth = (feedWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -677,10 +680,13 @@ export default function FeedScreen({ navigation }) {
         viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
         ref={listRef}
         testID="Feed.list"
-        data={displayFeed}
-        renderItem={renderItem}
+        key={`feed-${columns}`}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
+        data={columns > 1 ? verticalFeed : displayFeed}
+        renderItem={columns > 1 ? info => <View style={{ width: tileWidth }}>{renderItem(info)}</View> : renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { maxWidth: feedWidth }]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
@@ -698,6 +704,7 @@ export default function FeedScreen({ navigation }) {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
+          <>
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
@@ -726,9 +733,11 @@ export default function FeedScreen({ navigation }) {
               </ScrollView>
             </>}
           </NativeHeader>
+          {columns > 1 && <View style={{ paddingHorizontal: SPACING.lg }}>{displayFeed.filter(item => ['feed-banners', 'request-carousel', 'listing-heading'].includes(item.type)).map(item => <View key={item.id}>{renderItem({ item })}</View>)}</View>}
+          </>
         }
         ListHeaderComponentStyle={{ marginHorizontal: -SPACING.lg }}
-        stickyHeaderIndices={[0]}
+        stickyHeaderIndices={columns === 1 ? [0] : undefined}
         stickyHeaderHiddenOnScroll={!searchFocused}
         scrollEventThrottle={16}
         ListFooterComponent={

@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  useWindowDimensions,
   RefreshControl,
   Image,
   Animated as RNAnimated,
@@ -36,6 +37,10 @@ const STATUS_COLORS = {
 };
 
 export default function MyItemsScreen({ navigation }) {
+  const { width, fontScale } = useWindowDimensions();
+  const columns = width >= 900 && fontScale < 1.5 ? 2 : 1;
+  const gridWidth = Math.min(width, 1200);
+  const cellWidth = (gridWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
   const { showError } = useError();
   const [activeTab, setActiveTab] = useState(0);
   const [listings, setListings] = useState([]);
@@ -406,10 +411,13 @@ export default function MyItemsScreen({ navigation }) {
       {loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Try again</Text></HapticPressable></View>}
 
       <FlatList
+        key={`posts-${columns}`}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
         data={data}
-        renderItem={activeTab === 0 ? renderListingItem : renderRequestItem}
+        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>{(activeTab === 0 ? renderListingItem : renderRequestItem)(info)}</View>}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

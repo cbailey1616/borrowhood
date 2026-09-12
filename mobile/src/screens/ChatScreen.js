@@ -1,3 +1,4 @@
+import ConversationsScreen from './ConversationsScreen';
 import MessageComposer from '../components/MessageComposer';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ActionButton from '../components/ActionButton';
@@ -18,6 +19,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  useWindowDimensions,
 
 } from 'react-native';
 import Animated, {
@@ -40,7 +42,20 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-export default function ChatScreen({ route, navigation }) {
+export default function ChatScreen(props) {
+  const { width, fontScale } = useWindowDimensions();
+  const wide = width >= 900 && fontScale < 1.5;
+  return <View style={{ flex: 1, flexDirection: 'row', backgroundColor: COLORS.background }}>
+    {wide && <View style={{ width: 300, borderRightWidth: 1, borderRightColor: COLORS.separator }}>
+      <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title2, color: COLORS.primary, padding: SPACING.lg }}>Messages</Text>
+      <ConversationsScreen navigation={props.navigation} selectedId={props.route.params?.conversationId}
+        onSelect={id => { if (id !== props.route.params?.conversationId) props.navigation.replace('Chat', { conversationId: id }); }} />
+    </View>}
+    <ChatConversation {...props} />
+  </View>;
+}
+
+function ChatConversation({ route, navigation }) {
   const { conversationId, recipientId, recipient, threadContext, listingId, listing: passedListing } = route.params || {};
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();

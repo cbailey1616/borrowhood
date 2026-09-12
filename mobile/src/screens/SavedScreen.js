@@ -55,7 +55,9 @@ function HeartButton({ onUnsave, title }) {
 
 export default function SavedScreen({ navigation }) {
   const { width } = useWindowDimensions();
-  const cardWidth = (Math.min(width, 660) - SPACING.lg * 2 - GRID_GAP) / 2;
+  const columns = width >= 1100 ? 4 : width >= 768 ? 3 : 2;
+  const gridWidth = Math.min(width, 1440);
+  const cardWidth = (gridWidth - SPACING.lg * 2 - GRID_GAP * (columns - 1)) / columns;
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -101,7 +103,7 @@ export default function SavedScreen({ navigation }) {
   };
 
   const renderItem = ({ item, index }) => (
-    <LayeredCard style={[styles.cardWrap, { width: cardWidth }, index % 2 === 0 ? { marginRight: GRID_GAP } : null]}>
+    <LayeredCard style={[styles.cardWrap, { width: cardWidth }, index % columns !== columns - 1 ? { marginRight: GRID_GAP } : null]}>
       <HapticPressable
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
         haptic="light"
@@ -147,8 +149,9 @@ export default function SavedScreen({ navigation }) {
         data={listings}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
+        key={`saved-${columns}`}
+        numColumns={columns}
+        contentContainerStyle={[styles.listContent, { maxWidth: gridWidth }]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

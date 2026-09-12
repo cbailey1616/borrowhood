@@ -5,21 +5,22 @@ import api from '../../src/services/api';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), setParams: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), setParams: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
 let mockHeaderHeight = 88;
 let mockWindowHeight = 844;
+let mockWindowWidth = 390;
 const mockInsets = { top: 44, bottom: 34, left: 0, right: 0 };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => mockHeaderHeight }));
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
-  __esModule: true, default: () => ({ width: 390, height: mockWindowHeight, scale: 3, fontScale: 1 }),
+  __esModule: true, default: () => ({ width: mockWindowWidth, height: mockWindowHeight, scale: 3, fontScale: 1 }),
 }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => mockInsets,
   SafeAreaView: require('react-native').View,
 }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
-beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
+beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; mockWindowWidth = 390; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
 describe('ChatScreen', () => {
   const route = { params: { conversationId: 'conv-1' } };
   const choosePhoto = async (screen, label = 'Choose from library') => {
@@ -328,3 +329,17 @@ describe('ChatScreen', () => {
     expect(api.sendMessage.mock.calls[1][0]).toEqual(api.sendMessage.mock.calls[0][0]);
   });
 });
+
+  it('opens another conversation from the tablet sidebar and removes the sidebar in Split View', async () => {
+    mockWindowWidth = 1032;
+    api.getConversations.mockResolvedValue([{ id: 'conv-2', otherUser: { id: 'user-3', firstName: 'Sam', lastName: 'Rivera' }, lastMessage: 'See you soon', unreadCount: 1 }]);
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const props = { navigation: mockNavigation, route: { params: { conversationId: 'conv-1' } } };
+    const screen = render(<Screen {...props} />);
+    fireEvent.press(await screen.findByText('Sam Rivera'));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Chat', { conversationId: 'conv-2' });
+    mockWindowWidth = 600;
+    screen.rerender(<Screen {...props} />);
+    expect(screen.queryByText('Sam Rivera')).toBeNull();
+    expect(screen.getByTestId('Chat.input.message')).toBeTruthy();
+  });
