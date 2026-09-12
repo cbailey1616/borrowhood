@@ -21,7 +21,7 @@ const mockTransaction = {
   createdAt: new Date().toISOString(),
 };
 
-beforeEach(() => { jest.clearAllMocks(); api.getTransaction.mockResolvedValue(mockTransaction); });
+beforeEach(() => { jest.clearAllMocks(); api.getTransaction.mockResolvedValue(mockTransaction); api.endorseTransaction=jest.fn().mockResolvedValue({success:true}); });
 
 describe('TransactionDetailScreen', () => {
   const route = { params: { id: 'txn-1' } };
@@ -226,4 +226,71 @@ it('shows dates, queue and message actions before opening Exchange details', asy
   expect(api.declineRental).not.toHaveBeenCalled();
   fireEvent.press(screen.getByTestId('Transaction.button.queue'));
   expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'l-1' });
+});
+
+it.each(['lend','giveaway','sell'])('makes endorsing the next action for a completed %s and moves messaging lower', async listingType => {
+  const transaction={...mockTransaction,listingType,status:'completed',paymentStatus:'none',endorsement:{canRate:true,submitted:false}};
+  api.getTransaction.mockResolvedValueOnce(transaction).mockResolvedValue({...transaction,endorsement:{canRate:false,submitted:true,positive:true}});
+  api.getConversations.mockResolvedValue([]);
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  await screen.findByText('Leave an endorsement');
+  const next=within(screen.getByTestId('Transaction.nextStep'));
+  expect(next.queryByLabelText('Message Alice privately')).toBeNull();
+  expect(screen.getAllByLabelText('Send endorsement')).toHaveLength(1);
+  expect(screen.queryByText(/Nothing else to do/)).toBeNull();
+  expect(screen.queryByText(/can’t be changed/)).toBeNull();
+  fireEvent.press(next.getByLabelText('Thumbs up'));
+  fireEvent.press(next.getByLabelText('Send endorsement'));
+  await screen.findByText('Endorsement sent');
+  expect(api.endorseTransaction).toHaveBeenCalledWith('txn-1',true);
+  expect(screen.queryByLabelText('Send endorsement')).toBeNull();
+  fireEvent.press(screen.getByLabelText('Message Alice privately'));
+  await waitFor(()=>expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'user-2',listingId:'l-1'})));
+});
+
+it('does not prompt for an expired or unavailable endorsement',async()=>{
+  api.getTransaction.mockResolvedValue({...mockTransaction,status:'completed',endorsement:{canRate:false,submitted:false}});
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  await screen.findByText('Exchange complete');
+  expect(screen.queryByText('Leave an endorsement')).toBeNull();
+  expect(screen.queryByLabelText('Send endorsement')).toBeNull();
+  expect(screen.getByLabelText('Message Alice privately')).toBeTruthy();
+});
+
+it('keeps issue guidance visible when an endorsement is also available',async()=>{
+  api.getTransaction.mockResolvedValue({...mockTransaction,status:'completed',hasDispute:true,endorsement:{canRate:true}});
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  await screen.findByText('An issue is being reviewed');
+  expect(screen.getByText('Leave an endorsement')).toBeTruthy();
+  expect(screen.getByLabelText('Message Alice privately')).toBeTruthy();
+});
+
+it('retains return confirmation ahead of an inconsistent endorsement flag',async()=>{
+  api.getTransaction.mockResolvedValue({...mockTransaction,status:'returned',paymentStatus:'authorized',isLender:true,isBorrower:false,endorsement:{canRate:true}});
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  await screen.findByTestId('Transaction.button.confirmReturn');
+  expect(screen.queryByLabelText('Send endorsement')).toBeNull();
+});
+
+it('opens useful giveaway details without notes and closes them again',async()=>{
+  api.getTransaction.mockResolvedValue({...mockTransaction,listingType:'giveaway',status:'completed',borrowerMessage:null,createdAt:'2026-09-10T12:00:00Z',actualPickupAt:'2026-09-12T14:30:00Z'});
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  const toggle=await screen.findByLabelText('Exchange details');
+  expect(screen.queryByTestId('Transaction.detailsBody')).toBeNull();
+  fireEvent.press(toggle);
+  const details=within(screen.getByTestId('Transaction.detailsBody'));
+  expect(details.getByText('Completed')).toBeTruthy();
+  expect(details.getByText('Requested')).toBeTruthy();
+  expect(details.getByText('Picked up')).toBeTruthy();
+  expect(details.getByText('Free to keep')).toBeTruthy();
+  expect(details.getAllByText(/2026/)).toHaveLength(2);
+  expect(details.queryByText('Return by')).toBeNull();
+  expect(toggle.props.accessibilityState.expanded).toBe(true);
+  fireEvent.press(toggle);
+  expect(screen.queryByTestId('Transaction.detailsBody')).toBeNull();
 });

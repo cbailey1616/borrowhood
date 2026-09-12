@@ -1,7 +1,8 @@
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
 import ActionButton from '../components/ActionButton';
-import { isSaleListing, directFeeLabel, isTransferListing } from '../utils/directFee';
+import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { borrowGuidance } from '../utils/borrowStatus';
+import { exchangeDetailRows } from '../utils/exchangeDetails';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
@@ -56,6 +57,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const pollRef = useRef(null);
   const actionInProgress = useRef(false);
+  const scrollRef = useRef(null);
+  const detailsY = useRef(0);
+  const revealDetails = useRef(false);
 
   useFocusEffect(useCallback(() => {
     fetchTransaction();
@@ -200,6 +204,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
     || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
     || (isGiveaway && transaction.status === 'picked_up');
+  const showEndorsement = finished && (transaction.endorsement?.canRate || transaction.endorsement?.submitted);
+  const detailRows = exchangeDetailRows(transaction);
+  const hasDetails = detailRows.length > 0 || transaction.borrowerMessage || transaction.lenderResponse || transaction.conditionNotes;
   const canCancel = !transaction.actualPickupAt && (
     (transaction.isBorrower && transaction.status === 'pending')
     || ((transaction.isBorrower || transaction.isLender) && ['approved', 'paid'].includes(transaction.status))
@@ -228,7 +235,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
-      <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled"
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => {
+          if (revealDetails.current) {
+            revealDetails.current = false;
+            scrollRef.current?.scrollTo({ y: detailsY.current, animated: true });
+          }
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
         }
@@ -259,6 +272,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <ActionButton label="Try again" onPress={fetchTransaction} />
           </View>}
           <Text style={styles.cardEyebrow}>What happens next</Text>
+          {showEndorsement ? <>
+            {transaction.hasDispute && <>
+              <Text style={styles.heroTitle}>{nextStep.title}</Text>
+              <Text style={styles.heroDescription}>{nextStep.detail}</Text>
+            </>}
+            <ExchangeEndorsement key={transaction.id} transaction={transaction} onSaved={fetchTransaction} embedded />
+          </> : <>
           <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
           <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button"
@@ -271,7 +291,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             disabled={actionLoading || (!!fetchError && (needsPickup || needsReturn))} onPress={primaryAction.onPress}>
             {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
           </HapticPressable>}
-          {(!primaryIsMessage || finished) && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+          {!primaryIsMessage && !finished && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
             style={styles.outlinedAction} onPress={messageNeighbor}>
             <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
           </HapticPressable>}
@@ -279,6 +299,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             style={[styles.outlinedAction, styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
             <Text style={styles.cancelActionText}>{cancelLabel}</Text>
           </HapticPressable>}
+          </>}
         </View>
 
         {!isGiveaway && <LayeredCard radius={RADIUS.xl}><View style={styles.detailCard}>
@@ -297,18 +318,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         </View></LayeredCard>}
 
-        <ExchangeEndorsement transaction={transaction} onSaved={fetchTransaction} />
-        <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
-          accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
-          onPress={() => setDetailsExpanded(value => !value)}>
-          <Text style={styles.neighborMessageTitle}>Exchange details</Text>
-          <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
-        </HapticPressable>
-        {detailsExpanded && <>
         <LayeredCard radius={RADIUS.xl}>
           <View style={styles.detailCard}>
-            <Text style={styles.cardEyebrow}>Your neighbor</Text>
             <HapticPressable haptic="light" accessibilityRole="button" style={styles.neighborRow}
+              accessibilityLabel={`View ${otherPerson.firstName}'s profile`}
               onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
               {otherPerson.profilePhotoUrl ? <Image source={{ uri: otherPerson.profilePhotoUrl }} style={styles.neighborAvatar} />
                 : <View style={[styles.neighborAvatar, styles.avatarPlaceholder]}><Ionicons name="people" size={30} illustrated /></View>}
@@ -318,29 +331,46 @@ export default function TransactionDetailScreen({ route, navigation }) {
               </View>
               <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
             </HapticPressable>
-
+            {finished && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+              testID="Transaction.button.message" style={[styles.outlinedAction, styles.completedMessage]} onPress={messageNeighbor}>
+              <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
+            </HapticPressable>}
           </View>
         </LayeredCard>
 
-        {isSaleListing(transaction) && <LayeredCard radius={RADIUS.xl}><View style={styles.detailCard}>
-          <Text style={styles.cardEyebrow}>Sale price</Text>
-          <Text style={styles.itemName}>{directFeeLabel(transaction)}</Text>
-          <Text style={styles.detailText}>Confirm the price and arrange payment directly with your neighbor before pickup. Borrowhood does not process payments.</Text>
-        </View></LayeredCard>}
-
-        {(transaction.borrowerMessage || transaction.lenderResponse) && <LayeredCard radius={RADIUS.xl}><View style={styles.detailCard}>
-          <Text style={styles.cardEyebrow}>Request notes · private</Text>
-          {!!transaction.borrowerMessage && <View style={styles.noteQuote}>
-            <Text style={styles.smallLabel}>{transaction.isBorrower ? 'You wrote' : `${transaction.borrower.firstName} wrote`}</Text>
-            <Text style={styles.noteText}>{transaction.borrowerMessage}</Text>
+        {!!hasDetails && <View style={styles.detailsSection} onLayout={event => { detailsY.current = event.nativeEvent.layout.y; }}>
+          <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
+            accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
+            onPress={() => {
+              revealDetails.current = !detailsExpanded;
+              setDetailsExpanded(value => !value);
+            }}>
+            <Text style={styles.neighborMessageTitle}>Exchange details</Text>
+            <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
+          </HapticPressable>
+          {detailsExpanded && <View style={styles.detailsBody} testID="Transaction.detailsBody">
+            {detailRows.map(([label, value]) => <View key={label} style={styles.factRow}>
+              <Text style={styles.factLabel}>{label}</Text>
+              <Text style={styles.factValue}>{value}</Text>
+            </View>)}
+            {(transaction.borrowerMessage || transaction.lenderResponse) && <View style={styles.notesSection}>
+              <Text style={styles.smallLabel}>Request notes</Text>
+              {!!transaction.borrowerMessage && <View style={styles.noteQuote}>
+                <Text style={styles.smallLabel}>{transaction.isBorrower ? 'You wrote' : `${transaction.borrower.firstName} wrote`}</Text>
+                <Text style={styles.noteText}>{transaction.borrowerMessage}</Text>
+              </View>}
+              {!!transaction.lenderResponse && <View style={styles.noteQuote}>
+                <Text style={styles.smallLabel}>{transaction.isLender ? 'You replied' : `${transaction.lender.firstName} replied`}</Text>
+                <Text style={styles.noteText}>{transaction.lenderResponse}</Text>
+              </View>}
+            </View>}
+            {!!transaction.conditionNotes && <View style={styles.notesSection}>
+              <Text style={styles.smallLabel}>Condition notes</Text>
+              <Text style={styles.noteText}>{transaction.conditionNotes}</Text>
+            </View>}
           </View>}
-          {!!transaction.lenderResponse && <View style={styles.noteQuote}>
-            <Text style={styles.smallLabel}>{transaction.isLender ? 'You replied' : `${transaction.lender.firstName} replied`}</Text>
-            <Text style={styles.noteText}>{transaction.lenderResponse}</Text>
-          </View>}
-        </View></LayeredCard>}
-
-        </>}
+        </View>}
       </ScrollView>
 
       <ActionSheet
@@ -417,7 +447,14 @@ const styles = StyleSheet.create({
   cancelActionText: { fontSize: 15, fontWeight: '600', color: COLORS.surface },
   nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
   secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
-  detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
+  detailsSection: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, overflow: 'hidden' },
+  detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12 },
+  detailsBody: { padding: SPACING.lg, paddingTop: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, gap: SPACING.md },
+  factRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: SPACING.md },
+  factLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flex: 1 },
+  factValue: { ...TYPOGRAPHY.footnote, color: COLORS.text, textAlign: 'right', flex: 1.5 },
+  notesSection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, paddingTop: SPACING.md, gap: SPACING.sm },
+  completedMessage: { marginTop: SPACING.lg, flexDirection: 'row', gap: SPACING.sm },
   pageContent: { padding: 18, paddingBottom: 28, gap: 24 },
   pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '600', marginTop: 6 },
   statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },
@@ -440,7 +477,7 @@ const styles = StyleSheet.create({
   neighborAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primaryMuted },
   neighborName: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '600' },
   neighborMessage: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, backgroundColor: COLORS.primaryMuted, padding: 14, marginTop: 18 },
-  neighborMessageTitle: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
+  neighborMessageTitle: { fontSize: 15, fontWeight: '600', color: COLORS.primary, flexShrink: 1 },
   neighborMessageHint: { fontSize: 12, lineHeight: 17, color: COLORS.textSecondary, marginTop: 3 },
   noteQuote: { borderLeftWidth: 3, borderLeftColor: COLORS.primaryMuted, paddingLeft: 12, marginBottom: 12 },
   noteText: { fontSize: 15, lineHeight: 22, color: COLORS.text, marginTop: 6 },
