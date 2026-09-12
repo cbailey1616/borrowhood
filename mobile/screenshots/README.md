@@ -15,8 +15,9 @@ The `ui-review` folders also contain notification settings, your account profile
 another member’s profile, and the actual exchange feedback component in a preview
 screen on iPhone Pro Max and iPhone SE. These review images are separate
 from the six-image App Store set and include both on and off switch states.
-Pull request runs capture only these review screens on the two iPhones. Manually
-dispatched runs also produce the full App Store set on iPhone and iPad.
+Every run first publishes the six-image App Store set for both iPhone and iPad
+as `borrowhood-app-store-screenshots`, then captures the separate UI review set
+on the two iPhones. The upload-ready set can be downloaded while reviews finish.
 They also show the same compact request carousel with a photo request and
 a short service request in front, to check spacing and consistent height.
 Review every image before uploading to App Store Connect. The photos are

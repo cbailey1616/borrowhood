@@ -76,21 +76,32 @@ jobs:
           name: borrowhood-screenshot-simulator
           path: ${{ runner.temp }}/borrowhood-simulator-app.zip
           retention-days: 3
-      - name: Capture native screens with mock posts
+      - name: Capture App Store screens on iPhone and iPad
         env:
-          BORROWHOOD_CAPTURE_REVIEW_ONLY: ${{ github.event_name == 'pull_request' }}
+          BORROWHOOD_CAPTURE_STORE_ONLY: 'true'
         run: |
           python3 -m venv "$RUNNER_TEMP/borrowhood-capture-python"
           "$RUNNER_TEMP/borrowhood-capture-python/bin/pip" install Pillow
           "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/app-store-screenshots"
           cp screenshots/README.md "$RUNNER_TEMP/app-store-screenshots/README.md"
           cp screenshots/assets.json "$RUNNER_TEMP/app-store-screenshots/photo-sources.json"
+      - name: Save upload-ready App Store screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrowhood-app-store-screenshots
+          path: ${{ runner.temp }}/app-store-screenshots
+          retention-days: 14
+      - name: Capture native UI review screens
+        env:
+          BORROWHOOD_CAPTURE_REVIEW_ONLY: 'true'
+        run: |
+          "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/ui-review"
       - name: Save screenshots and build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: borrowhood-${{ github.event_name == 'pull_request' && 'ui-review' || 'app-store-screenshots' }}
+          name: borrowhood-ui-review
           path: |
-            ${{ runner.temp }}/app-store-screenshots
+            ${{ runner.temp }}/ui-review
             ${{ runner.temp }}/borrowhood-native-build.log
           retention-days: 14
