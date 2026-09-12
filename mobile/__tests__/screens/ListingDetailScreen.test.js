@@ -75,7 +75,7 @@ describe('ListingDetailScreen', () => {
     const Screen = require('../../src/screens/ListingDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     await screen.findByLabelText(priceLabel);
-    expect(screen.getByText('Condition: Good')).toBeTruthy();
+    expect(screen.getByLabelText('Condition: Good')).toBeTruthy();
     expect(screen.queryByText('Arrange payment directly with your neighbor.')).toBeNull();
   });
 

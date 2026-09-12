@@ -12,6 +12,7 @@ import {
   Image,
   Dimensions,
   Share,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -37,6 +38,8 @@ const { width } = Dimensions.get('window');
 
 export default function ListingDetailScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const stackSummary = windowWidth / fontScale < 360;
   const { id } = route.params;
   const { user } = useAuth();
   const { showToast, showError } = useError();
@@ -230,24 +233,31 @@ export default function ListingDetailScreen({ route, navigation }) {
         {/* Content */}
         <View style={styles.content}>
           <View style={styles.itemSummary}>
-            <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
-
-            {!listing.ownerMasked && <View style={styles.priceBlock}>
-              <ListingPrice listing={listing} compact />
-            </View>}
-
-            {((!listing.ownerMasked && condition) || location) && (
-              <View style={styles.itemMetadata}>
-                {!listing.ownerMasked && condition && <Text style={styles.metadataText}>Condition: {condition}</Text>}
-                {!listing.ownerMasked && condition && location && <Text style={styles.metadataSeparator}>·</Text>}
-                {!!location && <View style={styles.locationRow}>
-                  <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                  <Text style={styles.metadataText}>{location}</Text>
-                </View>}
+            <View style={[styles.summaryHeading, stackSummary && styles.summaryHeadingStacked]}>
+              <View style={styles.titleBlock}>
+                <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
+                {((!listing.ownerMasked && condition) || location) && (
+                  <View style={styles.itemMetadata}>
+                    {!listing.ownerMasked && condition && (
+                      <View accessible accessibilityLabel={`Condition: ${condition}`} style={styles.conditionBadge}>
+                        <Text style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
+                      </View>
+                    )}
+                    {!!location && <View style={styles.locationRow}>
+                      <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                      <Text style={styles.metadataText}>{location}</Text>
+                    </View>}
+                  </View>
+                )}
               </View>
-            )}
+              {!listing.ownerMasked && <View style={[styles.priceBlock, stackSummary && styles.priceBlockStacked]}>
+                <ListingPrice listing={listing} compact alignment={stackSummary ? 'start' : 'end'} />
+              </View>}
+            </View>
 
-            {listing.description && <Text style={styles.description}>{listing.description}</Text>}
+            {!!listing.description && <View style={styles.descriptionSection}>
+              <Text style={styles.description}>{listing.description}</Text>
+            </View>}
 
             {!availability.available && <View accessibilityLiveRegion="polite" style={styles.availabilitySection}>
               <Text style={styles.sectionTitle}>{availability.label}</Text>
@@ -509,20 +519,37 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: '#fff', width: 10, height: 10, borderRadius: 5 },
   content: { padding: 20 },
   itemSummary: { paddingBottom: SPACING.xl },
+  summaryHeading: { flexDirection: 'row', alignItems: 'flex-start', columnGap: SPACING.lg, rowGap: SPACING.sm },
+  summaryHeadingStacked: { flexDirection: 'column' },
+  titleBlock: { flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: '100%' },
   title: { ...TYPOGRAPHY.h1, color: COLORS.text, lineHeight: 34 },
-  priceBlock: { marginTop: SPACING.lg },
+  priceBlock: { maxWidth: '48%', flexShrink: 0 },
+  priceBlockStacked: { maxWidth: '100%', alignSelf: 'flex-start' },
   itemMetadata: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     columnGap: SPACING.sm,
     rowGap: SPACING.xs,
-    marginTop: SPACING.md,
+    marginTop: SPACING.sm,
   },
+  conditionBadge: {
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    maxWidth: '100%',
+  },
+  conditionText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   metadataText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
-  metadataSeparator: { ...TYPOGRAPHY.footnote, color: COLORS.textMuted },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, flexShrink: 1 },
-  description: { ...TYPOGRAPHY.body, color: COLORS.text, marginTop: SPACING.lg },
+  descriptionSection: {
+    marginTop: SPACING.lg,
+    paddingTop: SPACING.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+  },
+  description: { ...TYPOGRAPHY.body, color: COLORS.text, lineHeight: 24 },
   availabilitySection: {
     marginTop: SPACING.lg,
     paddingTop: SPACING.lg,
