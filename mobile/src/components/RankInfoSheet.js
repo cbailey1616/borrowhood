@@ -18,14 +18,14 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.title} accessibilityRole="header">Neighbor rating</Text>
-          <HapticPressable style={styles.close} onPress={onClose} accessibilityLabel="Close rank explanation">
+          <HapticPressable style={styles.close} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close rank explanation">
             <Ionicons name="close" size={22} color={COLORS.primary} />
           </HapticPressable>
         </View>
-        <ScrollView bounces={false} contentContainerStyle={styles.content}>
+        <ScrollView style={styles.scroll} bounces={false} contentContainerStyle={styles.content}>
           {currentRank && <View style={styles.currentSummary}>
             <View style={styles.emblem}>
-              <Ionicons name={currentRank.icon} size={32} illustrated color={COLORS.primary} />
+              <Ionicons name={currentRank.icon} size={28} illustrated color={COLORS.primary} />
             </View>
             <View style={styles.summaryCopy}>
               <Text style={styles.currentRating}>{currentRank.label}</Text>
@@ -45,15 +45,17 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
             <Text style={styles.levelsTitle} accessibilityRole="header">Rating levels</Text>
             {NEIGHBOR_RANKS.map(rank => <View key={rank.label} testID={`RankInfo.level.${rank.label}`}
               style={[styles.level, currentRank?.label === rank.label && styles.currentLevel]}>
-              <Ionicons name={rank.icon} size={28} illustrated color={COLORS.primary} />
+              <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
               <View style={styles.levelCopy}>
-                <Text style={styles.levelName}>{rank.label}</Text>
-                <Text style={styles.note}>{rank.tone}</Text>
+                <View style={styles.levelNameGroup}>
+                  <Text style={styles.levelName}>{rank.label}</Text>
+                  {currentRank?.label === rank.label && <View style={styles.currentBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                    <Text style={styles.current}>Current</Text>
+                  </View>}
+                </View>
+                <Text style={[styles.note, styles.levelTone]}>{rank.tone}</Text>
               </View>
-              {currentRank?.label === rank.label && <View style={styles.currentBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.current}>Current</Text>
-              </View>}
             </View>)}
           </View>
         </ScrollView>
@@ -65,14 +67,15 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: COLORS.overlay },
-  sheet: { width: '100%', maxWidth: 572, alignSelf: 'center', backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, overflow: 'hidden' },
+  sheet: { width: '100%', maxWidth: 572, flexShrink: 1, alignSelf: 'center', backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, overflow: 'hidden' },
   handle: { width: 36, height: 4, marginTop: SPACING.sm, alignSelf: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.border },
-  header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.lg, paddingTop: SPACING.sm },
+  header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
   title: { ...TYPOGRAPHY.h3, color: COLORS.primary, flex: 1 },
   close: { width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
-  content: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
-  currentSummary: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.sm },
-  emblem: { width: 64, height: 64, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  scroll: { flexGrow: 0, flexShrink: 1 },
+  content: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
+  currentSummary: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.xs },
+  emblem: { width: 48, height: 48, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   summaryCopy: { flex: 1, gap: SPACING.xs },
   currentRating: { ...TYPOGRAPHY.h2, letterSpacing: 0, color: COLORS.primary },
   meter: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.md },
@@ -81,13 +84,15 @@ const styles = StyleSheet.create({
   segment: { height: 6, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted },
   currentSegment: { backgroundColor: COLORS.primary },
   explanation: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.sm },
-  levels: { marginTop: SPACING.lg, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.separator },
-  levelsTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.sm },
-  level: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, minHeight: 56, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.sm, borderRadius: RADIUS.sm },
+  levels: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.separator },
+  levelsTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.xs },
+  level: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, borderRadius: RADIUS.sm },
   currentLevel: { backgroundColor: COLORS.primaryMuted },
-  levelCopy: { flex: 1, gap: 2 },
-  levelName: { ...TYPOGRAPHY.headline, color: COLORS.primary },
-  currentBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, maxWidth: '35%' },
+  levelCopy: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: SPACING.sm, rowGap: 2 },
+  levelNameGroup: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: SPACING.sm, rowGap: 2, maxWidth: '100%' },
+  levelName: { ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 },
+  levelTone: { flexShrink: 1 },
+  currentBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, flexShrink: 1 },
   current: { ...TYPOGRAPHY.caption1, color: COLORS.primary, fontWeight: '600', flexShrink: 1 },
   note: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });
