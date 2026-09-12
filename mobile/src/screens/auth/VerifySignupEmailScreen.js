@@ -51,7 +51,7 @@ export default function VerifySignupEmailScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
           <HapticPressable onPress={() => navigation.goBack()} disabled={!!busy} accessibilityLabel="Back to create account" accessibilityRole="button" style={styles.back}>
             <Icon name="chevron-back" size={24} />
           </HapticPressable>

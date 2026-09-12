@@ -368,7 +368,7 @@ it('lets an unverified member select Town and makes hidden identities explicit',
   } finally { mockUser.isVerified = true; }
 });
 
-it('keeps requests in a swipe row and opens all requests with one tap',async()=>{
+it('keeps requests in a swipe row and uses the Requests tab for the full view',async()=>{
  const user={id:'neighbor',firstName:'Alex'};
  api.getFeed.mockImplementation(async params=>params.type==='requests' ? {items:[{id:'ask',type:'request',title:'Need a ladder',user}],hasMore:false} : {items:[{id:'item',type:'listing',title:'Drill',user}],requests:[{id:'ask',type:'request',title:'Need a ladder',user}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
@@ -377,7 +377,8 @@ it('keeps requests in a swipe row and opens all requests with one tap',async()=>
  expect(screen.getByText('Available nearby')).toBeTruthy();
  expect(screen.getByTestId('Feed.requests.carousel').props.horizontal).toBe(true);
  expect(screen.getByTestId('Feed.list').props.data.some(item=>item.type==='request')).toBe(false);
- fireEvent.press(screen.getByLabelText('See all requests'));
+ expect(screen.queryByLabelText('See all requests')).toBeNull();
+ fireEvent.press(screen.getByText('Requests'));
  await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'requests'})));
  expect(screen.queryByText('Neighbors need')).toBeNull();
  expect(screen.queryByText('Available nearby')).toBeNull();

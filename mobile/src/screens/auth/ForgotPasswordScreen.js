@@ -252,7 +252,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: SPACING.xl }}>
+        <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} contentContainerStyle={{ paddingBottom: SPACING.xl }}>
         <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
           <Text style={styles.backButtonText}>{'\u2039'}</Text>
         </HapticPressable>

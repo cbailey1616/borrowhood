@@ -39,7 +39,7 @@ export default function OnboardingIntroScreen({ navigation }) {
         {page === 0 ? <>
           <Point icon="chatbubble" title="Ask before you buy">Tell neighbors what you need. Someone nearby may have just the thing.</Point>
           <Point icon="gift" title="Lend, give away, or sell">A little more use from things you already own. Giveaways are always free.</Point>
-          <Point icon="lock-closed" title="Offer one item privately">Help with a request while keeping the rest of your inventory private.</Point>
+          <Point icon="people" title="Get to know your neighbors">Make connections with every exchange.</Point>
         </> : <>
           <Point icon="people" title="Your listing. Your audience.">Share with friends, neighborhood groups, or your town. Keep other items just for you.</Point>
           <Point icon="identity-seal" title="Verified neighbors. More confidence.">Verify your identity to connect across your town. The verified badge helps you know who you’re sharing with.</Point>
