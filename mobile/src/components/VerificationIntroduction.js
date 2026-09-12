@@ -12,11 +12,11 @@ export default function VerificationIntroduction({
 }) {
   return (
     <>
-      <View style={styles.hero}>
+      <View style={[styles.hero, !needsRetry && styles.trimmedHero]}>
         {needsRetry ? (
           <Icon name="alert-circle" size={72} color={COLORS.warning} />
         ) : (
-          <WoodlandIllustration scene="neighborhood" width={260} />
+          <WoodlandIllustration scene="neighborhood" width={260} style={styles.illustration} />
         )}
       </View>
       <Text style={styles.title} accessibilityRole="header">{title}</Text>
@@ -30,8 +30,11 @@ export default function VerificationIntroduction({
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', marginBottom: 12 },
-  title: { ...TYPOGRAPHY.largeTitle, fontSize: 30, lineHeight: 35, color: COLORS.text, textAlign: 'center', maxWidth: 300, alignSelf: 'center' },
-  subtitle: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, textAlign: 'center', marginTop: 10, marginBottom: 24, maxWidth: 300, alignSelf: 'center' },
+  hero: { alignItems: 'center', marginBottom: 4 },
+  // Trim the scene's empty canvas vertically while preserving the drawing's size.
+  trimmedHero: { height: 124, overflow: 'hidden' },
+  illustration: { transform: [{ translateY: -20 }] },
+  title: { ...TYPOGRAPHY.largeTitle, fontSize: 28, lineHeight: 32, color: COLORS.text, textAlign: 'center', maxWidth: 300, alignSelf: 'center' },
+  subtitle: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: 18, maxWidth: 300, alignSelf: 'center' },
   privacy: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, textAlign: 'center', marginTop: 16, paddingHorizontal: 8 },
 });
