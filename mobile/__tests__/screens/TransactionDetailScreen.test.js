@@ -86,6 +86,7 @@ describe('TransactionDetailScreen', () => {
   });
 
   it('displays status via RentalProgress steps', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved' });
     const TransactionDetailScreen = require('../../src/screens/TransactionDetailScreen').default;
     const { findByText } = render(<TransactionDetailScreen navigation={mockNavigation} route={route} />);
     await findByText('Requested');
@@ -138,7 +139,7 @@ describe('TransactionDetailScreen', () => {
     api.getConversations.mockResolvedValueOnce([{ id: 'chat-1', otherUser: { id: 'user-2' } }]);
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('Message Alice privately'));
+    fireEvent.press(await screen.findByLabelText('Message owner'));
     await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ conversationId: 'chat-1', listingId: 'l-1', threadContext: { id: 'l-1', title: 'Camera', type: 'listing' } })));
   });
 
@@ -189,13 +190,11 @@ it.each(['lend', 'giveaway', 'sell'])('shows one cancel request action above det
   api.cancelRental.mockResolvedValue({ success: true });
   const Screen = require('../../src/screens/TransactionDetailScreen').default;
   const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
-  await screen.findByText('Waiting for Alice');
-  expect(screen.queryByText('Private pickup notes')).toBeNull();
-  const nextActions = within(screen.getByTestId('Transaction.nextStep'));
+  await screen.findByText('Request sent');
+  const nextActions = screen;
   expect(nextActions.getByLabelText('Cancel request')).toBeTruthy();
-  expect(nextActions.getByLabelText('Message Alice privately')).toBeTruthy();
+  expect(nextActions.getByLabelText('Message owner')).toBeTruthy();
   expect(screen.queryByText('Leave queue')).toBeNull();
-  fireEvent.press(screen.getByLabelText('Exchange details'));
   expect(screen.getByText('Private pickup notes')).toBeTruthy();
   expect(screen.getAllByTestId('Transaction.button.cancel')).toHaveLength(1);
   fireEvent.press(nextActions.getByLabelText('Cancel request'));
@@ -293,4 +292,20 @@ it('opens useful giveaway details without notes and closes them again',async()=>
   expect(toggle.props.accessibilityState.expanded).toBe(true);
   fireEvent.press(toggle);
   expect(screen.queryByTestId('Transaction.detailsBody')).toBeNull();
+});
+
+it.each([0, 1, 3])('shows only the requester queue count (%s ahead)', async aheadCount => {
+ api.getTransaction.mockResolvedValue({ ...mockTransaction, queue: { aheadCount, waiting: false } });
+ const Screen = require('../../src/screens/TransactionDetailScreen').default;
+ const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
+ await screen.findByText(aheadCount === 0 ? 'No one ahead of you' : `${aheadCount} ${aheadCount === 1 ? 'person' : 'people'} ahead of you`);
+ expect(screen.queryByTestId('Transaction.button.queue')).toBeNull();
+});
+it('keeps a reserved request waiting without promising a pickup', async () => {
+ api.getTransaction.mockResolvedValue({ ...mockTransaction, queue: { aheadCount: 0, waiting: true } });
+ const Screen = require('../../src/screens/TransactionDetailScreen').default;
+ const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
+ await screen.findByText('Reserved for another neighbor');
+ expect(screen.queryByTestId('Transaction.button.confirmPickup')).toBeNull();
+ expect(screen.getByLabelText('Cancel request')).toBeTruthy();
 });

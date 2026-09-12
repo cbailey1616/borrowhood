@@ -1,3 +1,4 @@
+import PendingRequestCard from '../components/PendingRequestCard';
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
 import ActionButton from '../components/ActionButton';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
@@ -69,7 +70,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   }, [id]));
 
   const isGiveaway = isTransferListing(transaction);
-  useEffect(() => { navigation.setOptions({ title: isGiveaway ? 'Exchange details' : 'Borrow details' }); }, [isGiveaway, navigation]);
+  useEffect(() => { navigation.setOptions({ title: transaction?.isBorrower && transaction?.status === 'pending' ? 'Your request' : isGiveaway ? 'Exchange details' : 'Borrow details' }); }, [transaction?.isBorrower, transaction?.status, isGiveaway, navigation]);
 
   // The server schedules reminders and applies the saved push preferences.
   useEffect(() => { cancelReturnReminders(id); }, [id]);
@@ -248,6 +249,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
       >
         <Text style={styles.pageEyebrow}>{transaction.status === 'pending' ? 'Your request' : 'Your exchange'}</Text>
 
+        {transaction.isBorrower && transaction.status === 'pending' ? <PendingRequestCard
+          transaction={transaction} onMessage={messageNeighbor} onCancel={() => setCancelSheetVisible(true)}
+          onViewItem={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}
+          busy={actionLoading} error={fetchError} onRetry={fetchTransaction} /> : <>
         <LayeredCard radius={RADIUS.xl}>
           <View style={styles.detailCard}>
             <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`View ${transaction.listing.title}`}
@@ -371,6 +376,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             </View>}
           </View>}
         </View>}
+        </>}
       </ScrollView>
 
       <ActionSheet

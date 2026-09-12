@@ -36,6 +36,9 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  const next=await request(app).post('/transactions').set(auth(second)).send(body);expect(next.status).toBe(201);secondRequest=next.body.id;
  await query("UPDATE borrow_transactions SET created_at=NOW()-INTERVAL '1 hour' WHERE id=$1",[firstRequest]);
  expect((await request(app).get(`/listings/${listing}/requests`).set(auth(first))).status).toBe(404);
+ const ownQueue=await request(app).get(`/transactions/${secondRequest}`).set(auth(second));
+ expect(ownQueue.status).toBe(200);expect(ownQueue.body.queue).toEqual({aheadCount:1,waiting:false});
+ expect((await request(app).get(`/transactions/${firstRequest}`).set(auth(second))).status).toBe(404);
  let queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
  expect(queue.status).toBe(200);expect(queue.body.requests.map(r=>r.id)).toEqual([firstRequest,secondRequest]);
  expect(queue.body.requests[0].borrower).toMatchObject({isVerified:true,totalTransactions:0,endorsement:{count:0,percent:null}});
