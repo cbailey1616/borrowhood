@@ -1,7 +1,7 @@
 // The display and explanation share the same rank bands.
 export const NEIGHBOR_RANKS = [
   { label: 'Outlaw', tone: 'Needs work', icon: 'rank-outlaw', min: 0, max: 59 },
-  { label: 'Squire', tone: 'Fair', icon: 'rank-squire', min: 60, max: 74 },
+  { label: 'Jester', tone: 'Fair', icon: 'rank-jester', min: 60, max: 74 },
   { label: 'Archer', tone: 'Good', icon: 'rank-archer', min: 75, max: 89 },
   { label: 'Ranger', tone: 'Great', icon: 'rank-ranger', min: 90, max: 96 },
   { label: 'Robin', tone: 'Excellent', icon: 'rank-robin', min: 97, max: 100 },

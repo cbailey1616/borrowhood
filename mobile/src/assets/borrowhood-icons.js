@@ -27,7 +27,11 @@ const DRAWINGS = {
   'neighbor-sprout': c => p('M16 18C9 19 5 15 5 9C12 8 17 12 16 18Z', panel(c))
     + p('M16 14C15 7 20 3 27 4C28 11 23 15 16 14Z', accent(c))
     + p('M16 26V17C16 13 19 10 23 8M16 20L10 14M9 28C12 25 20 25 23 28'),
-  'rank-squire': c => p('M9 15H24V18C24 24 20 28 16.5 29C13 28 9 24 9 18Z', panel(c)) + p('M6 15C6 8 26 8 27 15L26 17H7Z', accent(c)) + p('M16 9V5C19 3 23 4 24 6C21 8 18 8 16 6M12 21C12 23 13 24 14 25'),
+  'rank-jester': c => p('M7 23C7 17 6 13 3 13C7 9 11 11 13 16C13 11 14 7 16 5C18 7 19 11 19 16C21 11 25 9 29 13C26 13 25 17 25 23Z', panel(c))
+    + p('M16 5C18 7 19 11 19 16C21 11 25 9 29 13C26 13 25 17 25 23H16Z', accent(c))
+    + rect(7, 23, 18, 5, 2, panel(c))
+    + circle(3, 13, 1.8, accent(c)) + circle(16, 4, 1.8, accent(c)) + circle(29, 13, 1.8, accent(c)),
+  acorn: c => p('M9 15H24V18C24 24 20 28 16.5 29C13 28 9 24 9 18Z', panel(c)) + p('M6 15C6 8 26 8 27 15L26 17H7Z', accent(c)) + p('M16 9V5C19 3 23 4 24 6C21 8 18 8 16 6M12 21C12 23 13 24 14 25'),
   'rank-archer': c => p('M7 5C26 6 26 26 7 27L9 24C23 21 23 11 9 8Z', panel(c)) + p('M7 5L11 16L7 27M5 16H29M25 12L29 16L25 20M4 12L8 16L4 20'),
   // A tied neckerchief gives Outlaw its own silhouette beside Robin's cap.
   'rank-outlaw': c => p('M5 8C10 4 20 4 26 8L17 23C16 25 14 25 13 23Z', panel(c)) + p('M6 9C11 12 20 12 25 9M10 15L15 20') + p('M25 9C28 9 30 12 29 16L25 14L22 18L22 12Z', accent(c)) + circle(24, 10, 2.5, accent(c)),
@@ -165,7 +169,8 @@ const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
   pencil: ['#DFB66F', '#DEA088'],
   'neighbor-sprout': ['#B8CBA8', '#98B68B'],
-  'rank-squire': ['#DBBB8E', '#A7BF98'],
+  'rank-jester': ['#B8CBA8', '#E7C590'],
+  acorn: ['#DBBB8E', '#A7BF98'],
   'rank-archer': ['#DDB483', '#DDB483'],
   'rank-outlaw': ['#DEA088', '#E9BC96'],
   'rank-ranger': ['#9DBB90', '#D0A27A'],

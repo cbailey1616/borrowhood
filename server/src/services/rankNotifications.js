@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 
 const ranks = [
   { min: 0, name: 'Outlaw', tone: 'Needs work' },
-  { min: 60, name: 'Squire', tone: 'Fair' },
+  { min: 60, name: 'Jester', tone: 'Fair' },
   { min: 75, name: 'Archer', tone: 'Good' },
   { min: 90, name: 'Ranger', tone: 'Great' },
   { min: 97, name: 'Robin', tone: 'Excellent' },

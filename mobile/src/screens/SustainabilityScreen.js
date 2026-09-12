@@ -172,7 +172,7 @@ export default function SustainabilityScreen() {
         <Text style={styles.sectionTitle}>Sharing milestones</Text>
         <AnimatedCard index={6}>
           <View style={[styles.cardBox, styles.rankCard]}>
-            <Icon name={stats?.totalLends >= 20 ? 'rank-ranger' : stats?.totalLends >= 5 ? 'leaf' : 'rank-squire'} size={52} illustrated style={styles.rankArt} />
+            <Icon name={stats?.totalLends >= 20 ? 'rank-ranger' : stats?.totalLends >= 5 ? 'leaf' : 'acorn'} size={52} illustrated style={styles.rankArt} />
             <Text style={styles.rankTitle}>
               {stats?.totalLends >= 50 ? 'Sustainability Champion' :
                stats?.totalLends >= 20 ? 'Eco Warrior' :

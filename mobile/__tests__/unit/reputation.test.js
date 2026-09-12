@@ -2,7 +2,7 @@ import { memberReputation, NEIGHBOR_RANKS, NEW_NEIGHBOR_RANK, reputationRank } f
 
 it.each([
   [0, 'Outlaw', 'Needs work'], [59, 'Outlaw', 'Needs work'],
-  [60, 'Squire', 'Fair'], [74, 'Squire', 'Fair'],
+  [60, 'Jester', 'Fair'], [74, 'Jester', 'Fair'],
   [75, 'Archer', 'Good'], [89, 'Archer', 'Good'],
   [90, 'Ranger', 'Great'], [96, 'Ranger', 'Great'],
   [97, 'Robin', 'Excellent'], [100, 'Robin', 'Excellent'],

@@ -46,11 +46,12 @@ or resubmissions. Existing exchanges and feedback are preserved.
 | Hidden score | Rating | Rank |
 |---|---|---|
 | 0-59 | Needs work | Outlaw |
-| 60-74 | Fair | Squire |
+| 60-74 | Fair | Jester |
 | 75-89 | Good | Archer |
 | 90-96 | Great | Ranger |
 | 97-100 | Excellent | Robin |
 
+Jester uses a jester's hat; the temporary New neighbor status uses a sprout.
 The explanation shows only the five qualitative tiers and their emblems,
 highlights the current tier, and says "Build your rank with positive exchanges."
 New members see "Rating after 3 completed exchanges" and no selected tier. It

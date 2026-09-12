@@ -58,13 +58,13 @@ describe('UserProfileScreen', () => {
     api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 3, percent: 0, score: 66, completedCount: 3 } });
     const onFocus = mockNavigation.addListener.mock.calls.find(([event]) => event === 'focus')[1];
     await act(async () => { onFocus(); });
-    await screen.findByLabelText('Neighbor rank: Squire');
+    await screen.findByLabelText('Neighbor rank: Jester');
     expect(screen.queryByLabelText('Neighbor rank: New neighbor')).toBeNull();
     expect(screen.queryByText('New neighbor')).toBeNull();
     api.getUser.mockResolvedValue({ ...mockProfile, endorsement: { count: 10, percent: 40, score: 52 } });
     await act(async () => { onFocus(); });
     await screen.findByLabelText('Neighbor rank: Outlaw');
-    expect(screen.queryByText('Squire')).toBeNull();
+    expect(screen.queryByText('Jester')).toBeNull();
   });
   it('shows the same score and rank when opening your own profile route', async () => {
     api.getUser.mockResolvedValue({ ...mockProfile, id: 'user-1', endorsement: { count: 10, percent: 90, score: 85 } });
