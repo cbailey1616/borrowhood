@@ -136,10 +136,10 @@ it('hides the previous item immediately when another queue is loading or unavail
  expect(screen.queryByLabelText("Approve Alex's request")).toBeNull();
  expect(screen.queryByLabelText('Message Alex')).toBeNull();
  await act(async()=>next.reject(new Error('offline')));
- expect(screen.getByText('Couldn’t load requests. Tap to retry.')).toBeTruthy();
+ expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
  expect(screen.queryByText('Alex')).toBeNull();
  api.getRequestQueue.mockResolvedValueOnce(anotherQueue);
- fireEvent.press(screen.getByText('Couldn’t load requests. Tap to retry.'));
+ fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
  fireEvent.press(await screen.findByLabelText('Message Bea'));
  expect(navigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'neighbor-2',listingId:'item-2',listing:anotherQueue.listing}));
 });

@@ -90,7 +90,7 @@ export default function RequestQueueScreen({ route, navigation }) {
   };
 
   if (data?.listing.id !== listingId) return <View style={styles.center}>{error
-    ? <HapticPressable accessibilityRole="button" onPress={load}><Text style={styles.body}>Couldn’t load requests. Tap to retry.</Text></HapticPressable>
+    ? <View style={{ gap: SPACING.md }}><Text style={styles.body}>Couldn’t load requests.</Text><HapticPressable accessibilityRole="button" onPress={load} style={styles.outline}><Text style={styles.action}>Try again</Text></HapticPressable></View>
     : <ActivityIndicator color={COLORS.primary} />}</View>;
   const availability = listingAvailability(data.listing);
   return <View style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -131,9 +131,9 @@ export default function RequestQueueScreen({ route, navigation }) {
             <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${item.borrower.firstName}`} style={[styles.outline, { flex: 1 }]} onPress={() => navigation.navigate('Chat', { recipientId: item.borrower.id, recipient: item.borrower, listingId, listing: data.listing })}><Text style={styles.action}>Message</Text></HapticPressable>
           </View>
           <View style={styles.actionRow}>
-            <HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s request`} style={[styles.link, { flex: 1 }]} onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}><Text style={styles.action}>View request</Text></HapticPressable>
+            <HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s request`} style={[styles.outline, { flex: 1 }]} onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}><Text style={styles.action}>View request</Text></HapticPressable>
             <HapticPressable accessibilityRole="button" accessibilityLabel={`Decline ${item.borrower.firstName}'s request`} testID={`Queue.decline.${item.id}`}
-              disabled={!!busy || error} style={[styles.link, (busy || error) && { opacity: 0.45 }]} onPress={() => setDeclining(item)}><Text style={[styles.action, { color: COLORS.danger }]}>Decline</Text></HapticPressable>
+              disabled={!!busy || error} style={[styles.outline, { flex: 1, borderColor: COLORS.danger }, (busy || error) && { opacity: 0.45 }]} onPress={() => setDeclining(item)}><Text style={[styles.action, { color: COLORS.danger }]}>Decline</Text></HapticPressable>
           </View>
         </View>
       </LayeredCard>} />
@@ -151,5 +151,4 @@ const styles = {
   outline: { minHeight: 48, borderWidth: 1, borderColor: COLORS.borderGreenStrong, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   approve: { minHeight: 48, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   approveText: { ...TYPOGRAPHY.button, color: COLORS.surface },
-  link: { minHeight: 44, justifyContent: 'center' },
 };
