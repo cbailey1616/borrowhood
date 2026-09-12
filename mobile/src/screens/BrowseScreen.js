@@ -1,4 +1,5 @@
-import { directFeeLabel } from '../utils/directFee';
+import TextInput from '../components/AppTextInput';
+import ListingOffer from '../components/ListingOffer';
 import { useState, useEffect, useCallback } from 'react';
 import VerifiedBadge from '../components/VerifiedBadge';
 import {
@@ -7,13 +8,12 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  TextInput,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import ShimmerImage from '../components/ShimmerImage';
 import api from '../services/api';
-import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -94,18 +94,8 @@ export default function BrowseScreen({ navigation }) {
           </View>
         )}
         <View style={styles.cardContent}>
+          <ListingOffer listing={item} />
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.cardCondition}>{CONDITION_LABELS[item.condition]}</Text>
-
-          <View style={styles.cardPricing}>
-            {directFeeLabel(item) ? <Text style={styles.priceLabel}>{directFeeLabel(item)}</Text> : item.isFree ? (
-              <Text style={styles.freeLabel}>Free to borrow</Text>
-            ) : (
-              <Text style={styles.priceLabel}>
-                ${item.pricePerDay}/day
-              </Text>
-            )}
-          </View>
 
           {item.distanceMiles && (
             <View style={styles.distanceRow}>

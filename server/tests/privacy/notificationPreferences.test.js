@@ -28,6 +28,10 @@ describe('granular push preferences', () => {
     expect(shouldSendPush('new_message', { push_enabled: false, new_message: true })).toBe(false);
     expect(shouldSendPush('request_approved', { push: false, request_approvals: true })).toBe(false);
     expect(shouldSendPush('new_rating', { new_rating: true })).toBe(false);
+    expect(shouldSendPush('item_match', { item_match: true })).toBe(false);
+    expect(normalizedPreferences({ item_match: true, item_match_source_friends: true })).toMatchObject({ item_match: false, item_match_source_friends: false });
+    expect(shouldSendPush('request_offer', { post_replies: false })).toBe(false);
+    expect(shouldSendPush('request_offer', { post_replies: true })).toBe(true);
   });
   it('honors a later group toggle from an older app after granular choices were saved', () => {
     const original = { request_approvals: true, request_declines: false, new_service_requests: false };
@@ -81,20 +85,29 @@ describe('core notification audiences', () => {
     expect(prefs.new_message_source_town).toBe(true);
     expect(audiencePreferences('new_message', { source_town: false }).source_town).toBe(true);
   });
-  it('keeps audience choices independent across core types', async () => {
+  it('limits audience choices to new item and service requests', async () => {
     const prefs = { new_message_source_friends: false, new_service_requests_source_friends: true };
     const query = vi.fn().mockResolvedValue({ rows: [{ is_friend: true, is_neighbor: true, is_town: true }] });
-    expect(await notificationAudienceAllowsPush(query, 'recipient', 'sender', audiencePreferences('new_message', prefs))).toBe(false);
+    expect(await notificationAudienceAllowsPush(query, 'recipient', 'sender', audiencePreferences('new_message', prefs))).toBe(true);
     expect(await notificationAudienceAllowsPush(query, 'recipient', 'sender', audiencePreferences('new_request', prefs, { requestType: 'service' }))).toBe(true);
     expect(audiencePreferences('return_reminder', prefs)).toEqual({ source_friends: true, source_neighborhood: true, source_town: true });
   });
-  it('enables only one source of a previously muted core category', () => {
-    const prefs = { borrow_updates: false, ...preferencePatch({ borrow_updates: true,
-      borrow_updates_source_friends: true, borrow_updates_source_neighborhood: false, borrow_updates_source_town: false }) };
-    expect(shouldSendPush('request_approved', prefs)).toBe(true);
-    expect(audiencePreferences('request_approved', prefs)).toEqual({ source_friends: true, source_neighborhood: false, source_town: false });
-    expect(normalizedPreferences(prefs).borrow_updates_source_town).toBe(false);
-    expect(validPreferenceKeys.has('borrow_updates_source_town')).toBe(true);
+  it('enables only one source of previously muted service requests', () => {
+    const prefs = { new_service_requests: false, ...preferencePatch({ new_service_requests: true,
+      new_service_requests_source_friends: true, new_service_requests_source_neighborhood: false, new_service_requests_source_town: false }) };
+    expect(shouldSendPush('new_request', prefs, { requestType: 'service' })).toBe(true);
+    expect(audiencePreferences('new_request', prefs, { requestType: 'service' })).toEqual({ source_friends: true, source_neighborhood: false, source_town: false });
+    expect(normalizedPreferences(prefs).new_service_requests_source_town).toBe(false);
+    expect(validPreferenceKeys.has('new_service_requests_source_town')).toBe(true);
     expect(validPreferenceKeys.has('arbitrary_source_town')).toBe(false);
+  });
+  it('preserves fully muted activity and lets a simple switch enable it again', () => {
+    const muted = { new_message_source_friends: false, new_message_source_neighborhood: false, new_message_source_town: false };
+    expect(normalizedPreferences(muted).new_message).toBe(false);
+    expect(shouldSendPush('new_message', muted)).toBe(false);
+    const enabled = { ...muted, ...preferencePatch({ new_message: true }) };
+    expect(normalizedPreferences(enabled).new_message).toBe(true);
+    expect(shouldSendPush('new_message', enabled)).toBe(true);
+    expect(audiencePreferences('new_message', enabled)).toEqual({ source_friends: true, source_neighborhood: true, source_town: true });
   });
 });

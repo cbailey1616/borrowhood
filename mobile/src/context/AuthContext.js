@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
 import usePushNotifications from '../hooks/usePushNotifications';
@@ -120,7 +120,7 @@ export function AuthProvider({ children, navigationRef }) {
     api.setAuthToken(response.accessToken);
   };
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const userData = await api.getMe();
       setUser(userData);
@@ -129,7 +129,7 @@ export function AuthProvider({ children, navigationRef }) {
       console.error('Failed to refresh user:', error);
       throw error;
     }
-  };
+  }, []);
 
   const isGracePeriodActive = useMemo(() => {
     if (!user?.verificationGraceUntil) return false;

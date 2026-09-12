@@ -19,7 +19,7 @@ export default function MainNavigator() {
   return (
     <FeedSeenContext.Provider value={markFeedSeen}>
     <Tab.Navigator
-      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.messages} hasNewFeed={hasNewFeed} />}
+      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.messages + badgeCounts.notifications} hasNewFeed={hasNewFeed} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -48,7 +48,7 @@ export default function MainNavigator() {
           tabPress: fetchBadgeCount,
         }}
       >
-        {(props) => <InboxScreen {...props} badgeCounts={badgeCounts} onRead={fetchBadgeCount} />}
+        {(props) => <InboxScreen {...props} onRead={fetchBadgeCount} />}
       </Tab.Screen>
       <Tab.Screen
         name="Profile"

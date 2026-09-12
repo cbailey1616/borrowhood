@@ -1,18 +1,17 @@
+import MessageComposer from '../components/MessageComposer';
+import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
-  Image,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Keyboard,
-  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -21,11 +20,11 @@ import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
-  const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
   const { listingId, listing, requestId, request, autoFocus } = route.params;
   const isRequest = !!requestId;
@@ -40,21 +39,32 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [posts, setPosts] = useState([]);
   const [actionTarget, setActionTarget] = useState(null);
   const openingChat = useRef(false);
-  const [expandedPosts, setExpandedPosts] = useState({});
+  const [activeThreadId, setActiveThreadId] = useState(null);
+  const [pendingDestination, setPendingDestination] = useState(null);
+  const activeThread = posts.find(post => post.id === activeThreadId);
   const [replies, setReplies] = useState({});
+  const [replyErrors, setReplyErrors] = useState({});
+  const [loadingReplies, setLoadingReplies] = useState({});
+  const [hasMoreReplies, setHasMoreReplies] = useState({});
+  const loadedReplies = useRef(new Set());
+  const replyPages = useRef({});
+  const replyRequests = useRef(new Map());
+  const threadGeneration = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState(null);
+  const submitting = useRef(false);
+  const [sendErrors, setSendErrors] = useState({});
+  const [drafts, setDrafts] = useState({});
+  const draftKey = activeThreadId || 'comments';
+  const newComment = drafts[draftKey] || '';
+  const setNewComment = text => setDrafts(prev => ({ ...prev, [draftKey]: text }));
+  const sendError = sendErrors[draftKey] || '';
+  const setSendError = message => setSendErrors(prev => ({ ...prev, [draftKey]: message }));
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const inputRef = useRef(null);
-
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
+  const listRef = useRef(null);
+  const scrollTarget = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -68,69 +78,135 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   }, [targetId]);
 
   useEffect(() => {
-    setPosts([]); setReplies({}); setExpandedPosts({}); setReplyingTo(null); setNewComment(''); setIsLoading(true); setThreadError('');
+    threadGeneration.current += 1;
+    loadedReplies.current = new Set();
+    replyPages.current = {};
+    replyRequests.current = new Map();
+    submitting.current = false;
+    setPosts([]); setReplies({}); setReplyErrors({}); setLoadingReplies({}); setHasMoreReplies({}); setActiveThreadId(null);
+    setDrafts({}); setIsLoading(true); setThreadError(''); setSendErrors({}); setIsSubmitting(false);
     fetchPosts();
+    return () => { threadGeneration.current += 1; };
   }, [targetId]);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 500);
+      const timer = setTimeout(() => inputRef.current?.focus(), 500);
+      return () => clearTimeout(timer);
     }
-  }, [autoFocus]);
+  }, [autoFocus, isLoading]);
+
+
+  useEffect(() => {
+    navigation.setOptions({ title: activeThreadId ? 'Thread' : 'Comments', headerBackButtonMenuEnabled: false });
+  }, [activeThreadId, navigation]);
+
+  usePreventRemove(!!activeThreadId, () => closeThread());
+
+  useEffect(() => {
+    if (activeThreadId || !pendingDestination) return;
+    // The native back guard must be released before navigating to an existing screen.
+    navigation.navigate(pendingDestination.screen, pendingDestination.params);
+    setPendingDestination(null);
+  }, [activeThreadId, pendingDestination, navigation]);
+
+  const navigateFromComments = (screen, params) => {
+    Keyboard.dismiss();
+    if (activeThreadId) {
+      setPendingDestination({ screen, params });
+      setActiveThreadId(null);
+    } else {
+      navigation.navigate(screen, params);
+    }
+  };
 
   const fetchPosts = async () => {
+    const generation = threadGeneration.current;
     try {
       const data = isRequest
         ? await api.getRequestDiscussions(requestId, { limit: 50 })
         : await api.getDiscussions(listingId, { limit: 50 });
-      setPosts(data.posts || []);
+      if (generation === threadGeneration.current) setPosts(data.posts || []);
     } catch (error) {
-      setThreadError('Couldn’t load comments. Go back and try again.');
+      if (generation === threadGeneration.current) setThreadError('Couldn’t load comments. Go back and try again.');
     } finally {
-      setIsLoading(false);
+      if (generation === threadGeneration.current) setIsLoading(false);
     }
   };
 
-  const fetchReplies = async (postId) => {
-    try {
-      const data = isRequest
-        ? await api.getRequestDiscussionReplies(requestId, postId)
-        : await api.getDiscussionReplies(listingId, postId);
-      setReplies(prev => ({ ...prev, [postId]: data.replies || [] }));
-    } catch (error) {
-      console.error('Failed to fetch replies:', error);
-    }
+  const fetchReplies = (postId, page = 1) => {
+    if (replyRequests.current.has(postId)) return replyRequests.current.get(postId);
+    const generation = threadGeneration.current;
+    setLoadingReplies(prev => ({ ...prev, [postId]: true }));
+    setReplyErrors(prev => ({ ...prev, [postId]: '' }));
+    const pending = (async () => {
+      try {
+        const data = isRequest
+          ? await api.getRequestDiscussionReplies(requestId, postId, { page, limit: 50 })
+          : await api.getDiscussionReplies(listingId, postId, { page, limit: 50 });
+        if (generation !== threadGeneration.current) return;
+        const fetched = data.replies || [];
+        const fetchedIds = new Set(fetched.map(reply => reply.id));
+        // A new reply may have been sent while this thread was loading.
+        setReplies(prev => ({ ...prev, [postId]: [
+          ...fetched, ...(prev[postId] || []).filter(reply => !fetchedIds.has(reply.id)),
+        ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) }));
+        loadedReplies.current.add(postId);
+        replyPages.current[postId] = page;
+        setHasMoreReplies(prev => ({ ...prev, [postId]: fetched.length === 50 }));
+      } catch (error) {
+        if (generation === threadGeneration.current) {
+          setReplyErrors(prev => ({ ...prev, [postId]: 'Couldn’t load earlier replies.' }));
+        }
+      } finally {
+        if (generation === threadGeneration.current) {
+          setLoadingReplies(prev => ({ ...prev, [postId]: false }));
+          replyRequests.current.delete(postId);
+        }
+      }
+    })();
+    replyRequests.current.set(postId, pending);
+    return pending;
   };
 
-  const toggleExpanded = async (postId) => {
-    const isExpanding = !expandedPosts[postId];
-    setExpandedPosts(prev => ({ ...prev, [postId]: isExpanding }));
+  const openThread = (postId, focus = false) => {
+    setActiveThreadId(postId);
+    setSendError('');
+    if (!loadedReplies.current.has(postId)) fetchReplies(postId);
+    if (focus) inputRef.current?.focus();
+  };
 
-    if (isExpanding && !replies[postId]) {
-      await fetchReplies(postId);
-    }
+  const closeThread = () => {
+    Keyboard.dismiss();
+    setActiveThreadId(null);
+    setSendError('');
   };
 
   const handleSubmit = async () => {
-    if (!newComment.trim()) return;
-
+    if (submitting.current || !newComment.trim()) return;
+    submitting.current = true;
+    const generation = threadGeneration.current;
+    const parentId = activeThreadId || undefined;
+    const submittedDraftKey = draftKey;
     setIsSubmitting(true);
-    setThreadError('');
+    setSendError('');
     try {
       const data = {
         content: newComment.trim(),
-        parentId: replyingTo?.id || undefined,
+        parentId,
       };
 
       const result = isRequest
         ? await api.createRequestDiscussionPost(requestId, data)
         : await api.createDiscussionPost(listingId, data);
+      if (generation !== threadGeneration.current) return;
+      scrollTarget.current = { draftKey: submittedDraftKey, atEnd: !!parentId };
 
-      if (replyingTo) {
+      if (parentId) {
         // Add reply to the replies list
         setReplies(prev => ({
           ...prev,
-          [replyingTo.id]: [...(prev[replyingTo.id] || []), {
+          [parentId]: [...(prev[parentId] || []), {
             id: result.id,
             content: result.content,
             createdAt: result.createdAt,
@@ -146,13 +222,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
         // Update reply count on parent
         setPosts(prev => prev.map(p =>
-          p.id === replyingTo.id
+          p.id === parentId
             ? { ...p, replyCount: (p.replyCount || 0) + 1 }
             : p
         ));
 
-        // Expand the post to show the new reply
-        setExpandedPosts(prev => ({ ...prev, [replyingTo.id]: true }));
+        if (!loadedReplies.current.has(parentId)) fetchReplies(parentId);
       } else {
         // Add new top-level post
         setPosts(prev => [{
@@ -171,13 +246,16 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       }
 
       haptics.success();
-      setNewComment('');
-      setReplyingTo(null);
+      setDrafts(prev => ({ ...prev, [submittedDraftKey]: '' }));
     } catch (error) {
-      setThreadError('Your comment was not sent. Your text is still here—please try again.');
+      if (generation !== threadGeneration.current) return;
+      setSendError('Couldn’t send. Please try again.');
       haptics.error();
     } finally {
-      setIsSubmitting(false);
+      if (generation === threadGeneration.current) {
+        submitting.current = false;
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -201,8 +279,10 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         ));
       } else {
         setPosts(prev => prev.filter(p => p.id !== postId));
+        if (activeThreadId === postId) closeThread();
       }
     } catch (error) {
+      setThreadError('Couldn’t delete this comment. Please try again.');
       haptics.error();
     }
   };
@@ -210,16 +290,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const confirmDelete = (postId, isReply = false, parentId = null) => {
     setDeleteTarget({ postId, isReply, parentId });
     setDeleteSheetVisible(true);
-  };
-
-  const startReply = (post) => {
-    setReplyingTo(post);
-    inputRef.current?.focus();
-  };
-
-  const cancelReply = () => {
-    setReplyingTo(null);
-    setNewComment('');
   };
 
   const formatDate = (dateString) => {
@@ -243,7 +313,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     try {
       const conversations = await api.getConversations();
       const existing = conversations.find(chat => chat.otherUser?.id === post.user.id);
-      navigation.navigate('Chat', {
+      navigateFromComments('Chat', {
         conversationId: existing?.id, recipientId: post.user.id, recipient: post.user,
         threadContext: { ...threadContext, replyText: post.content },
         ...(isRequest ? {} : { listingId: targetId }),
@@ -253,44 +323,61 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     } finally { openingChat.current = false; }
   };
 
-  const renderComment = (post, parentId = null) => (
-    <View style={styles.commentRow}>
-      <ShimmerImage placeholderIcon="person" source={{ uri: post.user.profilePhotoUrl || null }} style={styles.postAvatar} />
-      <View style={styles.commentBody}>
-        <View style={styles.commentMeta}>
-          <Text style={styles.postAuthor}>{post.user.firstName} {post.user.lastName}</Text>
-          <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
+  const renderComment = (post, parentId = null) => {
+    return (
+      <HapticPressable style={styles.comment} onLongPress={() => setActionTarget({ post, parentId })}
+        accessible={false} accessibilityRole={undefined} haptic={false} scaleDown={1}
+        testID={`Comments.message.${post.id}`}>
+        <View style={styles.commentHeader}>
+          <ShimmerImage placeholderIcon="person" source={{ uri: post.user.profilePhotoUrl || null }}
+            style={[styles.postAvatar, !!parentId && styles.replyAvatar]} />
+          <View style={styles.commentMeta}>
+            <Text style={styles.postAuthor}>{[post.user.firstName, post.user.lastName].filter(Boolean).join(' ')}</Text>
+            <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
+          </View>
           <HapticPressable accessibilityLabel={`Comment options for ${post.user.firstName}`} style={styles.moreButton}
             onPress={() => setActionTarget({ post, parentId })}>
-            <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textSecondary} />
+            <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.primary} />
           </HapticPressable>
         </View>
-        <Text style={styles.postContent}>{post.content}</Text>
-        <HapticPressable style={styles.actionButton} accessibilityLabel={`Reply to ${post.user.firstName}`}
-          onPress={() => startReply(parentId ? { id: parentId, user: post.user, content: post.content } : post)}>
-          <Text style={styles.actionText}>Reply</Text>
-        </HapticPressable>
-      </View>
+        <Text style={[styles.postContent, !!parentId && styles.replyIndent]}>{post.content}</Text>
+        {!activeThreadId && post.replyCount > 0 && (
+          <View style={styles.postActions}>
+            <HapticPressable style={styles.actionButton} onPress={() => openThread(post.id)}
+              accessibilityLabel={`View ${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'} to ${post.user.firstName}`}>
+              <Ionicons name="chatbubble-outline" size={15} color={COLORS.primary} />
+              <Text style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
+            </HapticPressable>
+          </View>
+        )}
+      </HapticPressable>
+    );
+  };
+
+  const renderPost = ({ item: post }) => (
+    <View style={[styles.postCard, !!activeThreadId && styles.threadReply]}>
+      {renderComment(post, activeThreadId)}
     </View>
   );
 
-  const renderPost = ({ item: post }) => {
-    const isExpanded = expandedPosts[post.id];
-    return (
-      <View style={styles.postCard}>
-        {renderComment(post)}
-        {post.replyCount > 0 && (
-          <HapticPressable style={styles.threadToggle} onPress={() => toggleExpanded(post.id)}>
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.primary} />
-            <Text style={styles.actionText}>{isExpanded ? 'Hide' : 'View'} {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
-          </HapticPressable>
-        )}
-        {isExpanded && <View style={styles.repliesContainer}>
-          {(replies[post.id] || []).map(reply => <View key={reply.id}>{renderComment(reply, post.id)}</View>)}
-        </View>}
-      </View>
-    );
-  };
+  const renderThreadStatus = () => (
+    <View style={styles.threadStatus}>
+      {loadingReplies[activeThreadId] ? <View style={styles.replyStatus}>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+        <Text style={styles.statusText}>Loading replies…</Text>
+      </View> : replyErrors[activeThreadId] ? <View style={styles.replyStatus}>
+        <Text accessibilityRole="alert" style={styles.replyError}>{replyErrors[activeThreadId]}</Text>
+        <HapticPressable style={styles.actionButton} accessibilityLabel="Retry loading replies"
+          onPress={() => fetchReplies(activeThreadId, (replyPages.current[activeThreadId] || 0) + 1)}>
+          <Text style={styles.actionText}>Try again</Text>
+        </HapticPressable>
+      </View> : hasMoreReplies[activeThreadId] ? (
+        <HapticPressable style={styles.actionButton} onPress={() => fetchReplies(activeThreadId, replyPages.current[activeThreadId] + 1)}>
+          <Text style={styles.actionText}>Show more replies</Text>
+        </HapticPressable>
+      ) : null}
+    </View>
+  );
 
   if (isLoading) {
     return (
@@ -305,73 +392,64 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       // The keyboard covers the home indicator; keep only a small typing gap.
       paddingBottom: keyboardVisible ? SPACING.sm : Math.max(insets.bottom, SPACING.md),
     }]}>
-      {replyingTo && (
-        <View style={styles.replyingToBar}>
-          <Text style={styles.replyingToText} numberOfLines={2}>
-            Replying to {replyingTo.user.firstName}: “{replyingTo.content.slice(0, 120)}”
-          </Text>
-          <HapticPressable haptic="light" onPress={cancelReply} accessibilityLabel="Cancel reply" style={styles.cancelReplyButton}>
-            <Ionicons name="close" size={18} color={COLORS.textSecondary} />
-          </HapticPressable>
-        </View>
-      )}
-      <View style={styles.inputRow}>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={newComment}
-          onChangeText={setNewComment}
-          placeholder={replyingTo ? 'Write a reply…' : 'Add a comment…'}
-          accessibilityLabel="Comment"
-          placeholderTextColor={COLORS.textMuted}
-          multiline
-          maxLength={2000}
-          autoCapitalize="sentences"
-          autoCorrect={true}
-          spellCheck={true}
-        />
-        <HapticPressable
-          haptic="medium"
-          accessibilityRole="button" accessibilityLabel={replyingTo ? "Post reply" : "Post comment"}
-          style={[styles.sendButton, (!newComment.trim() || isSubmitting) && styles.sendButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!newComment.trim() || isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="send" size={18} color="#fff" />
-          )}
-        </HapticPressable>
-      </View>
+      {!!sendError && <Text accessibilityRole="alert" style={styles.sendError}>{sendError}</Text>}
+      <MessageComposer
+        ref={inputRef}
+        resetKey={draftKey}
+        value={newComment}
+        onChangeText={setNewComment}
+        onSend={handleSubmit}
+        placeholder={activeThreadId ? 'Reply in thread…' : 'Add a comment…'}
+        inputAccessibilityLabel="Comment"
+        sendAccessibilityLabel={activeThreadId ? 'Post reply' : 'Post comment'}
+        editable={!isSubmitting}
+        disabled={!newComment.trim() || isSubmitting}
+        loading={isSubmitting}
+      />
     </View>
   );
 
   return (
-    <KeyboardAvoidingView
+    <ComposerKeyboardView
       testID="Comments.keyboardLayout"
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      onKeyboardVisibilityChange={setKeyboardVisible}
     >
       {/* Header */}
-      <HapticPressable style={styles.listingHeader} accessibilityRole="button" accessibilityLabel="View original post"
-        onPress={() => navigation.navigate(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}>
-        <Text style={styles.listingTitle} numberOfLines={2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Visible to people who can see this post.</Text>
-        <Text style={{ color: COLORS.primary, fontSize: 12, marginTop: 4 }}>View original post →</Text>
-      </HapticPressable>
-      {!!threadError && <Text accessibilityRole="alert" style={{ color: COLORS.danger, padding: 16 }}>{threadError}</Text>}
+      <View style={styles.listingHeader}>
+        <View style={styles.listingContext}>
+          <Text style={styles.listingTitle} numberOfLines={fontScale > 1.4 ? undefined : 2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>
+          <HapticPressable style={styles.viewPostButton} accessibilityLabel="View original post"
+            onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}>
+            <Text style={styles.actionText}>View post</Text>
+          </HapticPressable>
+        </View>
+      </View>
+      {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
 
       <FlatList
+        ref={listRef}
         style={styles.list}
-        data={posts}
+        key={activeThreadId || 'comments'}
+        data={activeThreadId ? replies[activeThreadId] || [] : posts}
         renderItem={renderPost}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={
+        onContentSizeChange={() => {
+          if (scrollTarget.current?.draftKey !== draftKey) return;
+          const { atEnd } = scrollTarget.current;
+          scrollTarget.current = null;
+          if (atEnd) listRef.current?.scrollToEnd({ animated: true });
+          else listRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }}
+        ListHeaderComponent={activeThread ? <View style={styles.threadParent}>
+          {renderComment(activeThread)}
+          <Text style={styles.threadCount}>{activeThread.replyCount || 0} {activeThread.replyCount === 1 ? 'reply' : 'replies'}</Text>
+        </View> : null}
+        ListFooterComponent={activeThreadId ? renderThreadStatus() : null}
+        ListEmptyComponent={activeThreadId ? null :
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray[600]} />
             <Text style={styles.emptyTitle}>{isRequest ? 'No responses yet' : 'No comments yet'}</Text>
@@ -392,11 +470,15 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         onClose={() => setActionTarget(null)}
         title={actionTarget ? `${actionTarget.post.user.firstName}’s comment` : 'Comment'}
         actions={actionTarget ? [
-          ...(!actionTarget.post.isOwn && actionTarget.post.user.id !== user?.id ? [{
+          {
+            label: 'Reply in thread',
+            onPress: () => openThread(actionTarget.parentId || actionTarget.post.id, true),
+          },
+          ...(actionTarget.post.user.id && !actionTarget.post.isOwn && actionTarget.post.user.id !== user?.id ? [{
             label: `Message ${actionTarget.post.user.firstName} privately`,
             onPress: () => openPrivateChat(actionTarget.post),
           }] : []),
-          ...((actionTarget.post.isOwn || isOwner) ? [{
+          ...((actionTarget.post.isOwn || actionTarget.post.user.id === user?.id || isOwner) ? [{
             label: 'Delete comment', destructive: true,
             onPress: () => confirmDelete(actionTarget.post.id, !!actionTarget.parentId, actionTarget.parentId),
           }] : []),
@@ -416,7 +498,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           },
         ]}
       />
-    </KeyboardAvoidingView>
+    </ComposerKeyboardView>
   );
 }
 
@@ -424,12 +506,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   loadingContainer: {
     flex: 1,
@@ -440,16 +516,26 @@ const styles = StyleSheet.create({
   listingHeader: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.surfaceElevated,
-    ...SHADOWS.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
+  listingContext: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.md },
   listingTitle: {
     ...TYPOGRAPHY.headline,
     fontSize: 16,
     color: COLORS.text,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 180,
   },
+  viewPostButton: {
+    minHeight: 44, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderGreenStrong,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface,
+  },
+  threadError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, padding: SPACING.lg },
   listContent: {
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.lg,
   },
   list: { flex: 1 },
@@ -470,174 +556,92 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   postCard: {
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.separator,
   },
-  commentRow: { flexDirection: 'row', gap: SPACING.sm },
-  commentBody: { flex: 1 },
-  commentMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  threadToggle: { marginLeft: 44, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
+  comment: { minWidth: 0 },
+  commentHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  commentMeta: { flex: 1, flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: SPACING.sm, rowGap: 2 },
   postAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: COLORS.gray[700],
-    borderWidth: 2,
-    borderColor: COLORS.surfaceElevated,
-  },
-  postMeta: {
-    flex: 1,
-    marginLeft: SPACING.md,
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.primaryMuted,
   },
   postAuthor: {
-    ...TYPOGRAPHY.body,
-    fontWeight: '600',
+    ...TYPOGRAPHY.headline,
+    fontSize: 16,
     color: COLORS.text,
+    flexShrink: 1,
   },
   postDate: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
-    marginTop: 2,
   },
-  moreButton: { marginLeft: 'auto', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  moreButton: {
+    width: 44, minHeight: 44, borderRadius: RADIUS.full,
+    borderWidth: 1, borderColor: COLORS.borderGreen,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface,
+  },
   postContent: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
     lineHeight: 23,
-    marginBottom: 0,
+    marginTop: SPACING.xs,
+    marginLeft: 44,
   },
   postActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: SPACING.sm,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
+    marginTop: SPACING.sm,
+    marginLeft: 44,
   },
   actionButton: {
-    minHeight: 48,
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: COLORS.borderGreenStrong,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    flexShrink: 1,
   },
   actionText: {
     ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     fontWeight: '600',
+    flexShrink: 1,
   },
-  repliesContainer: {
-    marginLeft: 16,
+  threadParent: { paddingTop: SPACING.lg, paddingBottom: SPACING.md },
+  threadCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginLeft: 44, marginTop: SPACING.lg },
+  threadReply: {
+    marginLeft: 18,
     paddingLeft: SPACING.md,
     borderLeftWidth: 2,
     borderLeftColor: COLORS.primaryMuted,
-    gap: SPACING.sm,
-  },
-  reply: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
+    borderBottomWidth: 0,
   },
   replyAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: COLORS.gray[700],
+    width: 28,
+    height: 28,
   },
-  replyContent: {
-    flex: 1,
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-  },
-  replyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  replyAuthor: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  replyDate: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-  },
-  replyText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-    marginTop: SPACING.xs,
-  },
-  deleteButton: {
-    marginTop: SPACING.sm,
-  },
-  deleteText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
-    color: COLORS.danger,
-  },
+  replyIndent: { marginLeft: 36 },
+  threadStatus: { paddingVertical: SPACING.md },
+  replyStatus: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.sm },
+  statusText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  replyError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, flexShrink: 1 },
   composeContainer: {
     flexShrink: 0,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.separator,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-  },
-  replyingToBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.primaryMuted,
-    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.background,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginBottom: SPACING.sm,
+    paddingTop: SPACING.sm,
   },
-  replyingToText: {
-    flex: 1,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
-    color: COLORS.primary,
-  },
-  cancelReplyButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: SPACING.md,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.xl,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
-    minHeight: 44,
-    maxHeight: 120,
-    textAlignVertical: 'top',
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SHADOWS.md,
-  },
-  sendButtonDisabled: {
-    backgroundColor: COLORS.gray[700],
-    ...SHADOWS.sm,
-  },
+  sendError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, marginBottom: SPACING.sm },
 });

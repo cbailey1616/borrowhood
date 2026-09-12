@@ -1,10 +1,10 @@
+import TextInput from '../../components/AppTextInput';
 import ShimmerImage from '../../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   FlatList,
   Image,
   ActivityIndicator,

@@ -24,7 +24,14 @@ const thumbUp = (c) => p('M11 14L15 8V4C15 1 20 2 20 6L19 12H26C28 12 29 14 28 1
 
 const DRAWINGS = {
   // A woodland progression drawn for Borrowhood, rather than generic medals.
-  'rank-squire': c => p('M9 15H24V18C24 24 20 28 16.5 29C13 28 9 24 9 18Z', panel(c)) + p('M6 15C6 8 26 8 27 15L26 17H7Z', accent(c)) + p('M16 9V5C19 3 23 4 24 6C21 8 18 8 16 6M12 21C12 23 13 24 14 25'),
+  'neighbor-sprout': c => p('M16 18C9 19 5 15 5 9C12 8 17 12 16 18Z', panel(c))
+    + p('M16 14C15 7 20 3 27 4C28 11 23 15 16 14Z', accent(c))
+    + p('M16 26V17C16 13 19 10 23 8M16 20L10 14M9 28C12 25 20 25 23 28'),
+  'rank-jester': c => p('M7 23C7 17 6 13 3 13C7 9 11 11 13 16C13 11 14 7 16 5C18 7 19 11 19 16C21 11 25 9 29 13C26 13 25 17 25 23Z', panel(c))
+    + p('M16 5C18 7 19 11 19 16C21 11 25 9 29 13C26 13 25 17 25 23H16Z', accent(c))
+    + rect(7, 23, 18, 5, 2, panel(c))
+    + circle(3, 13, 1.8, accent(c)) + circle(16, 4, 1.8, accent(c)) + circle(29, 13, 1.8, accent(c)),
+  acorn: c => p('M9 15H24V18C24 24 20 28 16.5 29C13 28 9 24 9 18Z', panel(c)) + p('M6 15C6 8 26 8 27 15L26 17H7Z', accent(c)) + p('M16 9V5C19 3 23 4 24 6C21 8 18 8 16 6M12 21C12 23 13 24 14 25'),
   'rank-archer': c => p('M7 5C26 6 26 26 7 27L9 24C23 21 23 11 9 8Z', panel(c)) + p('M7 5L11 16L7 27M5 16H29M25 12L29 16L25 20M4 12L8 16L4 20'),
   // A tied neckerchief gives Outlaw its own silhouette beside Robin's cap.
   'rank-outlaw': c => p('M5 8C10 4 20 4 26 8L17 23C16 25 14 25 13 23Z', panel(c)) + p('M6 9C11 12 20 12 25 9M10 15L15 20') + p('M25 9C28 9 30 12 29 16L25 14L22 18L22 12Z', accent(c)) + circle(24, 10, 2.5, accent(c)),
@@ -43,6 +50,12 @@ const DRAWINGS = {
   people: c => circle(12, 10, 4, panel(c)) + circle(23, 11, 3, accent(c)) + p('M3 27V24C3 15 21 15 21 24V27Z', panel(c)) + p('M23 18C27 18 30 21 30 25V27H25'),
   chatbubble: chat,
   mail: c => rect(3, 7, 26, 20, 4, panel(c)) + p('M4 9L14 17C15 18 17 18 18 17L28 9M4 25L11 19M28 25L21 19'),
+  'mail-unread': c => rect(3, 9, 26, 18, 4, panel(c))
+    + p('M4 11L14 18C15 19 17 19 18 18L28 11')
+    + circle(25, 8, 4.5, accent(c)),
+  'messages-read': c => p('M9 4H25C28 4 29 6 29 9V19')
+    + p('M7 9H21C24 9 25 11 25 14V21C25 24 23 25 20 25H12L7 29V25C4 25 3 23 3 20V14C3 11 4 9 7 9Z', panel(c))
+    + p('M9 17L13 21L20 14'),
   search: c => circle(14, 14, 9, panel(c)) + p('M21 21L29 29'),
   filter: c => p('M4 8H8M16 8H28M4 16H18M26 16H28M4 24H6M14 24H28') + circle(12, 8, 4, panel(c)) + circle(22, 16, 4, panel(c)) + circle(10, 24, 4, panel(c)),
   bookmark: c => p('M8 4H24V28L16 23L8 28Z', panel(c)),
@@ -155,7 +168,9 @@ const ALIASES = {
 const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
   pencil: ['#DFB66F', '#DEA088'],
-  'rank-squire': ['#DBBB8E', '#A7BF98'],
+  'neighbor-sprout': ['#B8CBA8', '#98B68B'],
+  'rank-jester': ['#B8CBA8', '#E7C590'],
+  acorn: ['#DBBB8E', '#A7BF98'],
   'rank-archer': ['#DDB483', '#DDB483'],
   'rank-outlaw': ['#DEA088', '#E9BC96'],
   'rank-ranger': ['#9DBB90', '#D0A27A'],
@@ -166,6 +181,8 @@ const PALETTES = {
   'thumbs-down': ['#DEA088', '#E7C590'],
   basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
+  'mail-unread': ['#E7C590', '#DEA088'],
+  'messages-read': ['#AFCABB', '#D8E5DA'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
   gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
   notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'],

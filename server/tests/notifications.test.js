@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { query } from '../src/utils/db.js';
-import { createTestUser, createTestApp, cleanupTestUser } from './helpers/stripe.js';
-import { createTestNotification } from './helpers/fixtures.js';
+import { createTestUser, createTestApp, cleanupTestUser, createTestListing } from './helpers/stripe.js';
+import { createTestNotification, createTestTransaction } from './helpers/fixtures.js';
 
 let app;
 let userA, userB;
@@ -112,6 +112,55 @@ describe('GET /api/notifications', () => {
 });
 
 describe('GET /api/notifications/badge-count', () => {
+  it('groups pending requests before pagination, counts current people, and acknowledges only the viewed group', async () => {
+    const members = await Promise.all(['owner', 'first', 'second'].map(name => createTestUser({ email: `queue-${name}-${Date.now()}@borrowhood.test`, firstName: name })));
+    createdUserIds.push(...members.map(member => member.userId));
+    const [owner, first, second] = members;
+    const tea = await createTestListing(owner.userId, { title: 'Tea', isFree: true });
+    const otherTea = await createTestListing(owner.userId, { title: 'Tea', isFree: true });
+    const firstId = await createTestTransaction(first.userId, owner.userId, tea, { status: 'pending' });
+    const secondId = await createTestTransaction(second.userId, owner.userId, tea, { status: 'pending' });
+    const otherId = await createTestTransaction(first.userId, owner.userId, otherTea, { status: 'pending' });
+    const makeNotice = (transactionId, listingId, fromUserId) => createTestNotification(owner.userId, 'giveaway_claim', { transactionId, listingId, fromUserId });
+    await makeNotice(otherId, otherTea, first.userId);
+    const firstNotice = await makeNotice(firstId, tea, first.userId);
+    const secondNotice = await makeNotice(secondId, tea, second.userId);
+    const getActivity = (suffix = '') => request(app).get(`/api/notifications${suffix}`).set('Authorization', `Bearer ${owner.token}`).expect(200);
+    let result = await getActivity('?limit=1');
+    expect(result.body.notifications).toHaveLength(1);
+    expect(result.body.notifications[0]).toMatchObject({ title: '2 people requested Tea', body: 'See queue', queueListingId: tea, requestCount: 2, isRead: false });
+    expect(result.body.notifications[0].notificationIds.sort()).toEqual([firstNotice, secondNotice].sort());
+    expect(result.body.unreadCount).toBe(2);
+    expect((await getActivity('?limit=1&page=2')).body.notifications[0].queueListingId).toBe(otherTea);
+    const snapshot = result.body.notifications[0];
+    // An arriving callback must stay unread, without inflating the people count.
+    const arrived = await makeNotice(secondId, tea, second.userId);
+    const foreign = await createTestNotification(first.userId, 'friend_request');
+    await request(app).post(`/api/notifications/${snapshot.id}/read`).set('Authorization', `Bearer ${owner.token}`)
+      .send({ notificationIds: [...snapshot.notificationIds, foreign] }).expect(200);
+    expect((await query('SELECT is_read FROM notifications WHERE id=$1', [foreign])).rows[0].is_read).toBe(false);
+    expect((await query('SELECT is_read FROM notifications WHERE id=$1', [arrived])).rows[0].is_read).toBe(false);
+    result = await getActivity('?unreadOnly=true');
+    expect(result.body.notifications.find(n => n.queueListingId === tea)).toMatchObject({ requestCount: 2, isRead: false });
+    const badge = await request(app).get('/api/notifications/badge-count').set('Authorization', `Bearer ${owner.token}`).expect(200);
+    expect(badge.body.notifications).toBe(result.body.unreadCount);
+    // Canceled people no longer contribute to the waiting count.
+    await query("UPDATE borrow_transactions SET status='cancelled' WHERE id=$1", [secondId]);
+    result = await getActivity();
+    expect(result.body.notifications.find(n => n.queueListingId === tea)).toMatchObject({ requestCount: 1, title: 'first requested Tea' });
+    // Actual push copy and its destination use the same current queue.
+    await query("UPDATE borrow_transactions SET status='pending' WHERE id=$1", [secondId]);
+    await query("UPDATE users SET push_token='ExponentPushToken[test-queue]',notification_preferences='{}'::jsonb WHERE id=$1", [owner.userId]);
+    const fetchMock = vi.fn().mockResolvedValue({ json: async () => ({ data: { status: 'ok' } }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const { sendNotification } = await import('../src/services/notifications.js');
+      const sent = await sendNotification(owner.userId, 'giveaway_claim', { listingId: tea, transactionId: secondId, fromUserId: second.userId, borrowerName: 'second' });
+      expect(sent).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ title: '2 people requested Tea', body: 'See queue', data: { queueListingId: tea, requestCount: 2 } });
+    } finally { vi.unstubAllGlobals(); }
+  });
   it('should return badge counts', async () => {
     const res = await request(app)
       .get('/api/notifications/badge-count')
@@ -237,6 +286,15 @@ describe('PATCH /api/notifications/preferences', () => {
 });
 
 describe('Current notification controls', () => {
+  it('hides old match alerts and excludes them from the unread badge', async () => {
+    const before = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    const id = await createTestNotification(userA.userId, 'item_match', { title: 'We found a match!' });
+    const after = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    expect(after.body.notifications.some(item => item.id === id)).toBe(false);
+    expect(after.body.unreadCount).toBe(before.body.unreadCount);
+    const badges = await request(app).get('/api/notifications/badge-count').set('Authorization', `Bearer ${userA.token}`).expect(200);
+    expect(badges.body.notifications).toBe(after.body.unreadCount);
+  });
   it('corrects a stored return prompt while preserving its read state and identity', async () => {
     const id = await createTestNotification(userA.userId, 'return_confirmed', {
       title: 'Return Complete', body: 'Drill has been returned. Tap to leave a rating for your neighbor.',
@@ -337,13 +395,13 @@ describe('Granular notification delivery', () => {
       await send();
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ source_friends: false, source_town: true });
-      await send('item_match');
-      expect(push).not.toHaveBeenCalled();
+      await send('request_offer');
+      expect(push).toHaveBeenCalledTimes(1);
       // After removing the friendship, shared neighborhood takes precedence over town.
       await query('DELETE FROM friendships WHERE user_id = $1 AND friend_id = $2', [sender.userId, recipient.userId]);
       await query('INSERT INTO community_memberships (user_id, community_id) VALUES ($1, $3), ($2, $3)', [sender.userId, recipient.userId, communityId]);
       await setPrefs({ source_neighborhood: true, source_town: false });
-      await send('item_match');
+      await send('request_offer');
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ source_neighborhood: false, source_town: true });
       await send();
@@ -359,10 +417,13 @@ describe('Granular notification delivery', () => {
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ new_message_source_neighborhood: false, new_service_requests_source_neighborhood: true });
       await send('new_message');
-      expect(push).not.toHaveBeenCalled();
+      expect(push).toHaveBeenCalledTimes(1);
       await send('new_request', 'service');
       expect(push).toHaveBeenCalledTimes(1);
       await setPrefs({ post_replies_source_neighborhood: false });
+      await send('listing_comment');
+      expect(push).toHaveBeenCalledTimes(1);
+      await setPrefs({ post_replies: false });
       await send('listing_comment');
       expect(push).not.toHaveBeenCalled();
       await setPrefs({ push_enabled: false });

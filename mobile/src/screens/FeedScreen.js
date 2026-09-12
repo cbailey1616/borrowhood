@@ -1,13 +1,15 @@
 import { listingAvailability } from '../utils/listingAvailability';
+import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
-import ListingPrice from '../components/ListingPrice';
+import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import { isSaleListing, isTransferListing } from '../utils/directFee';
+import { isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import {
   View,
@@ -25,6 +27,10 @@ import {
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
 import VerifiedBadge from '../components/VerifiedBadge';
+import NeighborRankBadge from '../components/NeighborRankBadge';
+import RankInfoSheet from '../components/RankInfoSheet';
+import { memberReputation } from '../utils/reputation';
+import { groupPendingExchanges } from '../utils/requestActivity';
 import useSavedListings from '../hooks/useSavedListings';
 import { useError } from '../context/ErrorContext';
 import HeroIcon from '../components/HeroIcon';
@@ -64,15 +70,25 @@ const FEED = {
   thread: COLORS.gray[50], threadDeep: COLORS.surfaceElevated,
 };
 
+// Older servers may still include the viewer's posts or unavailable items.
+const visibleOnHome = (item, userId) => {
+  const authorId = item.user?.id ?? item.owner?.id ?? item.requester?.id ?? item.ownerId ?? item.userId;
+  return !(userId && authorId === userId) && (item.type !== 'listing' || listingAvailability(item).available);
+};
+
 export default function FeedScreen({ navigation }) {
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showToast, showError } = useError();
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
   const [feed, setFeed] = useState([]);
   const [requestCards, setRequestCards] = useState([]);
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  const columns = width >= 768 && fontScale < 1.5 ? (width >= 1200 ? 3 : 2) : 1;
+  const feedWidth = Math.min(width, columns > 1 ? 1440 : 660);
+  const tileWidth = (feedWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -87,14 +103,14 @@ export default function FeedScreen({ navigation }) {
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [hasNeighborhood, setHasNeighborhood] = useState(true); // assume yes until checked
   const [activeDisputes, setActiveDisputes] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [dueSoonItems, setDueSoonItems] = useState([]);
+  const [activeExchanges, setActiveExchanges] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [dismissedBanners, setDismissedBanners] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRank, setSelectedRank] = useState(null);
   const listRef = useRef(null);
   const [focusedItemId, setFocusedItemId] = useState(null);
 
@@ -102,6 +118,8 @@ export default function FeedScreen({ navigation }) {
   const [feedError, setFeedError] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const feedRequest = useRef(0);
+  const feedInFlight = useRef(false);
+  const previousSearch = useRef(search);
   const feedSession = useRef(null);
   const impressions = useRef(new Set());
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
@@ -119,9 +137,12 @@ export default function FeedScreen({ navigation }) {
   const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
   const extraFilterCount = visibilityFilters.length + categoryFilters.length;
   const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
+    if (append && feedInFlight.current) return;
+    feedInFlight.current = true;
     const requestId = ++feedRequest.current;
     setFeedError(false);
     setIsFetching(true);
+    setIsLoadingMore(append);
     try {
       if (pageNum === 1 || !feedSession.current) { feedSession.current = randomUUID(); impressions.current.clear(); }
       const params = { layout: 'sections', page: pageNum, limit: 20, session: feedSession.current };
@@ -130,17 +151,32 @@ export default function FeedScreen({ navigation }) {
       if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
       if (!clear && categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
 
-      const data = await api.getFeed(params);
-      if (requestId !== feedRequest.current) return;
-
-      if (!append) setRequestCards(data.requests || []);
-      if (append) {
-        setFeed(prev => [...prev, ...data.items.filter(item => !prev.some(existing => existing.id === item.id && existing.type === item.type))]);
-      } else {
-        setFeed(data.items || []);
+      let data, nextItems, resolvedPage = pageNum;
+      let nextRequests = [];
+      // Consume empty/hidden pages from older servers, with a bounded retry.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        data = await api.getFeed({ ...params, page: resolvedPage });
+        if (requestId !== feedRequest.current) return;
+        if (data.requests) nextRequests = data.requests;
+        nextItems = (data.items || []).filter(item => visibleOnHome(item, user?.id));
+        resolvedPage = Math.max(resolvedPage, Number(data.page) || resolvedPage);
+        if (nextItems.length || !data.hasMore || attempt === 2) break;
+        resolvedPage += 1;
       }
-      setHasMore(data.hasMore);
-      setPage(pageNum);
+
+      if (!append) {
+        // A fresh session replaces a paginated list. Reset its offset before
+        // shortening the content so it cannot strand the viewport below it.
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+        setRequestCards(nextRequests.filter(item => visibleOnHome(item, user?.id)));
+      }
+      if (append) {
+        setFeed(prev => [...prev, ...nextItems.filter(item => !prev.some(existing => existing.id === item.id && existing.type === item.type))]);
+      } else {
+        setFeed(nextItems);
+      }
+      setHasMore(!!data.hasMore);
+      setPage(resolvedPage);
       if (pageNum === 1 && !params.search && !params.type && !params.visibility && !params.categoryId &&
           navigation.isFocused?.() && (AppState.currentState == null || AppState.currentState === 'active')) {
         markFeedSeen(data.latestPostAt);
@@ -148,15 +184,16 @@ export default function FeedScreen({ navigation }) {
     } catch (error) {
       if (requestId !== feedRequest.current) return;
       setFeedError(true);
-      // Keep the current feed visible when a background refresh fails.
+      // Keep the current feed visible when a requested refresh fails.
     } finally {
       if (requestId !== feedRequest.current) return;
+      feedInFlight.current = false;
       setIsFetching(false);
       setIsInitialLoad(false);
       setIsRefreshing(false);
       setIsLoadingMore(false);
     }
-  }, [search, activeFilters, visibilityFilters, categoryFilters, navigation, markFeedSeen]);
+  }, [search, activeFilters, visibilityFilters, categoryFilters, navigation, markFeedSeen, user?.id]);
 
 
 
@@ -184,26 +221,11 @@ export default function FeedScreen({ navigation }) {
   }, [activeFilters, visibilityFilters, categoryFilters]);
 
   useEffect(() => {
+    if (previousSearch.current === search) return;
+    previousSearch.current = search;
     const timer = setTimeout(() => fetchFeed(1, false), 350);
     return () => clearTimeout(timer);
   }, [search]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (!isInitialLoad) {
-        // Delay feed fetch until modal dismiss animation completes
-        // to avoid blocking the JS thread during transitions
-        InteractionManager.runAfterInteractions(() => {
-          fetchFeed(1, false);
-          checkNeighborhood();
-          fetchActiveDisputes();
-          fetchBannerData();
-        });
-      }
-    });
-    return unsubscribe;
-  }, [navigation, isInitialLoad, fetchFeed]);
-
 
   const fetchActiveDisputes = useCallback(async () => {
     try {
@@ -235,52 +257,54 @@ export default function FeedScreen({ navigation }) {
         api.getNotifications({ limit: 1 }).catch(() => null),
       ]);
 
-      // Pending borrow requests (someone wants to borrow your item)
-      const txList = txData?.transactions || txData || [];
-      const pending = txList.filter(t => t.status === 'pending' && (t.lender?.id === user?.id || t.ownerId === user?.id));
-      setPendingRequests(pending);
-
-      // Items you've borrowed that are due back within 2 days
-      const now = new Date();
-      const twoDays = 2 * 24 * 60 * 60 * 1000;
-      const dueSoon = txList.filter(t => {
-        if (t.status !== 'active' || t.borrowerId !== user?.id) return false;
-        const returnDate = t.returnDate || t.endDate;
-        if (!returnDate) return false;
-        const due = new Date(returnDate);
-        return due - now < twoDays && due - now > -twoDays; // within 2 days before or after
-      });
-      setDueSoonItems(dueSoon);
+      if (txData !== null) {
+        const txList = txData?.transactions || txData || [];
+        setActiveExchanges(txList.filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
+      }
 
       // Unread notification count
-      setUnreadCount(notifData?.unreadCount || 0);
+      if (notifData !== null) setUnreadCount(notifData?.unreadCount || 0);
     } catch (e) {
       // Keep current state
     }
   }, [user?.id]);
 
   useEffect(() => {
-    const refreshVisibleFeed = () => {
+    let pending;
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (isInitialLoad) return;
+      // Returning from a post keeps the loaded pages, ranking session, and
+      // scroll position. Only the independent account/exchange notices refresh.
+      pending?.cancel?.();
+      pending = InteractionManager.runAfterInteractions(() => {
+        checkNeighborhood();
+        fetchActiveDisputes();
+        fetchBannerData();
+      });
+    });
+    return () => { unsubscribe(); pending?.cancel?.(); };
+  }, [navigation, isInitialLoad, checkNeighborhood, fetchActiveDisputes, fetchBannerData]);
+
+  useEffect(() => {
+    const refreshVisibleStatus = () => {
       if (!navigation.isFocused?.()) return;
-      fetchFeed(1, false);
       fetchBannerData();
     };
-    const received = Notifications.addNotificationReceivedListener(notification => {
-      if (['new_request', 'item_match'].includes(notification.request?.content?.data?.type)) refreshVisibleFeed();
-    });
+    // The Home dot announces new posts; they enter this feed on manual refresh.
+    const received = Notifications.addNotificationReceivedListener(refreshVisibleStatus);
     let previousState = AppState.currentState;
     const resumed = AppState.addEventListener('change', nextState => {
-      if (nextState === 'active' && previousState !== 'active') refreshVisibleFeed();
+      if (nextState === 'active' && previousState !== 'active') refreshVisibleStatus();
       previousState = nextState;
     });
     return () => { received.remove(); resumed.remove(); };
-  }, [navigation, fetchFeed, fetchBannerData]);
+  }, [navigation, fetchBannerData]);
 
   useEffect(() => navigation.addListener('tabPress', () => {
     if (!navigation.isFocused?.()) return;
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    fetchFeed(1, false);
-  }), [navigation, fetchFeed]);
+    fetchBannerData();
+  }), [navigation, fetchBannerData]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -297,6 +321,19 @@ export default function FeedScreen({ navigation }) {
     haptics.medium();
   };
 
+  const exchangeGroups = groupPendingExchanges(activeExchanges, user?.id);
+  const reviewCount = activeExchanges.filter(t => t.status === 'pending' && (t.isBorrower === false || t.lender?.id === user?.id)).length;
+  const pickupCount = activeExchanges.filter(t => ['approved', 'paid'].includes(t.status)).length;
+  const dueCount = activeExchanges.filter(t => t.status === 'picked_up' && !isTransferListing(t)
+    && (t.isBorrower === true || t.borrower?.id === user?.id)
+    && t.endDate && new Date(t.endDate).getTime() <= Date.now() + 2 * 24 * 60 * 60 * 1000).length;
+  const returnCount = activeExchanges.filter(t => t.status === 'return_pending' && (t.isBorrower === false || t.lender?.id === user?.id)).length;
+  const exchangeSummary = [
+    dueCount > 0 && `${dueCount} due back`,
+    returnCount > 0 && `${returnCount} return${returnCount === 1 ? '' : 's'} to confirm`,
+    reviewCount > 0 && `${reviewCount} to review`,
+    pickupCount > 0 && `${pickupCount} ready for pickup`,
+  ].filter(Boolean).join(' · ') || `${exchangeGroups.length} in progress`;
   const banners = [
     activeDisputes.length > 0 && !dismissedBanners.disputes && {
       key: 'disputes',
@@ -306,23 +343,7 @@ export default function FeedScreen({ navigation }) {
       subtitle: 'Tap to review and respond',
       onPress: () => activeDisputes.length === 1
         ? navigation.navigate('DisputeDetail', { id: activeDisputes[0].id })
-        : navigation.navigate('MyItems'),
-    },
-    pendingRequests.length > 0 && !dismissedBanners.pending && {
-      key: 'pending',
-      icon: 'hand-left',
-      color: COLORS.warning,
-      title: `${pendingRequests.length} pending borrow request${pendingRequests.length !== 1 ? 's' : ''}`,
-      subtitle: 'Someone wants to borrow your item',
-      onPress: () => navigation.navigate('MyItems'),
-    },
-    dueSoonItems.length > 0 && !dismissedBanners.dueSoon && {
-      key: 'dueSoon',
-      icon: 'time',
-      color: COLORS.info || COLORS.info,
-      title: `${dueSoonItems.length} item${dueSoonItems.length !== 1 ? 's' : ''} due back soon`,
-      subtitle: "Don't forget to return on time",
-      onPress: () => navigation.navigate('MyItems'),
+        : navigation.navigate('Disputes'),
     },
     unreadCount > 0 && !dismissedBanners.unread && {
       key: 'unread',
@@ -330,7 +351,7 @@ export default function FeedScreen({ navigation }) {
       color: COLORS.primary,
       title: `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`,
       subtitle: 'Tap to catch up',
-      onPress: () => navigation.navigate('Activity'),
+      onPress: () => navigation.navigate('Activity', { tab: 'activity' }),
     },
     !user?.city && !dismissedBanners.location && {
       key: 'location',
@@ -351,8 +372,7 @@ export default function FeedScreen({ navigation }) {
   ].filter(Boolean);
 
   const onEndReached = () => {
-    if (!isLoadingMore && hasMore) {
-      setIsLoadingMore(true);
+    if (!feedInFlight.current && !feedError && hasMore) {
       fetchFeed(page + 1, true);
     }
   };
@@ -434,25 +454,27 @@ export default function FeedScreen({ navigation }) {
     },
   ];
 
-  const renderAuthor = item => {
+  const renderAuthor = (item, { compact = false, showTime = true } = {}) => {
     if (item.ownerMasked) return <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />;
     const author = item.user || {};
+    const reputation = item.previewOnly ? null : memberReputation(author);
     const name = `${author.firstName || 'Neighbor'}${author.lastName ? ` ${author.lastName.charAt(0)}.` : ''}`;
     return (
-      <View style={styles.tileFooterRow}>
+      <View style={[styles.tileFooterRow, compact && styles.ribbonAuthor]}>
         <ShimmerImage source={author.profilePhotoUrl ? { uri: author.profilePhotoUrl } : null} placeholderIcon="person" style={styles.sellerAvatar} />
         <View style={styles.authorNameAndBadge}>
           <Text style={styles.tileFooterText} numberOfLines={1}>{name}</Text>
           {author.isVerified === true && <VerifiedBadge size={16} interactive />}
+          <NeighborRankBadge rank={reputation?.rank} onPress={() => setSelectedRank(reputation)} />
         </View>
-        <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
+        {showTime && <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>}
       </View>
     );
   };
 
   // Keep the discussion entry attached to its post without fetching every
   // thread during scrolling. Opening it uses the existing permission checks.
-  const renderPublicReplies = item => !item.ownerMasked && !item.previewOnly && (
+  const renderPublicReplies = (item, { compact = false } = {}) => !item.ownerMasked && !item.previewOnly && (
     <HapticPressable
       testID={`Feed.replies.${item.type}.${item.id}`}
       accessibilityLabel={`Comments on ${item.title}`}
@@ -460,18 +482,15 @@ export default function FeedScreen({ navigation }) {
         ? { requestId: item.id }
         : { listingId: item.id })}
       scaleDown={0.99}
-      style={styles.publicReplies}
+      style={[styles.publicReplies, compact && styles.ribbonReplies]}
     >
       <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
-      <Text style={styles.publicRepliesText}>Comments</Text>
-      <Text style={styles.publicRepliesAction}>View</Text>
+      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>Comments</Text>
+      {!compact && <Text style={styles.publicRepliesAction}>View</Text>}
     </HapticPressable>
   );
 
   const renderListingItem = item => {
-    const transfer = isTransferListing(item);
-    const typeLabel = listingAvailability(item).label;
-
     return (
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
@@ -495,13 +514,7 @@ export default function FeedScreen({ navigation }) {
               )}
             </View>
             <View style={styles.tileContent}>
-              <View style={styles.tileTopRow}>
-                <View style={styles.tileTypePill}>
-                  <Ionicons name={isSaleListing(item) ? 'pricetag' : transfer ? 'gift' : 'basket'} size={18} illustrated />
-                  <Text style={styles.tilePillText}>{typeLabel}</Text>
-                </View>
-              </View>
-              <ListingPrice listing={item} compact />
+              <ListingOffer listing={item} />
               <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
               {renderAuthor(item)}
             </View>
@@ -512,7 +525,34 @@ export default function FeedScreen({ navigation }) {
     );
   };
 
-  const renderRequestItem = (item, compact = false) => (
+  const renderRibbonRequest = item => (
+    <LayeredCard radius={RADIUS.xl} style={{ marginBottom: SPACING.sm }}>
+      <View style={[styles.tile, styles.requestTile, { height: 152 * Math.max(1, fontScale || 1) }]} testID={`Feed.ribbon.card.${item.id}`}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+          style={[styles.tile, styles.ribbonContent]} testID={`Feed.request.${item.id}`}>
+          <View style={styles.ribbonCopy}>
+            <View style={styles.ribbonLabel}>
+              <Ionicons name={requestPresentation(item.requestType).icon} size={24} illustrated />
+              <Text style={styles.ribbonLabelText}>{requestPresentation(item.requestType).label}</Text>
+              <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
+            </View>
+            <Text style={styles.ribbonTitle} numberOfLines={2}>{item.title}</Text>
+          </View>
+          {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo"
+            contentFit="cover" style={styles.ribbonPhoto} />}
+        </HapticPressable>
+        <View style={styles.ribbonFooter}>
+          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+            style={styles.ribbonAuthorButton} accessibilityLabel={`View request: ${item.title}`}>
+            {renderAuthor(item, { compact: true, showTime: false })}
+          </HapticPressable>
+          {renderPublicReplies(item, { compact: true })}
+        </View>
+      </View>
+    </LayeredCard>
+  );
+
+  const renderRequestItem = item => (
     <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
         <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
@@ -522,7 +562,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
-            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: compact ? 96 : 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
+            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>
@@ -533,10 +573,26 @@ export default function FeedScreen({ navigation }) {
   );
 
   const renderBanners = () => {
-    const banner = banners[0];
-    if (!banner) return null;
     return (
-      <View style={[styles.bannerCard, { borderColor: banner.color }]}>
+      <View>
+        {exchangeGroups.length > 0 && <LayeredCard style={{ marginBottom: SPACING.md }}>
+          <HapticPressable
+            testID="Feed.exchanges"
+            accessibilityRole="button"
+            accessibilityLabel={`In progress, ${exchangeSummary}`}
+            onPress={() => navigation.navigate('Activity', { tab: 'activity' })}
+            style={styles.exchangeCard}
+            haptic="light"
+          >
+            <Ionicons name="basket" size={30} illustrated color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>In progress</Text>
+              <Text style={styles.bannerSubtitle}>{exchangeSummary}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+          </HapticPressable>
+        </LayeredCard>}
+        {banners.map(banner => <View key={banner.key} style={[styles.bannerCard, { borderColor: banner.color }]}>
         <HapticPressable
           style={styles.bannerCardInner}
           onPress={banner.onPress}
@@ -553,12 +609,15 @@ export default function FeedScreen({ navigation }) {
         </HapticPressable>
         <HapticPressable
           style={styles.bannerDismissBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Dismiss ${banner.title}`}
           onPress={() => dismissBanner(banner.key)}
           haptic="light"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="close" size={16} color={COLORS.textMuted} />
         </HapticPressable>
+      </View>)}
       </View>
     );
   };
@@ -568,22 +627,20 @@ export default function FeedScreen({ navigation }) {
   const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
   const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
+    ...((banners.length || exchangeGroups.length) && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
-    ...(banners.length && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
     ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
   const renderItem = ({ item, index }) => {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
         <Text style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Neighbors need</Text>
-        <HapticPressable accessibilityRole="button" accessibilityLabel="See all requests" onPress={() => setActiveFilters(['requests'])} style={{ minHeight:44,justifyContent:'center' }}>
-          <Text style={{ color:COLORS.primary }}>See all</Text>
-        </HapticPressable>
+        <ActionButton accessibilityLabel="See all requests" label="See all" onPress={() => setActiveFilters(['requests'])} />
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged} viewabilityConfig={{ itemVisiblePercentThreshold:50,minimumViewTime:800 }}
-        renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRequestItem(request, true)}</View>} />
+        renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRibbonRequest(request)}</View>} />
     </View>;
     if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing-heading') return <View style={{ borderTopWidth:1,borderTopColor:COLORS.borderBrown,paddingTop:SPACING.lg,marginBottom:SPACING.md }}>
@@ -608,20 +665,24 @@ export default function FeedScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: tabBarHeight }]}>
       <FlatList
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
         ref={listRef}
         testID="Feed.list"
-        data={displayFeed}
-        renderItem={renderItem}
+        key={`feed-${columns}`}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
+        data={columns > 1 ? verticalFeed : displayFeed}
+        renderItem={columns > 1 ? info => <View style={{ width: tileWidth }}>{renderItem(info)}</View> : renderItem}
         keyExtractor={(item) => `${item.type}-${item.id}`}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { maxWidth: feedWidth }]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         bounces
+        removeClippedSubviews={false}
         style={{ backgroundColor: FEED.bg }}
         refreshControl={
           <RefreshControl
@@ -634,6 +695,7 @@ export default function FeedScreen({ navigation }) {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
+          <>
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
@@ -662,17 +724,36 @@ export default function FeedScreen({ navigation }) {
               </ScrollView>
             </>}
           </NativeHeader>
+          {columns > 1 && <View style={{ paddingHorizontal: SPACING.lg }}>{displayFeed.filter(item => ['feed-banners', 'request-carousel', 'listing-heading'].includes(item.type)).map(item => <View key={item.id}>{renderItem({ item })}</View>)}</View>}
+          </>
         }
         ListHeaderComponentStyle={{ marginHorizontal: -SPACING.lg }}
-        stickyHeaderIndices={[0]}
+        stickyHeaderIndices={columns === 1 ? [0] : undefined}
         stickyHeaderHiddenOnScroll={!searchFocused}
         scrollEventThrottle={16}
         ListFooterComponent={
-          isLoadingMore && (
+          isLoadingMore ? (
             <View style={styles.loadingMore}>
               <ActivityIndicator size="small" color={COLORS.primary} />
             </View>
-          )
+          ) : hasMore && !isFetching ? (
+            <View style={styles.feedEnd}>
+              {feedError && <Text style={styles.feedEndText}>Couldn’t load more posts.</Text>}
+              <HapticPressable accessibilityRole="button" style={styles.backToTop}
+                onPress={() => fetchFeed(page + 1, true)}>
+                <Text style={styles.backToTopText}>{feedError ? 'Try again' : 'Load more posts'}</Text>
+              </HapticPressable>
+            </View>
+          ) : !hasMore && (verticalFeed.length > 0 || carouselRequests.length > 0) ? (
+            <View style={styles.feedEnd}>
+              <Text style={styles.feedEndText}>You’re all caught up</Text>
+              <HapticPressable accessibilityRole="button" accessibilityLabel="Back to top" style={styles.backToTop}
+                onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+                <Ionicons name="arrow-up" size={18} color={COLORS.primary} />
+                <Text style={styles.backToTopText}>Back to top</Text>
+              </HapticPressable>
+            </View>
+          ) : null
         }
         ListEmptyComponent={<View>{renderBanners()}{isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
           <View style={styles.welcomeContainer}>
@@ -709,12 +790,14 @@ export default function FeedScreen({ navigation }) {
             }}>
               <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
             </HapticPressable>
-            {!feedError && user?.city && <HapticPressable accessibilityRole="button" style={{ minHeight: 48, padding: 14, justifyContent: 'center' }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}>
-              <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '600' }}>{hasFilters ? 'Request an item' : 'Invite a neighbor'}</Text>
-            </HapticPressable>}
+            {!feedError && user?.city && <ActionButton style={{ marginTop: SPACING.sm }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}
+              label={hasFilters ? 'Request an item' : 'Invite a neighbor'} />}
           </View>
         }</View>}
       />
+
+      {selectedRank && <RankInfoSheet isVisible currentRank={selectedRank.rank} isNew={selectedRank.isNew}
+        onClose={() => setSelectedRank(null)} />}
 
       <ActionSheet
         isVisible={showActionSheet}
@@ -875,6 +958,17 @@ export default function FeedScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  ribbonContent: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: SPACING.md },
+  ribbonCopy: { flex: 1, gap: SPACING.sm },
+  ribbonLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24 },
+  ribbonLabelText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flex: 1 },
+  ribbonTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  ribbonPhoto: { width: 64, height: 64, borderRadius: RADIUS.sm },
+  ribbonFooter: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 48, marginHorizontal: SPACING.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
+  ribbonAuthor: { flex: 1, minWidth: 0, marginTop: 0 },
+  ribbonAuthorButton: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
+  ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
+  ribbonRepliesText: { flex: 0 },
   addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '700' },
   feedTitle: { fontSize: 28, lineHeight: 36 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
@@ -990,12 +1084,21 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.text,
   },
+  exchangeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    padding: SPACING.md,
+    minHeight: 72,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.primaryMuted,
+  },
   bannerCard: {
     marginBottom: SPACING.lg,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,
-    height: 60,
+    minHeight: 60,
   },
   bannerCardInner: {
     flex: 1,
@@ -1037,7 +1140,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: 120, width: '100%', maxWidth: 660, alignSelf: 'center',
+    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.md, width: '100%', maxWidth: 660, alignSelf: 'center',
   },
   gridRow: {
     justifyContent: 'space-between',
@@ -1099,14 +1202,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
-  tilePillText: {
-    ...TYPOGRAPHY.caption1, fontWeight: '600', color: COLORS.primary,
-  },
   tileContent: {
     padding: SPACING.lg, paddingBottom: SPACING.sm,
-  },
-  tileTopRow: {
-    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm,
   },
   tileTypeLabel: {
     flexDirection: 'row',
@@ -1117,9 +1214,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
-  },
-  tileTypePill: {
-    flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full,
   },
   tileTypeLabelText: {
     ...TYPOGRAPHY.caption,
@@ -1637,6 +1731,14 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xl,
     alignItems: 'center',
   },
+  feedEnd: { alignItems: 'center', gap: SPACING.sm, paddingBottom: SPACING.sm },
+  feedEndText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  backToTop: {
+    minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm,
+    borderWidth: 1, borderColor: COLORS.borderBrown, borderRadius: RADIUS.full, backgroundColor: COLORS.card,
+  },
+  backToTopText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 80,

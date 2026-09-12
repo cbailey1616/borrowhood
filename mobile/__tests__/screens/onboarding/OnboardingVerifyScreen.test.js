@@ -35,7 +35,7 @@ describe('OnboardingVerifyScreen', () => {
   it('explains optional verification in one simple card', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Browse Town listings. Get verified to see who’s sharing.');
+    await findByText('Names and profiles are already visible on Town requests, giveaways, and sale posts.');
   });
 
   it('shows already verified state when user is verified', async () => {

@@ -1,3 +1,5 @@
+import WholeDollarInput from '../components/WholeDollarInput';
+import TextInput from '../components/AppTextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
@@ -12,7 +14,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   Image,
   ActivityIndicator,
   ScrollView,
@@ -291,6 +292,7 @@ export default function EditListingScreen({ navigation, route }) {
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       enableResetScrollToCoords={false}
     >
       {/* Photos */}
@@ -425,7 +427,7 @@ export default function EditListingScreen({ navigation, route }) {
       <View style={styles.section}>
         {listing.sharingReviewRequired && <Text style={styles.label}>This item is private until you review its audience.</Text>}
 
-        <SharingPicker value={formData.visibility} circleId={formData.circleId}
+        <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={listing.listingType}
           neighborhoodAvailable={Boolean(formData.communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
@@ -500,13 +502,12 @@ export default function EditListingScreen({ navigation, route }) {
           <>
             <View style={[styles.priceInput, fieldErrors.pricePerDay && styles.fieldError]}>
               <Text style={styles.currency}>$</Text>
-              <TextInput
+              <WholeDollarInput
                 style={styles.priceField}
                 value={formData.pricePerDay}
                 onChangeText={(v) => updateField('pricePerDay', v)}
-                placeholder="5.00"
+                placeholder="5"
                 placeholderTextColor={COLORS.textMuted}
-                keyboardType="decimal-pad"
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
@@ -549,13 +550,12 @@ export default function EditListingScreen({ navigation, route }) {
         {formData.requireDeposit && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
-            <TextInput
+            <WholeDollarInput
               style={styles.priceField}
               value={formData.depositAmount}
               onChangeText={(v) => updateField('depositAmount', v)}
-              placeholder="0.00"
+              placeholder="0"
               placeholderTextColor={COLORS.textMuted}
-              keyboardType="decimal-pad"
             />
           </View>
         )}

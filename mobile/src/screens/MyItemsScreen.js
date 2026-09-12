@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  useWindowDimensions,
   RefreshControl,
   Image,
   Animated as RNAnimated,
@@ -19,6 +20,7 @@ import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
+import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -35,6 +37,10 @@ const STATUS_COLORS = {
 };
 
 export default function MyItemsScreen({ navigation }) {
+  const { width, fontScale } = useWindowDimensions();
+  const columns = width >= 900 && fontScale < 1.5 ? 2 : 1;
+  const gridWidth = Math.min(width, 1200);
+  const cellWidth = (gridWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
   const { showError } = useError();
   const [activeTab, setActiveTab] = useState(0);
   const [listings, setListings] = useState([]);
@@ -43,6 +49,7 @@ export default function MyItemsScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const swipeableRefs = useRef({});
 
 
@@ -107,6 +114,11 @@ export default function MyItemsScreen({ navigation }) {
     }
   };
 
+  const requestDelete = (item, type) => {
+    swipeableRefs.current[item.id]?.close();
+    setPendingDelete({ item, type });
+  };
+
   const renderRightActions = (progress, dragX, onDelete) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
@@ -117,6 +129,7 @@ export default function MyItemsScreen({ navigation }) {
     return (
       <HapticPressable
         style={styles.deleteAction}
+        accessibilityRole="button"
         onPress={onDelete}
         haptic="warning"
       >
@@ -133,11 +146,8 @@ export default function MyItemsScreen({ navigation }) {
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, () => handleSwipeDelete(item, 'listing'))
+          renderRightActions(progress, dragX, () => requestDelete(item, 'listing'))
         }
-        onSwipeableOpen={(direction) => {
-          if (direction === 'right') handleSwipeDelete(item, 'listing');
-        }}
       >
         <LayeredCard style={styles.cardDepth}>
           <HapticPressable
@@ -154,12 +164,7 @@ export default function MyItemsScreen({ navigation }) {
             )}
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-              {isTransferListing(item) && (
-                  <View style={styles.giveawayTag}>
-                    <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
-                    <Text style={styles.giveawayTagText}>{isSaleListing(item) ? 'For sale' : 'Giveaway'}</Text>
-                  </View>
-              )}
+
 
               {item.totalEarnings > 0 && (
                 <View style={styles.cardStats}>
@@ -185,6 +190,7 @@ export default function MyItemsScreen({ navigation }) {
                   styles.statusBadge,
                   { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
                 ]}>
+                  {isTransferListing(item) && <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />}
                   <Text style={[
                     styles.statusText,
                     { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
@@ -224,11 +230,8 @@ export default function MyItemsScreen({ navigation }) {
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, () => handleSwipeDelete(item, 'request'))
+          renderRightActions(progress, dragX, () => requestDelete(item, 'request'))
         }
-        onSwipeableOpen={(direction) => {
-          if (direction === 'right') handleSwipeDelete(item, 'request');
-        }}
       >
         <LayeredCard style={styles.cardDepth}>
           <HapticPressable
@@ -404,10 +407,13 @@ export default function MyItemsScreen({ navigation }) {
       {loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Try again</Text></HapticPressable></View>}
 
       <FlatList
+        key={`posts-${columns}`}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
         data={data}
-        renderItem={activeTab === 0 ? renderListingItem : renderRequestItem}
+        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>{(activeTab === 0 ? renderListingItem : renderRequestItem)(info)}</View>}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -451,7 +457,21 @@ export default function MyItemsScreen({ navigation }) {
           )
         }
       />
-
+      <ActionSheet
+        isVisible={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        variant="confirmation"
+        title="Delete this post?"
+        message={pendingDelete ? `“${pendingDelete.item.title}” will be removed. This can’t be undone.` : ''}
+        actions={[
+          { label: 'Keep post', onPress: () => setPendingDelete(null) },
+          {
+            label: 'Delete post',
+            destructive: true,
+            onPress: () => pendingDelete && handleSwipeDelete(pendingDelete.item, pendingDelete.type),
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -515,21 +535,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
-  giveawayTag: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: COLORS.secondary + '15',
-    paddingHorizontal: SPACING.xs + 2,
-    paddingVertical: 1,
-    borderRadius: RADIUS.xs,
-  },
-  giveawayTagText: {
-    ...TYPOGRAPHY.caption2,
-    color: COLORS.secondary,
-    fontWeight: '600',
-  },
   cardStats: {
     flexDirection: 'row',
     gap: SPACING.md,
@@ -550,6 +555,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   statusBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.xs,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
@@ -666,6 +672,9 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   renewButton: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primaryMuted,

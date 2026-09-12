@@ -1,4 +1,3 @@
-import EndorsementSummary from '../components/EndorsementSummary';
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
 import BiometricIcon from '../components/BiometricIcon';
@@ -7,7 +6,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   Linking,
   ActivityIndicator,
@@ -16,7 +14,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Application from 'expo-application';
 import appConfig from '../../app.json';
 import { Ionicons } from '../components/Icon';
-import UserBadges from '../components/UserBadges';
+import MemberSummary from '../components/MemberSummary';
+import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import { GroupedListSection, GroupedListItem } from '../components/GroupedList';
 import NativeHeader from '../components/NativeHeader';
@@ -28,7 +27,7 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS, ENABLE_PAYMENTS } from '../utils/config';
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, route }) {
   const { user, logout, refreshUser } = useAuth();
   const { showError, showToast } = useError();
   const {
@@ -47,6 +46,11 @@ export default function ProfileScreen({ navigation }) {
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  useEffect(() => {
+    const refreshProfile = () => { refreshUser().catch(() => {}); };
+    refreshProfile();
+    return navigation.addListener('focus', refreshProfile);
+  }, [navigation, refreshUser]);
 
   useEffect(() => {
     setBiometricToggle(isBiometricsEnabled);
@@ -158,9 +162,9 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
         {/* Profile Header */}
-        <LayeredCard style={styles.header} radius={RADIUS.xl}>
+        <LayeredCard style={styles.header} radius={RADIUS.lg}>
           <View style={styles.headerInner}>
-            <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null}>
+            <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null} accessibilityLabel="Change profile photo">
               <View style={styles.avatarContainer}>
                 <ShimmerImage placeholderIcon="person"
                   source={{ uri: user?.profilePhotoUrl || null }}
@@ -178,16 +182,11 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </HapticPressable>
             <View style={styles.headerInfo}>
-              <Text style={styles.name} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
-              <Text style={styles.email}>{user?.email}</Text>
-              <EndorsementSummary value={user?.endorsement} />
-              {user?.isVerified && (
-                <UserBadges
-                  isVerified={user?.isVerified}
-                  totalTransactions={user?.totalTransactions || 0}
-                  size="medium"
-                />
-              )}
+              <MemberSummary user={user || {}} profileHeader openRating={route?.params?.openRating === true}
+                onRatingClose={() => { if (route?.params?.openRating) navigation.setParams({ openRating: false }); }}>
+                <Text style={[styles.name,{flexShrink:1}]} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
+                {user?.isVerified === true && <VerifiedBadge size={18} interactive />}
+              </MemberSummary>
             </View>
           </View>
         </LayeredCard>
@@ -207,6 +206,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.verifyBannerText}>
               <Text style={styles.verifyBannerTitle}>Verify Your Identity</Text>
               <Text style={styles.verifyBannerSubtitle}>Optional · Free during launch</Text>
+              <Text style={styles.verifyBannerSubtitle}>Powered by Stripe Identity</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </HapticPressable>
@@ -217,6 +217,7 @@ export default function ProfileScreen({ navigation }) {
           <GroupedListItem
             icon="person-outline"
             title="Edit Profile"
+            subtitle={user?.email}
             onPress={() => navigation.navigate('EditProfile')}
           />
           <GroupedListItem
@@ -433,28 +434,26 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: SPACING.xl,
+    padding: SPACING.lg,
   },
   headerInner: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    gap: SPACING.lg,
+    gap: SPACING.md,
   },
   avatarContainer: {
     position: 'relative',
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: COLORS.gray[700],
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 44,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -474,15 +473,12 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
+    minWidth: 0,
   },
   name: {
     ...TYPOGRAPHY.h2,
+    letterSpacing: 0,
     color: COLORS.text,
-  },
-  email: {
-    ...TYPOGRAPHY.subheadline,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
   },
   verifyBanner: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 """Capture the actual native screens; never resize a phone layout into an iPad."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -12,12 +13,48 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
 screens = [('01-home', 'home'), ('02-giveaway', 'giveaway'), ('03-for-sale', 'sell'), ('04-saved', 'saved'), ('05-my-posts', 'posts'), ('06-messages', 'chat')]
+review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
+review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
+review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/reserved-queue', 'reserved-queue'), ('ui-review/owner-pending-request', 'owner-pending-request'), ('ui-review/inbox', 'inbox')]
+review_screens += [('ui-review/home-exchanges', 'home-exchanges'), ('ui-review/inbox-messages', 'inbox-messages'), ('ui-review/owner-pickup', 'owner-pickup'), ('ui-review/owner-active-item', 'owner-active-item')]
+# Capture both immediate text focus and a later number-field focus. The latter
+# has no return key, so the keyboard accessory is its explicit dismissal control.
+review_screens = [('ui-review/keyboard', 'keyboard'), ('ui-review/keyboard-number', 'keyboard-number')] + [screen for screen in review_screens if screen[1] != 'keyboard']
 manifest = []
+review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
+store_only = os.environ.get('BORROWHOOD_CAPTURE_STORE_ONLY') == 'true'
+# Keep the software keyboard visible in the native keyboard-accessory capture.
+subprocess.run(['defaults', 'write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'false'], check=True)
 
 def run(*args, check=True, timeout=180):
     return subprocess.run(['xcrun', 'simctl', *args], check=check, timeout=timeout)
 
-for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752))]:
+def prepare_device(udid):
+    run('bootstatus', udid, '-b', timeout=300)
+    # Dismiss the simulator's first-use swipe-typing introduction so the
+    # capture shows the real keyboard and its accessory toolbar.
+    run('spawn', udid, 'defaults', 'write', 'com.apple.keyboard.preferences', 'DidShowContinuousPathIntroduction', '-bool', 'true')
+    run('ui', udid, 'appearance', 'light')
+    run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
+
+def launch_capture(udid, route):
+    args = ('launch', '--terminate-running-process', udid, 'com.borrowhood.app', '-BorrowhoodCaptureScreen', route)
+    try:
+        run(*args)
+    except subprocess.TimeoutExpired:
+        # A cold hosted simulator can stall in simctl before the app launches.
+        # Retry once after a clean boot; a second failure still fails the job.
+        print(f'Launch timed out for {route}; restarting the simulator once', flush=True)
+        run('shutdown', udid, check=False)
+        run('boot', udid)
+        prepare_device(udid)
+        run(*args)
+
+for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752)), ('iphone-se', 'iPhone SE (3rd generation)', (750, 1334))]:
+    if store_only and folder == 'iphone-se':
+        continue
+    if review_only and folder == 'ipad-pro-13':
+        continue
     matches = [(runtime, device) for runtime, group in devices.items() if '.iOS-' in runtime for device in group if device['name'] == name and device.get('isAvailable')]
     created_device = False
     if not matches:
@@ -40,17 +77,17 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
     try:
         if device['state'] != 'Booted':
             run('boot', udid)
-        run('bootstatus', udid, '-b', timeout=300)
-        run('ui', udid, 'appearance', 'light')
-        run('status_bar', udid, 'override', '--time', '9:41', '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3', '--cellularMode', 'active', '--cellularBars', '4', '--batteryState', 'discharging', '--batteryLevel', '100')
+        prepare_device(udid)
         run('install', udid, str(app))
         hashes = set()
-        for filename, route in screens:
+        device_screens = screens if store_only else review_screens if review_only or folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
+        for filename, route in device_screens:
             # A launch argument selects the screen without an iOS open-link dialog.
             print(f'Capturing {name}: {route}', flush=True)
-            run('launch', '--terminate-running-process', udid, 'com.borrowhood.app', '-BorrowhoodCaptureScreen', route)
+            launch_capture(udid, route)
             time.sleep(15)
             target = destination / f'{filename}.png'
+            target.parent.mkdir(parents=True, exist_ok=True)
             run('io', udid, 'screenshot', '--type=png', str(target))
             with Image.open(target) as original:
                 if original.size != size:

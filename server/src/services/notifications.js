@@ -4,9 +4,13 @@ import { shouldSendPush } from './notificationPreferences.js';
 import { notificationAudienceAllowsPush } from './notificationAudience.js';
 import { audiencePreferences } from './notificationPreferences.js';
 import { returnCompleteBody, giveawayCompleteBody } from './notificationCopy.js';
+import { INCOMING_REQUEST_TYPES, UNREAD_ACTIVITY_SQL, requestQueueCopy } from './requestActivity.js';
 
 // Notification types and their templates
 const NOTIFICATION_TEMPLATES = {
+  rank_ready: { title: 'Your neighbor rating is ready', body: data => data.body },
+  rank_up: { title: 'You moved up!', body: data => data.body },
+  rank_down: { title: 'Neighbor rating update', body: data => data.body },
   // Borrow requests
   borrow_request: {
     title: 'New Borrow Request',
@@ -21,14 +25,14 @@ const NOTIFICATION_TEMPLATES = {
       : 'Someone wants your item. Tap to review.',
   },
   request_approved: {
-    title: 'Congrats! Your request was accepted',
-    body: (data) => `Your request${data.itemTitle ? ` for ${data.itemTitle}` : ''} was accepted! Contact ${data.lenderName || 'your neighbor'} to arrange pickup. Tap to get in touch.`,
+    title: 'Request approved',
+    body: (data) => `${data.lenderName || 'Your neighbor'} approved your request${data.itemTitle ? ` for ${data.itemTitle}` : ''}. Tap to arrange pickup.`,
   },
   request_declined: {
-    title: 'Request Update',
+    title: 'Request declined',
     body: (data) => data.itemTitle
-      ? `${data.itemTitle} isn't available right now. Tap to browse similar items nearby.`
-      : 'This item isn\'t available right now. Tap to browse similar items nearby.',
+      ? `Your request for ${data.itemTitle} was declined. Tap to view your request.`
+      : 'Your request was declined. Tap to view your request.',
   },
   borrow_cancelled: {
     title: 'Borrow cancelled',
@@ -45,14 +49,14 @@ const NOTIFICATION_TEMPLATES = {
       : 'You\'re all set! Your item is ready for pickup. Tap to see details.',
   },
   pickup_confirmed: {
-    title: 'Enjoy your borrow!',
+    title: 'Pickup confirmed',
     body: (data) => {
       const returnBy = data.returnDate
-        ? ` Remember to return it by ${new Date(data.returnDate).toLocaleDateString()}.`
+        ? ` Return due ${new Date(data.returnDate).toLocaleDateString()}.`
         : '';
       return data.itemTitle
-        ? `${data.itemTitle} is now in your hands.${returnBy} Tap to view details.`
-        : `Your item is now in your hands.${returnBy} Tap to view details.`;
+        ? `${data.itemTitle} has been picked up.${returnBy} Tap to view your exchange.`
+        : `The item has been picked up.${returnBy} Tap to view your exchange.`;
     },
   },
   return_confirmed: {
@@ -66,7 +70,7 @@ const NOTIFICATION_TEMPLATES = {
       : 'Your security deposit has been refunded. Tap to view details.',
   },
   giveaway_complete: {
-    title: 'Item is Yours!',
+    title: 'Pickup complete',
     body: giveawayCompleteBody,
   },
   giveaway_expired: {
@@ -82,9 +86,9 @@ const NOTIFICATION_TEMPLATES = {
       : 'The pickup window has expired. The item has been relisted.',
   },
   return_reminder: {
-    title: 'Friendly Reminder',
+    title: 'Return reminder',
     body: (data) => {
-      const when = data.dueDate === 'today' ? 'today' : `on ${data.dueDate || 'soon'}`;
+      const when = ['today', 'tomorrow'].includes(data.dueDate) ? data.dueDate : data.dueDate ? `on ${data.dueDate}` : 'soon';
       return data.itemTitle
         ? `${data.itemTitle} is due back ${when}. Tap to coordinate the return.`
         : `Your borrowed item is due back ${when}. Tap to coordinate the return.`;
@@ -164,18 +168,14 @@ const NOTIFICATION_TEMPLATES = {
       : 'Someone wants to join your community. Tap to review their request.',
   },
   join_approved: {
-    title: 'Welcome to the neighborhood!',
-    body: (data) => data.communityName
-      ? `You've been approved to join ${data.communityName}. Tap to start browsing items nearby.`
-      : 'You\'re in! Tap to start browsing items from your neighbors.',
+    title: 'Welcome to Borrowhood',
+    body: () => 'You’re ready to browse and share with your neighbors. Tap to see nearby items.',
   },
 
-  // Item requests (wanted items)
-  item_match: {
-    title: 'We found a match!',
-    body: (data) => data.itemTitle
-      ? `A neighbor has ${data.itemTitle} — just what you were looking for! Tap to check it out.`
-      : 'An item matching your request is available nearby! Tap to check it out.',
+  // A neighbor deliberately responded to an item request.
+  request_offer: {
+    title: 'New private offer',
+    body: () => 'A neighbor offered an item for your request. Tap to view their offer.',
   },
 
   // New request posted
@@ -261,6 +261,7 @@ const NOTIFICATION_TEMPLATES = {
  * @param {object} options - Additional options (fromUserId, transactionId, listingId)
  */
 export async function sendNotification(userId, type, data, options = {}) {
+  if (type === 'item_match') return null;
   try {
     const template = NOTIFICATION_TEMPLATES[type];
     if (!template) {
@@ -268,11 +269,23 @@ export async function sendNotification(userId, type, data, options = {}) {
       return null;
     }
 
-    const title = template.title;
-    const body = typeof template.body === 'function' ? template.body(data) : template.body;
+    let title = template.title;
+    let body = typeof template.body === 'function' ? template.body(data) : template.body;
+    let queue = null;
+    const listingId = options.listingId || data.listingId;
+    if (INCOMING_REQUEST_TYPES.includes(type) && listingId) {
+      const pending = await query(`SELECT l.title, COUNT(DISTINCT t.borrower_id) AS count
+        FROM listings l JOIN borrow_transactions t ON t.listing_id = l.id
+        WHERE l.id = $1 AND l.owner_id = $2 AND t.lender_id = $2 AND t.status = 'pending'
+        GROUP BY l.id, l.title`, [listingId, userId]);
+      if (Number(pending.rows[0]?.count) > 0) {
+        queue = { queueListingId: listingId, requestCount: Number(pending.rows[0].count) };
+        ({ title, body } = requestQueueCopy(queue.requestCount, pending.rows[0].title, data.borrowerName));
+      }
+    }
 
     // Create notification record
-    const result = await query(
+    const result = options.existingNotificationId ? { rows: [{ id: options.existingNotificationId }] } : await (options.runQuery || query)(
       `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id, dispute_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
@@ -291,6 +304,7 @@ export async function sendNotification(userId, type, data, options = {}) {
     );
 
     const notificationId = result.rows[0].id;
+    if (options.activityOnly) return notificationId;
 
     // Get user's push token and preferences
     const user = await query(
@@ -308,17 +322,20 @@ export async function sendNotification(userId, type, data, options = {}) {
             query, userId, options.fromUserId || data.fromUserId, audiencePreferences(type, prefs, data))) {
         // Get unread count for app icon badge
         const unreadResult = await query(
-          'SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false',
+          `SELECT (${UNREAD_ACTIVITY_SQL}) + (SELECT COUNT(*) FROM messages m
+            JOIN conversations c ON c.id = m.conversation_id
+            WHERE m.is_read = false AND m.sender_id != $1 AND (c.user1_id = $1 OR c.user2_id = $1)) AS count`,
           [userId]
         );
         const badge = parseInt(unreadResult.rows[0].count) || 1;
 
-        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data, listingId: options.listingId || data.listingId, requestId: options.requestId || data.requestId, conversationId: options.conversationId || data.conversationId, transactionId: options.transactionId || data.transactionId, disputeId: options.disputeId || data.disputeId }, badge, sound: prefs.push_sound !== false });
+        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data, ...queue, listingId: options.listingId || data.listingId, requestId: options.requestId || data.requestId, conversationId: options.conversationId || data.conversationId, transactionId: options.transactionId || data.transactionId, disputeId: options.disputeId || data.disputeId }, badge, sound: prefs.push_sound !== false });
       }
     }
 
     return notificationId;
   } catch (err) {
+    if (options.throwOnError) throw err;
     logger.error('Send notification error:', err);
     return null;
   }

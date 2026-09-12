@@ -1,14 +1,26 @@
 import React from 'react';
+import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import * as SecureStore from 'expo-secure-store';
 import * as ImagePicker from 'expo-image-picker';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), setParams: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), setParams: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+let mockHeaderHeight = 88;
+let mockWindowHeight = 844;
+let mockWindowWidth = 390;
+const mockInsets = { top: 44, bottom: 34, left: 0, right: 0 };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
-jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
+jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => mockHeaderHeight }));
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true, default: () => ({ width: mockWindowWidth, height: mockWindowHeight, scale: 3, fontScale: 1 }),
+}));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => mockInsets,
+  SafeAreaView: require('react-native').View,
+}));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
-beforeEach(() => { jest.clearAllMocks(); SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
+beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; mockWindowWidth = 390; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
 describe('ChatScreen', () => {
   const route = { params: { conversationId: 'conv-1' } };
   const choosePhoto = async (screen, label = 'Choose from library') => {
@@ -16,6 +28,62 @@ describe('ChatScreen', () => {
     fireEvent.press(screen.getByLabelText('Attach a photo'));
     await act(async () => fireEvent.press(await screen.findByText(label)));
   };
+
+  it.each([
+    { screenHeight: 844, headerHeight: 103, nativeOrigin: 120, keyboardTop: 520 },
+    { screenHeight: 667, headerHeight: 88, nativeOrigin: 88, keyboardTop: 407 },
+  ])('keeps the composer above the native keyboard on a $screenHeight-point screen', async ({ screenHeight, headerHeight, nativeOrigin, keyboardTop }) => {
+    mockHeaderHeight = headerHeight;
+    mockWindowHeight = screenHeight;
+    View.prototype.measureInWindow.mockImplementation(callback => callback(0, nativeOrigin, 390, screenHeight - nativeOrigin));
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const input = await screen.findByTestId('Chat.input.message');
+    expect(input.props.keyboardAppearance).toBe('dark');
+    expect(input.props.inputAccessoryViewID).toBeUndefined();
+    expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
+    const viewportHeight = screenHeight - nativeOrigin;
+    await act(async () => fireEvent(screen.getByTestId('Chat.keyboardLayout'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: viewportHeight } },
+      persist: jest.fn(),
+    }));
+    const composerPadding = () => StyleSheet.flatten(screen.getByTestId('Chat.composerDock').props.style).paddingBottom;
+    expect(composerPadding()).toBeGreaterThanOrEqual(mockInsets.bottom);
+    await act(async () => DeviceEventEmitter.emit('keyboardWillShow', {
+      duration: 0, easing: 'keyboard',
+      endCoordinates: { screenY: keyboardTop, screenX: 0, width: 390, height: screenHeight - keyboardTop },
+    }));
+    const keyboardPadding = StyleSheet.flatten(screen.getByTestId('Chat.keyboardLayout').props.style).paddingBottom;
+    expect(nativeOrigin + viewportHeight - keyboardPadding).toBe(keyboardTop);
+    expect(composerPadding()).toBe(8);
+    await act(async () => DeviceEventEmitter.emit('keyboardWillHide', {
+      duration: 0, easing: 'keyboard',
+      endCoordinates: { screenY: screenHeight, screenX: 0, width: 390, height: 0 },
+    }));
+    expect(StyleSheet.flatten(screen.getByTestId('Chat.keyboardLayout').props.style).paddingBottom).toBe(0);
+    expect(composerPadding()).toBeGreaterThanOrEqual(mockInsets.bottom);
+  });
+
+  it('keeps newly typed text while the previous message sends and prevents duplicate sends', async () => {
+    let finishSend;
+    api.sendMessage.mockImplementationOnce(() => new Promise(resolve => { finishSend = resolve; }));
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const input = await screen.findByTestId('Chat.input.message');
+    fireEvent.changeText(input, 'On my way');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText('Send message'));
+    await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(1));
+    expect(screen.getByLabelText('Send message')).toBeDisabled();
+    expect(screen.getByLabelText('Attach a photo')).toBeDisabled();
+    fireEvent.changeText(input, 'I will bring a bag');
+    fireEvent.press(screen.getByLabelText('Send message'));
+    expect(api.sendMessage).toHaveBeenCalledTimes(1);
+    await act(async () => finishSend({ id: 'message-sent' }));
+    expect(input.props.value).toBe('I will bring a bag');
+    expect(screen.getByLabelText('Send message')).not.toBeDisabled();
+    expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ content: 'On my way' }));
+  });
 
   it('previews a library photo before sending it with its caption', async () => {
     ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///photo.jpg' }] });
@@ -261,3 +329,17 @@ describe('ChatScreen', () => {
     expect(api.sendMessage.mock.calls[1][0]).toEqual(api.sendMessage.mock.calls[0][0]);
   });
 });
+
+  it('opens another conversation from the tablet sidebar and removes the sidebar in Split View', async () => {
+    mockWindowWidth = 1032;
+    api.getConversations.mockResolvedValue([{ id: 'conv-2', otherUser: { id: 'user-3', firstName: 'Sam', lastName: 'Rivera' }, lastMessage: 'See you soon', unreadCount: 1 }]);
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const props = { navigation: mockNavigation, route: { params: { conversationId: 'conv-1' } } };
+    const screen = render(<Screen {...props} />);
+    fireEvent.press(await screen.findByText('Sam Rivera'));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Chat', { conversationId: 'conv-2' });
+    mockWindowWidth = 600;
+    screen.rerender(<Screen {...props} />);
+    expect(screen.queryByText('Sam Rivera')).toBeNull();
+    expect(screen.getByTestId('Chat.input.message')).toBeTruthy();
+  });

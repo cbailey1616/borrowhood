@@ -1,9 +1,9 @@
+import TextInput from '../../components/AppTextInput';
 import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   FlatList,
   ActivityIndicator,
   KeyboardAvoidingView,

@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import RequestQueueScreen from '../screens/RequestQueueScreen';
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
@@ -5,7 +6,7 @@ import SafetyReportsScreen from '../screens/SafetyReportsScreen';
 import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View, Modal, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { ActivityIndicator, View, Modal, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import HapticPressable from '../components/HapticPressable';
 import { ModalHeader } from '../components/ModalControls';
 import api from '../services/api';
@@ -25,7 +26,6 @@ import BorrowRequestScreen from '../screens/BorrowRequestScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import WantedPostsScreen from '../screens/WantedPostsScreen';
 import CreateRequestScreen from '../screens/CreateRequestScreen';
-import RequestSuggestionsScreen from '../screens/RequestSuggestionsScreen';
 import RequestDetailScreen from '../screens/RequestDetailScreen';
 import ConversationsScreen from '../screens/ConversationsScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -189,11 +189,6 @@ export default function RootNavigator() {
             name="CreateRequest"
             component={CreateRequestScreen}
             options={modalScreenOptions('Post a Request')}
-          />
-          <Stack.Screen
-            name="RequestSuggestions"
-            component={RequestSuggestionsScreen}
-            options={modalScreenOptions('Suggestions')}
           />
           <Stack.Screen
             name="RequestDetail"

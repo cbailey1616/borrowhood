@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState } from 'react';
 import useUnsavedChanges from '../hooks/useUnsavedChanges';
@@ -5,7 +6,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   Image,
   ActivityIndicator,
   Platform,

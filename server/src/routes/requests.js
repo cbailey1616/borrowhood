@@ -2,7 +2,7 @@ import { ownedPhotoReferences } from '../services/privatePhotos.js';
 import { townPreviewSql, canPreviewTownPost, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { canViewRequest, offerListing } from '../services/listingAccess.js';
-import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
+import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
 import { query, withTransaction } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
@@ -126,86 +126,8 @@ router.get('/mine', authenticate, async (req, res) => {
   }
 });
 
-// ============================================
-// GET /api/requests/suggestions
-// Search listings matching a title string (pre-creation)
-// ============================================
-router.get('/suggestions', authenticate, async (req, res) => {
-  try {
-    const title = req.query.title || '';
-
-    // Build search terms from title words (3+ chars)
-    const words = title
-      .split(/\s+/)
-      .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
-      .filter(w => w.length >= 3);
-
-    if (words.length === 0) {
-      return res.json({ suggestions: [] });
-    }
-
-    // Search listings matching any keyword in title or description
-    const likeClauses = words.map((_, i) => `(l.title ILIKE $${i + 1} OR l.description ILIKE $${i + 1})`);
-    const likeParams = words.map(w => `%${w}%`);
-
-    let paramIndex = likeParams.length + 1;
-
-    const visibilityClause = listingAccessSql('l', '$' + paramIndex++, { discovery: true });
-    const visibilityParams = [req.user.id];
-
-    const suggestions = await query(
-      `SELECT
-        l.id,
-        l.title,
-        l.description,
-        l.is_free,
-        l.price_per_day,
-        l.direct_fee,
-        l.is_available,
-        l.listing_type,
-        l.condition,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.display_name,
-        u.profile_photo_url,
-        (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url
-      FROM listings l
-      JOIN users u ON l.owner_id = u.id
-      WHERE l.status = 'active' ${!ENABLE_PAYMENTS ? 'AND l.is_free = true AND COALESCE(l.price_per_day, 0) = 0 AND COALESCE(l.deposit_amount, 0) = 0' : ''}
-        AND l.owner_id != $${paramIndex}
-        AND (${likeClauses.join(' OR ')})
-        AND ${visibilityClause}
-      ORDER BY l.is_available DESC, l.created_at DESC
-      LIMIT 10`,
-      [...likeParams, ...visibilityParams, req.user.id]
-    );
-
-    res.json({
-      suggestions: suggestions.rows.map(l => ({
-        id: l.id,
-        title: l.title,
-        description: l.description,
-        isFree: l.is_free,
-      directFee: l.direct_fee || null,
-        pricePerDay: l.price_per_day,
-        isAvailable: l.is_available,
-        listingType: l.listing_type || 'lend',
-        condition: l.condition,
-        photoUrl: l.photo_url,
-        user: {
-          id: l.user_id,
-          firstName: l.display_name || l.first_name,
-          lastName: l.display_name ? '' : (l.last_name ? l.last_name.charAt(0) + '.' : ''),
-          profilePhotoUrl: l.profile_photo_url,
-        },
-      })),
-    });
-  } catch (err) {
-    console.error('Request suggestions error:', err);
-    res.status(500).json({ error: 'Failed to get suggestions' });
-  }
-});
+// Older builds still check this endpoint before posting. Matching is retired.
+router.get('/suggestions', authenticate, (req, res) => res.json({ suggestions: [] }));
 
 // ============================================
 // GET /api/requests/:id
@@ -638,9 +560,9 @@ router.post('/:id/offers', authenticate, body('listingId').isUUID(), async (req,
   if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Choose an item to offer.' });
   try {
     const recipientId = await offerListing(req.params.id, req.body.listingId, req.user.id);
-    await sendNotification(recipientId, 'item_match', {
-      itemTitle: 'A privately offered item', requestTitle: 'your request', listingId: req.body.listingId, requestId: req.params.id,
-    }, { fromUserId: req.user.id, listingId: req.body.listingId, requestId: req.params.id }).catch(() => {});
+    await sendNotification(recipientId, 'request_offer', {}, {
+      fromUserId: req.user.id, listingId: req.body.listingId, requestId: req.params.id,
+    });
     res.status(201).json({ success: true });
   } catch (error) {
     if (!error.status) console.error('Private offer failed', { code: error.code || error.name });

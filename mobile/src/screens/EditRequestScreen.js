@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import SharingPicker from '../components/SharingPicker';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,7 +8,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   Keyboard,
   ActivityIndicator,
   Platform,

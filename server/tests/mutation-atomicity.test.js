@@ -9,6 +9,7 @@ import { expireGiveawayPickups } from '../src/services/scheduler.js';
 
 describe('Current workflow failure and retry behavior on PostgreSQL', () => {
   let app, owner, neighbor, ownerToken, neighborToken;
+  const testCommunityIds = [];
   const auth = token => ({ Authorization: `Bearer ${token}` });
   const ownedPhoto = suffix => `https://borrowhood-uploads.s3.us-east-1.amazonaws.com/listings/${owner}/${suffix}.jpg`;
   const createListing = body => request(app).post('/listings').set(auth(ownerToken)).send({
@@ -58,6 +59,7 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
     await query('DELETE FROM listings WHERE owner_id=$1',[owner]);
     await query('DELETE FROM item_requests WHERE user_id IN ($1,$2)',[owner,neighbor]);
     await query('DELETE FROM users WHERE id IN ($1,$2)',[owner,neighbor]);
+    await query('DELETE FROM communities WHERE id = ANY($1::uuid[])', [testCommunityIds]);
   });
 
   it('does not leave a new listing behind if a photo save fails', async () => {
@@ -85,6 +87,28 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
     const response = await createListing({ title,requestMatchId:needed,photos:[ownedPhoto('offer')] });
     expect(response.status, JSON.stringify(response.body)).toBe(500);
     expect((await query('SELECT id FROM listings WHERE title=$1',[title])).rows).toHaveLength(0);
+  });
+  it('retires automatic matching while preserving deliberate item offers', async () => {
+    const community = (await query(`INSERT INTO communities(name,slug,city,state)
+      VALUES('Request test',$1,'Upton','MA') RETURNING id`, [`requests-${randomUUID()}`])).rows[0].id;
+    testCommunityIds.push(community);
+    await query('INSERT INTO community_memberships(user_id,community_id) VALUES($1,$3),($2,$3)', [owner,neighbor,community]);
+    const needed = (await query(`INSERT INTO item_requests(user_id,community_id,title,visibility,status,expires_at)
+      VALUES($1,$2,'Cordless drill','town','open',NOW()+INTERVAL '1 day') RETURNING id`, [neighbor,community])).rows[0].id;
+    const listed = await createListing({ title: 'Cordless drill', communityId: community, visibility: ['town'], sharingConfirmed: true, photos: [ownedPhoto('matching-disabled')] });
+    expect(listed.status, JSON.stringify(listed.body)).toBe(201);
+    expect((await query('SELECT id FROM notifications WHERE listing_id=$1', [listed.body.id])).rows).toHaveLength(0);
+    const suggestions = await request(app).get('/requests/suggestions?title=Cordless%20drill').set(auth(neighborToken));
+    expect(suggestions.status).toBe(200);
+    expect(suggestions.body).toEqual({ suggestions: [] });
+    expect((await request(app).post(`/requests/${needed}/offers`).set(auth(ownerToken)).send({ listingId: listed.body.id })).status).toBe(201);
+    const createdOffer = await createListing({ title: 'A privately offered drill', requestMatchId: needed, photos: [ownedPhoto('deliberate-offer')] });
+    expect(createdOffer.status, JSON.stringify(createdOffer.body)).toBe(201);
+    const notices = await query('SELECT type,request_id,listing_id FROM notifications WHERE request_id=$1 ORDER BY created_at', [needed]);
+    expect(notices.rows).toEqual([
+      { type: 'request_offer', request_id: needed, listing_id: listed.body.id },
+      { type: 'request_offer', request_id: needed, listing_id: createdOffer.body.id },
+    ]);
   });
   it('does not leave a request behind if its town preview choice cannot save', async () => {
     await failWrites('item_requests','UPDATE'); const title = `Failed request ${randomUUID()}`;

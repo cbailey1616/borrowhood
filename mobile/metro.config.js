@@ -23,6 +23,9 @@ if (process.env.BORROWHOOD_SCREENSHOTS === '1') {
     [path.resolve(__dirname, 'src/utils/draftStorage.js'), path.resolve(__dirname, 'screenshots/draftStorage.js')],
   ]);
   config.resolver.resolveRequest = (context, moduleName, platform) => {
+    if (moduleName === 'expo-notifications') {
+      return { type: 'sourceFile', filePath: path.resolve(__dirname, 'screenshots/notifications.js') };
+    }
     const resolved = context.resolveRequest(context, moduleName, platform);
     return resolved.type === 'sourceFile' && replacements.has(resolved.filePath)
       ? { ...resolved, filePath: replacements.get(resolved.filePath) }

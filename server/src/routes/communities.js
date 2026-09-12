@@ -446,19 +446,20 @@ router.post('/:id/leave', authenticate, async (req, res) => {
 
 // ============================================
 // DELETE /api/communities/:id/members/:userId
-// Remove a member (organizer only)
+// Remove a member (neighborhood moderator only; creators are moderators)
 // ============================================
 router.delete('/:id/members/:userId', authenticate, async (req, res) => {
   const { id: communityId, userId } = req.params;
 
   try {
-    // Verify caller is an organizer
+    // The neighborhood creator receives the organizer role at creation. Any
+    // organizer is a moderator and can remove regular members.
     const callerRole = await query(
       'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
       [communityId, req.user.id]
     );
     if (!callerRole.rows.length || callerRole.rows[0].role !== 'organizer') {
-      return res.status(403).json({ error: 'Only admins can remove members' });
+      return res.status(403).json({ error: 'Only neighborhood moderators can remove members' });
     }
 
     // Cannot remove yourself
@@ -475,7 +476,7 @@ router.delete('/:id/members/:userId', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Member not found' });
     }
     if (targetRole.rows[0].role === 'organizer') {
-      return res.status(400).json({ error: 'Cannot remove another admin' });
+      return res.status(400).json({ error: 'Moderators cannot remove another moderator' });
     }
 
     await query(

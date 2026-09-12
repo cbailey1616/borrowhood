@@ -1,3 +1,4 @@
+import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
@@ -8,7 +9,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Keyboard,
-  TextInput,
   Image,
   ActivityIndicator,
 
@@ -176,18 +176,9 @@ export default function BorrowRequestScreen({ route, navigation }) {
           customerId: result.customerId,
         });
       } else {
-        // Free rental / giveaway — request sent
+        // Open the request tracker so the next step is immediately available.
         haptics.success();
-        navigation.goBack();
-        setTimeout(() => {
-          showError({
-            type: 'success',
-            title: 'Request Sent!',
-            message: isGiveaway
-              ? `Your request has been sent to ${listing.owner?.firstName || 'the owner'}. They'll be notified right away.`
-              : `Your borrow request has been sent. ${listing.owner?.firstName || 'The owner'} will be notified.`,
-          });
-        }, 500);
+        navigation.replace('TransactionDetail', { id: result.id });
       }
     } catch (error) {
       haptics.error();

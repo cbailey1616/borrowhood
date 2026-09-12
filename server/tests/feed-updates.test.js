@@ -53,7 +53,7 @@ describe('Feed update indicator', () => {
     expect((await request(app).get('/api/feed?summary=true')).status).toBe(401);
   });
 
-  it('preserves service type in both full and anonymous Town feeds without exposing identity', async () => {
+  it('preserves service type and identity for opted-in Town requests across verification levels', async () => {
     await query("UPDATE item_requests SET type='service', town_preview_enabled=true WHERE id=$1", [wanted]);
     const full = await get('?type=requests');
     expect(full.status).toBe(200);
@@ -62,13 +62,28 @@ describe('Feed update indicator', () => {
     });
     const unverified = await createTestUser({ email: 'feed-service-preview@borrowhood.test', city: 'FeedDotTown', state: 'MA', isVerified: false });
     users.push(unverified);
-    const preview = await request(app).get('/api/feed?type=requests').set('Authorization', `Bearer ${unverified.token}`);
-    expect(preview.status).toBe(200);
-    expect(preview.body.items.find(item => item.id === wanted)).toMatchObject({
-      type: 'request', requestType: 'service', ownerMasked: true, previewOnly: true,
-      user: { id: null, firstName: 'Town', lastName: 'neighbor', profilePhotoUrl: null },
-      requester: { id: null },
+    const unverifiedFeed = await request(app).get('/api/feed?type=requests').set('Authorization', `Bearer ${unverified.token}`);
+    expect(unverifiedFeed.status).toBe(200);
+    const serviceRequest = unverifiedFeed.body.items.find(item => item.id === wanted);
+    expect(serviceRequest).toMatchObject({
+      type: 'request', requestType: 'service', user: { id: neighbor.userId, isVerified: true },
     });
+    expect(serviceRequest.ownerMasked).not.toBe(true);
+    expect(serviceRequest.previewOnly).not.toBe(true);
+
+    const otherTown = await request(app).get('/api/feed?type=requests').set('Authorization', `Bearer ${outsider.token}`);
+    expect(otherTown.status).toBe(200);
+    expect(otherTown.body.items.some(item => item.id === wanted)).toBe(false);
+
+    await query('UPDATE item_requests SET town_preview_enabled=false WHERE id=$1', [wanted]);
+    try {
+      const revoked = await request(app).get('/api/feed?type=requests').set('Authorization', `Bearer ${unverified.token}`);
+      expect(revoked.status).toBe(200);
+      expect(revoked.body.items.some(item => item.id === wanted)).toBe(false);
+      expect((await get('?type=requests')).body.items.some(item => item.id === wanted)).toBe(true);
+    } finally {
+      await query('UPDATE item_requests SET town_preview_enabled=true WHERE id=$1', [wanted]);
+    }
   });
 
   it('rechecks visibility and availability each time, including an empty feed', async () => {

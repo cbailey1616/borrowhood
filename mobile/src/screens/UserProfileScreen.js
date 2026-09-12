@@ -1,4 +1,5 @@
 import MemberSummary from '../components/MemberSummary';
+import VerifiedBadge from '../components/VerifiedBadge';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -32,9 +33,12 @@ export default function UserProfileScreen({ route, navigation }) {
 
   useEffect(() => {
     setMessagesBlocked(false);
+    setUser(null);
+    setIsLoading(true);
     fetchUser();
     checkFriendStatus();
-  }, [id]);
+    return navigation.addListener('focus', () => { fetchUser(); checkFriendStatus(); });
+  }, [id, navigation]);
 
   const fetchUser = async () => {
     try {
@@ -120,10 +124,10 @@ export default function UserProfileScreen({ route, navigation }) {
             source={{ uri: user.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
-
-          <MemberSummary user={user} />
-          <Text style={styles.metaText}>{user.totalTransactions || 0} completed exchanges</Text>
+          <MemberSummary user={user} centered profileHeader>
+            <Text style={[styles.name,{flexShrink:1}]}>{user.firstName} {user.lastName}</Text>
+            {user.isVerified === true && <VerifiedBadge size={20} interactive />}
+          </MemberSummary>
           <View style={styles.metaRow}>
             {user.city && user.state && (
               <View style={styles.metaItem}>
@@ -186,9 +190,6 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={styles.ratingsSection}>
-          <Text style={styles.emptyText}>An item shared with you never gives access to this member’s full inventory.</Text>
-        </View>
         {!isOwnProfile && <View style={{ paddingHorizontal: SPACING.lg }}>
           <UserSafetyActions key={id} userId={id} name={user.firstName} variant="section" onBlockChange={setMessagesBlocked} />
         </View>}
@@ -252,6 +253,7 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.h1,
+    letterSpacing: 0,
     fontSize: 24,
     textAlign: 'center',
     color: COLORS.text,
@@ -282,9 +284,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
-  ratingsSection: {
-    padding: SPACING.lg,
-  },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
     color: COLORS.text,
@@ -296,10 +295,6 @@ const styles = StyleSheet.create({
     padding: SPACING.xxl,
     alignItems: 'center',
     gap: SPACING.sm,
-  },
-  emptyText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textMuted,
   },
   listingsGrid: {
     flexDirection: 'row',

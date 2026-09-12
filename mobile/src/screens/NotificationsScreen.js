@@ -1,4 +1,5 @@
-import { publicReplyRoute } from '../utils/conversationContext';
+import { notificationDestination } from '../utils/notificationDestination';
+import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -30,8 +31,11 @@ const NOTIFICATION_ICONS = {
   dispute_resolved: 'checkmark-done',
   new_rating: 'star',
   rating_received: 'star',
+  rank_up: 'trophy',
+  rank_down: 'ribbon',
+  rank_ready: 'ribbon',
   join_approved: 'people',
-  item_match: 'sparkles',
+  request_offer: 'cube',
   new_request: 'search',
   new_message: 'chatbubble',
   discussion_reply: 'chatbubble-ellipses',
@@ -51,9 +55,10 @@ export default function NotificationsScreen({ navigation }) {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const data = await api.getNotifications();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      const [data, transactions] = await Promise.all([api.getNotifications(), api.getTransactions().catch(() => [])]);
+      const visible = groupRequestNotifications(data.notifications.filter(item => item.type !== 'item_match'), transactions || []);
+      setNotifications(visible);
+      setUnreadCount(Math.max(0, data.unreadCount - (data.notifications.filter(item => !item.isRead).length - visible.filter(item => !item.isRead).length)));
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -78,11 +83,11 @@ export default function NotificationsScreen({ navigation }) {
     fetchNotifications();
   };
 
-  const handleMarkRead = async (id) => {
+  const handleMarkRead = async (item) => {
     try {
-      await api.markNotificationRead(id);
+      await readActivity(api, item);
       setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+        prev.map(n => n.id === item.id ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
@@ -104,31 +109,12 @@ export default function NotificationsScreen({ navigation }) {
 
   const handleNotificationPress = (notification) => {
     if (!notification.isRead) {
-      handleMarkRead(notification.id);
+      handleMarkRead(notification);
     }
     haptics.light();
 
-    // Navigate based on notification type
-    const publicRoute = publicReplyRoute(notification);
-    if (publicRoute) { navigation.navigate('ListingDiscussion', publicRoute); return; }
-    if (notification.type === 'new_message') {
-      if (notification.conversationId) {
-        navigation.navigate('Chat', { conversationId: notification.conversationId });
-      } else {
-        navigation.navigate('Conversations');
-      }
-      return;
-    } else if (notification.type === 'new_request' && notification.requestId) {
-      navigation.navigate('RequestDetail', { id: notification.requestId });
-    } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
-      navigation.navigate('Friends');
-    } else if (notification.transactionId) {
-      navigation.navigate('TransactionDetail', { id: notification.transactionId });
-    } else if (notification.listingId) {
-      navigation.navigate('ListingDetail', { id: notification.listingId });
-    } else if (notification.type === 'item_match' && notification.requestId) {
-      navigation.navigate('RequestDetail', { id: notification.requestId });
-    }
+    const destination = notificationDestination(notification);
+    if (destination) navigation.navigate(destination.name, destination.params);
   };
 
   const getTimeAgo = (date) => {

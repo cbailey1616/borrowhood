@@ -1,33 +1,36 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from './Icon';
-import { getTier, RankEmblem } from './UserBadges';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
+import NeighborRankBadge from './NeighborRankBadge';
+import RankInfoSheet from './RankInfoSheet';
+import { memberReputation } from '../utils/reputation';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function MemberSummary({ user }) {
-  const tier = Number.isFinite(user.totalTransactions) ? getTier(user.totalTransactions) : null;
-  const endorsement = user.endorsement;
-  return <View style={styles.row}>
-    <View style={styles.cell}>
-      <Ionicons name={user.isVerified ? 'shield-checkmark' : 'shield-outline'} size={22} color={COLORS.primary} />
-      <Text style={styles.value}>{user.isVerified === true ? 'Verified' : user.isVerified === false ? 'Not verified' : 'Unavailable'}</Text>
-      <Text style={styles.label}>Identity</Text>
+export default function MemberSummary({ user, children, centered = false, openRating = false, onRatingClose, profileHeader = false }) {
+  const [showRanks, setShowRanks] = useState(false);
+  const { completedCount, isNew, rank } = memberReputation(user);
+  const exchangeLabel = Number.isFinite(completedCount)
+    ? `${completedCount} completed ${completedCount === 1 ? 'exchange' : 'exchanges'}`
+    : 'Exchange count unavailable';
+  const ratingLabel = rank ? `Neighbor rating: ${isNew ? rank.label : `${rank.tone}, ${rank.label}`}` : null;
+
+  return <View style={[styles.summary, centered && styles.centered]}>
+    <View testID="MemberSummary.identity" style={[styles.identityRow, centered && styles.identityCentered, profileHeader && styles.profileIdentity]}>
+      <View style={styles.nameRow}>{children}</View>
+      <NeighborRankBadge rank={rank} showName={profileHeader}
+        accessibilityLabel={profileHeader ? undefined : ratingLabel} onPress={() => setShowRanks(true)} />
     </View>
-    <View style={styles.cell}>
-      {tier ? <RankEmblem tier={tier} size={22} /> : <Ionicons name="help-circle-outline" size={22} color={COLORS.textMuted} />}
-      <Text style={styles.value}>{tier?.label || 'Unavailable'}</Text>
-      <Text style={styles.label}>Rank</Text>
-    </View>
-    <View style={styles.cell}>
-      <Ionicons name="thumbs-up-outline" size={22} color={COLORS.primary} />
-      <Text style={styles.value}>{endorsement?.count > 0 ? `${endorsement.percent}%` : endorsement ? 'No ratings' : 'Unavailable'}</Text>
-      <Text style={styles.label}>Endorsed</Text>
-      {endorsement?.count > 0 && <Text style={styles.label}>{endorsement.count} rated</Text>}
-    </View>
+    {!profileHeader && <Text style={[styles.secondary, centered && styles.textCentered]}>{exchangeLabel}</Text>}
+    {(showRanks || openRating) && <RankInfoSheet isVisible onClose={() => { setShowRanks(false); onRatingClose?.(); }} currentRank={rank} isNew={isNew} />}
   </View>;
 }
+
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, width: '100%', marginVertical: SPACING.sm },
-  cell: { flex: 1, minWidth: 76, alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 1, borderColor: COLORS.borderBrown, borderRadius: RADIUS.md, paddingVertical: SPACING.md, paddingHorizontal: 4, backgroundColor: COLORS.surface },
-  value: { ...TYPOGRAPHY.footnote, fontWeight: '700', color: COLORS.primary, textAlign: 'center' },
-  label: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
+  summary: { alignItems: 'flex-start', width: '100%', gap: SPACING.xs },
+  centered: { alignItems: 'center' },
+  identityRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm, maxWidth: '100%' },
+  identityCentered: { justifyContent: 'center' },
+  profileIdentity: { width: '100%', flexWrap: 'nowrap', gap: SPACING.xs },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 },
+  secondary: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  textCentered: { textAlign: 'center' },
 });

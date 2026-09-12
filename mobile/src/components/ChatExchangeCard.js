@@ -30,10 +30,11 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   }, [refresh, focused, otherId]);
   const exchange = exchanges.find(t => t.id === selectedId) || exchanges[0];
   if (!exchange) return error ? <HapticPressable accessibilityRole="button" onPress={refresh} style={styles.retry}><Text style={styles.secondary}>{error} Tap to retry.</Text></HapticPressable> : null;
-  const guidance = borrowGuidance({ status: exchange.status, isBorrower: exchange.borrower?.id === userId, isGiveaway: isTransferListing(exchange) });
+  const guidance = borrowGuidance({ ...exchange, isBorrower: exchange.borrower?.id === userId, isGiveaway: isTransferListing(exchange) });
   const action = exchangeAction(exchange, userId);
   const details = () => navigation.navigate('TransactionDetail', { id: exchange.id });
   const perform = () => {
+    if (action.screen) return navigation.navigate(action.screen, action.params);
     if (!action.method) return details();
     Alert.alert(action.label, action.confirmation, [
       { text: 'Not yet', style: 'cancel' },
@@ -50,6 +51,7 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
     <HapticPressable accessibilityRole="button" accessibilityLabel={`Borrow details for ${exchange.listing?.title}`} onPress={details} style={styles.heading}>
       <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
       <View style={{ flex: 1 }}><Text style={styles.title} numberOfLines={1}>{exchange.listing?.title}</Text><Text style={styles.secondary}>{date(exchange.startDate)}{exchange.endDate && !isTransferListing(exchange) ? ` – ${date(exchange.endDate)}` : ''} · {guidance.title}</Text></View>
+      <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
     </HapticPressable>
     {!!error && <Text accessibilityRole="alert" style={styles.secondary}>{error}</Text>}
     <View style={styles.actions}>
@@ -69,8 +71,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   primary: { backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
   primaryText: { color: COLORS.surface, fontWeight: '600', fontSize: 13 },
-  link: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  link: { minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexShrink: 1, marginVertical: 2 },
   linkText: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
-  retry: { padding: 12, minHeight: 44 },
+  retry: { padding: 12, minHeight: 48, margin: 16, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
 });
 import { ThemedAlert as Alert } from "./ThemedAlert";

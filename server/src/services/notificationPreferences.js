@@ -1,13 +1,14 @@
 // One contract for the settings screen and actual push delivery.
 export const DEFAULT_NOTIFICATION_PREFERENCES = {
   push_enabled: true, push_sound: true, new_message: true, borrow_updates: true,
-  return_reminder: true, post_replies: true, community_updates: true, item_match: true,
+  return_reminder: true, post_replies: true, community_updates: true,
 };
 const groups = {
+  rank_up: 'borrow_updates',
   borrow_request: 'borrow_updates', giveaway_claim: 'borrow_updates', request_approved: 'borrow_updates',
   request_declined: 'borrow_updates', borrow_cancelled: 'borrow_updates', pickup_confirmed: 'borrow_updates',
   return_confirmed: 'borrow_updates', giveaway_complete: 'borrow_updates', giveaway_expired: 'borrow_updates',
-  giveaway_pickup_expired: 'borrow_updates', listing_comment: 'post_replies', request_comment: 'post_replies',
+  giveaway_pickup_expired: 'borrow_updates', listing_comment: 'post_replies', request_comment: 'post_replies', request_offer: 'post_replies',
   discussion_reply: 'post_replies', friend_request: 'community_updates', friend_accepted: 'community_updates',
   join_request: 'community_updates', join_approved: 'community_updates',
 };
@@ -20,14 +21,16 @@ export const GRANULAR_NOTIFICATION_TYPES = {
   cancellations: ['borrow_cancelled'],
   pickup_updates: ['pickup_confirmed', 'giveaway_complete', 'giveaway_pickup_expired'],
   return_updates: ['return_confirmed'], expired_requests: ['giveaway_expired'],
-  post_comments: ['listing_comment', 'request_comment'], comment_replies: ['discussion_reply'],
+  post_comments: ['listing_comment', 'request_comment', 'request_offer'], comment_replies: ['discussion_reply'],
   friend_requests: ['friend_request'], friend_acceptances: ['friend_accepted'],
   neighborhood_requests: ['join_request'], neighborhood_responses: ['join_approved'],
   new_item_requests: ['new_request'], new_service_requests: ['new_request'],
 };
 export const SOURCE_PREFERENCES = ['source_friends', 'source_neighborhood', 'source_town'];
-export const CORE_NOTIFICATION_KEYS = ['new_message', 'post_replies', 'borrow_updates', 'community_updates', 'new_item_requests', 'new_service_requests', 'item_match'];
+export const CORE_NOTIFICATION_KEYS = ['new_message', 'post_replies', 'borrow_updates', 'community_updates', 'new_item_requests', 'new_service_requests'];
 export const coreSourceKey = (core, source) => `${core}_${source}`;
+// Accept older app payloads while keeping the retired feature disabled.
+const RETIRED_MATCH_KEYS = ['item_match', ...SOURCE_PREFERENCES.map(source => coreSourceKey('item_match', source))];
 export function notificationCore(type, data = {}) {
   if (type === 'new_request') return data.requestType === 'service' ? 'new_service_requests'
     : data.requestType === 'item' ? 'new_item_requests' : null;
@@ -35,12 +38,15 @@ export function notificationCore(type, data = {}) {
 }
 
 export function audiencePreferences(type, prefs = {}, data = {}) {
+  if (type !== 'new_request') return Object.fromEntries(SOURCE_PREFERENCES.map(source => [source, true]));
   const core = notificationCore(type, data);
-  const isDiscovery = ['new_request', 'item_match'].includes(type);
   return Object.fromEntries(SOURCE_PREFERENCES.map(source => [source,
     core && typeof prefs[coreSourceKey(core, source)] === 'boolean'
-      ? prefs[coreSourceKey(core, source)] : isDiscovery ? prefs[source] !== false : true]));
+      ? prefs[coreSourceKey(core, source)] : prefs[source] !== false]));
 }
+const isRequestCore = core => ['new_item_requests', 'new_service_requests'].includes(core);
+const allCoreSourcesOff = (core, prefs) => core && SOURCE_PREFERENCES.every(source => prefs[coreSourceKey(core, source)] === false);
+
 const granularKey = Object.fromEntries(Object.entries(GRANULAR_NOTIFICATION_TYPES)
   .filter(([key]) => !['new_item_requests', 'new_service_requests'].includes(key))
   .flatMap(([key, types]) => types.map(type => [type, key])));
@@ -63,17 +69,22 @@ export function normalizedPreferences(prefs = {}) {
       .every(([, key]) => normalized[key]);
   }
   for (const core of CORE_NOTIFICATION_KEYS) {
+    if (!isRequestCore(core) && allCoreSourcesOff(core, prefs)) normalized[core] = false;
     for (const source of SOURCE_PREFERENCES) {
       const key = coreSourceKey(core, source);
-      const discovery = ['new_item_requests', 'new_service_requests', 'item_match'].includes(core);
+      const discovery = isRequestCore(core);
       normalized[key] = normalized[core] !== false && (prefs[key] ?? (discovery ? prefs[source] !== false : true));
     }
   }
+  for (const key of RETIRED_MATCH_KEYS) normalized[key] = false;
   return normalized;
 }
 export function shouldSendPush(type, prefs = {}, data = {}) {
-  if (['new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(type)) return false;
+  if (['rank_down', 'rank_ready'].includes(type)) return false;
+  if (['item_match', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring'].includes(type)) return false;
   if (!(prefs.push_enabled ?? prefs.push ?? true)) return false;
+  const core = notificationCore(type, data);
+  if (core && !isRequestCore(core) && allCoreSourcesOff(core, prefs)) return false;
   if (type === 'new_request') {
     if (data.requestType === 'item') return settingEnabled('new_item_requests', prefs);
     if (data.requestType === 'service') return settingEnabled('new_service_requests', prefs);
@@ -92,12 +103,20 @@ export function preferencePatch(prefs) {
       .filter(parent => parent && typeof prefs[parent] === 'boolean');
     if (changed.length && prefs[key] === undefined) patch[key] = changed.every(parent => prefs[parent]);
   }
+  // Simple activity switches replace any older audience choices for that category.
+  for (const core of CORE_NOTIFICATION_KEYS.filter(key => !isRequestCore(key))) {
+    if (typeof prefs[core] !== 'boolean') continue;
+    for (const source of SOURCE_PREFERENCES) {
+      const key = coreSourceKey(core, source);
+      if (prefs[key] === undefined) patch[key] = prefs[core];
+    }
+  }
   return patch;
 }
 export const validPreferenceKeys = new Set([...Object.keys(DEFAULT_NOTIFICATION_PREFERENCES),
-  ...Object.keys(GRANULAR_NOTIFICATION_TYPES), ...SOURCE_PREFERENCES,
+  ...Object.keys(GRANULAR_NOTIFICATION_TYPES), ...SOURCE_PREFERENCES, ...RETIRED_MATCH_KEYS,
   ...CORE_NOTIFICATION_KEYS.flatMap(core => SOURCE_PREFERENCES.map(source => coreSourceKey(core, source))),
   'email', 'push', 'borrow_request', 'request_response', 'pickup_return', 'new_request', 'payment_updates']);
 // Messages already have their own unread count and conversation list. Keep the
 // historical rows, but remove duplicate alerts and retired promotion/dispute UI.
-export const ACTIVITY_SQL = "type != 'new_message' AND type NOT IN ('new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring') AND type NOT LIKE 'dispute%'";
+export const ACTIVITY_SQL = "type NOT IN ('item_match', 'new_message', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring') AND type NOT LIKE 'dispute%'";

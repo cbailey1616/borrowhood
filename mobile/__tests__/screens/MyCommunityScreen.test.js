@@ -7,6 +7,23 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getCommunities.mockResolvedValue([]); api.getCommunityMembers.mockResolvedValue([]); });
 describe('MyCommunityScreen', () => {
+  it.each([null, 'https://example.com/cover.jpg'])('gives moderators a direct cover editor for %s', async bannerUrl => {
+    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer', bannerUrl }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByRole('button', { name: bannerUrl ? 'Change cover photo' : 'Add cover photo' }));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunitySettings', { id: 'comm-1', editCover: true });
+  });
+
+  it('does not offer cover editing to regular members', async () => {
+    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'member' }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Test Hood');
+    expect(screen.queryByLabelText('Add cover photo')).toBeNull();
+    expect(screen.queryByLabelText('Change cover photo')).toBeNull();
+  });
+
   it('hides legacy pinned announcements and uses member display names', async () => {
     api.getCommunities.mockResolvedValue([{ id: 'c', name: 'Our neighborhood', announcement: 'Old pinned note' }]);
     api.getCommunityMembers.mockResolvedValue([{ id: 'u', displayName: 'Friendly Neighbor', firstName: 'LEGAL NAME', role: 'organizer' }]);
@@ -40,5 +57,13 @@ describe('MyCommunityScreen', () => {
     const Screen = require('../../src/screens/MyCommunityScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
     await findByText('Invite Neighbors');
+  });
+  it('opens member management directly for neighborhood moderators', async () => {
+    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer' }]);
+    api.getCommunityMembers.mockResolvedValue([{ id: 'user-1', firstName: 'Test', role: 'organizer' }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const { findByText } = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await findByText('Manage'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', { id: 'comm-1', role: 'organizer' });
   });
 });

@@ -56,6 +56,19 @@ describe('BlurTabBar', () => {
     expect(props.navigation.navigate).toHaveBeenCalledWith('Saved');
   });
 
+  it.each([0, 1])('keeps the Saved heart filled pink with tab %i active', activeIndex => {
+    const BlurTabBar = require('../../../src/components/BlurTabBar').default;
+    const screen = render(<BlurTabBar {...createTabBarProps(activeIndex)} />);
+    const savedSource = screen.getByTestId('TabBar.Saved.icon').props.source;
+    const svg = decodeURIComponent((Array.isArray(savedSource) ? savedSource[0] : savedSource).uri);
+    expect(svg).toContain(`fill="${COLORS.saved}"`);
+    expect(svg).toContain('fill-opacity="1"');
+    expect(svg).toContain(`stroke="${COLORS.saved}"`);
+    const homeSource = screen.getByTestId('TabBar.Feed.icon').props.source;
+    const homeSvg = decodeURIComponent((Array.isArray(homeSource) ? homeSource[0] : homeSource).uri);
+    expect(homeSvg).not.toContain(COLORS.saved);
+  });
+
   it('shows badge count on Inbox tab', () => {
     const BlurTabBar = require('../../../src/components/BlurTabBar').default;
     const props = createTabBarProps(0);

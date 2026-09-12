@@ -131,7 +131,7 @@ router.get('/', authenticate, async (req, res) => {
       if (!summary) listingQuery = listingQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
       listingQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('l', 'owner_id', '$' + (listingParams.length + 1), { listing: true }) + ')';
       listingParams.push(req.user.id);
-      if (summary) listingQuery += ` AND l.owner_id != $${listingParams.length}`;
+      listingQuery += ` AND l.owner_id != $${listingParams.length}`;
       if (visibilityFilters.length) {
         listingQuery += " AND string_to_array(l.visibility::text, ',') && $" + (listingParams.length + 1) + '::text[]';
         listingParams.push(visibilityFilters);
@@ -169,16 +169,13 @@ router.get('/', authenticate, async (req, res) => {
         FROM item_requests r
         JOIN users u ON r.user_id = u.id
         WHERE r.status = 'open'
-          AND (
-            r.user_id = $1
-            OR ${requestActiveSql('r')}
-          )`;
+          AND r.user_id != $1
+          AND ${requestActiveSql('r')}`;
 
       const requestParams = [req.user.id];
 
       const fullAccess = requestAccessSql('r', '$1');
       if (!summary) requestQuery = requestQuery.replace('SELECT', `SELECT ${fullAccess} AS full_access,`);
-      if (summary) requestQuery += ' AND r.user_id != $1';
       requestQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('r', 'user_id', '$1') + ')';
       if (visibilityFilters.length) {
         requestQuery += " AND string_to_array(r.visibility::text, ',') && $" + (requestParams.length + 1) + '::text[]';
@@ -302,19 +299,29 @@ router.get('/', authenticate, async (req, res) => {
     const permitted = new Map(candidates.map(item => [item.type + ':' + item.id, item]));
     const listingKeys = sections ? keys.filter(key => key.startsWith('listing:')) : keys;
     const requestCards = sections ? keys.filter(key => key.startsWith('request:')).map(key => permitted.get(key)).filter(Boolean) : [];
-    const pageKeys = listingKeys.slice(offset, offset + Number(limit));
-    const feed = pageKeys.map(key => permitted.get(key)).filter(Boolean);
+    // Keep snapshot positions stable when posts disappear between pages.
+    // Skip exhausted pages without returning an empty feed with hasMore=true.
+    let nextOffset = offset;
+    let resolvedPage = Number(page);
+    let feed;
+    do {
+      feed = listingKeys.slice(nextOffset, nextOffset + Number(limit)).map(key => permitted.get(key)).filter(Boolean);
+      nextOffset += Number(limit);
+      if (feed.length || nextOffset >= listingKeys.length) break;
+      resolvedPage += 1;
+    } while (nextOffset < listingKeys.length);
     const visibleRequests = requestCards.slice(0, 8);
     const visibleAuthors = [...feed, ...visibleRequests].filter(item => !item.ownerMasked && !item.previewOnly && item.user?.id);
     const ranks = await endorsementSummaries(visibleAuthors.map(item => item.user.id));
     for (const item of visibleAuthors) item.user.endorsement = ranks.get(item.user.id);
+
     res.json({
       items: feed,
       ...(sections ? { requests: visibleRequests, requestCount: requestCards.length } : {}),
       latestPostAt,
-      page: parseInt(page),
+      page: resolvedPage,
       limit: parseInt(limit),
-      hasMore: listingKeys.length > offset + Number(limit),
+      hasMore: listingKeys.slice(nextOffset).some(key => permitted.has(key)),
     });
   } catch (err) {
     console.error('Get feed error:', err);

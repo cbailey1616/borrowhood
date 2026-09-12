@@ -26,11 +26,11 @@ try {
   await client.query("SET LOCAL search_path TO pg_temp; SET LOCAL statement_timeout = '5s'");
   await client.query(`
     CREATE TEMP TABLE users (id text, is_verified boolean, city text, state text, status text DEFAULT 'pending');
-    CREATE TEMP TABLE listings (id text, owner_id text, visibility text, privacy_version integer, status text, circle_id text, community_id text);
+    CREATE TEMP TABLE listings (id text, owner_id text, visibility text, privacy_version integer, status text, circle_id text, community_id text, listing_type text DEFAULT 'lend', town_preview_enabled boolean DEFAULT false);
     CREATE TEMP TABLE friendships (user_id text, friend_id text, status text);
     CREATE TEMP TABLE lending_circle_members (circle_id text, user_id text, status text);
     CREATE TEMP TABLE community_memberships (community_id text, user_id text);
-    CREATE TEMP TABLE item_requests (id text, user_id text, visibility text, community_id text, status text, expires_at timestamptz, needed_until date, time_zone text DEFAULT 'UTC');
+    CREATE TEMP TABLE item_requests (id text, user_id text, visibility text, community_id text, status text, expires_at timestamptz, needed_until date, time_zone text DEFAULT 'UTC', town_preview_enabled boolean DEFAULT false);
     CREATE TEMP TABLE listing_shares (listing_id text, user_id text, request_id text, revoked_at timestamptz, expires_at timestamptz);
     CREATE TEMP TABLE borrow_transactions (listing_id text, borrower_id text, status text);
     INSERT INTO users (id, is_verified, city, state) VALUES ('owner', true, 'Upton', 'MA'), ('neighbor', true, ' upton ', 'ma'),
@@ -57,6 +57,19 @@ try {
   await checkItem('town', 'neighbor', true);
   await checkItem('town', 'friend', false);
   await checkItem('town', 'outsider', false);
+  await client.query("UPDATE listings SET town_preview_enabled=true WHERE id='town'");
+  await checkItem('town', 'friend', false);
+  for (const listingType of ['giveaway', 'sell']) {
+    await client.query("UPDATE listings SET listing_type=$1 WHERE id='town'", [listingType]);
+    await checkItem('town', 'friend', true);
+    await checkItem('town', 'outsider', false);
+  }
+  await client.query("UPDATE listings SET listing_type='lend' WHERE id='town'; UPDATE item_requests SET town_preview_enabled=true WHERE id='request'");
+  for (const [viewer, expected] of [['friend', true], ['outsider', false]]) {
+    const result = await client.query(`SELECT ${requestAccessSql('r', '$1')} AS allowed FROM item_requests r WHERE id='request'`, [viewer]);
+    assert.equal(result.rows[0].allowed, expected, `Town request / ${viewer}`);
+    checks++;
+  }
   await client.query("UPDATE users SET is_verified = false WHERE id = 'owner'");
   await checkItem('town', 'neighbor', true);
   await checkItem('town', 'friend', false);

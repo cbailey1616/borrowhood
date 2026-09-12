@@ -25,6 +25,7 @@ export default function ActionSheet({
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const confirmation = variant === 'confirmation';
+  const options = variant === 'options';
   const [closing, setClosing] = useState(false);
   const pending = useRef(null);
   const finishDismiss = useCallback(() => {
@@ -71,13 +72,14 @@ export default function ActionSheet({
       onDismiss={finishDismiss}
       onRequestClose={handleCancel}
     >
-      <View style={styles.modalContainer}>
+      <View style={styles.modalContainer} onAccessibilityEscape={handleCancel}>
         {/* Full-screen dim backdrop */}
         <AnimatedPressable
           entering={FadeIn.duration(150)}
           exiting={FadeOut.duration(120)}
           style={styles.backdrop}
           onPress={handleCancel}
+          accessible={false}
         />
 
         {/* Sheet content */}
@@ -87,12 +89,12 @@ export default function ActionSheet({
           style={[styles.sheetContainer, { paddingBottom: bottomPad, maxHeight: height - insets.top - SPACING.md }]}
         >
           <LayeredCard style={styles.sheetDepth} radius={RADIUS.xl}>
-            <ScrollView style={styles.sheetCard} contentContainerStyle={confirmation && styles.confirmationCard} bounces={false}>
-              {confirmation ? <>
+            <ScrollView style={styles.sheetCard} contentContainerStyle={[confirmation && styles.confirmationCard, options && styles.optionsCard]} bounces={false}>
+              {confirmation || options ? <>
                 <View style={styles.confirmationHeader}>
                   {icon ? <View style={styles.confirmationIcon}>{icon}</View> : null}
-                  <Text style={styles.confirmationTitle}>{title}</Text>
-                  <HapticPressable accessibilityRole="button" accessibilityLabel="Close confirmation" onPress={handleCancel} style={styles.confirmationClose}>
+                  <Text style={styles.confirmationTitle} accessibilityRole="header">{title}</Text>
+                  <HapticPressable accessibilityRole="button" accessibilityLabel={options ? `Close ${title || 'options'}` : 'Close confirmation'} onPress={handleCancel} style={styles.confirmationClose}>
                     <Ionicons name="close" size={20} color={COLORS.primary} />
                   </HapticPressable>
                 </View>
@@ -105,13 +107,14 @@ export default function ActionSheet({
                 </View>
               ) : null}
               </>}
-              <View style={[styles.actionsContainer, confirmation && styles.confirmationActions]}>
+              <View style={[styles.actionsContainer, confirmation && styles.confirmationActions, options && styles.optionsActions]}>
                 {actions.map((action, index) => (
                   <HapticPressable
                     key={index}
                     onPress={() => handleAction(action)}
                     haptic={null}
-                    accessibilityRole="button"
+                    accessibilityRole={options && typeof action.selected === 'boolean' ? 'checkbox' : 'button'}
+                    accessibilityState={options && typeof action.selected === 'boolean' ? { checked: action.selected } : undefined}
                     testID={action.testID}
                     accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
                     style={[
@@ -120,10 +123,12 @@ export default function ActionSheet({
                       action.primary && styles.primaryButton,
                       confirmation && styles.confirmationButton,
                       confirmation && !action.primary && !action.destructive && styles.secondaryButton,
+                      options && styles.optionButton,
+                      options && action.selected && styles.selectedOption,
                     ]}
                   >
                     {action.icon ? (
-                      <View style={styles.actionIcon}>{action.icon}</View>
+                      <View style={[styles.actionIcon, options && styles.optionIcon]}>{action.icon}</View>
                     ) : null}
                     <Text
                       style={[
@@ -132,6 +137,7 @@ export default function ActionSheet({
                         action.primary && styles.primaryText,
                         confirmation && styles.confirmationActionText,
                         confirmation && !action.primary && !action.destructive && styles.secondaryText,
+                        options && styles.optionText,
                       ]}
                     >
                       {action.label}
@@ -141,7 +147,7 @@ export default function ActionSheet({
               </View>
             </ScrollView>
           </LayeredCard>
-          {!confirmation && <HapticPressable
+          {!confirmation && !options && <HapticPressable
             onPress={handleCancel}
             haptic="light"
             accessibilityRole="button"
@@ -156,6 +162,12 @@ export default function ActionSheet({
 }
 
 const styles = StyleSheet.create({
+  optionsCard: { paddingVertical: SPACING.md },
+  optionsActions: { gap: SPACING.sm, marginBottom: 0 },
+  optionButton: { minHeight: 64, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderBottomWidth: 1, borderColor: COLORS.separator, borderRadius: RADIUS.md, backgroundColor: COLORS.background },
+  selectedOption: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.borderGreen },
+  optionIcon: { width: 40, height: 40, borderRadius: RADIUS.sm, backgroundColor: COLORS.primaryMuted, marginRight: SPACING.sm },
+  optionText: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 },
   confirmationCard: { paddingVertical: 20 },
   confirmationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   confirmationIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },

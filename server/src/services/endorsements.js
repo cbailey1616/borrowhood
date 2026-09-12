@@ -3,6 +3,7 @@ import { query, withTransaction } from '../utils/db.js';
 
 export async function ensureEndorsementSchema() {
   await query(await readFile(new URL('../../migrations/020_exchange_endorsements.sql', import.meta.url), 'utf8'));
+  await query(await readFile(new URL('../../migrations/021_neutral_endorsements.sql', import.meta.url), 'utf8'));
 }
 export async function endorsementSummary(userId, runQuery = query) {
   return (await endorsementSummaries([userId], runQuery)).get(userId);
@@ -55,6 +56,7 @@ export async function endorsementState(id, userId) {
   return { canRate: !!row?.eligible && !row?.submitted, submitted: !!row?.submitted, positive: row?.submitted ? row.positive : null, deadline: row?.deadline || null };
 }
 export async function submitEndorsement(id, userId, positive) {
+  if (typeof positive !== 'boolean' && positive !== null) return { status:400, error:'Choose thumbs up, neutral, or thumbs down.' };
   return withTransaction(async client => {
     const { rows: [t] } = await client.query(`SELECT *, NOW() < endorsement_started_at + INTERVAL '14 days' AS in_window
       FROM borrow_transactions WHERE id=$1 AND (borrower_id=$2 OR lender_id=$2) FOR UPDATE`, [id,userId]);
@@ -64,7 +66,7 @@ export async function submitEndorsement(id, userId, positive) {
     const eligible = (['returned','completed'].includes(t.status) && t.payment_status !== 'authorized') || (t.status === 'cancelled' && t.accepted_at);
     if (!eligible || !t.in_window) return { status:409, error:'This exchange is not open for feedback.' };
     await client.query(`INSERT INTO exchange_endorsements(transaction_id,rater_id,ratee_id,positive) VALUES($1,$2,$3,$4)`, [id,userId,t.borrower_id === userId ? t.lender_id : t.borrower_id,positive]);
-    // No notification containing the vote: the other participant cannot infer it before reveal.
+    // Do not send the recipient a notification containing the vote or their own score.
     return { success:true };
   });
 }

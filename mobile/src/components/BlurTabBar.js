@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useContext } from 'react';
+import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs';
 import { View, Text, Platform, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,8 +16,6 @@ import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
-  // Saved is an always-recognizable destination, not a toggle. Keep its
-  // signature pink filled heart visible even when another tab is selected.
   Saved: { active: 'heart', inactive: 'heart' },
   MyItems: { active: 'basket', inactive: 'basket-outline' },
   Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
@@ -74,6 +73,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
         animatedStyle,
       ]}>
         <Ionicons
+          testID={`TabBar.${route.name}.icon`}
           name={iconName}
           size={26}
           illustrated={!isSaved}
@@ -101,6 +101,8 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
 
 export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0, hasNewFeed = false }) {
   const insets = useSafeAreaInsets();
+  const reportHeight = useContext(BottomTabBarHeightCallbackContext);
+  const onLayout = event => reportHeight?.(event.nativeEvent.layout.height);
 
   const content = (
     <View style={[styles.inner, { paddingBottom: insets.bottom || 16 }]}>
@@ -144,7 +146,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
 
   if (Platform.OS === 'ios') {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} onLayout={onLayout}>
         <View style={styles.separator} />
         <BlurView intensity={80} tint="light" style={styles.blur}>
           <View style={styles.blurOverlay}>{content}</View>
@@ -154,7 +156,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
   }
 
   return (
-    <View style={[styles.container, styles.androidFallback]}>
+    <View style={[styles.container, styles.androidFallback]} onLayout={onLayout}>
       <View style={styles.separator} />
       {content}
     </View>

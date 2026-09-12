@@ -11,8 +11,22 @@ For Sale, Saved, My Posts, and Messages. Screens are captured at native size:
 - iPad Pro 13-inch (M4): 2064 × 2752 pixels.
 
 The capture script exports RGB PNGs without transparency or resizing.
+The `ui-review` folders also contain notification settings, your account profile,
+another member’s profile, and the actual exchange feedback component in a preview
+screen on iPhone Pro Max and iPhone SE. These review images are separate
+from the six-image App Store set and include both on and off switch states.
+Every run first publishes the six-image App Store set for both iPhone and iPad
+as `borrowhood-app-store-screenshots`, then captures the separate UI review set
+on the two iPhones. The upload-ready set can be downloaded while reviews finish.
+They also show the same compact request carousel with a photo request and
+a short service request in front, to check spacing and consistent height.
 Review every image before uploading to App Store Connect. The photos are
 sample listing images from Unsplash; source URLs are in `assets.json`.
+
+Usability review captures include Home with an item due back tomorrow and a
+request to review, Inbox with unread messages only, an owner's pickup screen,
+and an owner's borrowed item with requests still waiting. These are actual app
+screens with offline fixtures; the Inbox capture chooses its initial tab itself.
 
 Apple's specifications:
 https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/
@@ -23,7 +37,7 @@ Run `python3 screenshots/prepare-assets.py` from `mobile`, install the locked
 Node and CocoaPods dependencies, then build for an iOS simulator in Release
 with `BORROWHOOD_SCREENSHOTS=1` and `ENTRY_FILE` set to the absolute path of
 `screenshots/index.js`. This opt-in Metro configuration replaces only the
-auth context, API, and temporary draft store for the screenshot bundle. Normal builds use `App.js`
+auth context, API, notification permissions/delivery, and temporary draft store for the screenshot bundle. Normal builds use `App.js`
 and production modules.
 
 Run `python3 screenshots/capture.py /path/to/Borrowhood.app /path/to/output`
@@ -34,3 +48,5 @@ The workflow can reuse a previous simulator binary from an ancestor commit when
 its native project and dependency files are unchanged. It rebuilds the JavaScript
 bundle with the current fixtures before capturing. New native changes or expired
 artifacts trigger a fresh native build.
+
+Tablet captures use responsive grids, side-by-side listing photos and details, and a conversation sidebar. Narrow Split View windows retain the compact layout.

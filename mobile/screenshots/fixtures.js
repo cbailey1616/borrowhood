@@ -9,7 +9,8 @@ const photos = {
   plants: photo(require('./assets/plants.jpg')),
 };
 export const user = { id: 'demo-alex', firstName: 'Alex', lastName: 'Green', displayName: 'Alex Green', email: 'alex@example.com', isVerified: true, totalTransactions: 18, onboardingCompleted: true, town: 'Maplewood', townName: 'Maplewood', city: 'Maplewood', state: 'NJ', latitude: 40.73, longitude: -74.27, profilePhotoUrl: avatar, subscriptionTier: 'free', rating: 4.9, ratingCount: 12 };
-const jamie = { ...user, id: 'demo-jamie', firstName: 'Jamie', lastName: 'Miller', displayName: 'Jamie Miller', totalTransactions: 14 };
+user.endorsement = { count: 6, percent: 100, score: 89 };
+const jamie = { ...user, id: 'demo-jamie', firstName: 'Jamie', lastName: 'Miller', displayName: 'Jamie Miller', totalTransactions: 24, endorsement: { count: 20, percent: 100, score: 95 } };
 const sam = { ...user, id: 'demo-sam', firstName: 'Sam', lastName: 'Rivera', displayName: 'Sam Rivera', totalTransactions: 8 };
 const taylor = { ...user, id: 'demo-taylor', firstName: 'Taylor', lastName: 'Reed', displayName: 'Taylor Reed', totalTransactions: 27 };
 export const listings = [
@@ -21,6 +22,33 @@ export const listings = [
 ].map((item, index) => ({ type: 'listing', status: 'active', listingType: 'lend', isFree: true, isAvailable: true, isBorrowed: false, condition: 'good', visibility: 'neighborhood', pricePerDay: 0, timesBorrowed: !item.listingType || item.listingType === 'lend' ? 3 + index : 0, pendingRequests: 0, maxBorrowDays: 14, minBorrowDays: 1, createdAt: new Date(Date.now() - (index + 1) * 3600000).toISOString(), ...item, user: item.owner, ownerId: item.owner.id, photos: [item.photoUrl] }));
 export const requests = [{ id: 'demo-request', type: 'request', title: 'Does anyone have a ladder?', description: 'Just need one for a little gardening this weekend. Happy to pick it up!', status: 'open', visibility: 'neighborhood', user: sam, userId: sam.id, createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), responseCount: 2 }];
 export const conversation = { id: 'demo-chat', otherUser: jamie, listing: listings[0], listingId: listings[0].id, lastMessage: 'Perfect, see you Saturday!', lastMessageAt: new Date().toISOString(), unreadCount: 0 };
+const dayFromToday = offset => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  date.setHours(12, 0, 0, 0);
+  return date.toISOString();
+};
+// Usability reviews use the real exchange screens with both sides of a handoff.
+export const reviewExchanges = [
+  {
+    id: 'demo-borrowed-drill', listing: listings[0], listingType: 'lend', status: 'picked_up',
+    borrower: user, lender: jamie, isBorrower: true, isLender: false,
+    startDate: dayFromToday(-1), endDate: dayFromToday(1), rentalDays: 2,
+    actualPickupAt: dayFromToday(-1), conditionAtPickup: 'good', hasDispute: false,
+  },
+  {
+    id: 'demo-owner-pickup', listing: listings[3], listingType: 'lend', status: 'approved',
+    borrower: jamie, lender: user, isBorrower: false, isLender: true,
+    startDate: dayFromToday(0), endDate: dayFromToday(2), rentalDays: 2,
+    actualPickupAt: null, hasDispute: false,
+  },
+  {
+    id: 'demo-owner-active', listing: listings[3], listingType: 'lend', status: 'picked_up',
+    borrower: jamie, lender: user, isBorrower: false, isLender: true,
+    startDate: dayFromToday(-1), endDate: dayFromToday(1), rentalDays: 2,
+    actualPickupAt: dayFromToday(-1), conditionAtPickup: 'good', hasDispute: false,
+  },
+];
 const messageClock = new Date();
 messageClock.setHours(9, 40, 0, 0);
 export const messages = [

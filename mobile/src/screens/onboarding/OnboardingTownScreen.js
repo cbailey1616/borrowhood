@@ -1,5 +1,6 @@
+import TextInput from '../../components/AppTextInput';
 import { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Keyboard, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -83,7 +84,7 @@ export default function OnboardingTownScreen() {
         <HapticPressable accessibilityRole="button" disabled={busy || locating} onPress={finish} style={styles.button}>
           {busy ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Continue to Borrowhood</Text>}
         </HapticPressable>
-        <Text style={styles.note}>Browse Town listings. Get verified to see who’s sharing.</Text>
+        <Text style={styles.note}>Explore Town requests, giveaways, and sale posts. Verify to see who’s lending in Town borrow listings.</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

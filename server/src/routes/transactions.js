@@ -309,10 +309,10 @@ router.get('/', authenticate, async (req, res) => {
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
               COALESCE(b.display_name, b.first_name) as borrower_first_name,
               CASE WHEN b.display_name IS NOT NULL THEN '' ELSE b.last_name END as borrower_last_name,
-              b.profile_photo_url as borrower_photo,
+              b.profile_photo_url as borrower_photo, b.is_verified AS borrower_verified,
               COALESCE(lnd.display_name, lnd.first_name) as lender_first_name,
               CASE WHEN lnd.display_name IS NOT NULL THEN '' ELSE lnd.last_name END as lender_last_name,
-              lnd.profile_photo_url as lender_photo
+              lnd.profile_photo_url as lender_photo, lnd.is_verified AS lender_verified
        FROM borrow_transactions t
        JOIN listings l ON t.listing_id = l.id
        JOIN users b ON t.borrower_id = b.id
@@ -337,12 +337,14 @@ router.get('/', authenticate, async (req, res) => {
         firstName: t.borrower_first_name,
         lastName: t.borrower_last_name,
         profilePhotoUrl: t.borrower_photo,
+        isVerified: t.borrower_verified === true,
       },
       lender: {
         id: t.lender_id,
         firstName: t.lender_first_name,
         lastName: t.lender_last_name,
         profilePhotoUrl: t.lender_photo,
+        isVerified: t.lender_verified === true,
       },
       startDate: t.requested_start_date,
       endDate: t.requested_end_date,
@@ -366,6 +368,9 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT t.*,
+              (SELECT COUNT(*) FROM borrow_transactions q
+                WHERE t.status='pending' AND q.listing_id=t.listing_id AND q.status='pending'
+                  AND (q.created_at,q.id) < (t.created_at,t.id)) AS queue_ahead,
               l.title as listing_title, l.description as listing_description,
               l.condition as listing_condition, l.listing_type, l.direct_fee,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
@@ -444,7 +449,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
       endorsement: await endorsementState(t.id, req.user.id),
-      queue: t.status === 'pending' ? { waiting: !t.stripe_payment_intent_id && !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
+      queue: t.status === 'pending' ? { aheadCount: t.queue_ahead == null ? null : Number(t.queue_ahead), waiting: !t.stripe_payment_intent_id && !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       hasDispute: t.has_dispute || false,
       disputeId: t.dispute_id || null,
@@ -728,7 +733,7 @@ router.post('/:id/rate', authenticate,
 );
 
 router.post('/:id/endorse', authenticate, async (req, res) => {
-  if (typeof req.body.positive !== 'boolean') return res.status(400).json({ error: 'Choose thumbs up or thumbs down.' });
+  if (typeof req.body.positive !== 'boolean' && req.body.positive !== null) return res.status(400).json({ error: 'Choose thumbs up, neutral, or thumbs down.' });
   try {
     const result = await submitEndorsement(req.params.id, req.user.id, req.body.positive);
     return res.status(result.status || 200).json(result);

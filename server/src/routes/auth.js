@@ -1,5 +1,5 @@
-import { endorsementSummary } from '../services/endorsements.js';
 import { Router } from 'express';
+import { endorsementSummary } from '../services/endorsements.js';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';

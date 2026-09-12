@@ -1,3 +1,5 @@
+import WholeDollarInput from '../components/WholeDollarInput';
+import TextInput from '../components/AppTextInput';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
 import SharingPicker from '../components/SharingPicker';
@@ -12,7 +14,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Image,
   ActivityIndicator,
   Platform,
@@ -403,6 +404,7 @@ export default function CreateListingScreen({ navigation, route }) {
       style={styles.scrollContainer}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       enableResetScrollToCoords={false}
@@ -519,7 +521,7 @@ export default function CreateListingScreen({ navigation, route }) {
       <View style={styles.section}>
 
         {requestMatchId ? <Text style={styles.hint}>Private offer: only this requester can see this item for up to 14 days while their request is open. Your other items stay private.</Text> : (
-        <SharingPicker value={formData.visibility} circleId={formData.circleId}
+        <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={formData.listingType}
           neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}
@@ -592,15 +594,14 @@ export default function CreateListingScreen({ navigation, route }) {
           <>
             <View style={[styles.priceInput, fieldErrors.pricePerDay && styles.fieldError]}>
               <Text style={styles.currency}>$</Text>
-              <TextInput
+              <WholeDollarInput
                 testID="CreateListing.input.price"
                 accessibilityLabel="Price per day"
                 style={styles.priceField}
                 value={formData.pricePerDay}
                 onChangeText={(v) => updateField('pricePerDay', v)}
-                placeholder="5.00"
+                placeholder="5"
                 placeholderTextColor={COLORS.textMuted}
-                keyboardType="decimal-pad"
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
@@ -645,15 +646,14 @@ export default function CreateListingScreen({ navigation, route }) {
         {formData.requireDeposit && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
-            <TextInput
+            <WholeDollarInput
               testID="CreateListing.input.deposit"
               accessibilityLabel="Deposit amount"
               style={styles.priceField}
               value={formData.depositAmount}
               onChangeText={(v) => updateField('depositAmount', v)}
-              placeholder="0.00"
+              placeholder="0"
               placeholderTextColor={COLORS.textMuted}
-              keyboardType="decimal-pad"
             />
           </View>
         )}

@@ -244,7 +244,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
     if (!fullAccess) return res.json(townListingPreview(l, photos.rows.map(p => p.url)));
 
-    // Check if the current user has an active transaction for this listing
+    // Keep the current handoff visible when newer requests join the owner's queue.
     const activeTransaction = await query(
       `SELECT id, status, payment_status, borrower_id, lender_id,
               requested_start_date, requested_end_date
@@ -252,7 +252,7 @@ router.get('/:id', authenticate, async (req, res) => {
        WHERE listing_id = $1
          AND (borrower_id = $2 OR lender_id = $2)
          AND status IN ('pending', 'approved', 'paid', 'picked_up', 'return_pending')
-       ORDER BY created_at DESC
+       ORDER BY CASE WHEN status = 'pending' THEN 1 ELSE 0 END, created_at DESC, id DESC
        LIMIT 1`,
       [l.id, req.user.id]
     );
@@ -474,48 +474,23 @@ router.post('/', authenticate, freeListingOnly,
         return listingId;
       });
 
-      // Direct request match notification (from "I Have This" flow)
+      // Notify the requester only when a neighbor explicitly offers this item.
       if (requestMatchId) {
         try {
-          const matchedRequest = await query(
+          const offeredRequest = await query(
             'SELECT user_id, title FROM item_requests WHERE id = $1 AND status = $2',
             [requestMatchId, 'open']
           );
-          if (matchedRequest.rows.length > 0 && matchedRequest.rows[0].user_id !== req.user.id) {
+          if (offeredRequest.rows.length > 0 && offeredRequest.rows[0].user_id !== req.user.id) {
             await sendNotification(
-              matchedRequest.rows[0].user_id,
-              'item_match',
-              { itemTitle: title, requestTitle: matchedRequest.rows[0].title },
+              offeredRequest.rows[0].user_id,
+              'request_offer',
+              { itemTitle: title, requestTitle: offeredRequest.rows[0].title },
               { listingId, requestId: requestMatchId, fromUserId: req.user.id }
             );
           }
-        } catch (matchErr) {
-          console.error('Error sending request match notification:', matchErr);
-        }
-      } else {
-        // Fuzzy text match — find matching open requests and notify their owners
-        try {
-          const matchingRequests = communityId ? await query(
-            `SELECT r.id, r.user_id, r.title as request_title
-             FROM item_requests r
-             WHERE r.status = 'open'
-               AND r.community_id = $1
-               AND r.user_id != $2
-               AND to_tsvector('english', r.title || ' ' || COALESCE(r.description, '')) @@ plainto_tsquery($3)`,
-            [communityId, req.user.id, title]
-          ) : { rows: [] };
-
-          for (const match of matchingRequests.rows) {
-            if (!await canViewListing(listingId, match.user_id, { discovery: true })) continue;
-            await sendNotification(
-              match.user_id,
-              'item_match',
-              { itemTitle: title, requestTitle: match.request_title },
-              { listingId, fromUserId: req.user.id }
-            );
-          }
-        } catch (matchErr) {
-          console.error('Error finding matching requests:', matchErr);
+        } catch (offerErr) {
+          console.error('Error sending private offer notification:', offerErr);
         }
       }
 

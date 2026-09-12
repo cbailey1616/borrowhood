@@ -1,0 +1,98 @@
+import { View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions } from 'react-native';
+import Animated, { SlideInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PopupLayer from './PopupLayer';
+import HapticPressable from './HapticPressable';
+import { Ionicons } from './Icon';
+import { NEIGHBOR_RANKS, RATING_UNLOCK_EXCHANGES } from '../utils/reputation';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+
+export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew = false }) {
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  return <PopupLayer visible={isVisible} onRequestClose={onClose}>
+    <View style={styles.container} onAccessibilityEscape={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose} accessible={false} />
+      <Animated.View entering={SlideInDown.duration(200)} accessibilityViewIsModal
+        style={[styles.sheet, { maxHeight: height - insets.top - SPACING.md, paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+        <View style={styles.handle} />
+        <View style={styles.header}>
+          <Text style={styles.title} accessibilityRole="header">Neighbor rating</Text>
+          <HapticPressable style={styles.close} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close rank explanation">
+            <Ionicons name="close" size={22} color={COLORS.primary} />
+          </HapticPressable>
+        </View>
+        <ScrollView style={styles.scroll} bounces={false} contentContainerStyle={styles.content}>
+          {currentRank && <View style={styles.currentSummary}>
+            <View style={styles.emblem}>
+              <Ionicons name={currentRank.icon} size={28} illustrated color={COLORS.primary} />
+            </View>
+            <View style={styles.summaryCopy}>
+              <Text style={styles.currentRating}>{currentRank.label}</Text>
+              <Text style={styles.note}>{isNew ? `Rating after ${RATING_UNLOCK_EXCHANGES} completed exchanges` : currentRank.tone}</Text>
+            </View>
+          </View>}
+          {currentRank && !isNew && <View style={styles.meter} accessible accessibilityLabel={`Rating level: ${currentRank.tone}`}>
+            {NEIGHBOR_RANKS.map(rank => <View key={rank.label} style={styles.meterColumn}>
+              <View style={styles.marker}>
+                {rank.label === currentRank.label && <Ionicons name="chevron-down" size={16} color={COLORS.primary} />}
+              </View>
+              <View style={[styles.segment, rank.label === currentRank.label && styles.currentSegment]} />
+            </View>)}
+          </View>}
+          <Text style={styles.explanation}>Build your rank with positive exchanges.</Text>
+          <View style={styles.levels}>
+            <Text style={styles.levelsTitle} accessibilityRole="header">Rating levels</Text>
+            {NEIGHBOR_RANKS.map(rank => <View key={rank.label} testID={`RankInfo.level.${rank.label}`}
+              style={[styles.level, currentRank?.label === rank.label && styles.currentLevel]}>
+              <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
+              <View style={styles.levelCopy}>
+                <View style={styles.levelNameGroup}>
+                  <Text style={styles.levelName}>{rank.label}</Text>
+                  {currentRank?.label === rank.label && <View style={styles.currentBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                    <Text style={styles.current}>Current</Text>
+                  </View>}
+                </View>
+                <Text style={[styles.note, styles.levelTone]}>{rank.tone}</Text>
+              </View>
+            </View>)}
+          </View>
+        </ScrollView>
+      </Animated.View>
+    </View>
+  </PopupLayer>;
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: COLORS.overlay },
+  sheet: { width: '100%', maxWidth: 572, flexShrink: 1, alignSelf: 'center', backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, overflow: 'hidden' },
+  handle: { width: 36, height: 4, marginTop: SPACING.sm, alignSelf: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.border },
+  header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
+  title: { ...TYPOGRAPHY.h3, color: COLORS.primary, flex: 1 },
+  close: { width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
+  scroll: { flexGrow: 0, flexShrink: 1 },
+  content: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
+  currentSummary: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.xs },
+  emblem: { width: 48, height: 48, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  summaryCopy: { flex: 1, gap: SPACING.xs },
+  currentRating: { ...TYPOGRAPHY.h2, letterSpacing: 0, color: COLORS.primary },
+  meter: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.md },
+  meterColumn: { flex: 1 },
+  marker: { height: 16, alignItems: 'center' },
+  segment: { height: 6, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted },
+  currentSegment: { backgroundColor: COLORS.primary },
+  explanation: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.sm },
+  levels: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.separator },
+  levelsTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.xs },
+  level: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, borderRadius: RADIUS.sm },
+  currentLevel: { backgroundColor: COLORS.primaryMuted },
+  levelCopy: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: SPACING.sm, rowGap: 2 },
+  levelNameGroup: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: SPACING.sm, rowGap: 2, maxWidth: '100%' },
+  levelName: { ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 },
+  levelTone: { flexShrink: 1 },
+  currentBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, flexShrink: 1 },
+  current: { ...TYPOGRAPHY.caption1, color: COLORS.primary, fontWeight: '600', flexShrink: 1 },
+  note: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+});

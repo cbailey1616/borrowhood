@@ -1,6 +1,6 @@
 import { listingAvailability } from '../utils/listingAvailability';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
-import ListingPrice, { listingPrice } from '../components/ListingPrice';
+import ListingPrice from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
@@ -10,8 +10,8 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Dimensions,
   Share,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -21,7 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import UserBadges from '../components/UserBadges';
+import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import RentalProgress from '../components/RentalProgress';
@@ -30,21 +30,25 @@ import ShimmerImage from '../components/ShimmerImage';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
-import { checkPremiumGate } from '../utils/premiumGate';
-import { ENABLE_PAID_TIERS } from '../utils/config';
 import api from '../services/api';
 import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
-const { width } = Dimensions.get('window');
 
 export default function ListingDetailScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const wide = windowWidth >= 768 && fontScale < 1.5;
+  const pageWidth = Math.min(windowWidth, 1200);
+  const galleryWidth = wide ? (pageWidth - 72) * 0.52 : windowWidth;
+  const photoStyle = { width: galleryWidth, height: wide ? galleryWidth * 1.1 : 300 };
+  const stackSummary = (wide ? (pageWidth - 72) * 0.48 : windowWidth) / fontScale < (wide ? 420 : 360);
   const { id } = route.params;
   const { user } = useAuth();
   const { showToast, showError } = useError();
   const [listing, setListing] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPhoto, setCurrentPhoto] = useState(0);
+  useEffect(() => { setCurrentPhoto(0); }, [galleryWidth]);
   const [isSaved, setIsSaved] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
   const [messageLoading, setMessageLoading] = useState(false);
@@ -159,192 +163,189 @@ export default function ListingDetailScreen({ route, navigation }) {
     );
   }
 
+  const availability = listingAvailability(listing);
+  const location = listing.distanceMiles
+    ? `${listing.distanceMiles} mi away`
+    : !listing.ownerMasked ? listing.owner?.city : null;
+  const condition = CONDITION_LABELS[listing.condition];
+
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: SPACING.lg }}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={[{ paddingBottom: SPACING.lg }, wide && { flexDirection: 'row', alignItems: 'flex-start', padding: 24, gap: 24, width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
         {/* Photo Gallery */}
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={(e) => {
-            const page = Math.round(e.nativeEvent.contentOffset.x / width);
-            setCurrentPhoto(page);
-          }}
-          scrollEventThrottle={16}
-        >
-          {listing.photos.length > 0 ? (
-            listing.photos.map((photo, index) => (
-              <ShimmerImage
-                key={index}
-                source={{ uri: photo }}
-                style={styles.photo}
-                sharedTransitionTag={index === 0 ? `listing-photo-${id}` : undefined}
-              />
-            ))
-          ) : (
-            <View style={[styles.photo, styles.noPhoto]}>
-              <Ionicons name="image-outline" size={48} color={COLORS.gray[300]} />
+        <View style={[styles.gallery, wide && { width: galleryWidth, borderRadius: RADIUS.xl, overflow: 'hidden' }]}>
+          <ScrollView
+            key={galleryWidth}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e) => {
+              const page = Math.round(e.nativeEvent.contentOffset.x / galleryWidth);
+              setCurrentPhoto(page);
+            }}
+            scrollEventThrottle={16}
+          >
+            {listing.photos.length > 0 ? (
+              listing.photos.map((photo, index) => (
+                <ShimmerImage
+                  key={index}
+                  source={{ uri: photo }}
+                  style={[styles.photo, photoStyle]}
+                  sharedTransitionTag={index === 0 ? `listing-photo-${id}` : undefined}
+                />
+              ))
+            ) : (
+              <View style={[styles.photo, photoStyle, styles.noPhoto]}>
+                <Ionicons name="image-outline" size={48} color={COLORS.gray[300]} />
+              </View>
+            )}
+          </ScrollView>
+
+          {listing.photos.length > 1 && (
+            <View style={styles.pagination}>
+              {listing.photos.map((_, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    currentPhoto === index && styles.dotActive,
+                  ]}
+                />
+              ))}
             </View>
           )}
-        </ScrollView>
 
-        {listing.photos.length > 1 && (
-          <View style={styles.pagination}>
-            {listing.photos.map((_, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.dot,
-                  currentPhoto === index && styles.dotActive,
-                ]}
-              />
-            ))}
-          </View>
-        )}
+          {!listing.ownerMasked && (
+            <View style={styles.photoActions}>
+              <HapticPressable testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
+                <Animated.View style={heartAnimStyle}>
+                  <Ionicons
+                    name={isSaved ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={COLORS.primary}
+                    illustrated={isSaved}
+                  />
+                </Animated.View>
+              </HapticPressable>
+              <HapticPressable onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share listing" haptic="light" style={styles.actionBtn}>
+                <Ionicons name="arrow-redo-outline" size={20} color={COLORS.primary} />
+              </HapticPressable>
+            </View>
+          )}
+        </View>
 
         {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
-            {!listingAvailability(listing).available && <View accessibilityLiveRegion="polite" style={styles.descriptionSection}>
-              <Text style={styles.sectionTitle}>{listingAvailability(listing).label}</Text>
-              <Text style={styles.description}>{listingAvailability(listing).detail}</Text>
-            </View>}
-            {!listing.ownerMasked && (
-              <View style={styles.actionButtons}>
-                <HapticPressable testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
-                  <Animated.View style={heartAnimStyle}>
-                    <Ionicons
-                      name={isSaved ? 'heart' : 'heart-outline'}
-                      size={22}
-                      color={COLORS.primary}
-                      illustrated={isSaved}
-                    />
-                  </Animated.View>
-                </HapticPressable>
-                <HapticPressable onPress={handleShare} haptic="light" style={styles.actionBtn}>
-                  <Ionicons name="arrow-redo-outline" size={20} color={COLORS.textSecondary} />
-                </HapticPressable>
+        <View style={[styles.content, wide && { flex: 1, padding: 0, minWidth: 0 }]}>
+          <View style={styles.itemSummary}>
+            <View style={[styles.summaryHeading, stackSummary && styles.summaryHeadingStacked]}>
+              <View style={styles.titleBlock}>
+                <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
+                {((!listing.ownerMasked && condition) || location) && (
+                  <View style={styles.itemMetadata}>
+                    {!listing.ownerMasked && condition && (
+                      <View accessible accessibilityLabel={`Condition: ${condition}`} style={styles.conditionBadge}>
+                        <Text style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
+                      </View>
+                    )}
+                    {!!location && <View style={styles.locationRow}>
+                      <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                      <Text style={styles.metadataText}>{location}</Text>
+                    </View>}
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-
-          {(listing.distanceMiles || (!listing.ownerMasked && listing.owner?.city)) && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.locationText}>
-                {listing.distanceMiles ? `${listing.distanceMiles} mi away` : listing.owner?.city}
-              </Text>
+              {!listing.ownerMasked && <View style={[styles.priceBlock, stackSummary && styles.priceBlockStacked]}>
+                <ListingPrice listing={listing} compact alignment={stackSummary ? 'start' : 'end'} />
+              </View>}
             </View>
-          )}
+
+            {!!listing.description && <View style={styles.descriptionSection}>
+              <Text style={styles.description}>{listing.description}</Text>
+            </View>}
+
+            {!availability.available && <View accessibilityLiveRegion="polite" style={styles.availabilitySection}>
+              <Text style={styles.sectionTitle}>{availability.label}</Text>
+              <Text style={styles.availabilityDetail}>{availability.detail}</Text>
+            </View>}
+          </View>
 
           {listing.ownerMasked ? (
+            <TownIdentityPrompt onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
+          ) : (
             <>
-              {listing.description && <View style={styles.descriptionBlock}><Text style={styles.description}>{listing.description}</Text></View>}
-              <TownIdentityPrompt onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />
-            </>
-          ) : (
-          <>
-          <View style={styles.badges}>
-            {isTransferListing(listing) && (
-              <View style={[styles.badge, styles.badgeGiveaway]}>
-                <Ionicons name={isSaleListing(listing) ? 'pricetag' : 'gift'} size={12} color={COLORS.secondary} />
-                <Text style={[styles.badgeText, { color: COLORS.secondary }]}>{isSaleListing(listing) ? 'For sale' : 'Giveaway'}</Text>
-              </View>
-            )}
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Condition: {CONDITION_LABELS[listing.condition]}</Text>
-            </View>
-          </View>
-
-          {listingPrice(listing).paid || isSaleListing(listing) ? (
-            <LayeredCard style={styles.priceDepth} radius={RADIUS.xl}>
-              <View style={styles.pricingCard}>
-                <Text style={styles.priceEyebrow}>{listingPrice(listing).kind}</Text>
-                <ListingPrice listing={listing} />
-                {listingPrice(listing).paid && <Text style={styles.priceHelp}>Arrange payment directly with your neighbor.</Text>}
-              </View>
-            </LayeredCard>
-          ) : (
-            <View style={styles.freeNote}><ListingPrice listing={listing} /></View>
-          )}
-
-          {/* Active Transaction Status */}
-          {listing.activeTransaction && (
-            <LayeredCard style={styles.transactionDepth}>
-              <HapticPressable
-                onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
-                haptic="light"
-              >
-                <View style={[styles.transactionCard, styles.cardBox]}>
-                  <RentalProgress
-                    status={listing.activeTransaction.status}
-                    paymentStatus={listing.activeTransaction.paymentStatus}
-                    isBorrower={listing.activeTransaction.isBorrower}
-                    isGiveaway={isTransferListing(listing)}
-                    isSale={isSaleListing(listing)}
-                  />
-                  <View style={styles.viewTransactionRow}>
-                    <Text style={styles.viewTransactionText}>Go to Transaction</Text>
-                    <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-                  </View>
-                </View>
-              </HapticPressable>
-            </LayeredCard>
-          )}
-
-          {/* Description */}
-          {listing.description && (
-            <View style={styles.descriptionSection}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{listing.description}</Text>
-            </View>
-          )}
-
-          <HapticPressable
-            accessibilityRole="button"
-            onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
-            style={styles.questionsCard}
-          >
-            <View style={styles.questionsIcon}><Ionicons name="chatbubbles" size={18} color={COLORS.primary} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.questionsTitle}>Comments</Text>
-              <Text style={styles.questionsHint}>Ask a question or join the conversation.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
-          </HapticPressable>
-
-          {/* Owner */}
-            <LayeredCard style={styles.ownerDepth}>
-              <HapticPressable
-                onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
-                haptic="light"
-              >
-                <View style={[styles.ownerCard, styles.cardBox]}>
-                  {listing.owner.profilePhotoUrl ? (
-                    <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
-                  ) : (
-                    <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={24} color={COLORS.gray[400]} />
+              {/* Active Transaction Status */}
+              {listing.activeTransaction && (
+                <LayeredCard style={styles.transactionDepth}>
+                  <HapticPressable
+                    accessibilityRole="button"
+                    accessibilityLabel="View active exchange details"
+                    onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
+                    haptic="light"
+                  >
+                    <View style={[styles.transactionCard, styles.cardBox]}>
+                      <RentalProgress
+                        status={listing.activeTransaction.status}
+                        paymentStatus={listing.activeTransaction.paymentStatus}
+                        isBorrower={listing.activeTransaction.isBorrower}
+                        isGiveaway={isTransferListing(listing)}
+                        isSale={isSaleListing(listing)}
+                      />
+                      <View style={styles.viewTransactionRow}>
+                        <Text style={styles.viewTransactionText}>View exchange</Text>
+                        <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                      </View>
                     </View>
-                  )}
-                  <View style={styles.ownerInfo}>
-                    <Text style={styles.ownerName}>
-                      {listing.owner.firstName} {listing.owner.lastName}
-                    </Text>
-                    <UserBadges
-                      isVerified={listing.owner.isVerified}
-                      totalTransactions={listing.owner.totalTransactions || 0}
-                      size="small"
-                    />
+                  </HapticPressable>
+                </LayeredCard>
+              )}
 
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} style={{ alignSelf: 'center' }} />
+              <LayeredCard style={styles.detailsDepth}>
+                <View style={styles.detailsGroup}>
+                  <HapticPressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Comments"
+                    onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
+                    style={styles.detailRow}
+                  >
+                    <View style={styles.rowIcon}>
+                      <Ionicons name="chatbubbles" size={22} color={COLORS.primary} />
+                    </View>
+                    <View style={styles.rowContent}>
+                      <Text style={styles.rowTitle}>Comments</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
+                  </HapticPressable>
+
+                  <View style={styles.rowSeparator} />
+
+                  <HapticPressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`View ${listing.owner.firstName} ${listing.owner.lastName}'s profile`}
+                    onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
+                    style={styles.detailRow}
+                    haptic="light"
+                  >
+                    {listing.owner.profilePhotoUrl ? (
+                      <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+                    ) : (
+                      <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
+                        <Ionicons name="person" size={24} color={COLORS.primary} />
+                      </View>
+                    )}
+                    <View style={styles.rowContent}>
+                      <View style={styles.ownerNameRow}>
+                        <Text style={[styles.rowTitle, styles.ownerName]}>
+                          {listing.owner.firstName} {listing.owner.lastName}
+                        </Text>
+                        {listing.owner.isVerified === true && <VerifiedBadge size={18} />}
+                      </View>
+                      <Text style={styles.rowSubtitle}>Owner</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
+                  </HapticPressable>
                 </View>
-              </HapticPressable>
-            </LayeredCard>
-          </>
+              </LayeredCard>
+            </>
           )}
         </View>
       </ScrollView>
@@ -352,7 +353,7 @@ export default function ListingDetailScreen({ route, navigation }) {
       {/* Footer Action Bar — hide for completed giveaways (nothing useful to show) */}
       {!listing.isOwner && !listing.ownerMasked && !(isTransferListing(listing) && !listing.isAvailable && !listing.activeTransaction) && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          <View style={styles.footerActions}>
+          <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
             <HapticPressable
               style={[styles.messageButton, messageLoading && { opacity: 0.5 }]}
               testID="ListingDetail.button.message"
@@ -401,7 +402,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 {messageLoading ? 'Opening…' : !listing.isAvailable && !listing.activeTransaction ? 'Message owner' : 'Message'}
               </Text>
             </HapticPressable>
-            {listingAvailability(listing).available && !listing.activeTransaction && (
+            {availability.available && !listing.activeTransaction && (
               <HapticPressable
                 testID="ListingDetail.button.borrow"
                 accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : isTransferListing(listing) ? 'Claim this item' : 'Request to borrow'}
@@ -430,23 +431,31 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'700'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
-          <View style={styles.footerActions}>
+          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'700'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
+          <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
             <HapticPressable
               style={styles.deleteButton}
+              accessibilityRole="button"
+              accessibilityLabel="Delete item"
               onPress={() => setDeleteSheetVisible(true)}
               haptic="light"
             >
               <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
             </HapticPressable>
             <HapticPressable
-              style={[styles.borrowButton, styles.editButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Edit item"
+              style={[styles.borrowButton, styles.editButton, listing.activeTransaction?.status !== 'pending' && listing.activeTransaction && styles.editSecondary]}
               onPress={() => navigation.navigate('EditListing', { listing })}
               haptic="light"
             >
-              <Ionicons name="create-outline" size={20} color="#fff" />
-              <Text style={styles.borrowButtonText}>Edit</Text>
+              <Text style={[styles.borrowButtonText, listing.activeTransaction?.status !== 'pending' && listing.activeTransaction && { color: COLORS.primary }]}>Edit</Text>
             </HapticPressable>
+            {listing.activeTransaction && listing.activeTransaction.status !== 'pending' && <HapticPressable
+              accessibilityRole="button" accessibilityLabel="View active exchange" testID="ListingDetail.button.exchange"
+              style={styles.borrowButton} onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}>
+              <Text style={styles.borrowButtonText}>View exchange</Text>
+            </HapticPressable>}
           </View>
         </View>
       )}
@@ -470,156 +479,92 @@ export default function ListingDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  skeletonPadding: {
-    padding: SPACING.lg,
-    paddingTop: 100,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, backgroundColor: COLORS.background },
+  skeletonPadding: { padding: SPACING.lg, paddingTop: 100 },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  errorText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-  },
-  photo: {
-    width: width,
-    height: 300,
-    backgroundColor: COLORS.separator,
-    borderBottomWidth: 1.5,
-    borderBottomColor: COLORS.borderBrown,
-  },
-  noPhoto: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pagination: {
+  errorText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
+  gallery: { position: 'relative' },
+  photo: { height: 300, backgroundColor: COLORS.separator },
+  noPhoto: { justifyContent: 'center', alignItems: 'center' },
+  photoActions: {
+    position: 'absolute',
+    top: SPACING.lg,
+    right: SPACING.lg,
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: -24,
-    marginBottom: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  dotActive: {
-    backgroundColor: '#fff',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  content: {
-    padding: SPACING.xl,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  title: {
-    flex: 1,
-    ...TYPOGRAPHY.h1,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: SPACING.sm,
   },
   actionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
     borderColor: COLORS.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  locationRow: {
+  pagination: {
+    position: 'absolute',
+    bottom: SPACING.lg,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: SPACING.md,
+    justifyContent: 'center',
+    gap: 6,
   },
-  locationText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-  },
-  badges: {
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)' },
+  dotActive: { backgroundColor: '#fff', width: 10, height: 10, borderRadius: 5 },
+  content: { padding: 20 },
+  itemSummary: { paddingBottom: SPACING.xl },
+  summaryHeading: { flexDirection: 'row', alignItems: 'flex-start', columnGap: SPACING.lg, rowGap: SPACING.sm },
+  summaryHeadingStacked: { flexDirection: 'column' },
+  titleBlock: { flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: '100%' },
+  title: { ...TYPOGRAPHY.h1, color: COLORS.text, lineHeight: 34 },
+  priceBlock: { maxWidth: '48%', flexShrink: 0 },
+  priceBlockStacked: { maxWidth: '100%', alignSelf: 'flex-start' },
+  itemMetadata: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.xl,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.full,
-    gap: 4,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderLight,
-  },
-  badgeGiveaway: {
-    borderColor: COLORS.secondary,
-    backgroundColor: COLORS.secondary + '15',
-  },
-  badgeText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-  },
-  freeNote: { marginBottom: SPACING.lg },
-  priceDepth: { marginBottom: SPACING.xxl },
-  transactionDepth: { marginBottom: SPACING.xl },
-  ownerDepth: { marginBottom: SPACING.sm },
-  pricingCard: {
-    backgroundColor: COLORS.primaryMuted,
-    padding: SPACING.xl,
-    borderWidth: 0,
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-  },
-  priceEyebrow: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.primary,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: SPACING.xs,
-  },
-  priceHelp: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
+    columnGap: SPACING.sm,
+    rowGap: SPACING.xs,
     marginTop: SPACING.sm,
   },
-  questionsCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.md, marginBottom: SPACING.lg },
-  questionsIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background },
-  questionsTitle: { ...TYPOGRAPHY.body, color: COLORS.text, fontWeight: '700' },
-  questionsHint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: 2 },
-  transactionCard: {
-    padding: SPACING.lg,
+  conditionBadge: {
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    maxWidth: '100%',
   },
+  conditionText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  metadataText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, flexShrink: 1 },
+  descriptionSection: {
+    marginTop: SPACING.lg,
+    paddingTop: SPACING.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+  },
+  description: { ...TYPOGRAPHY.body, color: COLORS.text, lineHeight: 24 },
+  availabilitySection: {
+    marginTop: SPACING.lg,
+    paddingTop: SPACING.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+  },
+  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, marginBottom: SPACING.xs },
+  availabilityDetail: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
+  transactionDepth: { marginBottom: SPACING.lg },
+  cardBox: { backgroundColor: COLORS.card, borderRadius: RADIUS.lg },
+  transactionCard: { padding: SPACING.lg },
   viewTransactionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -630,155 +575,52 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.separator,
   },
-  viewTransactionText: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  section: {
-    marginBottom: SPACING.xl,
-  },
-  descriptionSection: {
-    marginBottom: SPACING.xl,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
-    paddingLeft: SPACING.lg,
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  description: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-  },
-  ownerCard: {
+  viewTransactionText: { ...TYPOGRAPHY.subheadline, fontWeight: '600', color: COLORS.primary },
+  detailsDepth: { marginBottom: SPACING.sm },
+  detailsGroup: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
+  detailRow: {
+    minHeight: 76,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: SPACING.lg,
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
     gap: SPACING.md,
+  },
+  rowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: { flex: 1, minWidth: 0 },
+  rowTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  rowSubtitle: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 2 },
+  rowSeparator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 72,
+    marginRight: SPACING.lg,
+    backgroundColor: COLORS.separator,
   },
   ownerAvatar: {
     flexShrink: 0,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: COLORS.gray[700],
-  },
-  maskedOwnerAvatar: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary + '20',
-  },
-  verifyCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    marginTop: SPACING.lg,
-  },
-  verifyCardIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primary + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  verifyCardTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-  },
-  verifyCardSubtitle: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: SPACING.xl,
-  },
-  verifyCardButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceElevated,
   },
-  verifyCardButtonText: {
-    ...TYPOGRAPHY.button,
-    color: '#fff',
-  },
-  avatarPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ownerMaskedHint: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  ownerInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  ownerName: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.text,
-  },
-  ownerRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  ownerRatingText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-  },
-  ownerTransactions: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
+  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  ownerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ownerName: { flexShrink: 1 },
   footerWrap: {
     flexShrink: 0,
     backgroundColor: COLORS.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
   },
-  scrollContent: {
-    flex: 1,
-  },
-  availabilityHint: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
-  },
-  footerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    gap: SPACING.sm,
-  },
-  footer: {
-    flexDirection: 'row',
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-    gap: SPACING.md,
-  },
-  footerAndroid: {
-    backgroundColor: COLORS.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
-  },
+  scrollContent: { flex: 1 },
+  footerActions: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, gap: SPACING.sm },
   messageButton: {
     flex: 1,
     flexDirection: 'row',
@@ -804,53 +646,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primary,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.md,
     gap: SPACING.sm,
-  },
-  verifyButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    gap: SPACING.sm,
-  },
-  verifyBanner: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.card,
-    paddingVertical: SPACING.md + 2,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.warning + '50',
-    gap: SPACING.sm,
-  },
-  verifyBannerText: {
-    ...TYPOGRAPHY.subheadline,
-    color: COLORS.text,
-    flex: 1,
-  },
-  relistButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.xl,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    gap: SPACING.sm,
-  },
-  relistButtonText: {
-    color: COLORS.primary,
-    ...TYPOGRAPHY.headline,
   },
   deleteButton: {
     backgroundColor: COLORS.dangerMuted,
@@ -862,13 +662,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editButton: {
-    backgroundColor: COLORS.primary,
-  },
-  borrowButtonText: {
-    color: '#fff',
-    ...TYPOGRAPHY.headline,
-    textAlign: 'center',
-    flexShrink: 1,
-  },
+  editButton: { backgroundColor: COLORS.primary },
+  editSecondary: { flex: 0, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, paddingHorizontal: 16 },
+  borrowButtonText: { color: '#fff', ...TYPOGRAPHY.headline, textAlign: 'center', flexShrink: 1 },
 });

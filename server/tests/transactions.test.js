@@ -149,8 +149,7 @@ describe('Transactions API', () => {
     const { rows } = await query("SELECT * FROM notifications WHERE transaction_id = $1 AND type = 'request_approved'", [pending.id]);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ user_id: testUserId, from_user_id: testLenderId, listing_id: testListingId });
-    expect(rows[0].title).toContain('Congrats!');
-    expect(rows[0].body).toContain('Test Tool');
-    expect(rows[0].body).toContain('Contact Alex Neighbor to arrange pickup');
+    expect(rows[0].title).toBe('Request approved');
+    expect(rows[0].body).toBe('Alex Neighbor approved your request for Test Tool. Tap to arrange pickup.');
   });
 });

@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
-import { currentNotificationBody } from '../services/notificationCopy.js';
+import { currentNotificationBody, currentNotificationTitle } from '../services/notificationCopy.js';
+import { GROUPED_ACTIVITY_SQL, UNREAD_ACTIVITY_SQL, requestQueueCopy } from '../services/requestActivity.js';
 
-import { ACTIVITY_SQL, normalizedPreferences, validPreferenceKeys, preferencePatch } from '../services/notificationPreferences.js';
+import { normalizedPreferences, validPreferenceKeys, preferencePatch } from '../services/notificationPreferences.js';
 
 const router = Router();
 
@@ -12,30 +13,35 @@ const router = Router();
 // Get user's notifications
 // ============================================
 router.get('/', authenticate, async (req, res) => {
-  const { unreadOnly, page = 1, limit = 50 } = req.query;
+  const { unreadOnly } = req.query;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
   try {
-    let whereClause = `n.user_id = $1 AND ${ACTIVITY_SQL}`;
+    let whereClause = 'n.newest = 1';
     if (unreadOnly === 'true') {
-      whereClause += ' AND n.is_read = false';
+      whereClause += ' AND n.group_is_read = false';
     }
 
     const result = await query(
-      `SELECT n.*,
+      `${GROUPED_ACTIVITY_SQL} SELECT n.*,
               u.first_name as from_first_name, u.last_name as from_last_name,
-              u.display_name as from_display_name, u.profile_photo_url as from_photo
-       FROM notifications n
+              u.display_name as from_display_name, u.profile_photo_url as from_photo,
+              u.is_verified AS from_verified,
+              (SELECT COUNT(DISTINCT t.borrower_id) FROM borrow_transactions t
+                WHERE t.listing_id = n.queue_listing_id AND t.lender_id = $1 AND t.status = 'pending') AS request_count
+       FROM activity n
        LEFT JOIN users u ON n.from_user_id = u.id
        WHERE ${whereClause}
-       ORDER BY n.created_at DESC
+       ORDER BY n.created_at DESC, n.id DESC
        LIMIT $2 OFFSET $3`,
       [req.user.id, limit, offset]
     );
 
     // Get unread count
     const unreadCount = await query(
-      `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false AND ${ACTIVITY_SQL}`,
+      UNREAD_ACTIVITY_SQL,
       [req.user.id]
     );
 
@@ -43,20 +49,26 @@ router.get('/', authenticate, async (req, res) => {
       notifications: result.rows.map(n => ({
         id: n.id,
         type: n.type,
-        title: n.title,
+        title: currentNotificationTitle(n.type, n.title),
         body: currentNotificationBody(n.type, n.body),
+        ...(n.queue_listing_id ? requestQueueCopy(Number(n.request_count), n.listing_title, n.from_display_name || n.from_first_name) : {}),
         transactionId: n.transaction_id,
-        listingId: n.listing_id,
+        listingId: n.item_listing_id,
+        listingTitle: n.listing_title,
+        queueListingId: n.queue_listing_id,
+        requestCount: n.queue_listing_id ? Number(n.request_count) : undefined,
+        notificationIds: n.notification_ids,
         requestId: n.request_id,
         conversationId: n.conversation_id,
         disputeId: n.dispute_id,
         fromUserId: n.from_user_id,
-        fromUser: n.from_first_name ? {
+        fromUser: n.from_first_name && Number(n.request_count) < 2 ? {
           firstName: n.from_display_name || n.from_first_name,
           lastName: n.from_display_name ? '' : (n.from_last_name ? n.from_last_name.charAt(0) + '.' : ''),
           profilePhotoUrl: n.from_photo,
+          isVerified: n.from_verified === true,
         } : null,
-        isRead: n.is_read,
+        isRead: n.group_is_read,
         createdAt: n.created_at,
       })),
       unreadCount: parseInt(unreadCount.rows[0].count),
@@ -84,7 +96,7 @@ router.get('/badge-count', authenticate, async (req, res) => {
         [userId]
       ),
       query(
-        `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false AND ${ACTIVITY_SQL}`,
+        UNREAD_ACTIVITY_SQL,
         [userId]
       ),
       query(
@@ -117,11 +129,15 @@ router.get('/badge-count', authenticate, async (req, res) => {
 // Mark notification as read
 // ============================================
 router.post('/:id/read', authenticate, async (req, res) => {
+  const ids = req.body?.notificationIds || [req.params.id];
+  if (!Array.isArray(ids) || !ids.length || ids.length > 2000 || ids.some(id => typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
+    return res.status(400).json({ error: 'Choose valid notifications.' });
+  }
   try {
     await query(
       `UPDATE notifications SET is_read = true, read_at = NOW()
-       WHERE id = $1 AND user_id = $2`,
-      [req.params.id, req.user.id]
+       WHERE id = ANY($1::uuid[]) AND user_id = $2`,
+      [ids, req.user.id]
     );
     res.json({ success: true });
   } catch (err) {

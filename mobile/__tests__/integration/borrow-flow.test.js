@@ -116,8 +116,9 @@ describe('Borrow Flow Integration', () => {
       <TransactionDetailScreen navigation={mockNavigation} route={route} />
     );
     await waitFor(() => {
-      // RentalProgress renders step labels, not status label text
-      expect(getByText(/^Waiting for /)).toBeTruthy();
+      expect(getByText('Request sent')).toBeTruthy();
+      expect(getByText('Message owner')).toBeTruthy();
+      expect(getByText('Cancel request')).toBeTruthy();
     });
   });
 

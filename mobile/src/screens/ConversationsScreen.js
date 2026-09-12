@@ -15,7 +15,7 @@ import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-export default function ConversationsScreen({ navigation, onRead }) {
+export default function ConversationsScreen({ navigation, onRead, selectedId, onSelect }) {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -74,8 +74,9 @@ export default function ConversationsScreen({ navigation, onRead }) {
     <LayeredCard style={styles.cardDepth}>
       <HapticPressable
         haptic="light"
-        style={styles.card}
-        onPress={() => navigation.navigate('Chat', { conversationId: item.id })}
+        style={[styles.card, selectedId === item.id && { backgroundColor: COLORS.primaryMuted }]}
+        accessibilityState={{ selected: selectedId === item.id }}
+        onPress={() => onSelect ? onSelect(item.id) : navigation.navigate('Chat', { conversationId: item.id })}
       >
         <View style={styles.avatarContainer}>
           <ShimmerImage placeholderIcon="person"
@@ -93,7 +94,7 @@ export default function ConversationsScreen({ navigation, onRead }) {
 
         <View style={styles.content}>
           <View style={styles.headerRow}>
-            <Text style={[styles.name, item.unreadCount > 0 && styles.nameUnread]}>
+            <Text numberOfLines={1} style={[styles.name, { flex: 1 }, item.unreadCount > 0 && styles.nameUnread]}>
               {item.otherUser?.firstName || 'Unknown'} {item.otherUser?.lastName || ''}
             </Text>
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>

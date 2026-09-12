@@ -7,10 +7,10 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, len
   switch (status) {
     case 'pending': return isBorrower
       ? { title: `Waiting for ${neighbor}`, detail: `${neighbor} needs to approve your request. There’s nothing you need to do yet—we’ll notify you when they respond.` }
-      : { title: 'Your turn: review the request', detail: `${neighbor} is waiting for your decision. ${isGiveaway ? 'Review the request' : 'Review the dates above'}, then approve or decline.` };
+      : { title: 'Review your queue', detail: `${neighbor} is waiting. Open the queue to approve or decline requests.` };
     case 'approved': case 'paid': return { title: 'Next: arrange pickup', detail: isBorrower
       ? `Agree on a time and place with ${neighbor}. After you receive the item, tap Confirm pickup below.`
-      : `Agree on a time and place with ${neighbor}. After the handoff, ${neighbor} needs to confirm pickup in the app.` };
+      : `Agree on a time and place with ${neighbor}. After you hand over the item, tap Confirm pickup below.` };
     case 'picked_up': return isGiveaway
       ? { title: 'Exchange complete', detail: 'The handoff is complete. No return is needed.' }
       : { title: isBorrower ? `Return by ${due}` : `Waiting for ${neighbor} to return it`, detail: isBorrower

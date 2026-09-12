@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import api from '../../src/services/api';
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '999' }));
 
@@ -10,6 +10,7 @@ const mockUser = {
   onboardingCompleted: true, rating: 4.5, ratingCount: 10, totalTransactions: 5,
   isFounder: false, referralCode: 'BH-TEST',
 };
+const mockRefreshUser = jest.fn();
 
 const mockNavigation = {
   navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(),
@@ -20,7 +21,7 @@ const mockNavigation = {
 jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({
     user: mockUser, isLoading: false, isAuthenticated: true,
-    logout: mockLogout, refreshUser: jest.fn(),
+    logout: mockLogout, refreshUser: mockRefreshUser,
   }),
 }));
 jest.mock('../../src/context/ErrorContext', () => ({
@@ -30,6 +31,9 @@ jest.mock('../../src/context/ErrorContext', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   delete mockUser.displayName;
+  delete mockUser.endorsement;
+  mockUser.totalTransactions = 5;
+  mockRefreshUser.mockResolvedValue(mockUser);
 });
 
 describe('ProfileScreen', () => {
@@ -41,23 +45,30 @@ describe('ProfileScreen', () => {
 
   it('shows verified badge when user.isVerified', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('Verified identity')).toBeTruthy();
+    const { getByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(getByLabelText('Verified identity')).toBeTruthy();
   });
 
   it('shows a refreshed display name while retaining the verified badge', () => {
     mockUser.displayName = 'New public name';
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText, queryByText } = render(<ProfileScreen navigation={mockNavigation} />);
+    const { getByText, queryByText, getByLabelText } = render(<ProfileScreen navigation={mockNavigation} />);
     expect(getByText('New public name')).toBeTruthy();
     expect(queryByText('Test User')).toBeNull();
-    expect(getByText('Verified identity')).toBeTruthy();
+    expect(getByLabelText('Verified identity')).toBeTruthy();
   });
 
-  it('shows tier badge based on transaction count', () => {
+  it('puts the rank symbol beside your name and verification with exchanges underneath', () => {
+    mockUser.endorsement = { count: 10, percent: 90, score: 85 };
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
-    const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(getByText('Archer · About ranks')).toBeTruthy();
+    const screen = render(<ProfileScreen navigation={mockNavigation} />);
+    const identity = within(screen.getByTestId('MemberSummary.identity'));
+    expect(identity.getByTestId('Profile.header.name')).toBeTruthy();
+    expect(identity.getByLabelText('Verified identity')).toBeTruthy();
+    expect(identity.getByLabelText('Neighbor rank: Archer')).toBeTruthy();
+    expect(screen.queryByText('Good')).toBeNull();
+    expect(screen.getByText('Archer')).toBeTruthy();
+    expect(screen.queryByText('5 completed exchanges')).toBeNull();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false
@@ -95,10 +106,48 @@ describe('ProfileScreen', () => {
     expect(getByText('Are you sure you want to sign out?')).toBeTruthy();
   });
 
-  it('displays email', () => {
+  it('keeps email with account editing', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByText } = render(<ProfileScreen navigation={mockNavigation} />);
     expect(getByText('test@test.com')).toBeTruthy();
+  });
+
+  it('refreshes your score when returning to Profile without refetching on every render', async () => {
+    mockUser.endorsement = { count: 0, percent: null, score: null, completedCount: 2 };
+    const ProfileScreen = require('../../src/screens/ProfileScreen').default;
+    const screen = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(screen.getByLabelText('Neighbor rank: New neighbor')).toBeTruthy();
+    expect(mockRefreshUser).toHaveBeenCalledTimes(1);
+    const onFocus = mockNavigation.addListener.mock.calls.find(([event]) => event === 'focus')[1];
+    mockRefreshUser.mockImplementationOnce(async () => {
+      mockUser.endorsement = { count: 0, percent: null, score: 78, completedCount: 3 };
+      return mockUser;
+    });
+    await act(async () => { onFocus(); });
+    screen.rerender(<ProfileScreen navigation={mockNavigation} />);
+    expect(mockRefreshUser).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText('Neighbor rank: Archer')).toBeTruthy();
+    expect(screen.queryByText('3 completed exchanges')).toBeNull();
+    expect(screen.queryByLabelText('Neighbor rank: New neighbor')).toBeNull();
+    expect(screen.queryByText('New neighbor')).toBeNull();
+  });
+
+  it('opens and dismisses the rank explanation from your current rank', () => {
+    mockUser.endorsement = { count: 10, percent: 90, score: 85 };
+    const ProfileScreen = require('../../src/screens/ProfileScreen').default;
+    const screen = render(<ProfileScreen navigation={mockNavigation} />);
+    fireEvent.press(screen.getByLabelText('Neighbor rank: Archer'));
+    expect(screen.getByText('Neighbor rating')).toBeTruthy();
+    expect(screen.getByText('Outlaw')).toBeTruthy();
+    expect(screen.getByText('Robin')).toBeTruthy();
+    expect(screen.getByText('Needs work')).toBeTruthy();
+    expect(screen.getByText('Excellent')).toBeTruthy();
+    expect(screen.queryByText('Starting point')).toBeNull();
+    expect(screen.queryByText('New neighbor')).toBeNull();
+    expect(screen.getByText('Current')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Close rank explanation'));
+    expect(screen.queryByText('Neighbor rating')).toBeNull();
+    expect(screen.getByLabelText('Neighbor rank: Archer')).toBeTruthy();
   });
 
   it('displays version number', () => {

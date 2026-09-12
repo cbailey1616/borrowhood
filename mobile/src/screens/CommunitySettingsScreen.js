@@ -1,8 +1,8 @@
+import TextInput from '../components/AppTextInput';
 import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Image,
   StyleSheet,
   ScrollView,
@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
+import ActionButton from '../components/ActionButton';
 import { haptics } from '../utils/haptics';
 import { useError } from '../context/ErrorContext';
 
@@ -35,10 +36,11 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const [isSaving, setIsSaving] = useState(false);
 
   const canEdit = community?.role === 'organizer' || user?.isAdmin;
+  const canManageMembers = community?.role === 'organizer';
 
   useEffect(() => {
     fetchCommunity();
-  }, [id]);
+  }, [id, route.params?.editCover]);
 
   const fetchCommunity = async () => {
     try {
@@ -47,6 +49,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       setEditName(data.name || '');
       setEditDescription(data.description || '');
       setEditBannerUrl(data.bannerUrl || null);
+      setIsEditing(!!route.params?.editCover && (data.role === 'organizer' || user?.isAdmin));
     } catch (error) {
       console.error('Failed to fetch community:', error);
     } finally {
@@ -55,6 +58,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
+    if (!canEdit || isSaving) return;
     if (!editName.trim()) {
       haptics.warning();
       showError({ type: 'validation', title: 'Name Required', message: 'Neighborhood name cannot be empty.' });
@@ -67,6 +71,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       let bannerUrl = editBannerUrl;
       if (selectedBannerPhoto) {
         const urls = await api.uploadImages([selectedBannerPhoto], 'communities');
+        if (!urls?.[0]) throw new Error('Could not upload the cover photo. Please try again.');
         bannerUrl = urls[0];
       }
 
@@ -85,6 +90,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       setIsEditing(false);
       haptics.success();
       showToast('Neighborhood updated', 'success');
+      if (route.params?.editCover) navigation.goBack();
     } catch (err) {
       haptics.error();
       showError({ type: 'generic', message: err.message || 'Failed to save changes' });
@@ -99,18 +105,24 @@ export default function CommunitySettingsScreen({ route, navigation }) {
     setEditBannerUrl(community?.bannerUrl || null);
     setSelectedBannerPhoto(null);
     setIsEditing(false);
+    if (route.params?.editCover) navigation.goBack();
   };
 
   const handlePickBanner = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [3, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled) {
-      setSelectedBannerPhoto(result.assets[0].uri);
-      haptics.light();
+    if (!canEdit || isSaving) return;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [3, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setSelectedBannerPhoto(result.assets[0].uri);
+        haptics.light();
+      }
+    } catch (error) {
+      showError({ type: 'generic', message: 'Could not open your photos. Please try again.' });
     }
   };
 
@@ -152,22 +164,20 @@ export default function CommunitySettingsScreen({ route, navigation }) {
                   source={{ uri: selectedBannerPhoto || editBannerUrl }}
                   style={styles.bannerPreview}
                 />
-                <HapticPressable
-                  style={styles.bannerRemoveButton}
-                  onPress={() => { setSelectedBannerPhoto(null); setEditBannerUrl(null); haptics.light(); }}
-                  haptic="light"
-                >
-                  <Ionicons name="close" size={16} color="#fff" />
-                </HapticPressable>
-                <HapticPressable style={styles.bannerChangeButton} onPress={handlePickBanner} haptic="light">
-                  <Text style={styles.bannerChangeText}>Change</Text>
-                </HapticPressable>
               </View>
             ) : (
-              <HapticPressable style={styles.bannerPickerButton} onPress={handlePickBanner} haptic="light">
+              <HapticPressable style={styles.bannerPickerButton} onPress={handlePickBanner} haptic="light" disabled={isSaving} accessibilityRole="button">
                 <Ionicons name="image-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.bannerPickerText}>Add Cover Photo</Text>
+                <Text style={styles.bannerPickerText}>Add cover photo</Text>
               </HapticPressable>
+            )}
+
+            {(selectedBannerPhoto || editBannerUrl) && (
+              <View style={{ gap: SPACING.sm, marginBottom: SPACING.md }}>
+                <ActionButton label="Change cover photo" onPress={handlePickBanner} disabled={isSaving} />
+                <ActionButton label="Remove cover photo" destructive disabled={isSaving}
+                  onPress={() => { setSelectedBannerPhoto(null); setEditBannerUrl(null); haptics.light(); }} />
+              </View>
             )}
 
             <Text style={styles.fieldLabel}>Name</Text>
@@ -198,7 +208,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             />
 
             <View style={styles.editActions}>
-              <HapticPressable style={styles.cancelButton} onPress={handleCancelEdit} haptic="light">
+              <HapticPressable style={styles.cancelButton} onPress={handleCancelEdit} haptic="light" disabled={isSaving}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
               <HapticPressable
@@ -249,7 +259,17 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
       {/* Actions */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Actions</Text>
+        <Text style={styles.sectionTitle}>Neighbors</Text>
+
+        <HapticPressable
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('CommunityMembers', { id, role: community?.role })}
+          haptic="light"
+        >
+          <Ionicons name={canManageMembers ? 'shield-checkmark-outline' : 'people-outline'} size={20} color={COLORS.primary} />
+          <Text style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
+        </HapticPressable>
 
         <HapticPressable
           style={styles.actionButton}
@@ -258,16 +278,6 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         >
           <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Invite Neighbors</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </HapticPressable>
-
-        <HapticPressable
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('CommunityMembers', { id })}
-          haptic="light"
-        >
-          <Ionicons name="people-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>View All Members</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
       </View>
@@ -485,31 +495,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     borderRadius: RADIUS.md,
-  },
-  bannerRemoveButton: {
-    position: 'absolute',
-    top: SPACING.xs,
-    right: SPACING.xs,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bannerChangeButton: {
-    position: 'absolute',
-    bottom: SPACING.xs,
-    right: SPACING.xs,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-  },
-  bannerChangeText: {
-    ...TYPOGRAPHY.caption,
-    color: '#fff',
-    fontWeight: '600',
   },
   bannerPickerButton: {
     flexDirection: 'row',

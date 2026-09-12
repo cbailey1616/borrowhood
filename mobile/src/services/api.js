@@ -350,8 +350,8 @@ const addDisputeEvidence = (id, urls) =>
 const getNotifications = (params) =>
   get('/notifications', params);
 
-const markNotificationRead = (id) =>
-  post(`/notifications/${id}/read`);
+const markNotificationRead = (id, notificationIds) =>
+  post(`/notifications/${id}/read`, notificationIds ? { notificationIds } : undefined);
 
 const markAllNotificationsRead = () =>
   post('/notifications/read-all');
@@ -392,12 +392,6 @@ const deleteRequest = (id) =>
 
 const renewRequest = (id, expiresIn) =>
   post(`/requests/${id}/renew`, { ...(expiresIn ? { expiresIn } : {}), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' });
-
-const getRequestSuggestions = (id) =>
-  get(`/requests/${id}/suggestions`);
-
-const searchListingSuggestions = (title) =>
-  get(`/requests/suggestions?title=${encodeURIComponent(title)}`);
 
 // ============================================
 // Messages / Chat
@@ -887,8 +881,6 @@ export default {
   updateRequest,
   deleteRequest,
   renewRequest,
-  getRequestSuggestions,
-  searchListingSuggestions,
   // Messages / Chat
   getConversations,
   getConversation,

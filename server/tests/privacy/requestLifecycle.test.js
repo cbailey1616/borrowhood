@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 const state = vi.hoisted(() => ({ db: null }));
 vi.mock('../../src/utils/db.js', () => ({ query: (...args) => state.db.query(...args) }));
-import { offerListing, canViewListing } from '../../src/services/listingAccess.js';
+import { offerListing, canViewListing, canViewRequest } from '../../src/services/listingAccess.js';
 import { requestActiveSql, validRequestTimeZone } from '../../src/utils/requestState.js';
 import { requestAccessSql } from '../../src/utils/sharingPolicy.js';
 
@@ -11,12 +11,12 @@ beforeAll(async () => {
   await state.db.exec(`
     CREATE TABLE users (id text PRIMARY KEY, is_verified boolean, city text, state text, status text DEFAULT 'active');
     CREATE TABLE listings (id text PRIMARY KEY, owner_id text, visibility text DEFAULT 'private', privacy_version int DEFAULT 1,
-      status text DEFAULT 'active', is_available boolean DEFAULT true, circle_id text, community_id text);
+      status text DEFAULT 'active', is_available boolean DEFAULT true, circle_id text, community_id text, listing_type text DEFAULT 'lend', town_preview_enabled boolean DEFAULT false);
     CREATE TABLE friendships (user_id text, friend_id text, status text);
     CREATE TABLE lending_circle_members (circle_id text, user_id text, status text);
     CREATE TABLE community_memberships (community_id text, user_id text);
     CREATE TABLE item_requests (id text PRIMARY KEY, user_id text, visibility text, community_id text,
-      status text DEFAULT 'open', expires_at timestamptz, needed_until date, time_zone text DEFAULT 'UTC');
+      status text DEFAULT 'open', expires_at timestamptz, needed_until date, time_zone text DEFAULT 'UTC', town_preview_enabled boolean DEFAULT false);
     CREATE TABLE listing_shares (listing_id text, user_id text, request_id text, revoked_at timestamptz, expires_at timestamptz,
       UNIQUE(listing_id,user_id,request_id));
     CREATE TABLE borrow_transactions (listing_id text, borrower_id text, status text);
@@ -28,6 +28,32 @@ beforeEach(async () => {
     INSERT INTO users(id,is_verified,city,state) VALUES ('owner',true,'Upton','MA'), ('neighbor',true,' upton ','ma'), ('outsider',true,'Upton','NY');
     INSERT INTO listings(id,owner_id) VALUES ('drill','owner'), ('private-saw','owner');
     INSERT INTO item_requests(id,user_id,visibility) VALUES ('request','neighbor','town');`);
+});
+
+it('requires Town identity verification only for borrow listings', async () => {
+  await state.db.exec("UPDATE users SET is_verified=false WHERE id='neighbor'; UPDATE listings SET visibility='town', town_preview_enabled=true WHERE id='drill'");
+  expect(await canViewListing('drill', 'neighbor')).toBe(false);
+  for (const type of ['giveaway', 'sell']) {
+    await state.db.query('UPDATE listings SET listing_type=$1 WHERE id=$2', [type, 'drill']);
+    expect(await canViewListing('drill', 'neighbor')).toBe(true);
+    expect(await canViewListing('drill', 'outsider')).toBe(false);
+  }
+  await state.db.exec("UPDATE listings SET visibility='private' WHERE id='drill'");
+  expect(await canViewListing('drill', 'neighbor')).toBe(false);
+  await state.db.exec("UPDATE listings SET visibility='town', town_preview_enabled=false WHERE id='drill'");
+  expect(await canViewListing('drill', 'neighbor')).toBe(false);
+});
+
+it('shows Town request identities without verification while keeping their selected audience', async () => {
+  await state.db.exec("UPDATE users SET is_verified=false WHERE id='owner'; UPDATE item_requests SET town_preview_enabled=true");
+  expect(await canViewRequest('request', 'owner')).toBe(true);
+  expect(await canViewRequest('request', 'outsider')).toBe(false);
+  for (const visibility of ['close_friends', 'neighborhood']) {
+    await state.db.query('UPDATE item_requests SET visibility=$1', [visibility]);
+    expect(await canViewRequest('request', 'owner')).toBe(false);
+  }
+  await state.db.exec("UPDATE item_requests SET visibility='town'; UPDATE users SET status='suspended' WHERE id='owner'");
+  expect(await canViewRequest('request', 'owner')).toBe(false);
 });
 
 it('sends a private offer and grants the requester access to only that item', async () => {

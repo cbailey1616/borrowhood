@@ -15,6 +15,7 @@ beforeAll(async () => {
   await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY); CREATE TABLE borrow_transactions(id UUID PRIMARY KEY,borrower_id UUID,lender_id UUID,status TEXT,payment_status TEXT,updated_at TIMESTAMPTZ DEFAULT NOW());
     INSERT INTO users VALUES('${owner}'),('${borrower}'),('${stranger}');`);
   await state.db.exec(await readFile(new URL('../../migrations/020_exchange_endorsements.sql',import.meta.url),'utf8'));
+  await state.db.exec(await readFile(new URL('../../migrations/021_neutral_endorsements.sql',import.meta.url),'utf8'));
 },15000);
 afterAll(async()=>state.db.close());
 it('applies votes immediately while keeping feedback participant-only and immutable', async()=>{
@@ -48,6 +49,25 @@ it('only accepted cancellations qualify and the submission deadline still applie
   expect((await submitEndorsement(id,borrower,false)).status).toBe(409);
   expect(await endorsementSummary(borrower)).toEqual({percent:50,count:2,score:null,completedCount:1});
 });
+it('records neutral feedback without changing either side of the percentage', async()=>{
+  const id='20000000-0000-4000-8000-000000000003';
+  await state.db.query("INSERT INTO borrow_transactions(id,borrower_id,lender_id,status) VALUES($1,$2,$3,'paid')",[id,borrower,stranger]);
+  await state.db.query("UPDATE borrow_transactions SET status='completed' WHERE id=$1",[id]);
+  const before = await endorsementSummary(borrower);
+  expect(await submitEndorsement(id,stranger,null)).toEqual({success:true});
+  expect(await endorsementSummary(borrower)).toEqual(before);
+  expect(await submitEndorsement(id,borrower,null)).toEqual({success:true});
+  expect(await endorsementSummary(stranger)).toEqual({percent:null,count:0,score:null,completedCount:1});
+  expect(await endorsementState(id,borrower)).toMatchObject({submitted:true,positive:null,canRate:false});
+  expect(await submitEndorsement(id,borrower,null)).toEqual({success:true});
+  expect((await submitEndorsement(id,borrower,true)).status).toBe(409);
+  expect((await submitEndorsement(id,borrower,undefined)).status).toBe(400);
+  expect((await submitEndorsement(id,borrower,'neutral')).status).toBe(400);
+  // Reapplying the upgrade preserves both previous votes and neutral feedback.
+  await state.db.exec(await readFile(new URL('../../migrations/021_neutral_endorsements.sql',import.meta.url),'utf8'));
+  expect(await endorsementSummary(borrower)).toEqual(before);
+  expect(await endorsementState(id,borrower)).toMatchObject({submitted:true,positive:null});
+});
 it.each([[2,0,null],[3,0,84],[5,0,90],[8,0,99],[9,0,100],[3,3,75],[0,3,66],[0,5,60],[0,6,57],[0,30,0]])('scores %i positive and %i negative exchanges as %s',async(positive,negative,score)=>{
   const member=randomUUID();
   await state.db.query('INSERT INTO users(id) VALUES($1)',[member]);
@@ -80,6 +100,8 @@ it.each(['borrower','lender'])('replaces the initial activity point with +3 or -
   expect(await submitEndorsement(ids[0], owner, true)).toEqual({ success: true });
   expect((await endorsementSummary(member)).score).toBe(80);
   expect(await submitEndorsement(ids[1], owner, false)).toEqual({ success: true });
+  expect((await endorsementSummary(member)).score).toBe(76);
+  expect(await submitEndorsement(ids[2], owner, null)).toEqual({ success: true });
   expect((await endorsementSummary(member)).score).toBe(76);
   expect(await submitEndorsement(ids[1], owner, false)).toEqual({ success: true });
   expect((await endorsementSummary(member)).score).toBe(76);

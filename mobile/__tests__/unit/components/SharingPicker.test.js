@@ -8,6 +8,16 @@ const onVerify = jest.fn();
 beforeEach(() => { jest.clearAllMocks(); });
 afterEach(() => jest.restoreAllMocks());
 
+it('explains identity visibility for the selected post type', () => {
+  const screen = render(<SharingPicker value={['town']} onChange={onChange} />);
+  expect(screen.getByText(/Your name and profile are hidden/)).toBeTruthy();
+  for (const props of [{ request: true }, { listingType: 'giveaway' }, { listingType: 'sell' }]) {
+    screen.rerender(<SharingPicker value={['town']} onChange={onChange} {...props} />);
+    expect(screen.getByText('Town members can see this post, your name, and your profile.')).toBeTruthy();
+    expect(screen.queryByText(/Your name and profile are hidden/)).toBeNull();
+  }
+});
+
 it('adds an audience without replacing existing selections', () => {
   const { getByLabelText } = render(<SharingPicker value={['close_friends']} onChange={onChange} verified />);
   fireEvent.press(getByLabelText('Change who can see this item'));

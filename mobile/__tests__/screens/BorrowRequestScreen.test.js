@@ -1,10 +1,11 @@
 import React from 'react';
-import { Keyboard } from 'react-native';
+import { Keyboard, ScrollView } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null, onboardingCompleted: true, rating: 4.5, ratingCount: 10, totalTransactions: 5 };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
+const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
 const mockShowError = jest.fn();
 
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
@@ -57,18 +58,24 @@ describe('BorrowRequestScreen', () => {
     fireEvent.changeText(input, 'Need it for a trip!');
     await act(async () => { fireEvent.press(getByText('Send Request')); });
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1' }));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockShowError).not.toHaveBeenCalled();
   });
 
-  it('sends the typed message directly without a keyboard dismissal toolbar', async () => {
+  it('sends the typed message while the keyboard is open', async () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     const input = await screen.findByLabelText('Private message to owner');
     fireEvent(input, 'focus');
     fireEvent.changeText(input, 'Tomorrow afternoon?');
-    expect(screen.queryByLabelText('Dismiss keyboard')).toBeNull();
-    expect(screen.queryByText('Done ×')).toBeNull();
-    expect(screen.queryByLabelText('Hide keyboard')).toBeNull();
+    expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
+    expect(input.props.keyboardAppearance).toBe('dark');
+    expect(input.props.inputAccessoryViewID).toBeUndefined();
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    expect(scroll.props.keyboardDismissMode).toBe('interactive');
+    expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
     expect(input.props.value).toBe('Tomorrow afternoon?');
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
     expect(dismiss).toHaveBeenCalled();
@@ -83,9 +90,15 @@ describe('BorrowRequestScreen', () => {
     const endDate = await screen.findByText('End Date');
     fireEvent.press(endDate);
     expect(dismiss).toHaveBeenCalled();
+    expect(screen.UNSAFE_getByType(DateTimePicker)).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
-    fireEvent(screen.getByLabelText('Private message to owner'), 'focus');
-    expect(screen.queryByText('Done')).toBeNull();
+    const input = screen.getByLabelText('Private message to owner');
+    fireEvent(input, 'focus');
+    expect(screen.UNSAFE_queryByType(DateTimePicker)).toBeNull();
+    expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
+    expect(input.props.keyboardAppearance).toBe('dark');
+    fireEvent.changeText(input, 'Tomorrow afternoon?');
+    expect(input.props.value).toBe('Tomorrow afternoon?');
     dismiss.mockRestore();
   });
 
@@ -96,6 +109,7 @@ describe('BorrowRequestScreen', () => {
     await screen.findByText('$25.00');
     await act(async () => fireEvent.press(screen.getByText('Request to Buy')));
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1', salePrice: 25 }));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
   });
 
   it('submits without message (message is optional)', async () => {

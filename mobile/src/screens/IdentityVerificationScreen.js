@@ -184,7 +184,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your ID check is being reviewed. Keep browsing and posting to Town while you wait. Once verified, you can see who’s sharing.
+            Your ID check is being reviewed. Keep browsing and posting to Town while you wait. Once verified, you can see who’s lending in Town borrow listings.
           </Text>
           <Text style={styles.graceNotice}>
             Your verified identity badge will appear once verification is complete.
@@ -216,9 +216,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'Browse and post to Town anytime. Get verified to see who’s sharing and add a verified badge to your profile. Borrowhood covers the ID and selfie check during launch.';
+    if (source === 'town_browse') return 'Get verified to see who’s lending in Town borrow listings and add a verified badge to your profile. Names and profiles are already visible on Town requests, giveaways, and sale posts. Free during launch.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'Browse and post to Town anytime. Get verified to see who’s sharing and add a verified badge to your profile. Borrowhood covers the ID and selfie check during launch.';
+    return 'Add a verified badge to your profile and see who’s lending in Town borrow listings. Borrowhood covers the ID and selfie check during launch.';
   };
 
   return (
@@ -237,6 +237,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
         <Text style={styles.title}>{getTitle()}</Text>
         <Text style={styles.subtitle}>{getSubtitle()}</Text>
+        <Text style={styles.subtitle}>Powered by Stripe Identity · A quick ID and selfie check</Text>
 
         <View style={[styles.benefits, styles.cardBox]}>
           <View style={styles.benefitsInner}>

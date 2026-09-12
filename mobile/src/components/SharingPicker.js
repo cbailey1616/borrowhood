@@ -9,14 +9,17 @@ const audiences = [
   ['private', 'Only me', 'Hidden from browsing. Private offers are shared separately.', 'lock-closed'],
   ['close_friends', 'Friends', 'Only people you have accepted as friends.', 'people'],
   ['neighborhood', 'Neighborhood', 'People in your neighborhood can see this item.', 'home'],
-  ['town', 'Town', 'Town members can preview this item. Only verified members can see your profile.', 'location'],
+  ['town', 'Town', 'People in your town.', 'location'],
 ];
 
-export default function SharingPicker({ value = ['private'], onChange, request = false,
+export default function SharingPicker({ value = ['private'], onChange, request = false, listingType = 'lend',
   neighborhoodAvailable = true, onJoinNeighborhood, onCreateNeighborhood,
   friendsAvailable = true, onInviteFriends, audienceProblem, audienceLoading = false, onRetryAudience }) {
   const [expanded, setExpanded] = useState(false);
   const [neighborhoodPrompt, setNeighborhoodPrompt] = useState(false);
+  const townHint = request || ['giveaway', 'sell'].includes(listingType)
+    ? 'Town members can see this post, your name, and your profile.'
+    : 'Town members can preview this borrow listing. Your name and profile are hidden from unverified Town viewers.';
 
   const confirm = (scope) => {
     if (scope === 'private') {
@@ -50,7 +53,7 @@ export default function SharingPicker({ value = ['private'], onChange, request =
           {!request && <Text style={styles.hint}>Sharing this item never shares the rest.</Text>}</View>
         <Text style={{ color: COLORS.primary }}>{expanded ? 'Done' : 'Change'}</Text>
       </HapticPressable>
-      {value.includes('town') && <Text style={styles.hint}>Town members can preview this post. Only verified members can see your profile.</Text>}
+      {value.includes('town') && <Text style={styles.hint}>{townHint}</Text>}
       {expanded && audiences.filter(([scope]) => !request || scope !== 'private').map(([scope, title, hint, icon]) => (
         <HapticPressable key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
           accessibilityLabel={title} style={[styles.option, value.includes(scope) && styles.selected]}
@@ -60,7 +63,7 @@ export default function SharingPicker({ value = ['private'], onChange, request =
             <Text style={styles.label}>{title}</Text>
             <Text style={styles.hint}>{scope === 'close_friends' && !friendsAvailable ? 'Invite a friend to share with them.'
               : scope === 'neighborhood' && !neighborhoodAvailable ? 'Join or create a neighborhood.'
-              : request ? hint.replace('item', 'request') : hint}</Text>
+              : scope === 'town' ? townHint : request ? hint.replace('item', 'request') : hint}</Text>
           </View>
           <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         </HapticPressable>
