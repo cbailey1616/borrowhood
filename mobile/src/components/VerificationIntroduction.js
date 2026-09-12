@@ -8,7 +8,7 @@ import { COLORS, TYPOGRAPHY } from '../utils/config';
 export default function VerificationIntroduction({
   needsRetry = false,
   title = 'Verify to borrow across town',
-  subtitle = 'Verification helps keep sharing safer.',
+  subtitle = 'Verification helps build trust between neighbors.',
 }) {
   return (
     <>

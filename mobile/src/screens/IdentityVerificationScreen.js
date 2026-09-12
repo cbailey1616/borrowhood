@@ -222,9 +222,9 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'Verification helps keep sharing safer.';
+    if (source === 'town_browse') return 'Verification helps build trust between neighbors.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'Verification helps keep sharing safer.';
+    return 'Verification helps build trust between neighbors.';
   };
 
   const actions = (
