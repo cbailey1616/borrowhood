@@ -2,14 +2,14 @@ import { listingAvailability } from '../utils/listingAvailability';
 import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
-import ListingPrice from '../components/ListingPrice';
+import ListingPrice, { listingPrice } from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import { isTransferListing } from '../utils/directFee';
+import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import {
   View,
@@ -491,6 +491,10 @@ export default function FeedScreen({ navigation }) {
   );
 
   const renderListingItem = item => {
+    const transfer = isTransferListing(item);
+    const price = listingPrice(item);
+    const typeLabel = price.amount === 'Free' ? `Free ${price.unit}` : listingAvailability(item).label;
+
     return (
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
@@ -514,7 +518,13 @@ export default function FeedScreen({ navigation }) {
               )}
             </View>
             <View style={styles.tileContent}>
-              <ListingPrice listing={item} compact />
+              <View style={styles.tileTopRow}>
+                <View style={styles.tileTypePill}>
+                  <Ionicons name={isSaleListing(item) ? 'pricetag' : transfer ? 'gift' : 'basket'} size={18} illustrated />
+                  <Text style={styles.tilePillText}>{typeLabel}</Text>
+                </View>
+              </View>
+              {price.amount !== 'Free' && <ListingPrice listing={item} compact />}
               <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
               {renderAuthor(item)}
             </View>
@@ -1202,8 +1212,14 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
+  tilePillText: {
+    ...TYPOGRAPHY.caption1, fontWeight: '600', color: COLORS.primary,
+  },
   tileContent: {
     padding: SPACING.lg, paddingBottom: SPACING.sm,
+  },
+  tileTopRow: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm,
   },
   tileTypeLabel: {
     flexDirection: 'row',
@@ -1214,6 +1230,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
+  },
+  tileTypePill: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full,
   },
   tileTypeLabelText: {
     ...TYPOGRAPHY.caption,
