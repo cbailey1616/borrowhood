@@ -7,6 +7,12 @@ import api from '../../src/services/api';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null, onboardingCompleted: true, rating: 4.5, ratingCount: 10, totalTransactions: 5 };
 const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
 const mockShowError = jest.fn();
+let mockPaidTiers = false;
+
+jest.mock('../../src/utils/config', () => Object.defineProperty(
+  { ...jest.requireActual('../../src/utils/config'), __esModule: true },
+  'ENABLE_PAID_TIERS', { get: () => mockPaidTiers },
+));
 
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
 
@@ -15,6 +21,8 @@ jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showErro
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUser.isVerified = true;
+  mockPaidTiers = false;
   api.createTransaction.mockResolvedValue({ id: 'txn-1' });
   api.checkSubscriptionAccess.mockResolvedValue({ canAccess: true, nextStep: null });
 });
@@ -110,6 +118,65 @@ describe('BorrowRequestScreen', () => {
     await act(async () => fireEvent.press(screen.getByText('Request to Buy')));
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1', salePrice: 25 }));
     expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+  });
+
+  it.each([
+    ['sell', 'Request to Buy'],
+    ['giveaway', 'Request Item'],
+  ])('lets an unverified neighbor request an accessible Town %s', async (listingType, button) => {
+    mockUser.isVerified = false;
+    // This old endpoint rejects all Town activity, even permitted transfers.
+    api.checkSubscriptionAccess.mockResolvedValue({ canAccess: false, requiredTier: 'plus' });
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const townItem = { ...listing, listingType, visibility: 'town',
+      ...(listingType === 'sell' ? { directFee: { amount: 25, unit: 'flat' } } : {}),
+    };
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: townItem } }} />);
+    const submit = await screen.findByText(button);
+    expect(screen.queryByText('Verify to Unlock')).toBeNull();
+    await act(async () => fireEvent.press(submit));
+    expect(api.checkSubscriptionAccess).not.toHaveBeenCalled();
+    expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: listing.id }));
+    expect(api.createTransaction.mock.calls[0][0]).not.toHaveProperty('startDate');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+  });
+
+  it.each(['close_friends', 'neighborhood'])('keeps %s borrowing available without ID verification', async visibility => {
+    mockUser.isVerified = false;
+    api.checkSubscriptionAccess.mockResolvedValue({ canAccess: false, requiredTier: 'plus' });
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { ...listing, visibility } } }} />);
+    const submit = await screen.findByText('Send Request');
+    await act(async () => fireEvent.press(submit));
+    expect(api.checkSubscriptionAccess).not.toHaveBeenCalled();
+    expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({
+      listingId: listing.id, startDate: expect.any(String), endDate: expect.any(String),
+    }));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+  });
+
+  it('does not treat an unverified Town borrow request as successful when the server denies access', async () => {
+    mockUser.isVerified = false;
+    api.createTransaction.mockRejectedValueOnce(Object.assign(new Error('Listing not found'), { status: 404 }));
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { ...listing, visibility: 'town' } } }} />);
+    const submit = await screen.findByText('Send Request');
+    await act(async () => fireEvent.press(submit));
+    expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: listing.id }));
+    expect(mockShowError).toHaveBeenCalledWith({ message: 'Listing not found' });
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('preserves the subscription access gate when paid tiers are enabled', async () => {
+    mockPaidTiers = true;
+    api.checkSubscriptionAccess.mockResolvedValue({ canAccess: false, requiredTier: 'plus' });
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { ...listing, visibility: 'town' } } }} />);
+    await screen.findByText('Verify to Unlock');
+    expect(api.checkSubscriptionAccess).toHaveBeenCalledWith('town');
+    expect(screen.queryByText('Send Request')).toBeNull();
+    expect(api.createTransaction).not.toHaveBeenCalled();
   });
 
   it('submits without message (message is optional)', async () => {

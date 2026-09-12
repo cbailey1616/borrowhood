@@ -1,4 +1,7 @@
-import { ScrollView } from 'react-native';
+import VerificationIntroduction from '../components/VerificationIntroduction';
+import StripeVerificationButton from '../components/StripeVerificationButton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, useWindowDimensions } from 'react-native';
 import { ENABLE_PAYMENTS } from '../utils/config';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -21,8 +24,11 @@ import { isUserVerified } from '../utils/auth';
 
 export default function IdentityVerificationScreen({ navigation, route }) {
   const source = route?.params?.source || 'generic';
+  const insets = useSafeAreaInsets();
   const totalSteps = route?.params?.totalSteps;
   const { refreshUser } = useAuth();
+  const { height, fontScale } = useWindowDimensions();
+  const inlineActions = height < 500 || fontScale >= 1.4;
   const hasAutoChained = useRef(false);
   const { showError } = useError();
   const [status, setStatus] = useState(null); // none, pending, processing, requires_input, verified
@@ -141,7 +147,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Identity Verified</Text>
           <Text style={styles.subtitle}>
-            You can now use town-wide requests and see items explicitly shared with your town. Private inventories stay private, and owners still approve each exchange.
+            You’re ready to borrow across town.
           </Text>
           <HapticPressable
             style={styles.primaryButton}
@@ -209,65 +215,23 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   // Context-aware title/subtitle
   const getTitle = () => {
     if (needsRetry) return 'Verification Needs Attention';
-    if (source === 'town_browse') return 'Build town trust. Get verified.';
+    if (source === 'town_browse') return 'Verify to borrow across town';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Verify to List Items';
-    return 'Verify Your Identity';
+    return 'Verify to borrow across town';
   };
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'Get verified to see who’s lending in Town borrow listings and add a verified badge to your profile. Names and profiles are already visible on Town requests, giveaways, and sale posts. Free during launch.';
+    if (source === 'town_browse') return 'A quick ID check helps keep sharing safer.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'Add a verified badge to your profile and see who’s lending in Town borrow listings. Borrowhood covers the ID and selfie check during launch.';
+    return 'A quick ID check helps keep sharing safer.';
   };
 
-  return (
-    <View style={styles.container}>
-      {source !== 'generic' && totalSteps && (
-        <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
-      )}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
-        <View style={styles.iconContainer}>
-          <Ionicons
-            name={needsRetry ? 'alert-circle' : 'shield-checkmark'}
-            size={80}
-            color={needsRetry ? COLORS.warning : COLORS.primary}
-          />
-        </View>
-
-        <Text style={styles.title}>{getTitle()}</Text>
-        <Text style={styles.subtitle}>{getSubtitle()}</Text>
-        <Text style={styles.subtitle}>Powered by Stripe Identity · A quick ID and selfie check</Text>
-
-        <View style={[styles.benefits, styles.cardBox]}>
-          <View style={styles.benefitsInner}>
-            <BenefitItem icon="lock-closed" text="Your ID images are handled by Stripe. Borrowhood receives verification results and identity details." />
-            <BenefitItem icon="people" text="Build trust with your neighbors" />
-            <BenefitItem icon="checkmark-circle" text="You choose what to share and who can see it." />
-          </View>
-        </View>
-
-        <HapticPressable
-          style={[styles.primaryButton, starting && styles.buttonDisabled]}
-          onPress={handleVerify}
-          disabled={starting}
-          haptic="medium"
-          testID="Identity.button.verify"
-          accessibilityLabel="Verify your identity"
-          accessibilityRole="button"
-        >
-          {starting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
-              <Text style={styles.primaryButtonText}>
-                {needsRetry ? 'Try Again' : 'Verify with ID'}
-              </Text>
-            </>
-          )}
-        </HapticPressable>
-
+  const actions = (
+    <View style={[styles.actionFooter, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+      <View style={styles.readableWidth}>
+        <Text style={styles.verificationNote}>ID + selfie · Free during launch</Text>
+        <StripeVerificationButton onPress={handleVerify} loading={starting} testID="Identity.button.verify" />
         <HapticPressable
           style={styles.tertiaryButton}
           onPress={() => {
@@ -280,22 +244,25 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           haptic="light"
           testID="Identity.button.skipForNow"
           accessibilityLabel="Skip for now"
-          accessibilityRole="button"
         >
-          <Text style={styles.tertiaryButtonText}>
-            {source !== 'generic' ? "I'll do this later" : 'Skip for now'}
-          </Text>
+          <Text style={styles.tertiaryButtonText}>Skip for now</Text>
         </HapticPressable>
-      </ScrollView>
+      </View>
     </View>
   );
-}
 
-function BenefitItem({ icon, text }) {
   return (
-    <View style={styles.benefitItem}>
-      <Ionicons name={icon} size={20} color={COLORS.secondary} />
-      <Text style={styles.benefitText}>{text}</Text>
+    <View style={styles.container}>
+      {source !== 'generic' && totalSteps && (
+        <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
+      )}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.introductionContent}>
+        <View style={styles.readableWidth}>
+          <VerificationIntroduction needsRetry={needsRetry} title={getTitle()} subtitle={getSubtitle()} />
+        </View>
+        {inlineActions && actions}
+      </ScrollView>
+      {!inlineActions && actions}
     </View>
   );
 }
@@ -316,6 +283,10 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     justifyContent: 'center',
   },
+  introductionContent: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xl },
+  readableWidth: { width: '100%', maxWidth: 520, alignSelf: 'center' },
+  actionFooter: { backgroundColor: COLORS.surface, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.borderLight },
+  verificationNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.sm },
   iconContainer: {
     alignItems: 'center',
     marginBottom: SPACING.xl,
@@ -347,29 +318,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: SPACING.xxl,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
-  benefits: {
-    marginBottom: SPACING.xxl,
-    padding: SPACING.xl - SPACING.xs,
-  },
-  benefitsInner: {
-    gap: SPACING.lg,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  benefitText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
   primaryButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,
@@ -378,33 +326,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
   primaryButtonText: {
     color: '#fff',
     ...TYPOGRAPHY.button,
     fontSize: 16,
   },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: COLORS.separator,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: COLORS.textSecondary,
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-  },
   tertiaryButton: {
-    paddingVertical: SPACING.md,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: SPACING.sm,
   },
   tertiaryButtonText: {
-    color: COLORS.textMuted,
+    color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
   },
 });

@@ -1,18 +1,17 @@
-import { ScrollView } from 'react-native';
+import VerificationIntroduction from '../../components/VerificationIntroduction';
+import StripeVerificationButton from '../../components/StripeVerificationButton';
+import { ScrollView, useWindowDimensions } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   Linking,
   AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
-import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
@@ -20,8 +19,9 @@ import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function VerifyIdentityScreen({ navigation, route }) {
-  const fromSubscription = route.params?.fromSubscription;
   const { refreshUser } = useAuth();
+  const { height, fontScale } = useWindowDimensions();
+  const inlineActions = height < 500 || fontScale >= 1.4;
   const { showError, showToast } = useError();
   const [isLoading, setIsLoading] = useState(false);
   const [skipSheetVisible, setSkipSheetVisible] = useState(false);
@@ -84,7 +84,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       } else {
         showError({
           title: 'Not Started Yet',
-          message: 'Looks like verification hasn\'t been completed. Tap "Verify with ID" to start a quick ID and selfie check powered by Stripe Identity.',
+          message: 'Looks like verification hasn\'t been completed. Tap "Verify through Stripe" to start a quick ID and selfie check powered by Stripe Identity.',
           primaryAction: 'OK',
         });
       }
@@ -102,53 +102,23 @@ export default function VerifyIdentityScreen({ navigation, route }) {
     setSkipSheetVisible(true);
   };
 
+  const actions = (
+    <View style={styles.actionFooter}>
+      <View style={styles.readableWidth}>
+        <Text style={styles.verificationNote}>ID + selfie · Free during launch</Text>
+        <StripeVerificationButton onPress={handleStartVerification} loading={isLoading} />
+        <HapticPressable style={styles.skipButton} onPress={handleSkipForNow} haptic="light">
+          <Text style={styles.skipButtonText}>Skip for now</Text>
+        </HapticPressable>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="shield-checkmark" size={80} color={COLORS.primary} />
-        </View>
-
-        <Text style={styles.title}>Verify Your Identity</Text>
-        <Text style={styles.subtitle}>
-          Powered by Stripe Identity. A quick ID and selfie check adds the verified badge to your profile and lets you see who’s lending in Town borrow listings.
-          {fromSubscription ? ' We\'ll notify you once your verification is complete — it usually only takes a few minutes.' : ''}
-        </Text>
-
-        <View style={styles.benefits}>
-          <View style={styles.benefitsInner}>
-            <BenefitItem
-              icon="lock-closed"
-              text="Stripe handles your ID images. They are not shown to neighbors."
-            />
-            <BenefitItem
-              icon="people"
-              text="Build trust with your neighbors"
-            />
-            <BenefitItem
-              icon="checkmark-circle"
-              text="Choose which items you share and who can see them"
-            />
-          </View>
-        </View>
-
-        <View style={styles.buttons}>
-          <HapticPressable
-            style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-            onPress={handleStartVerification}
-            disabled={isLoading}
-            haptic="medium"
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
-                <Text style={styles.primaryButtonText}>Verify with ID</Text>
-              </>
-            )}
-          </HapticPressable>
-
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+        <View style={styles.readableWidth}>
+          <VerificationIntroduction />
           <HapticPressable
             style={styles.secondaryButton}
             onPress={handleCheckStatus}
@@ -157,16 +127,10 @@ export default function VerifyIdentityScreen({ navigation, route }) {
           >
             <Text style={styles.secondaryButtonText}>I've already verified</Text>
           </HapticPressable>
-
-          <HapticPressable
-            style={styles.skipButton}
-            onPress={handleSkipForNow}
-            haptic="light"
-          >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </HapticPressable>
         </View>
+        {inlineActions && actions}
       </ScrollView>
+      {!inlineActions && actions}
 
       <ActionSheet
         isVisible={skipSheetVisible}
@@ -185,100 +149,14 @@ export default function VerifyIdentityScreen({ navigation, route }) {
   );
 }
 
-function BenefitItem({ icon, text }) {
-  return (
-    <View style={styles.benefitItem}>
-      <Ionicons name={icon} size={20} color={COLORS.secondary} />
-      <Text style={styles.benefitText}>{text}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    flexGrow: 1,
-    padding: SPACING.xl,
-    justifyContent: 'center',
-  },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  title: {
-    ...TYPOGRAPHY.h1,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.md,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: SPACING.xxl,
-  },
-  benefits: {
-    marginBottom: SPACING.xxl,
-    padding: SPACING.xl - SPACING.xs,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
-  benefitsInner: {
-    gap: SPACING.lg,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  benefitText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
-  buttons: {
-    gap: SPACING.md,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: COLORS.separator,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: COLORS.textSecondary,
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-  },
-  skipButton: {
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
-  },
-  skipButtonText: {
-    color: COLORS.textMuted,
-    ...TYPOGRAPHY.footnote,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  content: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xl },
+  readableWidth: { width: '100%', maxWidth: 520, alignSelf: 'center' },
+  actionFooter: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.md, backgroundColor: COLORS.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.borderLight },
+  verificationNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.sm },
+  secondaryButton: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, minHeight: 44, padding: SPACING.md, marginTop: SPACING.lg, alignItems: 'center', justifyContent: 'center' },
+  secondaryButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  skipButton: { minHeight: 44, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingVertical: SPACING.sm, marginTop: SPACING.sm, alignItems: 'center', justifyContent: 'center' },
+  skipButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
 });
