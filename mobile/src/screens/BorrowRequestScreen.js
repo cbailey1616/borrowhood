@@ -75,16 +75,21 @@ export default function BorrowRequestScreen({ route, navigation }) {
           return;
         }
 
-        // Check subscription access for visibility level (town requires Plus)
-        const result = await api.checkSubscriptionAccess(listing.visibility);
-        if (!result.canAccess) {
-          setAccessCheck({
-            loading: false,
-            canAccess: false,
-            reason: 'subscription',
-            requiredTier: result.requiredTier,
-          });
-          return;
+        // The legacy tier check cannot distinguish Town borrowing from sales,
+        // giveaways, or access granted through friends/a neighborhood. With
+        // tiers disabled, listing reads and transaction creation enforce the
+        // actual item-specific audience and verification requirements.
+        if (ENABLE_PAID_TIERS) {
+          const result = await api.checkSubscriptionAccess(listing.visibility);
+          if (!result.canAccess) {
+            setAccessCheck({
+              loading: false,
+              canAccess: false,
+              reason: 'subscription',
+              requiredTier: result.requiredTier,
+            });
+            return;
+          }
         }
 
         // TODO: Restore verification gate when re-enabling paid tiers (ENABLE_PAID_TIERS)

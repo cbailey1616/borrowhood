@@ -4,7 +4,7 @@ import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 const STEP_LABELS = {
   1: 'Verify & Pay',
-  2: 'Identity Check',
+  2: 'Verification',
   3: 'Payout Setup',
 };
 

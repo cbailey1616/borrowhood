@@ -1,4 +1,5 @@
 import React from 'react';
+import { Linking } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../../src/services/api';
 
@@ -18,27 +19,37 @@ describe('VerifyIdentityScreen', () => {
   it('renders verify screen with title', () => {
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
     const { getByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    expect(getByText('Verify Your Identity')).toBeTruthy();
+    expect(getByText('Verify to borrow across town')).toBeTruthy();
   });
 
-  it('displays benefit items', () => {
+  it('explains which borrowing options need verification', () => {
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
-    const { getByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    expect(getByText('Stripe handles your ID images. They are not shown to neighbors.')).toBeTruthy();
-    expect(getByText('Build trust with your neighbors')).toBeTruthy();
-    expect(getByText('Choose which items you share and who can see them')).toBeTruthy();
+    const { getByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
+    expect(getByLabelText('Borrow from friends. Not verified: available. Verified: available.')).toBeTruthy();
+    expect(getByLabelText('Borrow in your neighborhood. Not verified: available. Verified: available.')).toBeTruthy();
+    expect(getByLabelText('Borrow across town. Not verified: not available. Verified: available.')).toBeTruthy();
   });
 
-  it('has verify with ID button', () => {
+  it('opens the Stripe verification URL from its clearly named button', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    api.startIdentityVerification.mockResolvedValueOnce({ verificationUrl: 'https://verify.stripe.com/test-session' });
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
-    const { getByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    expect(getByText('Verify with ID')).toBeTruthy();
+    const { getByRole } = render(<Screen navigation={mockNavigation} route={route} />);
+    await act(async () => fireEvent.press(getByRole('button', { name: 'Verify through Stripe' })));
+    expect(api.startIdentityVerification).toHaveBeenCalledTimes(1);
+    expect(openURL).toHaveBeenCalledWith('https://verify.stripe.com/test-session');
+    expect(mockShowError).not.toHaveBeenCalled();
+    openURL.mockRestore();
   });
 
-  it('has already verified button', () => {
+  it('refreshes the account when an existing verification is confirmed', async () => {
+    api.checkVerification.mockResolvedValueOnce({ verified: true });
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
     const { getByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    expect(getByText("I've already verified")).toBeTruthy();
+    await act(async () => fireEvent.press(getByText("I've already verified")));
+    expect(api.checkVerification).toHaveBeenCalledTimes(1);
+    expect(mockRefreshUser).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
   });
 
   it('has skip for now button', () => {

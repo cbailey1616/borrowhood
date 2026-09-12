@@ -14,7 +14,7 @@ describe('private-first onboarding', () => {
     const { getByText, queryByText } = render(<Screen navigation={navigation} />);
     expect(getByText('Ask before you buy')).toBeTruthy();
     expect(getByText('Lend, give away, or sell')).toBeTruthy();
-    expect(getByText('Offer one item privately')).toBeTruthy();
+    expect(getByText('Get to know your neighbors')).toBeTruthy();
     expect(getByText('Get started now. Verify your identity later.')).toBeTruthy();
     expect(queryByText(/Choose Your Plan/)).toBeNull();
   });

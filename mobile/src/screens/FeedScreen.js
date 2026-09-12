@@ -634,8 +634,7 @@ export default function FeedScreen({ navigation }) {
   const renderItem = ({ item, index }) => {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
-        <Text style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Neighbors need</Text>
-        <ActionButton accessibilityLabel="See all requests" label="See all" onPress={() => setActiveFilters(['requests'])} />
+        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Neighbors need</Text>
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"

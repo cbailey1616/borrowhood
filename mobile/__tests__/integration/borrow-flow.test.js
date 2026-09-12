@@ -3,7 +3,8 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
+const mockNavigation = { navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, isFocused: () => true };
+const mockShowError = jest.fn();
 
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => 88 }));
 
@@ -11,7 +12,7 @@ jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }),
 }));
 jest.mock('../../src/context/ErrorContext', () => ({
-  useError: () => ({ showError: jest.fn(), showToast: jest.fn() }),
+  useError: () => ({ showError: mockShowError, showToast: jest.fn() }),
 }));
 
 const mockListing = {
@@ -45,6 +46,7 @@ const mockListing = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUser.isVerified = true;
   api.getListing.mockResolvedValue(mockListing);
   api.createTransaction.mockResolvedValue({ id: 'txn-1' });
   api.checkSubscriptionAccess.mockResolvedValue({ canAccess: true, nextStep: null });
@@ -122,12 +124,17 @@ describe('Borrow Flow Integration', () => {
     });
   });
 
-  it('subscription access check runs before borrow', async () => {
+  it('submits an accessible Town giveaway without the obsolete subscription gate', async () => {
+    mockUser.isVerified = false;
+    api.checkSubscriptionAccess.mockResolvedValue({ canAccess: false, requiredTier: 'plus' });
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;
-    const route = { params: { listing: mockListing } };
-    render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);
-    await waitFor(() => {
-      expect(api.checkSubscriptionAccess).toHaveBeenCalled();
-    });
+    const route = { params: { listing: { ...mockListing, listingType: 'giveaway', visibility: 'town' } } };
+    const screen = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);
+    const submit = await screen.findByText('Request Item');
+    await act(async () => fireEvent.press(submit));
+    expect(api.checkSubscriptionAccess).not.toHaveBeenCalled();
+    expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'l-1' }));
+    expect(mockNavigation.replace).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+    expect(mockShowError).not.toHaveBeenCalled();
   });
 });

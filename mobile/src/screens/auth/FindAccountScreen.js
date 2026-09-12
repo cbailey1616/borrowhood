@@ -79,7 +79,7 @@ export default function FindAccountScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
           <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </HapticPressable>

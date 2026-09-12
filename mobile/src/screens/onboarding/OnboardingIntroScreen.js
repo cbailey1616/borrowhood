@@ -11,7 +11,7 @@ import { BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/confi
 const Point = ({ icon, title, children }) => (
   <View style={styles.pointRow}>
     {icon === 'identity-seal' ? <VerifiedBadge size={28} /> : <Icon name={icon} size={28} illustrated />}
-    <View style={styles.pointCopy}><Text style={styles.point}>{title}</Text><Text style={styles.detail}>{children}</Text></View>
+    <View style={styles.pointCopy}><Text accessibilityRole="header" style={styles.point}>{title}</Text><Text style={styles.detail}>{children}</Text></View>
   </View>
 );
 export default function OnboardingIntroScreen({ navigation }) {
@@ -30,16 +30,20 @@ export default function OnboardingIntroScreen({ navigation }) {
     finally { setBusy(false); }
   };
   return (
-    <ScrollView key={page} contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
-      <WoodlandIllustration scene="neighborhood" width={190} />
-      <Text accessibilityLabel={`Introduction, page ${page + 1} of 2`} style={styles.step}>{page + 1} OF 2</Text>
-      <Text style={styles.title}>{page === 0 ? 'Good things.\nCloser to home.' : 'Friends.\nNeighborhood. Town.'}</Text>
-      <Text style={styles.body}>{page === 0 ? 'Borrow what you need. Share what you have.' : 'Choose who you share with, from people you know to neighbors nearby.'}</Text>
+    <ScrollView key={page} contentContainerStyle={[styles.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
+      <View style={styles.hero}>
+        <View style={styles.illustrationFrame}>
+          <WoodlandIllustration scene="neighborhood" width={190} style={styles.illustration} />
+        </View>
+        <Text accessibilityLabel={`Introduction, page ${page + 1} of 2`} style={styles.step}>{page + 1} OF 2</Text>
+        <Text accessibilityRole="header" style={styles.title}>{page === 0 ? 'Good things.\nCloser to home.' : 'Friends.\nNeighborhood. Town.'}</Text>
+        <Text style={styles.body}>{page === 0 ? 'Borrow what you need. Share what you have.' : 'Choose who you share with, from people you know to neighbors nearby.'}</Text>
+      </View>
       <View style={styles.card}>
         {page === 0 ? <>
           <Point icon="chatbubble" title="Ask before you buy">Tell neighbors what you need. Someone nearby may have just the thing.</Point>
           <Point icon="gift" title="Lend, give away, or sell">A little more use from things you already own. Giveaways are always free.</Point>
-          <Point icon="lock-closed" title="Offer one item privately">Help with a request while keeping the rest of your inventory private.</Point>
+          <Point icon="people" title="Get to know your neighbors">Make connections with every exchange.</Point>
         </> : <>
           <Point icon="people" title="Your listing. Your audience.">Share with friends, neighborhood groups, or your town. Keep other items just for you.</Point>
           <Point icon="identity-seal" title="Verified neighbors. More confidence.">Verify your identity to connect across your town. The verified badge helps you know who you’re sharing with.</Point>
@@ -60,13 +64,17 @@ export default function OnboardingIntroScreen({ navigation }) {
 }
 const styles = StyleSheet.create({
   content: { flexGrow: 1, backgroundColor: COLORS.background, paddingHorizontal: 24, alignItems: 'center', gap: 16 },
-  step: { fontSize: 11, fontWeight: '600', letterSpacing: 1.5, color: COLORS.textSecondary },
-  title: { ...TYPOGRAPHY.largeTitle, lineHeight: 39, color: COLORS.text, textAlign: 'center' },
-  body: { fontSize: 17, lineHeight: 25, color: COLORS.textSecondary, textAlign: 'center' },
+  hero: { width: '100%', alignItems: 'center', gap: 8 },
+  // Trim the illustration's transparent margins while keeping its drawing at the same size.
+  illustrationFrame: { width: 190, height: 88, overflow: 'hidden' },
+  illustration: { transform: [{ translateY: -14 }] },
+  step: { fontSize: 11, lineHeight: 16, fontWeight: '600', letterSpacing: 1.5, color: COLORS.textSecondary },
+  title: { ...TYPOGRAPHY.largeTitle, width: '100%', fontSize: 28, lineHeight: 34, fontFamily: 'DMSans_700Bold', fontWeight: '700', color: COLORS.primaryDark, textAlign: 'center' },
+  body: { fontSize: 16, lineHeight: 23, color: COLORS.textSecondary, textAlign: 'center' },
   card: { width: '100%', padding: 20, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface },
   pointRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12 },
   pointCopy: { flex: 1 },
-  point: { fontSize: 17, lineHeight: 23, fontWeight: '600', color: COLORS.text },
+  point: { fontSize: 17, lineHeight: 23, fontFamily: 'DMSans_700Bold', fontWeight: '700', color: COLORS.primaryDark },
   detail: { fontSize: 14, lineHeight: 21, color: COLORS.textSecondary, marginTop: 5 },
   button: { width: '100%', minHeight: 52, padding: SPACING.lg, borderRadius: RADIUS.full, alignItems: 'center', backgroundColor: COLORS.primary },
   buttonText: { fontSize: 17, fontWeight: '600', color: 'white' },

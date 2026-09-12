@@ -1,6 +1,6 @@
 import TextInput from '../../components/AppTextInput';
 import BiometricIcon from '../../components/BiometricIcon';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ export default function WelcomeScreen({ navigation }) {
     hasStoredCredentials,
   } = useBiometrics();
 
+  const passwordInput = useRef(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -158,7 +159,7 @@ export default function WelcomeScreen({ navigation }) {
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
@@ -215,6 +216,11 @@ export default function WelcomeScreen({ navigation }) {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    returnKeyType="next"
+                    submitBehavior="submit"
+                    onSubmitEditing={() => passwordInput.current?.focus()}
+                    textContentType="username"
+                    autoComplete="email"
                     testID="Welcome.input.email"
                     accessibilityLabel="Email address"
                   />
@@ -224,6 +230,7 @@ export default function WelcomeScreen({ navigation }) {
                   <Text style={styles.label}>{pendingLink ? 'Borrowhood password' : 'Password'}</Text>
                   <View style={styles.passwordContainer}>
                     <TextInput
+                      ref={passwordInput}
                       style={styles.passwordInput}
                       value={password}
                       onChangeText={(t) => { setPassword(t); setLoginError(null); }}
