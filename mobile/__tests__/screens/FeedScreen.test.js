@@ -3,7 +3,7 @@ import { AppState, FlatList, InteractionManager, RefreshControl, StyleSheet } fr
 import * as Notifications from 'expo-notifications';
 import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import { FeedSeenContext } from '../../src/hooks/useInboxBadges';
 
@@ -46,6 +46,54 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it.each(['listing', 'request', 'ribbon'])('shows the author’s woodland rank on a %s tile and opens its explanation without opening the post', async surface => {
+    const item = { id: 'ranked-post', type: surface === 'listing' ? 'listing' : 'request', title: 'Garden tools',
+      user: { id: 'neighbor', firstName: 'Alexandra Very Long Display Name', isVerified: true,
+        endorsement: { completedCount: 6, score: 91 } } };
+    api.getFeed.mockResolvedValue(surface === 'ribbon'
+      ? { items: [], requests: [item], hasMore: false }
+      : { items: [item], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    const badge = await screen.findByLabelText('Neighbor rank: Ranger');
+    expect(badge.props.accessibilityRole).toBe('button');
+    expect(screen.getByText(item.user.firstName)).toBeTruthy();
+    expect(screen.getByLabelText('Verified identity')).toBeTruthy();
+    expect(StyleSheet.flatten(badge.props.style)).toMatchObject({ width: 44, minHeight: 44 });
+    expect(screen.queryByText(/completed exchanges/)).toBeNull();
+    const stopPropagation = jest.fn();
+    fireEvent.press(badge, { stopPropagation });
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(within(screen.getByTestId('RankInfo.level.Ranger')).getByText('Current')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Close rank explanation'));
+    expect(screen.queryByText('Rating levels')).toBeNull();
+    expect(api.getFeed).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the acorn for new neighbors while keeping missing rank data distinct', async () => {
+    api.getFeed.mockResolvedValue({ items: [
+      { id: 'new', type: 'listing', title: 'New neighbor’s ladder', user: { firstName: 'Sam', endorsement: { completedCount: 1, score: null } } },
+      { id: 'legacy', type: 'listing', title: 'Garden tools', user: { firstName: 'Jo', totalTransactions: 20, endorsement: { count: 20, percent: 100 } } },
+    ], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    const badge = await screen.findByLabelText('Neighbor rank: New neighbor');
+    expect(screen.getAllByLabelText(/Neighbor rank:/)).toHaveLength(1);
+    fireEvent.press(badge);
+    expect(screen.getByText('Rating after 3 completed exchanges')).toBeTruthy();
+    expect(screen.queryByText('Current')).toBeNull();
+  });
+
+  it.each(['ownerMasked', 'previewOnly'])('does not show rank data on a %s preview', async flag => {
+    api.getFeed.mockResolvedValue({ items: [{ id: 'preview', type: 'listing', title: 'Town ladder', [flag]: true,
+      user: { firstName: 'Sam', endorsement: { completedCount: 6, score: 91 } } }], hasMore: false });
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Town ladder');
+    expect(screen.queryByLabelText(/Neighbor rank:/)).toBeNull();
+  });
+
   it('shows item and service requests together with their own labels', async () => {
     const user = { id: 'neighbor', firstName: 'Robin' };
     api.getFeed.mockResolvedValue({ items: [

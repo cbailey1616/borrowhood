@@ -7,6 +7,17 @@ import VerifiedBadge from '../../../src/components/VerifiedBadge';
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
 jest.mock('../../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 
+it('shows the acorn beside a new neighbor’s profile name using the actual completed count', () => {
+  const screen = render(<MemberSummary profileHeader user={{ totalTransactions: 6, endorsement: { completedCount: 1, score: null } }}>
+    <Text>Chris Bailey</Text>
+  </MemberSummary>);
+  const identity = within(screen.getByTestId('MemberSummary.identity'));
+  expect(identity.getByText('Chris Bailey')).toBeTruthy();
+  fireEvent.press(identity.getByRole('button', { name: 'Neighbor rank: New neighbor' }));
+  expect(screen.getByText('Rating after 3 completed exchanges')).toBeTruthy();
+  expect(screen.queryByText(/1 completed exchange/)).toBeNull();
+});
+
 it.each([false, true])('shows the rank beside the name without an exchange count in profile headers (centered: %s)', centered => {
   const screen = render(<MemberSummary profileHeader centered={centered} user={{ endorsement: { completedCount: 6, score: 85 } }}>
     <Text>Chris Bailey</Text><VerifiedBadge />

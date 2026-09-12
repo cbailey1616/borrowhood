@@ -6,19 +6,35 @@ export async function ensureEndorsementSchema() {
   await query(await readFile(new URL('../../migrations/021_neutral_endorsements.sql', import.meta.url), 'utf8'));
 }
 export async function endorsementSummary(userId, runQuery = query) {
-  const { rows: [row] } = await runQuery(`WITH exchanges AS (
-    SELECT t.status IN ('returned','completed') AS completed, e.positive
-    FROM borrow_transactions t
-    LEFT JOIN exchange_endorsements e ON e.transaction_id=t.id AND e.ratee_id=$1
-      AND e.rater_id=CASE WHEN t.borrower_id=$1 THEN t.lender_id ELSE t.borrower_id END
-    WHERE (t.borrower_id=$1 OR t.lender_id=$1) AND t.borrower_id != t.lender_id
+  return (await endorsementSummaries([userId], runQuery)).get(userId);
+}
+
+// Profiles and visible feed authors use the same calculation. Batch feed authors
+// after pagination so scrolling never issues a separate query for every tile.
+export async function endorsementSummaries(userIds, runQuery = query) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const { rows } = await runQuery(`WITH members AS (
+    SELECT unnest($1::uuid[]) AS id
+  ), exchanges AS (
+    SELECT m.id AS member_id, t.status IN ('returned','completed') AS completed, e.positive
+    FROM members m
+    JOIN borrow_transactions t ON t.borrower_id=m.id OR t.lender_id=m.id
+    LEFT JOIN exchange_endorsements e ON e.transaction_id=t.id AND e.ratee_id=m.id
+      AND e.rater_id=CASE WHEN t.borrower_id=m.id THEN t.lender_id ELSE t.borrower_id END
+    WHERE t.borrower_id != t.lender_id
       AND (t.status IN ('returned','completed') AND COALESCE(t.payment_status::text,'none') != 'authorized'
         OR t.status='cancelled' AND t.accepted_at IS NOT NULL)
-  ) SELECT COUNT(*) FILTER(WHERE completed)::int AS completed,
+  ) SELECT member_id, COUNT(*) FILTER(WHERE completed)::int AS completed,
     COUNT(positive)::int AS total,
     COUNT(*) FILTER(WHERE positive IS TRUE)::int AS positive,
     COUNT(*) FILTER(WHERE completed AND positive IS NULL)::int AS activity
-    FROM exchanges`, [userId]);
+    FROM exchanges GROUP BY member_id`, [ids]);
+  const counts = new Map(rows.map(row => [row.member_id, row]));
+  return new Map(ids.map(id => [id, summaryFromCounts(counts.get(id))]));
+}
+
+function summaryFromCounts(row) {
   const total = Number(row?.total) || 0;
   const positive = Number(row?.positive) || 0;
   const completedCount = Number(row?.completed) || 0;

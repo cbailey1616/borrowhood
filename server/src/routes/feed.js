@@ -8,6 +8,7 @@ import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { rankFeed } from '../utils/feedRanking.js';
 import { canViewListing, canViewRequest } from '../services/listingAccess.js';
 import { requestActiveSql } from '../utils/requestState.js';
+import { endorsementSummaries } from '../services/endorsements.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -309,9 +310,14 @@ router.get('/', authenticate, async (req, res) => {
       if (feed.length || nextOffset >= listingKeys.length) break;
       resolvedPage += 1;
     } while (nextOffset < listingKeys.length);
+    const visibleRequests = requestCards.slice(0, 8);
+    const visibleAuthors = [...feed, ...visibleRequests].filter(item => !item.ownerMasked && !item.previewOnly && item.user?.id);
+    const ranks = await endorsementSummaries(visibleAuthors.map(item => item.user.id));
+    for (const item of visibleAuthors) item.user.endorsement = ranks.get(item.user.id);
+
     res.json({
       items: feed,
-      ...(sections ? { requests: requestCards.slice(0,8), requestCount: requestCards.length } : {}),
+      ...(sections ? { requests: visibleRequests, requestCount: requestCards.length } : {}),
       latestPostAt,
       page: resolvedPage,
       limit: parseInt(limit),

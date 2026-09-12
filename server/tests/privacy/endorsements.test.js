@@ -7,7 +7,7 @@ vi.mock('../../src/utils/db.js', () => ({
   query: (...args) => state.db.query(...args),
   withTransaction: async fn => { await state.db.exec('BEGIN');try { const result=await fn({query:(...args)=>state.db.query(...args)});await state.db.exec('COMMIT');return result; } catch(error) { await state.db.exec('ROLLBACK');throw error; } },
 }));
-import { endorsementState, endorsementSummary, submitEndorsement } from '../../src/services/endorsements.js';
+import { endorsementState, endorsementSummary, endorsementSummaries, submitEndorsement } from '../../src/services/endorsements.js';
 const owner='10000000-0000-4000-8000-000000000001', borrower='10000000-0000-4000-8000-000000000002', stranger='10000000-0000-4000-8000-000000000003';
 const exchange='20000000-0000-4000-8000-000000000001';
 beforeAll(async () => {
@@ -147,4 +147,30 @@ it('never rewards an exchange with oneself or a vote from a nonparticipant', asy
   await state.db.query("INSERT INTO borrow_transactions(id,borrower_id,lender_id,status) VALUES($1,$2,$2,'completed')", [randomUUID(), member]);
   await state.db.query('INSERT INTO exchange_endorsements(transaction_id,rater_id,ratee_id,positive) VALUES($1,$2,$3,true)', [ids[0], stranger, member]);
   expect(await endorsementSummary(member)).toEqual(before);
+});
+
+it('batches distinct feed authors and matches their profile summaries, including both sides of an exchange', async () => {
+  const first = await completedHistory(3);
+  const second = await completedHistory(2, 'lender');
+  const newcomer = randomUUID();
+  await state.db.query('INSERT INTO users(id) VALUES($1)', [newcomer]);
+  const sharedExchange = randomUUID();
+  await state.db.query("INSERT INTO borrow_transactions(id,borrower_id,lender_id,status,endorsement_started_at) VALUES($1,$2,$3,'completed',NOW())", [sharedExchange, first.member, second.member]);
+  await submitEndorsement(sharedExchange, first.member, true);
+  await submitEndorsement(sharedExchange, second.member, false);
+  const runQuery = vi.fn((...args) => state.db.query(...args));
+  const summaries = await endorsementSummaries([first.member, second.member, first.member, newcomer], runQuery);
+  expect(runQuery).toHaveBeenCalledTimes(1);
+  expect(summaries.size).toBe(3);
+  expect(summaries.get(first.member)).toEqual({ percent: 0, count: 1, score: 75, completedCount: 4 });
+  expect(summaries.get(second.member)).toEqual({ percent: 100, count: 1, score: 80, completedCount: 3 });
+  expect(summaries.get(newcomer)).toEqual({ percent: null, count: 0, score: null, completedCount: 0 });
+  for (const [id, summary] of summaries) expect(summary).toEqual(await endorsementSummary(id));
+});
+
+it('does not query ratings when the feed has no visible authors', async () => {
+  const runQuery = vi.fn();
+  expect(await endorsementSummaries([], runQuery)).toEqual(new Map());
+  expect(await endorsementSummaries([null, undefined], runQuery)).toEqual(new Map());
+  expect(runQuery).not.toHaveBeenCalled();
 });

@@ -27,6 +27,9 @@ import {
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
 import VerifiedBadge from '../components/VerifiedBadge';
+import NeighborRankBadge from '../components/NeighborRankBadge';
+import RankInfoSheet from '../components/RankInfoSheet';
+import { memberReputation } from '../utils/reputation';
 import { groupPendingExchanges } from '../utils/requestActivity';
 import useSavedListings from '../hooks/useSavedListings';
 import { useError } from '../context/ErrorContext';
@@ -104,6 +107,7 @@ export default function FeedScreen({ navigation }) {
   const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRank, setSelectedRank] = useState(null);
   const listRef = useRef(null);
   const [focusedItemId, setFocusedItemId] = useState(null);
 
@@ -450,6 +454,7 @@ export default function FeedScreen({ navigation }) {
   const renderAuthor = (item, { compact = false, showTime = true } = {}) => {
     if (item.ownerMasked) return <TownIdentityPrompt compact onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />;
     const author = item.user || {};
+    const reputation = item.previewOnly ? null : memberReputation(author);
     const name = `${author.firstName || 'Neighbor'}${author.lastName ? ` ${author.lastName.charAt(0)}.` : ''}`;
     return (
       <View style={[styles.tileFooterRow, compact && styles.ribbonAuthor]}>
@@ -457,6 +462,7 @@ export default function FeedScreen({ navigation }) {
         <View style={styles.authorNameAndBadge}>
           <Text style={styles.tileFooterText} numberOfLines={1}>{name}</Text>
           {author.isVerified === true && <VerifiedBadge size={16} interactive />}
+          <NeighborRankBadge rank={reputation?.rank} onPress={() => setSelectedRank(reputation)} />
         </View>
         {showTime && <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>}
       </View>
@@ -789,6 +795,9 @@ export default function FeedScreen({ navigation }) {
           </View>
         }</View>}
       />
+
+      {selectedRank && <RankInfoSheet isVisible currentRank={selectedRank.rank} isNew={selectedRank.isNew}
+        onClose={() => setSelectedRank(null)} />}
 
       <ActionSheet
         isVisible={showActionSheet}
