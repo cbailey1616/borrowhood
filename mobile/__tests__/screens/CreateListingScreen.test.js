@@ -51,11 +51,11 @@ describe('CreateListingScreen', () => {
   });
   it('reveals offline pricing without payout setup', async () => {
     const Screen = require('../../src/screens/CreateListingScreen').default;
-    const { getByLabelText, findByText, queryByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
+    const { getByLabelText, queryByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
     expect(queryByLabelText('Price per day')).toBeNull();
     fireEvent(getByLabelText('Charge a fee'), 'valueChange', true);
     fireEvent.changeText(getByLabelText('Price per day'), '2');
-    await findByText(/Borrowhood does not collect or process/);
+    await waitFor(() => expect(getByLabelText('Price per day').props.value).toBe('2'));
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 

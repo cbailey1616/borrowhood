@@ -184,8 +184,8 @@ describe('InboxScreen', () => {
     expect(api.getNotifications).toHaveBeenLastCalledWith({ page: 1, limit: 50, unreadOnly: 'true' });
     expect(screen.queryByText('Read update 0')).toBeNull();
     expect(screen.getByRole('button', { name: 'Show all inbox items' })).toBeTruthy();
-    expect(openOptions(screen).props.actions.map(action => action.label)).toEqual(['Show all', 'Mark all as read']);
-    chooseAction(screen, 'Show all');
+    expect(openOptions(screen).props.actions[0]).toEqual(expect.objectContaining({ label: 'Unread only', selected: true }));
+    chooseAction(screen, 'Unread only');
     await screen.findByText('Read update 0');
     expect(screen.queryByRole('button', { name: 'Show all inbox items' })).toBeNull();
     expect(api.markAllNotificationsRead).not.toHaveBeenCalled();

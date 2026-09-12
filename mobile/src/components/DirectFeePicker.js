@@ -15,7 +15,6 @@ export default function DirectFeePicker({ enabled, amount, onToggle, onAmountCha
       <Text style={styles.label}>Price per day ($)</Text>
       <WholeDollarInput accessibilityLabel="Price per day" value={amount} onChangeText={onAmountChange}
         placeholderTextColor={COLORS.textSecondary} style={styles.input} />
-      <Text style={styles.hint}>Whole dollars only. Arrange payment directly with your neighbor. Borrowhood does not collect or process this fee.</Text>
     </>}
   </View>;
 }
@@ -24,5 +23,4 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   label: { ...TYPOGRAPHY.headline, color: COLORS.text },
   input: { padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, color: COLORS.text },
-  hint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },
 });

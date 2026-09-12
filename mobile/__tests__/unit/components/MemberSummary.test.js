@@ -23,11 +23,21 @@ it.each([false, true])('shows the rank beside the name without an exchange count
   expect(row.getByText('Good')).toBeTruthy();
 });
 
-it('does not invent a rank for a profile with missing score data', () => {
-  const screen = render(<MemberSummary profileHeader user={{ totalTransactions: 6 }} />);
-  expect(screen.getByText('Rank unavailable')).toBeTruthy();
+it.each([false, true])('keeps profile names clear until a real rank is available (centered: %s)', centered => {
+  const screen = render(<MemberSummary profileHeader centered={centered} user={{ totalTransactions: 6 }}>
+    <Text>Chris Bailey</Text><VerifiedBadge />
+  </MemberSummary>);
+  expect(screen.getByText('Chris Bailey')).toBeTruthy();
+  expect(screen.getByLabelText('Verified identity')).toBeTruthy();
+  expect(screen.queryByText('Rank unavailable')).toBeNull();
+  expect(screen.queryByLabelText(/Neighbor rank/)).toBeNull();
   expect(screen.queryByText('New neighbor')).toBeNull();
   expect(screen.queryByText(/completed exchanges/)).toBeNull();
+  screen.rerender(<MemberSummary profileHeader centered={centered} user={{ endorsement: { completedCount: 6, score: 85 } }}>
+    <Text>Chris Bailey</Text><VerifiedBadge />
+  </MemberSummary>);
+  fireEvent.press(screen.getByRole('button', { name: 'Neighbor rank: Archer' }));
+  expect(within(screen.getByTestId('RankInfo.level.Archer')).getByText('Current')).toBeTruthy();
 });
 
 it('opens rating details from a notification and clears the request on close', () => {

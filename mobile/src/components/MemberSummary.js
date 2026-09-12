@@ -17,11 +17,11 @@ export default function MemberSummary({ user, children, centered = false, openRa
   return <View style={[styles.summary, centered && styles.centered]}>
     <View testID="MemberSummary.identity" style={[styles.identityRow, centered && styles.identityCentered, profileHeader && styles.profileIdentity]}>
       <View style={styles.nameRow}>{children}</View>
-      {(rank || profileHeader) && <HapticPressable style={[styles.rankButton, profileHeader && styles.rankNameButton]} accessibilityLabel={profileHeader ? (rank ? `Neighbor rank: ${rank.label}` : 'Neighbor rank unavailable') : ratingLabel}
+      {rank && <HapticPressable style={[styles.rankButton, profileHeader && styles.rankNameButton]} accessibilityLabel={profileHeader ? `Neighbor rank: ${rank.label}` : ratingLabel}
         accessibilityHint="Opens rating details and rank levels"
         onPress={event => { event?.stopPropagation?.(); setShowRanks(true); }}>
-        {rank && <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />}
-        {profileHeader && <Text style={styles.rankName}>{rank?.label || 'Rank unavailable'}</Text>}
+        <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
+        {profileHeader && <Text style={styles.rankName}>{rank.label}</Text>}
       </HapticPressable>}
     </View>
     {!profileHeader && <Text style={[styles.secondary, centered && styles.textCentered]}>{exchangeLabel}</Text>}

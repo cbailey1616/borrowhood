@@ -1,7 +1,7 @@
 import MessageComposer from '../components/MessageComposer';
+import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
-import { useHeaderHeight } from '@react-navigation/elements';
 import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -10,9 +10,7 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Keyboard,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
@@ -25,7 +23,6 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
-  const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
@@ -70,12 +67,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const scrollTarget = useRef(null);
 
   useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
-
-  useEffect(() => {
     let active = true;
     setTarget(request || listing || null);
     if (!request?.title && !listing?.title) {
@@ -110,11 +101,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     navigation.setOptions({ title: activeThreadId ? 'Thread' : 'Comments', headerBackButtonMenuEnabled: false });
   }, [activeThreadId, navigation]);
 
-  usePreventRemove(!!activeThreadId, () => {
-    Keyboard.dismiss();
-    setActiveThreadId(null);
-    setSendError('');
-  });
+  usePreventRemove(!!activeThreadId, () => closeThread());
 
   useEffect(() => {
     if (activeThreadId || !pendingDestination) return;
@@ -423,25 +410,20 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   );
 
   return (
-    <KeyboardAvoidingView
+    <ComposerKeyboardView
       testID="Comments.keyboardLayout"
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      onKeyboardVisibilityChange={setKeyboardVisible}
     >
       {/* Header */}
       <View style={styles.listingHeader}>
         <View style={styles.listingContext}>
-          {activeThreadId ? <HapticPressable style={styles.backToComments} onPress={closeThread}>
-            <Ionicons name="chevron-back" size={18} color={COLORS.primary} />
-            <Text style={styles.actionText}>Back to comments</Text>
-          </HapticPressable> : <Text style={styles.listingTitle} numberOfLines={fontScale > 1.4 ? undefined : 2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>}
+          <Text style={styles.listingTitle} numberOfLines={fontScale > 1.4 ? undefined : 2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>
           <HapticPressable style={styles.viewPostButton} accessibilityLabel="View original post"
             onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}>
             <Text style={styles.actionText}>View post</Text>
           </HapticPressable>
         </View>
-        {!activeThreadId && <Text style={styles.visibilityNote}>Comments are visible to people who can see this post.</Text>}
       </View>
       {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
 
@@ -516,7 +498,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           },
         ]}
       />
-    </KeyboardAvoidingView>
+    </ComposerKeyboardView>
   );
 }
 
@@ -551,7 +533,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderGreenStrong,
     alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface,
   },
-  visibilityNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.sm },
   threadError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, padding: SPACING.lg },
   listContent: {
     paddingHorizontal: SPACING.lg,
@@ -637,12 +618,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
     flexShrink: 1,
-  },
-  backToComments: {
-    minHeight: 44, flexGrow: 1, flexShrink: 1, flexDirection: 'row', alignItems: 'center',
-    gap: SPACING.xs, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderGreenStrong,
-    backgroundColor: COLORS.surface,
   },
   threadParent: { paddingTop: SPACING.lg, paddingBottom: SPACING.md },
   threadCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginLeft: 44, marginTop: SPACING.lg },

@@ -1,11 +1,11 @@
 import MessageComposer from '../components/MessageComposer';
+import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
 import { privateMessagePrefix } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
 import UserSafetyActions from '../components/UserSafetyActions';
 import { useIsFocused } from '@react-navigation/native';
-import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -15,8 +15,6 @@ import {
   FlatList,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Modal,
   Pressable,
@@ -45,7 +43,6 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, recipientId, recipient, threadContext, listingId, listing: passedListing } = route.params || {};
   const isFocused = useIsFocused();
-  const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible?.() ?? false);
   const nearBottom = useRef(true);
@@ -84,12 +81,6 @@ export default function ChatScreen({ route, navigation }) {
   const knownMessageIds = useRef(new Set());
   const [showNewMessages, setShowNewMessages] = useState(false);
   useEffect(() => { knownMessageIds.current = new Set(messages.map(message => message.id)); }, [messages]);
-
-  useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -522,11 +513,10 @@ export default function ChatScreen({ route, navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView
+    <ComposerKeyboardView
       testID="Chat.keyboardLayout"
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
+      onKeyboardVisibilityChange={setKeyboardVisible}
     >
       {/* Listing Context Header */}
       <UserSafetyActions userId={recipientId || conversation?.otherUser?.id} />
@@ -663,7 +653,7 @@ export default function ChatScreen({ route, navigation }) {
         title="Message"
         actions={selectedMessage ? getMessageActions(selectedMessage) : []}
       />
-    </KeyboardAvoidingView>
+    </ComposerKeyboardView>
   );
 }
 

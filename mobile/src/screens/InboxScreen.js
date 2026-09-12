@@ -491,13 +491,13 @@ export default function InboxScreen({ navigation, route, onRead }) {
           }
         />
       )}
-      <ActionSheet isVisible={optionsVisible} onClose={() => setOptionsVisible(false)} title="Inbox options"
+      <ActionSheet isVisible={optionsVisible} onClose={() => setOptionsVisible(false)} title="Inbox options" variant="options"
         actions={[
-          { label: unreadOnly ? 'Show all' : 'Unread only', onPress: () => {
+          { label: 'Unread only', selected: unreadOnly, icon: <Ionicons name="mail-outline" size={24} color={COLORS.primary} />, onPress: () => {
             setOptionsVisible(false);
             selectUnreadOnly(!unreadOnly);
           } },
-          { label: 'Mark all as read', onPress: () => {
+          { label: 'Mark all as read', icon: <Ionicons name="checkmark-done" size={24} color={COLORS.primary} />, onPress: () => {
             setOptionsVisible(false);
             handleMarkAllRead();
           } },

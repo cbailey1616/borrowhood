@@ -292,6 +292,7 @@ export default function EditListingScreen({ navigation, route }) {
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       enableResetScrollToCoords={false}
     >
       {/* Photos */}

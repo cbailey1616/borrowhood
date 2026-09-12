@@ -1,5 +1,5 @@
 import React from 'react';
-import { DeviceEventEmitter, FlatList, StyleSheet } from 'react-native';
+import { DeviceEventEmitter, FlatList, StyleSheet, View } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation/native';
@@ -7,9 +7,13 @@ import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
 let mockHeaderHeight = 88;
+let mockWindowHeight = 844;
 const mockInsets = { top: 44, bottom: 34, left: 0, right: 0 };
 
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => mockHeaderHeight }));
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true, default: () => ({ width: 390, height: mockWindowHeight, scale: 3, fontScale: 1 }),
+}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => mockInsets,
   SafeAreaView: require('react-native').View,
@@ -21,6 +25,8 @@ jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showErro
 beforeEach(() => {
   jest.clearAllMocks();
   mockHeaderHeight = 88;
+  mockWindowHeight = 844;
+  View.prototype.measureInWindow.mockReset();
   // Source calls api.getDiscussions(listingId, { limit: 50 }) and reads data.posts
   api.getDiscussions.mockResolvedValue({ posts: [] });
   api.getDiscussionReplies.mockResolvedValue({ replies: [] });
@@ -48,18 +54,26 @@ const chooseAction = async (screen, label) => {
   });
 };
 
+const nativeBack = (type = 'GO_BACK') => {
+  const [prevented, handleRemoval] = usePreventRemove.mock.calls.at(-1);
+  expect(prevented).toBe(true);
+  act(() => handleRemoval({ data: { action: { type } } }));
+};
+
 describe('ListingDiscussionScreen', () => {
   const route = { params: { listingId: 'listing-1', listing: { title: 'Camera', isOwner: false } } };
 
   it.each([
-    { screenHeight: 844, headerHeight: 113, keyboardTop: 520 },
-    { screenHeight: 667, headerHeight: 88, keyboardTop: 407 },
-  ])('keeps the composer above the keyboard with a $headerHeight-point header', async ({ screenHeight, headerHeight, keyboardTop }) => {
+    { screenHeight: 844, headerHeight: 103, nativeOrigin: 120, keyboardTop: 520 },
+    { screenHeight: 667, headerHeight: 88, nativeOrigin: 88, keyboardTop: 407 },
+  ])('keeps the composer above the keyboard when its native origin is $nativeOrigin', async ({ screenHeight, headerHeight, nativeOrigin, keyboardTop }) => {
     mockHeaderHeight = headerHeight;
+    mockWindowHeight = screenHeight;
+    View.prototype.measureInWindow.mockImplementation(callback => callback(0, nativeOrigin, 390, screenHeight - nativeOrigin));
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     await screen.findByLabelText('Comment');
-    const viewportHeight = screenHeight - headerHeight;
+    const viewportHeight = screenHeight - nativeOrigin;
     await act(async () => fireEvent(screen.getByTestId('Comments.keyboardLayout'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 390, height: viewportHeight } },
       persist: jest.fn(),
@@ -71,7 +85,7 @@ describe('ListingDiscussionScreen', () => {
       endCoordinates: { screenY: keyboardTop, screenX: 0, width: 390, height: screenHeight - keyboardTop },
     }));
     const keyboardPadding = StyleSheet.flatten(screen.getByTestId('Comments.keyboardLayout').props.style).paddingBottom;
-    expect(headerHeight + viewportHeight - keyboardPadding).toBe(keyboardTop);
+    expect(nativeOrigin + viewportHeight - keyboardPadding).toBe(keyboardTop);
     expect(composerPadding()).toBeGreaterThanOrEqual(8);
     expect(composerPadding()).toBeLessThanOrEqual(12);
     fireEvent.changeText(screen.getByLabelText('Comment'), 'Can I collect this tomorrow?');
@@ -119,7 +133,7 @@ describe('ListingDiscussionScreen', () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { listingId: 'listing-1' } }} />);
     await screen.findByText('Garden ladder');
-    await screen.findByText('Comments are visible to people who can see this post.');
+    await screen.findByLabelText('Comment');
   });
 
   it('opens a focused public thread from a long press and keeps private messaging separate', async () => {
@@ -133,6 +147,8 @@ describe('ListingDiscussionScreen', () => {
     await chooseAction(screen, 'Reply in thread');
     expect(screen.getByPlaceholderText('Reply in thread…')).toBeTruthy();
     expect(screen.getByText(post.content)).toBeTruthy();
+    expect(screen.getByText('Camera')).toBeTruthy();
+    expect(screen.queryByText('Back to comments')).toBeNull();
     expect(mockNavigation.setOptions).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Thread' }));
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
     fireEvent.changeText(screen.getByLabelText('Comment'), 'Yes, tomorrow works.');
@@ -227,7 +243,7 @@ describe('focused comment threads', () => {
     expect(screen.getByText('Cara’s comment')).toBeTruthy();
     expect(screen.getAllByText('I can help')).toHaveLength(1);
     expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', { content: 'I can help', parentId: alice.id });
-    fireEvent.press(screen.getByText('Back to comments'));
+    nativeBack();
     expect(screen.getByText('3 replies')).toBeTruthy();
     expect(screen.queryByText('I can help')).toBeNull();
     expect(screen.getByText('Dan’s comment')).toBeTruthy();
@@ -244,13 +260,13 @@ describe('focused comment threads', () => {
     await screen.findByText('Cara’s comment');
     expect(screen.getByLabelText('Comment').props.value).toBe('');
     fireEvent.changeText(screen.getByLabelText('Comment'), 'My Alice thread draft');
-    fireEvent.press(screen.getByText('Back to comments'));
+    nativeBack();
     expect(screen.getByLabelText('Comment').props.value).toBe('My main comment draft');
     fireEvent.press(screen.getByLabelText('View 1 reply to Ben'));
     await screen.findByText('Dan’s comment');
     expect(screen.getByLabelText('Comment').props.value).toBe('');
     fireEvent.changeText(screen.getByLabelText('Comment'), 'My Ben thread draft');
-    fireEvent.press(screen.getByText('Back to comments'));
+    nativeBack();
     fireEvent.press(screen.getByLabelText('View 1 reply to Alice'));
     expect(screen.getByLabelText('Comment').props.value).toBe('My Alice thread draft');
     fireEvent(screen.getByTestId('Comments.message.child-root-alice'), 'longPress');
@@ -259,7 +275,7 @@ describe('focused comment threads', () => {
     await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', {
       content: 'My Alice thread draft', parentId: 'root-alice',
     }));
-    fireEvent.press(screen.getByText('Back to comments'));
+    nativeBack();
     expect(screen.getByLabelText('Comment').props.value).toBe('My main comment draft');
     fireEvent.press(screen.getByLabelText('View 1 reply to Ben'));
     expect(screen.getByLabelText('Comment').props.value).toBe('My Ben thread draft');
@@ -309,12 +325,20 @@ describe('focused comment threads', () => {
     api.getRequestDiscussions.mockResolvedValue({ posts: [post] });
     const params = kind === 'request' ? { requestId: 'request-1', request: { title: 'Help', type: 'service' } } : route.params;
     const screen = renderScreen({ params });
+    fireEvent.changeText(await screen.findByLabelText('Comment'), 'Main draft');
     fireEvent.press(await screen.findByLabelText('View 1 reply to Alice'));
     await waitFor(() => expect(usePreventRemove).toHaveBeenLastCalledWith(true, expect.any(Function)));
-    act(() => usePreventRemove.mock.calls.at(-1)[1]({ data: { action: { type: 'GO_BACK' } } }));
+    expect(screen.getByText(kind === 'request' ? 'Help' : 'Camera')).toBeTruthy();
+    expect(screen.queryByText('Back to comments')).toBeNull();
+    fireEvent.changeText(screen.getByLabelText('Comment'), 'Thread draft');
+    // Native back / Android back send GO_BACK; an iOS swipe removes with POP.
+    nativeBack(kind === 'request' ? 'POP' : 'GO_BACK');
     expect(screen.getByPlaceholderText('Add a comment…')).toBeTruthy();
+    expect(screen.getByLabelText('Comment').props.value).toBe('Main draft');
+    expect(usePreventRemove).toHaveBeenLastCalledWith(false, expect.any(Function));
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
     fireEvent.press(screen.getByLabelText('View 1 reply to Alice'));
+    expect(screen.getByLabelText('Comment').props.value).toBe('Thread draft');
     fireEvent.press(screen.getByLabelText('View original post'));
     await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith(
       kind === 'request' ? 'RequestDetail' : 'ListingDetail', { id: kind === 'request' ? 'request-1' : 'listing-1' },

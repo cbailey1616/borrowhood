@@ -404,6 +404,7 @@ export default function CreateListingScreen({ navigation, route }) {
       style={styles.scrollContainer}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       enableOnAndroid={true}
       extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
       enableResetScrollToCoords={false}

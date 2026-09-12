@@ -1,5 +1,5 @@
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import * as SecureStore from 'expo-secure-store';
@@ -7,15 +7,19 @@ import * as ImagePicker from 'expo-image-picker';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), setParams: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
 let mockHeaderHeight = 88;
+let mockWindowHeight = 844;
 const mockInsets = { top: 44, bottom: 34, left: 0, right: 0 };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('@react-navigation/elements', () => ({ useHeaderHeight: () => mockHeaderHeight }));
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true, default: () => ({ width: 390, height: mockWindowHeight, scale: 3, fontScale: 1 }),
+}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => mockInsets,
   SafeAreaView: require('react-native').View,
 }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
-beforeEach(() => { jest.clearAllMocks(); mockHeaderHeight = 88; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
+beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
 describe('ChatScreen', () => {
   const route = { params: { conversationId: 'conv-1' } };
   const choosePhoto = async (screen, label = 'Choose from library') => {
@@ -25,17 +29,19 @@ describe('ChatScreen', () => {
   };
 
   it.each([
-    { screenHeight: 844, headerHeight: 113, keyboardTop: 520 },
-    { screenHeight: 667, headerHeight: 88, keyboardTop: 407 },
-  ])('keeps the composer above the native keyboard on a $screenHeight-point screen', async ({ screenHeight, headerHeight, keyboardTop }) => {
+    { screenHeight: 844, headerHeight: 103, nativeOrigin: 120, keyboardTop: 520 },
+    { screenHeight: 667, headerHeight: 88, nativeOrigin: 88, keyboardTop: 407 },
+  ])('keeps the composer above the native keyboard on a $screenHeight-point screen', async ({ screenHeight, headerHeight, nativeOrigin, keyboardTop }) => {
     mockHeaderHeight = headerHeight;
+    mockWindowHeight = screenHeight;
+    View.prototype.measureInWindow.mockImplementation(callback => callback(0, nativeOrigin, 390, screenHeight - nativeOrigin));
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     const input = await screen.findByTestId('Chat.input.message');
     expect(input.props.keyboardAppearance).toBe('dark');
     expect(input.props.inputAccessoryViewID).toBeUndefined();
     expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
-    const viewportHeight = screenHeight - headerHeight;
+    const viewportHeight = screenHeight - nativeOrigin;
     await act(async () => fireEvent(screen.getByTestId('Chat.keyboardLayout'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 0, width: 390, height: viewportHeight } },
       persist: jest.fn(),
@@ -47,7 +53,7 @@ describe('ChatScreen', () => {
       endCoordinates: { screenY: keyboardTop, screenX: 0, width: 390, height: screenHeight - keyboardTop },
     }));
     const keyboardPadding = StyleSheet.flatten(screen.getByTestId('Chat.keyboardLayout').props.style).paddingBottom;
-    expect(headerHeight + viewportHeight - keyboardPadding).toBe(keyboardTop);
+    expect(nativeOrigin + viewportHeight - keyboardPadding).toBe(keyboardTop);
     expect(composerPadding()).toBe(8);
     await act(async () => DeviceEventEmitter.emit('keyboardWillHide', {
       duration: 0, easing: 'keyboard',

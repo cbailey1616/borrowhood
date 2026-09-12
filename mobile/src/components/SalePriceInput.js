@@ -7,6 +7,5 @@ export default function SalePriceInput({ amount, onChange }) {
     <WholeDollarInput accessibilityLabel="Sale price" value={amount} onChangeText={onChange}
       placeholderTextColor={COLORS.textSecondary}
       style={{ padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, color: COLORS.text }} />
-    <Text style={{ ...TYPOGRAPHY.caption1, color: COLORS.textSecondary }}>Whole dollars only. The buyer keeps the item. Arrange payment directly with your neighbor.</Text>
   </View>;
 }

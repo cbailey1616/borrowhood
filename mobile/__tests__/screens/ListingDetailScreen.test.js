@@ -36,6 +36,7 @@ describe('ListingDetailScreen', () => {
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
     const { findByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
     await findByText('Camping Tent');
+    await findByText('Great 4-person tent');
   });
 
   it('shows free borrowing without a rental-fee or pricing card', async () => {
@@ -48,8 +49,34 @@ describe('ListingDetailScreen', () => {
 
   it('displays owner info', async () => {
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;
-    const { findByText } = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
-    await findByText(/Alice/);
+    const screen = render(<ListingDetailScreen navigation={mockNavigation} route={route} />);
+    await screen.findByText(/Alice/);
+    expect(screen.getByText('Owner')).toBeTruthy();
+    expect(screen.queryByText(/completed exchanges/)).toBeNull();
+    fireEvent.press(screen.getByLabelText("View Alice Jones's profile"));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('UserProfile', { id: 'user-2' });
+  });
+
+  it('opens comments from the comments row', async () => {
+    const Screen = require('../../src/screens/ListingDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('Comments'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDiscussion', {
+      listingId: 'listing-1', listing: mockListing,
+    });
+  });
+
+  it.each([
+    ['day', '$25.00 per day'],
+    ['hour', '$25.00 per hour'],
+    ['flat', '$25.00 flat fee'],
+  ])('keeps the %s borrowing fee and condition clear without payment boilerplate', async (unit, priceLabel) => {
+    api.getListing.mockResolvedValue({ ...mockListing, directFee: { amount: 25, unit } });
+    const Screen = require('../../src/screens/ListingDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByLabelText(priceLabel);
+    expect(screen.getByText('Condition: Good')).toBeTruthy();
+    expect(screen.queryByText('Arrange payment directly with your neighbor.')).toBeNull();
   });
 
   it('labels a sale price separately from daily borrowing', async () => {
@@ -57,8 +84,13 @@ describe('ListingDetailScreen', () => {
     const Screen = require('../../src/screens/ListingDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     await screen.findByLabelText('$60.00 one-time price');
-    expect(screen.getByText('Sale price')).toBeTruthy();
+    expect(screen.queryByText('Sale price')).toBeNull();
     expect(screen.queryByText('Borrowing price')).toBeNull();
+    expect(screen.queryByText('Arrange payment directly with your neighbor.')).toBeNull();
+    fireEvent.press(screen.getByLabelText('Request to buy this item'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('BorrowRequest', expect.objectContaining({
+      listing: expect.objectContaining({ listingType: 'sell' }),
+    }));
   });
 
   it('keeps giveaways free even if an old fee is still present', async () => {
@@ -68,6 +100,7 @@ describe('ListingDetailScreen', () => {
     await screen.findByLabelText('Free to keep');
     expect(screen.queryByText('$60.00')).toBeNull();
     expect(screen.queryByText('Arrange payment directly with your neighbor.')).toBeNull();
+    expect(screen.getByLabelText('Claim this item')).toBeTruthy();
   });
 
   it('shows "Request to Borrow" button for non-owners', async () => {
@@ -154,6 +187,8 @@ it('lets a Town preview show the item while protecting profile and contact actio
   const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'listing-1' } }} />);
   await screen.findByText(mockListing.title);
   expect(screen.queryByTestId('ListingDetail.button.save')).toBeNull();
+  expect(screen.queryByLabelText('Comments')).toBeNull();
+  expect(screen.queryByTestId('ListingDetail.button.message')).toBeNull();
   fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
   expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
   expect(mockNavigation.navigate).not.toHaveBeenCalledWith('UserProfile', expect.anything());

@@ -190,9 +190,6 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={styles.ratingsSection}>
-          <Text style={styles.emptyText}>An item shared with you never gives access to this member’s full inventory.</Text>
-        </View>
         {!isOwnProfile && <View style={{ paddingHorizontal: SPACING.lg }}>
           <UserSafetyActions key={id} userId={id} name={user.firstName} variant="section" onBlockChange={setMessagesBlocked} />
         </View>}
@@ -287,9 +284,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
-  ratingsSection: {
-    padding: SPACING.lg,
-  },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
     color: COLORS.text,
@@ -301,10 +295,6 @@ const styles = StyleSheet.create({
     padding: SPACING.xxl,
     alignItems: 'center',
     gap: SPACING.sm,
-  },
-  emptyText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textMuted,
   },
   listingsGrid: {
     flexDirection: 'row',

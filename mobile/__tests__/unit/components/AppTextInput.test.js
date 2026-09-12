@@ -1,9 +1,14 @@
 import React from 'react';
-import { InputAccessoryView, Keyboard, TextInput, View } from 'react-native';
+import { InputAccessoryView, Keyboard, Platform, TextInput, View } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import AppTextInput from '../../../src/components/AppTextInput';
 
-it.each([{ multiline: true }, { keyboardType: 'decimal-pad' }, { secureTextEntry: true }])('attaches Done to the keyboard and dismisses without submitting or clearing: %j', props => {
+it.each([
+  { keyboardType: 'number-pad' }, { keyboardType: 'decimal-pad' }, { keyboardType: 'phone-pad' },
+  { keyboardType: 'numeric' }, { keyboardType: 'ascii-capable-number-pad' },
+  { inputMode: 'numeric' }, { inputMode: 'decimal' }, { inputMode: 'tel' },
+  { keyboardType: 'default', inputMode: 'numeric' },
+])('keeps a dark Done control on a keypad without submitting or clearing: %j', props => {
   const dismiss = jest.spyOn(Keyboard, 'dismiss');
   const submit = jest.fn(), change = jest.fn();
   const screen = render(<AppTextInput {...props} testID="input" value="Draft" onSubmitEditing={submit} onChangeText={change} />);
@@ -12,6 +17,7 @@ it.each([{ multiline: true }, { keyboardType: 'decimal-pad' }, { secureTextEntry
   expect(field.props.keyboardType).toBe(props.keyboardType);
   expect(field.props.secureTextEntry).toBe(props.secureTextEntry);
   const accessory = screen.UNSAFE_getByType(InputAccessoryView);
+  expect(accessory.props.backgroundColor).toBe('#2C2C2E');
   expect(field.props.inputAccessoryViewID).toBe(accessory.props.nativeID);
   expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
   fireEvent(field, 'focus', {});
@@ -23,6 +29,21 @@ it.each([{ multiline: true }, { keyboardType: 'decimal-pad' }, { secureTextEntry
   fireEvent(field, 'blur', {});
   expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
   dismiss.mockRestore();
+});
+
+it.each([
+  {}, { multiline: true }, { secureTextEntry: true, textContentType: 'password', autoComplete: 'current-password' },
+  { keyboardType: 'email-address', autoCorrect: false, autoCapitalize: 'none' },
+  { keyboardType: 'number-pad', inputMode: 'text' },
+  { keyboardType: 'number-pad', inputMode: 'none' },
+])('uses the plain message-style keyboard for ordinary typing without losing input options: %j', props => {
+  const screen = render(<AppTextInput {...props} autoFocus testID="input" />);
+  const field = screen.getByTestId('input');
+  expect(field.props.keyboardAppearance).toBe('dark');
+  expect(field.props.autoFocus).toBe(true);
+  expect(field.props.inputAccessoryViewID).toBeUndefined();
+  expect(field.props).toEqual(expect.objectContaining(props));
+  expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
 });
 
 it('preserves refs, focus callbacks and the search key', () => {
@@ -38,7 +59,7 @@ it('preserves refs, focus callbacks and the search key', () => {
 
 it('waits for the native toolbar before auto-focusing and does not refocus after dismissal', () => {
   const ref = React.createRef();
-  const screen = render(<AppTextInput ref={ref} autoFocus multiline testID="input" />);
+  const screen = render(<AppTextInput ref={ref} autoFocus keyboardType="number-pad" testID="input" />);
   const focus = jest.spyOn(ref.current, 'focus');
   expect(screen.getByTestId('input').props.autoFocus).toBe(false);
   expect(focus).not.toHaveBeenCalled();
@@ -52,10 +73,25 @@ it('waits for the native toolbar before auto-focusing and does not refocus after
 });
 
 it('preserves a caller-owned accessory and its native autofocus', () => {
-  const screen = render(<AppTextInput autoFocus inputAccessoryViewID="custom-toolbar" testID="input" />);
+  const screen = render(<AppTextInput autoFocus keyboardType="number-pad" inputAccessoryViewID="custom-toolbar" testID="input" />);
   expect(screen.getByTestId('input').props.inputAccessoryViewID).toBe('custom-toolbar');
   expect(screen.getByTestId('input').props.autoFocus).toBe(true);
   expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
+});
+
+it('allows explicit accessory overrides and leaves Android dismissal to the native keyboard', () => {
+  const screen = render(<AppTextInput showDoneAccessory multiline testID="input" />);
+  expect(screen.UNSAFE_getByType(InputAccessoryView)).toBeTruthy();
+  screen.rerender(<AppTextInput showDoneAccessory={false} keyboardType="number-pad" testID="input" />);
+  expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
+  const originalOS = Platform.OS;
+  try {
+    Platform.OS = 'android';
+    screen.rerender(<AppTextInput showDoneAccessory keyboardType="number-pad" testID="input" />);
+    expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
+  } finally {
+    Platform.OS = originalOS;
+  }
 });
 
 it('supports a composer without the Done toolbar while preserving native focus and text', () => {

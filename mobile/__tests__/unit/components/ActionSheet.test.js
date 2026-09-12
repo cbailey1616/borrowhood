@@ -10,6 +10,32 @@ jest.mock('../../../src/context/ErrorContext', () => ({
 }));
 
 describe('ActionSheet', () => {
+  it.each([false, true])('exposes the current filter selection and dismisses before applying it (%s)', selected => {
+    const ActionSheet = require('../../../src/components/ActionSheet').default;
+    const close = jest.fn();
+    const select = jest.fn();
+    const screen = render(<ActionSheet isVisible onClose={close} title="Inbox options" variant="options"
+      actions={[{ label: 'Unread only', selected, onPress: select }, { label: 'Mark all as read', onPress: jest.fn() }]} />);
+    const filter = screen.getByRole('checkbox', { name: 'Unread only', checked: selected });
+    expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeTruthy();
+    fireEvent.press(filter);
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('closes the compact options sheet without changing the inbox', () => {
+    const ActionSheet = require('../../../src/components/ActionSheet').default;
+    const close = jest.fn();
+    const select = jest.fn();
+    const screen = render(<ActionSheet isVisible onClose={close} title="Inbox options" variant="options"
+      actions={[{ label: 'Unread only', selected: false, onPress: select }]} />);
+    expect(screen.queryByText('Cancel')).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Close Inbox options' }));
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(select).not.toHaveBeenCalled();
+  });
+
   it('removes the iOS touch layer before navigating and closes once', () => {
     const ActionSheet = require('../../../src/components/ActionSheet').default;
     const close = jest.fn();

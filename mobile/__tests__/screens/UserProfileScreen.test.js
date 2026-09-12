@@ -33,7 +33,7 @@ describe('UserProfileScreen', () => {
   it('shows reputation without exposing the full inventory', async () => {
     const Screen = require('../../src/screens/UserProfileScreen').default;
     const { findByText, queryByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByText(/never gives access to this member’s full inventory/);
+    await findByText('Alice Jones');
     expect(queryByText(/Items \(/)).toBeNull();
     expect(api.getUserListings).not.toHaveBeenCalled();
   });

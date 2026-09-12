@@ -1,5 +1,5 @@
 import React from 'react';
-import { Keyboard } from 'react-native';
+import { Keyboard, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
@@ -70,7 +70,12 @@ describe('BorrowRequestScreen', () => {
     const input = await screen.findByLabelText('Private message to owner');
     fireEvent(input, 'focus');
     fireEvent.changeText(input, 'Tomorrow afternoon?');
-    expect(screen.getByLabelText('Done, close keyboard')).toBeTruthy();
+    expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
+    expect(input.props.keyboardAppearance).toBe('dark');
+    expect(input.props.inputAccessoryViewID).toBeUndefined();
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    expect(scroll.props.keyboardDismissMode).toBe('interactive');
+    expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
     expect(input.props.value).toBe('Tomorrow afternoon?');
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
     expect(dismiss).toHaveBeenCalled();
@@ -87,9 +92,13 @@ describe('BorrowRequestScreen', () => {
     expect(dismiss).toHaveBeenCalled();
     expect(screen.UNSAFE_getByType(DateTimePicker)).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
-    fireEvent(screen.getByLabelText('Private message to owner'), 'focus');
+    const input = screen.getByLabelText('Private message to owner');
+    fireEvent(input, 'focus');
     expect(screen.UNSAFE_queryByType(DateTimePicker)).toBeNull();
-    expect(screen.getByLabelText('Done, close keyboard')).toBeTruthy();
+    expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
+    expect(input.props.keyboardAppearance).toBe('dark');
+    fireEvent.changeText(input, 'Tomorrow afternoon?');
+    expect(input.props.value).toBe('Tomorrow afternoon?');
     dismiss.mockRestore();
   });
 

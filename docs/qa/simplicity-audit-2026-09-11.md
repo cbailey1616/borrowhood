@@ -129,3 +129,17 @@ A suspected missing Alert import in Withdraw offer was ruled out: the import exi
 3. Apply consistent loading/error/retry states and reachability to remaining screens, including member pagination.
 4. Reuse form controls and simplify vocabulary; retain privacy and destructive-action confirmations.
 5. Walk the actual app on a small iPhone with large text and a fresh account, then repeat with poor connectivity and an established account. Require each primary task to be understandable without coaching before declaring it simple enough.
+
+## Device-feedback follow-up — 2026-09-12
+
+- Profile headers omit the missing-rank placeholder. Real ranks still appear beside the name; absent server scores never become an invented rank. The last checked production backend remains 7512143 and needs the pending ranking release.
+- Comments, threads, and private chat share a measured keyboard container. It uses native viewport coordinates, follows docked keyboard frame changes, and avoids duplicate Android resizing or shifting the whole conversation for a floating iPad keyboard. The native-header estimate is no longer used to calculate the keyboard inset.
+- Ordinary form fields use the same dark native keyboard without the old light Done accessory. Number and phone pads retain a dark, accessible Done control. Create/Edit Item forms dismiss typing on drag; existing request-form dismissal remains intact.
+- Thread navigation uses the native back arrow to return to Comments, preserving both drafts. The duplicate body Back to comments button is removed; original-post context and View post remain.
+- Item Details groups the title, plain price, condition/location, and description; Save/Share sit over the photo. Comments and owner use matching rows in one cream group, with request and message actions fixed below. Availability, sale/giveaway/borrow distinctions, active exchanges, owner controls, and masked-profile restrictions remain.
+- Inbox options stay under the header menu, with green icon accents, an accessible Unread only checkbox, and a compact close control. Mark all as read remains available for both tabs without a persistent controls row.
+- Removed the generic payment instructions, comments-visibility sentence, Comments helper line, redundant price headings, and the profile inventory explanation. Actual audience choices, price units, permissions, recovery instructions, and destructive confirmations remain.
+
+Validation covers 916 tests across 128 mobile suites. The full run passed 127 suites; two outdated Done-accessory expectations in the remaining BorrowRequest suite were updated, and that entire eight-test suite then passed. Production iOS JavaScript export passed. Independent code review found no blocking regressions. Physical-device keyboard animation, large text, and VoiceOver still need verification.
+
+These are source changes after the c9f93b8 TestFlight handoff. They require a new mobile build; neither the uploaded screenshot nor the generated Item Details concept proves native device validation. Production backend deployment is separate.

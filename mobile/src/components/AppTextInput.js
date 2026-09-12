@@ -4,16 +4,24 @@ import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-// The accessory belongs to the native keyboard, so it follows sheets, keyboard
-// changes and multiline fields without covering a screen's input or actions.
-const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBlur, inputAccessoryViewID, showDoneAccessory = true, keyboardAppearance = 'dark', ...props }, ref) {
+const PAD_KEYBOARD_TYPES = new Set(['number-pad', 'decimal-pad', 'phone-pad', 'numeric', 'ascii-capable-number-pad']);
+const PAD_INPUT_MODES = new Set(['numeric', 'decimal', 'tel']);
+const DARK_ACCESSORY = { background: '#2C2C2E', text: COLORS.card, separator: 'rgba(255, 255, 255, 0.12)' };
+
+// Ordinary typing uses the same native keyboard as messages. Number/phone pads
+// lack a return key, so keep one compact dismissal control attached to them.
+const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBlur, inputAccessoryViewID, showDoneAccessory, keyboardAppearance = 'dark', ...props }, ref) {
   const id = useId();
   const inputRef = useRef(null);
   const didAutoFocus = useRef(false);
   const [accessoryReady, setAccessoryReady] = useState(false);
   const [focused, setFocused] = useState(false);
   const accessoryId = `borrowhood-keyboard-${id}`;
-  const showAccessory = showDoneAccessory && Platform.OS === 'ios' && !inputAccessoryViewID;
+  // React Native gives inputMode precedence over keyboardType.
+  const usesPad = props.inputMode != null ? PAD_INPUT_MODES.has(props.inputMode) : PAD_KEYBOARD_TYPES.has(props.keyboardType);
+  const showAccessory = (showDoneAccessory ?? usesPad) && Platform.OS === 'ios' && !inputAccessoryViewID;
+  const accessoryColors = keyboardAppearance === 'dark' ? DARK_ACCESSORY
+    : { background: COLORS.card, text: COLORS.primary, separator: COLORS.separator };
   const setInputRef = useCallback(node => {
     inputRef.current = node;
     if (typeof ref === 'function') ref(node);
@@ -34,13 +42,14 @@ const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBl
       inputAccessoryViewID={inputAccessoryViewID || (showAccessory ? accessoryId : undefined)}
       onFocus={event => { setFocused(true); onFocus?.(event); }}
       onBlur={event => { setFocused(false); onBlur?.(event); }} />
-    {showAccessory && <InputAccessoryView nativeID={accessoryId} backgroundColor={COLORS.card}>
-      <View style={styles.toolbar} onLayout={() => setAccessoryReady(true)} accessibilityElementsHidden={!focused}
+    {showAccessory && <InputAccessoryView nativeID={accessoryId} backgroundColor={accessoryColors.background}>
+      <View style={[styles.toolbar, { backgroundColor: accessoryColors.background, borderTopColor: accessoryColors.separator }]}
+        onLayout={() => setAccessoryReady(true)} accessibilityElementsHidden={!focused}
         importantForAccessibility={focused ? 'auto' : 'no-hide-descendants'}>
         <HapticPressable accessibilityRole="button" accessibilityLabel="Done, close keyboard"
           onPress={Keyboard.dismiss} style={styles.done} haptic="light">
-          <Ionicons name="chevron-down" size={18} color={COLORS.primary} />
-          <Text style={styles.label}>Done</Text>
+          <Ionicons name="chevron-down" size={18} color={accessoryColors.text} />
+          <Text style={[styles.label, { color: accessoryColors.text }]}>Done</Text>
         </HapticPressable>
       </View>
     </InputAccessoryView>}
@@ -53,12 +62,11 @@ const styles = StyleSheet.create({
   toolbar: {
     minHeight: 44,
     flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
-    backgroundColor: COLORS.card, borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator, paddingHorizontal: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: SPACING.md,
   },
   done: {
     minHeight: 44, minWidth: 80, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: SPACING.xs, paddingHorizontal: SPACING.sm,
   },
-  label: { ...TYPOGRAPHY.headline, color: COLORS.primary },
+  label: { ...TYPOGRAPHY.headline },
 });
