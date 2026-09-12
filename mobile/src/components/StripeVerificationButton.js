@@ -17,11 +17,11 @@ export default function StripeVerificationButton({ onPress, loading = false, tes
       accessibilityState={{ disabled: loading, busy: loading }}
       style={styles.button}
     >
-      {loading ? <ActivityIndicator color={COLORS.surface} /> : (
+      {loading ? <ActivityIndicator color={COLORS.primary} /> : (
         <View style={styles.label}>
           <Text style={styles.text}>Verify through</Text>
-          <Image source={require('../../assets/brand/stripe-wordmark-white.svg')}
-            style={{ width: logoWidth, height: logoWidth * 151 / 360 }} contentFit="contain" accessible={false} />
+          <Image source={require('../../assets/brand/stripe-wordmark-purple.svg')}
+            style={{ width: logoWidth, height: logoWidth * 150 / 360 }} contentFit="contain" accessible={false} />
         </View>
       )}
     </HapticPressable>
@@ -29,7 +29,7 @@ export default function StripeVerificationButton({ onPress, loading = false, tes
 }
 
 const styles = StyleSheet.create({
-  button: { minHeight: 54, paddingVertical: 14, paddingHorizontal: 20, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: 54, paddingVertical: 14, paddingHorizontal: 20, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   label: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 9, rowGap: 4 },
-  text: { ...TYPOGRAPHY.button, color: COLORS.surface },
+  text: { ...TYPOGRAPHY.button, color: COLORS.primary },
 });

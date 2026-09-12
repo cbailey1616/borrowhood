@@ -7,3 +7,5 @@ These provider marks retain their official appearance. Borrowhood's woodland ill
 - Apple uses the native `expo-apple-authentication` button with its supported white outline style and rounded corners.
 
 - `stripe-wordmark-white.svg`: unmodified official white Stripe wordmark from the [Stripe newsroom logo kit](https://stripe.com/newsroom/information), downloaded on 2026-09-12. Source archive: https://assets.stripeassets.com/fzn2n1nzq965/7q0dJGs6fRS1LRmMpChoAF/87def4edfbb7fd5aef4ab9baf904b2db/Stripe_logo_kit.zip. Use on a dark background and preserve its proportions. Used only to identify Stripe as the identity-verification provider; subject to [Stripe’s Marks Usage Terms](https://stripe.com/legal/marks).
+
+- `stripe-wordmark-purple.svg`: unmodified official Stripe Blurple wordmark (`#533AFD`) from the same [Stripe newsroom logo kit](https://stripe.com/newsroom/information), downloaded on 2026-09-12. Use on light backgrounds and preserve its proportions. Used only to identify Stripe as the identity-verification provider; subject to [Stripe’s Marks Usage Terms](https://stripe.com/legal/marks).

@@ -40,9 +40,7 @@ export default function VerificationComparison() {
                 <Icon name={withoutId ? 'checkmark' : 'remove'} size={22} color={withoutId ? COLORS.primary : COLORS.textMuted} />
               </View>
               <View style={styles.column}>
-                <View style={[styles.check, !withoutId && styles.townCheck]}>
-                  <Icon name="checkmark" size={22} color={!withoutId ? COLORS.surface : COLORS.primary} />
-                </View>
+                <Icon name="checkmark" size={22} color={COLORS.primary} />
               </View>
             </>
           )}
@@ -63,8 +61,6 @@ const styles = StyleSheet.create({
   label: { ...TYPOGRAPHY.bodySmall, color: COLORS.text },
   townRow: { backgroundColor: COLORS.primaryMuted },
   emphasis: { color: COLORS.primary, fontFamily: TYPOGRAPHY.headline.fontFamily, fontWeight: '600' },
-  check: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  townCheck: { backgroundColor: COLORS.primary },
   stacked: { alignItems: 'flex-start', flexDirection: 'column', gap: 8, paddingVertical: 16 },
   detail: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });
