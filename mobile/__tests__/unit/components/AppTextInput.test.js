@@ -8,6 +8,9 @@ it.each([{ multiline: true }, { keyboardType: 'decimal-pad' }, { secureTextEntry
   const submit = jest.fn(), change = jest.fn();
   const screen = render(<AppTextInput {...props} testID="input" value="Draft" onSubmitEditing={submit} onChangeText={change} />);
   const field = screen.getByTestId('input');
+  expect(field.props.keyboardAppearance).toBe('dark');
+  expect(field.props.keyboardType).toBe(props.keyboardType);
+  expect(field.props.secureTextEntry).toBe(props.secureTextEntry);
   const accessory = screen.UNSAFE_getByType(InputAccessoryView);
   expect(field.props.inputAccessoryViewID).toBe(accessory.props.nativeID);
   expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
@@ -53,4 +56,16 @@ it('preserves a caller-owned accessory and its native autofocus', () => {
   expect(screen.getByTestId('input').props.inputAccessoryViewID).toBe('custom-toolbar');
   expect(screen.getByTestId('input').props.autoFocus).toBe(true);
   expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
+});
+
+it('supports a composer without the Done toolbar while preserving native focus and text', () => {
+  const change = jest.fn();
+  const screen = render(<AppTextInput showDoneAccessory={false} autoFocus multiline testID="input" value="Draft" onChangeText={change} />);
+  const field = screen.getByTestId('input');
+  expect(field.props.inputAccessoryViewID).toBeUndefined();
+  expect(field.props.autoFocus).toBe(true);
+  expect(field.props.showDoneAccessory).toBeUndefined();
+  expect(screen.UNSAFE_queryByType(InputAccessoryView)).toBeNull();
+  fireEvent.changeText(field, 'My reply');
+  expect(change).toHaveBeenCalledWith('My reply');
 });

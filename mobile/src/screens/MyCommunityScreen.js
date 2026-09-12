@@ -168,6 +168,11 @@ export default function MyCommunityScreen({ navigation }) {
       )}
 
       <View style={styles.heroCopy}>
+        {(community.role === 'organizer' || user?.isAdmin) && (
+          <ActionButton label={community.bannerUrl ? 'Change cover photo' : 'Add cover photo'}
+            style={{ marginBottom: SPACING.md }}
+            onPress={() => navigation.navigate('CommunitySettings', { id: community.id, editCover: true })} />
+        )}
         <Text style={styles.eyebrow}>A little closer to home</Text>
         <Text style={styles.communityName}>{community.name}</Text>
         {!!community.description && <Text style={styles.communityDescription}>{community.description}</Text>}

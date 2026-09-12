@@ -182,7 +182,7 @@ export default function ProfileScreen({ navigation, route }) {
               </View>
             </HapticPressable>
             <View style={styles.headerInfo}>
-              <MemberSummary user={user || {}} openRating={route?.params?.openRating === true}
+              <MemberSummary user={user || {}} profileHeader openRating={route?.params?.openRating === true}
                 onRatingClose={() => { if (route?.params?.openRating) navigation.setParams({ openRating: false }); }}>
                 <Text style={[styles.name,{flexShrink:1}]} testID="Profile.header.name" accessibilityLabel="User name" accessibilityRole="header">{user?.displayName || `${user?.firstName} ${user?.lastName}`}</Text>
                 {user?.isVerified === true && <VerifiedBadge size={18} interactive />}

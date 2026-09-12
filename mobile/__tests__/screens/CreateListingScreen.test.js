@@ -54,7 +54,7 @@ describe('CreateListingScreen', () => {
     const { getByLabelText, findByText, queryByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
     expect(queryByLabelText('Price per day')).toBeNull();
     fireEvent(getByLabelText('Charge a fee'), 'valueChange', true);
-    fireEvent.changeText(getByLabelText('Price per day'), '2.50');
+    fireEvent.changeText(getByLabelText('Price per day'), '2');
     await findByText(/Borrowhood does not collect or process/);
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
@@ -101,11 +101,11 @@ describe('CreateListingScreen', () => {
     fireEvent.changeText(screen.getByLabelText('Listing description'), 'Good condition, adjustable height.');
     await act(async () => fireEvent.press(screen.getByText('Camera')));
     fireEvent.press(screen.getByLabelText('Sell'));
-    fireEvent.changeText(screen.getByLabelText('Sale price'), '25.50');
+    fireEvent.changeText(screen.getByLabelText('Sale price'), '25');
     await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
     expect(api.createListing).toHaveBeenCalledWith(expect.objectContaining({
       description: 'Good condition, adjustable height.', listingType: 'sell',
-      directFee: { amount: 25.5, unit: 'flat', currency: 'USD' },
+      directFee: { amount: 25, unit: 'flat', currency: 'USD' },
       minDuration: undefined, maxDuration: undefined,
       depositAmount: 0,
     }));

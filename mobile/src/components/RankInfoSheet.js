@@ -28,8 +28,8 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
               <Ionicons name={currentRank.icon} size={32} illustrated color={COLORS.primary} />
             </View>
             <View style={styles.summaryCopy}>
-              <Text style={styles.currentRating}>{isNew ? currentRank.label : currentRank.tone}</Text>
-              <Text style={styles.note}>{isNew ? `Rating after ${RATING_UNLOCK_EXCHANGES} completed exchanges` : currentRank.label}</Text>
+              <Text style={styles.currentRating}>{currentRank.label}</Text>
+              <Text style={styles.note}>{isNew ? `Rating after ${RATING_UNLOCK_EXCHANGES} completed exchanges` : currentRank.tone}</Text>
             </View>
           </View>}
           {currentRank && !isNew && <View style={styles.meter} accessible accessibilityLabel={`Rating level: ${currentRank.tone}`}>
@@ -47,8 +47,8 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
               style={[styles.level, currentRank?.label === rank.label && styles.currentLevel]}>
               <Ionicons name={rank.icon} size={28} illustrated color={COLORS.primary} />
               <View style={styles.levelCopy}>
-                <Text style={styles.levelName}>{rank.tone}</Text>
-                <Text style={styles.note}>{rank.label}</Text>
+                <Text style={styles.levelName}>{rank.label}</Text>
+                <Text style={styles.note}>{rank.tone}</Text>
               </View>
               {currentRank?.label === rank.label && <View style={styles.currentBadge}>
                 <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />

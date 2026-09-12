@@ -16,6 +16,7 @@ import {
   InteractionManager,
   Linking,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,6 +26,8 @@ import HapticPressable from '../components/HapticPressable';
 import LayeredCard from '../components/LayeredCard';
 import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
+import ActionButton from '../components/ActionButton';
+import ActionSheet from '../components/ActionSheet';
 import { SkeletonListItem } from '../components/SkeletonLoader';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -81,6 +84,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
   const [hasMore, setHasMore] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [reading, setReading] = useState(false);
+  const [optionsVisible, setOptionsVisible] = useState(false);
   const [notifsDenied, setNotifsDenied] = useState(false);
   const [unseenActivityUnread, setUnseenActivityUnread] = useState(0);
   const requestVersion = useRef(0);
@@ -168,8 +172,9 @@ export default function InboxScreen({ navigation, route, onRead }) {
     fetchData();
   };
 
-  const selectUnreadOnly = () => {
-    unreadFilter.current = !unreadFilter.current;
+  const selectUnreadOnly = (value) => {
+    if (value === unreadFilter.current) return;
+    unreadFilter.current = value;
     pageCount.current = 1;
     setUnreadOnly(unreadFilter.current);
     setHasMore(false);
@@ -191,12 +196,21 @@ export default function InboxScreen({ navigation, route, onRead }) {
     readingRef.current = true;
     setReading(true);
     try {
-      if (activeTab === 1) await api.markAllNotificationsRead();
-      else await Promise.all(conversations.filter(item => item.unreadCount > 0).map(item => api.markConversationRead(item.id)));
+      const markMessagesRead = async () => {
+        // Fetch all conversations, including any missing after a failed load.
+        const latest = await api.getConversations();
+        const results = await Promise.allSettled((latest || [])
+          .filter(item => item.unreadCount > 0)
+          .map(item => api.markConversationRead(item.id)));
+        if (results.some(result => result.status === 'rejected')) throw new Error('Message read failed');
+      };
+      const results = await Promise.allSettled([api.markAllNotificationsRead(), markMessagesRead()]);
+      if (results.some(result => result.status === 'rejected')) throw new Error('Inbox read failed');
       haptics.success();
+      showToast('Marked activity and messages as read.', 'success');
     } catch (e) {
       haptics.error();
-      showToast('Couldn’t mark everything read. Please try again.', 'error');
+      showToast('Some items couldn’t be marked as read. Please try again.', 'error');
     } finally {
       onRead?.();
       // Reconcile after the update so anything arriving meanwhile stays unread.
@@ -339,23 +353,24 @@ export default function InboxScreen({ navigation, route, onRead }) {
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <NativeHeader title="Inbox" />
-        <View style={styles.skeletonContainer}>
-          <SkeletonListItem />
-          <SkeletonListItem />
-          <SkeletonListItem />
-          <SkeletonListItem />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <NativeHeader title="Inbox">
+      <NativeHeader title="Inbox" rightElement={
+        <View style={styles.headerActions}>
+          {unreadOnly && <HapticPressable style={styles.activeFilter}
+            accessibilityLabel="Show all inbox items" onPress={() => selectUnreadOnly(false)}>
+            <Text style={styles.activeFilterLabel}>Unread only</Text>
+            <Ionicons name="close" size={14} color={COLORS.primary} />
+          </HapticPressable>}
+          <HapticPressable style={styles.optionsButton} accessibilityLabel="Inbox options"
+            accessibilityHint="Filter unread items or mark the inbox as read."
+            accessibilityState={{ disabled: isLoading || reading, expanded: optionsVisible, busy: reading }}
+            disabled={isLoading || reading} onPress={() => setOptionsVisible(true)}>
+            {reading ? <ActivityIndicator color={COLORS.primary} size="small" />
+              : <Ionicons name="ellipsis-horizontal" size={22} color={COLORS.primary} />}
+          </HapticPressable>
+        </View>
+      }>
         <SegmentedControl
           testID="Inbox.segment"
           segments={[
@@ -368,22 +383,14 @@ export default function InboxScreen({ navigation, route, onRead }) {
         />
       </NativeHeader>
 
-      <View style={styles.inboxControls}>
-        {activeTab === 1 ? (
-          <HapticPressable onPress={selectUnreadOnly} style={[styles.filterButton, unreadOnly && styles.filterButtonSelected]}
-            accessibilityRole="button" accessibilityLabel={unreadOnly ? 'Show all activity' : 'Show unread activity'} accessibilityState={{ selected: unreadOnly }}>
-            <Text style={styles.markAllBtn}>{unreadOnly ? 'Show all activity' : 'Unread only'}</Text>
-          </HapticPressable>
-        ) : <Text style={styles.markAllLabel}>{unreadMessages > 0 ? `${unreadMessages} unread` : 'Private conversations'}</Text>}
-        {(activeTab === 1 ? unreadCount : unreadMessages) > 0 && (
-          <HapticPressable onPress={handleMarkAllRead} haptic="light" style={styles.textButton} disabled={reading}
-            accessibilityRole="button" accessibilityLabel={activeTab === 1 ? 'Mark all activity read' : 'Mark all messages read'}>
-            <Text style={styles.markAllBtn}>{reading ? 'Marking read…' : 'Mark all read'}</Text>
-          </HapticPressable>
-        )}
-      </View>
-
-      {activeTab === 1 ? (
+      {isLoading ? (
+        <View style={styles.skeletonContainer}>
+          <SkeletonListItem />
+          <SkeletonListItem />
+          <SkeletonListItem />
+          <SkeletonListItem />
+        </View>
+      ) : activeTab === 1 ? (
         <FlatList
           data={unreadOnly ? notifications.filter(item => !item.isRead) : notifications}
           renderItem={renderNotification}
@@ -449,15 +456,17 @@ export default function InboxScreen({ navigation, route, onRead }) {
             <View style={styles.emptyContainer}>
               <HeroIcon icon="notifications" size={80} />
               <Text style={styles.emptyTitle}>{loadError.activity ? 'Activity is unavailable' : unreadOnly ? 'No unread activity' : activeBorrows.length ? 'No new updates' : 'All caught up!'}</Text>
-              <Text style={styles.emptySubtitle}>
-                {loadError.activity ? 'Check your connection, then tap Retry.' : unreadOnly ? 'Tap Show all activity to see earlier updates.' : 'Requests, replies and pickup updates will appear here.'}
-              </Text>
+              {unreadOnly && !loadError.activity ? (
+                <ActionButton label="Show all" onPress={() => selectUnreadOnly(false)} style={styles.showAllButton} />
+              ) : <Text style={styles.emptySubtitle}>
+                {loadError.activity ? 'Check your connection, then tap Retry.' : 'Requests, replies and pickup updates will appear here.'}
+              </Text>}
             </View>
           }
         />
       ) : (
         <FlatList
-          data={conversations}
+          data={unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
@@ -472,14 +481,28 @@ export default function InboxScreen({ navigation, route, onRead }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <HeroIcon icon="chatbubble" size={80} />
-              <Text style={styles.emptyTitle}>{loadError.messages ? 'Messages are unavailable' : 'No messages yet'}</Text>
-              <Text style={styles.emptySubtitle}>
+              <Text style={styles.emptyTitle}>{loadError.messages ? 'Messages are unavailable' : unreadOnly ? 'No unread messages' : 'No messages yet'}</Text>
+              {unreadOnly && !loadError.messages ? (
+                <ActionButton label="Show all" onPress={() => selectUnreadOnly(false)} style={styles.showAllButton} />
+              ) : <Text style={styles.emptySubtitle}>
                 {loadError.messages ? 'Check your connection, then tap Retry.' : 'Message a neighbor from an item or exchange to get started.'}
-              </Text>
+              </Text>}
             </View>
           }
         />
       )}
+      <ActionSheet isVisible={optionsVisible} onClose={() => setOptionsVisible(false)} title="Inbox options"
+        actions={[
+          { label: unreadOnly ? 'Show all' : 'Unread only', onPress: () => {
+            setOptionsVisible(false);
+            selectUnreadOnly(!unreadOnly);
+          } },
+          { label: 'Mark all as read', onPress: () => {
+            setOptionsVisible(false);
+            handleMarkAllRead();
+          } },
+        ]}
+      />
     </View>
   );
 }
@@ -495,25 +518,23 @@ const styles = StyleSheet.create({
   segmented: {
     marginTop: SPACING.sm,
   },
-  inboxControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
-    gap: SPACING.sm,
-    paddingBottom: SPACING.xs,
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  optionsButton: {
+    width: 44, height: 44, borderRadius: RADIUS.full,
+    borderWidth: 1, borderColor: COLORS.borderGreenStrong, backgroundColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
+  activeFilter: {
+    minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.borderGreenStrong, backgroundColor: COLORS.primaryMuted,
+  },
+  activeFilterLabel: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  showAllButton: { marginTop: SPACING.lg, minWidth: 120, maxWidth: '100%' },
   textButton: { minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexShrink: 1 },
-  filterButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
-  filterButtonSelected: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
   retryNotice: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.sm, marginBottom: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceElevated },
   retryText: { ...TYPOGRAPHY.footnote, flex: 1, color: COLORS.textSecondary },
   olderButton: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, marginVertical: SPACING.sm },
-  markAllLabel: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
   markAllBtn: {
     ...TYPOGRAPHY.footnote,
     fontWeight: '600',

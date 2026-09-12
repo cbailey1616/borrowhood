@@ -584,14 +584,14 @@ export default function FeedScreen({ navigation }) {
           <HapticPressable
             testID="Feed.exchanges"
             accessibilityRole="button"
-            accessibilityLabel={`Your exchanges, ${exchangeSummary}`}
+            accessibilityLabel={`In progress, ${exchangeSummary}`}
             onPress={() => navigation.navigate('Activity', { tab: 'activity' })}
             style={styles.exchangeCard}
             haptic="light"
           >
             <Ionicons name="basket" size={30} illustrated color={COLORS.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>Your exchanges</Text>
+              <Text style={styles.bannerTitle}>In progress</Text>
               <Text style={styles.bannerSubtitle}>{exchangeSummary}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />

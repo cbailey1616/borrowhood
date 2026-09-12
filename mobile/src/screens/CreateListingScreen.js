@@ -1,3 +1,4 @@
+import WholeDollarInput from '../components/WholeDollarInput';
 import TextInput from '../components/AppTextInput';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
@@ -592,15 +593,14 @@ export default function CreateListingScreen({ navigation, route }) {
           <>
             <View style={[styles.priceInput, fieldErrors.pricePerDay && styles.fieldError]}>
               <Text style={styles.currency}>$</Text>
-              <TextInput
+              <WholeDollarInput
                 testID="CreateListing.input.price"
                 accessibilityLabel="Price per day"
                 style={styles.priceField}
                 value={formData.pricePerDay}
                 onChangeText={(v) => updateField('pricePerDay', v)}
-                placeholder="5.00"
+                placeholder="5"
                 placeholderTextColor={COLORS.textMuted}
-                keyboardType="decimal-pad"
               />
               <Text style={styles.priceSuffix}>/day</Text>
             </View>
@@ -645,15 +645,14 @@ export default function CreateListingScreen({ navigation, route }) {
         {formData.requireDeposit && user?.payoutsEnabled && (
           <View style={styles.priceInput}>
             <Text style={styles.currency}>$</Text>
-            <TextInput
+            <WholeDollarInput
               testID="CreateListing.input.deposit"
               accessibilityLabel="Deposit amount"
               style={styles.priceField}
               value={formData.depositAmount}
               onChangeText={(v) => updateField('depositAmount', v)}
-              placeholder="0.00"
+              placeholder="0"
               placeholderTextColor={COLORS.textMuted}
-              keyboardType="decimal-pad"
             />
           </View>
         )}

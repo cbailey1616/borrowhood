@@ -7,6 +7,23 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getCommunities.mockResolvedValue([]); api.getCommunityMembers.mockResolvedValue([]); });
 describe('MyCommunityScreen', () => {
+  it.each([null, 'https://example.com/cover.jpg'])('gives moderators a direct cover editor for %s', async bannerUrl => {
+    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer', bannerUrl }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByText(bannerUrl ? 'Change cover photo' : 'Add cover photo'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunitySettings', { id: 'comm-1', editCover: true });
+  });
+
+  it('does not offer cover editing to regular members', async () => {
+    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'member' }]);
+    const Screen = require('../../src/screens/MyCommunityScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Test Hood');
+    expect(screen.queryByText('Add cover photo')).toBeNull();
+    expect(screen.queryByText('Change cover photo')).toBeNull();
+  });
+
   it('hides legacy pinned announcements and uses member display names', async () => {
     api.getCommunities.mockResolvedValue([{ id: 'c', name: 'Our neighborhood', announcement: 'Old pinned note' }]);
     api.getCommunityMembers.mockResolvedValue([{ id: 'u', displayName: 'Friendly Neighbor', firstName: 'LEGAL NAME', role: 'organizer' }]);

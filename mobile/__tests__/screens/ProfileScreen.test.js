@@ -65,10 +65,10 @@ describe('ProfileScreen', () => {
     const identity = within(screen.getByTestId('MemberSummary.identity'));
     expect(identity.getByTestId('Profile.header.name')).toBeTruthy();
     expect(identity.getByLabelText('Verified identity')).toBeTruthy();
-    expect(identity.getByLabelText('Neighbor rating: Good, Archer')).toBeTruthy();
+    expect(identity.getByLabelText('Neighbor rank: Archer')).toBeTruthy();
     expect(screen.queryByText('Good')).toBeNull();
-    expect(screen.queryByText('Archer')).toBeNull();
-    expect(screen.getByText('5 completed exchanges')).toBeTruthy();
+    expect(screen.getByText('Archer')).toBeTruthy();
+    expect(screen.queryByText('5 completed exchanges')).toBeNull();
   });
 
   // Subscription menu hidden when ENABLE_PAID_TIERS = false
@@ -116,7 +116,7 @@ describe('ProfileScreen', () => {
     mockUser.endorsement = { count: 0, percent: null, score: null, completedCount: 2 };
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const screen = render(<ProfileScreen navigation={mockNavigation} />);
-    expect(screen.getByLabelText('Neighbor rating: New neighbor')).toBeTruthy();
+    expect(screen.getByLabelText('Neighbor rank: New neighbor')).toBeTruthy();
     expect(mockRefreshUser).toHaveBeenCalledTimes(1);
     const onFocus = mockNavigation.addListener.mock.calls.find(([event]) => event === 'focus')[1];
     mockRefreshUser.mockImplementationOnce(async () => {
@@ -126,9 +126,9 @@ describe('ProfileScreen', () => {
     await act(async () => { onFocus(); });
     screen.rerender(<ProfileScreen navigation={mockNavigation} />);
     expect(mockRefreshUser).toHaveBeenCalledTimes(2);
-    expect(screen.getByLabelText('Neighbor rating: Good, Archer')).toBeTruthy();
-    expect(screen.getByText('3 completed exchanges')).toBeTruthy();
-    expect(screen.queryByLabelText('Neighbor rating: New neighbor')).toBeNull();
+    expect(screen.getByLabelText('Neighbor rank: Archer')).toBeTruthy();
+    expect(screen.queryByText('3 completed exchanges')).toBeNull();
+    expect(screen.queryByLabelText('Neighbor rank: New neighbor')).toBeNull();
     expect(screen.queryByText('New neighbor')).toBeNull();
   });
 
@@ -136,7 +136,7 @@ describe('ProfileScreen', () => {
     mockUser.endorsement = { count: 10, percent: 90, score: 85 };
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const screen = render(<ProfileScreen navigation={mockNavigation} />);
-    fireEvent.press(screen.getByLabelText('Neighbor rating: Good, Archer'));
+    fireEvent.press(screen.getByLabelText('Neighbor rank: Archer'));
     expect(screen.getByText('Neighbor rating')).toBeTruthy();
     expect(screen.getByText('Outlaw')).toBeTruthy();
     expect(screen.getByText('Robin')).toBeTruthy();
@@ -147,7 +147,7 @@ describe('ProfileScreen', () => {
     expect(screen.getByText('Current')).toBeTruthy();
     fireEvent.press(screen.getByLabelText('Close rank explanation'));
     expect(screen.queryByText('Neighbor rating')).toBeNull();
-    expect(screen.getByLabelText('Neighbor rating: Good, Archer')).toBeTruthy();
+    expect(screen.getByLabelText('Neighbor rank: Archer')).toBeTruthy();
   });
 
   it('displays version number', () => {

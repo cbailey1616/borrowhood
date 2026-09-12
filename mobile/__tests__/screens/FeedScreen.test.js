@@ -352,15 +352,15 @@ it('aligns ribbon cards with photos and long text with cards that have neither',
  expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestDetail',{id:'plain'});
 });
 
-it('keeps your exchanges ahead of requests and opens their activity screen', async () => {
+it('keeps in-progress items ahead of requests and opens their activity screen', async () => {
  api.getTransactions.mockResolvedValueOnce([{id:'pending',status:'pending',lender:{id:mockUser.id}}]);
  api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],requests:[{id:'ask',type:'request',title:'Need a ladder',user:{firstName:'Alex'}}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('Your exchanges');
+ await screen.findByText('In progress');
  expect(screen.getByText('1 to review')).toBeTruthy();
  expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
- fireEvent.press(screen.getByText('Your exchanges'));
+ fireEvent.press(screen.getByText('In progress'));
  expect(mockNavigation.navigate).toHaveBeenCalledWith('Activity', { tab: 'activity' });
 });
 
@@ -378,7 +378,7 @@ it('shows overdue returns and pending reviews together without hiding other upda
  await screen.findByText('1 due back · 1 to review');
  expect(screen.getByText('2 unread notifications')).toBeTruthy();
  fireEvent.press(screen.getByLabelText('Dismiss 2 unread notifications'));
- expect(screen.getByText('Your exchanges')).toBeTruthy();
+ expect(screen.getByText('In progress')).toBeTruthy();
  expect(screen.getByText('1 due back · 1 to review')).toBeTruthy();
 });
 

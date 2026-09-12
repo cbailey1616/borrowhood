@@ -4,9 +4,9 @@ import { Ionicons } from './Icon';
 import HapticPressable from './HapticPressable';
 import RankInfoSheet from './RankInfoSheet';
 import { memberReputation } from '../utils/reputation';
-import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-export default function MemberSummary({ user, children, centered = false, openRating = false, onRatingClose }) {
+export default function MemberSummary({ user, children, centered = false, openRating = false, onRatingClose, profileHeader = false }) {
   const [showRanks, setShowRanks] = useState(false);
   const { completedCount, isNew, rank } = memberReputation(user);
   const exchangeLabel = Number.isFinite(completedCount)
@@ -15,15 +15,16 @@ export default function MemberSummary({ user, children, centered = false, openRa
   const ratingLabel = rank ? `Neighbor rating: ${isNew ? rank.label : `${rank.tone}, ${rank.label}`}` : null;
 
   return <View style={[styles.summary, centered && styles.centered]}>
-    <View testID="MemberSummary.identity" style={[styles.identityRow, centered && styles.identityCentered]}>
+    <View testID="MemberSummary.identity" style={[styles.identityRow, centered && styles.identityCentered, profileHeader && styles.profileIdentity]}>
       <View style={styles.nameRow}>{children}</View>
-      {rank && <HapticPressable style={styles.rankButton} accessibilityLabel={ratingLabel}
+      {(rank || profileHeader) && <HapticPressable style={[styles.rankButton, profileHeader && styles.rankNameButton]} accessibilityLabel={profileHeader ? (rank ? `Neighbor rank: ${rank.label}` : 'Neighbor rank unavailable') : ratingLabel}
         accessibilityHint="Opens rating details and rank levels"
         onPress={event => { event?.stopPropagation?.(); setShowRanks(true); }}>
-        <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
+        {rank && <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />}
+        {profileHeader && <Text style={styles.rankName}>{rank?.label || 'Rank unavailable'}</Text>}
       </HapticPressable>}
     </View>
-    <Text style={[styles.secondary, centered && styles.textCentered]}>{exchangeLabel}</Text>
+    {!profileHeader && <Text style={[styles.secondary, centered && styles.textCentered]}>{exchangeLabel}</Text>}
     {(showRanks || openRating) && <RankInfoSheet isVisible onClose={() => { setShowRanks(false); onRatingClose?.(); }} currentRank={rank} isNew={isNew} />}
   </View>;
 }
@@ -31,10 +32,13 @@ export default function MemberSummary({ user, children, centered = false, openRa
 const styles = StyleSheet.create({
   summary: { alignItems: 'flex-start', width: '100%', gap: SPACING.xs },
   centered: { alignItems: 'center' },
-  identityRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, maxWidth: '100%' },
+  identityRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm, maxWidth: '100%' },
   identityCentered: { justifyContent: 'center' },
+  profileIdentity: { width: '100%', flexWrap: 'nowrap', gap: SPACING.xs },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 },
   rankButton: { width: 44, minHeight: 44, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
+  rankNameButton: { width: 'auto', maxWidth: '45%', minHeight: 48, flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.xs, paddingVertical: SPACING.xs, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
+  rankName: { ...TYPOGRAPHY.footnote, fontWeight: '600', color: COLORS.primary, flexShrink: 1 },
   secondary: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   textCentered: { textAlign: 'center' },
 });

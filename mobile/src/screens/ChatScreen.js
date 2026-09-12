@@ -1,4 +1,4 @@
-import TextInput from '../components/AppTextInput';
+import MessageComposer from '../components/MessageComposer';
 import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
 import { privateMessagePrefix } from '../utils/conversationContext';
@@ -14,6 +14,7 @@ import {
   StyleSheet,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -22,11 +23,6 @@ import {
 
 } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
@@ -44,44 +40,14 @@ import EmojiReactionPicker from '../components/EmojiReactionPicker';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
-
-function SendButton({ onPress, disabled, loading }) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePress = useCallback(() => {
-    haptics.light();
-    scale.value = withSequence(
-      withSpring(0.85, ANIMATION.spring.stiff),
-      withSpring(1, ANIMATION.spring.stiff)
-    );
-    onPress();
-  }, [onPress]);
-
-  return (
-    <HapticPressable
-      style={[styles.sendButton, disabled && styles.sendButtonDisabled]}
-      onPress={handlePress}
-      disabled={disabled}
-      haptic={null}
-      accessibilityRole="button"
-      accessibilityLabel="Send message"
-    >
-      <Animated.View style={animStyle}>
-        {loading ? <ActivityIndicator color="white" /> : <Ionicons name="arrow-up" size={22} color="#fff" />}
-      </Animated.View>
-    </HapticPressable>
-  );
-}
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, recipientId, recipient, threadContext, listingId, listing: passedListing } = route.params || {};
   const isFocused = useIsFocused();
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible?.() ?? false);
   const nearBottom = useRef(true);
   const sending = useRef(false);
   const [chatError, setChatError] = useState('');
@@ -118,6 +84,12 @@ export default function ChatScreen({ route, navigation }) {
   const knownMessageIds = useRef(new Set());
   const [showNewMessages, setShowNewMessages] = useState(false);
   useEffect(() => { knownMessageIds.current = new Set(messages.map(message => message.id)); }, [messages]);
+
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -551,6 +523,7 @@ export default function ChatScreen({ route, navigation }) {
 
   return (
     <KeyboardAvoidingView
+      testID="Chat.keyboardLayout"
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
@@ -627,12 +600,23 @@ export default function ChatScreen({ route, navigation }) {
           <Ionicons name="close" size={22} color={COLORS.primary} />
         </HapticPressable>
       </View>}
-      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
-          {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="image-outline" size={26} color={COLORS.primary} />}
-        </HapticPressable>
-        <TextInput style={styles.input} value={newMessage} onChangeText={setNewMessage} placeholder="Private message…" placeholderTextColor={COLORS.textMuted} testID="Chat.input.message" accessibilityLabel="Message" multiline maxLength={2000 - contextPrefix.length} autoCapitalize="sentences" />
-        <SendButton onPress={handleSend} loading={isSending || isUploading} disabled={(!newMessage.trim() && !attachment) || isSending || isUploading || !!composer.pending || !draft.ready} />
+      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
+        <MessageComposer
+          testID="Chat.composer"
+          value={newMessage}
+          onChangeText={setNewMessage}
+          onSend={handleSend}
+          placeholder="Private message…"
+          inputTestID="Chat.input.message"
+          maxLength={2000 - contextPrefix.length}
+          loading={isSending || isUploading}
+          disabled={(!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready}
+          leadingAction={
+            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
+              {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
+            </HapticPressable>
+          }
+        />
       </View>
       <ActionSheet isVisible={photoMenuVisible} onClose={() => setPhotoMenuVisible(false)} title="Add a photo" actions={[
         { label: 'Take a photo', icon: <Ionicons name="camera-outline" size={24} color={COLORS.primary} />, onPress: () => handlePickImage(true) },
@@ -861,49 +845,18 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.lg,
   },
-  inputBlur: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
-  },
-  inputInner: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.xl,
-    gap: SPACING.md,
-  },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.xl,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
-    gap: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    backgroundColor: COLORS.background,
   },
-  input: {
-    flex: 1,
+  attachPhotoButton: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.xl,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    fontSize: 16,
-    color: COLORS.text,
-    maxHeight: 120,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: COLORS.gray[300],
   },
   messageContainer: {
   },

@@ -11,6 +11,7 @@ const mockUser = {
 };
 
 const mockParentNavigate = jest.fn();
+const mockShowToast = jest.fn();
 const mockNavigation = {
   navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(),
   addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn(), navigate: mockParentNavigate }),
@@ -21,7 +22,7 @@ jest.mock('../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }),
 }));
 jest.mock('../../src/context/ErrorContext', () => ({
-  useError: () => ({ showError: jest.fn(), showToast: jest.fn() }),
+  useError: () => ({ showError: jest.fn(), showToast: mockShowToast }),
 }));
 
 beforeEach(() => {
@@ -34,7 +35,105 @@ beforeEach(() => {
   api.getBadgeCount.mockResolvedValue({ messages: 0, notifications: 0, actions: 0, total: 0 });
 });
 
+const visibleMenu = screen => {
+  const ActionSheet = require('../../src/components/ActionSheet').default;
+  return screen.UNSAFE_getAllByType(ActionSheet).find(sheet => sheet.props.isVisible);
+};
+
+const openOptions = screen => {
+  fireEvent.press(screen.getByRole('button', { name: 'Inbox options' }));
+  return visibleMenu(screen);
+};
+
+const chooseAction = (screen, label) => {
+  const menu = visibleMenu(screen);
+  const action = menu.props.actions.find(item => item.label === label);
+  act(() => {
+    action.onPress();
+    menu.props.onClose();
+  });
+  return action.onPress;
+};
+
 describe('InboxScreen', () => {
+  it('keeps filtering and all-read actions in the header menu on both tabs', async () => {
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('All caught up!');
+    expect(screen.queryByRole('switch', { name: 'Unread only' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).toBeNull();
+    let menu = openOptions(screen);
+    expect(menu.props.title).toBe('Inbox options');
+    expect(menu.props.actions.map(action => action.label)).toEqual(['Unread only', 'Mark all as read']);
+    act(() => menu.props.onClose());
+    fireEvent.press(screen.getByRole('tab', { name: 'Messages' }));
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).toBeNull();
+    menu = openOptions(screen);
+    expect(menu.props.actions.map(action => action.label)).toEqual(['Unread only', 'Mark all as read']);
+    act(() => menu.props.onClose());
+  });
+
+  it('keeps Inbox options disabled until the initial data has loaded', async () => {
+    let finishLoading;
+    api.getConversations.mockImplementationOnce(() => new Promise(resolve => { finishLoading = resolve; }));
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    expect(screen.getByRole('button', { name: 'Inbox options' }).props.accessibilityState.disabled).toBe(true);
+    await waitFor(() => expect(finishLoading).toBeDefined());
+    await act(async () => finishLoading([]));
+    expect(screen.getByRole('button', { name: 'Inbox options' }).props.accessibilityState.disabled).toBe(false);
+  });
+
+  it('clears both activity and messages from Activity and refreshes the badge', async () => {
+    const alert = { id: 'alert', type: 'friend_accepted', title: 'Alex accepted', isRead: false };
+    const chat = { id: 'chat', otherUser: { firstName: 'Alex' }, unreadCount: 2 };
+    api.getNotifications.mockResolvedValue({ notifications: [alert], unreadCount: 1 });
+    api.getConversations.mockResolvedValue([chat]);
+    api.markAllNotificationsRead.mockImplementationOnce(async () => {
+      api.getNotifications.mockResolvedValue({ notifications: [{ ...alert, isRead: true }], unreadCount: 0 });
+    });
+    api.markConversationRead.mockImplementationOnce(async () => {
+      api.getConversations.mockResolvedValue([{ ...chat, unreadCount: 0 }]);
+    });
+    const onRead = jest.fn();
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} onRead={onRead} />);
+    await screen.findByText('Activity (1)');
+    onRead.mockClear();
+    openOptions(screen);
+    chooseAction(screen, 'Mark all as read');
+    expect(visibleMenu(screen)).toBeUndefined();
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Activity' })).toBeTruthy());
+    expect(screen.getByRole('tab', { name: 'Messages' })).toBeTruthy();
+    expect(api.markConversationRead).toHaveBeenCalledWith('chat');
+    expect(api.markAllNotificationsRead).toHaveBeenCalledTimes(1);
+    expect(onRead).toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith('Marked activity and messages as read.', 'success');
+  });
+
+  it('waits for remaining read operations after a failure, prevents repeat taps, and allows retry', async () => {
+    api.getConversations.mockResolvedValue([{ id: 'chat', unreadCount: 1, otherUser: { firstName: 'Alex' } }]);
+    api.markAllNotificationsRead.mockRejectedValueOnce(new Error('Offline'));
+    let finishRead;
+    api.markConversationRead.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Messages (1)');
+    openOptions(screen);
+    const markAllRead = chooseAction(screen, 'Mark all as read');
+    await waitFor(() => expect(finishRead).toBeDefined());
+    expect(visibleMenu(screen)).toBeUndefined();
+    expect(screen.getByRole('button', { name: 'Inbox options' }).props.accessibilityState).toEqual(expect.objectContaining({ disabled: true, busy: true }));
+    act(() => { markAllRead(); });
+    expect(api.markAllNotificationsRead).toHaveBeenCalledTimes(1);
+    expect(mockShowToast).not.toHaveBeenCalled();
+    await act(async () => finishRead({}));
+    expect(mockShowToast).toHaveBeenCalledWith('Some items couldn’t be marked as read. Please try again.', 'error');
+    openOptions(screen);
+    chooseAction(screen, 'Mark all as read');
+    await waitFor(() => expect(api.markAllNotificationsRead).toHaveBeenCalledTimes(2));
+  });
+
   it('opens Messages automatically when its unread messages explain the inbox badge', async () => {
     api.getConversations.mockResolvedValue([{ id: 'chat', otherUser: { firstName: 'Alex', lastName: 'B.' }, unreadCount: 2, lastMessage: 'Can we meet at noon?' }]);
     const Screen = require('../../src/screens/InboxScreen').default;
@@ -48,9 +147,9 @@ describe('InboxScreen', () => {
     api.getConversations.mockResolvedValue([{ id: 'chat', otherUser: { firstName: 'Alex' }, unreadCount: 2 }]);
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { tab: 'activity' } }} />);
-    await screen.findByText('Unread only');
+    await screen.findByText('All caught up!');
     screen.rerender(<Screen navigation={mockNavigation} route={{ params: { tab: 'messages' } }} />);
-    await screen.findByText('2 unread');
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Messages (2)' }).props.accessibilityState.selected).toBe(true));
     fireEvent.press(screen.getByText('Activity'));
     await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());
     expect(screen.getByRole('tab', { name: 'Activity' }).props.accessibilityState.selected).toBe(true);
@@ -78,12 +177,63 @@ describe('InboxScreen', () => {
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await screen.findByText('Activity (1)');
-    fireEvent.press(screen.getByText('Unread only'));
+    openOptions(screen);
+    chooseAction(screen, 'Unread only');
+    expect(visibleMenu(screen)).toBeUndefined();
     await screen.findByText('An older friend request');
     expect(api.getNotifications).toHaveBeenLastCalledWith({ page: 1, limit: 50, unreadOnly: 'true' });
     expect(screen.queryByText('Read update 0')).toBeNull();
-    fireEvent.press(screen.getByText('Show all activity'));
+    expect(screen.getByRole('button', { name: 'Show all inbox items' })).toBeTruthy();
+    expect(openOptions(screen).props.actions.map(action => action.label)).toEqual(['Show all', 'Mark all as read']);
+    chooseAction(screen, 'Show all');
     await screen.findByText('Read update 0');
+    expect(screen.queryByRole('button', { name: 'Show all inbox items' })).toBeNull();
+    expect(api.markAllNotificationsRead).not.toHaveBeenCalled();
+    expect(api.markConversationRead).not.toHaveBeenCalled();
+  });
+
+  it('keeps the unread filter selected across tabs and filters private conversations too', async () => {
+    const alert = { id: 'alert', type: 'friend_accepted', title: 'Alex accepted', isRead: false };
+    api.getNotifications.mockResolvedValue({ notifications: [alert], unreadCount: 1 });
+    api.getConversations.mockResolvedValue([
+      { id: 'unread-chat', otherUser: { firstName: 'Alex' }, lastMessage: 'New message', unreadCount: 2 },
+      { id: 'read-chat', otherUser: { firstName: 'Sam' }, lastMessage: 'Earlier message', unreadCount: 0 },
+    ]);
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Alex accepted');
+    openOptions(screen);
+    chooseAction(screen, 'Unread only');
+    await waitFor(() => expect(api.getNotifications).toHaveBeenLastCalledWith({ page: 1, limit: 50, unreadOnly: 'true' }));
+    fireEvent.press(screen.getByRole('tab', { name: 'Messages (2)' }));
+    expect(screen.getByText('New message')).toBeTruthy();
+    expect(screen.queryByText('Earlier message')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show all inbox items' })).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Activity (1)' }));
+    expect(screen.getByRole('button', { name: 'Show all inbox items' })).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Messages (2)' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Show all inbox items' }));
+    await screen.findByText('Earlier message');
+    expect(screen.queryByRole('button', { name: 'Show all inbox items' })).toBeNull();
+    expect(api.markAllNotificationsRead).not.toHaveBeenCalled();
+    expect(api.markConversationRead).not.toHaveBeenCalled();
+  });
+
+  it.each(['activity', 'messages'])('offers a Show all button when the %s unread filter is empty', async (tab) => {
+    const readAlert = { id: 'read', type: 'friend_accepted', title: 'Earlier update', isRead: true };
+    api.getNotifications.mockImplementation(({ unreadOnly }) => Promise.resolve({ notifications: unreadOnly ? [] : [readAlert], unreadCount: 0 }));
+    api.getConversations.mockResolvedValue([{ id: 'read-chat', otherUser: { firstName: 'Alex' }, lastMessage: 'Earlier message', unreadCount: 0 }]);
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { tab } }} />);
+    const earlierContent = tab === 'activity' ? 'Earlier update' : 'Earlier message';
+    await screen.findByText(earlierContent);
+    openOptions(screen);
+    chooseAction(screen, 'Unread only');
+    await screen.findByText(`No unread ${tab}`);
+    fireEvent.press(screen.getByRole('button', { name: 'Show all' }));
+    await screen.findByText(earlierContent);
+    expect(screen.queryByRole('button', { name: 'Show all inbox items' })).toBeNull();
+    expect(api.getNotifications).toHaveBeenLastCalledWith({ page: 1, limit: 50 });
   });
 
   it('loads older activity and preserves the loaded history on refresh', async () => {
@@ -101,19 +251,21 @@ describe('InboxScreen', () => {
     expect(screen.queryByText('Show older updates')).toBeNull();
   });
 
-  it('marks only Messages read and keeps a new conversation unread when it arrives during the update', async () => {
+  it('marks both tabs read from Messages and keeps a new conversation unread when it arrives during the update', async () => {
     const first = { id: 'chat', otherUser: { firstName: 'Alex' }, unreadCount: 2 };
     api.getConversations.mockResolvedValue([first]);
     let finishRead;
     api.markConversationRead.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    fireEvent.press(await screen.findByText('Mark all read'));
-    expect(api.markConversationRead).toHaveBeenCalledWith('chat');
+    await screen.findByText('Messages (2)');
+    openOptions(screen);
+    chooseAction(screen, 'Mark all as read');
+    await waitFor(() => expect(api.markConversationRead).toHaveBeenCalledWith('chat'));
     api.getConversations.mockResolvedValue([{ ...first, unreadCount: 0 }, { id: 'new-chat', otherUser: { firstName: 'Sam' }, unreadCount: 1 }]);
     await act(async () => finishRead({}));
     expect(screen.getByText('Messages (1)')).toBeTruthy();
-    expect(api.markAllNotificationsRead).not.toHaveBeenCalled();
+    expect(api.markAllNotificationsRead).toHaveBeenCalledTimes(1);
     expect(api.markConversationRead).not.toHaveBeenCalledWith('new-chat');
   });
 
@@ -144,7 +296,9 @@ describe('InboxScreen', () => {
     api.markAllNotificationsRead.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    fireEvent.press(await screen.findByText('Mark all read'));
+    await screen.findByText('Alex accepted');
+    openOptions(screen);
+    chooseAction(screen, 'Mark all as read');
     api.getNotifications.mockResolvedValue({ notifications: [{ ...first, isRead: true },
       { id: 'new', type: 'friend_accepted', title: 'Sam accepted', isRead: false }], unreadCount: 1 });
     await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());

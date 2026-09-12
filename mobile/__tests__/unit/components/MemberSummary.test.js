@@ -7,6 +7,29 @@ import VerifiedBadge from '../../../src/components/VerifiedBadge';
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
 jest.mock('../../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 
+it.each([false, true])('shows the rank beside the name without an exchange count in profile headers (centered: %s)', centered => {
+  const screen = render(<MemberSummary profileHeader centered={centered} user={{ endorsement: { completedCount: 6, score: 85 } }}>
+    <Text>Chris Bailey</Text><VerifiedBadge />
+  </MemberSummary>);
+  const identity = within(screen.getByTestId('MemberSummary.identity'));
+  expect(identity.getByText('Chris Bailey')).toBeTruthy();
+  expect(identity.getByText('Archer')).toBeTruthy();
+  expect(identity.getByLabelText('Verified identity')).toBeTruthy();
+  expect(screen.queryByText(/completed exchanges/)).toBeNull();
+  expect(StyleSheet.flatten(screen.getByTestId('MemberSummary.identity').props.style)).toMatchObject({ flexWrap: 'nowrap', alignItems: 'center' });
+  fireEvent.press(identity.getByLabelText('Neighbor rank: Archer'));
+  const row = within(screen.getByTestId('RankInfo.level.Archer'));
+  expect(row.getByText('Archer')).toBeTruthy();
+  expect(row.getByText('Good')).toBeTruthy();
+});
+
+it('does not invent a rank for a profile with missing score data', () => {
+  const screen = render(<MemberSummary profileHeader user={{ totalTransactions: 6 }} />);
+  expect(screen.getByText('Rank unavailable')).toBeTruthy();
+  expect(screen.queryByText('New neighbor')).toBeNull();
+  expect(screen.queryByText(/completed exchanges/)).toBeNull();
+});
+
 it('opens rating details from a notification and clears the request on close', () => {
   const onRatingClose = jest.fn();
   const screen = render(<MemberSummary user={{ endorsement: { completedCount: 6, score: 90 } }} openRating onRatingClose={onRatingClose} />);

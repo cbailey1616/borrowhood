@@ -6,14 +6,14 @@ import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 // The accessory belongs to the native keyboard, so it follows sheets, keyboard
 // changes and multiline fields without covering a screen's input or actions.
-const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBlur, inputAccessoryViewID, ...props }, ref) {
+const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBlur, inputAccessoryViewID, showDoneAccessory = true, keyboardAppearance = 'dark', ...props }, ref) {
   const id = useId();
   const inputRef = useRef(null);
   const didAutoFocus = useRef(false);
   const [accessoryReady, setAccessoryReady] = useState(false);
   const [focused, setFocused] = useState(false);
   const accessoryId = `borrowhood-keyboard-${id}`;
-  const showAccessory = Platform.OS === 'ios' && !inputAccessoryViewID;
+  const showAccessory = showDoneAccessory && Platform.OS === 'ios' && !inputAccessoryViewID;
   const setInputRef = useCallback(node => {
     inputRef.current = node;
     if (typeof ref === 'function') ref(node);
@@ -30,7 +30,7 @@ const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBl
   }, [showAccessory, autoFocus, accessoryReady]);
 
   return <>
-    <TextInput {...props} ref={setInputRef} autoFocus={showAccessory ? false : autoFocus}
+    <TextInput {...props} ref={setInputRef} keyboardAppearance={keyboardAppearance} autoFocus={showAccessory ? false : autoFocus}
       inputAccessoryViewID={inputAccessoryViewID || (showAccessory ? accessoryId : undefined)}
       onFocus={event => { setFocused(true); onFocus?.(event); }}
       onBlur={event => { setFocused(false); onBlur?.(event); }} />
