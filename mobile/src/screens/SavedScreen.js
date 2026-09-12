@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import ListingPrice from '../components/ListingPrice';
+import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
 import {
   View,
@@ -122,8 +122,8 @@ export default function SavedScreen({ navigation }) {
           )}
         </View>
         <View style={styles.cardInfo}>
+          <ListingOffer listing={item} />
           <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <ListingPrice listing={item} compact />
           <View style={styles.ownerRow}>
             {item.owner?.profilePhotoUrl ? (
               <ShimmerImage placeholderIcon="person" source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />

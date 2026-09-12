@@ -164,12 +164,7 @@ export default function MyItemsScreen({ navigation }) {
             )}
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-              {isTransferListing(item) && (
-                  <View style={styles.giveawayTag}>
-                    <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />
-                    <Text style={styles.giveawayTagText}>{isSaleListing(item) ? 'For sale' : 'Giveaway'}</Text>
-                  </View>
-              )}
+
 
               {item.totalEarnings > 0 && (
                 <View style={styles.cardStats}>
@@ -195,6 +190,7 @@ export default function MyItemsScreen({ navigation }) {
                   styles.statusBadge,
                   { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
                 ]}>
+                  {isTransferListing(item) && <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />}
                   <Text style={[
                     styles.statusText,
                     { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
@@ -539,21 +535,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
-  giveawayTag: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: COLORS.secondary + '15',
-    paddingHorizontal: SPACING.xs + 2,
-    paddingVertical: 1,
-    borderRadius: RADIUS.xs,
-  },
-  giveawayTagText: {
-    ...TYPOGRAPHY.caption2,
-    color: COLORS.secondary,
-    fontWeight: '600',
-  },
   cardStats: {
     flexDirection: 'row',
     gap: SPACING.md,
@@ -574,6 +555,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   statusBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.xs,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
