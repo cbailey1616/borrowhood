@@ -8,9 +8,9 @@ const onVerify = jest.fn();
 beforeEach(() => { jest.clearAllMocks(); });
 afterEach(() => jest.restoreAllMocks());
 
-it('explains identity visibility for the selected post type', () => {
+it('explains Town borrowing verification separately from other post types', () => {
   const screen = render(<SharingPicker value={['town']} onChange={onChange} />);
-  expect(screen.getByText(/Your name and profile are hidden/)).toBeTruthy();
+  expect(screen.getByText('For added safety, verify your identity to borrow across town. No verification needed to borrow from friends or your neighborhood.')).toBeTruthy();
   for (const props of [{ request: true }, { listingType: 'giveaway' }, { listingType: 'sell' }]) {
     screen.rerender(<SharingPicker value={['town']} onChange={onChange} {...props} />);
     expect(screen.getByText('Town members can see this post, your name, and your profile.')).toBeTruthy();

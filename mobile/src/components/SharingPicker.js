@@ -19,7 +19,7 @@ export default function SharingPicker({ value = ['private'], onChange, request =
   const [neighborhoodPrompt, setNeighborhoodPrompt] = useState(false);
   const townHint = request || ['giveaway', 'sell'].includes(listingType)
     ? 'Town members can see this post, your name, and your profile.'
-    : 'Town members can preview this borrow listing. Your name and profile are hidden from unverified Town viewers.';
+    : 'For added safety, verify your identity to borrow across town. No verification needed to borrow from friends or your neighborhood.';
 
   const confirm = (scope) => {
     if (scope === 'private') {
@@ -53,7 +53,7 @@ export default function SharingPicker({ value = ['private'], onChange, request =
           {!request && <Text style={styles.hint}>Sharing this item never shares the rest.</Text>}</View>
         <Text style={{ color: COLORS.primary }}>{expanded ? 'Done' : 'Change'}</Text>
       </HapticPressable>
-      {value.includes('town') && <Text style={styles.hint}>{townHint}</Text>}
+      {!expanded && value.includes('town') && <Text style={styles.hint}>{townHint}</Text>}
       {expanded && audiences.filter(([scope]) => !request || scope !== 'private').map(([scope, title, hint, icon]) => (
         <HapticPressable key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
           accessibilityLabel={title} style={[styles.option, value.includes(scope) && styles.selected]}
