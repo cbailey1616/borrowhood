@@ -140,12 +140,12 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
         )}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
-          <View style={styles.iconContainer} testID="Identity.status.verified" accessibilityLabel="Identity verified" accessibilityRole="image">
+          <View style={styles.iconContainer} testID="Identity.status.verified" accessibilityLabel="Verified" accessibilityRole="image">
             <View style={styles.successCircle}>
               <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
             </View>
           </View>
-          <Text style={styles.title}>Identity Verified</Text>
+          <Text style={styles.title}>You’re verified</Text>
           <Text style={styles.subtitle}>
             You’re ready to borrow across town.
           </Text>
@@ -190,10 +190,10 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           </View>
           <Text style={styles.title}>Verification Processing</Text>
           <Text style={styles.subtitle}>
-            Your ID check is being reviewed. Keep browsing and posting to Town while you wait. Once verified, you can see who’s lending in Town borrow listings.
+            Stripe is reviewing your verification. You can keep browsing and posting while you wait.
           </Text>
           <Text style={styles.graceNotice}>
-            Your verified identity badge will appear once verification is complete.
+            Your verified badge will appear once verification is complete.
           </Text>
           <HapticPressable
             style={styles.primaryButton}
@@ -222,15 +222,15 @@ export default function IdentityVerificationScreen({ navigation, route }) {
 
   const getSubtitle = () => {
     if (needsRetry) return 'Your previous verification attempt needs additional information. Please try again.';
-    if (source === 'town_browse') return 'A quick ID check helps keep sharing safer.';
+    if (source === 'town_browse') return 'Verification helps keep sharing safer.';
     if (ENABLE_PAYMENTS && source === 'rental_listing') return 'Borrowers trust verified owners.';
-    return 'A quick ID check helps keep sharing safer.';
+    return 'Verification helps keep sharing safer.';
   };
 
   const actions = (
     <View style={[styles.actionFooter, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
       <View style={styles.readableWidth}>
-        <Text style={styles.verificationNote}>ID + selfie · Free during launch</Text>
+        <Text style={styles.verificationNote}>Free during launch</Text>
         <StripeVerificationButton onPress={handleVerify} loading={starting} testID="Identity.button.verify" />
         <HapticPressable
           style={styles.tertiaryButton}

@@ -290,12 +290,12 @@ export default function RootNavigator() {
           <Stack.Screen
             name="VerifyIdentity"
             component={VerifyIdentityScreen}
-            options={{ ...sharedScreenOptions, title: 'Verify Identity' }}
+            options={{ ...sharedScreenOptions, title: 'Verification' }}
           />
           <Stack.Screen
             name="IdentityVerification"
             component={IdentityVerificationScreen}
-            options={modalScreenOptions('Verify Identity')}
+            options={modalScreenOptions('Verification')}
           />
           <Stack.Screen
             name="PaymentFlow"

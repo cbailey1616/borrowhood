@@ -25,9 +25,9 @@ describe('VerifyIdentityScreen', () => {
   it('explains which borrowing options need verification', () => {
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
     const { getByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
-    expect(getByLabelText('Borrow from friends. Without ID verification: available. Verified: available.')).toBeTruthy();
-    expect(getByLabelText('Borrow in your neighborhood. Without ID verification: available. Verified: available.')).toBeTruthy();
-    expect(getByLabelText('Borrow across town. Without ID verification: not available. Verified: available.')).toBeTruthy();
+    expect(getByLabelText('Borrow from friends. Not verified: available. Verified: available.')).toBeTruthy();
+    expect(getByLabelText('Borrow in your neighborhood. Not verified: available. Verified: available.')).toBeTruthy();
+    expect(getByLabelText('Borrow across town. Not verified: not available. Verified: available.')).toBeTruthy();
   });
 
   it('opens the Stripe verification URL from its clearly named button', async () => {

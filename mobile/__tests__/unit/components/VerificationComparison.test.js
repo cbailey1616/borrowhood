@@ -9,7 +9,7 @@ const available = [
   'Buy items or claim giveaways',
   'Post requests',
 ];
-const townLabel = 'Borrow across town. Without ID verification: not available. Verified: available.';
+const townLabel = 'Borrow across town. Not verified: not available. Verified: available.';
 
 beforeEach(() => {
   jest.spyOn(ReactNative, 'useWindowDimensions').mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
@@ -18,10 +18,10 @@ afterEach(() => jest.restoreAllMocks());
 
 it('clearly identifies Town borrowing as requiring identity verification', () => {
   const screen = render(<VerificationComparison />);
-  expect(screen.getByText('Without ID')).toBeTruthy();
+  expect(screen.getByText('Not verified')).toBeTruthy();
   expect(screen.getByText('Verified')).toBeTruthy();
   available.forEach(label => {
-    expect(screen.getByLabelText(`${label}. Without ID verification: available. Verified: available.`)).toBeTruthy();
+    expect(screen.getByLabelText(`${label}. Not verified: available. Verified: available.`)).toBeTruthy();
   });
   expect(screen.getByLabelText(townLabel)).toBeTruthy();
 });
@@ -29,10 +29,10 @@ it('clearly identifies Town borrowing as requiring identity verification', () =>
 it('keeps availability next to each capability with large text', () => {
   ReactNative.useWindowDimensions.mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1.8 });
   const screen = render(<VerificationComparison />);
-  expect(screen.queryByText('Without ID')).toBeNull();
-  expect(within(screen.getByLabelText(townLabel)).getByText('Without ID: No\nVerified: Yes')).toBeTruthy();
+  expect(screen.queryByText('Not verified')).toBeNull();
+  expect(within(screen.getByLabelText(townLabel)).getByText('Not verified: No\nVerified: Yes')).toBeTruthy();
   available.forEach(label => {
-    const row = screen.getByLabelText(`${label}. Without ID verification: available. Verified: available.`);
-    expect(within(row).getByText('Without ID: Yes\nVerified: Yes')).toBeTruthy();
+    const row = screen.getByLabelText(`${label}. Not verified: available. Verified: available.`);
+    expect(within(row).getByText('Not verified: Yes\nVerified: Yes')).toBeTruthy();
   });
 });

@@ -8,7 +8,7 @@ import { COLORS, TYPOGRAPHY } from '../utils/config';
 export default function VerificationIntroduction({
   needsRetry = false,
   title = 'Verify to borrow across town',
-  subtitle = 'A quick ID check helps keep sharing safer.',
+  subtitle = 'Verification helps keep sharing safer.',
 }) {
   return (
     <>
@@ -23,7 +23,7 @@ export default function VerificationIntroduction({
       <Text style={styles.subtitle}>{subtitle}</Text>
       <VerificationComparison />
       <Text style={styles.privacy}>
-        Stripe handles your ID images. Borrowhood receives verification results and identity details.
+        Stripe handles verification and shares the result with Borrowhood.
       </Text>
     </>
   );

@@ -73,7 +73,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       if (result.verified) {
         await refreshUser();
         haptics.success();
-        showToast('Identity verified!', 'success');
+        showToast('You’re verified!', 'success');
         navigation.goBack();
       } else if (result.status === 'processing') {
         showError({
@@ -84,7 +84,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       } else {
         showError({
           title: 'Not Started Yet',
-          message: 'Looks like verification hasn\'t been completed. Tap "Verify through Stripe" to start a quick ID and selfie check powered by Stripe Identity.',
+          message: 'Tap "Verify through Stripe" to get started.',
           primaryAction: 'OK',
         });
       }
@@ -105,7 +105,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
   const actions = (
     <View style={styles.actionFooter}>
       <View style={styles.readableWidth}>
-        <Text style={styles.verificationNote}>ID + selfie · Free during launch</Text>
+        <Text style={styles.verificationNote}>Free during launch</Text>
         <StripeVerificationButton onPress={handleStartVerification} loading={isLoading} />
         <HapticPressable style={styles.skipButton} onPress={handleSkipForNow} haptic="light">
           <Text style={styles.skipButtonText}>Skip for now</Text>

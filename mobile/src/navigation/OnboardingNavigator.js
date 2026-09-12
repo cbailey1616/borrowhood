@@ -72,7 +72,7 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
           headerStyle: { backgroundColor: COLORS.background },
           headerShadowVisible: false,
           headerTintColor: COLORS.text,
-          title: 'Verify Identity',
+          title: 'Verification',
           animation: 'slide_from_right',
         }}
       />

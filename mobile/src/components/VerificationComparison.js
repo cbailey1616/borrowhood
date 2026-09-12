@@ -4,11 +4,11 @@ import Icon from './Icon';
 import { COLORS, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const capabilities = [
-  { label: 'Borrow from friends', withoutId: true },
-  { label: 'Borrow in your neighborhood', withoutId: true },
-  { label: 'Borrow across town', withoutId: false },
-  { label: 'Buy items or claim giveaways', withoutId: true },
-  { label: 'Post requests', withoutId: true },
+  { label: 'Borrow from friends', availableUnverified: true },
+  { label: 'Borrow in your neighborhood', availableUnverified: true },
+  { label: 'Borrow across town', availableUnverified: false },
+  { label: 'Buy items or claim giveaways', availableUnverified: true },
+  { label: 'Post requests', availableUnverified: true },
 ];
 
 export default function VerificationComparison() {
@@ -18,26 +18,26 @@ export default function VerificationComparison() {
   return (
     <View style={styles.card}>
       {!largeText && (
-        <View style={styles.header} accessible accessibilityLabel="Compare without ID verification and verified">
+        <View style={styles.header} accessible accessibilityLabel="Compare not verified and verified">
           <Text style={[styles.heading, styles.activity]}>You can…</Text>
-          <Text style={[styles.heading, styles.column]}>Without ID</Text>
+          <Text style={[styles.heading, styles.column]}>Not verified</Text>
           <Text style={[styles.heading, styles.column, styles.verifiedHeading]}>Verified</Text>
         </View>
       )}
-      {capabilities.map(({ label, withoutId }) => (
+      {capabilities.map(({ label, availableUnverified }) => (
         <View
           key={label}
           accessible
-          accessibilityLabel={`${label}. Without ID verification: ${withoutId ? 'available' : 'not available'}. Verified: available.`}
-          style={[styles.row, !withoutId && styles.townRow, largeText && styles.stacked]}
+          accessibilityLabel={`${label}. Not verified: ${availableUnverified ? 'available' : 'not available'}. Verified: available.`}
+          style={[styles.row, !availableUnverified && styles.townRow, largeText && styles.stacked]}
         >
-          <Text style={[styles.label, !largeText && styles.activity, !withoutId && styles.emphasis]}>{label}</Text>
+          <Text style={[styles.label, !largeText && styles.activity, !availableUnverified && styles.emphasis]}>{label}</Text>
           {largeText ? (
-            <Text style={styles.detail}>Without ID: {withoutId ? 'Yes' : 'No'}{'\n'}Verified: Yes</Text>
+            <Text style={styles.detail}>Not verified: {availableUnverified ? 'Yes' : 'No'}{'\n'}Verified: Yes</Text>
           ) : (
             <>
               <View style={styles.column}>
-                <Icon name={withoutId ? 'checkmark' : 'remove'} size={22} color={withoutId ? COLORS.primary : COLORS.textMuted} />
+                <Icon name={availableUnverified ? 'checkmark' : 'remove'} size={22} color={availableUnverified ? COLORS.primary : COLORS.textMuted} />
               </View>
               <View style={styles.column}>
                 <Icon name="checkmark" size={22} color={COLORS.primary} />
