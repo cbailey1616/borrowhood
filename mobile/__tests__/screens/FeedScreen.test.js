@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppState, FlatList, StyleSheet } from 'react-native';
+import { AppState, FlatList, InteractionManager, RefreshControl, StyleSheet } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
@@ -81,7 +81,8 @@ describe('FeedScreen', () => {
     expect(markSeen).not.toHaveBeenCalled();
   });
 
-  it('keeps the ribbon reachable while searching and refreshes when Home is tapped again', async () => {
+  it('keeps the ribbon reachable and scrolls to the top without refreshing when Home is tapped again', async () => {
+    const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
     api.getFeed.mockResolvedValue({ items: [{ id: 'ladder', type: 'listing', title: 'Ladder', user: { firstName: 'Sam' } }], hasMore: false });
     const Screen = require('../../src/screens/FeedScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
@@ -91,10 +92,15 @@ describe('FeedScreen', () => {
     fireEvent.changeText(input, 'ladder');
     fireEvent(input, 'blur');
     expect(screen.getByTestId('Feed.list').props.stickyHeaderHiddenOnScroll).toBe(true);
+    await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'ladder' })));
     const tabPress = mockNavigation.addListener.mock.calls.filter(([event]) => event === 'tabPress').at(-1)[1];
     api.getFeed.mockClear();
+    scroll.mockClear();
     await act(async () => tabPress());
-    expect(api.getFeed).toHaveBeenCalledWith(expect.objectContaining({ page: 1, search: 'ladder' }));
+    expect(api.getFeed).not.toHaveBeenCalled();
+    expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: true });
+    expect(screen.getByText('Ladder')).toBeTruthy();
+    scroll.mockRestore();
   });
 
   it('applies and clears extra filters while keeping the selected post type', async () => {
@@ -138,20 +144,29 @@ describe('FeedScreen', () => {
     expect(api.getRequestDiscussions).not.toHaveBeenCalled();
   });
 
-  it('fetches a fresh first page when a request arrives in the foreground', async () => {
+  it('waits for pull-to-refresh before adding an incoming request and starting a new ranking session', async () => {
+    const markSeen = jest.fn();
+    const latestPostAt = '2026-09-12T12:00:00.000Z';
     const Screen = require('../../src/screens/FeedScreen').default;
-    const screen = render(<Screen navigation={mockNavigation} />);
+    const screen = render(<FeedSeenContext.Provider value={markSeen}><Screen navigation={mockNavigation} /></FeedSeenContext.Provider>);
     await screen.findByText('What would you like to do?');
     const previous = api.getFeed.mock.calls.at(-1)[0].session;
-    api.getFeed.mockResolvedValue({ items: [{ id: 'new-request', type: 'request', title: 'Need a ladder', user: { id: 'neighbor', firstName: 'Robin' } }], hasMore: false });
+    api.getFeed.mockClear();
+    markSeen.mockClear();
+    api.getFeed.mockResolvedValue({ latestPostAt, items: [{ id: 'new-request', type: 'request', title: 'Need a ladder', user: { id: 'neighbor', firstName: 'Robin' } }], hasMore: false });
     const receive = Notifications.addNotificationReceivedListener.mock.calls.at(-1)[0];
     await act(async () => receive({ request: { content: { data: { type: 'new_request' } } } }));
+    expect(api.getFeed).not.toHaveBeenCalled();
+    expect(markSeen).not.toHaveBeenCalled();
+    expect(screen.queryByText('Need a ladder')).toBeNull();
+    fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
     await screen.findByText('Need a ladder');
     expect(api.getFeed.mock.calls.at(-1)[0].page).toBe(1);
     expect(api.getFeed.mock.calls.at(-1)[0].session).not.toBe(previous);
+    expect(markSeen).toHaveBeenCalledWith(latestPostAt);
   });
 
-  it('refreshes when returning to the app and removes the listener on unmount', async () => {
+  it('updates status without replacing the feed when returning to the app and removes its listener', async () => {
     const remove = jest.fn();
     const subscribe = AppState.addEventListener.mockReturnValue({ remove });
     const Screen = require('../../src/screens/FeedScreen').default;
@@ -160,8 +175,10 @@ describe('FeedScreen', () => {
     const changeState = subscribe.mock.calls.at(-1)[1];
     act(() => changeState('background'));
     api.getFeed.mockClear();
+    api.getNotifications.mockClear();
     await act(async () => changeState('active'));
-    expect(api.getFeed).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+    expect(api.getFeed).not.toHaveBeenCalled();
+    expect(api.getNotifications).toHaveBeenCalled();
     screen.unmount();
     expect(remove).toHaveBeenCalled();
   });
@@ -463,11 +480,67 @@ it('returns to the top when a refresh shortens the feed and when Back to top is 
   fireEvent.press(screen.getByLabelText('Back to top'));
   expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: true });
   scroll.mockClear();
-  const receive = Notifications.addNotificationReceivedListener.mock.calls.at(-1)[0];
-  await act(async () => receive({ request: { content: { data: { type: 'new_request' } } } }));
+  await act(async () => fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh'));
   expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: false });
   expect(screen.getByText('One item')).toBeTruthy();
   scroll.mockRestore();
+});
+
+it('keeps loaded pages, request cards, ranking session, and scroll position when returning from a post', async () => {
+  const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
+  const interact = jest.spyOn(InteractionManager, 'runAfterInteractions').mockImplementation(callback => {
+    callback();
+    return { cancel: jest.fn() };
+  });
+  const item = id => ({ id, type: 'listing', title: id, user: { id: 'neighbor', firstName: 'Sam' } });
+  const request = { id: 'request', type: 'request', title: 'Need a drill', user: { id: 'neighbor', firstName: 'Sam' } };
+  api.getFeed.mockImplementation(({ page }) => Promise.resolve({
+    items: page === 1 ? [item('First'), item('Second')] : page === 2 ? [item('Third')] : [item('Fourth')],
+    requests: page === 1 ? [request] : [], hasMore: page < 3,
+  }));
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('First');
+  const session = api.getFeed.mock.calls[0][0].session;
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  await screen.findByText('Third');
+  const beforeReturn = api.getFeed.mock.calls.length;
+  const statusCalls = api.getTransactions.mock.calls.length;
+  const returnToHome = mockNavigation.addListener.mock.calls.filter(([event]) => event === 'focus').at(-1)[1];
+  scroll.mockClear();
+  await act(async () => returnToHome());
+  expect(api.getFeed).toHaveBeenCalledTimes(beforeReturn);
+  expect(api.getTransactions.mock.calls.length).toBeGreaterThan(statusCalls);
+  expect(scroll).not.toHaveBeenCalled();
+  expect(screen.getByTestId('Feed.list').props.data.filter(item => item.type === 'listing').map(item => item.id)).toEqual(['First', 'Second', 'Third']);
+  expect(screen.getByText('Need a drill')).toBeTruthy();
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  await screen.findByText('Fourth');
+  expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, session }));
+  scroll.mockRestore();
+  interact.mockRestore();
+});
+
+it('replaces a paginated feed with a fresh order only on manual refresh', async () => {
+  const item = id => ({ id, type: 'listing', title: id, user: { id: 'neighbor', firstName: 'Sam' } });
+  api.getFeed.mockResolvedValueOnce({ items: [item('First'), item('Second')], hasMore: true })
+    .mockResolvedValueOnce({ items: [item('Third')], hasMore: false })
+    .mockResolvedValueOnce({ items: [item('Second'), item('New'), item('First')], hasMore: true })
+    .mockResolvedValue({ items: [item('Third')], hasMore: false });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('First');
+  const originalSession = api.getFeed.mock.calls[0][0].session;
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  await screen.findByText('Third');
+  fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
+  await screen.findByText('New');
+  const refreshedSession = api.getFeed.mock.calls.at(-1)[0].session;
+  expect(refreshedSession).not.toBe(originalSession);
+  expect(screen.getByTestId('Feed.list').props.data.filter(item => item.type === 'listing').map(item => item.id)).toEqual(['Second', 'New', 'First']);
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  await screen.findByText('Third');
+  expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, session: refreshedSession }));
 });
 
 it('keeps loaded posts and offers retry when loading the next page fails', async () => {

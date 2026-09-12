@@ -177,7 +177,7 @@ export default function FeedScreen({ navigation }) {
     } catch (error) {
       if (requestId !== feedRequest.current) return;
       setFeedError(true);
-      // Keep the current feed visible when a background refresh fails.
+      // Keep the current feed visible when a requested refresh fails.
     } finally {
       if (requestId !== feedRequest.current) return;
       feedInFlight.current = false;
@@ -219,23 +219,6 @@ export default function FeedScreen({ navigation }) {
     const timer = setTimeout(() => fetchFeed(1, false), 350);
     return () => clearTimeout(timer);
   }, [search]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (!isInitialLoad) {
-        // Delay feed fetch until modal dismiss animation completes
-        // to avoid blocking the JS thread during transitions
-        InteractionManager.runAfterInteractions(() => {
-          fetchFeed(1, false);
-          checkNeighborhood();
-          fetchActiveDisputes();
-          fetchBannerData();
-        });
-      }
-    });
-    return unsubscribe;
-  }, [navigation, isInitialLoad, fetchFeed]);
-
 
   const fetchActiveDisputes = useCallback(async () => {
     try {
@@ -280,29 +263,41 @@ export default function FeedScreen({ navigation }) {
   }, [user?.id]);
 
   useEffect(() => {
-    const refreshVisibleFeed = () => {
+    let pending;
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (isInitialLoad) return;
+      // Returning from a post keeps the loaded pages, ranking session, and
+      // scroll position. Only the independent account/exchange notices refresh.
+      pending?.cancel?.();
+      pending = InteractionManager.runAfterInteractions(() => {
+        checkNeighborhood();
+        fetchActiveDisputes();
+        fetchBannerData();
+      });
+    });
+    return () => { unsubscribe(); pending?.cancel?.(); };
+  }, [navigation, isInitialLoad, checkNeighborhood, fetchActiveDisputes, fetchBannerData]);
+
+  useEffect(() => {
+    const refreshVisibleStatus = () => {
       if (!navigation.isFocused?.()) return;
-      fetchFeed(1, false);
       fetchBannerData();
     };
-    const received = Notifications.addNotificationReceivedListener(notification => {
-      if (notification.request?.content?.data?.type === 'new_request') refreshVisibleFeed();
-      else if (navigation.isFocused?.()) fetchBannerData();
-    });
+    // The Home dot announces new posts; they enter this feed on manual refresh.
+    const received = Notifications.addNotificationReceivedListener(refreshVisibleStatus);
     let previousState = AppState.currentState;
     const resumed = AppState.addEventListener('change', nextState => {
-      if (nextState === 'active' && previousState !== 'active') refreshVisibleFeed();
+      if (nextState === 'active' && previousState !== 'active') refreshVisibleStatus();
       previousState = nextState;
     });
     return () => { received.remove(); resumed.remove(); };
-  }, [navigation, fetchFeed, fetchBannerData]);
+  }, [navigation, fetchBannerData]);
 
   useEffect(() => navigation.addListener('tabPress', () => {
     if (!navigation.isFocused?.()) return;
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    fetchFeed(1, false);
     fetchBannerData();
-  }), [navigation, fetchFeed, fetchBannerData]);
+  }), [navigation, fetchBannerData]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
