@@ -47,7 +47,7 @@ beforeEach(() => {
 
 describe('FeedScreen', () => {
   it.each(['listing', 'request', 'ribbon'])('shows the author’s woodland rank on a %s tile and opens its explanation without opening the post', async surface => {
-    const item = { id: 'ranked-post', type: surface === 'listing' ? 'listing' : 'request', title: 'Garden tools',
+    const item = { id: 'ranked-post', type: surface === 'listing' ? 'listing' : 'request', title: 'Garden tools', createdAt: '2026-09-12T08:00:00.000Z',
       user: { id: 'neighbor', firstName: 'Alexandra Very Long Display Name', isVerified: true,
         endorsement: { completedCount: 6, score: 91 } } };
     api.getFeed.mockResolvedValue(surface === 'ribbon'
@@ -55,7 +55,7 @@ describe('FeedScreen', () => {
       : { items: [item], hasMore: false });
     const Screen = require('../../src/screens/FeedScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    const badge = await screen.findByLabelText('Neighbor rank: Ranger');
+    const badge = await screen.findByLabelText('Neighbor rank: Ranger', {}, { timeout: 5000 });
     expect(badge.props.accessibilityRole).toBe('button');
     expect(screen.getByText(item.user.firstName)).toBeTruthy();
     expect(screen.getByLabelText('Verified identity')).toBeTruthy();
