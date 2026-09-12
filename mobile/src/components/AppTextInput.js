@@ -6,7 +6,7 @@ import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 const PAD_KEYBOARD_TYPES = new Set(['number-pad', 'decimal-pad', 'phone-pad', 'numeric', 'ascii-capable-number-pad']);
 const PAD_INPUT_MODES = new Set(['numeric', 'decimal', 'tel']);
-const DARK_ACCESSORY = { background: '#2C2C2E', text: COLORS.card, separator: 'rgba(255, 255, 255, 0.12)' };
+const ACCESSORY_COLORS = { background: COLORS.background, text: COLORS.primary, separator: COLORS.separator };
 
 // Ordinary typing uses the same native keyboard as messages. Number/phone pads
 // lack a return key, so keep one compact dismissal control attached to them.
@@ -20,8 +20,8 @@ const AppTextInput = forwardRef(function AppTextInput({ autoFocus, onFocus, onBl
   // React Native gives inputMode precedence over keyboardType.
   const usesPad = props.inputMode != null ? PAD_INPUT_MODES.has(props.inputMode) : PAD_KEYBOARD_TYPES.has(props.keyboardType);
   const showAccessory = (showDoneAccessory ?? usesPad) && Platform.OS === 'ios' && !inputAccessoryViewID;
-  const accessoryColors = keyboardAppearance === 'dark' ? DARK_ACCESSORY
-    : { background: COLORS.card, text: COLORS.primary, separator: COLORS.separator };
+  // This toolbar belongs to the app surface, not the native keyboard.
+  const accessoryColors = ACCESSORY_COLORS;
   const setInputRef = useCallback(node => {
     inputRef.current = node;
     if (typeof ref === 'function') ref(node);

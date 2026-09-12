@@ -2,13 +2,14 @@ import React from 'react';
 import { InputAccessoryView, Keyboard, Platform, TextInput, View } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import AppTextInput from '../../../src/components/AppTextInput';
+import { COLORS } from '../../../src/utils/config';
 
 it.each([
   { keyboardType: 'number-pad' }, { keyboardType: 'decimal-pad' }, { keyboardType: 'phone-pad' },
   { keyboardType: 'numeric' }, { keyboardType: 'ascii-capable-number-pad' },
   { inputMode: 'numeric' }, { inputMode: 'decimal' }, { inputMode: 'tel' },
   { keyboardType: 'default', inputMode: 'numeric' },
-])('keeps a dark Done control on a keypad without submitting or clearing: %j', props => {
+])('keeps a themed Done control on a keypad without submitting or clearing: %j', props => {
   const dismiss = jest.spyOn(Keyboard, 'dismiss');
   const submit = jest.fn(), change = jest.fn();
   const screen = render(<AppTextInput {...props} testID="input" value="Draft" onSubmitEditing={submit} onChangeText={change} />);
@@ -17,7 +18,7 @@ it.each([
   expect(field.props.keyboardType).toBe(props.keyboardType);
   expect(field.props.secureTextEntry).toBe(props.secureTextEntry);
   const accessory = screen.UNSAFE_getByType(InputAccessoryView);
-  expect(accessory.props.backgroundColor).toBe('#2C2C2E');
+  expect(accessory.props.backgroundColor).toBe(COLORS.background);
   expect(field.props.inputAccessoryViewID).toBe(accessory.props.nativeID);
   expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
   fireEvent(field, 'focus', {});
