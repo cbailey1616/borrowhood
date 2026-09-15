@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build_number:
-        description: New iOS build number (greater than every prior upload)
+        description: New iOS build number, or auto to use the next number
         required: true
         type: string
   push:
@@ -50,7 +50,7 @@ jobs:
       - name: Check existing iOS builds
         run: |
           eas whoami
-          if ! eas build:list --platform ios --limit 100 --json --non-interactive > /tmp/borrowhood-ios-builds.json; then
+          if ! eas build:list --platform ios --limit 50 --json --non-interactive > /tmp/borrowhood-ios-builds.json; then
             python3 -c "import os,pathlib; message=pathlib.Path('/tmp/borrowhood-ios-builds.json').read_text(); token=os.environ.get('EXPO_TOKEN'); print(message.replace(token, '[REDACTED]')[:4000] if token else message[:4000])"
             exit 1
           fi
