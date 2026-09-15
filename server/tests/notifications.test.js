@@ -6,6 +6,8 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { query } from '../src/utils/db.js';
+import { registerPushDevice } from '../src/services/pushDevices.js';
+import { processPushDeliveries } from '../src/services/pushDelivery.js';
 import { createTestUser, createTestApp, cleanupTestUser, createTestListing } from './helpers/stripe.js';
 import { createTestNotification, createTestTransaction } from './helpers/fixtures.js';
 
@@ -150,13 +152,18 @@ describe('GET /api/notifications/badge-count', () => {
     expect(result.body.notifications.find(n => n.queueListingId === tea)).toMatchObject({ requestCount: 1, title: 'first requested Tea' });
     // Actual push copy and its destination use the same current queue.
     await query("UPDATE borrow_transactions SET status='pending' WHERE id=$1", [secondId]);
-    await query("UPDATE users SET push_token='ExponentPushToken[test-queue]',notification_preferences='{}'::jsonb WHERE id=$1", [owner.userId]);
-    const fetchMock = vi.fn().mockResolvedValue({ json: async () => ({ data: { status: 'ok' } }) });
+    await registerPushDevice(owner.userId, 'ExponentPushToken[test-queue]');
+    await query("UPDATE users SET notification_preferences='{}'::jsonb WHERE id=$1", [owner.userId]);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { status: 'ok', id: 'mock-expo-ticket' } }) });
     vi.stubGlobal('fetch', fetchMock);
     try {
       const { sendNotification } = await import('../src/services/notifications.js');
       const sent = await sendNotification(owner.userId, 'giveaway_claim', { listingId: tea, transactionId: secondId, fromUserId: second.userId, borrowerName: 'second' });
       expect(sent).toBeTruthy();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect((await query('SELECT status FROM push_deliveries WHERE notification_id=$1', [sent])).rows).toEqual([{ status: 'pending' }]);
+      await processPushDeliveries();
+      expect((await query('SELECT status FROM push_deliveries WHERE notification_id=$1', [sent])).rows).toEqual([{ status: 'receipt' }]);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ title: '2 people requested Tea', body: 'See queue', data: { queueListingId: tea, requestCount: 2 } });
     } finally { vi.unstubAllGlobals(); }
@@ -242,9 +249,11 @@ describe('PUT /api/notifications/push-token', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    // Verify in DB
+    // Legacy clients are registered in the multi-device table too.
+    const devices = await query('SELECT token FROM push_devices WHERE user_id = $1', [userA.userId]);
+    expect(devices.rows).toContainEqual({ token: 'ExponentPushToken[test123]' });
     const user = await query('SELECT push_token FROM users WHERE id = $1', [userA.userId]);
-    expect(user.rows[0].push_token).toBe('ExponentPushToken[test123]');
+    expect(user.rows[0].push_token).toBeNull();
   });
 
   it('should reject missing token', async () => {
@@ -254,7 +263,7 @@ describe('PUT /api/notifications/push-token', () => {
       .send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Token required');
+    expect(res.body.error).toContain('Valid device registration required');
   });
 });
 
@@ -368,15 +377,17 @@ describe('Granular notification delivery', () => {
     const community = await query(`INSERT INTO communities (name, slug, city, state)
       VALUES ('Notification test', $1, 'Testville', 'TS') RETURNING id`, [`notif-${recipient.userId}`]);
     const communityId = community.rows[0].id;
-    const push = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => ({ data: { status: 'ok' } }) });
-    const setPrefs = prefs => query(`UPDATE users SET push_token = 'ExponentPushToken[test-notifications]',
-      notification_preferences = $2::jsonb WHERE id = $1`, [recipient.userId, JSON.stringify(prefs)]);
+    const push = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ data: { status: 'ok', id: 'mock-expo-ticket' } }) });
+    await registerPushDevice(recipient.userId, 'ExponentPushToken[test-notifications]');
+    const setPrefs = prefs => query(`UPDATE users SET notification_preferences = $2::jsonb WHERE id = $1`, [recipient.userId, JSON.stringify(prefs)]);
     const send = async (type = 'new_request', requestType = 'service') => {
       push.mockClear();
       const id = await sendNotification(recipient.userId, type, { requestType, title: 'Help moving' }, { fromUserId: sender.userId });
       expect(id).toBeTruthy();
       const stored = await query('SELECT type, from_user_id FROM notifications WHERE id = $1', [id]);
       expect(stored.rows[0]).toMatchObject({ type, from_user_id: sender.userId });
+      expect(push).not.toHaveBeenCalled();
+      await processPushDeliveries();
     };
     try {
       // Same town, with normalized capitalization and whitespace.
