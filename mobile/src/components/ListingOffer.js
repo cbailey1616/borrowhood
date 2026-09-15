@@ -22,5 +22,5 @@ export default function ListingOffer({ listing }) {
 const styles = StyleSheet.create({
   offer: { gap: SPACING.sm, alignItems: 'flex-start' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full, maxWidth: '100%' },
-  label: { ...TYPOGRAPHY.caption1, fontWeight: '600', color: COLORS.primary, flexShrink: 1 },
+  label: { ...TYPOGRAPHY.caption1, fontWeight: '400', color: COLORS.primary, flexShrink: 1 },
 });

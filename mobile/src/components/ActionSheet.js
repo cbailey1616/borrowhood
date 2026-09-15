@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import PopupLayer from './PopupLayer';
+import SheetDismissArea from './SheetDismissArea';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -90,6 +91,7 @@ export default function ActionSheet({
         >
           <LayeredCard style={styles.sheetDepth} radius={RADIUS.xl}>
             <ScrollView style={styles.sheetCard} contentContainerStyle={[confirmation && styles.confirmationCard, options && styles.optionsCard]} bounces={false}>
+              <SheetDismissArea onDismiss={handleCancel}>
               {confirmation || options ? <>
                 <View style={styles.confirmationHeader}>
                   {icon ? <View style={styles.confirmationIcon}>{icon}</View> : null}
@@ -107,6 +109,7 @@ export default function ActionSheet({
                 </View>
               ) : null}
               </>}
+              </SheetDismissArea>
               <View style={[styles.actionsContainer, confirmation && styles.confirmationActions, options && styles.optionsActions]}>
                 {actions.map((action, index) => (
                   <HapticPressable
@@ -270,7 +273,7 @@ const styles = StyleSheet.create({
   },
   destructiveText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   primaryButton: {
     justifyContent: 'center',
@@ -282,7 +285,7 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   cancelButton: {
     flexShrink: 0,

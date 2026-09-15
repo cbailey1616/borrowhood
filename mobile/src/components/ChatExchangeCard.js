@@ -66,13 +66,13 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
 const styles = StyleSheet.create({
   card: { marginHorizontal: 16, marginTop: 8, marginBottom: 4, padding: 12, backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1, borderRadius: RADIUS.lg },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
-  title: { color: COLORS.text, fontSize: 15, fontWeight: '600' },
+  title: { color: COLORS.text, fontSize: 15, fontWeight: '400' },
   secondary: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 18 },
   actions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   primary: { backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  primaryText: { color: COLORS.surface, fontWeight: '600', fontSize: 13 },
+  primaryText: { color: COLORS.surface, fontWeight: '400', fontSize: 13 },
   link: { minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexShrink: 1, marginVertical: 2 },
-  linkText: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
+  linkText: { color: COLORS.primary, fontSize: 13, fontWeight: '400' },
   retry: { padding: 12, minHeight: 48, margin: 16, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
 });
 import { ThemedAlert as Alert } from "./ThemedAlert";

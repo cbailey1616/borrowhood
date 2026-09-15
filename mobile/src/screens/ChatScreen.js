@@ -540,7 +540,7 @@ function ChatConversation({ route, navigation }) {
         onPress={() => navigation.navigate(threadContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: threadContext.id })}>
         <Ionicons name={threadContext.type === 'request' ? requestPresentation(threadContext.requestType).icon : 'chatbubble'} size={28} color={COLORS.primary} illustrated />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ color: COLORS.text, fontWeight: '600' }}>{threadContext.title || 'From the thread'}</Text>
+          <Text style={{ color: COLORS.text, fontWeight: '400' }}>{threadContext.title || 'From the thread'}</Text>
           {!!threadContext.replyText && <Text style={{ color: COLORS.textSecondary, fontSize: 12 }} numberOfLines={2}>Replying to: “{threadContext.replyText}”</Text>}
           <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{threadContext.type === 'request' ? requestPresentation(threadContext.requestType).label : 'About this item'}</Text>
         </View>
@@ -584,7 +584,7 @@ function ChatConversation({ route, navigation }) {
         }
       />
 
-      {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>New messages ↓</Text></HapticPressable>}
+      {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>New messages ↓</Text></HapticPressable>}
       {!!chatError && <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{chatError}</Text>
         {!!conversationId && <ActionButton onPress={fetchMessages} label="Refresh conversation" style={{ marginTop: 8 }} />}
@@ -707,14 +707,14 @@ const styles = StyleSheet.create({
   },
   listingLabel: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   listingTitle: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginTop: 2,
   },
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   messageRow: {

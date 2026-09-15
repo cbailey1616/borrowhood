@@ -404,7 +404,7 @@ export default function MyItemsScreen({ navigation }) {
         />
       </NativeHeader>
 
-      {loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '600' }}>Try again</Text></HapticPressable></View>}
+      {loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
       <FlatList
         key={`posts-${columns}`}
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   pendingBadge: {
     backgroundColor: COLORS.primaryMuted,
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   },
   pendingText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   requestCard: {
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   },
   serviceBadgeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   requestStatusBadge: {
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
   },
   requestStatusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   requestDescription: {
     ...TYPOGRAPHY.body,
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
   },
   renewButtonText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   emptyContainer: {
@@ -788,11 +788,11 @@ const styles = StyleSheet.create({
   },
   rentalStatusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   rentalFeeText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   deleteAction: {
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
   deleteActionText: {
     color: '#fff',
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     marginTop: SPACING.xs,
   },
 });

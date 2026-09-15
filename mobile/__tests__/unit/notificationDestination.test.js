@@ -1,6 +1,16 @@
 import { notificationDestination } from '../../src/utils/notificationDestination';
 
 describe('notification destinations', () => {
+  it('retains the exact thread/reply for both public discussion types', () => {
+    for (const target of [{ listingId: 'item' }, { requestId: 'request' }]) {
+      expect(notificationDestination({ type:'discussion_reply', ...target, discussionId:'reply',threadId:'root' }))
+        .toEqual({ name:'ListingDiscussion',params:{ ...target,discussionId:'reply',threadId:'root' } });
+    }
+  });
+  it('opens verification recovery and circle invitations in usable screens', () => {
+    expect(notificationDestination({type:'verification_failed'})).toEqual({name:'IdentityVerification',params:{source:'generic'}});
+    expect(notificationDestination({type:'circle_invite',circleId:'circle'})).toEqual({name:'LendingCircles'});
+  });
   it.each(['borrow_request', 'giveaway_claim'])('opens %s in the one approval queue', type => {
     expect(notificationDestination({ type, transactionId: 'exchange', listingId: 'item' }))
       .toEqual({ name: 'RequestQueue', params: { listingId: 'item' } });

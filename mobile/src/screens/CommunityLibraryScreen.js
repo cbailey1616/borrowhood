@@ -83,7 +83,7 @@ export default function CommunityLibraryScreen({ navigation }) {
     <AnimatedCard index={index}>
       <HapticPressable
         style={styles.itemCardPressable}
-        onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
+        onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
         haptic="light"
       >
         <View style={[styles.cardBox, styles.itemCard]}>
@@ -177,7 +177,7 @@ export default function CommunityLibraryScreen({ navigation }) {
           </Text>
           <HapticPressable
             style={styles.donateButton}
-            onPress={() => navigation.navigate('MyItems')}
+            onPress={() => navigation.navigate('Main', { screen: 'MyItems' })}
             haptic="medium"
           >
             <Text style={styles.donateButtonText}>Donate an Item</Text>
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },

@@ -1,4 +1,5 @@
 import TextInput from '../../components/AppTextInput';
+import useNavigationTask from '../../hooks/useNavigationTask';
 import { useState } from 'react';
 import {
   View,
@@ -19,6 +20,7 @@ import { haptics } from '../../utils/haptics';
 import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 export default function RegisterScreen({ navigation }) {
+  const startNavigationTask = useNavigationTask(navigation);
   const { register } = useAuth();
   const { showError } = useError();
   const [formData, setFormData] = useState({
@@ -38,6 +40,7 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const handleRegister = async () => {
+    const isCurrent = startNavigationTask();
     const { firstName, lastName, email, phone, password, confirmPassword } = formData;
 
     if (!firstName || !lastName || !email || !password) {
@@ -70,6 +73,7 @@ export default function RegisterScreen({ navigation }) {
     setIsLoading(true);
     try {
       const challenge = await register({ firstName, lastName, email, phone: phone || undefined, password, referralCode: formData.referralCode || undefined });
+      if (!isCurrent()) return;
       haptics.success();
       navigation.navigate('VerifySignupEmail', challenge);
     } catch (error) {
@@ -312,7 +316,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   input: {
@@ -347,7 +351,7 @@ const styles = StyleSheet.create({
   eyeButtonText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   registerButton: {
     backgroundColor: COLORS.primary,
@@ -370,7 +374,7 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '400',
     textDecorationLine: 'underline',
   },
   footer: {
@@ -385,6 +389,6 @@ const styles = StyleSheet.create({
   footerLink: {
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
   },
 });

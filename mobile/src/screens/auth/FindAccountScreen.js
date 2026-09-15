@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   optionSubtitle: {
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   input: {

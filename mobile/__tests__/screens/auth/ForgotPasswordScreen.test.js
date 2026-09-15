@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../../src/services/api';
+import { TextInput } from 'react-native';
+import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation/native';
 
 const mockShowError = jest.fn();
 const mockShowToast = jest.fn();
@@ -25,6 +27,49 @@ const mockNavigation = {
 };
 
 describe('ForgotPasswordScreen', () => {
+  it.each(['GO_BACK', 'POP'])('returns one reset step for native %s', async type => {
+    const Screen = require('../../../src/screens/auth/ForgotPasswordScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
+    await act(async () => fireEvent.press(screen.getByText('Send Reset Code')));
+    const [prevented, handleRemoval] = usePreventRemove.mock.calls.at(-1);
+    expect(prevented).toBe(true);
+    act(() => handleRemoval({ data: { action: { type } } }));
+    expect(screen.getByText('Send Reset Code')).toBeTruthy();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(usePreventRemove).toHaveBeenLastCalledWith(false, expect.any(Function));
+  });
+
+  it('releases the step guard before returning to login after a successful reset', async () => {
+    api.verifyResetCode = jest.fn().mockResolvedValue({ resetToken: 'reset-token' });
+    const Screen = require('../../../src/screens/auth/ForgotPasswordScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
+    await act(async () => fireEvent.press(screen.getByText('Send Reset Code')));
+    await act(async () => fireEvent.changeText(screen.UNSAFE_getAllByType(TextInput)[0], '123456'));
+    fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'newpassword123');
+    fireEvent.changeText(screen.getByPlaceholderText('Re-enter your password'), 'newpassword123');
+    await act(async () => fireEvent.press(screen.getByText('Reset Password')));
+    expect(api.resetPassword).toHaveBeenCalledWith('reset-token', 'newpassword123');
+    expect(usePreventRemove).toHaveBeenLastCalledWith(false, expect.any(Function));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
+  });
+
+  it('ignores a verification response after going back to the email step', async () => {
+    let resolveCode;
+    api.verifyResetCode = jest.fn(() => new Promise(resolve => { resolveCode = resolve; }));
+    const Screen = require('../../../src/screens/auth/ForgotPasswordScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'test@example.com');
+    await act(async () => fireEvent.press(screen.getByText('Send Reset Code')));
+    fireEvent.changeText(screen.UNSAFE_getAllByType(TextInput)[0], '123456');
+    const [, handleRemoval] = usePreventRemove.mock.calls.at(-1);
+    act(() => handleRemoval({ data: { action: { type: 'GO_BACK' } } }));
+    await act(async () => resolveCode({ resetToken: 'late-token' }));
+    expect(screen.getByText('Send Reset Code')).toBeTruthy();
+    expect(screen.queryByText('Set new password')).toBeNull();
+  });
+
   it('changes a signed-in password using current and new passwords without emailing a code', async () => {
     mockChangePassword.mockResolvedValueOnce({});
     const Screen = require('../../../src/screens/auth/ForgotPasswordScreen').default;

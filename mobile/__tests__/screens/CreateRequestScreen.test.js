@@ -106,3 +106,19 @@ describe('item request photos', () => {
     } else await waitFor(() => expect(api.createRequest).toHaveBeenCalledWith(expect.objectContaining({ photoUrl: 'https://test.example/request.jpg' })));
   });
 });
+
+it('retries a wanted post with its original submission ID after a lost response', async () => {
+  api.createRequest.mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce({id:'saved-request'});
+  const Screen = require('../../src/screens/CreateRequestScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  fireEvent.changeText(await screen.findByPlaceholderText(/Power drill/), 'Weekend ladder');
+  await waitFor(() => expect(screen.getByTestId('CreateRequest.button.submit')).not.toBeDisabled());
+  await act(async () => fireEvent.press(screen.getByTestId('CreateRequest.button.submit')));
+  expect(mockShowError).toHaveBeenCalled();
+  expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  const attempt = api.createRequest.mock.calls[0][0];
+  expect(attempt.clientRequestId).toEqual(expect.any(String));
+  await act(async () => fireEvent.press(screen.getByTestId('CreateRequest.button.submit')));
+  expect(api.createRequest.mock.calls[1][0]).toEqual(attempt);
+  expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+});

@@ -112,10 +112,10 @@ const styles = StyleSheet.create({
   segmentText: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   segmentTextActive: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
 });

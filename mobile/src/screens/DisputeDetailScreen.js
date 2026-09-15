@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   typeBadge: {
     flexDirection: 'row',
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
   },
   cardHeaderLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     flex: 1,
   },
@@ -818,7 +818,7 @@ const styles = StyleSheet.create({
   },
   personName: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     flex: 1,
   },
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   },
   amountValue: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
 
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   },
   detailValue: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   totalRow: {
@@ -907,12 +907,12 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   totalValue: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   conditionRow: {
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
   },
   conditionValue: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginTop: SPACING.xs,
   },
@@ -992,7 +992,7 @@ const styles = StyleSheet.create({
   // Resolve form
   formLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.sm,
     marginTop: SPACING.lg,
@@ -1025,7 +1025,7 @@ const styles = StyleSheet.create({
   },
   outcomeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   outcomeTextActive: {

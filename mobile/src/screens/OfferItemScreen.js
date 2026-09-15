@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import useNavigationTask from '../hooks/useNavigationTask';
 import { View, Text, Image, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from '../components/HapticPressable';
@@ -8,32 +10,38 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function OfferItemScreen({ route, navigation }) {
   const { request } = route.params;
+  const startNavigationTask = useNavigationTask(navigation, request.id);
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(null);
   const [canOffer, setCanOffer] = useState(false);
-  const load = async () => {
+  const load = useCallback(async () => {
+    const isCurrent = startNavigationTask();
     setLoading(true); setError(null); setCanOffer(false);
     try {
       const current = await api.getRequest(request.id);
       if (current.status !== 'open' || current.isExpired) throw new Error('This request has ended. Ask the requester to renew it.');
       if (current.ownerMasked || current.isOwner) throw new Error('This request is not available for a private offer.');
-      setItems((await api.getMyListings()).filter(i => i.status === 'active' && i.isAvailable));
+      const available = (await api.getMyListings()).filter(i => i.status === 'active' && i.isAvailable);
+      if (!isCurrent()) return;
+      setItems(available);
       setCanOffer(true);
     }
-    catch (e) { setItems([]); setError(e.message || 'Could not load this request and your inventory.'); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, []);
+    catch (e) { if (isCurrent()) { setItems([]); setError(e.message || 'Could not load this request and your inventory.'); } }
+    finally { if (isCurrent()) setLoading(false); }
+  }, [request.id, startNavigationTask]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
   const offer = item => Alert.alert(`Offer ${item.title}?`,
     'Only this requester will receive access to this item for up to 14 days while their request is open. Your inventory and pickup address remain private.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Send private offer', onPress: async () => {
+        const isCurrent = startNavigationTask();
         setSending(item.id);
         try {
           await api.offerItem(request.id, item.id);
+          if (!isCurrent()) return;
           Alert.alert('Private offer sent', 'You can withdraw it from the request page.');
           navigation.goBack();
         } catch (e) {

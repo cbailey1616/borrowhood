@@ -1,9 +1,10 @@
 import TextInput from '../components/AppTextInput';
 import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import useFormDraft from '../hooks/useFormDraft';
+import useNavigationTask from '../hooks/useNavigationTask';
 import DraftStatus from '../components/DraftStatus';
 import SharingPicker from '../components/SharingPicker';
 import { localDate, requestDatePreset, requestAudienceProblem } from '../utils/requestForm';
@@ -40,6 +41,7 @@ const EXPIRATION_OPTIONS = [
 ];
 
 export default function CreateRequestScreen({ navigation, route }) {
+  const startNavigationTask = useNavigationTask(navigation);
   const { user, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
   const draftScope = user?.id ? `${user.id}.request.new` : null;
@@ -100,8 +102,10 @@ export default function CreateRequestScreen({ navigation, route }) {
     }
   };
 
+  const submitting = useRef(false);
   const handleSubmit = async () => {
-    if (audienceProblem || !draft.ready || isSubmitting) return;
+    if (audienceProblem || !draft.ready || submitting.current) return;
+    const isCurrent = startNavigationTask();
     if ((formData.expiresIn === 'custom' && customExpiryDate <= new Date()) || (formData.neededUntil && formData.neededUntil < localDate(new Date()))) {
       setShowDetails(true);
       return showError({ message: 'This draft’s dates have passed. Choose new dates before posting.' });
@@ -121,41 +125,46 @@ export default function CreateRequestScreen({ navigation, route }) {
       return;
     }
 
+    submitting.current = true;
     setIsSubmitting(true);
     try {
-      const photoUrls = formData.type === 'item' && formData.photoUri ? await api.uploadImages([formData.photoUri], 'listings') : [];
-      const requestData = {
-        photoUrl: photoUrls[0] || undefined,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        type: formData.type,
-        categoryId: formData.categoryId,
-        visibility: formData.visibility,
-        townPreviewEnabled: true,
-        neededFrom: formData.neededFrom || undefined,
-        neededUntil: formData.neededUntil || undefined,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-        communityId: communityId,
-      };
+      const payload = await draft.prepareSubmission({ ...formData, communityId }, async () => {
+        const photoUrls = formData.type === 'item' && formData.photoUri ? await api.uploadImages([formData.photoUri], 'listings') : [];
+        const requestData = {
+          photoUrl: photoUrls[0] || undefined,
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          type: formData.type,
+          categoryId: formData.categoryId,
+          visibility: formData.visibility,
+          townPreviewEnabled: true,
+          neededFrom: formData.neededFrom || undefined,
+          neededUntil: formData.neededUntil || undefined,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          communityId: communityId,
+        };
 
-      if (formData.expiresIn === 'never') {
-        requestData.expiresIn = 'never';
-      } else if (formData.expiresIn === 'custom') {
-        requestData.expiresAt = customExpiryDate.toISOString();
-      } else {
-        requestData.expiresIn = formData.expiresIn;
-      }
+        if (formData.expiresIn === 'never') {
+          requestData.expiresIn = 'never';
+        } else if (formData.expiresIn === 'custom') {
+          requestData.expiresAt = customExpiryDate.toISOString();
+        } else {
+          requestData.expiresIn = formData.expiresIn;
+        }
 
-      await api.createRequest(requestData);
+        return requestData;
+      });
+      await api.createRequest(payload);
       await draft.clear().catch(() => showToast('Request posted. The local draft could not be cleared.', 'info'));
       haptics.success();
       showToast('Your request has been posted!', 'success');
-      navigation.goBack();
+      if (isCurrent()) navigation.goBack();
     } catch (error) {
       showError({
         message: error.message || 'Couldn\'t post your request right now. Please check your connection and try again.',
       });
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
@@ -261,7 +270,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Description */}
       <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(!showDetails)} style={{ minHeight: 56, paddingHorizontal: 16, marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface }}>
         <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
-        <Text style={{ ...TYPOGRAPHY.body, fontWeight: '600', color: COLORS.primary, flex: 1 }}>{showDetails ? 'Hide details' : 'Add details'}</Text>
+        <Text style={{ ...TYPOGRAPHY.body, fontWeight: '400', color: COLORS.primary, flex: 1 }}>{showDetails ? 'Hide details' : 'Add details'}</Text>
         <Ionicons name={showDetails ? 'chevron-up' : 'add'} size={20} color={COLORS.primary} />
       </HapticPressable>
       {showDetails && <>
@@ -642,7 +651,7 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '400',
   },
   infoCard: {
     flexDirection: 'row',

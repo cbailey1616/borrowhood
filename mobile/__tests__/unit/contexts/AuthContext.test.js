@@ -2,6 +2,7 @@ import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../../src/services/api';
+import { Alert } from 'react-native';
 
 // Unmock the context so we test the real implementation
 jest.unmock('../../../src/context/AuthContext');
@@ -27,6 +28,48 @@ beforeEach(() => {
 const wrapper = ({ children }) => React.createElement(AuthProvider, null, children);
 
 describe('AuthContext', () => {
+  it('does not sign back in when an older login finishes after logout', async () => {
+    let finish;
+    api.login.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    let pending;
+    act(() => { pending = result.current.login('test@test.com', 'password').catch(error => error); });
+    await act(async () => result.current.logout());
+    await act(async () => finish(mockResponse));
+    expect(await pending).toMatchObject({ code: 'SESSION_CHANGED' });
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+  });
+
+  it('does not let an old password change replace the next account credentials', async () => {
+    let finish;
+    api.changePassword.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => result.current.login('test@test.com', 'password'));
+    let pending;
+    act(() => { pending = result.current.changePassword('old', 'new').catch(error => error); });
+    await act(async () => result.current.logout());
+    const next = { user: { id: 'user-2' }, accessToken: 'second-access', refreshToken: 'second-refresh' };
+    api.loginWithApple.mockResolvedValueOnce(next);
+    api.getMe.mockResolvedValueOnce(next.user);
+    await act(async () => result.current.loginWithApple('apple-proof'));
+    await act(async () => finish({ accessToken: 'stale-access', refreshToken: 'stale-refresh' }));
+    expect(await pending).toMatchObject({ code: 'SESSION_CHANGED' });
+    expect(api.setAuthToken).toHaveBeenLastCalledWith('second-access');
+    expect(result.current.user.id).toBe('user-2');
+  });
+
+  it('cleans up a partial credential save and keeps sign-in incomplete', async () => {
+    SecureStore.setItemAsync.mockResolvedValueOnce().mockRejectedValueOnce(new Error('Device storage full'));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => expect(result.current.login('test@test.com', 'password')).rejects.toThrow('Device storage full'));
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('accessToken');
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('refreshToken');
+    expect(result.current.isAuthenticated).toBe(false);
+  });
   it('persists a session only after the email code and provider are accepted', async () => {
     const link = { provider: 'google', token: { idToken: 'proof' } };
     api.completeSocialLinkCode.mockRejectedValueOnce(new Error('Incorrect code')).mockResolvedValueOnce(mockResponse);
@@ -143,7 +186,7 @@ describe('AuthContext', () => {
   });
 
   it('logout clears tokens and user', async () => {
-    SecureStore.getItemAsync.mockResolvedValue('stored-token');
+    SecureStore.getItemAsync.mockImplementation(async key => key === 'accessToken' ? 'stored-token' : null);
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => { expect(result.current.isAuthenticated).toBe(true); });
     await act(async () => {
@@ -154,6 +197,38 @@ describe('AuthContext', () => {
     expect(api.setAuthToken).toHaveBeenCalledWith(null);
     expect(result.current.user).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('does not restore the previous profile when its background request finishes after logout', async () => {
+    let finish;
+    api.getMe.mockImplementationOnce(() => new Promise(resolve => { finish=resolve; }));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => result.current.login('test@test.com','password'));
+    await act(async () => result.current.logout());
+    await act(async () => finish(mockResponse.user));
+    expect(result.current.user).toBeNull();
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('revokes this device before clearing the session and retains sign-in if revocation fails', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const device = { installationId:'device',revocationSecret:'secret' };
+    SecureStore.getItemAsync.mockImplementation(async key => ({accessToken:'stored-token',pushRegistered:JSON.stringify({userId:'user-1'}),pushDevice:JSON.stringify(device)})[key] || null);
+    api.revokePushDevice.mockRejectedValueOnce(new Error('Offline'));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+    await act(async () => expect(await result.current.logout()).toBe(false));
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith('accessToken');
+    expect(Alert.alert).toHaveBeenCalledWith('Couldn’t sign out', expect.any(String));
+    api.revokePushDevice.mockResolvedValueOnce({});
+    await act(async () => result.current.logout());
+    expect(result.current.isAuthenticated).toBe(false);
+    const revokeOrder = api.revokePushDevice.mock.invocationCallOrder.at(-1);
+    const clearOrder = SecureStore.deleteItemAsync.mock.invocationCallOrder[SecureStore.deleteItemAsync.mock.calls.findIndex(([key])=>key==='accessToken')];
+    expect(revokeOrder).toBeLessThan(clearOrder);
+    alertSpy.mockRestore();
   });
 
   it('refreshUser calls api.getMe and updates user', async () => {

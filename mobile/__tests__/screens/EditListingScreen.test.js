@@ -3,6 +3,7 @@ import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation/native';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
@@ -16,6 +17,17 @@ beforeEach(() => { jest.clearAllMocks(); api.getCategories.mockResolvedValue([{ 
 describe('EditListingScreen', () => {
   const listing = { id: 'l-1', title: 'My Drill', description: 'DeWalt 20V', condition: 'good', isFree: true, pricePerDay: 0, depositAmount: 0, visibility: 'close_friends', category: { id: 'cat-1', name: 'Tools' }, photos: ['https://test.com/photo.jpg'], minDuration: 1, maxDuration: 14 };
   const route = { params: { listing } };
+
+  it('does not treat an automatic neighborhood refresh as an unsaved edit', async () => {
+    api.getCommunities.mockResolvedValueOnce([{ id: 'comm-1', isMember: true }]);
+    const Screen = require('../../src/screens/EditListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await act(async () => {});
+    expect(api.getCommunities).toHaveBeenCalled();
+    expect(usePreventRemove).toHaveBeenLastCalledWith(false, expect.any(Function));
+    fireEvent.changeText(screen.getByDisplayValue('My Drill'), 'Updated drill');
+    expect(usePreventRemove).toHaveBeenLastCalledWith(true, expect.any(Function));
+  });
 
   it('adds the cropped camera image alongside existing listing photos', async () => {
     ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///cropped-camera.jpg' }] });

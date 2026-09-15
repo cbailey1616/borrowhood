@@ -634,7 +634,7 @@ export default function FeedScreen({ navigation }) {
   const renderItem = ({ item, index }) => {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
-        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Neighbors need</Text>
+        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'400' }}>Neighbors need</Text>
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
@@ -643,7 +643,7 @@ export default function FeedScreen({ navigation }) {
     </View>;
     if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing-heading') return <View style={{ borderTopWidth:1,borderTopColor:COLORS.borderBrown,paddingTop:SPACING.lg,marginBottom:SPACING.md }}>
-      <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'700' }}>Available nearby</Text>
+      <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'400' }}>Available nearby</Text>
     </View>;
     if (item.type === 'listing') {
       return renderListingItem(item, index);
@@ -968,21 +968,21 @@ const styles = StyleSheet.create({
   ribbonAuthorButton: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
   ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
   ribbonRepliesText: { flex: 0 },
-  addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '700' },
+  addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '400' },
   feedTitle: { fontSize: 28, lineHeight: 36 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
   typeRibbonContent: { flexGrow: 1 },
   typeTabs: { flexGrow: 1, flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator },
   typeTab: { minHeight: 44, minWidth: 44, flexShrink: 0, paddingHorizontal: SPACING.xs, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
   typeTabActive: { borderBottomColor: COLORS.primary },
-  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 14, fontWeight: '400', color: COLORS.textSecondary },
   typeTabTextActive: { color: COLORS.primary },
   sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
   requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   requestTitle: { fontSize: 22, lineHeight: 29 },
   availabilityText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginLeft: 'auto' },
   publicReplies: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, marginHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
-  publicRepliesText: { ...TYPOGRAPHY.footnote, fontWeight: '600', flex: 1, color: COLORS.primary },
+  publicRepliesText: { ...TYPOGRAPHY.footnote, fontWeight: '400', flex: 1, color: COLORS.primary },
   publicRepliesAction: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   container: {
     flex: 1,
@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   bannerSubtitle: {
@@ -1166,7 +1166,7 @@ const styles = StyleSheet.create({
   },
   requestLabelText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
     flexShrink: 1,
   },
@@ -1216,7 +1216,7 @@ const styles = StyleSheet.create({
   },
   tileTypeLabelText: {
     ...TYPOGRAPHY.caption,
-    fontWeight: '800',
+    fontWeight: '400',
     letterSpacing: 0.5,
   },
   tileTimeText: {
@@ -1239,7 +1239,7 @@ const styles = StyleSheet.create({
   },
   tilePrice: {
     ...TYPOGRAPHY.headline,
-    fontWeight: '700',
+    fontWeight: '400',
     marginLeft: 'auto',
   },
   card: {
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   timeAgo: {
@@ -1348,13 +1348,13 @@ const styles = StyleSheet.create({
   },
   requestBannerLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#fff',
     letterSpacing: 1,
   },
   requestBannerDate: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '400',
     color: 'rgba(255,255,255,0.85)',
   },
   requestContent: {
@@ -1382,7 +1382,7 @@ const styles = StyleSheet.create({
   },
   requestTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: 2,
   },
@@ -1406,7 +1406,7 @@ const styles = StyleSheet.create({
   },
   requestCTAText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   renewCTA: {
@@ -1419,7 +1419,7 @@ const styles = StyleSheet.create({
   },
   renewCTAText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   requestThreadDivider: {
@@ -1438,7 +1438,7 @@ const styles = StyleSheet.create({
   },
   requestThreadAuthor: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   requestThreadText: {
@@ -1449,7 +1449,7 @@ const styles = StyleSheet.create({
   },
   requestThreadLinkText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   threadContainer: {
@@ -1476,7 +1476,7 @@ const styles = StyleSheet.create({
   },
   threadHeaderText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   threadPost: {
@@ -1502,7 +1502,7 @@ const styles = StyleSheet.create({
   },
   threadReplyBtnText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   threadReply: {
@@ -1525,7 +1525,7 @@ const styles = StyleSheet.create({
   },
   threadReplyAuthor: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   threadReplyText: {
@@ -1549,7 +1549,7 @@ const styles = StyleSheet.create({
   },
   threadReplyingText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   threadInputRow: {
@@ -1591,7 +1591,7 @@ const styles = StyleSheet.create({
   },
   threadDmText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   typeBadgeText: {
@@ -1629,7 +1629,7 @@ const styles = StyleSheet.create({
   },
   ribbonText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '800',
+    fontWeight: '400',
     color: '#fff',
     letterSpacing: 1,
   },
@@ -1641,7 +1641,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...TYPOGRAPHY.h3,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.primary,
     marginBottom: SPACING.sm,
     letterSpacing: -0.3,
@@ -1662,17 +1662,17 @@ const styles = StyleSheet.create({
   },
   conditionText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   freeLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   priceLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   dateRow: {
@@ -1708,7 +1708,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   verifyUnlockBanner: {

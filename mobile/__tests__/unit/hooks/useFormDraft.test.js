@@ -52,3 +52,81 @@ it('starts fresh after a confirmed discard and allows saving new edits', async (
   await act(async () => { await result.current[2].retry(); });
   expect(saveDraft).toHaveBeenCalledWith('a.item', { title: 'New item', visibility: ['private'] });
 });
+
+it('ignores updates and cleanup callbacks belonging to a previous account', async () => {
+  const { result, rerender } = renderHook(({ scope }) => useFormDraft(scope, { title: '' }), { initialProps: { scope: 'a.item' } });
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  const old = result.current;
+  rerender({ scope: 'b.item' });
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  act(() => result.current[1]({ title: 'Account B draft' }));
+  act(() => old[1]({ title: 'Late account A edit' }));
+  await act(async () => old[2].clear());
+  expect(deleteDraft).not.toHaveBeenCalledWith('b.item');
+  expect(result.current[0].title).toBe('Account B draft');
+});
+
+it('does not erase a new account draft when a previous discard finishes', async () => {
+  let finish;
+  deleteDraft.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const { result, rerender } = renderHook(({ scope }) => useFormDraft(scope, { title: '' }), { initialProps: { scope: 'a.item' } });
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  let discard;
+  act(() => { discard = result.current[2].discard(); });
+  rerender({ scope: 'b.item' });
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  act(() => result.current[1]({ title: 'Keep B' }));
+  await act(async () => { finish(); await discard; });
+  expect(result.current[0].title).toBe('Keep B');
+  expect(deleteDraft).toHaveBeenCalledWith('a.item');
+});
+
+it('reuses the exact saved submission after reopening, including uploaded photos', async () => {
+  const build = jest.fn().mockResolvedValue({ title: 'Ladder', photos: ['stored-photo'] });
+  const first = renderHook(() => useFormDraft('a.item', { title: 'Ladder' }));
+  await waitFor(() => expect(first.result.current[2].ready).toBe(true));
+  let payload;
+  await act(async () => { payload = await first.result.current[2].prepareSubmission(first.result.current[0], build); });
+  expect(payload).toEqual({ title: 'Ladder', photos: ['stored-photo'], clientRequestId: expect.any(String) });
+  const saved = saveDraft.mock.calls.at(-1)[1];
+  first.unmount();
+  readDraft.mockResolvedValue(saved);
+  const second = renderHook(() => useFormDraft('a.item', { title: '' }));
+  await waitFor(() => expect(second.result.current[2].ready).toBe(true));
+  await act(async () => { expect(await second.result.current[2].prepareSubmission(second.result.current[0], build)).toEqual(payload); });
+  expect(build).toHaveBeenCalledTimes(1);
+});
+
+it('prepares a new submission only after the input changes', async () => {
+  const { randomUUID } = require('expo-crypto');
+  randomUUID.mockReturnValueOnce('first-attempt').mockReturnValueOnce('second-attempt');
+  const { result } = renderHook(() => useFormDraft('a.item', { title: 'Ladder' }));
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  let first, second;
+  await act(async () => { first = await result.current[2].prepareSubmission(result.current[0], async () => ({ title: 'Ladder' })); });
+  act(() => result.current[1](previous => ({ ...previous, title: 'Drill' })));
+  await act(async () => { second = await result.current[2].prepareSubmission(result.current[0], async () => ({ title: 'Drill' })); });
+  expect(first.clientRequestId).not.toBe(second.clientRequestId);
+  expect(second.title).toBe('Drill');
+});
+
+it('blocks publication when its retry information could not be saved', async () => {
+  saveDraft.mockRejectedValue(new Error('Device full'));
+  const { result } = renderHook(() => useFormDraft('a.item', { title: 'Ladder' }));
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  await act(async () => {
+    await expect(result.current[2].prepareSubmission(result.current[0], async () => ({ title: 'Ladder' }))).rejects.toThrow('Could not save your draft');
+  });
+});
+
+it('does not save or publish an upload that finished in another account', async () => {
+  let finish;
+  const build = () => new Promise(resolve => { finish = resolve; });
+  const { result, rerender } = renderHook(({ scope }) => useFormDraft(scope, { title: 'Ladder' }), { initialProps: { scope: 'a.item' } });
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  const pending = result.current[2].prepareSubmission(result.current[0], build);
+  rerender({ scope: 'b.item' });
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  await act(async () => { finish({ photos: ['account-a-photo'] }); await expect(pending).rejects.toMatchObject({ code: 'SESSION_CHANGED' }); });
+  expect(saveDraft).not.toHaveBeenCalled();
+});

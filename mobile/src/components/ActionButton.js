@@ -17,6 +17,6 @@ export default function ActionButton({ label, onPress, disabled = false, loading
 const styles = StyleSheet.create({
   button: { minHeight: 48, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1,
     borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', flexShrink: 1 },
-  label: { ...TYPOGRAPHY.subheadline, fontWeight: '600', textAlign: 'center', flexShrink: 1 },
+  label: { ...TYPOGRAPHY.subheadline, fontWeight: '400', textAlign: 'center', flexShrink: 1 },
   disabled: { opacity: 0.5 },
 });

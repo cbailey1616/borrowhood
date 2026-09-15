@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useFocusEffect } from '@react-navigation/native';
 import HapticPressable from '../components/HapticPressable';
@@ -16,6 +16,8 @@ import { listingAvailability } from '../utils/listingAvailability';
 const date = value => value ? new Date(value.slice(0, 10) + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 export default function RequestQueueScreen({ route, navigation }) {
   const { listingId } = route.params;
+  const { width, fontScale } = useWindowDimensions();
+  const stackActions = width / fontScale < 340;
   const [data, setData] = useState(null);
   const [errorListingId, setErrorListingId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,8 +100,11 @@ export default function RequestQueueScreen({ route, navigation }) {
       data={data.requests} keyExtractor={item => item.id}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
       ListHeaderComponent={<View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
-        <Text style={{ ...TYPOGRAPHY.h2, color: COLORS.text }}>{data.listing.title}</Text>
-        <Text style={styles.body}>{data.requests.length} {data.requests.length === 1 ? 'person waiting' : 'people waiting'} · Oldest first</Text>
+        <View style={styles.headingRow}>
+          <Text style={styles.title}>{data.listing.title}</Text>
+          <Text style={styles.count}>{data.requests.length} waiting</Text>
+        </View>
+        {data.requests.length > 1 && <Text style={styles.body}>Oldest first</Text>}
         {!availability.available && <Text style={styles.body}>{availability.label}. Approve another request when it’s available.</Text>}
         {!!data.activeTransactionId && <HapticPressable accessibilityRole="button" onPress={() => navigation.replace('TransactionDetail', { id: data.activeTransactionId })} style={styles.outline}><Text style={styles.action}>View current exchange</Text></HapticPressable>}
         {error && <Text accessibilityRole="alert" style={styles.body}>Couldn’t refresh. Pull down to try again.</Text>}
@@ -107,33 +112,35 @@ export default function RequestQueueScreen({ route, navigation }) {
       ListEmptyComponent={<Text style={styles.body}>No requests waiting.</Text>}
       renderItem={({ item }) => <LayeredCard style={{ marginBottom: SPACING.md }}>
         <View style={styles.card}>
-          <View style={{ flexDirection: 'row', gap: SPACING.md, alignItems: 'center' }}>
-            <ShimmerImage source={item.borrower.profilePhotoUrl ? { uri: item.borrower.profilePhotoUrl } : null} placeholderIcon="person" style={{ width: 44, height: 44, borderRadius: 22 }} />
+          <View style={styles.personRow}>
+            <ShimmerImage source={item.borrower.profilePhotoUrl ? { uri: item.borrower.profilePhotoUrl } : null} placeholderIcon="person" style={styles.avatar} />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <MemberSummary user={item.borrower}>
-                <HapticPressable style={{ flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface }} accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile${item.borrower.isVerified === true ? ', verified identity' : ''}`} onPress={() => navigation.navigate('UserProfile', { id: item.borrower.id })}>
-                  <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 }}>{item.borrower.firstName}</Text>
+              <MemberSummary user={item.borrower} showExchangeCount={false} compact>
+                <HapticPressable style={styles.profileName} accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile${item.borrower.isVerified === true ? ', verified identity' : ''}`} onPress={() => navigation.navigate('UserProfile', { id: item.borrower.id })}>
+                  <Text style={styles.name}>{item.borrower.firstName}</Text>
                   {item.borrower.isVerified === true && <VerifiedBadge size={18} />}
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                 </HapticPressable>
               </MemberSummary>
+              {!['giveaway', 'sell'].includes(data.listing.listingType) && (item.startDate || item.endDate) && <View style={styles.dateRow}>
+                <Ionicons name="calendar-outline" size={15} color={COLORS.textSecondary} />
+                <Text style={styles.date}>{[date(item.startDate), date(item.endDate)].filter(Boolean).join(' – ')}</Text>
+              </View>}
             </View>
-            <Text style={styles.body}>#{item.position}</Text>
+            <HapticPressable accessibilityRole="button" accessibilityLabel={`Open ${item.borrower.firstName}'s profile`} style={styles.profileArrow} onPress={() => navigation.navigate('UserProfile', { id: item.borrower.id })}>
+              <View style={styles.arrowCircle}><Ionicons name="chevron-forward" size={15} color={COLORS.primary} /></View>
+            </HapticPressable>
           </View>
-          {!['giveaway', 'sell'].includes(data.listing.listingType) && <Text style={styles.body}>{date(item.startDate)} – {date(item.endDate)}</Text>}
           {!!item.message && <Text style={styles.body}>{item.message}</Text>}
-          <View style={styles.actionRow}>
             <HapticPressable accessibilityRole="button" accessibilityLabel={`Approve ${item.borrower.firstName}'s request`} testID={`Queue.approve.${item.id}`}
               disabled={!(item.canChoose ?? availability.available) || !!busy || error}
-              onPress={() => decide(item, true)} style={[styles.approve, { flex: 1, opacity: (item.canChoose ?? availability.available) && !busy && !error ? 1 : 0.45 }]}>
-              {busy === item.id ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.approveText}>Approve</Text>}
+              onPress={() => decide(item, true)} style={[styles.approve, { opacity: (item.canChoose ?? availability.available) && !busy && !error ? 1 : 0.45 }]}>
+              {busy === item.id ? <ActivityIndicator color={COLORS.surface} /> : <><Ionicons name="checkmark" size={20} color={COLORS.surface} /><Text style={styles.approveText}>Approve request</Text></>}
             </HapticPressable>
-            <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${item.borrower.firstName}`} style={[styles.outline, { flex: 1 }]} onPress={() => navigation.navigate('Chat', { recipientId: item.borrower.id, recipient: item.borrower, listingId, listing: data.listing })}><Text style={styles.action}>Message</Text></HapticPressable>
-          </View>
-          <View style={styles.actionRow}>
-            <HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s request`} style={[styles.outline, { flex: 1 }]} onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}><Text style={styles.action}>View request</Text></HapticPressable>
+          <View testID={`Queue.actions.${item.id}`} style={[styles.actionRow, stackActions && { flexDirection: 'column' }]}>
+            <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${item.borrower.firstName}`} style={[styles.secondary, { flex: stackActions ? 0 : 1.12 }]} onPress={() => navigation.navigate('Chat', { recipientId: item.borrower.id, recipient: item.borrower, listingId, listing: data.listing })}><Ionicons name="chatbubble" size={15} color={COLORS.primary} /><Text style={styles.secondaryText}>Message</Text></HapticPressable>
+            <HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s request`} style={[styles.secondary, stackActions && { flex: 0 }]} onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}><Text style={styles.secondaryText}>Details</Text></HapticPressable>
             <HapticPressable accessibilityRole="button" accessibilityLabel={`Decline ${item.borrower.firstName}'s request`} testID={`Queue.decline.${item.id}`}
-              disabled={!!busy || error} style={[styles.outline, { flex: 1, borderColor: COLORS.danger }, (busy || error) && { opacity: 0.45 }]} onPress={() => setDeclining(item)}><Text style={[styles.action, { color: COLORS.danger }]}>Decline</Text></HapticPressable>
+              disabled={!!busy || error} style={[styles.secondary, stackActions && { flex: 0 }, { backgroundColor: COLORS.background }, (busy || error) && { opacity: 0.45 }]} onPress={() => setDeclining(item)}><Text style={[styles.secondaryText, { color: COLORS.danger }]}>Decline</Text></HapticPressable>
           </View>
         </View>
       </LayeredCard>} />
@@ -145,10 +152,23 @@ export default function RequestQueueScreen({ route, navigation }) {
 const styles = {
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background },
   body: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
-  action: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, fontWeight: '600' },
-  card: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.lg, padding: SPACING.lg, gap: SPACING.md },
-  actionRow: { flexDirection: 'row', gap: SPACING.md },
+  action: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, fontWeight: '400' },
+  headingRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.sm },
+  title: { ...TYPOGRAPHY.h2, color: COLORS.text, flexShrink: 1 },
+  count: { ...TYPOGRAPHY.caption1, color: COLORS.primary, backgroundColor: COLORS.primaryMuted, paddingHorizontal: 11, paddingVertical: 6, borderRadius: RADIUS.lg, overflow: 'hidden' },
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 16, gap: 10 },
+  personRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 10 },
+  avatar: { width: 44, height: 48, borderRadius: 16 },
+  profileName: { flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 44 },
+  name: { ...TYPOGRAPHY.subheadline, fontWeight: '400', fontFamily: 'DMSans_400Regular', color: COLORS.text, flexShrink: 1 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  date: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, flexShrink: 1 },
+  profileArrow: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  arrowCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
+  actionRow: { flexDirection: 'row', gap: 6 },
+  secondary: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 4, paddingVertical: 9, flexDirection: 'row', flexWrap: 'wrap', gap: 4, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { ...TYPOGRAPHY.caption1, color: COLORS.primary, textAlign: 'center', flexShrink: 1 },
   outline: { minHeight: 48, borderWidth: 1, borderColor: COLORS.borderGreenStrong, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
-  approve: { minHeight: 48, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
-  approveText: { ...TYPOGRAPHY.button, color: COLORS.surface },
+  approve: { minHeight: 49, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
+  approveText: { ...TYPOGRAPHY.button, color: COLORS.surface, flexShrink: 1, textAlign: 'center' },
 };

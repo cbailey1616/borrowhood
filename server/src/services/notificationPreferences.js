@@ -10,7 +10,7 @@ const groups = {
   return_confirmed: 'borrow_updates', giveaway_complete: 'borrow_updates', giveaway_expired: 'borrow_updates',
   giveaway_pickup_expired: 'borrow_updates', listing_comment: 'post_replies', request_comment: 'post_replies', request_offer: 'post_replies',
   discussion_reply: 'post_replies', friend_request: 'community_updates', friend_accepted: 'community_updates',
-  join_request: 'community_updates', join_approved: 'community_updates',
+  join_request: 'community_updates', join_approved: 'community_updates', circle_invite: 'community_updates',
 };
 const legacyGroups = { request_approved: 'request_response', request_declined: 'request_response',
   pickup_confirmed: 'pickup_return', return_confirmed: 'pickup_return' };
@@ -23,7 +23,7 @@ export const GRANULAR_NOTIFICATION_TYPES = {
   return_updates: ['return_confirmed'], expired_requests: ['giveaway_expired'],
   post_comments: ['listing_comment', 'request_comment', 'request_offer'], comment_replies: ['discussion_reply'],
   friend_requests: ['friend_request'], friend_acceptances: ['friend_accepted'],
-  neighborhood_requests: ['join_request'], neighborhood_responses: ['join_approved'],
+  neighborhood_requests: ['join_request', 'circle_invite'], neighborhood_responses: ['join_approved'],
   new_item_requests: ['new_request'], new_service_requests: ['new_request'],
 };
 export const SOURCE_PREFERENCES = ['source_friends', 'source_neighborhood', 'source_town'];

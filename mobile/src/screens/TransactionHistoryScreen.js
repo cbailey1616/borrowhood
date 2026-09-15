@@ -240,11 +240,11 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   amount: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   date: {

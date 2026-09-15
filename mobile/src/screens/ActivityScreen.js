@@ -230,12 +230,12 @@ const styles = StyleSheet.create({
   },
   unreadLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   markAllRead: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   tabs: {
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   tabTextActive: {
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   personName: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   dateRow: {
     flexDirection: 'row',
@@ -325,11 +325,11 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.caption,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   amount: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   emptyContainer: {

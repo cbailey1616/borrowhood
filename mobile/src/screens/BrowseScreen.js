@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   tabTextActive: {
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   },
   filterPillText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   filterPillTextActive: {
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
@@ -505,12 +505,12 @@ const styles = StyleSheet.create({
   },
   freeLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   priceLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   distanceRow: {
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   cardBox: {
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   },
   requesterName: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   requestTime: {
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   },
   requestTypeBadgeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   requestDescription: {
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
   },
   haveThisText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   // Empty state

@@ -84,7 +84,7 @@ export default function SharingPicker({ value = ['private'], onChange, request =
 const styles = StyleSheet.create({
   container: { gap: SPACING.sm },
   title: { ...TYPOGRAPHY.headline, color: COLORS.text },
-  label: { ...TYPOGRAPHY.subheadline, fontWeight: '600', color: COLORS.text },
+  label: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.text },
   hint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },
   copy: { flex: 1, gap: 3 },
   option: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.md,

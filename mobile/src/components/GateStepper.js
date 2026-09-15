@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   circleText: {
     ...TYPOGRAPHY.caption2,
     color: COLORS.textMuted,
-    fontWeight: '600',
+    fontWeight: '400',
     fontSize: 11,
   },
   circleTextCurrent: {
@@ -124,6 +124,6 @@ const styles = StyleSheet.create({
   },
   labelCurrent: {
     color: COLORS.text,
-    fontWeight: '600',
+    fontWeight: '400',
   },
 });

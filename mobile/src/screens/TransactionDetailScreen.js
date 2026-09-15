@@ -1,4 +1,5 @@
 import PendingRequestCard from '../components/PendingRequestCard';
+import useNavigationTask from '../hooks/useNavigationTask';
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
 import ActionButton from '../components/ActionButton';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
@@ -44,6 +45,7 @@ async function dismissRelatedNotifications(transactionId) {
 }
 
 export default function TransactionDetailScreen({ route, navigation }) {
+  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
@@ -137,13 +139,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
   const handleCancel = async () => {
     if (actionInProgress.current) return;
+    const isCurrent = startNavigationTask();
     actionInProgress.current = true;
     setActionLoading(true);
     try {
       await api.cancelRental(id);
       haptics.success();
       showToast(cancelAsRequest ? 'Request cancelled.' : 'Borrow cancelled.', 'success');
-      navigation.goBack();
+      if (isCurrent()) navigation.goBack();
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t cancel right now. Please check your connection and try again.' });
@@ -188,13 +191,15 @@ export default function TransactionDetailScreen({ route, navigation }) {
     : (transaction.isBorrower ? 'Owner' : 'Borrower');
 
   const messageNeighbor = async () => {
+                const isCurrent = startNavigationTask();
                 const params = { recipientId: otherPerson.id, recipient: otherPerson, listingId: transaction.listing.id,
                   listing: transaction.listing, threadContext: { id: transaction.listing.id, title: transaction.listing.title, type: 'listing' } };
                 try {
                   const conversations = await api.getConversations();
+                  if (!isCurrent()) return;
                   const existing = conversations.find(chat => chat.otherUser?.id === otherPerson.id);
                   navigation.navigate('Chat', { ...params, conversationId: existing?.id });
-                } catch { navigation.navigate('Chat', params); }
+                } catch { if (isCurrent()) navigation.navigate('Chat', params); }
   };
   const needsReturn = !isGiveaway && ((transaction.isBorrower && transaction.status === 'picked_up')
     || (transaction.isLender && ['picked_up', 'return_pending'].includes(transaction.status))
@@ -450,7 +455,7 @@ const styles = StyleSheet.create({
   decisionRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
   outlinedAction: { minHeight: 50, paddingVertical: 14, paddingHorizontal: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   cancelAction: { borderColor: COLORS.danger, backgroundColor: COLORS.danger },
-  cancelActionText: { fontSize: 15, fontWeight: '600', color: COLORS.surface },
+  cancelActionText: { fontSize: 15, fontWeight: '400', color: COLORS.surface },
   nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
   secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
   detailsSection: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, overflow: 'hidden' },
@@ -462,28 +467,28 @@ const styles = StyleSheet.create({
   notesSection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, paddingTop: SPACING.md, gap: SPACING.sm },
   completedMessage: { marginTop: SPACING.lg, flexDirection: 'row', gap: SPACING.sm },
   pageContent: { padding: 18, paddingBottom: 28, gap: 24 },
-  pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '600', marginTop: 6 },
+  pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '400', marginTop: 6 },
   statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },
   heroIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  heroTitle: { fontSize: 23, lineHeight: 29, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
+  heroTitle: { fontSize: 23, lineHeight: 29, fontWeight: '400', color: COLORS.primary, marginBottom: 8 },
   heroDescription: { fontSize: 14, lineHeight: 21, color: COLORS.textSecondary },
   detailCard: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 18 },
   itemSummary: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   itemPhoto: { width: 74, height: 82, borderRadius: 17, backgroundColor: COLORS.primaryMuted },
-  itemName: { color: COLORS.text, fontSize: 22, lineHeight: 27, fontWeight: '600', marginVertical: 4 },
-  smallLabel: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  itemName: { color: COLORS.text, fontSize: 22, lineHeight: 27, fontWeight: '400', marginVertical: 4 },
+  smallLabel: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '400' },
   detailText: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20 },
   cardDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 18 },
   borrowDates: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   borrowDate: { flex: 1 },
-  borrowDateValue: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '600', marginTop: 6 },
+  borrowDateValue: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '400', marginTop: 6 },
   durationNote: { color: COLORS.primary, fontSize: 12, textAlign: 'center', marginTop: 12 },
-  cardEyebrow: { fontSize: 12, fontWeight: '600', color: COLORS.primary, marginBottom: 15 },
+  cardEyebrow: { fontSize: 12, fontWeight: '400', color: COLORS.primary, marginBottom: 15 },
   neighborRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   neighborAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primaryMuted },
-  neighborName: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '600' },
+  neighborName: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '400' },
   neighborMessage: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, backgroundColor: COLORS.primaryMuted, padding: 14, marginTop: 18 },
-  neighborMessageTitle: { fontSize: 15, fontWeight: '600', color: COLORS.primary, flexShrink: 1 },
+  neighborMessageTitle: { fontSize: 15, fontWeight: '400', color: COLORS.primary, flexShrink: 1 },
   neighborMessageHint: { fontSize: 12, lineHeight: 17, color: COLORS.textSecondary, marginTop: 3 },
   noteQuote: { borderLeftWidth: 3, borderLeftColor: COLORS.primaryMuted, paddingLeft: 12, marginBottom: 12 },
   noteText: { fontSize: 15, lineHeight: 22, color: COLORS.text, marginTop: 6 },
@@ -517,7 +522,7 @@ const styles = StyleSheet.create({
   },
   overdueText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.warning,
   },
   loadingContainer: {
@@ -553,7 +558,7 @@ const styles = StyleSheet.create({
   errorButtonText: {
     ...TYPOGRAPHY.body,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   listingCard: {
     flexDirection: 'row',
@@ -599,7 +604,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   personCard: {
     flexDirection: 'row',
@@ -654,7 +659,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
@@ -711,7 +716,7 @@ const styles = StyleSheet.create({
   totalValue: {
     ...TYPOGRAPHY.headline,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   messageText: {
@@ -788,7 +793,7 @@ const styles = StyleSheet.create({
   },
   disputeBannerTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.danger,
   },
   disputeBannerSubtitle: {

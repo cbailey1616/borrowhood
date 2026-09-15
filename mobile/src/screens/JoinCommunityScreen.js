@@ -1,5 +1,6 @@
 import TextInput from '../components/AppTextInput';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -18,10 +19,12 @@ import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
+import useNavigationTask from '../hooks/useNavigationTask';
 
 const NEEDS_LOCATION_MESSAGE = 'Set your location in your profile to discover neighborhoods nearby.';
 
 export default function JoinCommunityScreen({ navigation, route }) {
+  const startNavigationTask = useNavigationTask(navigation);
   const { user, refreshUser } = useAuth();
   const { showError } = useError();
   const [neighborhoods, setNeighborhoods] = useState([]);
@@ -34,33 +37,37 @@ export default function JoinCommunityScreen({ navigation, route }) {
   const [isCreating, setIsCreating] = useState(false);
   const [needsLocation, setNeedsLocation] = useState(false);
 
-  useEffect(() => {
-    fetchNeighborhoods();
-  }, []);
-
-  const fetchNeighborhoods = async () => {
-    try {
-      // Check if user has location set
-      if (!user?.city) {
-        setNeedsLocation(true);
-        setNeighborhoods([]);
-      } else {
-        setNeedsLocation(false);
-        const data = await api.getCommunities();
-        setNeighborhoods(data || []);
+  // Returning from Edit Profile must use the newly saved location.
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    const fetchNeighborhoods = async () => {
+      setIsLoading(true);
+      try {
+        if (!user?.city) {
+          setNeedsLocation(true);
+          setNeighborhoods([]);
+        } else {
+          setNeedsLocation(false);
+          const data = await api.getCommunities();
+          if (active) setNeighborhoods(data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch neighborhoods:', error);
+      } finally {
+        if (active) setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch neighborhoods:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    fetchNeighborhoods();
+    return () => { active = false; };
+  }, [user?.city]));
 
   const handleJoin = async (neighborhood) => {
+    const isCurrent = startNavigationTask();
     setJoiningId(neighborhood.id);
     try {
       await api.joinCommunity(neighborhood.id);
       await refreshUser();
+      if (!isCurrent()) return;
       haptics.success();
       navigation.goBack();
     } catch (error) {
@@ -75,6 +82,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
   };
 
   const handleCreate = async () => {
+    const isCurrent = startNavigationTask();
     if (!newName.trim()) {
       showError({
         message: 'Give your neighborhood a name so others can find it.',
@@ -93,8 +101,9 @@ export default function JoinCommunityScreen({ navigation, route }) {
       await refreshUser();
       setShowCreateModal(false);
       haptics.success();
-      navigation.goBack();
+      if (isCurrent()) navigation.goBack();
     } catch (error) {
+      if (!isCurrent()) return;
       haptics.error();
       const errorCode = error.code || '';
       if (errorCode === 'LOCATION_REQUIRED') {
@@ -437,7 +446,7 @@ const styles = StyleSheet.create({
   },
   memberBadgeText: {
     ...TYPOGRAPHY.body,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   emptyContainer: {
@@ -495,7 +504,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     ...TYPOGRAPHY.footnote,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },

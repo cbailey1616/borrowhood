@@ -1,8 +1,8 @@
 import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
-import { body, validationResult } from 'express-validator';
+import { body, query as queryParam, validationResult } from 'express-validator';
 
 const router = Router();
 
@@ -10,7 +10,10 @@ const router = Router();
 // GET /api/listings/:listingId/availability
 // Get availability calendar for a listing
 // ============================================
-router.get('/:listingId/availability', authenticate, async (req, res) => {
+router.get('/:listingId/availability', authenticate,
+  queryParam('startDate').optional().isISO8601({ strict: true }),
+  queryParam('endDate').optional().isISO8601({ strict: true }), async (req, res) => {
+  if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Choose valid dates.' });
   const { startDate, endDate } = req.query;
 
   try {
@@ -19,6 +22,7 @@ router.get('/:listingId/availability', authenticate, async (req, res) => {
     // Default to next 60 days if not specified
     const start = startDate || new Date().toISOString().split('T')[0];
     const end = endDate || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    if (new Date(end) < new Date(start)) return res.status(400).json({ error: 'The end date must follow the start date.' });
 
     // Get blocked dates from availability table
     const blockedDates = await query(
@@ -34,15 +38,14 @@ router.get('/:listingId/availability', authenticate, async (req, res) => {
 
     // Get booked dates from transactions
     const bookedDates = await query(
-      `SELECT scheduled_pickup_date as start_date, scheduled_return_date as end_date,
-              u.first_name as borrower_name
+      `SELECT COALESCE(scheduled_pickup_date, requested_start_date) as start_date,
+              COALESCE(scheduled_return_date, requested_end_date) as end_date
        FROM borrow_transactions bt
-       JOIN users u ON bt.borrower_id = u.id
        WHERE bt.listing_id = $1
-         AND bt.status IN ('approved', 'paid', 'picked_up')
-         AND bt.scheduled_return_date >= $2
-         AND bt.scheduled_pickup_date <= $3
-       ORDER BY bt.scheduled_pickup_date`,
+         AND bt.status IN ('approved', 'paid', 'picked_up', 'return_pending')
+         AND COALESCE(bt.scheduled_return_date, bt.requested_end_date) >= $2
+         AND COALESCE(bt.scheduled_pickup_date, bt.requested_start_date) <= $3
+       ORDER BY start_date`,
       [req.params.listingId, start, end]
     );
 
@@ -69,8 +72,8 @@ router.get('/:listingId/availability', authenticate, async (req, res) => {
 // Set availability for a listing (owner only)
 // ============================================
 router.post('/:listingId/availability', authenticate,
-  body('startDate').isISO8601(),
-  body('endDate').isISO8601(),
+  body('startDate').isISO8601({ strict: true }),
+  body('endDate').isISO8601({ strict: true }).custom((value, { req }) => new Date(value) >= new Date(req.body.startDate)),
   body('isAvailable').isBoolean(),
   async (req, res) => {
     const errors = validationResult(req);
@@ -96,12 +99,14 @@ router.post('/:listingId/availability', authenticate,
       }
 
       // Add availability entry
-      const result = await query(
-        `INSERT INTO listing_availability (listing_id, start_date, end_date, is_available, note)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id`,
-        [req.params.listingId, startDate, endDate, isAvailable, note]
-      );
+      const result = await withTransaction(async client => {
+        await client.query('SELECT id FROM listings WHERE id=$1 FOR UPDATE', [req.params.listingId]);
+        return client.query(
+          `INSERT INTO listing_availability (listing_id, start_date, end_date, is_available, note)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [req.params.listingId, startDate, endDate, isAvailable, note]
+        );
+      });
 
       res.status(201).json({ id: result.rows[0].id });
     } catch (err) {
@@ -143,11 +148,13 @@ router.delete('/:listingId/availability/:id', authenticate, async (req, res) => 
 // GET /api/listings/:listingId/check-availability
 // Check if dates are available
 // ============================================
-router.get('/:listingId/check-availability', authenticate, async (req, res) => {
+router.get('/:listingId/check-availability', authenticate,
+  queryParam('startDate').isISO8601({ strict: true }),
+  queryParam('endDate').isISO8601({ strict: true }).custom((value, { req }) => new Date(value) >= new Date(req.query.startDate)), async (req, res) => {
   const { startDate, endDate } = req.query;
 
-  if (!startDate || !endDate) {
-    return res.status(400).json({ error: 'startDate and endDate required' });
+  if (!validationResult(req).isEmpty()) {
+    return res.status(400).json({ error: 'Choose a valid start and end date.' });
   }
 
   try {
@@ -169,9 +176,9 @@ router.get('/:listingId/check-availability', authenticate, async (req, res) => {
     const booked = await query(
       `SELECT 1 FROM borrow_transactions
        WHERE listing_id = $1
-         AND status IN ('approved', 'paid', 'picked_up')
-         AND scheduled_pickup_date <= $3
-         AND scheduled_return_date >= $2
+         AND status IN ('approved', 'paid', 'picked_up', 'return_pending')
+         AND COALESCE(scheduled_pickup_date, requested_start_date) <= $3
+         AND COALESCE(scheduled_return_date, requested_end_date) >= $2
        LIMIT 1`,
       [req.params.listingId, startDate, endDate]
     );

@@ -220,12 +220,12 @@ const styles = StyleSheet.create({
   plusBadgeText: {
     fontSize: 9,
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '400',
     letterSpacing: 0.5,
   },
   planName: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
     textAlign: 'center',
   },
@@ -306,6 +306,6 @@ const styles = StyleSheet.create({
   freeButtonText: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
 });

@@ -225,12 +225,12 @@ const styles = StyleSheet.create({
   },
   unreadLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   markAllRead: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   listContent: {
@@ -267,12 +267,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
   },
   titleUnread: {
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   body: {
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   bodyUnread: {
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   time: {

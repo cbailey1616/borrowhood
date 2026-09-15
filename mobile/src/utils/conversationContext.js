@@ -2,8 +2,10 @@ const PUBLIC_TYPES = ['listing_comment', 'request_comment', 'discussion_reply'];
 
 export function publicReplyRoute(notification) {
   if (!PUBLIC_TYPES.includes(notification?.type)) return null;
-  if (notification.requestId) return { requestId: notification.requestId };
-  if (notification.listingId) return { listingId: notification.listingId };
+  const thread = { ...(notification.threadId ? { threadId: notification.threadId } : {}),
+    ...(notification.discussionId ? { discussionId: notification.discussionId } : {}) };
+  if (notification.requestId) return { requestId: notification.requestId, ...thread };
+  if (notification.listingId) return { listingId: notification.listingId, ...thread };
   return null;
 }
 

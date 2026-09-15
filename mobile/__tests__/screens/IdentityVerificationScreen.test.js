@@ -10,6 +10,26 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.createVerificationSession.mockResolvedValue({ sessionId: 'vs_test', ephemeralKeySecret: 'ek_test' }); api.getVerificationStatus.mockResolvedValue({ status: 'none' }); });
 describe('IdentityVerificationScreen', () => {
+  it('returns to the original item after town verification rather than clearing the stack', async () => {
+    api.getVerificationStatus.mockResolvedValue({ status: 'verified' });
+    const Screen = require('../../src/screens/IdentityVerificationScreen').default;
+    render(<Screen navigation={mockNavigation} route={{ params: { source: 'town_browse' } }} />);
+    await waitFor(() => expect(mockNavigation.goBack).toHaveBeenCalledTimes(1));
+    expect(mockNavigation.popToTop).not.toHaveBeenCalled();
+  });
+
+  it('does not open Stripe if the user leaves before the session request returns', async () => {
+    let resolve;
+    api.createVerificationSession.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const Screen = require('../../src/screens/IdentityVerificationScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { source: 'generic' } }} />);
+    fireEvent.press(await screen.findByTestId('Identity.button.verify'));
+    await waitFor(() => expect(api.createVerificationSession).toHaveBeenCalledTimes(1));
+    act(() => mockNavigation.addListener.mock.calls.find(([name]) => name === 'blur')[1]());
+    await act(async () => resolve({ sessionId: 'late', ephemeralKeySecret: 'late' }));
+    expect(presentIdentityVerificationSheet).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
   const route = { params: { source: 'generic' } };
   it('renders verify button', async () => { const S = require('../../src/screens/IdentityVerificationScreen').default; const { findByTestId } = render(<S navigation={mockNavigation} route={route} />); await findByTestId('Identity.button.verify'); });
   it('renders skip button', async () => { const S = require('../../src/screens/IdentityVerificationScreen').default; const { findByTestId } = render(<S navigation={mockNavigation} route={route} />); await findByTestId('Identity.button.skipForNow'); });

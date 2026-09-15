@@ -1,10 +1,11 @@
+import { publishOnce } from '../services/publicationReceipts.js';
 import { ownedPhotoReferences } from '../services/privatePhotos.js';
 import { townPreviewSql, canPreviewTownPost, townRequestPreview } from '../services/townPreview.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { canViewRequest, offerListing } from '../services/listingAccess.js';
 import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
-import { query, withTransaction } from '../utils/db.js';
+import { query } from '../utils/db.js';
 import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification, sendBulkNotification } from '../services/notifications.js';
@@ -194,6 +195,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create a new item request
 // ============================================
 router.post('/', authenticate,
+  body('clientRequestId').optional().isUUID(),
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
   body('photoUrl').optional({ nullable: true }).isString().isLength({ max: 4096 }),
@@ -260,7 +262,7 @@ router.post('/', authenticate,
         }
       }
 
-      const requestId = await withTransaction(async client => {
+      const { value: requestId, replayed } = await publishOnce({ userId: req.user.id, operation: 'request', payload: req.body }, async client => {
         // Create request
         let result;
         if (expiresAtValue === null) {
@@ -312,6 +314,7 @@ router.post('/', authenticate,
         return requestId;
       });
       res.status(201).json({ id: requestId });
+      if (replayed) return;
 
       // Fire-and-forget: notify relevant users about the new request
       (async () => {
@@ -378,7 +381,7 @@ router.post('/', authenticate,
       })();
     } catch (err) {
       console.error('Create request error:', err);
-      res.status(500).json({ error: 'Failed to create request' });
+      res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to create request' });
     }
   }
 );

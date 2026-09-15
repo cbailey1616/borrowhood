@@ -89,7 +89,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
       <Text
         style={[
           styles.label,
-          isFocused && { fontWeight: '600' },
+          isFocused && { fontWeight: '400' },
           { color: isFocused ? COLORS.primary : COLORS.textSecondary },
         ]}
       >
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '400',
     marginTop: 4,
   },
   unreadDot: {
@@ -228,5 +228,5 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success, borderWidth: 2, borderColor: COLORS.surface,
     alignItems: 'center', justifyContent: 'center',
   },
-  badgeText: { color: COLORS.surface, fontSize: 11, fontWeight: '700' },
+  badgeText: { color: COLORS.surface, fontSize: 11, fontWeight: '400' },
 });

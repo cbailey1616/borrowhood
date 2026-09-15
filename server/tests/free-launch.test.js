@@ -55,6 +55,7 @@ describe('free launch', () => {
       .mockResolvedValueOnce({ rows: [freeItem] })
       .mockResolvedValueOnce({ rows: [freeItem] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: 'transaction' }] });
     const response = await borrow(); expect(response.status).toBe(201);
     expect(response.body.freeRental).toBe(true); expect(response.body.clientSecret).toBeUndefined();

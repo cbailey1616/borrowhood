@@ -1,4 +1,5 @@
 import { ensureEndorsementSchema } from '../services/endorsements.js';
+import { ensureNotificationSchema } from '../services/notificationSchema.js';
 import { ensureRankNotificationSchema } from '../services/rankNotifications.js';
 import { query, withTransaction } from './db.js';
 import { logger } from './logger.js';
@@ -688,6 +689,7 @@ export async function runMigrations() {
 
     await ensureEndorsementSchema();
     await ensureRankNotificationSchema();
+    await ensureNotificationSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
+import useNavigationTask from '../hooks/useNavigationTask';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
@@ -26,6 +27,7 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function BorrowRequestScreen({ route, navigation }) {
+  const startNavigationTask = useNavigationTask(navigation, route.params.listing.id);
   const { listing } = route.params;
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
@@ -156,6 +158,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
     Keyboard.dismiss();
     setIsSubmitting(true);
+    const isCurrent = startNavigationTask();
     try {
       const result = await api.createTransaction({
         listingId: listing.id,
@@ -167,6 +170,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         message: message.trim() || undefined,
       });
 
+      if (!isCurrent()) return;
       if (result.clientSecret) {
         // Paid rental — navigate to checkout to authorize payment
         navigation.replace('RentalCheckout', {
@@ -186,14 +190,13 @@ export default function BorrowRequestScreen({ route, navigation }) {
         navigation.replace('TransactionDetail', { id: result.id });
       }
     } catch (error) {
+      if (!isCurrent()) return;
       haptics.error();
       showError({
         message: error.message || 'Couldn\'t send your request right now. Please check your connection and try again.',
       });
     } finally {
-      if (navigation.isFocused()) {
-        setIsSubmitting(false);
-      }
+      setIsSubmitting(false);
     }
   };
 
@@ -675,7 +678,7 @@ const styles = StyleSheet.create({
   giveawayBadgeText: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.secondary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   section: {
     marginBottom: SPACING.xl,
@@ -750,7 +753,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '400',
     marginTop: SPACING.md,
   },
   messageInput: {
@@ -795,7 +798,7 @@ const styles = StyleSheet.create({
   totalValue: {
     ...TYPOGRAPHY.h3,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   depositNote: {

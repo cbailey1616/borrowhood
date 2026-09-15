@@ -1,5 +1,7 @@
 import TextInput from '../components/AppTextInput';
 import RequestQueueScreen from '../screens/RequestQueueScreen';
+import { detailRouteIds } from './routeIdentity';
+import { requestQueueHeaderOptions } from '../components/RequestQueueHeader';
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import SafetyReportsScreen from '../screens/SafetyReportsScreen';
@@ -47,6 +49,8 @@ import CommunityMembersScreen from '../screens/CommunityMembersScreen';
 import ReferralScreen from '../screens/ReferralScreen';
 import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
 import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
+import LendingCirclesScreen from '../screens/LendingCirclesScreen';
+import CircleDetailScreen from '../screens/CircleDetailScreen';
 import PaymentFlowScreen from '../screens/PaymentFlowScreen';
 import RentalCheckoutScreen from '../screens/RentalCheckoutScreen';
 import DamageClaimScreen from '../screens/DamageClaimScreen';
@@ -69,7 +73,7 @@ const sharedScreenOptions = {
   headerBackTitleVisible: false,
   headerTintColor: COLORS.primary,
   headerTitleStyle: {
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
     fontSize: 17,
   },
@@ -81,7 +85,7 @@ const modalScreenOptions = (title) => ({
   title,
   presentation: 'modal',
   gestureEnabled: true,
-  header: () => <ModalHeader title={title} />,
+  header: ({ options }) => <ModalHeader title={options.title || title} />,
 });
 
 export default function RootNavigator() {
@@ -137,19 +141,22 @@ export default function RootNavigator() {
           <Stack.Screen name="OfferItem" component={OfferItemScreen} options={modalScreenOptions("Private offer")} />
           <Stack.Screen
             name="ListingDetail"
+            getId={detailRouteIds.ListingDetail}
             component={ListingDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Item Details' }}
           />
-          <Stack.Screen name="RequestQueue" component={RequestQueueScreen} options={{ ...sharedScreenOptions, title: 'People waiting' }} />
+          <Stack.Screen name="RequestQueue" getId={detailRouteIds.RequestQueue} component={RequestQueueScreen} options={{ ...sharedScreenOptions, ...requestQueueHeaderOptions }} />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
           <Stack.Screen name="SafetyReports" component={SafetyReportsScreen} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
           <Stack.Screen
             name="TransactionDetail"
+            getId={detailRouteIds.TransactionDetail}
             component={TransactionDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Borrow details' }}
           />
           <Stack.Screen
             name="UserProfile"
+            getId={detailRouteIds.UserProfile}
             component={UserProfileScreen}
             options={{ ...sharedScreenOptions, title: 'Profile' }}
           />
@@ -192,6 +199,7 @@ export default function RootNavigator() {
           />
           <Stack.Screen
             name="RequestDetail"
+            getId={detailRouteIds.RequestDetail}
             component={RequestDetailScreen}
             options={{ ...sharedScreenOptions, title: 'Request Details' }}
           />
@@ -207,6 +215,7 @@ export default function RootNavigator() {
           />
           <Stack.Screen
             name="Chat"
+            getId={detailRouteIds.Chat}
             component={ChatScreen}
             options={{ ...sharedScreenOptions, title: 'Chat' }}
           />
@@ -297,6 +306,8 @@ export default function RootNavigator() {
             component={IdentityVerificationScreen}
             options={modalScreenOptions('Verification')}
           />
+          <Stack.Screen name="LendingCircles" component={LendingCirclesScreen} options={modalScreenOptions('Lending circles')} />
+          <Stack.Screen name="CircleDetail" component={CircleDetailScreen} options={modalScreenOptions('Circle')} />
           <Stack.Screen
             name="PaymentFlow"
             component={PaymentFlowScreen}

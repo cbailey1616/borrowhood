@@ -3,9 +3,11 @@ import { Text, View } from 'react-native';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import api from '../services/api';
+import useNavigationTask from '../hooks/useNavigationTask';
 import { COLORS } from '../utils/config';
 
 export default function ThreadMessageButton({ author, currentUserId, navigation, context, isOwn }) {
+  const startNavigationTask = useNavigationTask(navigation, author?.id);
   const busy = useRef(false);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -13,9 +15,11 @@ export default function ThreadMessageButton({ author, currentUserId, navigation,
   const open = async event => {
     event?.stopPropagation?.();
     if (busy.current) return;
+    const isCurrent = startNavigationTask();
     busy.current = true; setLoading(true); setFailed(false);
     try {
       const conversations = await api.getConversations();
+      if (!isCurrent()) return;
       const existing = conversations.find(chat => chat.otherUser?.id === author.id);
       navigation.navigate('Chat', {
         conversationId: existing?.id,
@@ -33,7 +37,7 @@ export default function ThreadMessageButton({ author, currentUserId, navigation,
       style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 48, paddingHorizontal: 8 }}>
       <Ionicons name="chatbubble" size={18} color={COLORS.primary} illustrated />
       <View style={{ maxWidth: 150 }}>
-        <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
+        <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '400' }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: 11 }} numberOfLines={1}>To {author.firstName || 'neighbor'}</Text>
       </View>
     </HapticPressable>

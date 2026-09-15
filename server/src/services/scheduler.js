@@ -2,13 +2,14 @@ import { query, withTransaction } from '../utils/db.js';
 import { sendNotification } from './notifications.js';
 import logger from '../utils/logger.js';
 import { checkRankChanges } from './rankNotifications.js';
+import { processPushDeliveries } from './pushDelivery.js';
 
 /**
  * Check for rentals due back tomorrow or today and send reminders.
  * Runs every hour. Only sends one reminder per type per transaction
  * by tracking via the reminder_sent_at columns.
  */
-async function sendReturnReminders() {
+export async function sendReturnReminders() {
   try {
     // Find active rentals (picked_up) due back today or tomorrow
     const result = await query(
@@ -18,56 +19,31 @@ async function sendReturnReminders() {
        FROM borrow_transactions bt
        JOIN listings l ON bt.listing_id = l.id
        WHERE bt.status = 'picked_up'
-         AND bt.requested_end_date <= NOW() + INTERVAL '1 day'`
+         AND bt.requested_end_date::date BETWEEN CURRENT_DATE AND CURRENT_DATE + 1`
     );
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     for (const txn of result.rows) {
-      const dueDate = new Date(txn.requested_end_date);
-      const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-
-      // Due tomorrow — send day-before reminder
-      if (dueDateOnly.getTime() === tomorrow.getTime() && !txn.reminder_day_before_sent) {
-        await sendNotification(txn.borrower_id, 'return_reminder', {
-          itemTitle: txn.item_title,
-          dueDate: dueDate.toLocaleDateString(),
-          transactionId: txn.id,
+      try {
+        await withTransaction(async client => {
+          const runQuery = client.query.bind(client);
+          const { rows: [current] } = await runQuery(`SELECT *, requested_end_date::date=CURRENT_DATE AS due_today
+            FROM borrow_transactions WHERE id=$1 AND status='picked_up'
+            AND requested_end_date::date BETWEEN CURRENT_DATE AND CURRENT_DATE+1 FOR UPDATE`, [txn.id]);
+          if (!current) return;
+          const flag = current.due_today ? 'reminder_day_of_sent' : 'reminder_day_before_sent';
+          if (current[flag]) return;
+          const recipients = current.due_today ? [current.borrower_id, current.lender_id] : [current.borrower_id];
+          for (const recipient of new Set(recipients)) {
+            const id = await sendNotification(recipient, 'return_reminder', {
+              itemTitle: txn.item_title, dueDate: current.due_today ? 'today' : 'tomorrow', transactionId: txn.id,
+            }, { runQuery, throwOnError: true, dedupeKey: `${txn.id}:${flag}` });
+            if (!id) throw new Error('Reminder was not persisted');
+          }
+          // Activity, durable pushes and flags are all-or-nothing, even with
+          // concurrent schedulers or a failure notifying the second recipient.
+          await runQuery(`UPDATE borrow_transactions SET ${flag}=true WHERE id=$1`, [txn.id]);
         });
-
-        await query(
-          'UPDATE borrow_transactions SET reminder_day_before_sent = true WHERE id = $1',
-          [txn.id]
-        );
-
-        logger.info(`Sent day-before return reminder for transaction ${txn.id}`);
-      }
-
-      // Due today — send day-of reminder
-      if (dueDateOnly.getTime() === today.getTime() && !txn.reminder_day_of_sent) {
-        await sendNotification(txn.borrower_id, 'return_reminder', {
-          itemTitle: txn.item_title,
-          dueDate: 'today',
-          transactionId: txn.id,
-        });
-
-        // Also notify the lender
-        await sendNotification(txn.lender_id, 'return_reminder', {
-          itemTitle: txn.item_title,
-          dueDate: 'today',
-          transactionId: txn.id,
-        });
-
-        await query(
-          'UPDATE borrow_transactions SET reminder_day_of_sent = true WHERE id = $1',
-          [txn.id]
-        );
-
-        logger.info(`Sent day-of return reminder for transaction ${txn.id}`);
-      }
+      } catch (error) { logger.error('Could not queue return reminder', { transactionId: txn.id, error: error.message }); }
     }
   } catch (err) {
     logger.error('Return reminder check error:', err);
@@ -297,6 +273,8 @@ export async function expireGiveawayPickups() {
  * Start the scheduler — runs checks every hour.
  */
 export function startScheduler() {
+  processPushDeliveries();
+  setInterval(processPushDeliveries, 5000);
   checkRankChanges();
   setInterval(checkRankChanges, 60 * 1000);
   // Run immediately on startup

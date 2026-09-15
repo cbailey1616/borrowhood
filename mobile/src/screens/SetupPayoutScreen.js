@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#fff',
   },
   infoCard: {

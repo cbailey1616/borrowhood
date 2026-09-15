@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   communitySelectorText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
     maxWidth: 120,
   },
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   noCommunityTitle: {
     ...TYPOGRAPHY.h3,
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
     marginTop: SPACING.lg,
   },
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   announcementLabel: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primary,
-    fontWeight: '700',
+    fontWeight: '400',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   statLabel: {

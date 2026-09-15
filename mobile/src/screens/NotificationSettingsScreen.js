@@ -7,6 +7,7 @@ import {
   Switch,
   ActivityIndicator,
   Linking,
+  AppState,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
@@ -48,11 +49,17 @@ export default function NotificationSettingsScreen() {
   useEffect(() => {
     fetchPreferences();
     checkNotifPermission();
+    const listener = AppState.addEventListener('change', state => {
+      if (state === 'active') checkNotifPermission();
+    });
+    return () => listener.remove();
   }, []);
 
   const checkNotifPermission = async () => {
-    const { status } = await Notifications.getPermissionsAsync();
-    setNotifsDenied(status !== 'granted');
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotifsDenied(status !== 'granted');
+    } catch { /* Retain the last confirmed permission state while offline. */ }
   };
 
   const fetchPreferences = async () => {

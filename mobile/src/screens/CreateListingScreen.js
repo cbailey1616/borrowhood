@@ -8,6 +8,7 @@ import { directFeePayload } from '../utils/directFee';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useFormDraft from '../hooks/useFormDraft';
+import useNavigationTask from '../hooks/useNavigationTask';
 import DraftStatus from '../components/DraftStatus';
 import {
   View,
@@ -37,6 +38,7 @@ const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateListingScreen({ navigation, route }) {
+  const startNavigationTask = useNavigationTask(navigation);
   const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
   const scrollRef = useRef(null);
@@ -262,8 +264,10 @@ export default function CreateListingScreen({ navigation, route }) {
     setRemovePhotoIndex(null);
   };
 
+  const submitting = useRef(false);
   const handleSubmit = async (overrideData) => {
-    if (!draft.ready || isSubmitting) return;
+    if (!draft.ready || submitting.current) return;
+    const isCurrent = startNavigationTask();
     const data = overrideData || formData;
     let directFee;
     try { directFee = directFeePayload(data.listingType === 'sell' || (data.listingType === 'lend' && data.chargeFee), data.listingType === 'sell' ? data.salePrice : data.directFeeAmount, data.listingType === 'sell' ? 'flat' : 'day'); }
@@ -338,37 +342,42 @@ export default function CreateListingScreen({ navigation, route }) {
       return;
     }
 
+    submitting.current = true;
     setIsSubmitting(true);
     try {
-      // Upload photos to S3 (skip if no photos - S3 not configured for testing)
-      const photoUrls = data.photos.length > 0
-        ? await api.uploadImages(data.photos, 'listings')
-        : [];
+      const payload = await draft.prepareSubmission({ ...data, requestMatchId, communityId }, async () => {
+        // Upload photos to S3 (skip if no photos - S3 not configured for testing)
+        const photoUrls = data.photos.length > 0
+          ? await api.uploadImages(data.photos, 'listings')
+          : [];
 
-      const result = await api.createListing({
-        title: data.title.trim(),
-        description: data.description.trim() || undefined,
-        condition: data.condition,
-        categoryId: data.categoryId || undefined,
-        visibility: requestMatchId ? ['private'] : data.visibility,
-        sharingConfirmed: true,
-        townPreviewEnabled: true,
-        directFee,
-        circleId: data.circleId || undefined,
-        isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
-        pricePerDay: (!ENABLE_PAYMENTS || isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
-        depositAmount: (!ENABLE_PAYMENTS || isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
-        minDuration: isGiveaway ? undefined : parseInt(data.minDuration) || 1,
-        maxDuration: isGiveaway ? undefined : parseInt(data.maxDuration) || 14,
-        listingType,
-        photos: photoUrls.length > 0 ? photoUrls : undefined,
-        communityId: communityId || undefined, // Always send communityId (required by DB)
-        requestMatchId: requestMatchId || undefined,
+        return {
+          title: data.title.trim(),
+          description: data.description.trim() || undefined,
+          condition: data.condition,
+          categoryId: data.categoryId || undefined,
+          visibility: requestMatchId ? ['private'] : data.visibility,
+          sharingConfirmed: true,
+          townPreviewEnabled: true,
+          directFee,
+          circleId: data.circleId || undefined,
+          isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
+          pricePerDay: (!ENABLE_PAYMENTS || isGiveaway || data.isFree) ? undefined : parseFloat(data.pricePerDay) || 0,
+          depositAmount: (!ENABLE_PAYMENTS || isGiveaway || !data.requireDeposit) ? 0 : parseFloat(data.depositAmount) || 0,
+          minDuration: isGiveaway ? undefined : parseInt(data.minDuration) || 1,
+          maxDuration: isGiveaway ? undefined : parseInt(data.maxDuration) || 14,
+          listingType,
+          photos: photoUrls.length > 0 ? photoUrls : undefined,
+          communityId: communityId || undefined, // Always send communityId (required by DB)
+          requestMatchId: requestMatchId || undefined,
+        };
       });
+      const result = await api.createListing(payload);
 
       Keyboard.dismiss();
       haptics.success();
       await draft.clear().catch(() => showToast('Item saved. The local draft could not be cleared.', 'info'));
+      if (!isCurrent()) return;
       navigation.goBack();
 
       // Show toasts after navigating back so they appear on the previous screen
@@ -393,6 +402,7 @@ export default function CreateListingScreen({ navigation, route }) {
         });
       }
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
@@ -951,12 +961,12 @@ const styles = StyleSheet.create({
   },
   categoryPillText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   categoryPillTextActive: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   options: {
     flexDirection: 'row',
@@ -983,7 +993,7 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '400',
   },
   toggle: {
     flexDirection: 'row',

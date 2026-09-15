@@ -138,3 +138,23 @@ describe('CreateListingScreen', () => {
     expect(queryByTestId('CreateListing.toggle.deposit')).toBeNull();
   });
 });
+
+it('retries a lost publication response with the original photo and submission ID', async () => {
+  ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///retry-ladder.jpg' }] });
+  api.uploadImages.mockResolvedValueOnce(['https://example.com/stored-ladder.jpg']);
+  api.createListing.mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce({id:'saved-listing'});
+  const Screen = require('../../src/screens/CreateListingScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{params:{}}} />);
+  await waitFor(() => expect(screen.getByTestId('CreateListing.button.submit')).not.toBeDisabled());
+  fireEvent.changeText(screen.getByLabelText('Listing title'), 'Extension ladder');
+  await act(async () => fireEvent.press(screen.getByText('Camera')));
+  await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
+  expect(mockShowError).toHaveBeenCalled();
+  expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  const attempt = api.createListing.mock.calls[0][0];
+  expect(attempt.clientRequestId).toEqual(expect.any(String));
+  await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
+  expect(api.uploadImages).toHaveBeenCalledTimes(1);
+  expect(api.createListing.mock.calls[1][0]).toEqual(attempt);
+  expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+});

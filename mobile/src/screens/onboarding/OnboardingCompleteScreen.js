@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   founderText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.warning,
   },
   footer: {

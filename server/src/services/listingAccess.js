@@ -2,14 +2,14 @@ import { query } from '../utils/db.js';
 import { listingAccessSql, requestAccessSql, normalizeSharing } from '../utils/sharingPolicy.js';
 import { requestActiveSql } from '../utils/requestState.js';
 
-export async function canViewListing(listingId, userId, options) {
-  const result = await query(`SELECT l.id FROM listings l WHERE l.id = $1
+export async function canViewListing(listingId, userId, options, db = { query }) {
+  const result = await db.query(`SELECT l.id FROM listings l WHERE l.id = $1
     AND ${listingAccessSql('l', '$2', options)}`, [listingId, userId]);
   return result.rows.length > 0;
 }
 
-export async function canViewRequest(requestId, userId) {
-  const result = await query(`SELECT r.id FROM item_requests r WHERE r.id = $1
+export async function canViewRequest(requestId, userId, db = { query }) {
+  const result = await db.query(`SELECT r.id FROM item_requests r WHERE r.id = $1
     AND ${requestAccessSql('r', '$2')}`, [requestId, userId]);
   return result.rows.length > 0;
 }

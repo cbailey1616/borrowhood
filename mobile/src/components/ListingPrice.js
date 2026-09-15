@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: SPACING.sm, rowGap: 2 },
   end: { flexDirection: 'column', alignItems: 'flex-end', flexWrap: 'nowrap' },
   endText: { textAlign: 'right' },
-  amount: { ...TYPOGRAPHY.largeTitle, color: COLORS.primaryDark, fontVariant: ['tabular-nums'], fontWeight: '700', fontFamily: 'DMSans_700Bold' },
+  amount: { ...TYPOGRAPHY.largeTitle, color: COLORS.primaryDark, fontVariant: ['tabular-nums'], fontWeight: '400', fontFamily: 'DMSans_400Regular' },
   compact: { fontSize: 25, lineHeight: 32, letterSpacing: -0.5 },
   unit: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

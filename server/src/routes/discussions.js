@@ -1,11 +1,22 @@
+import { publishOnce } from '../services/publicationReceipts.js';
 import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
+import { notifyThreadParticipants, getDiscussionThread } from '../services/discussionNotifications.js';
 
 const router = Router();
+
+router.get('/:listingId/discussions/:postId', authenticate, async (req, res) => {
+  try {
+    if (!await checkListingAccess(req, res, req.params.listingId)) return;
+    const thread = await getDiscussionThread('listing', req.params.listingId, req.params.postId, req.user.id);
+    if (!thread) return res.status(404).json({ error: 'Comment no longer available' });
+    res.json(thread);
+  } catch { res.status(500).json({ error: 'Could not load thread' }); }
+});
 
 // Shared visibility gate for discussion endpoints
 async function checkListingAccess(req, res, listingId) {
@@ -86,10 +97,11 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
-       WHERE d.parent_id = $1 AND d.is_hidden = false
-       ORDER BY d.created_at ASC
+       WHERE d.parent_id = $1 AND d.is_hidden = false AND d.listing_id=$4
+         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false)
+       ORDER BY d.created_at ASC, d.id ASC
        LIMIT $2 OFFSET $3`,
-      [req.params.postId, limit, offset]
+      [req.params.postId, limit, offset, req.params.listingId]
     );
 
     res.json({
@@ -118,6 +130,7 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
 // Create a new discussion post or reply
 // ============================================
 router.post('/:listingId/discussions', authenticate,
+  body('clientRequestId').optional().isUUID(),
   body('content').trim().isLength({ min: 1, max: 2000 }),
   body('parentId').optional().isUUID(),
   async (req, res) => {
@@ -148,7 +161,7 @@ router.post('/:listingId/discussions', authenticate,
       // If replying, verify parent exists and belongs to this listing
       if (parentId) {
         const parent = await query(
-          'SELECT id, user_id, listing_id FROM listing_discussions WHERE id = $1 AND is_hidden = false',
+          'SELECT id, user_id, listing_id FROM listing_discussions WHERE id = $1 AND is_hidden = false AND parent_id IS NULL',
           [parentId]
         );
 
@@ -161,16 +174,6 @@ router.post('/:listingId/discussions', authenticate,
         }
       }
 
-      // Create the post
-      const result = await query(
-        `INSERT INTO listing_discussions (listing_id, user_id, parent_id, content)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, created_at`,
-        [listingId, req.user.id, parentId || null, content]
-      );
-
-      const post = result.rows[0];
-
       // Get poster's name for notifications
       const posterResult = await query(
         'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
@@ -180,53 +183,46 @@ router.post('/:listingId/discussions', authenticate,
       const posterLastInitial = posterResult.rows[0].display_name ? '' : (posterResult.rows[0].last_name ? posterResult.rows[0].last_name.charAt(0) + '.' : '');
       const posterName = `${posterFirst} ${posterLastInitial}`.trim();
 
-      // Send notifications
-      if (parentId) {
-        // Replying to a post - notify the original poster (if not self)
-        const parent = await query(
-          'SELECT user_id FROM listing_discussions WHERE id = $1',
-          [parentId]
+      const { value: post, replayed } = await publishOnce({ userId: req.user.id, operation: `listing-comment:${listingId}`, payload: req.body }, async client => {
+        const result = await client.query(
+          `INSERT INTO listing_discussions (listing_id, user_id, parent_id, content)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, created_at`,
+          [listingId, req.user.id, parentId || null, content]
         );
-        const parentUserId = parent.rows[0].user_id;
 
-        if (parentUserId !== req.user.id) {
-          await sendNotification(
-            parentUserId,
-            'discussion_reply',
-            {
-              posterName,
-              itemTitle: listingData.title,
-              messagePreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
-            },
-            {
-              fromUserId: req.user.id,
-              listingId,
-              discussionId: post.id,
-            }
-          );
+        const post = result.rows[0];
+
+        // Save Activity and durable delivery jobs in the publication transaction.
+        if (parentId) {
+          await notifyThreadParticipants({ threadId: parentId, listingId, senderId: req.user.id,
+            discussionId: post.id, posterName, db: client, throwOnError: true, itemTitle: listingData.title });
+        } else {
+          // New top-level comment - notify listing owner (if not self)
+          if (listingData.owner_id !== req.user.id) {
+            await sendNotification(
+              listingData.owner_id,
+              'listing_comment',
+              {
+                posterName,
+                itemTitle: listingData.title,
+                messagePreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+              },
+              {
+                fromUserId: req.user.id,
+                listingId,
+                discussionId: post.id,
+                dedupeKey: `discussion:${post.id}`, runQuery: client.query.bind(client), throwOnError: true,
+              }
+            );
+          }
         }
-      } else {
-        // New top-level comment - notify listing owner (if not self)
-        if (listingData.owner_id !== req.user.id) {
-          await sendNotification(
-            listingData.owner_id,
-            'listing_comment',
-            {
-              posterName,
-              itemTitle: listingData.title,
-              messagePreview: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
-            },
-            {
-              fromUserId: req.user.id,
-              listingId,
-              discussionId: post.id,
-            }
-          );
-        }
-      }
+        return post;
+      });
 
       res.status(201).json({
         id: post.id,
+        replayed,
         content,
         parentId: parentId || null,
         createdAt: post.created_at,
@@ -238,7 +234,7 @@ router.post('/:listingId/discussions', authenticate,
       });
     } catch (err) {
       console.error('Create discussion error:', err);
-      res.status(500).json({ error: 'Failed to create post' });
+      res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to create post' });
     }
   }
 );

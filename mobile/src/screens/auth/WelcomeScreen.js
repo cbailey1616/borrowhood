@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   input: {
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   eyeButtonText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   loginButton: {
     backgroundColor: COLORS.primary,
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   footer: {
     alignItems: 'center',
@@ -483,6 +483,6 @@ const styles = StyleSheet.create({
   footerLink: {
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
   },
 });

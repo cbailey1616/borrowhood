@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   unreadCount: {
     ...TYPOGRAPHY.caption,
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '400',
   },
   content: {
     flex: 1,
@@ -206,11 +206,11 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.body,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.text,
   },
   nameUnread: {
-    fontWeight: '700',
+    fontWeight: '400',
   },
   time: {
     ...TYPOGRAPHY.caption1,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   lastMessageUnread: {
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   emptyContainer: {
     flex: 1,

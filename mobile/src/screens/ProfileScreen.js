@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
-  previewTitle: { ...TYPOGRAPHY.subheadline, fontWeight: '700', color: COLORS.primaryDark },
+  previewTitle: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.primaryDark },
   previewDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 2 },
   container: {
     flex: 1,

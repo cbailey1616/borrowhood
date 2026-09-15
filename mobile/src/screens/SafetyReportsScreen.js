@@ -109,13 +109,13 @@ export default function SafetyReportsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background }, denied: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: COLORS.background },
   content: { padding: 20, gap: 16, width: '100%', maxWidth: 720, alignSelf: 'center' }, heading: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  title: { fontSize: 25, lineHeight: 32, fontWeight: '700', color: COLORS.primary }, name: { fontSize: 18, fontWeight: '600', color: COLORS.text },
-  body: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 23 }, reason: { color: COLORS.text, fontSize: 15, lineHeight: 22, fontWeight: '600' },
+  title: { fontSize: 25, lineHeight: 32, fontWeight: '400', color: COLORS.primary }, name: { fontSize: 18, fontWeight: '400', color: COLORS.text },
+  body: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 23 }, reason: { color: COLORS.text, fontSize: 15, lineHeight: 22, fontWeight: '400' },
   caption: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20 }, card: { padding: 18, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, gap: 8 },
   reportHeader: { flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 52 }, detail: { gap: 12, paddingTop: 12 },
   input: { minHeight: 112, padding: 14, borderRadius: RADIUS.md, color: COLORS.text, backgroundColor: COLORS.surfaceElevated, fontSize: 16, textAlignVertical: 'top' },
   action: { minHeight: 52, padding: 14, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.md },
-  link: { color: COLORS.primary, fontSize: 16, fontWeight: '600' }, secondaryAction: { borderWidth: 1, borderColor: COLORS.borderGreen }, primaryAction: { backgroundColor: COLORS.primary },
-  primaryText: { color: COLORS.surface, fontSize: 16, fontWeight: '600' }, dangerAction: { backgroundColor: COLORS.dangerMuted }, error: { color: COLORS.danger, fontSize: 15, lineHeight: 23 },
+  link: { color: COLORS.primary, fontSize: 16, fontWeight: '400' }, secondaryAction: { borderWidth: 1, borderColor: COLORS.borderGreen }, primaryAction: { backgroundColor: COLORS.primary },
+  primaryText: { color: COLORS.surface, fontSize: 16, fontWeight: '400' }, dangerAction: { backgroundColor: COLORS.dangerMuted }, error: { color: COLORS.danger, fontSize: 15, lineHeight: 23 },
   errorBox: { padding: 16, backgroundColor: COLORS.dangerMuted, borderRadius: RADIUS.md }, history: { padding: 14, gap: 6, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.md },
 });

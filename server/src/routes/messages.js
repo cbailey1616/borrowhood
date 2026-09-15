@@ -26,7 +26,7 @@ router.get('/capabilities', authenticate, async (req, res) => {
 router.get('/conversations', authenticate, async (req, res) => {
   try {
     const result = await query(
-      `SELECT DISTINCT ON (c.id)
+      `SELECT
          c.id,
          c.listing_id,
          c.created_at,
@@ -67,7 +67,7 @@ router.get('/conversations', authenticate, async (req, res) => {
          LIMIT 1
        ) m ON true
        WHERE c.user1_id = $1 OR c.user2_id = $1
-       ORDER BY c.id, m.created_at DESC NULLS LAST`,
+       ORDER BY COALESCE(m.created_at, c.created_at) DESC, c.id DESC`,
       [req.user.id]
     );
 

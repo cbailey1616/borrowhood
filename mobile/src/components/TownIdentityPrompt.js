@@ -21,5 +21,5 @@ const styles = StyleSheet.create({
   title: { ...TYPOGRAPHY.headline, color: COLORS.text },
   caption: { ...TYPOGRAPHY.caption1, color: COLORS.primary },
   body: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary },
-  link: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, fontWeight: '600' },
+  link: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, fontWeight: '400' },
 });

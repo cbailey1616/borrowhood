@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { registerPushDevice, unregisterPushDevice, revokePushDevice, validPushToken, validInstallationId } from '../services/pushDevices.js';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { currentNotificationBody, currentNotificationTitle } from '../services/notificationCopy.js';
@@ -61,6 +62,9 @@ router.get('/', authenticate, async (req, res) => {
         requestId: n.request_id,
         conversationId: n.conversation_id,
         disputeId: n.dispute_id,
+        discussionId: n.discussion_id,
+        threadId: n.thread_id,
+        circleId: n.circle_id,
         fromUserId: n.from_user_id,
         fromUser: n.from_first_name && Number(n.request_count) < 2 ? {
           firstName: n.from_display_name || n.from_first_name,
@@ -169,22 +173,41 @@ router.post('/read-all', authenticate, async (req, res) => {
 // Update push notification token
 // ============================================
 router.put('/push-token', authenticate, async (req, res) => {
-  const { token } = req.body;
+  const { token, installationId, revocationSecret } = req.body;
 
-  if (!token) {
-    return res.status(400).json({ error: 'Token required' });
+  if (!validPushToken(token) || (installationId !== undefined && !validInstallationId(installationId))
+    || (revocationSecret !== undefined && (typeof revocationSecret !== 'string' || !/^[0-9a-f-]{73}$/i.test(revocationSecret)))) {
+    return res.status(400).json({ error: 'Valid device registration required' });
   }
 
   try {
-    await query(
-      'UPDATE users SET push_token = $1 WHERE id = $2',
-      [token, req.user.id]
-    );
+    await registerPushDevice(req.user.id, token, installationId, revocationSecret);
     res.json({ success: true });
   } catch (err) {
     console.error('Update push token error:', err);
     res.status(500).json({ error: 'Failed to update push token' });
   }
+});
+
+router.delete('/push-token/:installationId', authenticate, async (req, res) => {
+  try {
+    await unregisterPushDevice(req.user.id, req.params.installationId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not unregister this device' });
+  }
+});
+
+router.post('/revoke-device', async (req, res) => {
+  const { installationId, revocationSecret, userId } = req.body || {};
+  if (!validInstallationId(installationId) || !validInstallationId(userId)
+    || typeof revocationSecret !== 'string' || !/^[0-9a-f-]{73}$/i.test(revocationSecret)) {
+    return res.status(400).json({ error: 'Invalid device revocation' });
+  }
+  try {
+    await revokePushDevice(installationId, revocationSecret, userId);
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: 'Could not unregister this device' }); }
 });
 
 // ============================================

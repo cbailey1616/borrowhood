@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   input: {
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   },
   verifiedBannerTitle: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   verifiedBannerText: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   verifiedChangeLink: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   textArea: {
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   locationButtonText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   fieldHint: {
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
   },

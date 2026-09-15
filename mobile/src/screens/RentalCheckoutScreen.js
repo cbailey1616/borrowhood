@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
   summaryAmountLabel: {
     ...TYPOGRAPHY.body,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   summaryValue: {
     ...TYPOGRAPHY.body,

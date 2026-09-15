@@ -1,13 +1,12 @@
 import { query } from '../utils/db.js';
 import logger from '../utils/logger.js';
-import { shouldSendPush } from './notificationPreferences.js';
-import { notificationAudienceAllowsPush } from './notificationAudience.js';
-import { audiencePreferences } from './notificationPreferences.js';
 import { returnCompleteBody, giveawayCompleteBody } from './notificationCopy.js';
-import { INCOMING_REQUEST_TYPES, UNREAD_ACTIVITY_SQL, requestQueueCopy } from './requestActivity.js';
+import { INCOMING_REQUEST_TYPES, requestQueueCopy } from './requestActivity.js';
 
 // Notification types and their templates
 const NOTIFICATION_TEMPLATES = {
+  verification_failed: { title: 'Verification needs another look', body: () => 'Open Stripe to try verification again.' },
+  circle_invite: { title: 'You’re invited', body: data => `${data.inviterName || 'A neighbor'} invited you to ${data.circleName || 'a circle'}.` },
   rank_ready: { title: 'Your neighbor rating is ready', body: data => data.body },
   rank_up: { title: 'You moved up!', body: data => data.body },
   rank_down: { title: 'Neighbor rating update', body: data => data.body },
@@ -198,8 +197,8 @@ const NOTIFICATION_TEMPLATES = {
   discussion_reply: {
     title: 'New Reply',
     body: (data) => data.posterName
-      ? `${data.posterName} replied to your question on ${data.itemTitle || 'a listing'}. Tap to see their answer.`
-      : 'Someone replied to your question. Tap to see their answer.',
+      ? `${data.posterName} replied in the conversation about ${data.itemTitle || 'a listing'}.`
+      : 'There’s a new reply in your conversation.',
   },
   listing_comment: {
     title: 'New Question',
@@ -284,10 +283,19 @@ export async function sendNotification(userId, type, data, options = {}) {
       }
     }
 
-    // Create notification record
-    const result = options.existingNotificationId ? { rows: [{ id: options.existingNotificationId }] } : await (options.runQuery || query)(
-      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id, dispute_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    const runQuery = options.runQuery || query;
+    const pushData = options.activityOnly ? null : JSON.stringify({ ...data, ...queue });
+    if (options.existingNotificationId) {
+      const existing = await runQuery('UPDATE notifications SET push_data=$3 WHERE id=$1 AND user_id=$2 RETURNING id',
+        [options.existingNotificationId, userId, pushData]);
+      return existing.rows[0]?.id || null;
+    }
+    // The database trigger persists delivery jobs in this same transaction.
+    const result = await runQuery(
+      `INSERT INTO notifications (user_id, type, title, body, from_user_id, transaction_id, listing_id, request_id, conversation_id, dispute_id,
+        discussion_id, thread_id, circle_id, push_data, dedupe_key)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       ON CONFLICT (user_id, dedupe_key) WHERE dedupe_key IS NOT NULL DO UPDATE SET dedupe_key=EXCLUDED.dedupe_key
        RETURNING id`,
       [
         userId,
@@ -300,40 +308,15 @@ export async function sendNotification(userId, type, data, options = {}) {
         options.requestId || data.requestId || null,
         options.conversationId || data.conversationId || null,
         options.disputeId || data.disputeId || null,
+        options.discussionId || data.discussionId || null,
+        options.threadId || data.threadId || options.discussionId || data.discussionId || null,
+        options.circleId || data.circleId || null,
+        pushData,
+        options.dedupeKey || null,
       ]
     );
 
-    const notificationId = result.rows[0].id;
-    if (options.activityOnly) return notificationId;
-
-    // Get user's push token and preferences
-    const user = await query(
-      'SELECT push_token, notification_preferences FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (user.rows.length > 0) {
-      const { push_token, notification_preferences } = user.rows[0];
-      const prefs = notification_preferences || {};
-
-      // Send push notification if enabled and token exists
-      if (push_token && shouldSendPush(type, prefs, data)
-          && await notificationAudienceAllowsPush(
-            query, userId, options.fromUserId || data.fromUserId, audiencePreferences(type, prefs, data))) {
-        // Get unread count for app icon badge
-        const unreadResult = await query(
-          `SELECT (${UNREAD_ACTIVITY_SQL}) + (SELECT COUNT(*) FROM messages m
-            JOIN conversations c ON c.id = m.conversation_id
-            WHERE m.is_read = false AND m.sender_id != $1 AND (c.user1_id = $1 OR c.user2_id = $1)) AS count`,
-          [userId]
-        );
-        const badge = parseInt(unreadResult.rows[0].count) || 1;
-
-        await sendPushNotification(push_token, { title, body, data: { notificationId, type, ...data, ...queue, listingId: options.listingId || data.listingId, requestId: options.requestId || data.requestId, conversationId: options.conversationId || data.conversationId, transactionId: options.transactionId || data.transactionId, disputeId: options.disputeId || data.disputeId }, badge, sound: prefs.push_sound !== false });
-      }
-    }
-
-    return notificationId;
+    return result.rows[0].id;
   } catch (err) {
     if (options.throwOnError) throw err;
     logger.error('Send notification error:', err);
@@ -342,66 +325,20 @@ export async function sendNotification(userId, type, data, options = {}) {
 }
 
 /**
- * Send push notification via Expo Push Service
- * Borrowhood uses React Native with Expo, so we use Expo's push service
- */
-async function sendPushNotification(pushToken, { title, body, data, badge, sound = true }) {
-  try {
-    // Validate Expo push token format
-    if (!pushToken.startsWith('ExponentPushToken[')) {
-      logger.warn('Invalid Expo push token format');
-      return;
-    }
-
-    const message = {
-      to: pushToken,
-      ...(sound ? { sound: 'default' } : {}),
-      title,
-      body,
-      data,
-      badge: badge || 1,
-    };
-
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
-
-    const result = await response.json();
-
-    if (result.data?.status === 'error') {
-      logger.warn('Push notification error:', result.data.message);
-      // Clear invalid push tokens so we stop failing silently
-      if (result.data.details?.error === 'DeviceNotRegistered') {
-        await query('UPDATE users SET push_token = NULL WHERE push_token = $1', [pushToken]);
-        logger.info(`Cleared invalid push token: ${pushToken.substring(0, 20)}...`);
-      }
-    }
-
-    return result;
-  } catch (err) {
-    logger.error('Push notification send error:', err);
-  }
-}
-
-/**
  * Send notification to multiple users
  */
 export async function sendBulkNotification(userIds, type, data, options = {}) {
-  const results = await Promise.allSettled(
-    userIds.map(userId => sendNotification(userId, type, data, options))
-  );
-
-  return results.map((r, i) => ({
-    userId: userIds[i],
-    success: r.status === 'fulfilled',
-    notificationId: r.status === 'fulfilled' ? r.value : null,
-  }));
+  const recipients = [...new Set(userIds)];
+  const results = [];
+  for (let i = 0; i < recipients.length; i += 20) {
+    results.push(...await Promise.all(recipients.slice(i, i + 20).map(async userId => {
+      try {
+        const notificationId = await sendNotification(userId, type, data, options);
+        return { userId, success: !!notificationId, notificationId };
+      } catch { return { userId, success: false, notificationId: null }; }
+    })));
+  }
+  return results;
 }
 
 /**

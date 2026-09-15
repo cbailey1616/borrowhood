@@ -1,4 +1,6 @@
 import TextInput from '../../components/AppTextInput';
+import { UNSTABLE_usePreventRemove as usePreventRemove, useIsFocused } from '@react-navigation/native';
+import useNavigationTask from '../../hooks/useNavigationTask';
 import { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -41,6 +43,7 @@ function getPasswordStrength(password) {
 }
 
 export default function ForgotPasswordScreen({ navigation, route }) {
+  const isFocused = useIsFocused();
   const prefillEmail = route?.params?.email;
   const [recovering, setRecovering] = useState(false);
   const isChangeMode = route?.params?.changeMode && !recovering;
@@ -48,15 +51,23 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const { showError } = useError();
   const [step, setStep] = useState(isChangeMode ? 'password' : 'email');
+  const startNavigationTask = useNavigationTask(navigation, step);
   const [email, setEmail] = useState(prefillEmail || '');
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [resetToken, setResetToken] = useState('');
+  const [resetComplete, setResetComplete] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const digitRefs = useRef([]);
+
+  // The header arrow, Android Back, and iOS edge-swipe all go one step back.
+  usePreventRemove(isFocused && !isChangeMode && step !== 'email' && !resetComplete, () => handleBack());
+  useEffect(() => {
+    if (resetComplete && !route?.params?.changeMode && isFocused) navigation.navigate('Login');
+  }, [resetComplete, route?.params?.changeMode, isFocused, navigation]);
 
   // Auto-send code when opened with pre-filled email (change password mode)
   useEffect(() => {
@@ -78,6 +89,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   };
 
   const handleSendCode = async () => {
+    const isCurrent = startNavigationTask();
     if (!email) {
       showError({ type: 'validation', message: 'Please enter your email address.' });
       return;
@@ -85,10 +97,12 @@ export default function ForgotPasswordScreen({ navigation, route }) {
     setIsLoading(true);
     try {
       await api.forgotPassword(email);
+      if (!isCurrent()) return;
       setResendCooldown(60);
       animateStep('code');
       haptics.light();
     } catch (error) {
+      if (!isCurrent()) return;
       showError({
         type: 'network',
         message: error.message || "Couldn't send the reset code. Please check your connection.",
@@ -139,6 +153,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   };
 
   const handleVerifyCode = async (code) => {
+    const isCurrent = startNavigationTask();
     if (!code || code.length !== 6) {
       showError({ type: 'validation', message: 'Please enter the 6-digit code from your email.' });
       return;
@@ -146,10 +161,12 @@ export default function ForgotPasswordScreen({ navigation, route }) {
     setIsLoading(true);
     try {
       const response = await api.verifyResetCode(email, code);
+      if (!isCurrent()) return;
       setResetToken(response.resetToken);
       animateStep('password');
       haptics.success();
     } catch (error) {
+      if (!isCurrent()) return;
       haptics.error();
       setDigits(['', '', '', '', '', '']);
       digitRefs.current[0]?.focus();
@@ -183,6 +200,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   };
 
   const handleResetPassword = async () => {
+    const isCurrent = startNavigationTask();
     if (isChangeMode && !currentPassword) {
       showError({ type: 'validation', message: 'Enter your current password.' });
       return;
@@ -199,6 +217,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
     try {
       if (isChangeMode) await changePassword(currentPassword, newPassword);
       else await api.resetPassword(resetToken, newPassword);
+      if (!isCurrent()) return;
       haptics.success();
       if (isChangeMode) {
         showError({
@@ -213,8 +232,8 @@ export default function ForgotPasswordScreen({ navigation, route }) {
           title: "You're all set!",
           message: 'Your password has been reset. Go ahead and sign in with your new password.',
         });
+        setResetComplete(true);
         if (route?.params?.changeMode) await logout();
-        else navigation.navigate('Login');
       }
     } catch (error) {
       haptics.error();
@@ -499,7 +518,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   input: {
@@ -530,7 +549,7 @@ const styles = StyleSheet.create({
   eyeButtonText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   strengthRow: {
     flexDirection: 'row',
@@ -551,7 +570,7 @@ const styles = StyleSheet.create({
   },
   strengthLabel: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   digitRow: {
     flexDirection: 'row',
@@ -568,7 +587,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     textAlign: 'center',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
   },
   digitBoxFilled: {
@@ -585,7 +604,7 @@ const styles = StyleSheet.create({
   verifyingText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   button: {
     backgroundColor: COLORS.primary,
@@ -608,7 +627,7 @@ const styles = StyleSheet.create({
   resendButtonText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   resendDisabled: {
     color: COLORS.textMuted,

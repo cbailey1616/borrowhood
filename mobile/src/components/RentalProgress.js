@@ -37,5 +37,5 @@ const styles = StyleSheet.create({
   complete: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
   check: { position: 'absolute', right: -2, bottom: -2, width: 17, height: 17, borderRadius: 9, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: COLORS.surface },
   label: { textAlign: 'center', fontSize: 11, lineHeight: 15, marginTop: 9, paddingHorizontal: 2, color: COLORS.textSecondary },
-  activeLabel: { color: COLORS.primary, fontWeight: '700' },
+  activeLabel: { color: COLORS.primary, fontWeight: '400' },
 });

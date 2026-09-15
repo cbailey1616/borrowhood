@@ -7,6 +7,25 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getCommunities.mockResolvedValue([]); api.joinCommunity.mockResolvedValue({}); api.createCommunity.mockResolvedValue({ id: 'comm-new' }); });
 describe('JoinCommunityScreen', () => {
+  it('loads neighborhoods after returning from setting a profile location', async () => {
+    const { useFocusEffect } = require('@react-navigation/native');
+    const originalFocusEffect = useFocusEffect.getMockImplementation();
+    useFocusEffect.mockImplementation(cb => React.useEffect(cb, [cb]));
+    mockUser.city = null;
+    try {
+      const Screen = require('../../src/screens/JoinCommunityScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} />);
+      await waitFor(() => expect(api.getCommunities).not.toHaveBeenCalled());
+      mockUser.city = 'Boston';
+      api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Boston Neighbors' }]);
+      screen.rerender(<Screen navigation={mockNavigation} />);
+      await screen.findByText('Boston Neighbors');
+      expect(api.getCommunities).toHaveBeenCalledTimes(1);
+    } finally {
+      mockUser.city = 'Boston';
+      useFocusEffect.mockImplementation(originalFocusEffect);
+    }
+  });
   it('fetches communities on mount', async () => {
     const Screen = require('../../src/screens/JoinCommunityScreen').default;
     render(<Screen navigation={mockNavigation} />);

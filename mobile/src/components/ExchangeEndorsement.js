@@ -43,7 +43,7 @@ export default function ExchangeEndorsement({ transaction, onSaved, embedded = f
           accessibilityState={{ selected:choice === positive,disabled:saving }} disabled={saving} onPress={() => setSelection({ id: transaction.id, positive })}
           style={{ flexGrow:1,flexShrink:1,flexBasis:stackChoices ? 'auto' : 0,flexDirection:stackChoices ? 'row' : 'column',minHeight:stackChoices ? 56 : 88,gap:stackChoices ? 12 : 6,padding:12,alignItems:'center',justifyContent:stackChoices ? 'flex-start' : 'center',borderWidth:choice===positive ? 2 : 1,borderColor:choice===positive ? COLORS.primary : COLORS.borderBrown,borderRadius:RADIUS.md,backgroundColor:choice===positive ? COLORS.primaryMuted : COLORS.surface }}>
           <Ionicons name={positive === null ? 'remove-outline' : positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={32} illustrated selected={choice===positive} color={COLORS.primary} />
-          <Text style={{ ...TYPOGRAPHY.footnote,color:COLORS.primary,textAlign:stackChoices ? 'left' : 'center',flexShrink:1,fontWeight:choice===positive ? '700' : '500' }}>{positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}</Text>
+          <Text style={{ ...TYPOGRAPHY.footnote,color:COLORS.primary,textAlign:stackChoices ? 'left' : 'center',flexShrink:1,fontFamily:choice===positive ? 'DMSans_500Medium' : 'DMSans_400Regular',fontWeight:choice===positive ? '500' : '400' }}>{positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}</Text>
         </HapticPressable>)}
       </View>
       <HapticPressable accessibilityRole="button" accessibilityLabel="Send endorsement" disabled={saving || choice===undefined} onPress={send}

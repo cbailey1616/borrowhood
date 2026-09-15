@@ -9,6 +9,7 @@ vi.mock('../../src/utils/db.js', () => ({
 }));
 import { ensureRankNotificationSchema, checkRankChanges, rankChange, rankTier } from '../../src/services/rankNotifications.js';
 import { shouldSendPush } from '../../src/services/notificationPreferences.js';
+import { ensureNotificationSchema } from '../../src/services/notificationSchema.js';
 const owner = randomUUID(), borrower = randomUUID();
 beforeAll(async () => {
   state.db = new PGlite();
@@ -20,6 +21,7 @@ beforeAll(async () => {
   await state.db.exec(await readFile(new URL('../../migrations/020_exchange_endorsements.sql', import.meta.url), 'utf8'));
   await state.db.exec(await readFile(new URL('../../migrations/021_neutral_endorsements.sql', import.meta.url), 'utf8'));
   await state.db.query('INSERT INTO users(id) VALUES($1),($2)', [owner, borrower]);
+  await ensureNotificationSchema();
 }, 15000);
 afterAll(async () => state.db.close());
 

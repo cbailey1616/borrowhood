@@ -29,8 +29,8 @@ const router = Router();
 // ============================================
 router.post('/', authenticate,
   body('listingId').isUUID(),
-  body('startDate').optional().isISO8601(),
-  body('endDate').optional().isISO8601(),
+  body('startDate').optional().isISO8601({ strict: true }),
+  body('endDate').optional().isISO8601({ strict: true }),
   body('message').optional().isLength({ max: 500 }),
   async (req, res) => {
     const errors = validationResult(req);
@@ -95,7 +95,7 @@ router.post('/', authenticate,
         const end = new Date(endDate);
         rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
-        if (rentalDays < item.min_duration || rentalDays > item.max_duration) {
+        if (!Number.isFinite(rentalDays) || rentalDays < 1 || rentalDays < item.min_duration || rentalDays > item.max_duration) {
           return res.status(400).json({
             error: `Duration must be between ${item.min_duration} and ${item.max_duration} days`
           });
@@ -148,6 +148,11 @@ router.post('/', authenticate,
         // Serialize free requests with approvals on this item's inventory row.
         const { rows:[current] } = await client.query('SELECT is_available,status FROM listings WHERE id=$1 FOR UPDATE', [listingId]);
         if (!current?.is_available || current.status !== 'active') throw Object.assign(new Error('This item was just reserved. Please refresh.'), { status:409 });
+        if (!isGiveaway) {
+          const blocked = await client.query(`SELECT 1 FROM listing_availability WHERE listing_id=$1 AND is_available=false
+            AND start_date <= $3 AND end_date >= $2 LIMIT 1`, [listingId, startDate, endDate]);
+          if (blocked.rows.length) throw Object.assign(new Error('The owner has marked these dates unavailable. Choose different dates.'), { status:409 });
+        }
         const duplicate = await client.query(`SELECT id FROM borrow_transactions WHERE listing_id=$1 AND borrower_id=$2
           AND status IN ('pending','approved','paid','picked_up','return_pending') LIMIT 1`, [listingId,req.user.id]);
         if (duplicate.rows.length) throw Object.assign(new Error('You already have a request for this item.'), { status:409 });

@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   codeLabel: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   codeRow: {
     flexDirection: 'row',
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   codeText: {
     ...TYPOGRAPHY.title3,
     color: COLORS.text,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 1,
   },
   copyButton: {

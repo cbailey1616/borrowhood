@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
     marginTop: SPACING.xs,
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   },
   pendingText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   cardContent: {
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   },
   inviteButtonText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   updateAccessButton: {

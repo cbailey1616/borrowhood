@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textMuted,
     marginBottom: SPACING.sm,
     marginLeft: SPACING.lg,

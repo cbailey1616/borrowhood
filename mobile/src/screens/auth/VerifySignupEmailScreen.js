@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   icon: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center', borderRadius: 24, backgroundColor: COLORS.primaryMuted, marginBottom: 20 },
   title: { ...TYPOGRAPHY.h1, color: COLORS.primary, textAlign: 'center', marginBottom: 12 },
   body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
-  email: { ...TYPOGRAPHY.body, color: COLORS.text, fontWeight: '600', textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  email: { ...TYPOGRAPHY.body, color: COLORS.text, fontWeight: '400', textAlign: 'center', marginTop: 4, marginBottom: 24 },
   code: { width: '100%', paddingVertical: 16, paddingHorizontal: 12, fontSize: 32, letterSpacing: 8, textAlign: 'center', color: COLORS.text, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.lg },
   hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 12 },
   error: { ...TYPOGRAPHY.body, color: COLORS.danger, marginTop: 16, textAlign: 'center' },
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   buttonText: { ...TYPOGRAPHY.headline, color: COLORS.background },
   disabled: { opacity: 0.55 },
   linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  link: { ...TYPOGRAPHY.footnote, color: COLORS.primary, fontWeight: '600', textAlign: 'center' },
+  link: { ...TYPOGRAPHY.footnote, color: COLORS.primary, fontWeight: '400', textAlign: 'center' },
   muted: { color: COLORS.textSecondary },
   footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 },
 });

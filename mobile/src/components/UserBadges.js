@@ -40,6 +40,6 @@ const styles = StyleSheet.create({
   centeredText: { textAlign: 'center' },
   compact: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 0, gap: 4 },
   verified: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4 },
-  verifiedText: { flexShrink: 1, fontWeight: '600', color: COLORS.primary },
+  verifiedText: { flexShrink: 1, fontWeight: '400', color: COLORS.primary },
   exchangeText: { color: COLORS.textSecondary },
 });

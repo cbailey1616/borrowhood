@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   requesterName: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   timeAgo: {
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   haveThisText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   emptyContainer: {
