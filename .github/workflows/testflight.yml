@@ -1,0 +1,62 @@
+name: TestFlight cloud release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: New iOS build number (greater than every prior upload)
+        required: true
+        type: string
+  push:
+    branches: ['testflight-release/*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: borrowhood-testflight-release
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/deploy.yml
+  release:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Check Expo connection
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo '::error::Add EXPO_TOKEN in repository Settings > Secrets and variables > Actions.'
+            exit 1
+          fi
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: 24.2.0
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Check existing iOS builds
+        run: eas build:list --platform ios --limit 100 --json --non-interactive > /tmp/borrowhood-ios-builds.json
+      - name: Set an explicit unused build number
+        env:
+          REQUESTED_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          candidate="$REQUESTED_BUILD_NUMBER"
+          if [ -z "$candidate" ]; then
+            candidate="${GITHUB_REF_NAME#testflight-release/}"
+          fi
+          python3 scripts/prepare-cloud-release.py "$candidate" /tmp/borrowhood-ios-builds.json
+      - name: Build and submit to TestFlight
+        run: eas build --platform ios --profile testflight --non-interactive --auto-submit --wait
