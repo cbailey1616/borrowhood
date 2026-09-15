@@ -48,7 +48,12 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
       - name: Check existing iOS builds
-        run: eas build:list --platform ios --limit 100 --json --non-interactive > /tmp/borrowhood-ios-builds.json
+        run: |
+          eas whoami
+          if ! eas build:list --platform ios --limit 100 --json --non-interactive > /tmp/borrowhood-ios-builds.json; then
+            python3 -c "import os,pathlib; message=pathlib.Path('/tmp/borrowhood-ios-builds.json').read_text(); token=os.environ.get('EXPO_TOKEN'); print(message.replace(token, '[REDACTED]')[:4000] if token else message[:4000])"
+            exit 1
+          fi
       - name: Set an explicit unused build number
         env:
           REQUESTED_BUILD_NUMBER: ${{ inputs.build_number }}
