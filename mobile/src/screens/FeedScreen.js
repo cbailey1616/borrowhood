@@ -331,9 +331,10 @@ export default function FeedScreen({ navigation }) {
   const exchangeSummary = [
     dueCount > 0 && `${dueCount} due back`,
     returnCount > 0 && `${returnCount} return${returnCount === 1 ? '' : 's'} to confirm`,
-    reviewCount > 0 && `${reviewCount} to review`,
+    reviewCount > 0 && `${reviewCount} request${reviewCount === 1 ? '' : 's'} to review`,
     pickupCount > 0 && `${pickupCount} ready for pickup`,
   ].filter(Boolean).join(' · ') || `${exchangeGroups.length} in progress`;
+  const exchangeAction = reviewCount > 0 && !dueCount && !returnCount && !pickupCount ? 'Review' : 'View';
   const banners = [
     activeDisputes.length > 0 && !dismissedBanners.disputes && {
       key: 'disputes',
@@ -495,23 +496,25 @@ export default function FeedScreen({ navigation }) {
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
           <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID="FeedCard">
-            <View style={styles.tileThumb}>
-              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
-              {!item.ownerMasked && (
-                <HapticPressable
-                  testID={`Feed.save.${item.id}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
-                  accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
-                  disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
-                  onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
-                  style={styles.tileSaveButton}
-                >
-                  {saved.status === 'loading' || saved.pendingIds.has(item.id)
-                    ? <ActivityIndicator size="small" color={COLORS.primary} />
-                    : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
-                </HapticPressable>
-              )}
+            <View style={styles.tilePhotoFrame}>
+              <View style={styles.tileThumb}>
+                <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+                {!item.ownerMasked && (
+                  <HapticPressable
+                    testID={`Feed.save.${item.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
+                    accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
+                    disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
+                    onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
+                    style={styles.tileSaveButton}
+                  >
+                    {saved.status === 'loading' || saved.pendingIds.has(item.id)
+                      ? <ActivityIndicator size="small" color={COLORS.primary} />
+                      : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
+                  </HapticPressable>
+                )}
+              </View>
             </View>
             <View style={styles.tileContent}>
               <ListingOffer listing={item} />
@@ -579,17 +582,17 @@ export default function FeedScreen({ navigation }) {
           <HapticPressable
             testID="Feed.exchanges"
             accessibilityRole="button"
-            accessibilityLabel={`In progress, ${exchangeSummary}`}
+            accessibilityLabel={`${exchangeSummary}. ${exchangeAction}`}
             onPress={() => navigation.navigate('Activity', { tab: 'activity' })}
             style={styles.exchangeCard}
             haptic="light"
           >
-            <Ionicons name="basket" size={30} illustrated color={COLORS.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>In progress</Text>
-              <Text style={styles.bannerSubtitle}>{exchangeSummary}</Text>
+            <Ionicons name="basket" size={26} illustrated color={COLORS.primary} />
+            <Text style={styles.exchangeSummary}>{exchangeSummary}</Text>
+            <View style={styles.exchangeAction}>
+              <Text style={styles.exchangeActionText}>{exchangeAction}</Text>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.surface} />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
           </HapticPressable>
         </LayeredCard>}
         {banners.map(banner => <View key={banner.key} style={[styles.bannerCard, { borderColor: banner.color }]}>
@@ -1086,11 +1089,35 @@ const styles = StyleSheet.create({
   exchangeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-    padding: SPACING.md,
-    minHeight: 72,
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    minHeight: 60,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.primaryMuted,
+  },
+  exchangeSummary: {
+    ...TYPOGRAPHY.subheadline,
+    flex: 1,
+    minWidth: 0,
+    color: COLORS.primaryDark,
+    fontWeight: '500',
+  },
+  exchangeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    gap: SPACING.xs,
+    minHeight: 44,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
+  },
+  exchangeActionText: {
+    ...TYPOGRAPHY.subheadline,
+    color: COLORS.surface,
   },
   bannerCard: {
     marginBottom: SPACING.lg,
@@ -1173,8 +1200,11 @@ const styles = StyleSheet.create({
   tileRow: {
     flexDirection: 'column',
   },
+  tilePhotoFrame: {
+    paddingHorizontal: SPACING.sm, paddingTop: SPACING.sm,
+  },
   tileThumb: {
-    alignSelf: 'stretch', margin: SPACING.sm, marginBottom: 0, aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
+    width: '100%', aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
   },
   tileThumbImage: {
     ...StyleSheet.absoluteFillObject,

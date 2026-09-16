@@ -252,6 +252,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           accessibilityRole="button"
           style={[
             styles.primaryButton,
+            !isCounter && styles.declineButton,
             (!isValid || submitting) && styles.buttonDisabled,
           ]}
           onPress={handleSubmitPress}
@@ -279,7 +280,8 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           {
             label: isCounter ? 'Submit Counter' : 'Submit Decline',
             onPress: handleSubmit,
-            primary: true,
+            primary: isCounter,
+            destructive: !isCounter,
           },
         ]}
       />
@@ -445,6 +447,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingVertical: SPACING.md,
   },
+  declineButton: { backgroundColor: COLORS.danger },
   primaryButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.lg,

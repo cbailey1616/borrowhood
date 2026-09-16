@@ -96,8 +96,8 @@ export default function SegmentedControl({
 }
 
 const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: SPACING.lg },
-  tab: { minHeight: 48, justifyContent: 'center', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm, borderBottomWidth: 3, borderBottomColor: 'transparent', flexShrink: 1 },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  tab: { flex: 1, minWidth: 0, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm, borderBottomWidth: 3, borderBottomColor: 'transparent' },
   tabSelected: { borderBottomColor: COLORS.primary },
   container: {
     flexDirection: 'row',

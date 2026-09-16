@@ -1,7 +1,7 @@
 import OnboardingTownScreen from '../screens/onboarding/OnboardingTownScreen';
-import { Text } from 'react-native';
+import BackHeader from '../components/BackHeader';
+import { ModalHeader } from '../components/ModalControls';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HapticPressable from '../components/HapticPressable';
 import { COLORS, ENABLE_PAID_TIERS } from '../utils/config';
 
 import OnboardingIntroScreen from '../screens/onboarding/OnboardingIntroScreen';
@@ -74,12 +74,13 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
           headerTintColor: COLORS.text,
           title: 'Verification',
           animation: 'slide_from_right',
+          header: ({ navigation, options }) => <BackHeader navigation={navigation} title={options.title} fallbackRoute="OnboardingPlan" />,
         }}
       />
       <Stack.Screen
         name="OnboardingSubscription"
         component={SubscriptionScreen}
-        options={({ navigation: nav }) => ({
+        options={{
           presentation: 'modal',
           gestureEnabled: true,
           headerShown: true,
@@ -87,12 +88,8 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
           headerShadowVisible: false,
           headerTintColor: COLORS.text,
           title: 'Verification',
-          headerLeft: () => (
-            <HapticPressable onPress={() => nav.goBack()} haptic="light">
-              <Text style={{ color: COLORS.primary, fontSize: 17 }}>Close</Text>
-            </HapticPressable>
-          ),
-        })}
+          header: ({ options }) => <ModalHeader title={options.title} />,
+        }}
       />
     </Stack.Navigator>
   );

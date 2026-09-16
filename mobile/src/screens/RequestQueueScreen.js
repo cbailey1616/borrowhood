@@ -140,7 +140,7 @@ export default function RequestQueueScreen({ route, navigation }) {
             <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${item.borrower.firstName}`} style={[styles.secondary, { flex: stackActions ? 0 : 1.12 }]} onPress={() => navigation.navigate('Chat', { recipientId: item.borrower.id, recipient: item.borrower, listingId, listing: data.listing })}><Ionicons name="chatbubble" size={15} color={COLORS.primary} /><Text style={styles.secondaryText}>Message</Text></HapticPressable>
             <HapticPressable accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s request`} style={[styles.secondary, stackActions && { flex: 0 }]} onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}><Text style={styles.secondaryText}>Details</Text></HapticPressable>
             <HapticPressable accessibilityRole="button" accessibilityLabel={`Decline ${item.borrower.firstName}'s request`} testID={`Queue.decline.${item.id}`}
-              disabled={!!busy || error} style={[styles.secondary, stackActions && { flex: 0 }, { backgroundColor: COLORS.background }, (busy || error) && { opacity: 0.45 }]} onPress={() => setDeclining(item)}><Text style={[styles.secondaryText, { color: COLORS.danger }]}>Decline</Text></HapticPressable>
+              disabled={!!busy || error} style={[styles.secondary, styles.decline, stackActions && { flex: 0 }, (busy || error) && { opacity: 0.45 }]} onPress={() => setDeclining(item)}><Text style={[styles.secondaryText, { color: '#fff' }]}>Decline</Text></HapticPressable>
           </View>
         </View>
       </LayeredCard>} />
@@ -167,6 +167,7 @@ const styles = {
   arrowCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
   actionRow: { flexDirection: 'row', gap: 6 },
   secondary: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 4, paddingVertical: 9, flexDirection: 'row', flexWrap: 'nowrap', gap: 4, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  decline: { backgroundColor: COLORS.danger, borderColor: COLORS.danger },
   secondaryText: { ...TYPOGRAPHY.caption1, color: COLORS.primary, textAlign: 'center', flexShrink: 1 },
   outline: { minHeight: 48, borderWidth: 1, borderColor: COLORS.borderGreenStrong, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   approve: { minHeight: 49, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },

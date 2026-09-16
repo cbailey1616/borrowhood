@@ -423,10 +423,10 @@ it('keeps in-progress items ahead of requests and opens their activity screen', 
  api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],requests:[{id:'ask',type:'request',title:'Need a ladder',user:{firstName:'Alex'}}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('In progress');
- expect(screen.getByText('1 to review')).toBeTruthy();
+ await screen.findByText('1 request to review');
+ expect(screen.getByText('Review')).toBeTruthy();
  expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
- fireEvent.press(screen.getByText('In progress'));
+ fireEvent.press(screen.getByText('Review'));
  expect(mockNavigation.navigate).toHaveBeenCalledWith('Activity', { tab: 'activity' });
 });
 
@@ -441,11 +441,11 @@ it('shows overdue returns and pending reviews together without hiding other upda
  api.getNotifications.mockResolvedValue({ notifications:[],unreadCount:2 });
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('1 due back · 1 to review');
+ await screen.findByText('1 due back · 1 request to review');
  expect(screen.getByText('2 unread notifications')).toBeTruthy();
  fireEvent.press(screen.getByLabelText('Dismiss 2 unread notifications'));
- expect(screen.getByText('In progress')).toBeTruthy();
- expect(screen.getByText('1 due back · 1 to review')).toBeTruthy();
+ expect(screen.getByText('View')).toBeTruthy();
+ expect(screen.getByText('1 due back · 1 request to review')).toBeTruthy();
 });
 
 it('opens the dispute list when more than one dispute needs attention', async () => {
