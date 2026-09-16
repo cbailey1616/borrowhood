@@ -37,11 +37,30 @@ const activityNotices = () => {
     isRead: source.every(item => readNoticeIds.has(item.id)) }];
 };
 const unreadMessages = () => !conversationRead && ['inbox', 'inbox-messages'].includes(captureScreen) ? 2 : 0;
+const unreadConversations = () => unreadMessages() > 0 ? 1 : 0;
 const fixtureConversation = () => ({ ...conversation, unreadCount: unreadMessages(),
   ...(captureScreen === 'inbox-messages' ? { lastMessage: 'I can bring the drill over tomorrow morning.' } : {}) });
 const photoRequest = { ...requests[0], id: 'demo-photo-request', title: 'A cordless drill for a weekend project', description: 'Putting up shelves. Happy to collect it.', requestType: 'item', photoUrl: listings[0].photoUrl };
 const plainRequest = { ...requests[0], id: 'demo-service-request', title: 'Help with dinner', description: '', requestType: 'service' };
 const carouselRequests = captureScreen === 'requests-photo' ? [photoRequest, plainRequest] : [plainRequest, photoRequest];
+const dateFromToday = offset => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  date.setHours(12, 0, 0, 0);
+  return date.toISOString();
+};
+const requestDetail = {
+  ...photoRequest,
+  id: 'demo-request-detail',
+  status: 'closed',
+  isOwner: false,
+  isExpired: false,
+  category: 'Tools & hardware',
+  neededFrom: dateFromToday(2),
+  neededUntil: dateFromToday(4),
+  createdAt: dateFromToday(-2),
+  requester: { ...listings[0].owner, endorsement: { count: 20, percent: 100, score: 95 } },
+};
 const api = {
   getMe: async () => user,
   getUser: async id => id === user.id ? user : listings.find(item => item.owner.id === id)?.owner,
@@ -83,11 +102,15 @@ const api = {
   },
   getDiscussions: async () => ({ posts: [], total: 0 }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
+  getRequest: async id => id === requestDetail.id ? requestDetail : requests.find(item => item.id === id),
+  getRequestOffers: async id => id === requestDetail.id ? [{
+    ...listings[0], id: 'demo-private-offer', title: 'Cordless drill with bits and a spare battery', isOwn: true,
+  }] : [],
   getBadgeCount: async () => {
-    const messages = unreadMessages();
+    const messages = unreadConversations();
     const notifications = activityNotices().filter(item => !item.isRead).length;
     const actions = ['inbox', 'home-exchanges', 'owner-pickup', 'owner-active-item'].includes(captureScreen) ? 1 : 0;
-    return { messages, notifications, actions, total: messages + notifications + actions };
+    return { messages, notifications, actions, total: messages + notifications };
   },
   getNotifications: async ({ page = 1, limit = 50, unreadOnly } = {}) => {
     const all = activityNotices();

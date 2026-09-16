@@ -4,8 +4,8 @@ This capture target uses the actual native app screens with fictional posts,
 neighbors, and messages. It runs separately from the TestFlight entry point.
 It has no production API fallback, sign-in, or live database seeding.
 
-The App Store set contains six portrait PNGs per device: Home, Giveaway,
-For Sale, Saved, My Posts, and Messages. Screens are captured at native size:
+The App Store set contains six portrait PNGs per device: Home, Request Details,
+Giveaway, My Posts, Inbox, and Messages. Screens are captured at native size:
 
 - iPhone 13 Pro Max: 1284 × 2778 pixels (the requested 6.5-inch upload size).
 - iPad Pro 13-inch (M4): 2064 × 2752 pixels.

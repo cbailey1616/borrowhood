@@ -54,6 +54,7 @@ function openCapture() {
   const detail = {
     giveaway: { name: 'ListingDetail', params: { id: 'demo-books' } },
     sell: { name: 'ListingDetail', params: { id: 'demo-bike' } },
+    'request-detail': { name: 'RequestDetail', params: { id: 'demo-request-detail' } },
     chat: { name: 'Chat', params: { conversationId: 'demo-chat' } },
     notifications: { name: 'NotificationSettings' },
     'member-profile': { name: 'UserProfile', params: { id: 'demo-jamie' } },
