@@ -19,7 +19,10 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
+import useNavigationTask from '../hooks/useNavigationTask';
+
 export default function UserProfileScreen({ route, navigation }) {
+  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
@@ -86,8 +89,10 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const handleMessage = async () => {
+    const isCurrent = startNavigationTask();
     try {
       const conversations = await api.getConversations();
+      if (!isCurrent()) return;
       const existing = conversations.find(c => c.otherUser?.id === id);
       if (existing) {
         navigation.navigate('Chat', { conversationId: existing.id });
@@ -95,7 +100,7 @@ export default function UserProfileScreen({ route, navigation }) {
         navigation.navigate('Chat', { recipientId: id, listing: null });
       }
     } catch {
-      navigation.navigate('Chat', { recipientId: id, listing: null });
+      if (isCurrent()) navigation.navigate('Chat', { recipientId: id, listing: null });
     }
   };
 
@@ -317,12 +322,12 @@ const styles = StyleSheet.create({
   },
   listingTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   listingPrice: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
     marginTop: SPACING.xs,
   },
@@ -344,7 +349,7 @@ const styles = StyleSheet.create({
   },
   messageButtonText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   friendButton: {

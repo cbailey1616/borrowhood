@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     color: COLORS.warning,
     marginBottom: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     width: 80,
     height: 80,
     lineHeight: 80,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: 12,
     textAlign: 'center',
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.background,
   },
   errorDetails: {
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.danger,
     marginBottom: 8,
   },

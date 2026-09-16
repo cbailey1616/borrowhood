@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState } from 'react-native';
+import { randomUUID } from 'expo-crypto';
 import { readDraft, saveDraft, deleteDraft } from '../utils/draftStorage';
 
 export default function useFormDraft(scope, initial) {
@@ -49,19 +50,51 @@ export default function useFormDraft(scope, initial) {
     return () => clearTimeout(timer);
   }, [value, ready, persist]);
   const update = useCallback(next => {
+    if (state.current.scope !== scope) return;
     const updated = typeof next === 'function' ? next(state.current.value) : next;
     state.current = { ...state.current, value: updated, changed: true, cleared: false };
     setValue(updated); setSaved(false);
-  }, []);
+  }, [scope]);
   const clear = useCallback(async () => {
-    state.current = { ...state.current, cleared: true, changed: false };
-    try { if (state.current.scope) await deleteDraft(state.current.scope); setSaved(false); setRestored(false); }
-    catch { setError(true); throw new Error('Could not remove the saved draft.'); }
-  }, []);
+    if (state.current.scope !== scope) return false;
+    const clearing = { ...state.current, cleared: true, changed: false };
+    state.current = clearing;
+    try {
+      if (scope) await deleteDraft(scope);
+      if (mounted.current && state.current === clearing) { setSaved(false); setRestored(false); }
+      return true;
+    } catch {
+      if (mounted.current && state.current === clearing) setError(true);
+      throw new Error('Could not remove the saved draft.');
+    }
+  }, [scope]);
   const discard = useCallback(async () => {
-    await clear();
+    if (!await clear() || state.current.scope !== scope || state.current.changed) return;
     state.current = { ...state.current, value: latestInitial.current, changed: false, cleared: true };
     setValue(latestInitial.current); setError(false);
-  }, [clear]);
-  return [value, update, { ready, restored, error, saved, retry: persist, clear, discard }];
+  }, [clear, scope]);
+  const retry = useCallback(() => state.current.scope === scope ? persist() : Promise.resolve(false), [scope, persist]);
+  const prepareSubmission = useCallback(async (input, buildPayload) => {
+    const assertScope = () => {
+      if (!mounted.current || state.current.scope !== scope || !scope || !state.current.ready) {
+        throw Object.assign(new Error('Your account changed. Please reopen this form.'), { code: 'SESSION_CHANGED' });
+      }
+    };
+    assertScope();
+    const { __submission, ...fields } = input;
+    const fingerprint = JSON.stringify(fields);
+    let pending = state.current.value.__submission;
+    if (pending?.fingerprint !== fingerprint) {
+      const payload = await buildPayload();
+      assertScope();
+      pending = { fingerprint, payload: { ...payload, clientRequestId: randomUUID() } };
+      update(previous => ({ ...previous, __submission: pending }));
+    }
+    // Store the exact payload, including uploaded photo references, before POST.
+    // Restoring this draft can then safely replay the original submission.
+    if (!await persist()) throw new Error('Could not save your draft. Free some device storage and try again.');
+    assertScope();
+    return pending.payload;
+  }, [scope, persist, update]);
+  return [value, update, { ready, restored, error, saved, retry, clear, discard, prepareSubmission }];
 }

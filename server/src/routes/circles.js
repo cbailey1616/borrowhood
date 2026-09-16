@@ -209,7 +209,7 @@ router.post('/:id/invite', authenticate,
       await sendNotification(userId, 'circle_invite', {
         circleName: circle.rows[0].name,
         inviterName: req.user.firstName,
-      });
+      }, { circleId: req.params.id, fromUserId: req.user.id });
 
       res.json({ success: true });
     } catch (err) {

@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   defaultChipText: {
     ...TYPOGRAPHY.caption1,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   cardVisualNumber: {
     ...TYPOGRAPHY.body,
@@ -483,13 +483,13 @@ const styles = StyleSheet.create({
   cardVisualValue: {
     ...TYPOGRAPHY.body,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
     fontVariant: ['tabular-nums'],
   },
   cardVisualBrand: {
     ...TYPOGRAPHY.headline,
     color: 'rgba(255,255,255,0.8)',
-    fontWeight: '700',
+    fontWeight: '400',
     fontSize: 18,
   },
   // Mini card (select mode)
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   miniCardNumber: {
     ...TYPOGRAPHY.body,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
     letterSpacing: 1,
   },
   // Card actions row
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   defaultBadgeText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   setDefaultRow: {
     flexDirection: 'row',
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
-    fontWeight: '500',
+    fontWeight: '400',
     flex: 1,
   },
   // Security note
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
   payoutSetupActionText: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   // Skeleton
   skeletonWrap: {

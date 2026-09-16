@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   date: {
     ...TYPOGRAPHY.caption1,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   },
   amountText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
     marginRight: SPACING.sm,
   },

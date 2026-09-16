@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   cardLabel: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
-    fontWeight: '600',
+    fontWeight: '400',
     marginBottom: SPACING.xs,
   },
   cardHint: {
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   },
   typeLabelSelected: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   notesInput: {
     backgroundColor: COLORS.surfaceElevated,
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   depositClaimAmount: {
     ...TYPOGRAPHY.h2,
     color: COLORS.primary,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   amountInputRow: {
     flexDirection: 'row',

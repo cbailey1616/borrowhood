@@ -1,4 +1,5 @@
 import VerificationIntroduction from '../components/VerificationIntroduction';
+import useNavigationTask from '../hooks/useNavigationTask';
 import StripeVerificationButton from '../components/StripeVerificationButton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, useWindowDimensions } from 'react-native';
@@ -23,6 +24,7 @@ import GateStepper from '../components/GateStepper';
 import { isUserVerified } from '../utils/auth';
 
 export default function IdentityVerificationScreen({ navigation, route }) {
+  const startNavigationTask = useNavigationTask(navigation, route?.params?.source);
   const source = route?.params?.source || 'generic';
   const insets = useSafeAreaInsets();
   const totalSteps = route?.params?.totalSteps;
@@ -36,11 +38,14 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   const [starting, setStarting] = useState(false);
 
   const loadStatus = useCallback(async () => {
+    const isCurrent = startNavigationTask();
     try {
       const result = await api.getVerificationStatus();
+      if (!isCurrent()) return;
       setStatus(result.status);
       if (isUserVerified(result)) {
         await refreshUser();
+        if (!isCurrent()) return;
         // Auto-chain if source is provided and we haven't already
         if (source !== 'generic' && !hasAutoChained.current) {
           hasAutoChained.current = true;
@@ -49,7 +54,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
             navigation.replace('SetupPayout', { source, totalSteps });
           } else if (source === 'town_browse') {
-            navigation.popToTop();
+            navigation.goBack();
           }
         }
       }
@@ -59,17 +64,19 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  }, [source, totalSteps, navigation, refreshUser]);
+  }, [source, totalSteps, navigation, refreshUser, startNavigationTask]);
 
   useEffect(() => {
     loadStatus();
   }, [loadStatus]);
 
   const handleVerify = async () => {
+    const isCurrent = startNavigationTask();
     setStarting(true);
     try {
       // Get session credentials from server
       const { sessionId, ephemeralKeySecret } = await api.createVerificationSession();
+      if (!isCurrent()) return;
 
       // Launch native Stripe Identity sheet
       const brandLogo = Image.resolveAssetSource(require('../../assets/logo.png'));
@@ -78,6 +85,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         ephemeralKeySecret,
         brandLogo,
       });
+      if (!isCurrent()) return;
 
       if (error) {
         if (error.code === 'FlowCanceled') {
@@ -128,7 +136,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
       } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
         navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
-        navigation.popToTop();
+        navigation.goBack();
       } else {
         navigation.goBack();
       }
@@ -171,7 +179,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
       } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
         navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
-        navigation.popToTop();
+        navigation.goBack();
       } else {
         navigation.goBack();
       }

@@ -47,7 +47,7 @@ export async function checkRankChanges() {
       UNION SELECT lender_id FROM borrow_transactions
     ) members JOIN users ON users.id = members.user_id`);
     for (const { user_id } of rows) {
-      const pending = await withTransaction(async client => {
+      await withTransaction(async client => {
         await client.query('INSERT INTO neighbor_rank_notifications(user_id,tier) VALUES($1,NULL) ON CONFLICT DO NOTHING', [user_id]);
         const { rows: [previous] } = await client.query('SELECT tier FROM neighbor_rank_notifications WHERE user_id=$1 FOR UPDATE', [user_id]);
         const { score } = await endorsementSummary(user_id, client.query.bind(client));
@@ -56,7 +56,7 @@ export async function checkRankChanges() {
         if (change) {
           // Persist the activity and its snapshot together; concurrent workers cannot duplicate it.
           const id = await sendNotification(user_id, change.type, { body: change.body }, {
-            runQuery: client.query.bind(client), activityOnly: true, throwOnError: true,
+            runQuery: client.query.bind(client), activityOnly: change.type !== 'rank_up', throwOnError: true,
           });
           await client.query('UPDATE neighbor_rank_notifications SET tier=$2 WHERE user_id=$1', [user_id, tier]);
           return { ...change, id };
@@ -64,10 +64,6 @@ export async function checkRankChanges() {
         if (tier !== previous.tier) await client.query('UPDATE neighbor_rank_notifications SET tier=$2 WHERE user_id=$1', [user_id, tier]);
         return null;
       });
-      if (pending?.type === 'rank_up') {
-        // The activity is durable before attempting optional push delivery.
-        await sendNotification(user_id, pending.type, { body: pending.body }, { existingNotificationId: pending.id });
-      }
     }
   } catch (error) {
     logger.error('Rank notification check failed:', error);

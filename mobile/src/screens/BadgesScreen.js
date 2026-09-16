@@ -81,7 +81,7 @@ export default function BadgesScreen({ navigation }) {
     <AnimatedCard index={rank - 1}>
       <HapticPressable
         style={styles.leaderboardRow}
-        onPress={() => navigation.navigate('UserProfile', { userId: user.id })}
+        onPress={() => navigation.navigate('UserProfile', { id: user.id })}
         haptic="light"
       >
         <Text style={[styles.rank, rank <= 3 && styles.rankTop]}>
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   content: {
     flex: 1,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   },
   badgeName: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     textAlign: 'center',
   },
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   rank: {
     width: 32,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   rankTop: {
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   leaderName: {
     ...TYPOGRAPHY.body,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   leaderStats: {

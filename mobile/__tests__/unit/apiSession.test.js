@@ -34,3 +34,57 @@ it('ends a suspended account session but does not treat ordinary permission deni
   await expect(api.getMe()).rejects.toThrow(); expect(expired).not.toHaveBeenCalled();
   await expect(api.getMe()).rejects.toThrow(); expect(expired).toHaveBeenCalledTimes(1);
 });
+
+it('rejects successful data from an account that has been replaced', async () => {
+  let finish;
+  fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const pending = api.getMe();
+  api.setAuthToken('new-account');
+  finish({ ok: true, json: async () => ({ id: 'old-account', email: 'private@example.com' }) });
+  await expect(pending).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+});
+
+it('keeps an explicitly supplied account-link token', async () => {
+  fetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+  await api.linkAccount('google', { idToken: 'provider-proof' }, 'newly-authenticated-token');
+  expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer newly-authenticated-token');
+});
+
+it('stops preparing an upload when the account changes', async () => {
+  let readBlob;
+  fetch.mockResolvedValueOnce({ blob: () => new Promise(resolve => { readBlob = resolve; }) });
+  const pending = api.uploadImage('file:///private-photo.jpg');
+  for (let i = 0; i < 10 && !readBlob; i++) await Promise.resolve();
+  expect(readBlob).toBeDefined();
+  api.setAuthToken('new-account');
+  readBlob({ type: 'image/jpeg', size: 120 });
+  await expect(pending).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it('times out a stalled response body and aborts its request', async () => {
+  jest.useFakeTimers();
+  try {
+    fetch.mockResolvedValueOnce({ ok: true, json: () => new Promise(() => {}) });
+    const pending = api.getMe().catch(error => error);
+    await jest.advanceTimersByTimeAsync(30000);
+    expect(await pending).toMatchObject({ code: 'REQUEST_TIMEOUT' });
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+    expect(jest.getTimerCount()).toBe(0);
+  } finally { jest.useRealTimers(); }
+});
+
+it('does not accept an unreadable successful response as empty data', async () => {
+  fetch.mockResolvedValue({ ok: true, status: 200, json: async () => { throw new Error('bad json'); } });
+  await expect(api.getMe()).rejects.toThrow('Could not read the server response');
+});
+
+it('rejects old successful data as soon as another request invalidates the session', async () => {
+  let finish;
+  fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+    .mockResolvedValueOnce(errorResponse('SESSION_EXPIRED'));
+  const old = api.getMe();
+  await expect(api.getConversations()).rejects.toMatchObject({ code: 'SESSION_EXPIRED' });
+  finish({ ok: true, json: async () => ({ id: 'expired-account' }) });
+  await expect(old).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+});

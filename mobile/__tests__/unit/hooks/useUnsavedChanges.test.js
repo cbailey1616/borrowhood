@@ -15,6 +15,8 @@ it('guards changed values, preserves the cancelled edit, and allows successful s
   act(() => callback({ data: { action } }));
   expect(alert.mock.calls.at(-1)[2][0].text).toBe('Keep editing');
   expect(navigation.dispatch).not.toHaveBeenCalled();
+  act(() => callback({ data: { action } }));
+  expect(alert).toHaveBeenCalledTimes(1);
   act(() => alert.mock.calls.at(-1)[2][1].onPress());
   expect(navigation.dispatch).toHaveBeenCalledWith(action);
   act(() => result.current());

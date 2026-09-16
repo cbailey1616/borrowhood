@@ -63,6 +63,49 @@ const nativeBack = (type = 'GO_BACK') => {
 describe('ListingDiscussionScreen', () => {
   const route = { params: { listingId: 'listing-1', listing: { title: 'Camera', isOwner: false } } };
 
+  it.each([false,true])('opens the exact notification thread and reply page (request=%s)', async isRequest => {
+    const scroll = jest.spyOn(FlatList.prototype, 'scrollToIndex').mockImplementation(() => {});
+    const parent = makePost('older-root','Lauren',{replyCount:60});
+    const answer = makePost('target-reply','Chris');
+    api.getRequestDiscussions = jest.fn().mockResolvedValue({posts:[]});
+    const getThread = isRequest ? api.getRequestDiscussionThread : api.getDiscussionThread;
+    const getReplies = isRequest ? api.getRequestDiscussionReplies : api.getDiscussionReplies;
+    getThread.mockResolvedValue({post:parent,replyPage:2});
+    getReplies.mockResolvedValue({replies:[answer]});
+    const params = { ...(isRequest ? {requestId:'request-1',request:{title:'Camera'}} : route.params), threadId:'older-root',discussionId:'target-reply' };
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{params}} />);
+    await screen.findByText('Chris’s comment');
+    expect(getThread).toHaveBeenCalledWith(isRequest ? 'request-1' : 'listing-1','target-reply');
+    expect(getReplies).toHaveBeenCalledWith(isRequest ? 'request-1' : 'listing-1','older-root',{page:2,limit:50});
+    expect(screen.getByText('Lauren’s comment')).toBeTruthy();
+    expect(screen.getByText('Earlier replies')).toBeTruthy();
+    act(() => screen.UNSAFE_getByType(FlatList).props.onContentSizeChange());
+    expect(scroll).toHaveBeenCalledWith({index:0,animated:false,viewPosition:0.3});
+    fireEvent.press(screen.getByText('Earlier replies'));
+    await waitFor(() => expect(getReplies).toHaveBeenLastCalledWith(isRequest ? 'request-1' : 'listing-1','older-root',{page:1,limit:50}));
+    scroll.mockRestore();
+  });
+
+  it('shows a recoverable message when a notification targets a deleted thread', async () => {
+    api.getDiscussionThread.mockRejectedValueOnce(new Error('Deleted'));
+    api.getDiscussions.mockResolvedValue({posts:[makePost('current','Alex')]});
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{params:{...route.params,discussionId:'deleted'}}} />);
+    await screen.findByText('This thread is unavailable. You can still browse the comments.');
+    expect(screen.getByText('Alex’s comment')).toBeTruthy();
+  });
+
+  it('loads comments beyond the first fifty', async () => {
+    api.getDiscussions.mockResolvedValueOnce({posts:[makePost('first','Alex')],total:51})
+      .mockResolvedValueOnce({posts:[makePost('older','Lauren')],total:51});
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByText('Older comments'));
+    await screen.findByText('Lauren’s comment');
+    expect(api.getDiscussions).toHaveBeenLastCalledWith('listing-1',{page:2,limit:50});
+  });
+
   it.each([
     { screenHeight: 844, headerHeight: 103, nativeOrigin: 120, keyboardTop: 520 },
     { screenHeight: 667, headerHeight: 88, nativeOrigin: 88, keyboardTop: 407 },
@@ -91,7 +134,7 @@ describe('ListingDiscussionScreen', () => {
     fireEvent.changeText(screen.getByLabelText('Comment'), 'Can I collect this tomorrow?');
     fireEvent.press(screen.getByLabelText('Post comment'));
     await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', {
-      content: 'Can I collect this tomorrow?', parentId: undefined,
+      content: 'Can I collect this tomorrow?', parentId: undefined, clientRequestId: expect.any(String),
     }));
     await act(async () => DeviceEventEmitter.emit('keyboardWillHide', {
       duration: 0, easing: 'keyboard',
@@ -104,7 +147,7 @@ describe('ListingDiscussionScreen', () => {
   it('fetches discussions on mount', async () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     render(<Screen navigation={mockNavigation} route={route} />);
-    await waitFor(() => { expect(api.getDiscussions).toHaveBeenCalledWith('listing-1', { limit: 50 }); });
+    await waitFor(() => { expect(api.getDiscussions).toHaveBeenCalledWith('listing-1', { limit: 50, page: 1 }); });
   });
 
   it('shows empty state when no discussions', async () => {
@@ -153,7 +196,7 @@ describe('ListingDiscussionScreen', () => {
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
     fireEvent.changeText(screen.getByLabelText('Comment'), 'Yes, tomorrow works.');
     fireEvent.press(screen.getByLabelText('Post reply'));
-    await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', { content: 'Yes, tomorrow works.', parentId: 'post-1' }));
+    await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', { content: 'Yes, tomorrow works.', parentId: 'post-1', clientRequestId: expect.any(String), }));
     fireEvent.press(screen.getByLabelText('Comment options for Alice'));
     await chooseAction(screen, 'Message Alice privately');
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ conversationId: 'chat-1', recipientId: 'user-2', threadContext: expect.objectContaining({ id: 'listing-1', replyText: post.content }) }));
@@ -204,6 +247,22 @@ describe('focused comment threads', () => {
     return render(<Screen navigation={mockNavigation} route={params} />);
   };
 
+  it('does not trap navigation while an open thread is behind another screen', async () => {
+    const focus = jest.spyOn(require('@react-navigation/native'), 'useIsFocused').mockReturnValue(true);
+    try {
+      api.getDiscussions.mockResolvedValue({ posts: [makePost('root-alice', 'Alice', { replyCount: 1 })] });
+      const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} route={route} />);
+      fireEvent.press(await screen.findByLabelText('View 1 reply to Alice'));
+      expect(usePreventRemove).toHaveBeenLastCalledWith(true, expect.any(Function));
+      focus.mockReturnValue(false);
+      screen.rerender(<Screen navigation={mockNavigation} route={route} />);
+      expect(usePreventRemove).toHaveBeenLastCalledWith(false, expect.any(Function));
+    } finally {
+      focus.mockRestore();
+    }
+  });
+
   it('uses one composer without a Done strip and keeps native text suggestions', async () => {
     const screen = renderScreen();
     const input = await screen.findByLabelText('Comment');
@@ -242,7 +301,7 @@ describe('focused comment threads', () => {
     await screen.findByText('Ben’s comment');
     expect(screen.getByText('Cara’s comment')).toBeTruthy();
     expect(screen.getAllByText('I can help')).toHaveLength(1);
-    expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', { content: 'I can help', parentId: alice.id });
+    expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', { content: 'I can help', parentId: alice.id, clientRequestId: expect.any(String), });
     nativeBack();
     expect(screen.getByText('3 replies')).toBeTruthy();
     expect(screen.queryByText('I can help')).toBeNull();
@@ -273,7 +332,7 @@ describe('focused comment threads', () => {
     await chooseAction(screen, 'Reply in thread');
     fireEvent.press(screen.getByLabelText('Post reply'));
     await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', {
-      content: 'My Alice thread draft', parentId: 'root-alice',
+      content: 'My Alice thread draft', parentId: 'root-alice', clientRequestId: expect.any(String),
     }));
     nativeBack();
     expect(screen.getByLabelText('Comment').props.value).toBe('My main comment draft');
@@ -376,4 +435,38 @@ describe('focused comment threads', () => {
     await waitFor(() => expect(screen.UNSAFE_getByType(FlatList).props.data).toHaveLength(51));
     expect(screen.queryByText('Show more replies')).toBeNull();
   });
+});
+
+it('retries an interrupted comment with the same submission ID and keeps one visible copy', async () => {
+  const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Ladder'}}}} />);
+  await screen.findByLabelText('Comment');
+  api.createDiscussionPost.mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce({ id:'saved-comment', content:'Tomorrow?', replayed:true });
+  fireEvent.changeText(screen.getByLabelText('Comment'), 'Tomorrow?');
+  fireEvent.press(screen.getByLabelText('Post comment'));
+  await screen.findByText('Couldn’t send. Please try again.');
+  expect(screen.getByLabelText('Comment').props.value).toBe('Tomorrow?');
+  const attempt = api.createDiscussionPost.mock.calls[0][1];
+  expect(attempt.clientRequestId).toEqual(expect.any(String));
+  fireEvent.press(screen.getByLabelText('Post comment'));
+  await waitFor(() => expect(screen.getByLabelText('Comment').props.value).toBe(''));
+  expect(api.createDiscussionPost.mock.calls[1][1]).toEqual(attempt);
+  expect(screen.getAllByText('Tomorrow?')).toHaveLength(1);
+});
+
+it('keeps a pending comment locked and ignores repeated Send taps', async () => {
+  let finish;
+  api.createDiscussionPost.mockImplementationOnce(() => new Promise(resolve => { finish=resolve; }));
+  const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Ladder'}}}} />);
+  await screen.findByLabelText('Comment');
+  fireEvent.changeText(screen.getByLabelText('Comment'), 'First comment');
+  fireEvent.press(screen.getByLabelText('Post comment'));
+  expect(screen.getByLabelText('Comment').props.editable).toBe(false);
+  fireEvent.press(screen.getByLabelText('Post comment'));
+  expect(api.createDiscussionPost).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText('Comment').props.value).toBe('First comment');
+  await act(async () => finish({id:'first',content:'First comment'}));
+  expect(screen.getByLabelText('Comment').props.editable).toBe(true);
+  expect(screen.getByLabelText('Comment').props.value).toBe('');
 });

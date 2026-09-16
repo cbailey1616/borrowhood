@@ -1,5 +1,6 @@
 import ShimmerImage from '../components/ShimmerImage';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
+import useNavigationTask from '../hooks/useNavigationTask';
 import { useState, useCallback, useRef } from 'react';
 import {
   View,
@@ -22,6 +23,7 @@ import { haptics } from '../utils/haptics';
 import { useFocusEffect } from '@react-navigation/native';
 
 export default function RequestDetailScreen({ route, navigation }) {
+  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user } = useAuth();
   const [request, setRequest] = useState(null);
@@ -73,6 +75,7 @@ export default function RequestDetailScreen({ route, navigation }) {
 
   const openServiceChat = async () => {
     if (openingChat.current) return;
+    const isCurrent = startNavigationTask();
     openingChat.current = true;
     setIsOpeningChat(true);
     setMessageError('');
@@ -86,6 +89,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         return;
       }
       const conversations = await api.getConversations();
+      if (!isCurrent()) return;
       const existing = conversations.find(chat => chat.otherUser?.id === current.requester.id);
       navigation.navigate('Chat', {
         conversationId: existing?.id,
@@ -106,11 +110,12 @@ export default function RequestDetailScreen({ route, navigation }) {
   };
 
   const performDelete = async () => {
+    const isCurrent = startNavigationTask();
     setIsDeleting(true);
     try {
       await api.deleteRequest(id);
       haptics.success();
-      navigation.goBack();
+      if (isCurrent()) navigation.goBack();
     } catch (error) {
       haptics.error();
     } finally {
@@ -436,7 +441,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   title: {
     ...TYPOGRAPHY.h2,
@@ -464,7 +469,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   dateCard: {
@@ -549,7 +554,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   discussionList: {
@@ -579,7 +584,7 @@ const styles = StyleSheet.create({
   },
   discussionAuthor: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: 2,
   },
@@ -605,7 +610,7 @@ const styles = StyleSheet.create({
   closedBannerText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   noDiscussions: {
     ...TYPOGRAPHY.footnote,

@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },

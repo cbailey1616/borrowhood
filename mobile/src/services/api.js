@@ -17,7 +17,38 @@ const compressImage = async (uri) => {
 
 // Token management
 let authToken = null;
+let sessionVersion = 0;
 let sessionExpiredHandler = null;
+
+const captureSession = () => {
+  const version = sessionVersion;
+  return () => {
+    if (version !== sessionVersion) throw Object.assign(new Error('Your account changed. Please try again.'), { code: 'SESSION_CHANGED' });
+  };
+};
+
+// Abort timed-out work and always clear its timer, including successful uploads.
+const fetchWithTimeout = async (url, options = {}, milliseconds = 30000, consume = response => response) => {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (options.signal?.aborted) abort();
+  options.signal?.addEventListener('abort', abort);
+  let timer;
+  try {
+    return await Promise.race([
+      fetch(url, { ...options, signal: controller.signal }).then(consume),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(Object.assign(new Error('The request timed out. Please check your connection and try again.'), { code: 'REQUEST_TIMEOUT' }));
+        }, milliseconds);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', abort);
+  }
+};
 
 const setSessionExpiredHandler = handler => {
   sessionExpiredHandler = handler;
@@ -25,6 +56,7 @@ const setSessionExpiredHandler = handler => {
 };
 
 const setAuthToken = (token) => {
+  sessionVersion += 1;
   authToken = token;
 };
 
@@ -32,6 +64,7 @@ const setAuthToken = (token) => {
 const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
   const requestToken = authToken;
+  const assertSession = captureSession();
 
   if (__DEV__) console.log('API Request:', url);
 
@@ -40,7 +73,7 @@ const request = async (endpoint, options = {}) => {
     ...options.headers,
   };
 
-  if (authToken) {
+  if (authToken && !headers.Authorization) {
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
@@ -50,16 +83,24 @@ const request = async (endpoint, options = {}) => {
   };
 
   try {
-    const response = await fetch(url, config);
-    const data = await response.json();
+    const { response, data } = await fetchWithTimeout(url, config, 30000, async response => {
+      let data;
+      try { data = await response.json(); }
+      catch {
+        if (response.ok && response.status !== 204) throw new Error('Could not read the server response. Please try again.');
+        data = {};
+      }
+      return { response, data };
+    });
+    assertSession();
 
     if (!response.ok) {
       // An old request must never sign out a newly signed-in account. Incorrect
       // login/password/code responses have no session code and do not trigger this.
-      if (requestToken && requestToken === authToken &&
+      if (requestToken && requestToken === authToken && headers.Authorization === `Bearer ${requestToken}` &&
           ((response.status === 401 && ['SESSION_EXPIRED', 'INVALID_SESSION'].includes(data.code)) ||
            (response.status === 403 && data.code === 'ACCOUNT_SUSPENDED'))) {
-        authToken = null;
+        setAuthToken(null);
         await sessionExpiredHandler?.();
       }
       // Handle express-validator errors array and single error string
@@ -356,8 +397,15 @@ const markNotificationRead = (id, notificationIds) =>
 const markAllNotificationsRead = () =>
   post('/notifications/read-all');
 
-const updatePushToken = (token) =>
-  put('/notifications/push-token', { token });
+const deviceRequest = async (endpoint, method, data) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try { return await request(endpoint, { method, body: JSON.stringify(data), signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+};
+const updatePushToken = (token, device = {}) =>
+  deviceRequest('/notifications/push-token', 'PUT', { token, ...device });
+const revokePushDevice = device => deviceRequest('/notifications/revoke-device', 'POST', device);
 
 const updateNotificationPreferences = (preferences) =>
   patch('/notifications/preferences', preferences);
@@ -448,36 +496,31 @@ const getPresignedUrl = (contentType, fileSize, category) =>
 const getPresignedUrls = (files, category) =>
   post('/uploads/presigned-urls', { files, category });
 
-const withTimeout = (promise, ms) =>
-  Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Upload timed out. Please check your connection and try again.')), ms)
-    ),
-  ]);
-
 const uploadToS3 = async (uploadUrl, fileUri, contentType, isLocal = false) => {
+  const assertSession = captureSession();
+  const uploadToken = authToken;
   // Read file as blob for upload
-  const response = await withTimeout(fetch(fileUri), 30000);
-  const blob = await response.blob();
+  const blob = await fetchWithTimeout(fileUri, {}, 30000, response => response.blob());
+  assertSession();
 
   const headers = {
     'Content-Type': contentType,
   };
 
   // Add auth token for local uploads
-  if (isLocal && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+  if (isLocal && uploadToken) {
+    headers['Authorization'] = `Bearer ${uploadToken}`;
   }
 
-  const uploadResponse = await withTimeout(fetch(uploadUrl, {
+  const uploadResponse = await fetchWithTimeout(uploadUrl, {
     method: 'PUT',
     headers,
     body: blob,
-  }), 60000);
+  }, 60000, async response => ({ ok: response.ok, errorText: response.ok ? null : await response.text().catch(() => 'Unknown error') }));
+  assertSession();
 
   if (!uploadResponse.ok) {
-    const errorText = await uploadResponse.text().catch(() => 'Unknown error');
+    const errorText = uploadResponse.errorText;
     console.log('Upload failed:', uploadResponse.status, errorText);
     throw new Error('Failed to upload file');
   }
@@ -486,32 +529,37 @@ const uploadToS3 = async (uploadUrl, fileUri, contentType, isLocal = false) => {
 };
 
 const uploadImage = async (fileUri, category = 'listings') => {
+  const assertSession = captureSession();
   // Compress before upload
   const compressedUri = await compressImage(fileUri);
+  assertSession();
   // Get file info
-  const response = await fetch(compressedUri);
-  const blob = await response.blob();
+  const blob = await fetchWithTimeout(compressedUri, {}, 30000, response => response.blob());
+  assertSession();
   const contentType = blob.type || 'image/jpeg';
   const fileSize = blob.size;
 
   // Get presigned URL
   const { uploadUrl, publicUrl, isLocal } = await getPresignedUrl(contentType, fileSize, category);
+  assertSession();
 
   // Upload file
   await uploadToS3(uploadUrl, compressedUri, contentType, isLocal);
+  assertSession();
 
   return publicUrl;
 };
 
 const uploadImages = async (fileUris, category = 'listings') => {
+  const assertSession = captureSession();
   // Compress images before upload (resize to 1200px wide, JPEG 70%)
   const compressedUris = await Promise.all(fileUris.map(compressImage));
+  assertSession();
 
   // Get file info for all images
   const fileInfos = await Promise.all(
     compressedUris.map(async (uri) => {
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      const blob = await fetchWithTimeout(uri, {}, 30000, response => response.blob());
       return {
         uri,
         contentType: blob.type || 'image/jpeg',
@@ -519,12 +567,14 @@ const uploadImages = async (fileUris, category = 'listings') => {
       };
     })
   );
+  assertSession();
 
   // Get presigned URLs for all files
   const { urls } = await getPresignedUrls(
     fileInfos.map(f => ({ contentType: f.contentType, fileSize: f.fileSize })),
     category
   );
+  assertSession();
 
   // Upload all files in parallel
   await Promise.all(
@@ -532,6 +582,7 @@ const uploadImages = async (fileUris, category = 'listings') => {
       uploadToS3(urlInfo.uploadUrl, fileInfos[index].uri, fileInfos[index].contentType, urlInfo.isLocal)
     )
   );
+  assertSession();
 
   // Return public URLs
   return urls.map(u => u.publicUrl);
@@ -868,6 +919,7 @@ export default {
   markNotificationRead,
   markAllNotificationsRead,
   updatePushToken,
+  revokePushDevice,
   updateNotificationPreferences,
   getBadgeCount,
   // Requests (Wanted Posts)
@@ -910,11 +962,13 @@ export default {
   // Discussions
   getDiscussions,
   getDiscussionReplies,
+  getDiscussionThread: (listingId, postId) => get(`/listings/${listingId}/discussions/${postId}`),
   createDiscussionPost,
   deleteDiscussionPost,
   // Request Discussions
   getRequestDiscussions,
   getRequestDiscussionReplies,
+  getRequestDiscussionThread: (requestId, postId) => get(`/requests/${requestId}/discussions/${postId}`),
   createRequestDiscussionPost,
   deleteRequestDiscussionPost,
   // Sustainability

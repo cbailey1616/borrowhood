@@ -11,6 +11,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import rateLimit from 'express-rate-limit';
 import { logger } from './utils/logger.js';
 import { runMigrations } from './utils/migrations.js';
+import { ensureNotificationSchema } from './services/notificationSchema.js';
+import { ensurePublicationSchema } from './services/publicationReceipts.js';
 import { validateStripeEnvironment } from './utils/stripeGuard.js';
 
 // Validate Stripe keys match the environment
@@ -287,7 +289,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 // Run migrations before starting server
-runMigrations().then(assertPrivatePhotoStorage).then(() => {
+runMigrations().then(ensureNotificationSchema).then(ensurePublicationSchema).then(assertPrivatePhotoStorage).then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Borrowhood server running on port ${PORT}`);
     startScheduler();

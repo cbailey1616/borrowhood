@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '400',
   },
   submitButton: {
     backgroundColor: COLORS.primary,

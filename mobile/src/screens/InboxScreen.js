@@ -64,6 +64,8 @@ const NOTIFICATION_ICONS = {
   referral_joined: 'gift',
   referral_reward: 'trophy',
   payment_failed: 'card',
+  verification_failed: 'shield-checkmark',
+  circle_invite: 'people',
 };
 
 const PAGE_SIZE = 50;
@@ -204,10 +206,10 @@ export default function InboxScreen({ navigation, route, onRead }) {
           .map(item => api.markConversationRead(item.id)));
         if (results.some(result => result.status === 'rejected')) throw new Error('Message read failed');
       };
-      const results = await Promise.allSettled([api.markAllNotificationsRead(), markMessagesRead()]);
-      if (results.some(result => result.status === 'rejected')) throw new Error('Inbox read failed');
+      if (activeTab === 1) await api.markAllNotificationsRead();
+      else await markMessagesRead();
       haptics.success();
-      showToast('Marked activity and messages as read.', 'success');
+      showToast(activeTab === 1 ? 'Activity marked as read.' : 'Messages marked as read.', 'success');
     } catch (e) {
       haptics.error();
       showToast('Some items couldn’t be marked as read. Please try again.', 'error');
@@ -286,7 +288,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
             </Text>
             <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
           </View>
-          <Text style={[styles.lastMessage, item.queueListingId && {color:COLORS.primary,fontWeight:'600'}]} numberOfLines={3}>{item.body}</Text>
+          <Text style={[styles.lastMessage, item.queueListingId && {color:COLORS.primary,fontWeight:'400'}]} numberOfLines={3}>{item.body}</Text>
           {!!publicReplyRoute(item) && <Text style={styles.listingText}>Comment on a post</Text>}
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
@@ -537,7 +539,7 @@ const styles = StyleSheet.create({
   olderButton: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, marginVertical: SPACING.sm },
   markAllBtn: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   listContent: {
@@ -599,7 +601,7 @@ const styles = StyleSheet.create({
   unreadBadgeText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   unreadDot: {
     width: 8,
@@ -617,12 +619,13 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
     flex: 1,
   },
   nameUnread: {
-    fontWeight: '700',
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   time: {
     ...TYPOGRAPHY.caption1,
@@ -644,6 +647,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   lastMessageUnread: {
+    fontFamily: 'DMSans_500Medium',
     color: COLORS.text,
     fontWeight: '500',
   },

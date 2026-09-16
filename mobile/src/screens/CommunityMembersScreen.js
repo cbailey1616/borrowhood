@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surface,
   },
-  promoteButtonText: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: '600', flexShrink: 1 },
+  promoteButtonText: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: '400', flexShrink: 1 },
   removeButton: {
     minHeight: 48,
     justifyContent: 'center',
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   removeButtonText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.danger,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   cardGap: {
     height: SPACING.sm,

@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   unavailableText: {
     ...TYPOGRAPHY.caption1,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
     fontSize: 10,
   },
   // Info
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.text,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   ownerRow: {
     flexDirection: 'row',

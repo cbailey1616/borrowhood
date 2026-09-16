@@ -26,7 +26,8 @@ export function notificationDestination(item = {}) {
   if (item.type === 'join_approved') return { name: 'Main', params: { screen: 'Feed' } };
   if (item.type === 'join_request') return item.communityId
     ? { name: 'CommunityMembers', params: { id: item.communityId } } : { name: 'MyCommunity' };
-  if (item.type === 'verification_expiring') return { name: 'IdentityVerification', params: { source: 'generic' } };
+  if (['verification_expiring', 'verification_failed'].includes(item.type)) return { name: 'IdentityVerification', params: { source: 'generic' } };
+  if (item.type === 'circle_invite') return { name: 'LendingCircles' };
   if (item.disputeId) return { name: 'DisputeDetail', params: { id: item.disputeId } };
   if (item.transactionId) return { name: 'TransactionDetail', params: { id: item.transactionId } };
   if (item.listingId) return { name: 'ListingDetail', params: { id: item.listingId } };

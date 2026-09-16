@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
 import api from '../../../src/services/api';
+import { AppState } from 'react-native';
 
 jest.unmock('../../../src/hooks/usePushNotifications');
 const usePushNotifications = jest.requireActual('../../../src/hooks/usePushNotifications').default;
@@ -10,6 +11,7 @@ const { setNavigationRef, flushPendingNotification } = jest.requireActual('../..
 describe('usePushNotifications', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
     Notifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' });
     Notifications.requestPermissionsAsync.mockResolvedValue({ status: 'granted' });
     Notifications.getExpoPushTokenAsync.mockResolvedValue({ data: 'ExponentPushToken[test]' });
@@ -18,6 +20,7 @@ describe('usePushNotifications', () => {
     api.markNotificationRead.mockResolvedValue({});
     api.getBadgeCount.mockResolvedValue({ messages: 0, notifications: 0 });
   });
+  afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
 
   it('registers for notifications when authenticated', async () => {
     const { result } = renderHook(() => usePushNotifications(true));
@@ -31,7 +34,7 @@ describe('usePushNotifications', () => {
       // Allow async registration to complete
       await new Promise(resolve => setTimeout(resolve, 100));
     });
-    expect(api.updatePushToken).toHaveBeenCalledWith('ExponentPushToken[test]');
+    expect(api.updatePushToken).toHaveBeenCalledWith('ExponentPushToken[test]', expect.objectContaining({ installationId: expect.any(String), revocationSecret: expect.any(String) }));
   });
 
   it('sets up notification listeners', () => {
@@ -43,6 +46,59 @@ describe('usePushNotifications', () => {
   it('does not register when not authenticated', () => {
     renderHook(() => usePushNotifications(false));
     expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('registers after permissions are enabled in Settings without asking again', async () => {
+    let resume;
+    const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation((event, handler) => { resume = handler; return { remove: jest.fn() }; });
+    Notifications.getPermissionsAsync.mockResolvedValue({ status: 'denied' });
+    Notifications.requestPermissionsAsync.mockResolvedValue({ status: 'denied' });
+    const hook = renderHook(() => usePushNotifications(true, { id: 'a', onboardingCompleted: true }));
+    await act(async () => {});
+    expect(api.updatePushToken).not.toHaveBeenCalled();
+    Notifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    await act(async () => resume('active'));
+    expect(api.updatePushToken).toHaveBeenCalledTimes(1);
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    hook.unmount(); spy.mockRestore();
+  });
+
+  it('retries failed token registration and cancels retries on unmount', async () => {
+    jest.useFakeTimers();
+    api.updatePushToken.mockRejectedValueOnce(new Error('Offline'));
+    const hook = renderHook(() => usePushNotifications(true, { id: 'a', onboardingCompleted: true }));
+    await act(async () => {});
+    expect(api.updatePushToken).toHaveBeenCalledTimes(1);
+    await act(async () => jest.advanceTimersByTime(5000));
+    expect(api.updatePushToken).toHaveBeenCalledTimes(2);
+    hook.unmount(); jest.useRealTimers();
+  });
+
+  it('drops a late token resolution after switching accounts', async () => {
+    let finish;
+    Notifications.getExpoPushTokenAsync.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const hook = renderHook(({ user }) => usePushNotifications(true, user), {
+      initialProps: { user: { id: 'a', onboardingCompleted: true } },
+    });
+    await act(async () => {});
+    hook.rerender({ user: { id: 'b', onboardingCompleted: true } });
+    await act(async () => {});
+    await act(async () => finish({ data: 'ExponentPushToken[stale]' }));
+    expect(api.updatePushToken).toHaveBeenCalledTimes(1);
+    expect(api.updatePushToken.mock.calls[0][0]).toBe('ExponentPushToken[test]');
+  });
+
+  it('ignores notification taps and foreground banners belonging to another account', async () => {
+    const navigation = { navigate: jest.fn() };
+    setNavigationRef(navigation);
+    renderHook(() => usePushNotifications(true, { id: 'b', onboardingCompleted: true }));
+    await act(async () => {});
+    const content = { sound:'default', data:{ recipientUserId:'a', type:'new_message', conversationId:'private' } };
+    const respond = Notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)[0];
+    await act(async () => respond({ notification: { request: { content } } }));
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    expect(await foregroundHandler.handleNotification({request:{content}})).toEqual({shouldShowAlert:false,shouldPlaySound:false,shouldSetBadge:false});
+    expect(api.markNotificationRead).not.toHaveBeenCalled();
   });
   it('opens incoming item requests in the queue and accepted requests in the tracker', async () => {
     const navigation = { navigate: jest.fn() };

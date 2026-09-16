@@ -326,8 +326,8 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontSize: 36,
-    fontFamily: 'DMSans_700Bold',
-    fontWeight: '700',
+    fontFamily: 'DMSans_400Regular',
+    fontWeight: '400',
     color: COLORS.secondary,
     letterSpacing: -1,
   },
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   payoutSetupActionText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   feeBreakdown: {
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   feeLabelBold: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   feeValue: {
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   feeValueBold: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.secondary,
   },
   feeDeduction: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   },
   activeText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   section: {
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   earningTitle: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   earningBorrower: {
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
   },
   payoutBadgeText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   emptyContainer: {
     alignItems: 'center',

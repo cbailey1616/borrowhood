@@ -24,8 +24,9 @@ beforeAll(async () => {
     CREATE TABLE borrow_transactions(id TEXT PRIMARY KEY, listing_id TEXT REFERENCES listings(id),
       borrower_id TEXT DEFAULT 'borrower', lender_id TEXT DEFAULT 'owner', status TEXT DEFAULT 'approved',
       actual_pickup_at TIMESTAMPTZ, actual_return_at TIMESTAMPTZ, accepted_at TIMESTAMPTZ,
-      requested_end_date DATE, condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT,
-      condition_notes TEXT, lender_response TEXT, payment_status TEXT DEFAULT 'none', stripe_payment_intent_id TEXT);`);
+      requested_start_date DATE, requested_end_date DATE, condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT,
+      condition_notes TEXT, lender_response TEXT, payment_status TEXT DEFAULT 'none', stripe_payment_intent_id TEXT);
+    CREATE TABLE listing_availability(listing_id TEXT, start_date DATE, end_date DATE, is_available BOOLEAN);`);
   app = express(); app.use(express.json()); app.use((req,res,next) => { req.user = { id: req.headers['x-user'] || 'borrower' }; next(); });
   app.post('/rentals/:id/pickup', body('condition').optional().isIn(['like_new','good','fair','worn']), confirmBorrowPickup());
   app.post('/transactions/:id/pickup', confirmBorrowPickup({ borrowerOnly: true }));
@@ -34,7 +35,7 @@ beforeAll(async () => {
 afterAll(async () => { await state.db?.close(); });
 beforeEach(async () => {
   vi.clearAllMocks(); sendNotification.mockResolvedValue('notification');
-  await state.db.exec('TRUNCATE borrow_transactions, listings; DROP TRIGGER IF EXISTS fail_listing_write ON listings');
+  await state.db.exec('TRUNCATE borrow_transactions, listings, listing_availability; DROP TRIGGER IF EXISTS fail_listing_write ON listings');
 });
 const seed = async (type = 'lend', status = 'approved', id = 'exchange') => {
   await state.db.query('INSERT INTO listings(id,listing_type,is_available) VALUES($1,$2,$3)', [id,type,status === 'pending']);

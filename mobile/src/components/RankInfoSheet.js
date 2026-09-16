@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions } fr
 import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PopupLayer from './PopupLayer';
+import SheetDismissArea from './SheetDismissArea';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import { NEIGHBOR_RANKS, RATING_UNLOCK_EXCHANGES } from '../utils/reputation';
@@ -15,6 +16,7 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
       <Pressable style={styles.backdrop} onPress={onClose} accessible={false} />
       <Animated.View entering={SlideInDown.duration(200)} accessibilityViewIsModal
         style={[styles.sheet, { maxHeight: height - insets.top - SPACING.md, paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+        <SheetDismissArea onDismiss={onClose}>
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.title} accessibilityRole="header">Neighbor rating</Text>
@@ -22,6 +24,7 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
             <Ionicons name="close" size={22} color={COLORS.primary} />
           </HapticPressable>
         </View>
+        </SheetDismissArea>
         <ScrollView style={styles.scroll} bounces={false} contentContainerStyle={styles.content}>
           {currentRank && <View style={styles.currentSummary}>
             <View style={styles.emblem}>
@@ -93,6 +96,6 @@ const styles = StyleSheet.create({
   levelName: { ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 },
   levelTone: { flexShrink: 1 },
   currentBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, flexShrink: 1 },
-  current: { ...TYPOGRAPHY.caption1, color: COLORS.primary, fontWeight: '600', flexShrink: 1 },
+  current: { ...TYPOGRAPHY.caption1, color: COLORS.primary, fontWeight: '400', flexShrink: 1 },
   note: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

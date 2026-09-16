@@ -1,8 +1,10 @@
+import { randomUUID } from 'expo-crypto';
 import MessageComposer from '../components/MessageComposer';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useRef } from 'react';
-import { UNSTABLE_usePreventRemove as usePreventRemove } from '@react-navigation/native';
+import { UNSTABLE_usePreventRemove as usePreventRemove, useIsFocused } from '@react-navigation/native';
+import useNavigationTask from '../hooks/useNavigationTask';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -23,10 +25,12 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
+  const isFocused = useIsFocused();
+  const startNavigationTask = useNavigationTask(navigation, route.params.requestId || route.params.listingId);
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
-  const { listingId, listing, requestId, request, autoFocus } = route.params;
+  const { listingId, listing, requestId, request, autoFocus, threadId, discussionId } = route.params;
   const isRequest = !!requestId;
   const targetId = requestId || listingId;
   const [target, setTarget] = useState(request || listing || null);
@@ -46,6 +50,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [replyErrors, setReplyErrors] = useState({});
   const [loadingReplies, setLoadingReplies] = useState({});
   const [hasMoreReplies, setHasMoreReplies] = useState({});
+  const [earliestReplyPage, setEarliestReplyPage] = useState({});
+  const failedReplyPages = useRef({});
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const postsPage = useRef(1);
+  const loadingPosts = useRef(false);
   const loadedReplies = useRef(new Set());
   const replyPages = useRef({});
   const replyRequests = useRef(new Map());
@@ -53,6 +62,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitting = useRef(false);
+  const pendingSubmissions = useRef({});
   const [sendErrors, setSendErrors] = useState({});
   const [drafts, setDrafts] = useState({});
   const draftKey = activeThreadId || 'comments';
@@ -65,6 +75,10 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const scrollTarget = useRef(null);
+  const scrollRetry = useRef(null);
+  const scrollAttempts = useRef(0);
+
+  useEffect(() => () => clearTimeout(scrollRetry.current), [activeThreadId]);
 
   useEffect(() => {
     let active = true;
@@ -81,13 +95,21 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     threadGeneration.current += 1;
     loadedReplies.current = new Set();
     replyPages.current = {};
+    failedReplyPages.current = {};
+    postsPage.current = 1;
+    loadingPosts.current = false;
+    setEarliestReplyPage({}); setHasMorePosts(false);
     replyRequests.current = new Map();
     submitting.current = false;
+    pendingSubmissions.current = {};
+    clearTimeout(scrollRetry.current);
+    scrollTarget.current = null;
+    scrollAttempts.current = 0;
     setPosts([]); setReplies({}); setReplyErrors({}); setLoadingReplies({}); setHasMoreReplies({}); setActiveThreadId(null);
     setDrafts({}); setIsLoading(true); setThreadError(''); setSendErrors({}); setIsSubmitting(false);
     fetchPosts();
-    return () => { threadGeneration.current += 1; };
-  }, [targetId]);
+    return () => { threadGeneration.current += 1; clearTimeout(scrollRetry.current); };
+  }, [targetId, threadId, discussionId, user.id]);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -101,7 +123,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     navigation.setOptions({ title: activeThreadId ? 'Thread' : 'Comments', headerBackButtonMenuEnabled: false });
   }, [activeThreadId, navigation]);
 
-  usePreventRemove(!!activeThreadId, () => closeThread());
+  usePreventRemove(isFocused && !!activeThreadId, () => closeThread());
 
   useEffect(() => {
     if (activeThreadId || !pendingDestination) return;
@@ -120,17 +142,36 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (page = 1) => {
+    if (loadingPosts.current) return;
+    loadingPosts.current = true;
     const generation = threadGeneration.current;
     try {
       const data = isRequest
-        ? await api.getRequestDiscussions(requestId, { limit: 50 })
-        : await api.getDiscussions(listingId, { limit: 50 });
-      if (generation === threadGeneration.current) setPosts(data.posts || []);
+        ? await api.getRequestDiscussions(requestId, { limit: 50, page })
+        : await api.getDiscussions(listingId, { limit: 50, page });
+      if (generation !== threadGeneration.current) return;
+      setPosts(prev => page === 1 ? data.posts || [] : [...prev, ...(data.posts || []).filter(post => !prev.some(old => old.id === post.id))]);
+      postsPage.current = page;
+      setHasMorePosts(page * 50 < (data.total || 0));
+      if (page === 1 && (discussionId || threadId)) {
+        try {
+          const thread = isRequest
+            ? await api.getRequestDiscussionThread(targetId, discussionId || threadId)
+            : await api.getDiscussionThread(targetId, discussionId || threadId);
+          if (generation !== threadGeneration.current) return;
+          setPosts(prev => [thread.post, ...prev.filter(post => post.id !== thread.post.id)]);
+          setActiveThreadId(thread.post.id);
+          scrollTarget.current = { draftKey: thread.post.id, messageId: discussionId };
+          await fetchReplies(thread.post.id, thread.replyPage || 1);
+        } catch {
+          if (generation === threadGeneration.current) setThreadError('This thread is unavailable. You can still browse the comments.');
+        }
+      }
     } catch (error) {
       if (generation === threadGeneration.current) setThreadError('Couldn’t load comments. Go back and try again.');
     } finally {
-      if (generation === threadGeneration.current) setIsLoading(false);
+      if (generation === threadGeneration.current) { setIsLoading(false); loadingPosts.current = false; }
     }
   };
 
@@ -152,10 +193,14 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           ...fetched, ...(prev[postId] || []).filter(reply => !fetchedIds.has(reply.id)),
         ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) }));
         loadedReplies.current.add(postId);
-        replyPages.current[postId] = page;
-        setHasMoreReplies(prev => ({ ...prev, [postId]: fetched.length === 50 }));
+        setEarliestReplyPage(prev => ({ ...prev, [postId]: Math.min(prev[postId] || page, page) }));
+        if (page >= (replyPages.current[postId] || 0)) {
+          replyPages.current[postId] = page;
+          setHasMoreReplies(prev => ({ ...prev, [postId]: fetched.length === 50 }));
+        }
       } catch (error) {
         if (generation === threadGeneration.current) {
+          failedReplyPages.current[postId] = page;
           setReplyErrors(prev => ({ ...prev, [postId]: 'Couldn’t load earlier replies.' }));
         }
       } finally {
@@ -188,14 +233,15 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     const generation = threadGeneration.current;
     const parentId = activeThreadId || undefined;
     const submittedDraftKey = draftKey;
+    const submittedText = newComment;
+    const pending = pendingSubmissions.current[submittedDraftKey];
+    const data = pending?.content === newComment.trim() ? pending : {
+      content: newComment.trim(), parentId, clientRequestId: randomUUID(),
+    };
+    pendingSubmissions.current[submittedDraftKey] = data;
     setIsSubmitting(true);
     setSendError('');
     try {
-      const data = {
-        content: newComment.trim(),
-        parentId,
-      };
-
       const result = isRequest
         ? await api.createRequestDiscussionPost(requestId, data)
         : await api.createDiscussionPost(listingId, data);
@@ -206,7 +252,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         // Add reply to the replies list
         setReplies(prev => ({
           ...prev,
-          [parentId]: [...(prev[parentId] || []), {
+          [parentId]: [...(prev[parentId] || []).filter(reply => reply.id !== result.id), {
             id: result.id,
             content: result.content,
             createdAt: result.createdAt,
@@ -221,12 +267,18 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         }));
 
         // Update reply count on parent
-        setPosts(prev => prev.map(p =>
+        if (!result.replayed) setPosts(prev => prev.map(p =>
           p.id === parentId
             ? { ...p, replyCount: (p.replyCount || 0) + 1 }
             : p
         ));
 
+        if (result.replayed) {
+          const getThread = isRequest ? api.getRequestDiscussionThread : api.getDiscussionThread;
+          getThread(targetId, parentId).then(thread => {
+            if (generation === threadGeneration.current) setPosts(previous => previous.map(post => post.id === parentId ? thread.post : post));
+          }).catch(() => {});
+        }
         if (!loadedReplies.current.has(parentId)) fetchReplies(parentId);
       } else {
         // Add new top-level post
@@ -242,11 +294,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             profilePhotoUrl: user.profilePhotoUrl,
           },
           isOwn: true,
-        }, ...prev]);
+        }, ...prev.filter(post => post.id !== result.id)]);
       }
 
       haptics.success();
-      setDrafts(prev => ({ ...prev, [submittedDraftKey]: '' }));
+      delete pendingSubmissions.current[submittedDraftKey];
+      setDrafts(prev => ({ ...prev, [submittedDraftKey]: prev[submittedDraftKey] === submittedText ? '' : prev[submittedDraftKey] }));
     } catch (error) {
       if (generation !== threadGeneration.current) return;
       setSendError('Couldn’t send. Please try again.');
@@ -309,9 +362,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
   const openPrivateChat = async (post) => {
     if (openingChat.current) return;
+    const isCurrent = startNavigationTask();
     openingChat.current = true;
     try {
       const conversations = await api.getConversations();
+      if (!isCurrent()) return;
       const existing = conversations.find(chat => chat.otherUser?.id === post.user.id);
       navigateFromComments('Chat', {
         conversationId: existing?.id, recipientId: post.user.id, recipient: post.user,
@@ -355,7 +410,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   };
 
   const renderPost = ({ item: post }) => (
-    <View style={[styles.postCard, !!activeThreadId && styles.threadReply]}>
+    <View style={[styles.postCard, !!activeThreadId && styles.threadReply,
+      post.id === discussionId && { backgroundColor: COLORS.primaryMuted }]}>
       {renderComment(post, activeThreadId)}
     </View>
   );
@@ -368,7 +424,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       </View> : replyErrors[activeThreadId] ? <View style={styles.replyStatus}>
         <Text accessibilityRole="alert" style={styles.replyError}>{replyErrors[activeThreadId]}</Text>
         <HapticPressable style={styles.actionButton} accessibilityLabel="Retry loading replies"
-          onPress={() => fetchReplies(activeThreadId, (replyPages.current[activeThreadId] || 0) + 1)}>
+          onPress={() => fetchReplies(activeThreadId, failedReplyPages.current[activeThreadId] || 1)}>
           <Text style={styles.actionText}>Try again</Text>
         </HapticPressable>
       </View> : hasMoreReplies[activeThreadId] ? (
@@ -439,16 +495,35 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => {
           if (scrollTarget.current?.draftKey !== draftKey) return;
-          const { atEnd } = scrollTarget.current;
+          const { atEnd, messageId } = scrollTarget.current;
           scrollTarget.current = null;
-          if (atEnd) listRef.current?.scrollToEnd({ animated: true });
+          const index = messageId ? (replies[activeThreadId] || []).findIndex(reply => reply.id === messageId) : -1;
+          if (index >= 0) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.3 });
+          else if (atEnd) listRef.current?.scrollToEnd({ animated: true });
           else listRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }}
+        onScrollToIndexFailed={({ index, averageItemLength }) => {
+          if (scrollAttempts.current++ >= 3) return;
+          const generation = threadGeneration.current;
+          listRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
+          clearTimeout(scrollRetry.current);
+          scrollRetry.current = setTimeout(() => {
+            if (generation === threadGeneration.current) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.3 });
+          }, 100);
         }}
         ListHeaderComponent={activeThread ? <View style={styles.threadParent}>
           {renderComment(activeThread)}
           <Text style={styles.threadCount}>{activeThread.replyCount || 0} {activeThread.replyCount === 1 ? 'reply' : 'replies'}</Text>
         </View> : null}
-        ListFooterComponent={activeThreadId ? renderThreadStatus() : null}
+        ListFooterComponent={activeThreadId ? <>
+          {earliestReplyPage[activeThreadId] > 1 && <HapticPressable style={styles.actionButton}
+            onPress={() => fetchReplies(activeThreadId, earliestReplyPage[activeThreadId] - 1)}>
+            <Text style={styles.actionText}>Earlier replies</Text>
+          </HapticPressable>}
+          {renderThreadStatus()}
+        </> : hasMorePosts ? <HapticPressable style={styles.actionButton} onPress={() => fetchPosts(postsPage.current + 1)}>
+          <Text style={styles.actionText}>Older comments</Text>
+        </HapticPressable> : null}
         ListEmptyComponent={activeThreadId ? null :
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubbles-outline" size={48} color={COLORS.gray[600]} />
@@ -616,7 +691,7 @@ const styles = StyleSheet.create({
   actionText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
     flexShrink: 1,
   },
   threadParent: { paddingTop: SPACING.lg, paddingBottom: SPACING.md },

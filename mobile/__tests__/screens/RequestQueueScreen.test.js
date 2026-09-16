@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshControl } from 'react-native';
+import { RefreshControl, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { render,fireEvent,waitFor,within,act } from '@testing-library/react-native';
 import api from '../../src/services/api';
@@ -8,10 +8,14 @@ const navigation={navigate:jest.fn(),replace:jest.fn()};
 const mockShowError=jest.fn();
 const mockShowToast=jest.fn();
 let mockQueueFocused=true;
+let mockWidth=390, mockFontScale=1;
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+ __esModule: true, default: () => ({ width: mockWidth, height: 844, scale: 3, fontScale: mockFontScale }),
+}));
 const item={id:'request-1',position:1,startDate:'2026-10-01',endDate:'2026-10-03',borrower:{id:'neighbor',firstName:'Alex',isVerified:true,totalTransactions:100,endorsement:{percent:96,count:25,score:93}}};
 beforeEach(()=>{
  jest.clearAllMocks();
- mockQueueFocused=true;
+ mockQueueFocused=true; mockWidth=390; mockFontScale=1;
  useFocusEffect.mockImplementation(callback=>React.useEffect(()=>mockQueueFocused ? callback() : undefined,[callback,mockQueueFocused]));
  api.getRequestQueue=jest.fn().mockResolvedValue({listing:{id:'item-1',title:'Drill',isAvailable:true,status:'active'},requests:[item]});
  api.approveRental.mockResolvedValue({});
@@ -21,7 +25,12 @@ it('reviews and messages without approving, then approves from the queue',async(
  await screen.findByLabelText('Neighbor rating: Great, Ranger');
  expect(screen.queryByText('Verified identity')).toBeNull();
  expect(screen.getByLabelText("View Alex's profile, verified identity")).toBeTruthy();
- expect(screen.getByText('100 completed exchanges')).toBeTruthy();
+ expect(screen.queryByText('100 completed exchanges')).toBeNull();
+ expect(screen.getByText('1 waiting')).toBeTruthy();
+ expect(screen.queryByText('Oldest first')).toBeNull();
+ expect(screen.queryByText('#1')).toBeNull();
+ expect(screen.getByText('Approve request')).toBeTruthy();
+ expect(screen.getByText('Details')).toBeTruthy();
  const identity=within(screen.getByTestId('MemberSummary.identity'));
  expect(identity.getByText('Alex')).toBeTruthy();
  expect(identity.getByLabelText('Neighbor rating: Great, Ranger')).toBeTruthy();
@@ -126,6 +135,25 @@ const deferred=()=>{
 };
 const queueElement=listingId=><Screen route={{params:{listingId}}} navigation={navigation}/>;
 
+it('keeps multiple requestors in queue order with compact actions and their messages', async () => {
+ api.getRequestQueue.mockResolvedValue({listing:{id:'item-1',title:'Drill',isAvailable:true,status:'active'},requests:[{...item,message:'Could I collect in the morning?'},anotherItem]});
+ const screen=render(queueElement('item-1'));
+ await screen.findByText('2 waiting');
+ expect(screen.getByText('Oldest first')).toBeTruthy();
+ expect(screen.getByText('Could I collect in the morning?')).toBeTruthy();
+ expect(screen.getAllByText('Approve request')).toHaveLength(2);
+ expect(screen.getAllByText('Details')).toHaveLength(2);
+ expect(screen.getAllByTestId('MemberSummary.identity').map(node=>within(node).queryByText('Alex') ? 'Alex' : 'Bea')).toEqual(['Alex','Bea']);
+});
+
+it.each(['sell','giveaway'])('does not show borrowing dates for %s requests', async listingType => {
+ api.getRequestQueue.mockResolvedValue({listing:{id:'item-1',title:'Drill',listingType,isAvailable:true,status:'active'},requests:[item]});
+ const screen=render(queueElement('item-1'));
+ await screen.findByText('Alex');
+ expect(screen.queryByText(/Oct/)).toBeNull();
+ expect(screen.getByText('Approve request')).toBeTruthy();
+});
+
 it('hides the previous item immediately when another queue is loading or unavailable', async () => {
  const next=deferred();
  const screen=render(queueElement('item-1'));
@@ -202,4 +230,20 @@ it.each(['resolve','reject'])('does not change another queue when an earlier dec
  expect(navigation.replace).not.toHaveBeenCalled();
  expect(mockShowToast).not.toHaveBeenCalled();
  expect(mockShowError).not.toHaveBeenCalled();
+});
+
+it.each([[320,1,'column'],[390,2,'column'],[834,2,'row'],[1024,1,'row']])('keeps queue actions usable at width %s and text scale %s',async(width,fontScale,direction)=>{
+ mockWidth=width;mockFontScale=fontScale;
+ const name='Alexandra Montgomery-Wellington';
+ api.getRequestQueue.mockResolvedValue({listing:{id:'item-1',title:'Extra-long extension ladder',isAvailable:true,status:'active'},requests:[{...item,borrower:{...item.borrower,firstName:name}}]});
+ const screen=render(<Screen route={{params:{listingId:'item-1'}}} navigation={navigation}/>);
+ await screen.findByText(name);
+ expect(StyleSheet.flatten(screen.getByTestId('Queue.actions.request-1').props.style).flexDirection).toBe(direction);
+ for(const label of [`Message ${name}`,`View ${name}'s request`,`Decline ${name}'s request`]) {
+   const button=screen.getByRole('button',{name:label});
+   expect(StyleSheet.flatten(button.props.style).minHeight).toBeGreaterThanOrEqual(44);
+   expect(button).not.toBeDisabled();
+ }
+ fireEvent.press(screen.getByLabelText(`View ${name}'s request`));
+ expect(navigation.navigate).toHaveBeenCalledWith('TransactionDetail',{id:item.id});
 });

@@ -28,6 +28,18 @@ beforeEach(() => {
 });
 
 describe('BorrowRequestScreen', () => {
+  it('does not reopen exchange details when a request finishes after dismissal', async () => {
+    let resolve;
+    api.createTransaction.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { id: 'item', title: 'Ladder', isFree: true, minDuration: 1, maxDuration: 14, owner: { id: 'neighbor' } } } }} />);
+    fireEvent.press(await screen.findByText('Send Request'));
+    await waitFor(() => expect(api.createTransaction).toHaveBeenCalledTimes(1));
+    act(() => mockNavigation.addListener.mock.calls.find(([name]) => name === 'blur')[1]());
+    await act(async () => resolve({ id: 'late-request' }));
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
   const listing = { id: 'listing-1', title: 'Camera', photos: ['https://test.com/photo.jpg'], isFree: true, pricePerDay: 0, depositAmount: 0, minDuration: 1, maxDuration: 14, visibility: 'close_friends', owner: { id: 'user-2', firstName: 'Bob', lastName: 'Smith' } };
   const route = { params: { listing } };
 

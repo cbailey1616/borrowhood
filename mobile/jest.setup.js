@@ -446,6 +446,7 @@ jest.mock('./src/services/api', () => ({
     markNotificationRead: jest.fn(),
     markAllNotificationsRead: jest.fn(),
     updatePushToken: jest.fn(),
+    revokePushDevice: jest.fn().mockResolvedValue({}),
     getBadgeCount: jest.fn().mockResolvedValue({ messages: 0, notifications: 0, actions: 0, total: 0 }),
     // Messages
     getConversations: jest.fn().mockResolvedValue([]),
@@ -564,6 +565,8 @@ jest.mock('./src/services/api', () => ({
     returnLibraryItem: jest.fn(),
     // Discussion extras
     getDiscussionReplies: jest.fn().mockResolvedValue([]),
+    getDiscussionThread: jest.fn(),
+    getRequestDiscussionThread: jest.fn(),
     createDiscussion: jest.fn(),
     deleteDiscussion: jest.fn(),
     // Subscription extras
@@ -610,7 +613,7 @@ jest.mock('./src/utils/haptics', () => ({
   },
 }));
 
-jest.mock('./src/hooks/usePushNotifications', () => jest.fn(() => {}));
+jest.mock('./src/hooks/usePushNotifications', () => ({ __esModule: true, default: jest.fn(() => {}), resetPushSession: jest.fn().mockResolvedValue(undefined) }));
 
 jest.mock('./src/hooks/useBiometrics', () =>
   jest.fn(() => ({

@@ -449,12 +449,12 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   sectionHeader: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   },
   friendName: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   friendLocation: {
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   },
   requestedText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   contactRow: {
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
   inviteButtonText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
   },
   emptyPrompt: {

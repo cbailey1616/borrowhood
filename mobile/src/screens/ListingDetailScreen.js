@@ -1,5 +1,6 @@
 import { listingAvailability } from '../utils/listingAvailability';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
+import useNavigationTask from '../hooks/useNavigationTask';
 import ListingPrice from '../components/ListingPrice';
 import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -35,6 +36,7 @@ import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from
 
 
 export default function ListingDetailScreen({ route, navigation }) {
+  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const insets = useSafeAreaInsets();
   const { width: windowWidth, fontScale } = useWindowDimensions();
   const wide = windowWidth >= 768 && fontScale < 1.5;
@@ -133,11 +135,12 @@ export default function ListingDetailScreen({ route, navigation }) {
   };
 
   const handleDelete = async () => {
+    const isCurrent = startNavigationTask();
     try {
       await api.deleteListing(id);
       haptics.success();
       showToast('Listing deleted', 'success');
-      navigation.goBack();
+      if (isCurrent()) navigation.goBack();
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t delete this listing right now. Please check your connection and try again.' });
@@ -362,12 +365,14 @@ export default function ListingDetailScreen({ route, navigation }) {
               accessibilityState={{ disabled: messageLoading, busy: messageLoading }}
               disabled={messageLoading}
               onPress={async () => {
+                const isCurrent = startNavigationTask();
                 setMessageLoading(true);
                 try {
                   const conversations = await api.getConversations();
+                  if (!isCurrent()) return;
                   const existing = conversations.find(c => c.otherUser?.id === listing.owner.id);
                   if (existing) {
-                    navigation.navigate('Chat', { conversationId: existing.id });
+                    navigation.navigate('Chat', { conversationId: existing.id, recipientId: listing.owner.id, listingId: listing.id, listing });
                   } else {
                     navigation.navigate('Chat', {
                       recipientId: listing.owner.id,
@@ -381,6 +386,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                     });
                   }
                 } catch {
+                  if (!isCurrent()) return;
                   navigation.navigate('Chat', {
                     recipientId: listing.owner.id,
                     listingId: listing.id,
@@ -431,7 +437,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'700'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
+          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'400'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
           <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
             <HapticPressable
               style={styles.deleteButton}
@@ -575,7 +581,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.separator,
   },
-  viewTransactionText: { ...TYPOGRAPHY.subheadline, fontWeight: '600', color: COLORS.primary },
+  viewTransactionText: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.primary },
   detailsDepth: { marginBottom: SPACING.sm },
   detailsGroup: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
   detailRow: {
@@ -635,7 +641,7 @@ const styles = StyleSheet.create({
   },
   messageButtonText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.primary,
     textAlign: 'center',
     flexShrink: 1,

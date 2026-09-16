@@ -66,7 +66,10 @@ export default function EditListingScreen({ navigation, route }) {
   const [newPhotos, setNewPhotos] = useState([]); // Local URIs of newly added photos
   const [removedPhotos, setRemovedPhotos] = useState([]); // URLs of removed photos
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const finishSaving = useUnsavedChanges(navigation, { formData, newPhotos, removedPhotos });
+  // Membership refreshes are not user edits and must not trigger discard prompts.
+  const finishSaving = useUnsavedChanges(navigation, {
+    formData: { ...formData, communityId: undefined }, newPhotos, removedPhotos,
+  });
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -724,7 +727,7 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: '#fff',
-    fontWeight: '500',
+    fontWeight: '400',
   },
   toggle: {
     flexDirection: 'row',

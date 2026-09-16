@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   toastText: {
     color: COLORS.text,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     flex: 1,
   },
   toastDismiss: {

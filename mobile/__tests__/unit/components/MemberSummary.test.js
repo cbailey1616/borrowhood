@@ -7,6 +7,16 @@ import VerifiedBadge from '../../../src/components/VerifiedBadge';
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
 jest.mock('../../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 
+it('keeps compact queue identities together without an exchange count', () => {
+  const screen = render(<MemberSummary compact showExchangeCount={false} user={{ endorsement: { completedCount: 6, score: 85 } }}>
+    <Text>Alexandra Very Long Display Name</Text><VerifiedBadge />
+  </MemberSummary>);
+  expect(screen.queryByText(/completed exchanges/)).toBeNull();
+  expect(StyleSheet.flatten(screen.getByTestId('MemberSummary.identity').props.style)).toMatchObject({ gap: 4, flexWrap: 'nowrap' });
+  fireEvent.press(screen.getByLabelText('Neighbor rating: Good, Archer'));
+  expect(screen.getByText('Neighbor rating')).toBeTruthy();
+});
+
 it('shows the new-neighbor badge beside the profile name using the actual completed count', () => {
   const screen = render(<MemberSummary profileHeader user={{ totalTransactions: 6, endorsement: { completedCount: 1, score: null } }}>
     <Text>Chris Bailey</Text>

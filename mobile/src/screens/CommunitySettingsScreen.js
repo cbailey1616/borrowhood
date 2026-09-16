@@ -19,7 +19,10 @@ import ActionButton from '../components/ActionButton';
 import { haptics } from '../utils/haptics';
 import { useError } from '../context/ErrorContext';
 
+import useNavigationTask from '../hooks/useNavigationTask';
+
 export default function CommunitySettingsScreen({ route, navigation }) {
+  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
@@ -58,6 +61,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
+    const isCurrent = startNavigationTask();
     if (!canEdit || isSaving) return;
     if (!editName.trim()) {
       haptics.warning();
@@ -90,7 +94,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       setIsEditing(false);
       haptics.success();
       showToast('Neighborhood updated', 'success');
-      if (route.params?.editCover) navigation.goBack();
+      if (route.params?.editCover && isCurrent()) navigation.goBack();
     } catch (err) {
       haptics.error();
       showError({ type: 'generic', message: err.message || 'Failed to save changes' });
@@ -127,10 +131,11 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   };
 
   const performLeaveCommunity = async () => {
+    const isCurrent = startNavigationTask();
     try {
       await api.leaveCommunity(id);
       haptics.success();
-      navigation.navigate('Main');
+      if (isCurrent()) navigation.navigate('Main');
     } catch (error) {
       haptics.error();
       const msg = error.message || 'Failed to leave neighborhood';
@@ -332,7 +337,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...TYPOGRAPHY.caption,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -371,7 +376,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     fontSize: 14,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   communityDescriptionEmpty: {
     ...TYPOGRAPHY.footnote,
@@ -382,7 +387,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
-    fontWeight: '600',
+    fontWeight: '400',
     marginBottom: SPACING.xs,
     marginTop: SPACING.sm,
   },
@@ -448,7 +453,7 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   settingDescription: {
@@ -511,7 +516,7 @@ const styles = StyleSheet.create({
   bannerPickerText: {
     ...TYPOGRAPHY.body,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   announcementFieldHeader: {
     flexDirection: 'row',
@@ -521,7 +526,7 @@ const styles = StyleSheet.create({
   clearAnnouncementText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.danger,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   bottomPadding: {
     height: 40,

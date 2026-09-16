@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.lg, gap: SPACING.md },
   item: { flexDirection: 'row', alignItems: 'center' },
   photo: { width: 88, height: 100, borderRadius: RADIUS.md },
-  title: { ...TYPOGRAPHY.title2, fontSize: 24, fontWeight: '700', color: COLORS.primary },
+  title: { ...TYPOGRAPHY.title2, fontSize: 24, fontWeight: '400', color: COLORS.primary },
   body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
   button: { minHeight: 48, padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   buttonText: { ...TYPOGRAPHY.button, color: COLORS.primary },

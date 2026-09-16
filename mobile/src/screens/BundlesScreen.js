@@ -352,12 +352,12 @@ const styles = StyleSheet.create({
   },
   tabText: {
     ...TYPOGRAPHY.body,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   tabTextActive: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   listContent: {
     padding: SPACING.lg,
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     fontSize: 18,
     color: COLORS.danger,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   emptyState: {
     flex: 1,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   selectLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '500',
+    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     fontSize: 16,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   validationError: {
     ...TYPOGRAPHY.footnote,

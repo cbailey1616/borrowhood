@@ -1,3 +1,4 @@
+import { publishOnce } from '../services/publicationReceipts.js';
 import { endorsementSummary } from '../services/endorsements.js';
 import { listingAvailabilitySql } from '../utils/listingAvailability.js';
 import { townPreviewSql, canPreviewTownPost, townListingPreview } from '../services/townPreview.js';
@@ -355,6 +356,7 @@ router.post('/analyze-image', authenticate,
 // Create a new listing
 // ============================================
 router.post('/', authenticate, freeListingOnly,
+  body('clientRequestId').optional().isUUID(),
   body('title').trim().isLength({ min: 3, max: 255 }),
   body('description').optional().isLength({ max: 2000 }),
   body('condition').isIn(['like_new', 'good', 'fair', 'worn']),
@@ -437,7 +439,7 @@ router.post('/', authenticate, freeListingOnly,
       // Store visibility as comma-separated (e.g. 'close_friends,town')
       const primaryVisibility = visibilityArray.join(',');
 
-      const listingId = await withTransaction(async client => {
+      const { value: listingId, replayed } = await publishOnce({ userId: req.user.id, operation: 'listing', payload: req.body }, async client => {
         // Create listing
         const isGiveaway = ['giveaway', 'sell'].includes(listingType);
         const result = await client.query(
@@ -475,7 +477,7 @@ router.post('/', authenticate, freeListingOnly,
       });
 
       // Notify the requester only when a neighbor explicitly offers this item.
-      if (requestMatchId) {
+      if (requestMatchId && !replayed) {
         try {
           const offeredRequest = await query(
             'SELECT user_id, title FROM item_requests WHERE id = $1 AND status = $2',

@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   },
   joinButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   joinedBadge: {
     flexDirection: 'row',
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
   },
   joinedText: {
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   createButton: {
     flexDirection: 'row',
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
   createLinkText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   emptyState: {
     alignItems: 'center',
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   },
   friendName: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.text,
   },
   friendLocation: {
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
   },
   requestedText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textSecondary,
   },
   searchPrompt: {

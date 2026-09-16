@@ -91,9 +91,9 @@ export default function OnboardingTownScreen() {
 }
 const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: 24, gap: 14 },
-  title: { fontSize: 30, fontWeight: '700', color: COLORS.text },
+  title: { fontSize: 30, fontWeight: '400', color: COLORS.text },
   body: { fontSize: 16, lineHeight: 24, color: COLORS.textSecondary },
-  label: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  label: { fontSize: 15, fontWeight: '400', color: COLORS.text },
   input: { minHeight: 52, fontSize: 17, padding: 14, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text },
   stateField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   stateText: { flex: 1, fontSize: 17, color: COLORS.text },
@@ -102,9 +102,9 @@ const styles = StyleSheet.create({
   pickerItem: { color: COLORS.text, fontSize: 20 },
   pickerDone: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border },
   secondary: { minHeight: 48, justifyContent: 'center', paddingVertical: 12 },
-  link: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
+  link: { color: COLORS.primary, fontSize: 16, fontWeight: '400' },
   button: { minHeight: 52, padding: 16, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  buttonText: { color: 'white', fontSize: 17, fontWeight: '600' },
+  buttonText: { color: 'white', fontSize: 17, fontWeight: '400' },
   note: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20 },
   error: { color: COLORS.danger, fontSize: 15 },
 });

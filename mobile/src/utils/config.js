@@ -146,20 +146,20 @@ export const SHADOWS = {
 };
 
 export const TYPOGRAPHY = {
-  // DM Sans type scale (400=Regular, 500=Medium, 600=SemiBold, 700=Bold)
-  largeTitle: { fontSize: 32, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', letterSpacing: -0.6 },
-  headline: { fontSize: 17, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', lineHeight: 22 },
+  // Light visual hierarchy: regular DM Sans; size and spacing distinguish headings.
+  largeTitle: { fontSize: 32, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: -0.6 },
+  headline: { fontSize: 17, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
   subheadline: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 20 },
   footnote: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
   caption1: { fontSize: 12, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 16 },
   // Existing aliases (kept for migration)
-  h1: { fontSize: 28, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', letterSpacing: -0.3 },
-  h3: { fontSize: 18, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
+  h1: { fontSize: 28, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: -0.5 },
+  h2: { fontSize: 22, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: -0.3 },
+  h3: { fontSize: 18, fontFamily: 'DMSans_400Regular', fontWeight: '400' },
   body: { fontSize: 16, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
   bodySmall: { fontSize: 14, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
-  caption: { fontSize: 12, fontFamily: 'DMSans_500Medium', fontWeight: '500', letterSpacing: 0.3 },
-  button: { fontSize: 16, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
+  caption: { fontSize: 12, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: 0.3 },
+  button: { fontSize: 16, fontFamily: 'DMSans_400Regular', fontWeight: '400' },
 };
 
 // Animation presets

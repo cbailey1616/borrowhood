@@ -42,7 +42,7 @@ export default function RequestPhotoPicker({ uri, onChange, disabled }) {
     <HapticPressable accessibilityRole="button" accessibilityLabel={uri ? 'Change request photo' : 'Add request photo'}
       disabled={disabled || picking} onPress={() => setSourceVisible(true)} style={{ minHeight: 56, paddingHorizontal: 16, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: disabled || picking ? 0.5 : 1 }}>
       <Ionicons name="image-outline" size={22} color={COLORS.primary} />
-      <Text style={{ ...TYPOGRAPHY.body, fontWeight: '600', color: COLORS.primary, flex: 1 }}>{uri ? 'Change photo' : 'Add photo'}</Text>
+      <Text style={{ ...TYPOGRAPHY.body, fontWeight: '400', color: COLORS.primary, flex: 1 }}>{uri ? 'Change photo' : 'Add photo'}</Text>
       <Ionicons name="add" size={20} color={COLORS.primary} />
     </HapticPressable>
     {!!uri && <HapticPressable accessibilityRole="button" accessibilityLabel="Remove request photo" disabled={disabled || picking}

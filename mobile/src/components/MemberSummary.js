@@ -5,7 +5,7 @@ import RankInfoSheet from './RankInfoSheet';
 import { memberReputation } from '../utils/reputation';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function MemberSummary({ user, children, centered = false, openRating = false, onRatingClose, profileHeader = false }) {
+export default function MemberSummary({ user, children, centered = false, openRating = false, onRatingClose, profileHeader = false, showExchangeCount = true, compact = false }) {
   const [showRanks, setShowRanks] = useState(false);
   const { completedCount, isNew, rank } = memberReputation(user);
   const exchangeLabel = Number.isFinite(completedCount)
@@ -14,12 +14,12 @@ export default function MemberSummary({ user, children, centered = false, openRa
   const ratingLabel = rank ? `Neighbor rating: ${isNew ? rank.label : `${rank.tone}, ${rank.label}`}` : null;
 
   return <View style={[styles.summary, centered && styles.centered]}>
-    <View testID="MemberSummary.identity" style={[styles.identityRow, centered && styles.identityCentered, profileHeader && styles.profileIdentity]}>
+    <View testID="MemberSummary.identity" style={[styles.identityRow, centered && styles.identityCentered, profileHeader && styles.profileIdentity, compact && { gap: 4, flexWrap: 'nowrap' }]}>
       <View style={styles.nameRow}>{children}</View>
       <NeighborRankBadge rank={rank} showName={profileHeader}
         accessibilityLabel={profileHeader ? undefined : ratingLabel} onPress={() => setShowRanks(true)} />
     </View>
-    {!profileHeader && <Text style={[styles.secondary, centered && styles.textCentered]}>{exchangeLabel}</Text>}
+    {!profileHeader && showExchangeCount && <Text style={[styles.secondary, centered && styles.textCentered]}>{exchangeLabel}</Text>}
     {(showRanks || openRating) && <RankInfoSheet isVisible onClose={() => { setShowRanks(false); onRatingClose?.(); }} currentRank={rank} isNew={isNew} />}
   </View>;
 }
