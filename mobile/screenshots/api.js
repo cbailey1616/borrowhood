@@ -37,6 +37,7 @@ const activityNotices = () => {
     isRead: source.every(item => readNoticeIds.has(item.id)) }];
 };
 const unreadMessages = () => !conversationRead && ['inbox', 'inbox-messages'].includes(captureScreen) ? 2 : 0;
+const unreadConversations = () => unreadMessages() > 0 ? 1 : 0;
 const fixtureConversation = () => ({ ...conversation, unreadCount: unreadMessages(),
   ...(captureScreen === 'inbox-messages' ? { lastMessage: 'I can bring the drill over tomorrow morning.' } : {}) });
 const photoRequest = { ...requests[0], id: 'demo-photo-request', title: 'A cordless drill for a weekend project', description: 'Putting up shelves. Happy to collect it.', requestType: 'item', photoUrl: listings[0].photoUrl };
@@ -106,10 +107,10 @@ const api = {
     ...listings[0], id: 'demo-private-offer', title: 'Cordless drill with bits and a spare battery', isOwn: true,
   }] : [],
   getBadgeCount: async () => {
-    const messages = unreadMessages();
+    const messages = unreadConversations();
     const notifications = activityNotices().filter(item => !item.isRead).length;
     const actions = ['inbox', 'home-exchanges', 'owner-pickup', 'owner-active-item'].includes(captureScreen) ? 1 : 0;
-    return { messages, notifications, actions, total: messages + notifications + actions };
+    return { messages, notifications, actions, total: messages + notifications };
   },
   getNotifications: async ({ page = 1, limit = 50, unreadOnly } = {}) => {
     const all = activityNotices();
