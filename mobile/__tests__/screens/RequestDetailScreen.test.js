@@ -1,12 +1,14 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import ActionSheet from '../../src/components/ActionSheet';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
+const mockShowToast = jest.fn();
 
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
-jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
+jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: mockShowToast }) }));
 
 const mockRequest = {
   id: 'req-1', title: 'Need a Camera', type: 'item', status: 'open', visibility: 'close_friends',
@@ -16,7 +18,18 @@ const mockRequest = {
   createdAt: new Date().toISOString(),
 };
 
-beforeEach(() => { jest.clearAllMocks(); api.getRequest.mockResolvedValue(mockRequest); api.getConversations.mockResolvedValue([]); });
+beforeEach(() => {
+  jest.clearAllMocks(); api.getRequest.mockResolvedValue(mockRequest); api.getConversations.mockResolvedValue([]);
+  api.getRequestOffers.mockResolvedValue([]);
+  api.getRequestDiscussions.mockResolvedValue({ posts: [], total: 0 });
+  api.withdrawOffer.mockReset().mockResolvedValue({});
+  api.deleteRequest.mockReset().mockResolvedValue({});
+});
+
+const confirmAction = async screen => {
+  const sheet = screen.UNSAFE_getAllByType(ActionSheet).find(item => item.props.isVisible);
+  await act(async () => { await sheet.props.actions[0].onPress(); sheet.props.onClose(); });
+};
 
 describe('RequestDetailScreen', () => {
   const route = { params: { id: 'req-1' } };
@@ -36,7 +49,7 @@ describe('RequestDetailScreen', () => {
     expect(api.getRequestOffers).not.toHaveBeenCalled();
     expect(api.sendMessage).not.toHaveBeenCalled();
     expect(screen.queryByText('Private offers')).toBeNull();
-    expect(screen.queryByText('Offer an item privately')).toBeNull();
+    expect(screen.queryByLabelText('Offer an item privately')).toBeNull();
   });
 
   it.each([
@@ -72,8 +85,8 @@ describe('RequestDetailScreen', () => {
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     await screen.findByText('Expired');
-    expect(screen.queryByText('Offer an item privately')).toBeNull();
-    expect(screen.getByText(/renew it from My Posts/)).toBeTruthy();
+    expect(screen.queryByLabelText('Offer an item privately')).toBeNull();
+    expect(screen.getByText('No longer accepting offers.')).toBeTruthy();
   });
 
   it('fetches request via api.getRequest', async () => {
@@ -102,8 +115,8 @@ describe('RequestDetailScreen', () => {
 
   it('non-owner can offer one item privately', async () => {
     const Screen = require('../../src/screens/RequestDetailScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    const offer = await findByText('Offer an item privately');
+    const { findByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
+    const offer = await findByLabelText('Offer an item privately');
     fireEvent.press(offer);
     expect(mockNavigation.navigate).toHaveBeenCalledWith('OfferItem', expect.anything());
   });
@@ -114,16 +127,102 @@ describe('RequestDetailScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText(/Edit/i);
   });
+
+  it('keeps a closed request’s private offer accessible without empty comments or new-offer actions', async () => {
+    api.getRequest.mockResolvedValue({ ...mockRequest, status: 'closed' });
+    const title = 'A camera with a spare battery, travel case and an extra long lens for wildlife photos';
+    api.getRequestOffers.mockResolvedValue([{ id: 'camera', title, isOwn: true }]);
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const offer = await screen.findByLabelText(`View offered item: ${title}`);
+    expect(screen.getByText('Closed')).toBeTruthy();
+    expect(screen.queryByText('Comments')).toBeNull();
+    expect(screen.queryByLabelText('Offer an item privately')).toBeNull();
+    expect(screen.queryByText(/transactions/)).toBeNull();
+    fireEvent.press(offer);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDetail', { id: 'camera' });
+    fireEvent.press(screen.getByLabelText(`Withdraw offer: ${title}`));
+    expect(api.withdrawOffer).not.toHaveBeenCalled();
+    await confirmAction(screen);
+    expect(api.withdrawOffer).toHaveBeenCalledWith('req-1', 'camera');
+    expect(screen.queryByText(title)).toBeNull();
+    expect(screen.queryByText('Private offers')).toBeNull();
+  });
+
+  it('keeps an offer visible if withdrawing fails and allows retry', async () => {
+    api.getRequestOffers.mockResolvedValue([{ id: 'camera', title: 'Camera', isOwn: true }]);
+    api.withdrawOffer.mockRejectedValueOnce(new Error('Offline'));
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('Withdraw offer: Camera'));
+    await confirmAction(screen);
+    expect(mockShowToast).toHaveBeenCalledWith('Couldn’t withdraw the offer. Please try again.', 'error');
+    expect(screen.getByText('Camera')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Withdraw offer: Camera'));
+    await confirmAction(screen);
+    expect(screen.queryByText('Camera')).toBeNull();
+  });
+
+  it('retains existing comments on closed requests without offering a new comment', async () => {
+    api.getRequest.mockResolvedValue({ ...mockRequest, status: 'closed' });
+    api.getRequestDiscussions.mockResolvedValue({ posts: [{ id: 'comment', content: 'I have a camera you can use.', user: { firstName: 'Sam' }, replyCount: 2 }], total: 4 });
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Comments (4)');
+    expect(screen.queryByLabelText('Add a comment')).toBeNull();
+    fireEvent.press(screen.getByLabelText('View all comments'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDiscussion', expect.objectContaining({ requestId: 'req-1' }));
+  });
+
+  it('shows an offer load failure honestly and can retry', async () => {
+    api.getRequest.mockResolvedValue({ ...mockRequest, status: 'closed' });
+    api.getRequestOffers.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue([{ id: 'camera', title: 'Camera', isOwn: false }]);
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('Couldn’t load offers. Try again'));
+    await screen.findByLabelText('View offered item: Camera');
+    expect(screen.queryByLabelText('Withdraw offer: Camera')).toBeNull();
+  });
+
+  it('opens the full photo and preserves the requester rank without opening the profile', async () => {
+    api.getRequest.mockResolvedValue({ ...mockRequest, photoUrl: 'https://example.com/camera.jpg', requester: { ...mockRequest.requester, isVerified: true, endorsement: { completedCount: 6, score: 85 } } });
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('View full request photo'));
+    expect(screen.getByLabelText('Full request photo')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Close photo'));
+    expect(screen.queryByLabelText('Close photo')).toBeNull();
+    const stopPropagation = jest.fn();
+    fireEvent.press(screen.getByLabelText('Neighbor rank: Archer'), { stopPropagation });
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(screen.getByText('Rating levels')).toBeTruthy();
+  });
+
+  it('requires confirmation before closing and preserves the page on failure', async () => {
+    api.getRequest.mockResolvedValue({ ...mockRequest, isOwner: true });
+    api.deleteRequest.mockRejectedValueOnce(new Error('Offline'));
+    const Screen = require('../../src/screens/RequestDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('Close request'));
+    expect(api.deleteRequest).not.toHaveBeenCalled();
+    await confirmAction(screen);
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockShowToast).toHaveBeenCalledWith('Couldn’t close the request. Please try again.', 'error');
+    fireEvent.press(screen.getByLabelText('Close request'));
+    await confirmAction(screen);
+    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+  });
 });
 
-it('explains hidden Town identity without fetching private discussions or offers', async () => {
-  api.getRequest.mockResolvedValue({ ...mockRequest, ownerMasked: true, previewOnly: true, requester: { id: null, firstName: 'Town', lastName: 'neighbor' } });
+it.each([true, false])('explains preview-only Town identity without private actions (ownerMasked=%s)', async ownerMasked => {
+  api.getRequest.mockResolvedValue({ ...mockRequest, ownerMasked, previewOnly: true, requester: { id: null, firstName: 'Town', lastName: 'neighbor' } });
   const Screen = require('../../src/screens/RequestDetailScreen').default;
   const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'req-1' } }} />);
   await screen.findByText('Need a Camera');
   expect(api.getRequestDiscussions).not.toHaveBeenCalled();
   expect(api.getRequestOffers).not.toHaveBeenCalled();
-  expect(screen.queryByText('Offer an item privately')).toBeNull();
+  expect(screen.queryByLabelText('Offer an item privately')).toBeNull();
   fireEvent.press(screen.getByLabelText('Identity hidden. Get verified to see who’s sharing'));
   expect(mockNavigation.navigate).toHaveBeenCalledWith('IdentityVerification', { source: 'town_browse' });
 });

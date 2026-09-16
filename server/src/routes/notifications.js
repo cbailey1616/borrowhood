@@ -93,7 +93,7 @@ router.get('/badge-count', authenticate, async (req, res) => {
   try {
     const [messagesResult, notificationsResult, actionsResult] = await Promise.all([
       query(
-        `SELECT COUNT(*) FROM messages m
+        `SELECT COUNT(DISTINCT m.conversation_id) AS count FROM messages m
          JOIN conversations c ON m.conversation_id = c.id
          WHERE m.is_read = false AND m.sender_id != $1
          AND (c.user1_id = $1 OR c.user2_id = $1)`,
@@ -120,7 +120,7 @@ router.get('/badge-count', authenticate, async (req, res) => {
       messages,
       notifications,
       actions,
-      total: messages + notifications + actions,
+      total: messages + notifications,
     });
   } catch (err) {
     console.error('Get badge count error:', err);

@@ -1,9 +1,9 @@
 import ShimmerImage from '../components/ShimmerImage';
 import { isTransferListing, isSaleListing } from '../utils/directFee';
+import { inboxActivity } from '../utils/inboxActivity';
 import { publicReplyRoute } from '../utils/conversationContext';
-import { borrowGuidance } from '../utils/borrowStatus';
 import { notificationDestination } from '../utils/notificationDestination';
-import { groupPendingExchanges, groupRequestNotifications, readActivity } from '../utils/requestActivity';
+import { readActivity } from '../utils/requestActivity';
 import VerifiedBadge from '../components/VerifiedBadge';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
@@ -70,12 +70,11 @@ const NOTIFICATION_ICONS = {
 
 const PAGE_SIZE = 50;
 const HIDDEN_ACTIVITY_TYPES = new Set(['item_match', 'new_message', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring']);
-const visibleActivity = item => !item.disputeId && !item.type?.startsWith('dispute') && !HIDDEN_ACTIVITY_TYPES.has(item.type);
+const visibleActivity = item => !HIDDEN_ACTIVITY_TYPES.has(item.type);
 
 export default function InboxScreen({ navigation, route, onRead }) {
   const { user } = useAuth();
   const { showToast } = useError();
-  const [activeBorrows, setActiveBorrows] = useState([]);
   const [activeTab, setActiveTab] = useState(route?.params?.tab === 'messages' ? 0 : 1);
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -93,8 +92,28 @@ export default function InboxScreen({ navigation, route, onRead }) {
   const pageCount = useRef(1);
   const unreadFilter = useRef(false);
   const knownTransactions = useRef([]);
+  const activityRecords = useRef([]);
+  const accountId = useRef(user?.id);
+  accountId.current = user?.id;
   const tabChosen = useRef(!!route?.params?.tab);
   const readingRef = useRef(false);
+
+  useEffect(() => {
+    requestVersion.current += 1;
+    knownTransactions.current = [];
+    activityRecords.current = [];
+    pageCount.current = 1;
+    unreadFilter.current = false;
+    readingRef.current = false;
+    setNotifications([]);
+    setConversations([]);
+    setUnseenActivityUnread(0);
+    setUnreadOnly(false);
+    setReading(false);
+    setHasMore(false);
+    setOptionsVisible(false);
+    setIsLoading(true);
+  }, [user?.id]);
 
   useEffect(() => {
     const tab = route?.params?.tab;
@@ -122,23 +141,26 @@ export default function InboxScreen({ navigation, route, onRead }) {
       api.getConversations(),
       api.getTransactions(),
     ]);
-    if (version !== requestVersion.current) return;
+    if (version !== requestVersion.current || accountId.current !== user?.id) return;
 
     if (exchangeResult.status === 'fulfilled') {
-      knownTransactions.current = exchangeResult.value || [];
-      setActiveBorrows(groupPendingExchanges(knownTransactions.current.filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)), user?.id));
+      knownTransactions.current = exchangeResult.value?.transactions || exchangeResult.value || [];
     }
     if (activityResult.status === 'fulfilled') {
       const responses = activityResult.value;
       const records = responses.flatMap(data => data?.notifications || []);
       const unique = [...new Map(records.map(item => [item.id, item])).values()];
-      const visible = groupRequestNotifications(unique.filter(visibleActivity), knownTransactions.current, user?.id);
+      activityRecords.current = unique.filter(visibleActivity);
+      const visible = inboxActivity(activityRecords.current, knownTransactions.current, user?.id);
       setNotifications(visible);
       // Server and list share activity filtering/grouping. Keep older unread
       // activity counted and reachable through Unread only and pagination.
       setUnseenActivityUnread(Math.max(0, (responses[0]?.unreadCount || 0) - unique.filter(n => !n.isRead).length));
       setHasMore((responses[responses.length - 1]?.notifications || []).length === PAGE_SIZE);
       pageCount.current = pages;
+    }
+    if (activityResult.status === 'rejected' && exchangeResult.status === 'fulfilled') {
+      setNotifications(inboxActivity(activityRecords.current, knownTransactions.current, user?.id));
     }
     if (conversationResult.status === 'fulfilled') setConversations(conversationResult.value || []);
     if (!tabChosen.current && activityResult.status === 'fulfilled' && conversationResult.status === 'fulfilled') {
@@ -191,16 +213,18 @@ export default function InboxScreen({ navigation, route, onRead }) {
   };
 
   const unreadCount = unseenActivityUnread + notifications.filter(n => !n.isRead).length;
-  const unreadMessages = conversations.reduce((count, conversation) => count + (conversation.unreadCount || 0), 0);
+  const unreadMessages = conversations.filter(conversation => conversation.unreadCount > 0).length;
 
   const handleMarkAllRead = async () => {
     if (readingRef.current) return;
+    const readerId = accountId.current;
     readingRef.current = true;
     setReading(true);
     try {
       const markMessagesRead = async () => {
         // Fetch all conversations, including any missing after a failed load.
         const latest = await api.getConversations();
+        if (readerId !== accountId.current) return;
         const results = await Promise.allSettled((latest || [])
           .filter(item => item.unreadCount > 0)
           .map(item => api.markConversationRead(item.id)));
@@ -208,17 +232,23 @@ export default function InboxScreen({ navigation, route, onRead }) {
       };
       if (activeTab === 1) await api.markAllNotificationsRead();
       else await markMessagesRead();
+      if (readerId !== accountId.current) return;
       haptics.success();
       showToast(activeTab === 1 ? 'Activity marked as read.' : 'Messages marked as read.', 'success');
     } catch (e) {
+      if (readerId !== accountId.current) return;
       haptics.error();
       showToast('Some items couldn’t be marked as read. Please try again.', 'error');
     } finally {
-      onRead?.();
-      // Reconcile after the update so anything arriving meanwhile stays unread.
-      await fetchData();
-      readingRef.current = false;
-      setReading(false);
+      if (readerId === accountId.current) {
+        onRead?.();
+        // Reconcile after the update so anything arriving meanwhile stays unread.
+        await fetchData();
+        if (readerId === accountId.current) {
+          readingRef.current = false;
+          setReading(false);
+        }
+      }
     }
   };
 
@@ -241,17 +271,21 @@ export default function InboxScreen({ navigation, route, onRead }) {
   const nav = navigation.getParent() || navigation;
 
   const handleNotificationPress = async (item) => {
+    const readerId = accountId.current;
     haptics.light();
-    const destination = notificationDestination(item);
+    const destination = item.destination || notificationDestination(item);
     if (destination) nav.navigate(destination.name, destination.params);
 
     if (!item.isRead) {
       try {
-        await readActivity(api, item);
+        await readActivity(api, { ...item, id: item.readId || item.id });
+        if (readerId !== accountId.current) return;
         requestVersion.current += 1;
         setIsRefreshing(false);
         setIsLoadingMore(false);
         const readIds = new Set(item.notificationIds || [item.id]);
+        activityRecords.current = activityRecords.current.map(record =>
+          (record.notificationIds || [record.id]).every(id => readIds.has(id)) ? { ...record, isRead: true } : record);
         setNotifications(prev => prev.map(n => n.id === item.id && (n.notificationIds || [n.id]).every(id => readIds.has(id)) ? { ...n, isRead: true } : n));
         onRead?.();
       } catch (_) {}
@@ -264,11 +298,15 @@ export default function InboxScreen({ navigation, route, onRead }) {
         style={[styles.card, !item.isRead && styles.cardUnread]}
         onPress={() => handleNotificationPress(item)}
         accessibilityRole="button"
-        accessibilityLabel={item.title}
+        accessibilityLabel={item.exchange ? [item.title, item.body].filter(Boolean).join('. ') : item.title}
         haptic={null}
       >
         <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
-          {item.fromUser?.profilePhotoUrl ? (
+          {item.exchange ? (
+            <ShimmerImage source={item.exchange.listing?.photoUrl ? { uri: item.exchange.listing.photoUrl } : null}
+              placeholderIcon={isSaleListing(item.exchange) ? 'pricetag' : isTransferListing(item.exchange) ? 'gift' : 'basket'}
+              style={styles.notifAvatar} />
+          ) : item.fromUser?.profilePhotoUrl ? (
             <Image
               source={{ uri: item.fromUser.profilePhotoUrl }}
               style={styles.notifAvatar}
@@ -401,32 +439,6 @@ export default function InboxScreen({ navigation, route, onRead }) {
           ListHeaderComponent={
             <>
               {(loadError.activity || loadError.exchanges) && renderRetry(loadError.activity && loadError.exchanges ? 'Couldn’t refresh activity and exchanges.' : loadError.activity ? 'Couldn’t refresh activity.' : 'Couldn’t refresh exchanges.')}
-              {!unreadOnly && activeBorrows.length > 0 && <View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
-                <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>Active exchanges</Text>
-                {activeBorrows.map(transaction => {
-                  const other = transaction.isBorrower ? transaction.lender : transaction.borrower;
-                  const guidance = borrowGuidance({ ...transaction, isGiveaway: isTransferListing(transaction) });
-                  return <HapticPressable key={transaction.id} accessibilityRole="button" accessibilityLabel={transaction.queueListingId ? `See queue for ${transaction.listing?.title || 'item'}, ${transaction.requestCount} waiting` : `View exchange for ${transaction.listing?.title || 'item'}`}
-                    onPress={() => {
-                      if (!transaction.queueListingId) { nav.navigate('TransactionDetail', { id: transaction.id }); return; }
-                      const alert = notifications.find(item => item.queueListingId === transaction.queueListingId);
-                      if (alert) handleNotificationPress(alert);
-                      else nav.navigate('RequestQueue', { listingId: transaction.queueListingId });
-                    }}
-                    style={{ padding: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
-                    <Ionicons name={isSaleListing(transaction) ? 'pricetag' : isTransferListing(transaction) ? 'gift' : 'basket'} size={32} illustrated />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ ...TYPOGRAPHY.headline, color: COLORS.text }}>{transaction.listing?.title || 'Shared item'}</Text>
-                      {transaction.queueListingId ? <Text style={{color:COLORS.textSecondary}}>{transaction.requestCount} {transaction.requestCount === 1 ? 'person waiting' : 'people waiting'}</Text> : <View style={{flexDirection:'row',alignItems:'center',gap:5}}>
-                        <Text style={{ color: COLORS.textSecondary,flexShrink:1 }}>With {other?.firstName || 'your neighbor'}</Text>
-                        {other?.isVerified === true && <VerifiedBadge size={16} />}
-                      </View>}
-                      <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.primary, marginTop: 4 }}>{transaction.queueListingId ? 'See queue' : guidance.title}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
-                  </HapticPressable>;
-                })}
-              </View>}
               {notifsDenied && (
                 <HapticPressable
                   style={styles.notifBannerInline}
@@ -450,7 +462,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <HeroIcon icon="notifications" size={80} />
-              <Text style={styles.emptyTitle}>{loadError.activity ? 'Activity is unavailable' : unreadOnly ? 'No unread activity' : activeBorrows.length ? 'No new updates' : 'All caught up!'}</Text>
+              <Text style={styles.emptyTitle}>{loadError.activity ? 'Activity is unavailable' : unreadOnly ? 'No unread activity' : 'All caught up!'}</Text>
               {unreadOnly && !loadError.activity ? (
                 <ActionButton label="Show all" onPress={() => selectUnreadOnly(false)} style={styles.showAllButton} />
               ) : <Text style={styles.emptySubtitle}>

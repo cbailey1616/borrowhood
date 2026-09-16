@@ -10,6 +10,7 @@ import { authenticate, requireVerified, ENABLE_PAID_TIERS } from '../middleware/
 import { body, validationResult } from 'express-validator';
 import { sendNotification, sendBulkNotification } from '../services/notifications.js';
 import { requestActiveSql, validRequestTimeZone } from '../utils/requestState.js';
+import { endorsementSummary } from '../services/endorsements.js';
 
 const router = Router();
 
@@ -180,6 +181,7 @@ router.get('/:id', authenticate, async (req, res) => {
         rating: parseFloat(r.rating) || 0,
         ratingCount: r.rating_count,
         totalTransactions: r.total_transactions,
+        endorsement: await endorsementSummary(r.user_id),
       },
       isOwner: r.user_id === req.user.id,
       createdAt: r.created_at,
@@ -579,13 +581,14 @@ router.post('/:id/offers', authenticate, body('listingId').isUUID(), async (req,
 router.get('/:id/offers', authenticate, async (req, res) => {
   try {
     if (!await canViewRequest(req.params.id, req.user.id)) return res.status(404).json({ error: 'Request not found' });
-    const result = await query(`SELECT l.id, l.title, l.owner_id, ss.expires_at
+    const result = await query(`SELECT l.id, l.title, l.owner_id, ss.expires_at,
+        (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) AS photo_url
       FROM listing_shares ss JOIN listings l ON l.id = ss.listing_id
       WHERE ss.request_id = $1 AND (ss.user_id = $2 OR l.owner_id = $2)
         AND ss.revoked_at IS NULL AND ss.expires_at > NOW()
         AND ${listingAccessSql('l', '$2')}
       ORDER BY ss.created_at DESC`, [req.params.id, req.user.id]);
-    res.json(result.rows.map(item => ({ id: item.id, title: item.title,
+    res.json(result.rows.map(item => ({ id: item.id, title: item.title, photoUrl: item.photo_url || null,
       isOwn: item.owner_id === req.user.id, expiresAt: item.expires_at })));
   } catch { res.status(500).json({ error: 'Could not load private offers.' }); }
 });

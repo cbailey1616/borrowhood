@@ -224,9 +224,13 @@ describe('FeedScreen', () => {
     act(() => changeState('background'));
     api.getFeed.mockClear();
     api.getNotifications.mockClear();
+    api.getTransactions.mockClear();
+    api.getDisputes.mockClear();
     await act(async () => changeState('active'));
     expect(api.getFeed).not.toHaveBeenCalled();
-    expect(api.getNotifications).toHaveBeenCalled();
+    expect(api.getTransactions).toHaveBeenCalled();
+    expect(api.getDisputes).toHaveBeenCalled();
+    expect(api.getNotifications).not.toHaveBeenCalled();
     screen.unmount();
     expect(remove).toHaveBeenCalled();
   });
@@ -418,45 +422,59 @@ it('aligns ribbon cards with photos and long text with cards that have neither',
  expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestDetail',{id:'plain'});
 });
 
-it('keeps in-progress items ahead of requests and opens their activity screen', async () => {
- api.getTransactions.mockResolvedValueOnce([{id:'pending',status:'pending',lender:{id:mockUser.id}}]);
+it('shows one specific request action and opens its queue directly', async () => {
+ api.getTransactions.mockResolvedValueOnce([{id:'pending',status:'pending',lender:{id:mockUser.id},listing:{id:'ladder',title:'Ladder'}}]);
  api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],requests:[{id:'ask',type:'request',title:'Need a ladder',user:{firstName:'Alex'}}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('1 request to review');
- expect(screen.getByText('Review')).toBeTruthy();
+ await screen.findByText('Someone wants Ladder');
+ expect(screen.getByText('Review request')).toBeTruthy();
  expect(screen.getByTestId('Feed.list').props.data.slice(0,2).map(row=>row.type)).toEqual(['feed-banners','request-carousel']);
- fireEvent.press(screen.getByText('Review'));
- expect(mockNavigation.navigate).toHaveBeenCalledWith('Activity', { tab: 'activity' });
+ fireEvent.press(screen.getByText('Review request'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'ladder' });
 });
 
-it('shows overdue returns and pending reviews together without hiding other updates', async () => {
+it('keeps Home quiet for an ongoing borrow and removes unread and setup banners', async () => {
+ api.getTransactions.mockResolvedValue([{ id:'borrow',status:'picked_up',isBorrower:true,listing:{title:'Ladder'},endDate:'2099-09-20' }]);
+ api.getNotifications.mockResolvedValue({ notifications:[],unreadCount:4 });
+ api.getCommunities.mockResolvedValue([]);
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ await screen.findByText('What would you like to do?');
+ expect(screen.queryByTestId('Feed.exchanges')).toBeNull();
+ expect(screen.queryByText('4 unread notifications')).toBeNull();
+ expect(screen.queryByText('Join a nearby neighborhood')).toBeNull();
+ expect(api.getNotifications).not.toHaveBeenCalled();
+});
+
+it('shows only the most urgent item action, without stacked unread banners', async () => {
  const overdue = new Date(Date.now() - 7 * 86400000).toISOString();
  api.getTransactions.mockResolvedValue([
-  { id:'return',status:'picked_up',isBorrower:true,endDate:overdue,listing:{id:'ladder'} },
-  { id:'pending',status:'pending',isBorrower:false,lender:{id:mockUser.id},listing:{id:'drill'} },
+  { id:'return',status:'picked_up',isBorrower:true,endDate:overdue,listing:{id:'ladder',title:'Ladder'} },
+  { id:'pending',status:'pending',isBorrower:false,lender:{id:mockUser.id},listing:{id:'drill',title:'Drill'} },
   { id:'sold',status:'picked_up',isBorrower:true,listingType:'sell',endDate:overdue,listing:{id:'bike'} },
   { id:'done',status:'returned',isBorrower:true,endDate:overdue,listing:{id:'rake'} },
  ]);
  api.getNotifications.mockResolvedValue({ notifications:[],unreadCount:2 });
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('1 due back · 1 request to review');
- expect(screen.getByText('2 unread notifications')).toBeTruthy();
- fireEvent.press(screen.getByLabelText('Dismiss 2 unread notifications'));
- expect(screen.getByText('View')).toBeTruthy();
- expect(screen.getByText('1 due back · 1 request to review')).toBeTruthy();
+ await screen.findByText('Ladder overdue');
+ expect(screen.queryByText('2 unread notifications')).toBeNull();
+ expect(screen.queryByText('Someone wants Drill')).toBeNull();
+ expect(screen.getAllByTestId('Feed.exchanges')).toHaveLength(1);
+ fireEvent.press(screen.getByText('View details'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'return' });
 });
 
-it('opens the dispute list when more than one dispute needs attention', async () => {
+it('shows only a dispute requiring this person’s response and opens it directly', async () => {
  api.getDisputes.mockResolvedValueOnce([
-  { id:'dispute-1',status:'awaitingResponse' },
+  { id:'dispute-1',status:'awaitingResponse',respondent:{id:mockUser.id},listing:{title:'Ladder'} },
   { id:'dispute-2',status:'underReview' },
  ]);
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- fireEvent.press(await screen.findByText('2 active disputes'));
- expect(mockNavigation.navigate).toHaveBeenCalledWith('Disputes');
+ fireEvent.press(await screen.findByText('Review an issue with Ladder'));
+ expect(mockNavigation.navigate).toHaveBeenCalledWith('DisputeDetail', { id: 'dispute-1' });
 });
 
 it('hides own posts from the carousel, filters and older server pages', async () => {
@@ -482,12 +500,12 @@ it('hides own posts from the carousel, filters and older server pages', async ()
   expect(screen.queryByText('My request')).toBeNull();
 });
 
-it('keeps notifications visible when all returned posts belong to you', async () => {
+it('keeps an actionable reminder visible when all returned posts belong to you', async () => {
   api.getFeed.mockResolvedValue({ items: [{ id: 'mine', type: 'listing', title: 'My item', user: mockUser }], hasMore: false });
-  api.getNotifications.mockResolvedValueOnce({ unreadCount: 2 });
+  api.getTransactions.mockResolvedValueOnce([{id:'pending',status:'pending',isBorrower:false,listing:{id:'ladder',title:'Ladder'}}]);
   const Screen = require('../../src/screens/FeedScreen').default;
   const screen = render(<Screen navigation={mockNavigation} />);
-  await screen.findByText('2 unread notifications');
+  await screen.findByText('Someone wants Ladder');
   expect(screen.queryByText('My item')).toBeNull();
   expect(screen.queryByText('Neighbors need')).toBeNull();
   expect(screen.getByText('What would you like to do?')).toBeTruthy();

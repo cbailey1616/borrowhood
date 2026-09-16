@@ -64,7 +64,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
       accessibilityRole="tab"
       accessibilityState={{ selected: isFocused }}
       accessibilityLabel={label}
-      accessibilityValue={hasUpdate ? { text: route.name === 'Feed' ? 'New posts' : `${unreadCount} unread message${unreadCount === 1 ? '' : 's'}` } : undefined}
+      accessibilityValue={hasUpdate ? { text: route.name === 'Feed' ? 'New posts' : `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}` } : undefined}
     >
       <Animated.View style={[
         styles.iconContainer,

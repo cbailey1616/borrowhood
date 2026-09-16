@@ -92,6 +92,25 @@ describe('private-first policy', () => {
 });
 
 describe('direct API access fails closed before returning content', () => {
+  it('includes the canonical requester rank only after full request access succeeds', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: requestId }] })
+      .mockResolvedValueOnce({ rows: [{ id: requestId, user_id: item, first_name: 'Alex', status: 'open', accepting_offers: true }] })
+      .mockResolvedValueOnce({ rows: [{ member_id: item, completed: 6, total: 2, positive: 2, activity: 4 }] });
+    const response = await request(app).get(`/requests/${requestId}`);
+    expect(response.status).toBe(200);
+    expect(response.body.requester.endorsement).toEqual({ completedCount: 6, score: 85, count: 2, percent: 100 });
+  });
+  it('returns a thumbnail only for offers permitted by the existing listing access policy', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: requestId }] })
+      .mockResolvedValueOnce({ rows: [{ id: item, title: 'Camera', owner_id: viewer, photo_url: '/uploads/camera.jpg' }] });
+    const response = await request(app).get(`/requests/${requestId}/offers`);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([{ id: item, title: 'Camera', photoUrl: '/uploads/camera.jpg', isOwn: true }]);
+    const [sql, params] = query.mock.calls[1];
+    expect(params).toEqual([requestId, viewer]);
+    expect(sql).toContain('ss.revoked_at IS NULL AND ss.expires_at > NOW()');
+    expect(sql).toContain(listingAccessSql('l', '$2'));
+  });
   it('creates a private item when no audience is supplied', async () => {
     query.mockImplementation(async sql => ({ rows: sql.includes('INSERT INTO listings') ? [{ id: item }] : [] }));
     const response = await request(app).post('/listings').send({ title: 'Private power drill', condition: 'good', isFree: true, photos: [`http://localhost:3000/uploads/private-listing-${viewer}-drill.jpg`] });

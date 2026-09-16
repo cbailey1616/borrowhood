@@ -27,15 +27,19 @@ export const ACTIVITY_SOURCE_SQL = `WITH activity_source AS (
     AND (n.type NOT IN ('borrow_request', 'giveaway_claim') OR t.id IS NULL OR t.status = 'pending')
 )`;
 
+const ACTIVITY_GROUP_KEY = `COALESCE('queue:' || queue_listing_id::text,
+  CASE WHEN discussion_id IS NULL AND thread_id IS NULL THEN 'exchange:' || transaction_id::text END,
+  'dispute:' || dispute_id::text, id::text)`;
+
 export const UNREAD_ACTIVITY_SQL = `${ACTIVITY_SOURCE_SQL}
-  SELECT COUNT(DISTINCT COALESCE('queue:' || queue_listing_id::text, id::text)) AS count
+  SELECT COUNT(DISTINCT ${ACTIVITY_GROUP_KEY}) AS count
   FROM activity_source WHERE is_read = false`;
 
 export const GROUPED_ACTIVITY_SQL = `${ACTIVITY_SOURCE_SQL}, activity AS (
   SELECT *,
-    ROW_NUMBER() OVER (PARTITION BY COALESCE('queue:' || queue_listing_id::text, id::text)
+    ROW_NUMBER() OVER (PARTITION BY ${ACTIVITY_GROUP_KEY}
       ORDER BY created_at DESC, id DESC) AS newest,
-    BOOL_AND(is_read) OVER (PARTITION BY COALESCE('queue:' || queue_listing_id::text, id::text)) AS group_is_read,
-    ARRAY_AGG(id) OVER (PARTITION BY COALESCE('queue:' || queue_listing_id::text, id::text)) AS notification_ids
+    BOOL_AND(is_read) OVER (PARTITION BY ${ACTIVITY_GROUP_KEY}) AS group_is_read,
+    ARRAY_AGG(id) OVER (PARTITION BY ${ACTIVITY_GROUP_KEY}) AS notification_ids
   FROM activity_source
 )`;

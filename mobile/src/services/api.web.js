@@ -1,10 +1,12 @@
 // The browser target is a local design preview. It never imports the live API.
 // Native iOS/Android continue resolving api.js.
-import { emptyPreview, previewUser, listings, conversation, messages } from '../preview/fixtures';
+import { emptyPreview, previewUser, previewRequest, listings, conversation, messages } from '../preview/fixtures';
 
 let saved = emptyPreview ? [] : [listings[0]];
 let chat = emptyPreview ? [] : [...messages];
 const available = emptyPreview ? [] : listings;
+const requestQuery = new URLSearchParams(window.location.search);
+let requestOffers = emptyPreview ? [] : [{ id: listings[0].id, title: 'Cordless drill with a full set of bits and a spare battery', photoUrl: listings[0].photoUrl, isOwn: true }];
 const noop = async () => ({});
 const api = {
   getMe: async () => previewUser,
@@ -24,6 +26,13 @@ const api = {
   saveListing: async id => { if (!saved.some(item => item.id === id)) saved = [...saved, listings.find(item => item.id === id)].filter(Boolean); },
   unsaveListing: async id => { saved = saved.filter(item => item.id !== id); },
   getListing: async id => listings.find(item => item.id === id),
+  getRequest: async () => ({ ...previewRequest,
+    status: requestQuery.get('requestState') === 'closed' ? 'closed' : 'open',
+    isExpired: requestQuery.get('requestState') === 'expired',
+    isOwner: requestQuery.has('requestOwner'),
+  }),
+  getRequestOffers: async () => [...requestOffers],
+  withdrawOffer: async (_requestId, listingId) => { requestOffers = requestOffers.filter(offer => offer.id !== listingId); },
   getDiscussions: async () => ({ posts: [], total: 0 }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
   getBadgeCount: async () => ({ messages: 0, notifications: emptyPreview ? 0 : 1, actions: 0, total: emptyPreview ? 0 : 1 }),
