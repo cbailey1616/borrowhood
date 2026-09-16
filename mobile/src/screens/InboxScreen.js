@@ -309,13 +309,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
             source={{ uri: item.otherUser?.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          {item.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>
-                {item.unreadCount > 9 ? '9+' : item.unreadCount}
-              </Text>
-            </View>
-          )}
+
         </View>
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
@@ -327,11 +321,9 @@ export default function InboxScreen({ navigation, route, onRead }) {
             </View>
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
-          <Text style={styles.listingText}>Private conversation</Text>
           {item.listing && (
             <View style={styles.listingRow}>
-              <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />
-              <Text style={styles.listingText} numberOfLines={1}>{item.listing.title}</Text>
+              <Text style={styles.conversationListing} numberOfLines={1}>{item.listing.title}</Text>
             </View>
           )}
           <Text
@@ -341,7 +333,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
             {item.lastMessage || 'No messages yet'}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+        {item.unreadCount > 0 && <View style={styles.unreadDot} accessibilityLabel="Unread conversation" />}
       </HapticPressable>
     </LayeredCard>
   );
@@ -375,6 +367,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
       }>
         <SegmentedControl
           testID="Inbox.segment"
+          variant="underline"
           segments={[
             `Activity${unreadCount > 0 ? ` (${unreadCount})` : ''}`,
             `Messages${unreadMessages > 0 ? ` (${unreadMessages})` : ''}`,
@@ -565,8 +558,8 @@ const styles = StyleSheet.create({
   avatar: {
     width: 52,
     height: 52,
-    borderRadius: 16,
-    backgroundColor: COLORS.gray[700],
+    borderRadius: 26,
+    backgroundColor: COLORS.surfaceElevated,
   },
   iconContainer: {
     width: 44,
@@ -634,9 +627,15 @@ const styles = StyleSheet.create({
   listingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
   },
+  conversationListing: { ...TYPOGRAPHY.caption1, color: COLORS.primary, flexShrink: 1 },
   listingText: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,

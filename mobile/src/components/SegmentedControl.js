@@ -15,6 +15,7 @@ export default function SegmentedControl({
   onIndexChange,
   style,
   testID,
+  variant,
 }) {
   const containerWidth = useSharedValue(0);
   const segmentCount = segments.length;
@@ -51,6 +52,20 @@ export default function SegmentedControl({
     [selectedIndex, onIndexChange]
   );
 
+  if (variant === 'underline') return (
+    <View testID={testID} style={[styles.tabs, style]}>
+      {segments.map((segment, index) => (
+        <HapticPressable key={index} onPress={() => handlePress(index)}
+          testID={testID ? `${testID}.${index}` : undefined}
+          accessibilityLabel={segment} accessibilityRole="tab"
+          accessibilityState={{ selected: selectedIndex === index }}
+          style={[styles.tab, selectedIndex === index && styles.tabSelected]}>
+          <Text style={[styles.segmentText, selectedIndex === index && styles.segmentTextActive]}>{segment}</Text>
+        </HapticPressable>
+      ))}
+    </View>
+  );
+
   return (
     <View style={[styles.container, style]} onLayout={onLayout} testID={testID}>
       <Animated.View style={[styles.indicator, indicatorStyle]} />
@@ -81,6 +96,9 @@ export default function SegmentedControl({
 }
 
 const styles = StyleSheet.create({
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: SPACING.lg },
+  tab: { minHeight: 48, justifyContent: 'center', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm, borderBottomWidth: 3, borderBottomColor: 'transparent', flexShrink: 1 },
+  tabSelected: { borderBottomColor: COLORS.primary },
   container: {
     flexDirection: 'row',
     backgroundColor: COLORS.surfaceElevated,

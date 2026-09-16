@@ -166,7 +166,7 @@ const styles = {
   profileArrow: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   arrowCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
   actionRow: { flexDirection: 'row', gap: 6 },
-  secondary: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 4, paddingVertical: 9, flexDirection: 'row', flexWrap: 'wrap', gap: 4, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  secondary: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 4, paddingVertical: 9, flexDirection: 'row', flexWrap: 'nowrap', gap: 4, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { ...TYPOGRAPHY.caption1, color: COLORS.primary, textAlign: 'center', flexShrink: 1 },
   outline: { minHeight: 48, borderWidth: 1, borderColor: COLORS.borderGreenStrong, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   approve: { minHeight: 49, padding: 12, flexDirection: 'row', gap: 8, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
