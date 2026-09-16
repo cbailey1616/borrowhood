@@ -568,7 +568,7 @@ export default function FriendsScreen({ navigation, route }) {
                   onPress={() => handleDeclineRequest(item)}
                   disabled={respondingId === item.requestId}
                 >
-                  <Ionicons name="close" size={20} color={COLORS.textMuted} />
+                  <Ionicons name="close" size={20} color="#fff" />
                 </HapticPressable>
               </View>
             </View>
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.separator,
+    backgroundColor: COLORS.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },

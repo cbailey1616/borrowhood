@@ -1,87 +1,125 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
+import useNavigationTask from '../hooks/useNavigationTask';
 import ShimmerImage from '../components/ShimmerImage';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
-import useNavigationTask from '../hooks/useNavigationTask';
-import { useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  ActivityIndicator,
-
-} from 'react-native';
-import { useAuth } from '../context/AuthContext';
-import { Ionicons } from '../components/Icon';
-import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import LayeredCard from '../components/LayeredCard';
 import HapticPressable from '../components/HapticPressable';
 import ActionButton from '../components/ActionButton';
 import ActionSheet from '../components/ActionSheet';
-
+import PopupLayer from '../components/PopupLayer';
+import VerifiedBadge from '../components/VerifiedBadge';
+import NeighborRankBadge from '../components/NeighborRankBadge';
+import RankInfoSheet from '../components/RankInfoSheet';
+import { Ionicons } from '../components/Icon';
+import { memberReputation } from '../utils/reputation';
+import { requestPresentation } from '../utils/requestPresentation';
 import { haptics } from '../utils/haptics';
-import { useFocusEffect } from '@react-navigation/native';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import api from '../services/api';
+
+const calendarDate = value => {
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric',
+    ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) });
+};
+const neededDates = (from, until) => from && until ? `${calendarDate(from)} – ${calendarDate(until)}`
+  : from ? `From ${calendarDate(from)}` : until ? `By ${calendarDate(until)}` : null;
 
 export default function RequestDetailScreen({ route, navigation }) {
-  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user } = useAuth();
+  const { showToast } = useError();
+  const insets = useSafeAreaInsets();
+  const { fontScale, width } = useWindowDimensions();
+  const startNavigationTask = useNavigationTask(navigation, `${id}:${user?.id}`);
   const [request, setRequest] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [withdrawItem, setWithdrawItem] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(null);
+  const withdrawingRef = useRef(false);
+  const deletingRef = useRef(false);
   const openingChat = useRef(false);
   const [isOpeningChat, setIsOpeningChat] = useState(false);
   const [messageError, setMessageError] = useState('');
   const [offers, setOffers] = useState([]);
   const [offerError, setOfferError] = useState(false);
+  const [offersLoading, setOffersLoading] = useState(false);
   const [discussions, setDiscussions] = useState([]);
   const [discussionCount, setDiscussionCount] = useState(0);
+  const [discussionError, setDiscussionError] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(false);
+  const [showRank, setShowRank] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchRequest();
-    }, [id])
-  );
+  useEffect(() => {
+    setRequest(null); setIsLoading(true); setLoadError(false);
+    setOffers([]); setDiscussions([]); setDiscussionCount(0);
+    setOfferError(false); setDiscussionError(false); setMessageError('');
+    setShowPhoto(false); setShowRank(false); setWithdrawItem(null); setShowDeleteSheet(false);
+  }, [id, user?.id]);
 
-  const fetchOffers = async () => {
-    try { setOffers(await api.getRequestOffers(id)); setOfferError(false); }
-    catch { setOfferError(true); }
-  };
-  const withdraw = item => Alert.alert('Withdraw this offer?', 'The requester will lose this offer’s access. An already-approved exchange remains accessible.', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Withdraw', style: 'destructive', onPress: async () => {
-      try { await api.withdrawOffer(id, item.id); await fetchOffers(); }
-      catch { Alert.alert('Could not withdraw offer', 'Please try again.'); }
-    } },
-  ]);
+  const fetchOffers = useCallback(async () => {
+    const isCurrent = startNavigationTask();
+    setOffersLoading(true);
+    try {
+      const data = await api.getRequestOffers(id);
+      if (isCurrent()) { setOffers(data || []); setOfferError(false); }
+    } catch {
+      if (isCurrent()) setOfferError(true);
+    } finally {
+      if (isCurrent()) setOffersLoading(false);
+    }
+  }, [id, startNavigationTask]);
 
-  const fetchRequest = async () => {
+  const fetchDiscussions = useCallback(async () => {
+    const isCurrent = startNavigationTask();
+    try {
+      const data = await api.getRequestDiscussions(id, { limit: 3 });
+      if (isCurrent()) {
+        setDiscussions(data.posts || []); setDiscussionCount(data.total || 0); setDiscussionError(false);
+      }
+    } catch {
+      if (isCurrent()) setDiscussionError(true);
+    }
+  }, [id, startNavigationTask]);
+
+  const fetchRequest = useCallback(async () => {
+    const isCurrent = startNavigationTask();
     try {
       const data = await api.getRequest(id);
-      setRequest(data);
+      if (!isCurrent()) return;
+      setRequest(data); setLoadError(false);
       if (!data.ownerMasked && !data.previewOnly) {
         fetchDiscussions();
-        if (data.type === 'service') setOffers([]);
+        if (data.type === 'service') { setOffers([]); setOfferError(false); }
         else fetchOffers();
-      }
-      else { setDiscussions([]); setOffers([]); }
-    } catch (error) {
-      console.error('Failed to fetch request:', error);
+      } else { setDiscussions([]); setDiscussionCount(0); setOffers([]); }
+    } catch {
+      if (isCurrent()) setLoadError(true);
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
-  };
+  }, [id, user?.id, startNavigationTask, fetchDiscussions, fetchOffers]);
+
+  useFocusEffect(useCallback(() => {
+    setIsOpeningChat(false);
+    fetchRequest();
+  }, [fetchRequest]));
 
   const openServiceChat = async () => {
     if (openingChat.current) return;
     const isCurrent = startNavigationTask();
-    openingChat.current = true;
-    setIsOpeningChat(true);
-    setMessageError('');
+    openingChat.current = true; setIsOpeningChat(true); setMessageError('');
     try {
-      // Recheck the request before exposing its private response action.
       const current = await api.getRequest(id);
+      if (!isCurrent()) return;
       setRequest(current);
       if (current.ownerMasked || current.previewOnly || current.isOwner || !current.requester?.id
           || current.type !== 'service' || current.status !== 'open' || current.isExpired) {
@@ -92,597 +130,273 @@ export default function RequestDetailScreen({ route, navigation }) {
       if (!isCurrent()) return;
       const existing = conversations.find(chat => chat.otherUser?.id === current.requester.id);
       navigation.navigate('Chat', {
-        conversationId: existing?.id,
-        recipientId: current.requester.id,
-        recipient: current.requester,
+        conversationId: existing?.id, recipientId: current.requester.id, recipient: current.requester,
         threadContext: { id: current.id, type: 'request', requestType: 'service', title: current.title },
       });
     } catch {
-      setMessageError('Couldn’t open chat. Please try again.');
+      if (isCurrent()) setMessageError('Couldn’t open chat. Please try again.');
     } finally {
       openingChat.current = false;
-      setIsOpeningChat(false);
+      if (isCurrent()) setIsOpeningChat(false);
     }
-  };
-
-  const handleDelete = () => {
-    setShowDeleteSheet(true);
   };
 
   const performDelete = async () => {
+    if (deletingRef.current) return;
     const isCurrent = startNavigationTask();
-    setIsDeleting(true);
+    deletingRef.current = true; setIsDeleting(true);
     try {
       await api.deleteRequest(id);
-      haptics.success();
-      if (isCurrent()) navigation.goBack();
-    } catch (error) {
-      haptics.error();
+      if (!isCurrent()) return;
+      haptics.success(); navigation.goBack();
+    } catch {
+      if (isCurrent()) showToast('Couldn’t close the request. Please try again.', 'error');
     } finally {
-      setIsDeleting(false);
+      deletingRef.current = false;
+      if (isCurrent()) setIsDeleting(false);
     }
   };
 
-  const fetchDiscussions = async () => {
+  const performWithdraw = async () => {
+    if (!withdrawItem || withdrawingRef.current) return;
+    const item = withdrawItem;
+    const isCurrent = startNavigationTask();
+    withdrawingRef.current = true; setWithdrawing(item.id);
     try {
-      const data = await api.getRequestDiscussions(id, { limit: 3 });
-      setDiscussions(data.posts || []);
-      setDiscussionCount(data.total || 0);
-    } catch (error) {
-      console.error('Failed to fetch discussions:', error);
+      await api.withdrawOffer(id, item.id);
+      if (!isCurrent()) return;
+      setOffers(previous => previous.filter(offer => offer.id !== item.id));
+      haptics.success();
+    } catch {
+      if (isCurrent()) showToast('Couldn’t withdraw the offer. Please try again.', 'error');
+    } finally {
+      withdrawingRef.current = false;
+      if (isCurrent()) { setWithdrawing(null); setWithdrawItem(null); }
     }
   };
 
-  const formatDateRange = (from, until) => {
-    if (!from && !until) return null;
-    const calendarDate = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString();
-    const fromDate = from ? calendarDate(from) : '';
-    const untilDate = until ? calendarDate(until) : '';
-    if (from && until) return `${fromDate} - ${untilDate}`;
-    if (from) return `From ${fromDate}`;
-    return `Until ${untilDate}`;
-  };
+  if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (!request) return <View style={styles.center}>
+    <Text style={styles.body}>Couldn’t load this request.</Text>
+    <ActionButton label="Try again" onPress={fetchRequest} />
+  </View>;
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  if (!request) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Request not found</Text>
-      </View>
-    );
-  }
-
-  const dateRange = formatDateRange(request.neededFrom, request.neededUntil);
   const acceptingOffers = request.status === 'open' && !request.isExpired;
+  const privateAccess = !request.ownerMasked && !request.previewOnly;
+  const requester = request.requester || {};
+  const reputation = memberReputation(requester);
+  const presentation = requestPresentation(request.type);
+  const dateRange = neededDates(request.neededFrom, request.neededUntil);
+  const status = request.isExpired ? 'Expired' : acceptingOffers ? 'Open' : 'Closed';
+  const postedDate = request.createdAt && new Date(request.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const showComments = privateAccess && (acceptingOffers || discussions.length > 0 || discussionCount > 0 || discussionError);
+  const showOffers = privateAccess && request.type !== 'service'
+    && (offers.length > 0 || offerError || offersLoading || (request.isOwner && acceptingOffers));
+  const openComments = autoFocus => navigation.navigate('ListingDiscussion', { requestId: id, request, ...(autoFocus ? { autoFocus: true } : {}) });
+  const ownerActions = privateAccess && request.isOwner && request.status === 'open';
+  const responderAction = privateAccess && !request.isOwner && acceptingOffers;
 
-  return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Status Badge */}
-        <View style={styles.statusRow}>
-          <View style={[
-            styles.statusBadge,
-            { backgroundColor: request.status === 'open' ? COLORS.secondary + '20' : COLORS.separator }
-          ]}>
-            <Text style={[
-              styles.statusText,
-              { color: request.status === 'open' ? COLORS.secondary : COLORS.textSecondary }
-            ]}>
-              {request.isExpired ? 'Expired' : request.status === 'open' ? 'Open' : 'Closed'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Title */}
-        <Text style={styles.title}>{request.title}</Text>
-        {!!request.photoUrl && <ShimmerImage source={{ uri: request.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: 260, borderRadius: RADIUS.md, marginVertical: SPACING.md }} />}
-        {request.isExpired && <Text style={styles.description}>This request has expired. The requester can renew it from My Posts.</Text>}
-
-        {/* Badges */}
-        <View style={styles.badges}>
-          {request.type === 'service' && (
-            <View style={[styles.badge, styles.typeBadge]}>
-              <Ionicons name="handshake-outline" size={16} color={COLORS.primary} />
-              <Text style={[styles.badgeText, { color: COLORS.primary }]}>Service</Text>
-            </View>
-          )}
-          {request.category && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{request.category}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Date Range */}
-        {dateRange && (
-          <View style={[styles.cardBox, styles.dateCard]}>
-            <View style={styles.dateCardContent}>
-              <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
-              <View style={styles.dateInfo}>
-                <Text style={styles.dateLabel}>Needed</Text>
-                <Text style={styles.dateValue}>{dateRange}</Text>
+  return <View style={styles.container}>
+    <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, SPACING.lg) }]}>
+      {loadError && <ActionButton label="Couldn’t refresh. Try again" onPress={fetchRequest} />}
+      <LayeredCard radius={RADIUS.xl}>
+        <View style={styles.requestCard}>
+          <View style={styles.summary}>
+            <View style={styles.metaRow}>
+              <View style={styles.typeLabel}>
+                <Ionicons name={presentation.icon} size={18} illustrated color={COLORS.primary} />
+                <Text style={styles.metaText}>{presentation.label}</Text>
+              </View>
+              <View style={[styles.statusBadge, acceptingOffers && styles.openBadge]}>
+                <Text style={[styles.statusText, acceptingOffers && styles.openText]}>{status}</Text>
               </View>
             </View>
+            <Text style={styles.title} accessibilityRole="header">{request.title}</Text>
+            {!acceptingOffers && <Text style={styles.metaText}>
+              {request.isExpired && request.isOwner ? 'Renew from My Posts.' : 'No longer accepting offers.'}
+            </Text>}
           </View>
-        )}
-
-        {/* Description */}
-        {request.description && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Details</Text>
-            <Text style={styles.description}>{request.description}</Text>
-          </View>
-        )}
-
-        {request.ownerMasked ? <TownIdentityPrompt onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} /> : <>
-        {/* Requester */}
-        <HapticPressable
-          style={styles.requesterCard}
-          onPress={() => navigation.navigate('UserProfile', { id: request.requester.id })}
-          haptic="light"
-        >
-          <ShimmerImage placeholderIcon="person"
-            source={{ uri: request.requester.profilePhotoUrl || null }}
-            style={styles.requesterAvatar}
-          />
-          <View style={styles.requesterInfo}>
-            <Text style={styles.requesterLabel}>Requested by</Text>
-            <Text style={styles.requesterName}>
-              {request.requester.firstName} {request.requester.lastName}
-            </Text>
-            {request.requester.totalTransactions > 0 && (
-              <Text style={styles.requesterTransactions}>
-                {request.requester.totalTransactions} transactions
-              </Text>
-            )}
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </HapticPressable>
-
-        {/* Discussions Section */}
-        <View style={styles.section}>
-          <View style={styles.discussionHeader}>
-            <Text style={styles.sectionTitle}>
-              Comments {discussionCount > 0 && `(${discussionCount})`}
-            </Text>
-            {discussionCount > 3 && (
-              <ActionButton label="See All" onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request })} />
-            )}
-          </View>
-
-          {request.status !== 'open' && (
-            <View style={styles.closedBanner}>
-              <Ionicons name="close-circle-outline" size={18} color={COLORS.textMuted} />
-              <Text style={styles.closedBannerText}>This request has been closed</Text>
+          {!!request.photoUrl && <HapticPressable style={styles.photoFrame} onPress={() => setShowPhoto(true)}
+            accessibilityRole="button" accessibilityLabel="View full request photo" testID="Request.photo">
+            <ShimmerImage source={{ uri: request.photoUrl }} contentFit="cover" contentPosition="center"
+              accessibilityLabel="Requested item photo" style={styles.photo} />
+            <View style={styles.expandPhoto}><Ionicons name="expand-outline" size={18} color={COLORS.primary} /></View>
+          </HapticPressable>}
+          {(request.description || dateRange || request.category) && <View style={styles.details}>
+            {!!request.description && <Text style={styles.body}>{request.description}</Text>}
+            {!!dateRange && <View style={styles.detailRow}>
+              <Ionicons name="calendar" size={18} illustrated color={COLORS.primary} />
+              <Text style={styles.metaText}>Needed {dateRange}</Text>
+            </View>}
+            {!!request.category && <Text style={styles.category}>{request.category}</Text>}
+          </View>}
+          {privateAccess && requester.id && <HapticPressable style={styles.requesterRow}
+            accessibilityRole="button" accessibilityLabel={`View ${requester.firstName}’s profile`}
+            onPress={() => navigation.navigate('UserProfile', { id: requester.id })}>
+            <ShimmerImage placeholderIcon="person" source={{ uri: requester.profilePhotoUrl }} style={styles.avatar} />
+            <View style={styles.personInfo}>
+              <View style={styles.personNameRow}>
+                <Text style={styles.personName}>{requester.firstName} {requester.lastName}</Text>
+                {requester.isVerified === true && <VerifiedBadge size={16} />}
+                <NeighborRankBadge rank={reputation.rank} onPress={() => setShowRank(true)} />
+              </View>
+              <Text style={styles.metaText}>{postedDate ? `Requested ${postedDate}` : 'Requested by'}</Text>
             </View>
-          )}
-
-          {discussions.length > 0 ? (
-            <View style={styles.discussionList}>
-              {discussions.map((post) => (
-                <HapticPressable
-                  key={post.id}
-                  style={styles.discussionPreview}
-                  onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request })}
-                  haptic="light"
-                >
-                  {post.user.profilePhotoUrl ? (
-                    <Image source={{ uri: post.user.profilePhotoUrl }} style={styles.discussionAvatar} />
-                  ) : (
-                    <View style={[styles.discussionAvatar, styles.avatarPlaceholder]}>
-                      <Ionicons name="person" size={16} color={COLORS.gray[400]} />
-                    </View>
-                  )}
-                  <View style={styles.discussionContent}>
-                    <Text style={styles.discussionAuthor}>
-                      {post.user.firstName} {post.user.lastName}
-                    </Text>
-                    <Text style={styles.discussionText} numberOfLines={2}>
-                      {post.content}
-                    </Text>
-                    {post.replyCount > 0 && (
-                      <Text style={styles.discussionReplyCount}>
-                        {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
-                      </Text>
-                    )}
-                  </View>
-                </HapticPressable>
-              ))}
-            </View>
-          ) : request.status === 'open' ? (
-            <Text style={styles.noDiscussions}>
-              No comments yet.
-            </Text>
-          ) : null}
-
-          {request.status === 'open' && (
-            <HapticPressable
-              style={styles.respondButton}
-              onPress={() => navigation.navigate('ListingDiscussion', { requestId: id, request, autoFocus: true })}
-              haptic="light"
-            >
-              <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.respondButtonText}>Add a comment</Text>
-            </HapticPressable>
-          )}
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </HapticPressable>}
         </View>
+      </LayeredCard>
 
-        {request.type !== 'service' && <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Private offers</Text>
-          <Text style={styles.noDiscussions}>Only you and the other person can see each offer. No other inventory is shared.</Text>
-          {offerError && <HapticPressable onPress={fetchOffers} style={styles.respondButton}><Text>Could not load offers. Tap to retry.</Text></HapticPressable>}
-          {offers.map(item => <View key={item.id}>
-            <HapticPressable style={styles.respondButton} onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
-              <Ionicons name="lock-closed" size={18} /><Text style={styles.respondButtonText}>{item.title}</Text>
+      {!privateAccess && <TownIdentityPrompt onVerify={() => navigation.navigate('IdentityVerification', { source: 'town_browse' })} />}
+
+      {showOffers && <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.typeLabel}>
+            <Ionicons name="lock-closed" size={18} illustrated color={COLORS.primary} />
+            <Text style={styles.sectionTitle} accessibilityRole="header">Private offers</Text>
+          </View>
+          {offers.length > 0 && <Text style={styles.metaText}>{offers.length}</Text>}
+        </View>
+        {offers.length > 0 && <Text style={styles.sectionHint}>Only you and the other person can see these.</Text>}
+        {offerError && <ActionButton label="Couldn’t load offers. Try again" onPress={fetchOffers} />}
+        {offersLoading && offers.length === 0 ? <ActivityIndicator color={COLORS.primary} />
+          : !offerError && offers.length === 0 && <Text style={styles.metaText}>No offers yet.</Text>}
+        {offers.map(item => <LayeredCard key={item.id}>
+          <View style={styles.offerCard}>
+            <HapticPressable style={styles.offerRow} accessibilityRole="button" accessibilityLabel={`View offered item: ${item.title}`}
+              onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
+              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon="cube" style={styles.offerPhoto} />
+              <View style={styles.offerContent}>
+                <Text style={styles.offerTitle}>{item.title}</Text>
+                <Text style={styles.metaText}>{item.isOwn ? 'Your offer' : 'View item'}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
             </HapticPressable>
-            {item.isOwn && <HapticPressable style={styles.respondButton} onPress={() => withdraw(item)}><Text style={styles.respondButtonText}>Withdraw offer</Text></HapticPressable>}
-          </View>)}
-        </View>}
+            {item.isOwn && <HapticPressable style={styles.withdrawButton} onPress={() => setWithdrawItem(item)}
+              disabled={!!withdrawing} accessibilityRole="button" accessibilityLabel={`Withdraw offer: ${item.title}`}
+              accessibilityState={{ disabled: !!withdrawing, busy: withdrawing === item.id }}>
+              {withdrawing === item.id ? <ActivityIndicator color={COLORS.danger} /> : <Text style={styles.withdrawText}>Withdraw offer</Text>}
+            </HapticPressable>}
+          </View>
+        </LayeredCard>)}
+      </View>}
 
-        {/* Posted date */}
-        <Text style={styles.postedDate}>
-          Posted {new Date(request.createdAt).toLocaleDateString()}
-        </Text>
+      {showComments && <LayeredCard><View style={styles.commentsCard}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">Comments{discussionCount > 0 ? ` (${discussionCount})` : ''}</Text>
+          {discussionCount > discussions.length && <HapticPressable style={styles.viewAll} onPress={() => openComments(false)}
+            accessibilityRole="button" accessibilityLabel="View all comments"><Text style={styles.linkText}>View all</Text></HapticPressable>}
+        </View>
+        {discussionError && <ActionButton label="Couldn’t load comments. Try again" onPress={fetchDiscussions} />}
+        {discussions.map(post => <HapticPressable key={post.id} style={styles.commentRow}
+          accessibilityRole="button" accessibilityLabel={`Comment by ${post.user?.firstName || 'a neighbor'}: ${post.content}`}
+          onPress={() => openComments(false)}>
+          <ShimmerImage placeholderIcon="person" source={{ uri: post.user?.profilePhotoUrl }} style={styles.commentAvatar} />
+          <View style={styles.offerContent}>
+            <Text style={styles.commentAuthor}>{post.user?.firstName} {post.user?.lastName}</Text>
+            <Text style={styles.metaText} numberOfLines={2}>{post.content}</Text>
+            {post.replyCount > 0 && <Text style={styles.linkText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>}
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+        </HapticPressable>)}
+        {acceptingOffers && <ActionButton label="Add a comment" onPress={() => openComments(true)} />}
+      </View></LayeredCard>}
+    </ScrollView>
+
+    {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}
+    {(responderAction || ownerActions) && <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+      <View style={[styles.footerContent, (fontScale > 1.3 || width < 360) && styles.stackedActions]}>
+        {responderAction && <HapticPressable style={styles.primaryButton} disabled={isOpeningChat}
+          accessibilityRole="button" accessibilityLabel={request.type === 'service' ? 'I can help' : 'Offer an item privately'}
+          accessibilityState={{ disabled: isOpeningChat, busy: isOpeningChat }}
+          onPress={request.type === 'service' ? openServiceChat : () => navigation.navigate('OfferItem', { request })}>
+          {isOpeningChat ? <ActivityIndicator color={COLORS.surface} /> : <>
+            <Ionicons name={request.type === 'service' ? 'chatbubble-outline' : 'add'} size={20} color={COLORS.surface} />
+            <Text style={styles.primaryText}>{request.type === 'service' ? 'I can help' : 'Offer an item'}</Text>
+          </>}
+        </HapticPressable>}
+        {ownerActions && <>
+          <HapticPressable style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit request"
+            onPress={() => navigation.navigate('EditRequest', { request })}><Text style={styles.primaryText}>Edit request</Text></HapticPressable>
+          <HapticPressable style={[styles.primaryButton, styles.closeButton]} disabled={isDeleting}
+            accessibilityRole="button" accessibilityLabel="Close request" accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
+            onPress={() => setShowDeleteSheet(true)}>
+            {isDeleting ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.primaryText}>Close request</Text>}
+          </HapticPressable>
         </>}
-      </ScrollView>
+      </View>
+    </View>}
 
-      {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}
-
-      {/* Action Buttons */}
-      {!request.ownerMasked && !request.previewOnly && !request.isOwner && acceptingOffers && (
-        <View style={styles.footer}>
-          <HapticPressable
-            style={styles.haveThisButton}
-            onPress={request.type === 'service' ? openServiceChat : () => navigation.navigate('OfferItem', { request })}
-            disabled={isOpeningChat}
-            accessibilityRole="button"
-            accessibilityLabel={request.type === 'service' ? 'I can help' : 'Offer an item privately'}
-            accessibilityState={{ disabled: isOpeningChat, busy: isOpeningChat }}
-            haptic="medium"
-          >
-            {isOpeningChat ? <ActivityIndicator color="#fff" /> : <Ionicons name={request.type === 'service' ? 'chatbubble-outline' : 'hand-right-outline'} size={20} color="#fff" />}
-            <Text style={styles.haveThisButtonText}>{request.type === 'service' ? 'I can help' : 'Offer an item privately'}</Text>
-          </HapticPressable>
-        </View>
-      )}
-
-      {request.isOwner && request.status === 'open' && (
-        <View style={styles.footer}>
-          <HapticPressable
-            style={styles.editButton}
-            onPress={() => navigation.navigate('EditRequest', { request })}
-            haptic="medium"
-          >
-            <Ionicons name="create-outline" size={20} color="#fff" />
-            <Text style={styles.editButtonText}>Edit Request</Text>
-          </HapticPressable>
-          <HapticPressable
-            style={styles.deleteButton}
-            onPress={handleDelete}
-            disabled={isDeleting}
-            haptic="medium"
-          >
-            {isDeleting ? (
-              <ActivityIndicator color={COLORS.danger} size="small" />
-            ) : (
-              <>
-                <Ionicons name="close-circle-outline" size={20} color={COLORS.danger} />
-                <Text style={styles.deleteButtonText}>Close Request</Text>
-              </>
-            )}
-          </HapticPressable>
-        </View>
-      )}
-
-      <ActionSheet
-        isVisible={showDeleteSheet}
-        onClose={() => setShowDeleteSheet(false)}
-        title="Close Request"
-        message="Are you sure you want to close this request? It will no longer be visible to others."
-        actions={[
-          {
-            label: 'Close',
-            destructive: true,
-            onPress: performDelete,
-          },
-        ]}
-      />
-    </View>
-  );
+    <ActionSheet isVisible={showDeleteSheet} onClose={() => setShowDeleteSheet(false)} variant="confirmation"
+      title="Close this request?" message="Neighbors won’t be able to send new offers."
+      actions={[{ label: 'Close request', destructive: true, onPress: performDelete }]} />
+    <ActionSheet isVisible={!!withdrawItem} onClose={() => setWithdrawItem(null)} variant="confirmation"
+      title="Withdraw this offer?" message="The requester will lose access to this offer. An approved exchange stays available."
+      actions={[{ label: 'Withdraw offer', destructive: true, onPress: performWithdraw }]} />
+    <RankInfoSheet isVisible={showRank && privateAccess} onClose={() => setShowRank(false)} currentRank={reputation.rank} isNew={reputation.isNew} />
+    <PopupLayer visible={showPhoto} onRequestClose={() => setShowPhoto(false)}>
+      <View style={[styles.photoViewer, { paddingTop: insets.top, paddingBottom: insets.bottom }]} onAccessibilityEscape={() => setShowPhoto(false)}>
+        <HapticPressable style={styles.photoClose} onPress={() => setShowPhoto(false)} accessibilityRole="button" accessibilityLabel="Close photo">
+          <Ionicons name="close" size={24} color={COLORS.surface} />
+        </HapticPressable>
+        <ShimmerImage source={{ uri: request.photoUrl }} contentFit="contain" contentPosition="center"
+          accessibilityLabel="Full request photo" style={styles.fullPhoto} />
+      </View>
+    </PopupLayer>
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  messageError: { color: COLORS.danger, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  errorText: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: COLORS.textSecondary,
-  },
-  content: {
-    padding: SPACING.xl - 4,
-  },
-  statusRow: {
-    marginBottom: SPACING.md,
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.sm,
-  },
-  statusText: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
-  },
-  title: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 24,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  badges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.xl - 4,
-  },
-  badge: {
-    backgroundColor: COLORS.separator,
-    paddingHorizontal: SPACING.md - 2,
-    paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.sm,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    backgroundColor: COLORS.primary + '15',
-  },
-  badgeText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-    color: COLORS.textSecondary,
-  },
-  dateCard: {
-    marginBottom: SPACING.xl - 4,
-  },
-  dateCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.lg,
-    gap: SPACING.md,
-  },
-  dateInfo: {
-    flex: 1,
-  },
-  dateLabel: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-  },
-  dateValue: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  section: {
-    marginBottom: SPACING.xl - 4,
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
-  description: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-  },
-  requesterCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  requesterAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: COLORS.gray[700],
-  },
-  requesterInfo: {
-    flex: 1,
-  },
-  requesterLabel: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-  },
-  requesterName: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  requesterTransactions: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  postedDate: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-  },
-  discussionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  seeAllText: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
-    color: COLORS.primary,
-  },
-  discussionList: {
-    gap: SPACING.md,
-  },
-  discussionPreview: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    gap: SPACING.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
-  discussionAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: COLORS.gray[700],
-  },
-  avatarPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discussionContent: {
-    flex: 1,
-  },
-  discussionAuthor: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  discussionText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-  },
-  discussionReplyCount: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.primary,
-    marginTop: SPACING.xs,
-  },
-  closedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.separator,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  closedBannerText: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textMuted,
-    fontWeight: '400',
-  },
-  noDiscussions: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    paddingVertical: SPACING.lg,
-  },
-  respondButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.md,
-    marginTop: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-  },
-  respondButtonText: {
-    ...TYPOGRAPHY.button,
-    color: COLORS.primary,
-  },
-  footer: {
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxl,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
-    backgroundColor: COLORS.surface,
-  },
-  haveThisButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    gap: SPACING.sm,
-  },
-  haveThisButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  editButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.danger,
-    gap: SPACING.sm,
-  },
-  deleteButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: COLORS.danger,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  center: { flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center', padding: SPACING.lg, gap: SPACING.md },
+  content: { padding: SPACING.lg, gap: SPACING.lg, width: '100%', maxWidth: 680, alignSelf: 'center' },
+  requestCard: { borderRadius: RADIUS.xl, overflow: 'hidden', backgroundColor: COLORS.surface },
+  summary: { padding: SPACING.lg, gap: SPACING.sm },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: SPACING.sm },
+  typeLabel: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: SPACING.xs },
+  statusBadge: { backgroundColor: COLORS.surfaceElevated, borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs },
+  openBadge: { backgroundColor: COLORS.primaryMuted },
+  statusText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },
+  openText: { color: COLORS.primary },
+  title: { ...TYPOGRAPHY.h2, fontSize: 25, color: COLORS.text },
+  body: { ...TYPOGRAPHY.body, color: COLORS.text },
+  metaText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
+  photoFrame: { marginHorizontal: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated },
+  photo: { width: '100%', aspectRatio: 1.6, maxHeight: 340 },
+  expandPhoto: { position: 'absolute', bottom: SPACING.sm, right: SPACING.sm, width: 32, height: 32, borderRadius: RADIUS.full, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
+  details: { padding: SPACING.lg, gap: SPACING.md },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  category: { ...TYPOGRAPHY.caption1, color: COLORS.textMuted },
+  requesterRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
+  avatar: { width: 40, height: 40, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated },
+  personInfo: { flex: 1, minWidth: 0 },
+  personNameRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
+  personName: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1 },
+  section: { gap: SPACING.sm },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.sm },
+  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, flexShrink: 1 },
+  sectionHint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginBottom: SPACING.xs },
+  offerCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
+  offerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md },
+  offerPhoto: { width: 52, height: 52, borderRadius: RADIUS.md, flexShrink: 0 },
+  offerContent: { flex: 1, minWidth: 0, gap: SPACING.xs },
+  offerTitle: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1 },
+  withdrawButton: { minHeight: 44, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, justifyContent: 'center', alignItems: 'flex-end' },
+  withdrawText: { ...TYPOGRAPHY.footnote, color: COLORS.danger },
+  commentsCard: { padding: SPACING.lg, gap: SPACING.md, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
+  commentAvatar: { width: 32, height: 32, borderRadius: RADIUS.full },
+  commentAuthor: { ...TYPOGRAPHY.footnote, color: COLORS.text },
+  linkText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  viewAll: { minHeight: 44, justifyContent: 'center', paddingHorizontal: SPACING.sm },
+  footer: { padding: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, backgroundColor: COLORS.surface },
+  footerContent: { flexDirection: 'row', gap: SPACING.sm, width: '100%', maxWidth: 648, alignSelf: 'center' },
+  stackedActions: { flexDirection: 'column' },
+  primaryButton: { flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.md, paddingVertical: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.primary },
+  primaryText: { ...TYPOGRAPHY.subheadline, color: COLORS.surface, flexShrink: 1, textAlign: 'center' },
+  closeButton: { backgroundColor: COLORS.danger },
+  messageError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, padding: SPACING.md },
+  photoViewer: { flex: 1, backgroundColor: COLORS.primaryDark },
+  photoClose: { minHeight: 48, width: 48, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center', margin: SPACING.sm },
+  fullPhoto: { flex: 1, width: '100%' },
 });
-import { ThemedAlert as Alert } from "../components/ThemedAlert";

@@ -14,6 +14,8 @@ import MainNavigator from './src/navigation/MainNavigator';
 import ChatScreen from './src/screens/ChatScreen';
 import ConversationsScreen from './src/screens/ConversationsScreen';
 import ListingDetailScreen from './src/screens/ListingDetailScreen';
+import RequestDetailScreen from './src/screens/RequestDetailScreen';
+import { renderBackHeader } from './src/components/BackHeader';
 import UserBadges, { getTier, RankEmblem } from './src/components/UserBadges';
 import Icon from './src/components/Icon';
 import WoodlandIllustration from './src/components/WoodlandIllustration';
@@ -23,7 +25,7 @@ import { COLORS, TYPOGRAPHY } from './src/utils/config';
 
 const Stack = createNativeStackNavigator();
 const query = new URLSearchParams(window.location.search);
-const choices = [['Main', 'App screens'], ['Chat', 'Chat'], ['Ranks', 'Woodland ranks'], ['Artwork', 'Woodland artwork'], ['Icons', 'All icons']];
+const choices = [['Main', 'App screens'], ['RequestDetail', 'Request details'], ['Chat', 'Chat'], ['Ranks', 'Woodland ranks'], ['Artwork', 'Woodland artwork'], ['Icons', 'All icons']];
 
 function Artwork() {
   return <ScrollView style={{ backgroundColor: COLORS.background }} contentContainerStyle={{ padding: 24, gap: 24 }}>
@@ -69,6 +71,7 @@ function PreviewApp() {
           <Stack.Screen name="Chat" component={ChatScreen} initialParams={{ conversationId: 'preview-chat' }} options={{ title: 'Chat' }} />
           <Stack.Screen name="Conversations" component={ConversationsScreen} options={{ title: 'Messages' }} />
           <Stack.Screen name="ListingDetail" component={ListingDetailScreen} options={{ title: 'Item details' }} />
+          <Stack.Screen name="RequestDetail" component={RequestDetailScreen} initialParams={{ id: 'preview-request' }} options={{ title: 'Request details', header: renderBackHeader }} />
           <Stack.Screen name="Ranks" component={Ranks} options={{ title: 'Borrowhood ranks' }} />
           <Stack.Screen name="Artwork" component={Artwork} options={{ title: 'Woodland artwork' }} />
           <Stack.Screen name="Icons" component={Icons} options={{ title: 'Borrowhood icons' }} />

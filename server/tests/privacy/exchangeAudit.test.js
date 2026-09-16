@@ -21,7 +21,8 @@ const rows = async (sql, params) => (await state.db.query(sql, params)).rows;
 const send = (user = borrower, dates = {}) => request(app).post('/transactions').set('x-user', user).send({ listingId: listing, startDate: '2026-10-01', endDate: '2026-10-03', ...dates });
 beforeAll(async () => {
   state.db = new PGlite();
-  await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, stripe_connect_account_id TEXT, city TEXT);
+  await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, stripe_connect_account_id TEXT, city TEXT,
+      first_name TEXT DEFAULT 'Neighbor', last_name TEXT, display_name TEXT, profile_photo_url TEXT, is_verified BOOLEAN DEFAULT true);
     CREATE TABLE listings(id UUID PRIMARY KEY, owner_id UUID, title TEXT, is_free BOOLEAN DEFAULT true, price_per_day NUMERIC DEFAULT 0,
       deposit_amount NUMERIC DEFAULT 0, listing_type TEXT DEFAULT 'lend', direct_fee JSONB, is_available BOOLEAN DEFAULT true,
       status TEXT DEFAULT 'active', min_duration INT DEFAULT 1, max_duration INT DEFAULT 14);
@@ -30,17 +31,32 @@ beforeAll(async () => {
       requested_start_date DATE, requested_end_date DATE, scheduled_pickup_date DATE, scheduled_return_date DATE, rental_days INT,
       daily_rate NUMERIC, rental_fee NUMERIC, deposit_amount NUMERIC, platform_fee NUMERIC, lender_payout NUMERIC, borrower_message TEXT,
       lender_response TEXT, status TEXT DEFAULT 'pending', payment_status TEXT DEFAULT 'none', stripe_payment_intent_id TEXT,
-      accepted_at TIMESTAMPTZ, endorsement_started_at TIMESTAMPTZ);
+      accepted_at TIMESTAMPTZ, endorsement_started_at TIMESTAMPTZ, actual_pickup_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE listing_photos(listing_id UUID, url TEXT, sort_order INT);
+    CREATE TABLE disputes(id UUID DEFAULT gen_random_uuid(), transaction_id UUID, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE exchange_endorsements(transaction_id UUID, rater_id UUID, ratee_id UUID, positive BOOLEAN,
       UNIQUE(transaction_id,rater_id));`);
   app = express(); app.use(express.json()); app.use('/transactions', transactions); app.use('/listings', availability);
 }, 20000);
 beforeEach(async () => {
-  await state.db.exec('TRUNCATE listings, users, borrow_transactions, listing_availability, exchange_endorsements');
+  await state.db.exec('TRUNCATE listings, users, borrow_transactions, listing_availability, exchange_endorsements, disputes, listing_photos');
   await state.db.query('INSERT INTO users(id) VALUES($1),($2),($3)', [owner, borrower, other]);
   await state.db.query("INSERT INTO listings(id,owner_id,title) VALUES($1,$2,'Ladder')", [listing, owner]);
 });
 afterAll(async () => state.db.close());
+
+it('provides the real return and dispute state for Home and Inbox only to participants', async () => {
+  const created = await send();
+  await state.db.exec("UPDATE borrow_transactions SET status='returned',payment_status='authorized',actual_pickup_at='2026-09-15T12:00:00Z'");
+  const first = await request(app).get('/transactions').set('x-user',owner).expect(200);
+  expect(first.body[0]).toMatchObject({ id:created.body.id, status:'returned', paymentStatus:'authorized', isBorrower:false,
+    actualPickupAt:'2026-09-15T12:00:00.000Z', hasDispute:false, disputeId:null });
+  const [issue] = await rows('INSERT INTO disputes(transaction_id) VALUES($1) RETURNING id',[created.body.id]);
+  const borrowerView = await request(app).get('/transactions').set('x-user',borrower).expect(200);
+  expect(borrowerView.body[0]).toMatchObject({ isBorrower:true, hasDispute:true, disputeId:issue.id });
+  const unrelated = await request(app).get('/transactions').set('x-user',other).expect(200);
+  expect(unrelated.body).toEqual([]);
+});
 
 it('queues different neighbors but never creates two active requests for the same person', async () => {
   const result = await Promise.all([send(), send(), send(other)]);

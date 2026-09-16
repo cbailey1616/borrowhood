@@ -179,7 +179,7 @@ describe('GET /api/notifications/badge-count', () => {
     expect(typeof res.body.actions).toBe('number');
     expect(typeof res.body.total).toBe('number');
     expect(res.body.notifications).toBeGreaterThanOrEqual(2);
-    expect(res.body.total).toBe(res.body.messages + res.body.notifications + res.body.actions);
+    expect(res.body.total).toBe(res.body.messages + res.body.notifications);
   });
 });
 

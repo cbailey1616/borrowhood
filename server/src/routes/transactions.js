@@ -317,7 +317,8 @@ router.get('/', authenticate, async (req, res) => {
               b.profile_photo_url as borrower_photo, b.is_verified AS borrower_verified,
               COALESCE(lnd.display_name, lnd.first_name) as lender_first_name,
               CASE WHEN lnd.display_name IS NOT NULL THEN '' ELSE lnd.last_name END as lender_last_name,
-              lnd.profile_photo_url as lender_photo, lnd.is_verified AS lender_verified
+              lnd.profile_photo_url as lender_photo, lnd.is_verified AS lender_verified,
+              (SELECT id FROM disputes WHERE transaction_id = t.id ORDER BY created_at DESC LIMIT 1) AS dispute_id
        FROM borrow_transactions t
        JOIN listings l ON t.listing_id = l.id
        JOIN users b ON t.borrower_id = b.id
@@ -353,6 +354,10 @@ router.get('/', authenticate, async (req, res) => {
       },
       startDate: t.requested_start_date,
       endDate: t.requested_end_date,
+      actualPickupAt: t.actual_pickup_at,
+      paymentStatus: t.payment_status || null,
+      hasDispute: !!t.dispute_id,
+      disputeId: t.dispute_id || null,
       rentalDays: t.rental_days,
       rentalFee: parseFloat(t.rental_fee),
       depositAmount: parseFloat(t.deposit_amount),

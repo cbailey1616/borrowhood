@@ -9,7 +9,6 @@ import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import { isTransferListing } from '../utils/directFee';
 import { randomUUID } from 'expo-crypto';
 import {
   View,
@@ -30,7 +29,7 @@ import VerifiedBadge from '../components/VerifiedBadge';
 import NeighborRankBadge from '../components/NeighborRankBadge';
 import RankInfoSheet from '../components/RankInfoSheet';
 import { memberReputation } from '../utils/reputation';
-import { groupPendingExchanges } from '../utils/requestActivity';
+import { nextHomeAction } from '../utils/homeAction';
 import useSavedListings from '../hooks/useSavedListings';
 import { useError } from '../context/ErrorContext';
 import HeroIcon from '../components/HeroIcon';
@@ -101,11 +100,8 @@ export default function FeedScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [showActionSheet, setShowActionSheet] = useState(false);
-  const [hasNeighborhood, setHasNeighborhood] = useState(true); // assume yes until checked
   const [activeDisputes, setActiveDisputes] = useState([]);
   const [activeExchanges, setActiveExchanges] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [dismissedBanners, setDismissedBanners] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -209,7 +205,6 @@ export default function FeedScreen({ navigation }) {
       }
     };
     loadCategories();
-    checkNeighborhood();
     fetchActiveDisputes();
     fetchBannerData();
   }, []);
@@ -240,32 +235,12 @@ export default function FeedScreen({ navigation }) {
     }
   }, []);
 
-  const checkNeighborhood = useCallback(async () => {
-    try {
-      const communities = await api.getCommunities({ member: 'true' });
-      const list = communities?.communities || communities || [];
-      setHasNeighborhood(Array.isArray(list) && list.length > 0);
-    } catch (e) {
-      // Keep current state on error
-    }
-  }, []);
-
   const fetchBannerData = useCallback(async () => {
     try {
-      const [txData, notifData] = await Promise.all([
-        api.getTransactions({ status: 'all', limit: 50 }).catch(() => null),
-        api.getNotifications({ limit: 1 }).catch(() => null),
-      ]);
-
-      if (txData !== null) {
-        const txList = txData?.transactions || txData || [];
-        setActiveExchanges(txList.filter(t => ['pending', 'approved', 'paid', 'picked_up', 'return_pending'].includes(t.status)));
-      }
-
-      // Unread notification count
-      if (notifData !== null) setUnreadCount(notifData?.unreadCount || 0);
-    } catch (e) {
-      // Keep current state
+      const data = await api.getTransactions();
+      setActiveExchanges(data?.transactions || data || []);
+    } catch (_) {
+      // Retain the last confirmed action while offline.
     }
   }, [user?.id]);
 
@@ -277,17 +252,17 @@ export default function FeedScreen({ navigation }) {
       // scroll position. Only the independent account/exchange notices refresh.
       pending?.cancel?.();
       pending = InteractionManager.runAfterInteractions(() => {
-        checkNeighborhood();
         fetchActiveDisputes();
         fetchBannerData();
       });
     });
     return () => { unsubscribe(); pending?.cancel?.(); };
-  }, [navigation, isInitialLoad, checkNeighborhood, fetchActiveDisputes, fetchBannerData]);
+  }, [navigation, isInitialLoad, fetchActiveDisputes, fetchBannerData]);
 
   useEffect(() => {
     const refreshVisibleStatus = () => {
       if (!navigation.isFocused?.()) return;
+      fetchActiveDisputes();
       fetchBannerData();
     };
     // The Home dot announces new posts; they enter this feed on manual refresh.
@@ -298,78 +273,25 @@ export default function FeedScreen({ navigation }) {
       previousState = nextState;
     });
     return () => { received.remove(); resumed.remove(); };
-  }, [navigation, fetchBannerData]);
+  }, [navigation, fetchBannerData, fetchActiveDisputes]);
 
   useEffect(() => navigation.addListener('tabPress', () => {
     if (!navigation.isFocused?.()) return;
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    fetchActiveDisputes();
     fetchBannerData();
-  }), [navigation, fetchBannerData]);
+  }), [navigation, fetchBannerData, fetchActiveDisputes]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
     saved.refresh();
     fetchFeed(1, false);
     refreshUser(); // Refresh user data on manual pull-to-refresh
-    checkNeighborhood();
     fetchActiveDisputes();
     fetchBannerData();
   };
 
-  const dismissBanner = (key) => {
-    setDismissedBanners(prev => ({ ...prev, [key]: true }));
-    haptics.medium();
-  };
-
-  const exchangeGroups = groupPendingExchanges(activeExchanges, user?.id);
-  const reviewCount = activeExchanges.filter(t => t.status === 'pending' && (t.isBorrower === false || t.lender?.id === user?.id)).length;
-  const pickupCount = activeExchanges.filter(t => ['approved', 'paid'].includes(t.status)).length;
-  const dueCount = activeExchanges.filter(t => t.status === 'picked_up' && !isTransferListing(t)
-    && (t.isBorrower === true || t.borrower?.id === user?.id)
-    && t.endDate && new Date(t.endDate).getTime() <= Date.now() + 2 * 24 * 60 * 60 * 1000).length;
-  const returnCount = activeExchanges.filter(t => t.status === 'return_pending' && (t.isBorrower === false || t.lender?.id === user?.id)).length;
-  const exchangeSummary = [
-    dueCount > 0 && `${dueCount} due back`,
-    returnCount > 0 && `${returnCount} return${returnCount === 1 ? '' : 's'} to confirm`,
-    reviewCount > 0 && `${reviewCount} to review`,
-    pickupCount > 0 && `${pickupCount} ready for pickup`,
-  ].filter(Boolean).join(' · ') || `${exchangeGroups.length} in progress`;
-  const banners = [
-    activeDisputes.length > 0 && !dismissedBanners.disputes && {
-      key: 'disputes',
-      icon: 'alert-circle',
-      color: COLORS.danger,
-      title: `${activeDisputes.length} active dispute${activeDisputes.length !== 1 ? 's' : ''}`,
-      subtitle: 'Tap to review and respond',
-      onPress: () => activeDisputes.length === 1
-        ? navigation.navigate('DisputeDetail', { id: activeDisputes[0].id })
-        : navigation.navigate('Disputes'),
-    },
-    unreadCount > 0 && !dismissedBanners.unread && {
-      key: 'unread',
-      icon: 'notifications',
-      color: COLORS.primary,
-      title: `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`,
-      subtitle: 'Tap to catch up',
-      onPress: () => navigation.navigate('Activity', { tab: 'activity' }),
-    },
-    !user?.city && !dismissedBanners.location && {
-      key: 'location',
-      icon: 'navigate',
-      color: COLORS.warning,
-      title: 'Add your location to see items near you',
-      subtitle: 'Go to Settings to set your city',
-      onPress: () => navigation.navigate('EditProfile'),
-    },
-    !hasNeighborhood && feed.length > 0 && !dismissedBanners.join && {
-      key: 'join',
-      icon: 'location',
-      color: COLORS.primary,
-      title: 'Join a nearby neighborhood',
-      subtitle: 'See items and requests from your neighbors',
-      onPress: () => navigation.navigate('JoinCommunity'),
-    },
-  ].filter(Boolean);
+  const homeAction = nextHomeAction(activeExchanges, activeDisputes, user?.id);
 
   const onEndReached = () => {
     if (!feedInFlight.current && !feedError && hasMore) {
@@ -495,23 +417,25 @@ export default function FeedScreen({ navigation }) {
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
           <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID="FeedCard">
-            <View style={styles.tileThumb}>
-              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
-              {!item.ownerMasked && (
-                <HapticPressable
-                  testID={`Feed.save.${item.id}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
-                  accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
-                  disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
-                  onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
-                  style={styles.tileSaveButton}
-                >
-                  {saved.status === 'loading' || saved.pendingIds.has(item.id)
-                    ? <ActivityIndicator size="small" color={COLORS.primary} />
-                    : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
-                </HapticPressable>
-              )}
+            <View style={styles.tilePhotoFrame}>
+              <View style={styles.tileThumb}>
+                <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+                {!item.ownerMasked && (
+                  <HapticPressable
+                    testID={`Feed.save.${item.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
+                    accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
+                    disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
+                    onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
+                    style={styles.tileSaveButton}
+                  >
+                    {saved.status === 'loading' || saved.pendingIds.has(item.id)
+                      ? <ActivityIndicator size="small" color={COLORS.primary} />
+                      : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
+                  </HapticPressable>
+                )}
+              </View>
             </View>
             <View style={styles.tileContent}>
               <ListingOffer listing={item} />
@@ -572,62 +496,28 @@ export default function FeedScreen({ navigation }) {
     </LayeredCard>
   );
 
-  const renderBanners = () => {
-    return (
-      <View>
-        {exchangeGroups.length > 0 && <LayeredCard style={{ marginBottom: SPACING.md }}>
-          <HapticPressable
-            testID="Feed.exchanges"
-            accessibilityRole="button"
-            accessibilityLabel={`In progress, ${exchangeSummary}`}
-            onPress={() => navigation.navigate('Activity', { tab: 'activity' })}
-            style={styles.exchangeCard}
-            haptic="light"
-          >
-            <Ionicons name="basket" size={30} illustrated color={COLORS.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>In progress</Text>
-              <Text style={styles.bannerSubtitle}>{exchangeSummary}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-          </HapticPressable>
-        </LayeredCard>}
-        {banners.map(banner => <View key={banner.key} style={[styles.bannerCard, { borderColor: banner.color }]}>
-        <HapticPressable
-          style={styles.bannerCardInner}
-          onPress={banner.onPress}
-          haptic="light"
-          scaleDown={0.98}
-        >
-          <View style={[styles.bannerIcon, { backgroundColor: banner.color + '15' }]}>
-            <Ionicons name={banner.icon} size={20} color={banner.color} />
-          </View>
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>{banner.title}</Text>
-            <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
-          </View>
-        </HapticPressable>
-        <HapticPressable
-          style={styles.bannerDismissBtn}
-          accessibilityRole="button"
-          accessibilityLabel={`Dismiss ${banner.title}`}
-          onPress={() => dismissBanner(banner.key)}
-          haptic="light"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="close" size={16} color={COLORS.textMuted} />
-        </HapticPressable>
-      </View>)}
-      </View>
-    );
-  };
+  const renderBanners = () => homeAction ? (
+    <LayeredCard style={{ marginBottom: SPACING.md }}>
+      <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
+        accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
+        onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
+        style={styles.exchangeCard}>
+        <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
+        <View style={styles.exchangeContent}>
+          <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
+          <Text style={styles.exchangeActionText}>{homeAction.label}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+      </HapticPressable>
+    </LayeredCard>
+  ) : null;
 
   const carouselRequests = !search.trim() && activeFilters.length === 0
     ? [...requestCards, ...feed.filter(item => item.type === 'request')].filter((item,index,all) => all.findIndex(other => other.id === item.id) === index) : [];
   const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
   const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
-    ...((banners.length || exchangeGroups.length) && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
+    ...(homeAction && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
@@ -1087,56 +977,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    padding: SPACING.md,
-    minHeight: 72,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    minHeight: 60,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.primaryMuted,
   },
-  bannerCard: {
-    marginBottom: SPACING.lg,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    minHeight: 60,
-  },
-  bannerCardInner: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    paddingRight: 36,
-    gap: SPACING.md,
-  },
-  bannerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bannerContent: {
-    flex: 1,
-  },
-  bannerTitle: {
+  exchangeContent: { flex: 1, minWidth: 0, gap: SPACING.xs },
+  exchangeSummary: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
-    color: COLORS.text,
+    color: COLORS.primaryDark,
+    fontWeight: '500',
   },
-  bannerSubtitle: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    marginTop: 1,
-  },
-  bannerDismissBtn: {
-    position: 'absolute',
-    top: SPACING.sm,
-    right: SPACING.sm,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+  exchangeActionText: {
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.primary,
   },
   listContent: {
     paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.md, width: '100%', maxWidth: 660, alignSelf: 'center',
@@ -1173,8 +1028,11 @@ const styles = StyleSheet.create({
   tileRow: {
     flexDirection: 'column',
   },
+  tilePhotoFrame: {
+    paddingHorizontal: SPACING.sm, paddingTop: SPACING.sm,
+  },
   tileThumb: {
-    alignSelf: 'stretch', margin: SPACING.sm, marginBottom: 0, aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
+    width: '100%', aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
   },
   tileThumbImage: {
     ...StyleSheet.absoluteFillObject,

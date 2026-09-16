@@ -2,6 +2,7 @@ import TextInput from '../components/AppTextInput';
 import RequestQueueScreen from '../screens/RequestQueueScreen';
 import { detailRouteIds } from './routeIdentity';
 import { requestQueueHeaderOptions } from '../components/RequestQueueHeader';
+import { itemDetailsHeaderOptions } from '../components/ItemDetailsHeader';
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import SafetyReportsScreen from '../screens/SafetyReportsScreen';
@@ -11,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, Modal, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import HapticPressable from '../components/HapticPressable';
 import { ModalHeader } from '../components/ModalControls';
+import { renderBackHeader } from '../components/BackHeader';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
@@ -62,9 +64,10 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
-// Shared screen options for native iOS feel
+// Shared custom header keeps back controls outside the native iOS toolbar.
 const sharedScreenOptions = {
   headerShown: true,
+  header: renderBackHeader,
   headerStyle: {
     backgroundColor: COLORS.background,
   },
@@ -143,7 +146,7 @@ export default function RootNavigator() {
             name="ListingDetail"
             getId={detailRouteIds.ListingDetail}
             component={ListingDetailScreen}
-            options={{ ...sharedScreenOptions, title: 'Item Details' }}
+            options={{ ...sharedScreenOptions, ...itemDetailsHeaderOptions }}
           />
           <Stack.Screen name="RequestQueue" getId={detailRouteIds.RequestQueue} component={RequestQueueScreen} options={{ ...sharedScreenOptions, ...requestQueueHeaderOptions }} />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />

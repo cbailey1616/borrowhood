@@ -118,5 +118,5 @@ export const validPreferenceKeys = new Set([...Object.keys(DEFAULT_NOTIFICATION_
   ...CORE_NOTIFICATION_KEYS.flatMap(core => SOURCE_PREFERENCES.map(source => coreSourceKey(core, source))),
   'email', 'push', 'borrow_request', 'request_response', 'pickup_return', 'new_request', 'payment_updates']);
 // Messages already have their own unread count and conversation list. Keep the
-// historical rows, but remove duplicate alerts and retired promotion/dispute UI.
-export const ACTIVITY_SQL = "type NOT IN ('item_match', 'new_message', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring') AND type NOT LIKE 'dispute%'";
+// historical rows, but remove duplicate alerts and retired promotions.
+export const ACTIVITY_SQL = "type NOT IN ('item_match', 'new_message', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring')";

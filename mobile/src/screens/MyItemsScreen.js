@@ -152,7 +152,7 @@ export default function MyItemsScreen({ navigation }) {
         <LayeredCard style={styles.cardDepth}>
           <HapticPressable
             style={styles.card}
-            onPress={() => item.pendingRequests > 0 ? navigation.navigate('RequestQueue', { listingId: item.id }) : navigation.navigate('ListingDetail', { id: item.id })}
+            onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
             haptic="light"
           >
             {item.photoUrl ? (
@@ -178,14 +178,6 @@ export default function MyItemsScreen({ navigation }) {
               )}
 
               <View style={styles.cardFooter}>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
-                  {item.sharingReviewRequired ? 'Private · review sharing' :
-                    (item.visibility || 'private').includes('town') ? 'Shared with town' :
-                    (item.visibility || 'private').includes('neighborhood') ? 'Shared with neighborhood' :
-                    (item.visibility || 'private').includes('circle') ? 'Sharing needs review' :
-                    (item.visibility || 'private').includes('close_friends') ? 'Shared with friends' : 'Private'}
-                  {item.activeOffers > 0 ? ` · ${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''}
-                </Text>
                 <View style={[
                   styles.statusBadge,
                   { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
@@ -198,14 +190,29 @@ export default function MyItemsScreen({ navigation }) {
                     {listingAvailability(item).label}
                   </Text>
                 </View>
-                {item.pendingRequests > 0 && (
-                  <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingText}>{item.pendingRequests} waiting · View queue</Text>
-                  </View>
-                )}
+                <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
+                  {item.sharingReviewRequired ? 'Private · review sharing' :
+                    (item.visibility || 'private').includes('town') ? 'Town' :
+                    (item.visibility || 'private').includes('neighborhood') ? 'Neighborhood' :
+                    (item.visibility || 'private').includes('circle') ? 'Sharing needs review' :
+                    (item.visibility || 'private').includes('close_friends') ? 'Friends' : 'Private'}
+                  {item.activeOffers > 0 ? ` · ${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''}
+                </Text>
+
+
               </View>
             </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} style={{ alignSelf: 'center', marginRight: 12 }} />
           </HapticPressable>
+          {item.pendingRequests > 0 && (
+            <HapticPressable accessibilityRole="button"
+              accessibilityLabel={`Review ${item.pendingRequests} ${item.pendingRequests === 1 ? 'request' : 'requests'} for ${item.title}`}
+              onPress={() => navigation.navigate('RequestQueue', { listingId: item.id })} style={styles.requestReview}>
+              <Ionicons name="people-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.requestReviewText}>Review {item.pendingRequests === 1 ? 'request' : 'requests'} · {item.pendingRequests}</Text>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+            </HapticPressable>
+          )}
         </LayeredCard>
       </Swipeable>
     </View>
@@ -394,9 +401,16 @@ export default function MyItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="My Posts">
+      <NativeHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={
+        <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post a request'}
+          onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
+          <Ionicons name="add" size={20} color={COLORS.surface} />
+          <Text style={styles.headerButtonText}>Add</Text>
+        </HapticPressable>
+      }>
         <SegmentedControl
           testID="MyItems.segment"
+          variant="underline"
           segments={['Items', 'Requests']}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
@@ -442,20 +456,7 @@ export default function MyItemsScreen({ navigation }) {
             </View>
           )
         }
-        ListHeaderComponent={
-          data.length > 0 && (
-            <HapticPressable
-              style={styles.headerButton}
-              onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
-              haptic="light"
-            >
-              <Ionicons name="add-circle" size={24} color={COLORS.background} />
-              <Text style={styles.headerButtonText}>
-                {activeTab === 0 ? 'Add an item' : 'Post a request'}
-              </Text>
-            </HapticPressable>
-          )
-        }
+
       />
       <ActionSheet
         isVisible={!!pendingDelete}
@@ -488,6 +489,9 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     paddingBottom: 100,
   },
+  compactAdd: { minHeight: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
+  requestReview: { marginHorizontal: SPACING.sm, marginBottom: SPACING.sm, padding: SPACING.md, minHeight: 48, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryMuted, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  requestReviewText: { ...TYPOGRAPHY.subheadline, flex: 1, color: COLORS.primary },
   headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -528,8 +532,8 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     padding: SPACING.md,
-    justifyContent: 'space-between',
-    gap: SPACING.xs,
+    justifyContent: 'center',
+    gap: SPACING.sm,
   },
   cardTitle: {
     ...TYPOGRAPHY.headline,
@@ -549,9 +553,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   cardFooter: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: SPACING.sm,
   },
   statusBadge: {

@@ -203,10 +203,13 @@ describe('device ownership and durable delivery', () => {
     await processPushDeliveries(); expect(fetch).not.toHaveBeenCalled();
     expect(await count('notifications')).toBe(1);
   });
-  it('uses badge zero for hidden dispute alerts instead of inventing an unread item', async () => {
+  it('makes dispute updates reachable from Inbox and counts them in the badge', async () => {
     await registerPushDevice(A,'ExponentPushToken[phone]',phone,secret);
     await sendNotification(A,'dispute_opened',{}); await processPushDeliveries();
-    expect(JSON.parse(fetch.mock.calls[0][1].body).badge).toBe(0);
+    expect(JSON.parse(fetch.mock.calls[0][1].body).badge).toBe(1);
+    const inbox = await request(app).get('/notifications').set('x-user',A).expect(200);
+    expect(inbox.body.unreadCount).toBe(1);
+    expect(inbox.body.notifications[0].type).toBe('dispute_opened');
   });
   it('caps concurrent claims and recovers abandoned leases', async () => {
     await registerPushDevice(A,'ExponentPushToken[phone]',phone,secret);
@@ -230,6 +233,57 @@ describe('device ownership and durable delivery', () => {
     await state.db.exec(`CREATE OR REPLACE FUNCTION fail_notice() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'injected'; END; $$ LANGUAGE plpgsql;
       CREATE TRIGGER fail_notice BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION fail_notice()`);
     expect(await sendBulkNotification([A,A],'friend_request',{})).toEqual([{userId:A,success:false,notificationId:null}]);
+  });
+});
+
+describe('grouped exchange activity', () => {
+  it('groups before pagination and acknowledges only the viewed snapshot for this account', async () => {
+    await state.db.query("INSERT INTO borrow_transactions(id,listing_id,borrower_id,lender_id,status) VALUES($1,$2,$3,$4,'picked_up')", [root,item,A,B]);
+    await state.db.query(`INSERT INTO notifications(id,user_id,type,title,transaction_id,created_at,is_read) VALUES
+      ($1,$2,'request_approved','Approved',$3,'2026-09-14',false),
+      ($4,$2,'pickup_confirmed','Picked up',$3,'2026-09-15',true),
+      ($5,$2,'friend_accepted','Friend joined',NULL,'2026-09-13',false)`, [phone,A,root,tablet,reply]);
+    const inbox = await request(app).get('/notifications?limit=1').set('x-user',A).expect(200);
+    const group = inbox.body.notifications[0];
+    expect(group).toMatchObject({ id: tablet, transactionId: root, isRead: false });
+    expect(group.notificationIds.sort()).toEqual([phone,tablet].sort());
+    expect(inbox.body.unreadCount).toBe(2);
+    const second = await request(app).get('/notifications?limit=1&page=2').set('x-user',A).expect(200);
+    expect(second.body.notifications[0].id).toBe(reply);
+    const unread = await request(app).get('/notifications?unreadOnly=true').set('x-user',A).expect(200);
+    expect(unread.body.notifications.map(n=>n.id)).toContain(tablet);
+
+    const [newer] = await rows("INSERT INTO notifications(user_id,type,title,transaction_id) VALUES($1,'return_reminder','Return tomorrow',$2) RETURNING id", [A,root]);
+    const [otherAccount] = await rows("INSERT INTO notifications(user_id,type,title,transaction_id) VALUES($1,'pickup_confirmed','Picked up',$2) RETURNING id", [B,root]);
+    await request(app).post(`/notifications/${group.id}/read`).set('x-user',A)
+      .send({ notificationIds: [...group.notificationIds,otherAccount.id] }).expect(200);
+    expect((await rows('SELECT is_read FROM notifications WHERE id=$1',[otherAccount.id]))[0].is_read).toBe(false);
+    expect((await rows('SELECT is_read FROM notifications WHERE id=$1',[newer.id]))[0].is_read).toBe(false);
+    const refreshed = await request(app).get('/notifications').set('x-user',A).expect(200);
+    expect(refreshed.body.notifications.filter(n=>n.transactionId===root)).toHaveLength(1);
+    expect(refreshed.body.unreadCount).toBe(2);
+  });
+
+  it('counts one unread exchange and one unread conversation consistently in app and push badges', async () => {
+    await state.db.query("INSERT INTO borrow_transactions(id,listing_id,borrower_id,lender_id,status) VALUES($1,$2,$3,$4,'approved')", [root,item,A,B]);
+    await state.db.query('INSERT INTO conversations(id,user1_id,user2_id) VALUES($1,$2,$3)',[reply,A,B]);
+    await state.db.query("INSERT INTO messages(conversation_id,sender_id,content) VALUES($1,$2,'Hello'),($1,$2,'Noon works')",[reply,B]);
+    await state.db.query("INSERT INTO notifications(user_id,type,title,transaction_id) VALUES($1,'request_approved','Approved',$2),($1,'pickup_confirmed','Pickup confirmed',$2)",[A,root]);
+    const badge = await request(app).get('/notifications/badge-count').set('x-user',A).expect(200);
+    expect(badge.body).toEqual({ messages: 1, notifications: 1, actions: 1, total: 2 });
+    await registerPushDevice(A,'ExponentPushToken[phone]',phone,secret);
+    await sendNotification(A,'return_reminder',{ transactionId:root, itemTitle:'Ladder' });
+    await processPushDeliveries();
+    expect(JSON.parse(fetch.mock.calls[0][1].body).badge).toBe(2);
+  });
+
+  it('keeps a public reply separate from an exchange update and preserves its destination', async () => {
+    await state.db.query(`INSERT INTO notifications(user_id,type,title,transaction_id,discussion_id,thread_id) VALUES
+      ($1,'pickup_confirmed','Pickup confirmed',$2,NULL,NULL),($1,'discussion_reply','New reply',$2,$3,$4)`,[A,root,phone,reply]);
+    const inbox = await request(app).get('/notifications').set('x-user',A).expect(200);
+    expect(inbox.body.unreadCount).toBe(2);
+    expect(inbox.body.notifications).toHaveLength(2);
+    expect(inbox.body.notifications.find(n=>n.type==='discussion_reply')).toMatchObject({ discussionId:phone, threadId:reply });
   });
 });
 

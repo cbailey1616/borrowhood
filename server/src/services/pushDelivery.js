@@ -93,7 +93,7 @@ async function processJob(job) {
         return;
       }
       const { rows: [count] } = await run(`SELECT (${UNREAD_ACTIVITY_SQL}) +
-        (SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id=m.conversation_id
+        (SELECT COUNT(DISTINCT m.conversation_id) FROM messages m JOIN conversations c ON c.id=m.conversation_id
         WHERE m.is_read=false AND m.sender_id<>$1 AND (c.user1_id=$1 OR c.user2_id=$1)) AS count`, [row.user_id]);
       const ticket = await expoRequest('send', pushMessage(row, row, count.count, prefs));
       if (ticket.status !== 'ok' || !ticket.id) {
