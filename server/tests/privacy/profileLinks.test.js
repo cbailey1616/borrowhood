@@ -31,6 +31,10 @@ it('provides a browser fallback without exposing account information or performi
   expect(response.headers['x-robots-tag']).toBe('noindex, nofollow');
   expect(response.text).toContain(`href="borrowhood://people/${id}"`);
   expect(response.text).toContain('Open Borrowhood');
+  const eas = JSON.parse(readFileSync(new URL('../../../mobile/eas.json', import.meta.url), 'utf8'));
+  expect(response.text).toContain(`href="https://apps.apple.com/app/id${eas.submit.production.ios.ascAppId}"`);
+  expect(response.text).toContain('tap your invite link again');
+  expect(response.text).not.toMatch(/testflight|#join/i);
   expect(response.text).not.toContain('<script');
   expect(response.text).not.toContain('<form');
   expect(response.text).not.toContain('/api/');

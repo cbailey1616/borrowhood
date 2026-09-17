@@ -1,4 +1,6 @@
 import React from 'react';
+import { Share } from 'react-native';
+import { APP_STORE_URL } from '../../../src/utils/invites';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../../src/services/api';
 
@@ -17,6 +19,15 @@ beforeEach(() => {
 });
 
 describe('OnboardingFriendsScreen', () => {
+  it('shares the production invitation instead of a TestFlight or old App Store link', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'dismissedAction' });
+    const Screen = require('../../../src/screens/onboarding/OnboardingFriendsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={mockRoute} />);
+    await act(async () => fireEvent.press(screen.getByTestId('Onboarding.Friends.invite')));
+    expect(share).toHaveBeenCalledWith({ message: expect.stringContaining(APP_STORE_URL) });
+    expect(api.addFriend).not.toHaveBeenCalled();
+    share.mockRestore();
+  });
   it('renders search bar', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingFriendsScreen').default;
     const { findByTestId } = render(<Screen navigation={mockNavigation} route={mockRoute} />);

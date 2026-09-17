@@ -6,7 +6,9 @@ import re
 import shutil
 import sys
 import tempfile
-from urllib.request import urlopen
+from urllib.error import HTTPError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
 MACHO = {bytes.fromhex(value) for value in ['cffaedfe', 'cefaedfe', 'feedfacf', 'feedface', 'cafebabe', 'cafebabf']}
@@ -57,8 +59,15 @@ def main():
     if not url or not url.startswith('https://'):
         raise ValueError('A secure application archive URL is required')
     with tempfile.TemporaryFile() as downloaded:
-        with urlopen(url, timeout=60) as response:
-            shutil.copyfileobj(response, downloaded)
+        try:
+            # Use the same download client identifier as EAS CLI's node-fetch.
+            request = Request(url, headers={'User-Agent': 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)'})
+            with urlopen(request, timeout=60) as response:
+                shutil.copyfileobj(response, downloaded)
+        except HTTPError as error:
+            # Never put signed archive URLs or response bodies into public CI logs.
+            host = urlsplit(error.url).hostname
+            raise SystemExit(f'Archive download failed: HTTP {error.code} from {host}') from None
         downloaded.seek(0)
         with ZipFile(downloaded) as archive:
             report = audit_archive(archive)

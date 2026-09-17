@@ -24,10 +24,13 @@ import SearchBar from '../../components/SearchBar';
 import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import ActionSheet from '../../components/ActionSheet';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { inviteMessage, inviteToBorrowhood } from '../../utils/invites';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 export default function OnboardingFriendsScreen({ navigation, route }) {
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const joinedCommunityId = route.params?.joinedCommunityId;
 
@@ -154,7 +157,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   const handleInviteFriends = async () => {
     try {
       await Share.share({
-        message: 'Join me on BorrowHood! Borrow anything from your neighbors. Download it here: https://apps.apple.com/app/borrowhood/id6741188498',
+        message: inviteMessage(user?.id),
       });
     } catch (error) {
       // User cancelled share
@@ -163,9 +166,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
 
   const handleInviteContact = async (contact) => {
     try {
-      await Share.share({
-        message: `Hey ${contact.name.split(' ')[0]}! Join me on BorrowHood — borrow anything from your neighbors. Download it here: https://apps.apple.com/app/borrowhood/id6741188498`,
-      });
+      await inviteToBorrowhood(contact.phone, inviteMessage(user?.id));
     } catch (error) {
       // User cancelled share
     }

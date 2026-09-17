@@ -1,0 +1,43 @@
+name: Inspect an existing iOS archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: EAS build ID to inspect without building or submitting
+        required: true
+        type: string
+  push:
+    branches: ['ios-archive-audit/*']
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: 24.2.0
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Fetch fresh metadata for the requested archive
+        env:
+          REQUESTED_BUILD_ID: ${{ inputs.build_id }}
+        run: |
+          build_id="${REQUESTED_BUILD_ID:-${GITHUB_REF_NAME#ios-archive-audit/}}"
+          if [[ ! "$build_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+            echo '::error::A valid EAS build ID is required.'
+            exit 1
+          fi
+          eas build:view "$build_id" --json > /tmp/borrowhood-audit-build.json
+      - name: Inspect the signed app
+        run: python3 scripts/audit-ios-payments.py /tmp/borrowhood-audit-build.json

@@ -42,7 +42,8 @@ router.get('/people/:id', (req, res) => {
   <h1>Add a friend</h1>
   <p>Open their profile in Borrowhood to send a friend request.</p>
   <a class="open" href="${appLink}">Open Borrowhood</a>
-  <a href="https://borrowhood.net/#join">Get Borrowhood</a>
+  <a href="https://apps.apple.com/app/id6758581435">Download on the App Store</a>
+  <p>New here? After installing Borrowhood and signing up, tap your invite link again or scan the QR code again to open their profile.</p>
 </main></body></html>`);
 });
 

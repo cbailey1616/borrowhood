@@ -5,7 +5,7 @@ import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import { Ionicons } from '../components/Icon';
 import { useError } from '../context/ErrorContext';
-import { alphaInviteMessage, inviteToAlpha } from '../utils/alphaInvite';
+import { inviteMessage, inviteToBorrowhood } from '../utils/invites';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 
@@ -20,12 +20,12 @@ export default function InviteMembersScreen({ route }) {
     api.getCommunity(communityId).then(community => { if (active) setName(community?.name || ''); }).catch(() => {});
     return () => { active = false; };
   }, [communityId]);
-  const invitation = `${alphaInviteMessage()}${name ? `\n\nOnce you're signed in, find ${name} under Neighborhoods and ask to join.` : ''}`;
+  const invitation = `${inviteMessage()}${name ? `\n\nOnce you're signed in, find ${name} under Neighborhoods and ask to join.` : ''}`;
   const invite = async byText => {
     if (busy) return;
     setBusy(true);
     try {
-      if (byText) await inviteToAlpha(undefined, invitation);
+      if (byText) await inviteToBorrowhood(undefined, invitation);
       else await Share.share({ message: invitation });
     } catch (error) {
       showError({ message: 'Could not open your invitation. Please try again.' });
@@ -34,7 +34,7 @@ export default function InviteMembersScreen({ route }) {
   return <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACING.xl }]}>
     <View style={styles.art}><HeroIcon icon="people" size={96} /></View>
     <Text style={styles.title}>Good neighbors start here.</Text>
-    <Text style={styles.body}>{name ? `Invite someone to share in ${name}.` : 'Invite a neighbor to try Borrowhood.'} Send the alpha invitation, then connect in the app.</Text>
+    <Text style={styles.body}>{name ? `Invite someone to share in ${name}. They can download Borrowhood, then find your neighborhood and ask to join.` : 'Invite a neighbor to Borrowhood, then connect in the app.'}</Text>
     <View style={styles.card}>
       <HapticPressable style={styles.primary} disabled={busy} onPress={() => invite(true)}>
         <Ionicons name="chatbubble" size={22} color={COLORS.surface} />

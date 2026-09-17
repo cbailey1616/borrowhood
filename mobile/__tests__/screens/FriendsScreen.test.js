@@ -1,8 +1,10 @@
 import React from 'react';
 import * as Contacts from 'expo-contacts';
+import * as SMS from 'expo-sms';
+import { createProfileLink } from '../../src/utils/profileLinks';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
-const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
+const mockUser = { id: '10000000-0000-4000-8000-000000000001', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockShowError = jest.fn();
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
@@ -18,6 +20,17 @@ beforeEach(() => {
 });
 describe('FriendsScreen', () => {
   const route = { params: {} };
+  it('opens an invitation to your profile without sending a friend request or accessing contacts', async () => {
+    SMS.isAvailableAsync.mockResolvedValue(true);
+    const Screen = require('../../src/screens/FriendsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Good neighbors start with a hello');
+    fireEvent.press(screen.getByLabelText('Add friends'));
+    fireEvent.press(screen.getByLabelText('Invite by text'));
+    await waitFor(() => expect(SMS.sendSMSAsync).toHaveBeenCalledWith([], expect.stringContaining(createProfileLink(mockUser.id))));
+    expect(api.addFriend).not.toHaveBeenCalled();
+    expect(Contacts.getPermissionsAsync).not.toHaveBeenCalled();
+  });
   it('fetches friends on mount', async () => {
     const Screen = require('../../src/screens/FriendsScreen').default;
     render(<Screen navigation={mockNavigation} route={route} />);

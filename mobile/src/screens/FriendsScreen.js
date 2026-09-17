@@ -11,7 +11,8 @@ import {
   Linking,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
-import { inviteToAlpha } from '../utils/alphaInvite';
+import { inviteMessage, inviteToBorrowhood } from '../utils/invites';
+import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
@@ -26,6 +27,7 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function FriendsScreen({ navigation, route }) {
+  const { user } = useAuth();
   const { showError } = useError();
   const [activeTab, setActiveTab] = useState(route?.params?.initialTab || 'friends'); // 'friends', 'requests', 'contacts', or 'search'
   const [friends, setFriends] = useState([]);
@@ -333,7 +335,7 @@ export default function FriendsScreen({ navigation, route }) {
 
   const handleInvite = async (contact) => {
     try {
-      await inviteToAlpha(contact?.phone);
+      await inviteToBorrowhood(contact?.phone, inviteMessage(user?.id));
     } catch {
       showError('Could not open invitation', 'Please try again.');
     }
