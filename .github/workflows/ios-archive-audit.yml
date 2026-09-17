@@ -25,10 +25,13 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
       - uses: expo/expo-github-action@v8
         with:
           eas-version: 24.2.0
           token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
       - name: Fetch fresh metadata for the requested archive
         env:
           REQUESTED_BUILD_ID: ${{ inputs.build_id }}
@@ -38,6 +41,9 @@ jobs:
             echo '::error::A valid EAS build ID is required.'
             exit 1
           fi
-          eas build:view "$build_id" --json > /tmp/borrowhood-audit-build.json
+          if ! eas build:view "$build_id" --json > /tmp/borrowhood-audit-build.json; then
+            python3 -c "import os,pathlib,re; value=pathlib.Path('/tmp/borrowhood-audit-build.json').read_text(); value=value.replace(os.environ.get('EXPO_TOKEN') or '\0', '[REDACTED]'); print(re.sub(r'https?://[^\\s]+', '[URL]', value)[:3000])"
+            exit 1
+          fi
       - name: Inspect the signed app
         run: python3 scripts/audit-ios-payments.py /tmp/borrowhood-audit-build.json
