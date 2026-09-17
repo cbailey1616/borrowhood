@@ -2155,18 +2155,6 @@ PODS:
   - SDWebImageWebPCoder (0.14.6):
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.17)
-  - stripe-identity-react-native (0.4.1):
-    - React-Core
-    - StripeIdentity (~> 25.0.0)
-  - StripeCameraCore (25.0.1):
-    - StripeCore (= 25.0.1)
-  - StripeCore (25.0.1)
-  - StripeIdentity (25.0.1):
-    - StripeCameraCore (= 25.0.1)
-    - StripeCore (= 25.0.1)
-    - StripeUICore (= 25.0.1)
-  - StripeUICore (25.0.1):
-    - StripeCore (= 25.0.1)
   - Yoga (0.0.0)
   - ZXingObjC/Core (3.6.9)
   - ZXingObjC/OneD (3.6.9):
@@ -2280,7 +2268,6 @@ DEPENDENCIES:
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
-  - "stripe-identity-react-native (from `../node_modules/@stripe/stripe-identity-react-native`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2299,10 +2286,6 @@ SPEC REPOS:
     - SDWebImageAVIFCoder
     - SDWebImageSVGCoder
     - SDWebImageWebPCoder
-    - StripeCameraCore
-    - StripeCore
-    - StripeIdentity
-    - StripeUICore
     - ZXingObjC
 
 EXTERNAL SOURCES:
@@ -2515,8 +2498,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNWorklets:
     :path: "../node_modules/react-native-worklets"
-  stripe-identity-react-native:
-    :path: "../node_modules/@stripe/stripe-identity-react-native"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2639,11 +2620,6 @@ SPEC CHECKSUMS:
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
-  stripe-identity-react-native: d5bc437d724d08c391c14178331a3c25ba46bbf5
-  StripeCameraCore: e61d13cf270c450e699b12857dc75edc55a8455c
-  StripeCore: 457c30e2fd3a7c4b274a5ad53d1ff03661eef2a0
-  StripeIdentity: b6950bd769a564f33fa409f502128619befbcc16
-  StripeUICore: 30f8352fd7a5cf1541b7777a57b3ad1133bf6763
   Yoga: 3fd22c2cae22d7a2b0f0b538f55f7c2a17dc94d5
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 

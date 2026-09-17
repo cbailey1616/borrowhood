@@ -63,5 +63,12 @@ jobs:
             candidate="${GITHUB_REF_NAME#testflight-release/}"
           fi
           python3 scripts/prepare-cloud-release.py "$candidate" /tmp/borrowhood-ios-builds.json
-      - name: Build and submit to TestFlight
-        run: eas build --platform ios --profile testflight --non-interactive --auto-submit --wait
+      - name: Build signed iOS app
+        run: eas build --platform ios --profile testflight --non-interactive --wait --json > /tmp/borrowhood-current-build.json
+      - name: Check signed app for unused payment frameworks
+        id: native-audit
+        run: python3 scripts/audit-ios-payments.py /tmp/borrowhood-current-build.json
+      - name: Submit audited build to TestFlight
+        env:
+          AUDITED_BUILD_ID: ${{ steps.native-audit.outputs.build_id }}
+        run: eas submit --platform ios --profile testflight --id "$AUDITED_BUILD_ID" --non-interactive --wait

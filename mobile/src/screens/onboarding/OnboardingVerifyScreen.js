@@ -5,12 +5,12 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { presentIdentityVerificationSheet } from '@stripe/stripe-identity-react-native';
+import { verifyIdentityInBrowser } from '../../services/identityVerification';
+import useNavigationTask from '../../hooks/useNavigationTask';
 import { Ionicons } from '../../components/Icon';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import HapticPressable from '../../components/HapticPressable';
@@ -23,6 +23,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 import { isUserVerified } from '../../utils/auth';
 
 export default function OnboardingVerifyScreen({ navigation }) {
+  const startNavigationTask = useNavigationTask(navigation);
   const insets = useSafeAreaInsets();
   const { refreshUser } = useAuth();
   const { showError } = useError();
@@ -49,35 +50,16 @@ export default function OnboardingVerifyScreen({ navigation }) {
   };
 
   const handleVerify = async () => {
+    const isCurrent = startNavigationTask();
     setIsStarting(true);
     try {
-      const { sessionId, ephemeralKeySecret } = await api.createVerificationSession();
-
-      const brandLogo = Image.resolveAssetSource(require('../../../assets/logo.png'));
-      const { status, error } = await presentIdentityVerificationSheet({
-        sessionId,
-        ephemeralKeySecret,
-        brandLogo,
-      });
-
-      if (error) {
-        if (error.code === 'FlowCanceled') {
-          setIsStarting(false);
-          return;
-        }
-        throw new Error(error.message);
-      }
-
-      if (status === 'FlowCompleted') {
-        haptics.success();
-        // Trigger grace period + refresh user
-        try {
-          await api.getVerificationStatus();
-          await refreshUser();
-        } catch (e) {}
-        goToComplete();
-      }
+      const result = await verifyIdentityInBrowser(isCurrent);
+      if (!result || !isCurrent()) return;
+      haptics.success();
+      await refreshUser();
+      if (isCurrent()) goToComplete();
     } catch (err) {
+      if (!isCurrent()) return;
       haptics.error();
       showError({
         message: err.message || 'Couldn\'t start verification. Please check your connection and try again.',

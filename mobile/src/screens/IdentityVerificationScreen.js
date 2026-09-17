@@ -10,9 +10,8 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Image,
 } from 'react-native';
-import { presentIdentityVerificationSheet } from '@stripe/stripe-identity-react-native';
+import { verifyIdentityInBrowser } from '../services/identityVerification';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -72,42 +71,13 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     const isCurrent = startNavigationTask();
     setStarting(true);
     try {
-      // Get session credentials from server
-      const { sessionId, ephemeralKeySecret } = await api.createVerificationSession();
-      if (!isCurrent()) return;
-
-      // Launch native Stripe Identity sheet
-      const brandLogo = Image.resolveAssetSource(require('../../assets/logo.png'));
-      const { status: resultStatus, error } = await presentIdentityVerificationSheet({
-        sessionId,
-        ephemeralKeySecret,
-        brandLogo,
-      });
-      if (!isCurrent()) return;
-
-      if (error) {
-        if (error.code === 'FlowCanceled') {
-          setStarting(false);
-          return;
-        }
-        throw new Error(error.message);
-      }
-
-      // Check result
-      if (resultStatus === 'FlowCompleted') {
-        haptics.success();
-        setStatus('submitted');
-
-        // Trigger grace period on server + refresh auth context
-        try {
-          await api.getVerificationStatus();
-          await refreshUser();
-        } catch (e) {
-          // Grace will be set on next status check — non-blocking
-          console.warn('Post-submit status check failed:', e);
-        }
-      }
+      const result = await verifyIdentityInBrowser(isCurrent);
+      if (!result || !isCurrent()) return;
+      haptics.success();
+      setStatus(isUserVerified(result) ? 'verified' : 'submitted');
+      await refreshUser();
     } catch (err) {
+      if (!isCurrent()) return;
       haptics.error();
       showError({
         message: err.message || 'Couldn\'t start verification right now. Please check your connection and try again.',

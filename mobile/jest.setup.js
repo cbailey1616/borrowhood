@@ -196,6 +196,7 @@ jest.mock('expo-camera', () => ({
 
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
+  openAuthSessionAsync: jest.fn().mockResolvedValue({ type: 'cancel' }),
 }));
 
 jest.mock('expo-font', () => ({
@@ -294,14 +295,6 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetScrollView: require('react-native').ScrollView,
   };
 });
-
-jest.mock('@stripe/stripe-identity-react-native', () => ({
-  useIdentityVerificationSheet: () => ({
-    present: jest.fn().mockResolvedValue({ status: 'FlowCompleted' }),
-    loading: false,
-  }),
-  presentIdentityVerificationSheet: jest.fn().mockResolvedValue({ status: 'FlowCompleted' }),
-}));
 
 jest.mock('@react-native-google-signin/google-signin', () => ({
   GoogleSigninButton: Object.assign(require('react-native').Pressable, { Size: { Wide: 1 }, Color: { Light: 'light' } }),
@@ -477,7 +470,7 @@ jest.mock('./src/services/api', () => ({
     getReferralStatus: jest.fn().mockResolvedValue({ referralCount: 0, eligible: false, rewardClaimed: false }),
     claimReferralReward: jest.fn(),
     // Identity
-    startIdentityVerification: jest.fn(),
+    startIdentityVerification: jest.fn().mockResolvedValue({ verificationUrl: 'https://verify.stripe.com/start/test_session' }),
     checkVerification: jest.fn(),
     // Uploads
     uploadImage: jest.fn().mockResolvedValue('https://test.s3.amazonaws.com/test.jpg'),
