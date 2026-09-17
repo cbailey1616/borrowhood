@@ -22,19 +22,19 @@ export default function OfferItemScreen({ route, navigation }) {
     setLoading(true); setError(null); setCanOffer(false);
     try {
       const current = await api.getRequest(request.id);
-      if (current.status !== 'open' || current.isExpired) throw new Error('This request has ended. Ask the requester to renew it.');
-      if (current.ownerMasked || current.isOwner) throw new Error('This request is not available for a private offer.');
+      if (current.status !== 'open' || current.isExpired) throw new Error('This wanted post has ended. Ask the person who posted to renew it.');
+      if (current.ownerMasked || current.isOwner) throw new Error('This wanted post is not available for a private offer.');
       const available = (await api.getMyListings()).filter(i => i.status === 'active' && i.isAvailable);
       if (!isCurrent()) return;
       setItems(available);
       setCanOffer(true);
     }
-    catch (e) { if (isCurrent()) { setItems([]); setError(e.message || 'Could not load this request and your inventory.'); } }
+    catch (e) { if (isCurrent()) { setItems([]); setError(e.message || 'Could not load this wanted post and your inventory.'); } }
     finally { if (isCurrent()) setLoading(false); }
   }, [request.id, startNavigationTask]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const offer = item => Alert.alert(`Offer ${item.title}?`,
-    'Only this requester will receive access to this item for up to 14 days while their request is open. Your inventory and pickup address remain private.', [
+    'Only the person who posted will receive access to this item for up to 14 days while their wanted post is open. Your inventory and pickup address remain private.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Send private offer', onPress: async () => {
         const isCurrent = startNavigationTask();
@@ -42,7 +42,7 @@ export default function OfferItemScreen({ route, navigation }) {
         try {
           await api.offerItem(request.id, item.id);
           if (!isCurrent()) return;
-          Alert.alert('Private offer sent', 'You can withdraw it from the request page.');
+          Alert.alert('Private offer sent', 'You can withdraw it from the wanted post.');
           navigation.goBack();
         } catch (e) {
           Alert.alert('Could not send offer', e.message || 'Please try again.');

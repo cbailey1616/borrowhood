@@ -123,7 +123,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       setRequest(current);
       if (current.ownerMasked || current.previewOnly || current.isOwner || !current.requester?.id
           || current.type !== 'service' || current.status !== 'open' || current.isExpired) {
-        setMessageError('This request is no longer available for a reply.');
+        setMessageError('This wanted post is no longer accepting replies.');
         return;
       }
       const conversations = await api.getConversations();
@@ -150,7 +150,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       if (!isCurrent()) return;
       haptics.success(); navigation.goBack();
     } catch {
-      if (isCurrent()) showToast('Couldn’t close the request. Please try again.', 'error');
+      if (isCurrent()) showToast('Couldn’t close the post. Please try again.', 'error');
     } finally {
       deletingRef.current = false;
       if (isCurrent()) setIsDeleting(false);
@@ -177,7 +177,7 @@ export default function RequestDetailScreen({ route, navigation }) {
 
   if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   if (!request) return <View style={styles.center}>
-    <Text style={styles.body}>Couldn’t load this request.</Text>
+    <Text style={styles.body}>Couldn’t load this wanted post.</Text>
     <ActionButton label="Try again" onPress={fetchRequest} />
   </View>;
 
@@ -217,9 +217,9 @@ export default function RequestDetailScreen({ route, navigation }) {
             </Text>}
           </View>
           {!!request.photoUrl && <HapticPressable style={styles.photoFrame} onPress={() => setShowPhoto(true)}
-            accessibilityRole="button" accessibilityLabel="View full request photo" testID="Request.photo">
+            accessibilityRole="button" accessibilityLabel="View full wanted photo" testID="Request.photo">
             <ShimmerImage source={{ uri: request.photoUrl }} contentFit="cover" contentPosition="center"
-              accessibilityLabel="Requested item photo" style={styles.photo} />
+              accessibilityLabel="Wanted item photo" style={styles.photo} />
             <View style={styles.expandPhoto}><Ionicons name="expand-outline" size={18} color={COLORS.primary} /></View>
           </HapticPressable>}
           {(request.description || dateRange || request.category) && <View style={styles.details}>
@@ -240,7 +240,7 @@ export default function RequestDetailScreen({ route, navigation }) {
                 {requester.isVerified === true && <VerifiedBadge size={16} />}
                 <NeighborRankBadge rank={reputation.rank} onPress={() => setShowRank(true)} />
               </View>
-              <Text style={styles.metaText}>{postedDate ? `Requested ${postedDate}` : 'Requested by'}</Text>
+              <Text style={styles.metaText}>{postedDate ? `Posted ${postedDate}` : 'Posted by'}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </HapticPressable>}
@@ -316,22 +316,22 @@ export default function RequestDetailScreen({ route, navigation }) {
           </>}
         </HapticPressable>}
         {ownerActions && <>
-          <HapticPressable style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit request"
-            onPress={() => navigation.navigate('EditRequest', { request })}><Text style={styles.primaryText}>Edit request</Text></HapticPressable>
+          <HapticPressable style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit post"
+            onPress={() => navigation.navigate('EditRequest', { request })}><Text style={styles.primaryText}>Edit post</Text></HapticPressable>
           <HapticPressable style={[styles.primaryButton, styles.closeButton]} disabled={isDeleting}
-            accessibilityRole="button" accessibilityLabel="Close request" accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
+            accessibilityRole="button" accessibilityLabel="Close post" accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
             onPress={() => setShowDeleteSheet(true)}>
-            {isDeleting ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.primaryText}>Close request</Text>}
+            {isDeleting ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.primaryText}>Close post</Text>}
           </HapticPressable>
         </>}
       </View>
     </View>}
 
     <ActionSheet isVisible={showDeleteSheet} onClose={() => setShowDeleteSheet(false)} variant="confirmation"
-      title="Close this request?" message="Neighbors won’t be able to send new offers."
-      actions={[{ label: 'Close request', destructive: true, onPress: performDelete }]} />
+      title="Close this wanted post?" message="Neighbors won’t be able to send new offers."
+      actions={[{ label: 'Close post', destructive: true, onPress: performDelete }]} />
     <ActionSheet isVisible={!!withdrawItem} onClose={() => setWithdrawItem(null)} variant="confirmation"
-      title="Withdraw this offer?" message="The requester will lose access to this offer. An approved exchange stays available."
+      title="Withdraw this offer?" message="The person who posted will lose access to this offer. An approved exchange stays available."
       actions={[{ label: 'Withdraw offer', destructive: true, onPress: performWithdraw }]} />
     <RankInfoSheet isVisible={showRank && privateAccess} onClose={() => setShowRank(false)} currentRank={reputation.rank} isNew={reputation.isNew} />
     <PopupLayer visible={showPhoto} onRequestClose={() => setShowPhoto(false)}>
@@ -340,7 +340,7 @@ export default function RequestDetailScreen({ route, navigation }) {
           <Ionicons name="close" size={24} color={COLORS.surface} />
         </HapticPressable>
         <ShimmerImage source={{ uri: request.photoUrl }} contentFit="contain" contentPosition="center"
-          accessibilityLabel="Full request photo" style={styles.fullPhoto} />
+          accessibilityLabel="Full wanted photo" style={styles.fullPhoto} />
       </View>
     </PopupLayer>
   </View>;

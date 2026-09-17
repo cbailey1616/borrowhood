@@ -22,7 +22,7 @@ describe('WantedPostsScreen', () => {
   it('shows empty state', async () => {
     const Screen = require('../../src/screens/WantedPostsScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('No requests yet');
+    await findByText('No wanted posts yet');
   });
 
   it('displays request cards', async () => {

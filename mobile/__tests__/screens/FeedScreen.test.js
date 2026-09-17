@@ -102,14 +102,14 @@ describe('FeedScreen', () => {
     ], hasMore: false });
     const Screen = require('../../src/screens/FeedScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await screen.findByText('Item request', {}, { timeout: 5000 });
-    expect(screen.getByText('Service request')).toBeTruthy();
+    await screen.findByText('Item wanted', {}, { timeout: 5000 });
+    expect(screen.getByText('Help wanted')).toBeTruthy();
     fireEvent.press(screen.getByTestId('Feed.request.babysitter'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: 'babysitter' });
     fireEvent.press(screen.getByTestId('Feed.type.requests'));
     await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'requests' })));
-    expect(screen.getByText('Item request')).toBeTruthy();
-    expect(screen.getByText('Service request')).toBeTruthy();
+    expect(screen.getByText('Item wanted')).toBeTruthy();
+    expect(screen.getByText('Help wanted')).toBeTruthy();
   });
   it('acknowledges new feed posts only after a successful, visible, unfiltered first page', async () => {
     const markSeen = jest.fn();
@@ -263,7 +263,7 @@ describe('FeedScreen', () => {
     ], hasMore: false });
     const Screen = require('../../src/screens/FeedScreen').default;
     const { findByText, getByTestId, queryByText, getAllByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Neighbor request');
+    await findByText('Wanted post');
     expect(queryByText('REQUEST')).toBeNull();
     const style = id => StyleSheet.flatten(getByTestId(id).props.style);
     expect(style('Feed.request.note').backgroundColor).toBe(COLORS.card);
@@ -314,7 +314,7 @@ describe('FeedScreen', () => {
     expect(screen.queryByText('Join a nearby neighborhood')).toBeNull();
     fireEvent.press(screen.getByLabelText('List an item'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateListing');
-    fireEvent.press(screen.getByLabelText('Ask for something'));
+    fireEvent.press(screen.getByLabelText('Post in Wanted'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateRequest');
     expect(api.createListing).not.toHaveBeenCalled();
   });
@@ -377,14 +377,14 @@ it('keeps requests in a swipe row and uses the Requests tab for the full view',a
  api.getFeed.mockImplementation(async params=>params.type==='requests' ? {items:[{id:'ask',type:'request',title:'Need a ladder',user}],hasMore:false} : {items:[{id:'item',type:'listing',title:'Drill',user}],requests:[{id:'ask',type:'request',title:'Need a ladder',user}],hasMore:false});
  const Screen=require('../../src/screens/FeedScreen').default;
  const screen=render(<Screen navigation={mockNavigation}/>);
- await screen.findByText('Neighbors need');
+ await screen.findByText('Neighbors are looking for');
  expect(screen.getByText('Available nearby')).toBeTruthy();
  expect(screen.getByTestId('Feed.requests.carousel').props.horizontal).toBe(true);
  expect(screen.getByTestId('Feed.list').props.data.some(item=>item.type==='request')).toBe(false);
  expect(screen.queryByLabelText('See all requests')).toBeNull();
- fireEvent.press(screen.getByText('Requests'));
+ fireEvent.press(screen.getByText('Wanted'));
  await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'requests'})));
- expect(screen.queryByText('Neighbors need')).toBeNull();
+ expect(screen.queryByText('Neighbors are looking for')).toBeNull();
  expect(screen.queryByText('Available nearby')).toBeNull();
 });
 
@@ -418,7 +418,7 @@ it('aligns ribbon cards with photos and long text with cards that have neither',
  expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail',{id:'photo'});
  fireEvent.press(screen.getByLabelText('Comments on Ladder'));
  expect(mockNavigation.navigate).toHaveBeenCalledWith('ListingDiscussion',{requestId:'plain'});
- fireEvent.press(screen.getByLabelText('View request: Ladder'));
+ fireEvent.press(screen.getByLabelText('View wanted post: Ladder'));
  expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestDetail',{id:'plain'});
 });
 
@@ -494,7 +494,7 @@ it('hides own posts from the carousel, filters and older server pages', async ()
   await screen.findByText('Neighbor item');
   expect(screen.queryByText('My item')).toBeNull();
   expect(screen.queryByText('My request')).toBeNull();
-  expect(screen.queryByText('Neighbors need')).toBeNull();
+  expect(screen.queryByText('Neighbors are looking for')).toBeNull();
   fireEvent.press(screen.getByTestId('Feed.type.requests'));
   await screen.findByText('Need a garden rake');
   expect(screen.queryByText('My request')).toBeNull();
@@ -507,7 +507,7 @@ it('keeps an actionable reminder visible when all returned posts belong to you',
   const screen = render(<Screen navigation={mockNavigation} />);
   await screen.findByText('Someone wants Ladder');
   expect(screen.queryByText('My item')).toBeNull();
-  expect(screen.queryByText('Neighbors need')).toBeNull();
+  expect(screen.queryByText('Neighbors are looking for')).toBeNull();
   expect(screen.getByText('What would you like to do?')).toBeTruthy();
 });
 

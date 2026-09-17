@@ -350,7 +350,7 @@ describe('CreateRequest', () => {
     // Title is the only required field (Category is optional). Submit with an
     // empty title and validation should fire.
     await act(async () => {
-      fireEvent.press(getByText('Post Request'));
+      fireEvent.press(getByText('Post in Wanted'));
     });
 
     expect(mockShowError).toHaveBeenCalledWith(

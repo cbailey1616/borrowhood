@@ -61,7 +61,7 @@ describe('RequestDetailScreen', () => {
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     fireEvent.press(await screen.findByLabelText('I can help'));
-    await screen.findByText('This request is no longer available for a reply.');
+    await screen.findByText('This wanted post is no longer accepting replies.');
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
     expect(api.getConversations).not.toHaveBeenCalled();
     expect(screen.queryByLabelText('I can help')).toBeNull();
@@ -188,8 +188,8 @@ describe('RequestDetailScreen', () => {
     api.getRequest.mockResolvedValue({ ...mockRequest, photoUrl: 'https://example.com/camera.jpg', requester: { ...mockRequest.requester, isVerified: true, endorsement: { completedCount: 6, score: 85 } } });
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('View full request photo'));
-    expect(screen.getByLabelText('Full request photo')).toBeTruthy();
+    fireEvent.press(await screen.findByLabelText('View full wanted photo'));
+    expect(screen.getByLabelText('Full wanted photo')).toBeTruthy();
     fireEvent.press(screen.getByLabelText('Close photo'));
     expect(screen.queryByLabelText('Close photo')).toBeNull();
     const stopPropagation = jest.fn();
@@ -204,12 +204,12 @@ describe('RequestDetailScreen', () => {
     api.deleteRequest.mockRejectedValueOnce(new Error('Offline'));
     const Screen = require('../../src/screens/RequestDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('Close request'));
+    fireEvent.press(await screen.findByLabelText('Close post'));
     expect(api.deleteRequest).not.toHaveBeenCalled();
     await confirmAction(screen);
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
-    expect(mockShowToast).toHaveBeenCalledWith('Couldn’t close the request. Please try again.', 'error');
-    fireEvent.press(screen.getByLabelText('Close request'));
+    expect(mockShowToast).toHaveBeenCalledWith('Couldn’t close the post. Please try again.', 'error');
+    fireEvent.press(screen.getByLabelText('Close post'));
     await confirmAction(screen);
     expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
   });

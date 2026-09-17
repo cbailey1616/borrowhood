@@ -7,7 +7,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  SectionList,
   useWindowDimensions,
   RefreshControl,
   Animated as RNAnimated,
@@ -30,8 +29,8 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const REQUEST_FILTERS = [
   { key: 'all', label: 'All requests' },
-  { key: 'sent', label: 'Items you requested' },
-  { key: 'posted', label: 'Requests you posted' },
+  { key: 'pending', label: 'Being reviewed' },
+  { key: 'active', label: 'In progress' },
 ];
 const shortDate = value => {
   if (!value) return '';
@@ -72,22 +71,19 @@ export default function MyItemsScreen({ navigation }) {
         // Keep active and paused inventory visible while exchanges are in progress.
         // Completed transfers remain in History.
         setListings(data.filter((listing) => ['active', 'paused'].includes(listing.status)));
-      } else {
-        const [sent, posted] = await Promise.allSettled([
-          api.getTransactions({ role: 'borrower' }),
-          api.getMyRequests(),
-        ]);
+      } else if (activeTab === 1) {
+        const data = await api.getMyRequests();
         if (currentFetch !== fetchId.current) return;
-        if (sent.status === 'fulfilled') {
-          setSentRequests(sent.value.filter(item => isBorrower(item, user?.id) && exchangeIsActive(item)));
-        }
-        if (posted.status === 'fulfilled') setRequests(posted.value);
-        if (sent.status === 'rejected' && posted.status === 'rejected') setLoadError('Couldn’t load your requests.');
-        else if (sent.status === 'rejected') setLoadError('Couldn’t load items you requested.');
-        else if (posted.status === 'rejected') setLoadError('Couldn’t load requests you posted.');
+        setRequests(data);
+      } else {
+        const data = await api.getTransactions({ role: 'borrower' });
+        if (currentFetch !== fetchId.current) return;
+        setSentRequests(data.filter(item => isBorrower(item, user?.id) && exchangeIsActive(item)));
       }
     } catch (error) {
-      if (currentFetch === fetchId.current) setLoadError('Couldn’t load this list. Your items haven’t been changed.');
+      if (currentFetch === fetchId.current) setLoadError(activeTab === 0
+        ? 'Couldn’t load this list. Your items haven’t been changed.'
+        : activeTab === 1 ? 'Couldn’t load your wanted posts.' : 'Couldn’t load your requests.');
     } finally {
       if (currentFetch === fetchId.current) {
         setIsLoading(false);
@@ -250,7 +246,7 @@ export default function MyItemsScreen({ navigation }) {
     } catch (error) {
       haptics.error();
       showError({
-        message: error.message || 'Couldn\'t renew your request right now. Please check your connection and try again.',
+        message: error.message || 'Couldn\'t renew your wanted post right now. Please check your connection and try again.',
         type: 'network',
       });
     }
@@ -283,7 +279,7 @@ export default function MyItemsScreen({ navigation }) {
                 <View style={styles.requestBadges}>
                   {item.type === 'service' && (
                     <View style={styles.serviceBadge}>
-                      <Text style={styles.serviceBadgeText}>Service</Text>
+                      <Text style={styles.serviceBadgeText}>Help wanted</Text>
                     </View>
                   )}
                   <View style={[
@@ -378,21 +374,16 @@ export default function MyItemsScreen({ navigation }) {
     );
   };
 
-  const requestSections = [
-    { key: 'sent', title: 'Items you requested', items: sentRequests },
-    { key: 'posted', title: 'Requests you posted', items: requests },
-  ].filter(section => section.items.length && (requestFilter === 'all' || requestFilter === section.key))
-    .map(({ items, ...section }) => ({
-      ...section,
-      data: Array.from({ length: Math.ceil(items.length / columns) }, (_, index) => items.slice(index * columns, (index + 1) * columns)),
-    }));
+  const filteredSentRequests = sentRequests.filter(item => requestFilter === 'all'
+    || (requestFilter === 'pending' ? item.status === 'pending' : item.status !== 'pending'));
+  const visibleItems = activeTab === 0 ? listings : activeTab === 1 ? requests : filteredSentRequests;
   const selectedFilter = REQUEST_FILTERS.find(filter => filter.key === requestFilter);
   const emptyState = activeTab === 0
     ? { title: 'Your listings start here', subtitle: 'List an item and choose who can see it.', action: 'Add an item', route: 'CreateListing' }
-    : requestFilter === 'posted'
-      ? { title: 'No requests posted', subtitle: 'Post what you need and neighbors can offer to help.', action: 'Ask for something', route: 'CreateRequest' }
-      : { title: requestFilter === 'sent' ? 'No items requested' : 'No requests yet',
-        subtitle: requestFilter === 'sent' ? 'Find an item and send its owner a request.' : 'Request an item or ask neighbors for what you need.',
+    : activeTab === 1
+      ? { title: 'No wanted posts yet', subtitle: 'Tell neighbors what you’re looking for.', action: 'Post in Wanted', route: 'CreateRequest' }
+      : { title: requestFilter === 'pending' ? 'No requests being reviewed' : requestFilter === 'active' ? 'No requests in progress' : 'No requests yet',
+        subtitle: 'Find an item and send its owner a request.',
         action: 'Browse items', route: 'Feed' };
   const emptyContent = !isLoading && !loadError ? (
     <View style={styles.emptyContainer}>
@@ -411,21 +402,21 @@ export default function MyItemsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <NativeHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={
-        <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post a request'}
-          onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
-          <Ionicons name="add" size={20} color={COLORS.surface} />
-          <Text style={styles.headerButtonText}>Add</Text>
+        <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : activeTab === 1 ? 'Post in Wanted' : 'Browse items'}
+          onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : activeTab === 1 ? 'CreateRequest' : 'Feed')} style={styles.compactAdd}>
+          <Ionicons name={activeTab === 2 ? 'search' : 'add'} size={20} color={COLORS.surface} />
+          <Text style={styles.headerButtonText}>{activeTab === 2 ? 'Browse' : 'Add'}</Text>
         </HapticPressable>
       }>
         <SegmentedControl
           testID="MyItems.segment"
           variant="underline"
-          segments={['Items', 'Requests']}
+          segments={['Items', 'Wanted', 'My requests']}
           selectedIndex={activeTab}
-          onIndexChange={setActiveTab}
+          onIndexChange={index => { setShowRequestFilter(false); setActiveTab(index); }}
           style={styles.segmented}
         />
-        {activeTab === 1 && <HapticPressable
+        {activeTab === 2 && <HapticPressable
           accessibilityLabel={`Filter requests: ${selectedFilter.label}`}
           accessibilityState={{ expanded: showRequestFilter }}
           onPress={() => setShowRequestFilter(true)}
@@ -439,34 +430,21 @@ export default function MyItemsScreen({ navigation }) {
 
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
-      {activeTab === 0 ? <FlatList
-        key={`posts-${columns}`}
+      <FlatList
+        key={`posts-${activeTab}-${columns}`}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
-        data={listings}
-        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>{renderListingItem(info)}</View>}
+        data={visibleItems}
+        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>
+          {activeTab === 0 ? renderListingItem(info) : activeTab === 1 ? renderRequestItem(info) : renderSentRequest(info.item)}
+        </View>}
         keyExtractor={(item) => item.id}
         contentContainerStyle={contentContainerStyle}
         refreshControl={refreshControl}
         ListEmptyComponent={emptyContent}
-      /> : <SectionList
-        key={`requests-${columns}-${requestFilter}`}
-        sections={requestSections}
-        stickySectionHeadersEnabled={false}
-        keyExtractor={row => row[0].id}
-        renderSectionHeader={({ section }) => requestFilter === 'all'
-          ? <Text accessibilityRole="header" style={styles.requestSectionTitle}>{section.title}</Text> : null}
-        renderItem={({ item: row, section }) => <View style={styles.requestRow}>
-          {row.map(item => <View key={item.id} style={{ width: cellWidth }}>
-            {section.key === 'sent' ? renderSentRequest(item) : renderRequestItem({ item })}
-          </View>)}
-        </View>}
-        contentContainerStyle={contentContainerStyle}
-        refreshControl={refreshControl}
-        ListEmptyComponent={emptyContent}
-      />}
+      />
       <ActionSheet
-        isVisible={activeTab === 1 && showRequestFilter}
+        isVisible={activeTab === 2 && showRequestFilter}
         onClose={() => setShowRequestFilter(false)}
         variant="options"
         title="Show requests"
@@ -517,8 +495,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   requestFilterText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, flexShrink: 1 },
-  requestSectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.md },
-  requestRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.lg },
   listContent: {
     padding: SPACING.lg,
     paddingBottom: 100,

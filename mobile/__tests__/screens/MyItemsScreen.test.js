@@ -194,14 +194,16 @@ describe('MyItemsScreen', () => {
     await utils.findByText('Your listings start here');
   });
 
-  it('requests tab loads sent items and posted neighborhood requests', async () => {
+  it('loads wanted posts separately from sent item requests', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
     await selectTab(utils, 1);
     await waitFor(() => {
       expect(api.getMyRequests).toHaveBeenCalled();
-      expect(api.getTransactions).toHaveBeenCalledWith({ role: 'borrower' });
     });
+    expect(api.getTransactions).not.toHaveBeenCalled();
+    await selectTab(utils, 2);
+    await waitFor(() => expect(api.getTransactions).toHaveBeenCalledWith({ role: 'borrower' }));
   });
 
   it('displays request cards', async () => {
@@ -227,34 +229,52 @@ describe('MyItemsScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: `Filter requests: ${label}` }).props.accessibilityState.expanded).toBe(false));
   };
 
-  it('defaults to both request types and filters them without refetching or mixing their destinations', async () => {
+  it('separates wanted posts and sent requests even when their IDs match', async () => {
     // IDs can overlap across the two API resources.
     api.getTransactions.mockResolvedValue([{ ...sentRequest, id: postedRequest.id }]);
     api.getMyRequests.mockResolvedValue([postedRequest]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await selectTab(screen, 1);
+    fireEvent.press(await screen.findByText('Need a ladder'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestDetail', { id: postedRequest.id });
+    expect(screen.queryByText('Cabinet glue')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Filter requests:/ })).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: 'Post in Wanted' }));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('CreateRequest');
+
+    await selectTab(screen, 2);
     await screen.findByText('Cabinet glue');
-    expect(screen.getByRole('header', { name: 'Items you requested' })).toBeTruthy();
-    expect(screen.getByRole('header', { name: 'Requests you posted' })).toBeTruthy();
     expect(screen.getByText('Sep 17 – Sep 18')).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Cabinet glue, Being reviewed' }));
-    expect(mockNavigation.navigate).toHaveBeenCalledTimes(1);
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: postedRequest.id });
-
-    await selectRequestFilter(screen, 'Items you requested');
-    expect(screen.getByText('Cabinet glue')).toBeTruthy();
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('TransactionDetail', { id: postedRequest.id });
     expect(screen.queryByText('Need a ladder')).toBeNull();
     expect(screen.queryByTestId('post-swipe')).toBeNull();
-    await selectRequestFilter(screen, 'Requests you posted');
+    fireEvent.press(screen.getByRole('button', { name: 'Browse items' }));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('Feed');
+  });
+
+  it('filters outgoing requests by review or progress without refetching', async () => {
+    api.getTransactions.mockResolvedValue([
+      sentRequest,
+      { ...sentRequest, id: 'ready', status: 'approved', listing: { title: 'Ladder ready for pickup' } },
+    ]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await selectTab(screen, 2);
+    await screen.findByText('Cabinet glue');
+    expect(screen.getByText('Ladder ready for pickup')).toBeTruthy();
+    await selectRequestFilter(screen, 'Being reviewed');
+    expect(screen.getByText('Cabinet glue')).toBeTruthy();
+    expect(screen.queryByText('Ladder ready for pickup')).toBeNull();
+    await selectRequestFilter(screen, 'In progress');
     expect(screen.queryByText('Cabinet glue')).toBeNull();
-    fireEvent.press(screen.getByText('Need a ladder'));
-    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestDetail', { id: postedRequest.id });
+    expect(screen.getByText('Ladder ready for pickup')).toBeTruthy();
     await selectRequestFilter(screen, 'All requests');
     expect(screen.getByText('Cabinet glue')).toBeTruthy();
-    expect(screen.getByText('Need a ladder')).toBeTruthy();
+    expect(screen.getByText('Ladder ready for pickup')).toBeTruthy();
     expect(api.getTransactions).toHaveBeenCalledTimes(1);
-    expect(api.getMyRequests).toHaveBeenCalledTimes(1);
+    expect(api.getMyRequests).not.toHaveBeenCalled();
   });
 
   it('keeps active outgoing requests visible and excludes incoming and finished exchanges', async () => {
@@ -269,7 +289,7 @@ describe('MyItemsScreen', () => {
     ]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await selectTab(screen, 1);
+    await selectTab(screen, 2);
     await screen.findByText('Cabinet glue');
     for (const label of ['Being reviewed', 'Ready for pickup', 'Currently borrowing', 'Waiting for return confirmation']) expect(screen.getByText(label)).toBeTruthy();
     for (const label of ['Someone wants my bike', 'completed item', 'returned item', 'cancelled item', 'declined item', 'expired item', 'Books already collected', 'Invalid Date']) expect(screen.queryByText(label)).toBeNull();
@@ -280,32 +300,36 @@ describe('MyItemsScreen', () => {
     api.getMyRequests.mockResolvedValue([postedRequest]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await selectTab(screen, 1);
+    await selectTab(screen, 2);
     await screen.findByText('Cabinet glue');
-    await selectRequestFilter(screen, 'Items you requested');
+    await selectRequestFilter(screen, 'Being reviewed');
     api.getTransactions.mockResolvedValue([{ ...sentRequest, status: 'completed' }]);
     await act(async () => fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh'));
-    await screen.findByText('No items requested');
+    await screen.findByText('No requests being reviewed');
     expect(screen.queryByText('Cabinet glue')).toBeNull();
     expect(screen.queryByText('Need a ladder')).toBeNull();
     fireEvent.press(screen.getByText('Browse items'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Feed');
-    await selectRequestFilter(screen, 'Requests you posted');
-    expect(screen.getByText('Need a ladder')).toBeTruthy();
+    await selectTab(screen, 1);
+    await screen.findByText('Need a ladder');
+    await selectTab(screen, 2);
+    expect(screen.getByRole('button', { name: 'Filter requests: Being reviewed' })).toBeTruthy();
   });
 
-  it.each(['sent', 'posted'])('keeps the other request list usable when the %s list fails and supports retry', async failed => {
+  it.each(['sent', 'posted'])('keeps the other tab usable when the %s list fails and supports retry', async failed => {
     api.getTransactions.mockResolvedValue([sentRequest]);
     api.getMyRequests.mockResolvedValue([postedRequest]);
     (failed === 'sent' ? api.getTransactions : api.getMyRequests).mockRejectedValueOnce(new Error('offline'));
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await selectTab(screen, 1);
-    await screen.findByText(failed === 'sent' ? 'Couldn’t load items you requested.' : 'Couldn’t load requests you posted.');
-    expect(screen.getByText(failed === 'sent' ? 'Need a ladder' : 'Cabinet glue')).toBeTruthy();
+    await selectTab(screen, failed === 'sent' ? 2 : 1);
+    await screen.findByText(failed === 'sent' ? 'Couldn’t load your requests.' : 'Couldn’t load your wanted posts.');
     expect(screen.queryByText('No requests yet')).toBeNull();
+    expect(screen.queryByText('No wanted posts yet')).toBeNull();
     fireEvent.press(screen.getByText('Try again'));
     await screen.findByText(failed === 'sent' ? 'Cabinet glue' : 'Need a ladder');
     expect(screen.queryByRole('alert')).toBeNull();
+    await selectTab(screen, failed === 'sent' ? 1 : 2);
+    await screen.findByText(failed === 'sent' ? 'Need a ladder' : 'Cabinet glue');
   });
 });

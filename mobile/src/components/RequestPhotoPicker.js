@@ -36,7 +36,7 @@ export default function RequestPhotoPicker({ uri, onChange, disabled }) {
     }
   };
   return <View style={{ marginBottom: 20, gap: 8 }}>
-    {!!uri && <Image source={{ uri }} accessibilityLabel="Item request photo" resizeMode="contain"
+    {!!uri && <Image source={{ uri }} accessibilityLabel="Wanted item photo" resizeMode="contain"
       style={{ width: '100%', height: 180, borderRadius: RADIUS.md }} onError={() => setFailed(true)} />}
     {uri && failed && <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary }}>This photo couldn’t load. Remove it and choose it again.</Text>}
     <HapticPressable accessibilityRole="button" accessibilityLabel={uri ? 'Change request photo' : 'Add request photo'}

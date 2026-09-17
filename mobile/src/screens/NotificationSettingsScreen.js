@@ -17,8 +17,8 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const CORE_SETTINGS = [
-  { key: 'new_item_requests', label: 'Item requests', icon: 'cube' },
-  { key: 'new_service_requests', label: 'Service requests', icon: 'handshake' },
+  { key: 'new_item_requests', label: 'Items wanted', icon: 'cube' },
+  { key: 'new_service_requests', label: 'Help wanted', icon: 'handshake' },
 ];
 const ACTIVITY_SETTINGS = [
   { key: 'new_message', label: 'Messages' },
@@ -154,7 +154,7 @@ export default function NotificationSettingsScreen() {
           {saveError === 'phone' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
         </View>
         <View style={styles.section}>
-          <Text accessibilityRole="header" style={styles.heading}>New requests</Text>
+          <Text accessibilityRole="header" style={styles.heading}>New wanted posts</Text>
           <Text style={styles.sectionDescription}>Choose who you hear from.</Text>
           <View style={styles.requestGroups}>
             {CORE_SETTINGS.map(setting => <View key={setting.key}>

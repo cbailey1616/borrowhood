@@ -156,7 +156,7 @@ export default function EditRequestScreen({ navigation, route }) {
         <View style={styles.options}>
           {[
             { value: 'item', label: 'Item', icon: 'cube-outline' },
-            { value: 'service', label: 'Service', icon: 'handshake-outline' },
+            { value: 'service', label: 'Help', icon: 'handshake-outline' },
           ].map((opt) => {
             const isSelected = formData.type === opt.value;
             return (
@@ -184,13 +184,13 @@ export default function EditRequestScreen({ navigation, route }) {
       {/* Title */}
       <View style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
-          {formData.type === 'service' ? 'What service do you need? *' : 'What are you looking for? *'}
+          What are you looking for? *
         </Text>
         <TextInput
           style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
           onChangeText={(v) => updateField('title', v)}
-          placeholder="e.g., Power drill, Ladder, Moving boxes"
+          placeholder={formData.type === 'service' ? 'e.g., Help moving a sofa, Lawn mowing' : 'e.g., Power drill, Ladder, Moving boxes'}
           placeholderTextColor={COLORS.textSecondary}
           maxLength={255}
           autoCapitalize="sentences"

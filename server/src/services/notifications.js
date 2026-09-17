@@ -174,15 +174,15 @@ const NOTIFICATION_TEMPLATES = {
   // A neighbor deliberately responded to an item request.
   request_offer: {
     title: 'New private offer',
-    body: () => 'A neighbor offered an item for your request. Tap to view their offer.',
+    body: () => 'A neighbor offered an item for your wanted post. Tap to view their offer.',
   },
 
   // New request posted
   new_request: {
-    title: 'Neighbor Needs Help',
+    title: 'New wanted post',
     body: (data) => data.firstName
-      ? `${data.firstName} is looking for: ${data.title || 'something'}. Got one? Tap to help out.`
-      : 'A neighbor posted a new request nearby. Tap to see if you can help.',
+      ? `${data.firstName} is looking for: ${data.title || 'something'}. Tap to see if you can help.`
+      : 'A neighbor shared a wanted post nearby. Tap to see if you can help.',
   },
 
   // Messages
@@ -209,8 +209,8 @@ const NOTIFICATION_TEMPLATES = {
   request_comment: {
     title: 'New Response',
     body: (data) => data.posterName
-      ? `${data.posterName} responded to your request for ${data.itemTitle || 'an item'}. Tap to view.`
-      : 'Someone responded to your request. Tap to view.',
+      ? `${data.posterName} responded to your wanted post${data.itemTitle ? `: ${data.itemTitle}` : ''}. Tap to view.`
+      : 'Someone responded to your wanted post. Tap to view.',
   },
 
   // Friends

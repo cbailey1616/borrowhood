@@ -20,7 +20,7 @@ afterEach(() => jest.restoreAllMocks());
 it('explains an expired request before showing inventory or allowing a new offer', async () => {
   api.getRequest.mockResolvedValueOnce({ status: 'open', isExpired: true });
   const screen = render(<Screen navigation={navigation} route={route} />);
-  await screen.findByText(/This request has ended/);
+  await screen.findByText(/This wanted post has ended/);
   expect(api.getMyListings).not.toHaveBeenCalled();
   fireEvent.press(screen.getByText('Add a new item privately'));
   expect(navigation.navigate).not.toHaveBeenCalled();

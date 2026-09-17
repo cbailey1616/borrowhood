@@ -52,7 +52,7 @@ const FILTER_OPTIONS = [
   { key: 'listings', label: 'Borrow' },
   { key: 'giveaway', label: 'Giveaways' },
   { key: 'sell', label: 'For sale' },
-  { key: 'requests', label: 'Requests' },
+  { key: 'requests', label: 'Wanted' },
 ];
 
 const VISIBILITY_OPTIONS = [
@@ -369,7 +369,7 @@ export default function FeedScreen({ navigation }) {
       onPress: () => navigation.navigate('CreateListing'),
     },
     {
-      label: 'Ask for something',
+      label: 'Post in Wanted',
       testID: 'Feed.create.request',
       icon: <Ionicons name="request-note" size={32} illustrated />,
       onPress: () => navigation.navigate('CreateRequest'),
@@ -462,12 +462,12 @@ export default function FeedScreen({ navigation }) {
             </View>
             <Text style={styles.ribbonTitle} numberOfLines={2}>{item.title}</Text>
           </View>
-          {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo"
+          {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo"
             contentFit="cover" style={styles.ribbonPhoto} />}
         </HapticPressable>
         <View style={styles.ribbonFooter}>
           <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
-            style={styles.ribbonAuthorButton} accessibilityLabel={`View request: ${item.title}`}>
+            style={styles.ribbonAuthorButton} accessibilityLabel={`View wanted post: ${item.title}`}>
             {renderAuthor(item, { compact: true, showTime: false })}
           </HapticPressable>
           {renderPublicReplies(item, { compact: true })}
@@ -486,7 +486,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
-            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
+            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>
@@ -524,7 +524,7 @@ export default function FeedScreen({ navigation }) {
   const renderItem = ({ item, index }) => {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
-        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'400' }}>Neighbors need</Text>
+        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'400' }}>Neighbors are looking for</Text>
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
@@ -655,9 +655,9 @@ export default function FeedScreen({ navigation }) {
                 <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>List an item</Text><Text style={styles.welcomeActionNote}>Share an item or service.</Text></View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
               </HapticPressable>
-              <HapticPressable accessibilityRole="button" accessibilityLabel="Ask for something" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
+              <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
                 <View style={styles.welcomeActionIcon}><Ionicons name="create-outline" size={36} color={COLORS.primary} /></View>
-                <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Ask for something</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
+                <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Post in Wanted</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
               </HapticPressable>
             </View>
@@ -667,7 +667,7 @@ export default function FeedScreen({ navigation }) {
           <View style={styles.emptyContainer}>
             <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
             <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
-            <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post a request. Owners can privately offer an item without exposing their belongings.' : 'Add your town to discover items nearby.'}</Text>
+            <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post what you’re looking for. Neighbors can offer to help.' : 'Add your town to discover items nearby.'}</Text>
             <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
               if (feedError) return fetchFeed(1, false);
               if (!user?.city) return navigation.navigate('EditProfile');
@@ -680,7 +680,7 @@ export default function FeedScreen({ navigation }) {
               <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
             </HapticPressable>
             {!feedError && user?.city && <ActionButton style={{ marginTop: SPACING.sm }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}
-              label={hasFilters ? 'Request an item' : 'Invite a neighbor'} />}
+              label={hasFilters ? 'Post in Wanted' : 'Invite a neighbor'} />}
           </View>
         }</View>}
       />
@@ -802,7 +802,7 @@ export default function FeedScreen({ navigation }) {
               </View>
               <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
               <Text style={styles.overlayText}>
-                Verified members can see requests and items explicitly shared in {user?.city || 'your town'}.
+                Verified members can see wanted posts and items explicitly shared in {user?.city || 'your town'}.
               </Text>
               <View style={styles.upgradeFeatures}>
                 <View style={styles.upgradeFeature}>

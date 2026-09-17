@@ -7,7 +7,7 @@ const available = [
   'Borrow from friends',
   'Borrow in your neighborhood',
   'Buy items or claim giveaways',
-  'Post requests',
+  'Post in Wanted',
 ];
 const townLabel = 'Borrow across town. Not verified: not available. Verified: available.';
 

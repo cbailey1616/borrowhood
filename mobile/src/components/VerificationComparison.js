@@ -8,7 +8,7 @@ const capabilities = [
   { label: 'Borrow in your neighborhood', availableUnverified: true },
   { label: 'Borrow across town', availableUnverified: false },
   { label: 'Buy items or claim giveaways', availableUnverified: true },
-  { label: 'Post requests', availableUnverified: true },
+  { label: 'Post in Wanted', availableUnverified: true },
 ];
 
 export default function VerificationComparison() {

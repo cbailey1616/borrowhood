@@ -190,23 +190,23 @@ export default function RootNavigator({ navigationRef }) {
           <Stack.Screen
             name="WantedPosts"
             component={WantedPostsScreen}
-            options={{ ...sharedScreenOptions, title: 'Requests' }}
+            options={{ ...sharedScreenOptions, title: 'Wanted' }}
           />
           <Stack.Screen
             name="CreateRequest"
             component={CreateRequestScreen}
-            options={modalScreenOptions('Post a Request')}
+            options={modalScreenOptions('Post in Wanted')}
           />
           <Stack.Screen
             name="RequestDetail"
             getId={detailRouteIds.RequestDetail}
             component={RequestDetailScreen}
-            options={{ ...sharedScreenOptions, title: 'Request Details' }}
+            options={{ ...sharedScreenOptions, title: 'Wanted post' }}
           />
           <Stack.Screen
             name="EditRequest"
             component={EditRequestScreen}
-            options={modalScreenOptions('Edit Request')}
+            options={modalScreenOptions('Edit wanted post')}
           />
           <Stack.Screen
             name="Conversations"

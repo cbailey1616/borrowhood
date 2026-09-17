@@ -9,11 +9,11 @@ export function requestDatePreset(preset, now = new Date()) {
   return { neededFrom: localDate(from), neededUntil: localDate(until) };
 }
 export function requestAudienceProblem(visibility, friends) {
-  if (!visibility?.length) return 'Choose who can see your request.';
+  if (!visibility?.length) return 'Choose who can see your post.';
   if (visibility.every(scope => scope === 'close_friends')) {
-    if (friends.loading) return 'Checking who can see your request…';
+    if (friends.loading) return 'Checking who can see your post…';
     if (friends.error) return 'Could not check your friends. Try again before posting.';
-    if (friends.count === 0) return 'You haven’t added any friends yet. Nobody else would see this request.';
+    if (friends.count === 0) return 'You haven’t added any friends yet. Nobody else would see this post.';
   }
   return null;
 }

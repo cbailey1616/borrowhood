@@ -155,13 +155,13 @@ export default function CreateRequestScreen({ navigation, route }) {
         return requestData;
       });
       await api.createRequest(payload);
-      await draft.clear().catch(() => showToast('Request posted. The local draft could not be cleared.', 'info'));
+      await draft.clear().catch(() => showToast('Wanted post published. The local draft could not be cleared.', 'info'));
       haptics.success();
-      showToast('Your request has been posted!', 'success');
+      showToast('Your wanted post is live!', 'success');
       if (isCurrent()) navigation.goBack();
     } catch (error) {
       showError({
-        message: error.message || 'Couldn\'t post your request right now. Please check your connection and try again.',
+        message: error.message || 'Couldn\'t publish your wanted post right now. Please check your connection and try again.',
       });
     } finally {
       submitting.current = false;
@@ -216,11 +216,11 @@ export default function CreateRequestScreen({ navigation, route }) {
 
       {/* Type Toggle */}
       <View style={styles.section}>
-        <Text style={styles.label}>What do you need?</Text>
+        <Text style={styles.label}>I’m looking for…</Text>
         <View style={styles.options}>
           {[
             { value: 'item', label: 'Item', icon: 'cube-outline' },
-            { value: 'service', label: 'Service', icon: 'handshake-outline' },
+            { value: 'service', label: 'Help', icon: 'handshake-outline' },
           ].map((opt) => {
             const isSelected = formData.type === opt.value;
             return (
@@ -250,7 +250,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Title */}
       <View style={styles.section}>
         <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
-          {formData.type === 'service' ? 'What do you need help with? *' : 'What would you like to borrow? *'}
+          What are you looking for? *
         </Text>
         <TextInput
           style={[styles.input, fieldErrors.title && styles.fieldError]}
@@ -359,7 +359,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       {showDetails &&
       <View style={styles.section}>
         <Text style={styles.label}>Expires after</Text>
-        <Text style={styles.hint}>Request will be hidden from the feed after this time</Text>
+        <Text style={styles.hint}>Your post will be hidden from the feed after this time</Text>
         <View style={styles.options}>
           {EXPIRATION_OPTIONS.map((opt) => {
             const isSelected = formData.expiresIn === opt.value;
@@ -447,7 +447,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Submit */}
       <HapticPressable
         testID="CreateRequest.button.submit"
-        accessibilityLabel="Post request"
+        accessibilityLabel="Post in Wanted"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting || Boolean(audienceProblem) || !draft.ready}
@@ -458,7 +458,7 @@ export default function CreateRequestScreen({ navigation, route }) {
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>Post Request</Text>
+          <Text style={styles.submitButtonText}>Post in Wanted</Text>
         )}
       </HapticPressable>
     </KeyboardAwareScrollView>

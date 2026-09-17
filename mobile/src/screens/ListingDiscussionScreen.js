@@ -483,7 +483,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     >
       {/* Header */}
       <ConversationContextCard
-        title={targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}
+        title={targetTitle || (isRequest ? 'Wanted post' : 'Shared item')}
         label="Public comments"
         photoUrl={target?.photoUrl || target?.photos?.[0]}
         icon={isRequest ? 'chatbubble' : 'basket'}
@@ -539,7 +539,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             <Text style={styles.emptyTitle}>{isRequest ? 'No responses yet' : 'No comments yet'}</Text>
             <Text style={styles.emptySubtitle}>
               {isRequest
-                ? 'Be the first to respond to this request'
+                ? 'Be the first to respond to this wanted post'
                 : 'Be the first to ask a question about this item'}
             </Text>
           </View>

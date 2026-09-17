@@ -42,13 +42,13 @@ export default function SharingPicker({ value = ['private'], onChange, request =
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{request ? 'Who can see this request?' : 'Who can see this item?'}</Text>
+      <Text style={styles.title}>{request ? 'Who can see this post?' : 'Who can see this item?'}</Text>
       {!request && <Text style={styles.hint}>Select all that apply. Only this item is shared—not your inventory or pickup address. People who can see it may save screenshots.</Text>}
-      <HapticPressable accessibilityRole="button" accessibilityLabel={request ? 'Change who can see this request' : 'Change who can see this item'} accessibilityState={{ expanded }}
+      <HapticPressable accessibilityRole="button" accessibilityLabel={request ? 'Change who can see this post' : 'Change who can see this item'} accessibilityState={{ expanded }}
         style={styles.option} onPress={() => setExpanded(!expanded)}>
         <Ionicons name={value.includes('private') ? 'lock-closed' : 'people'} size={24} color={COLORS.primary} />
         <View style={styles.copy}><Text style={styles.label}>{request && audienceProblem
-          ? audienceLoading ? 'Checking your audience…' : 'Choose who can see your request'
+          ? audienceLoading ? 'Checking your audience…' : 'Choose who can see your post'
           : value.includes('private') ? 'Only me' : `Visible to ${value.map(scope => audiences.find(a => a[0] === scope)?.[1] || 'Sharing needs review').join(' and ')}`}</Text>
           {!request && <Text style={styles.hint}>Sharing this item never shares the rest.</Text>}</View>
         <Text style={{ color: COLORS.primary }}>{expanded ? 'Done' : 'Change'}</Text>
@@ -63,7 +63,7 @@ export default function SharingPicker({ value = ['private'], onChange, request =
             <Text style={styles.label}>{title}</Text>
             <Text style={styles.hint}>{scope === 'close_friends' && !friendsAvailable ? 'Invite a friend to share with them.'
               : scope === 'neighborhood' && !neighborhoodAvailable ? 'Join or create a neighborhood.'
-              : scope === 'town' ? townHint : request ? hint.replace('item', 'request') : hint}</Text>
+              : scope === 'town' ? townHint : request ? hint.replace('item', 'post') : hint}</Text>
           </View>
           <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         </HapticPressable>

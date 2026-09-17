@@ -49,14 +49,14 @@ describe('CreateRequestScreen', () => {
     // Title is the required field (Category is optional). Submit with an empty
     // title and validation should fire.
     await waitFor(() => expect(getByTestId('CreateRequest.button.submit')).not.toBeDisabled());
-    await act(async () => { fireEvent.press(getByText('Post Request')); });
+    await act(async () => { fireEvent.press(getByText('Post in Wanted')); });
     expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ type: 'validation' }));
   });
 
-  it('renders Post Request button', async () => {
+  it('renders Post in Wanted button', async () => {
     const CreateRequestScreen = require('../../src/screens/CreateRequestScreen').default;
     const { findByText } = render(<CreateRequestScreen navigation={mockNavigation} />);
-    await findByText('Post Request');
+    await findByText('Post in Wanted');
   });
 
   it('blocks a request nobody can see and offers an explicit next step', async () => {
@@ -64,11 +64,11 @@ describe('CreateRequestScreen', () => {
     api.getFriends.mockResolvedValue([]);
     const Screen = require('../../src/screens/CreateRequestScreen').default;
     const { findByText, getByTestId, getByPlaceholderText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Choose who can see your request');
+    await findByText('Choose who can see your post');
     fireEvent.changeText(getByPlaceholderText(/Power drill/), 'A drill');
     expect(getByTestId('CreateRequest.button.submit')).toBeDisabled();
     expect(api.createRequest).not.toHaveBeenCalled();
-    expect(await findByText('Choose who can see your request')).toBeTruthy();
+    expect(await findByText('Choose who can see your post')).toBeTruthy();
   });
 
   it('shows date presets without requiring typed date strings or optional details', async () => {

@@ -163,7 +163,7 @@ export default function BrowseScreen({ navigation }) {
           </View>
 
           <Text style={styles.requestTitle}>{item.title}</Text>
-          {!!item.photoUrl && <Image source={{ uri: item.photoUrl }} accessibilityLabel="Requested item photo" resizeMode="contain" style={{ width: '100%', height: 180, marginBottom: SPACING.md }} />}
+          {!!item.photoUrl && <Image source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" resizeMode="contain" style={{ width: '100%', height: 180, marginBottom: SPACING.md }} />}
           <View style={styles.requestTypeBadge}>
             <Ionicons
               name={item.type === 'service' ? 'construct-outline' : 'cube-outline'}
@@ -174,7 +174,7 @@ export default function BrowseScreen({ navigation }) {
               styles.requestTypeBadgeText,
               item.type === 'service' && { color: COLORS.primary },
             ]}>
-              {item.type === 'service' ? 'Service' : 'Item'}
+              {item.type === 'service' ? 'Help wanted' : 'Item wanted'}
             </Text>
           </View>
           {item.description && (
@@ -239,7 +239,7 @@ export default function BrowseScreen({ navigation }) {
           <Ionicons name="search" size={18} color={COLORS.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder={activeTab === 'items' ? 'Search items...' : 'Search wanted items...'}
+            placeholder={activeTab === 'items' ? 'Search items...' : 'Search wanted posts...'}
             placeholderTextColor={COLORS.textMuted}
             value={search}
             onChangeText={setSearch}

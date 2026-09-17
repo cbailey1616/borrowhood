@@ -124,7 +124,7 @@ export default function WantedPostsScreen({ navigation }) {
         <Ionicons name="search" size={20} color={COLORS.textSecondary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search requests..."
+          placeholder="Search wanted posts..."
           placeholderTextColor={COLORS.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -154,11 +154,11 @@ export default function WantedPostsScreen({ navigation }) {
           !isLoading && (
             <View style={styles.emptyContainer}>
               <Ionicons name="search-outline" size={64} color={COLORS.gray[700]} />
-              <Text style={styles.emptyTitle}>No requests yet</Text>
+              <Text style={styles.emptyTitle}>No wanted posts yet</Text>
               <Text style={styles.emptySubtitle}>
                 {searchQuery
                   ? 'Try adjusting your search'
-                  : 'People in your community will post items they need here'}
+                  : 'Neighbors can post items or help they’re looking for here'}
               </Text>
             </View>
           )
