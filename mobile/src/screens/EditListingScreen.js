@@ -1,4 +1,3 @@
-import WholeDollarInput from '../components/WholeDollarInput';
 import TextInput from '../components/AppTextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import GiveawayOptions from '../components/GiveawayOptions';
@@ -30,7 +29,6 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
-import { checkPremiumGate } from '../utils/premiumGate';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
@@ -202,26 +200,6 @@ export default function EditListingScreen({ navigation, route }) {
       return;
     }
 
-    // Safety net: require payout setup for listings with deposit or rental fee
-    const hasDeposit = formData.requireDeposit && parseFloat(formData.depositAmount) > 0;
-    const hasRentalFee = !formData.isFree && parseFloat(formData.pricePerDay) > 0;
-    if (ENABLE_PAYMENTS && (hasDeposit || hasRentalFee) && !user?.payoutsEnabled) {
-      haptics.warning();
-      showError({
-        title: 'Payout Setup Required',
-        message: 'You need to enable payouts before adding borrow fees or deposits.',
-        primaryAction: 'Set Up Payouts',
-        onPrimaryAction: () => {
-          if (!user?.isVerified) {
-            navigation.navigate('IdentityVerification', { source: 'rental_listing' });
-          } else {
-            navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
-          }
-        },
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       // Upload any new photos to S3
@@ -259,14 +237,7 @@ export default function EditListingScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';
-      if (ENABLE_PAYMENTS && (error.code === 'PAYOUT_SETUP_REQUIRED' || errorMsg.includes('set up payouts'))) {
-        showError({
-          title: 'Payout Setup Required',
-          message: 'Set up payouts to list items with borrow fees or deposits.',
-          primaryAction: 'Set Up Payouts',
-          onPrimaryAction: () => navigation.navigate('SetupPayout', { source: 'rental_listing' }),
-        });
-      } else if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('verification required')) {
+      if (error.code === 'PLUS_REQUIRED' || errorMsg.includes('verification required')) {
         showError({
           type: 'subscription',
           title: 'Verification Required',
@@ -445,125 +416,6 @@ export default function EditListingScreen({ navigation, route }) {
       {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (
         <Text style={styles.label}>Saving makes this item free to borrow, with no deposit.</Text>
       )}
-      {/* Pricing */}
-      {ENABLE_PAYMENTS && <View style={styles.section}>
-        <Text style={styles.label}>Pricing</Text>
-        {!user?.payoutsEnabled && (
-          <HapticPressable
-            haptic="light"
-            style={styles.payoutHintCard}
-            onPress={() => {
-              if (!user?.isVerified) {
-                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
-              } else {
-                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
-              }
-            }}
-          >
-            <Ionicons name="card-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.payoutHintText}>
-              {!user?.isVerified
-                ? 'Verify identity & enable payouts to charge fees'
-                : 'Enable payouts to charge borrow fees and deposits'}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-          </HapticPressable>
-        )}
-        <HapticPressable
-          accessibilityLabel="Charge a borrow fee"
-          accessibilityRole="switch"
-          style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
-          onPress={() => {
-            if (!user?.payoutsEnabled) {
-              haptics.warning();
-              if (!user?.isVerified) {
-                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
-              } else {
-                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
-              }
-              return;
-            }
-            if (formData.isFree) {
-              const gate = checkPremiumGate(user, 'rental_listing');
-              if (!gate.passed) {
-                navigation.push(gate.screen, gate.params);
-                return;
-              }
-            }
-            updateField('isFree', !formData.isFree);
-            haptics.light();
-          }}
-          haptic={null}
-        >
-          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Charge a borrow fee</Text>
-          <View style={[styles.switch, !formData.isFree && user?.payoutsEnabled && styles.switchActive]}>
-            <View style={[styles.switchKnob, !formData.isFree && user?.payoutsEnabled && styles.switchKnobActive]} />
-          </View>
-        </HapticPressable>
-
-        {!formData.isFree && user?.payoutsEnabled && (
-          <>
-            <View style={[styles.priceInput, fieldErrors.pricePerDay && styles.fieldError]}>
-              <Text style={styles.currency}>$</Text>
-              <WholeDollarInput
-                style={styles.priceField}
-                value={formData.pricePerDay}
-                onChangeText={(v) => updateField('pricePerDay', v)}
-                placeholder="5"
-                placeholderTextColor={COLORS.textMuted}
-              />
-              <Text style={styles.priceSuffix}>/day</Text>
-            </View>
-            <Text style={[styles.priceHint, fieldErrors.pricePerDay && styles.fieldErrorLabel]}>$5/day minimum</Text>
-          </>
-        )}
-
-        <HapticPressable
-          accessibilityLabel="Require a deposit"
-          accessibilityRole="switch"
-          style={[styles.toggle, !user?.payoutsEnabled && styles.toggleDisabled]}
-          onPress={() => {
-            if (!user?.payoutsEnabled) {
-              haptics.warning();
-              if (!user?.isVerified) {
-                navigation.navigate('IdentityVerification', { source: 'rental_listing' });
-              } else {
-                navigation.push('SetupPayout', { source: 'rental_listing', totalSteps: 1 });
-              }
-              return;
-            }
-            if (!formData.requireDeposit) {
-              const gate = checkPremiumGate(user, 'rental_listing');
-              if (!gate.passed) {
-                navigation.push(gate.screen, gate.params);
-                return;
-              }
-            }
-            updateField('requireDeposit', !formData.requireDeposit);
-            haptics.light();
-          }}
-          haptic={null}
-        >
-          <Text style={[styles.toggleText, !user?.payoutsEnabled && styles.toggleTextDisabled]}>Require a deposit</Text>
-          <View style={[styles.switch, formData.requireDeposit && user?.payoutsEnabled && styles.switchActive]}>
-            <View style={[styles.switchKnob, formData.requireDeposit && user?.payoutsEnabled && styles.switchKnobActive]} />
-          </View>
-        </HapticPressable>
-
-        {formData.requireDeposit && user?.payoutsEnabled && (
-          <View style={styles.priceInput}>
-            <Text style={styles.currency}>$</Text>
-            <WholeDollarInput
-              style={styles.priceField}
-              value={formData.depositAmount}
-              onChangeText={(v) => updateField('depositAmount', v)}
-              placeholder="0"
-              placeholderTextColor={COLORS.textMuted}
-            />
-          </View>
-        )}
-      </View>}
-
       {/* Duration */}
       {!isTransferListing(listing) && <View style={styles.section}>
         <Text style={styles.label}>Borrow duration (days)</Text>
