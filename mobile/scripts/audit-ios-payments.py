@@ -71,6 +71,8 @@ def main():
         downloaded.seek(0)
         with ZipFile(downloaded) as archive:
             report = audit_archive(archive)
+    if report['build'] != str(build.get('appBuildVersion')):
+        raise ValueError('The archive version does not match the requested EAS build')
     print(json.dumps({'easBuildId': build_id, **report}))
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as output:

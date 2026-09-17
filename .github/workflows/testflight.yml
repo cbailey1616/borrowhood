@@ -65,9 +65,13 @@ jobs:
           python3 scripts/prepare-cloud-release.py "$candidate" /tmp/borrowhood-ios-builds.json
       - name: Build signed iOS app
         run: eas build --platform ios --profile testflight --non-interactive --wait --json > /tmp/borrowhood-current-build.json
+      - name: Refresh the signed archive download
+        run: |
+          build_id="$(python3 -c "import json,re; b=json.load(open('/tmp/borrowhood-current-build.json')); b=b[0] if isinstance(b,list) and len(b)==1 else b; value=b['id']; assert re.fullmatch(r'[0-9a-f-]{36}',value); print(value)")"
+          eas build:view "$build_id" --json > /tmp/borrowhood-finished-build.json
       - name: Check signed app for unused payment frameworks
         id: native-audit
-        run: python3 scripts/audit-ios-payments.py /tmp/borrowhood-current-build.json
+        run: python3 scripts/audit-ios-payments.py /tmp/borrowhood-finished-build.json
       - name: Submit audited build to TestFlight
         env:
           AUDITED_BUILD_ID: ${{ steps.native-audit.outputs.build_id }}
