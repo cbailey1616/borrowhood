@@ -1,10 +1,10 @@
 // The display and explanation share the same rank bands.
 export const NEIGHBOR_RANKS = [
-  { label: 'Outlaw', tone: 'Needs work', icon: 'rank-outlaw', min: 0, max: 59 },
-  { label: 'Jester', tone: 'Fair', icon: 'rank-jester', min: 60, max: 74 },
-  { label: 'Archer', tone: 'Good', icon: 'rank-archer', min: 75, max: 89 },
-  { label: 'Ranger', tone: 'Great', icon: 'rank-ranger', min: 90, max: 96 },
-  { label: 'Robin', tone: 'Excellent', icon: 'rank-robin', min: 97, max: 100 },
+  { label: 'Outlaw', tone: 'Needs work', icon: 'rank-outlaw', meterColor: '#B96B65', min: 0, max: 59 },
+  { label: 'Jester', tone: 'Fair', icon: 'rank-jester', meterColor: '#D4A55B', min: 60, max: 74 },
+  { label: 'Archer', tone: 'Good', icon: 'rank-archer', meterColor: '#A7AE77', min: 75, max: 89 },
+  { label: 'Ranger', tone: 'Great', icon: 'rank-ranger', meterColor: '#739777', min: 90, max: 96 },
+  { label: 'Robin', tone: 'Excellent', icon: 'rank-robin', meterColor: '#405D4E', min: 97, max: 100 },
 ];
 export const NEW_NEIGHBOR_RANK = { label: 'New neighbor', icon: 'neighbor-sprout' };
 export const RATING_UNLOCK_EXCHANGES = 3;

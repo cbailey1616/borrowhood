@@ -21,6 +21,11 @@ const tag = (c) => p('M5 5H16L28 17C29 18 29 19 28 20L20 28C19 29 18 29 17 28L5 
 const book = (c) => rect(7, 3, 19, 26, 3, panel(c)) + p('M7 24H26M11 3V24M15 10H21M15 15H21');
 const thumbUp = (c) => p('M11 14L15 8V4C15 1 20 2 20 6L19 12H26C28 12 29 14 28 17L25 26C25 28 23 29 21 29H15L11 27Z', accent(c))
   + rect(3, 14, 8, 15, 2, panel(c)) + dot(7, 25, c);
+const tree = c => p('M13 19H19L20 29H12Z', accent(c)) + p('M9 24C1 24 1 15 7 13C4 7 10 3 14 6C18 0 25 4 24 10C32 12 31 20 26 22C22 27 18 24 16 22C14 25 11 25 9 24Z', panel(c)) + p('M16 28V13M16 21L10 16M16 18L22 13');
+const laurelSprig = c => p('M7 29C3 26 2 22 3 18')
+  + p('M6 28C2 29 1 26 1 25C4 25 6 26 6 28Z', panel(c))
+  + p('M4 25C1 25 1 22 1 21C4 21 5 23 4 25Z', panel(c))
+  + p('M3 21C1 19 2 17 3 16C5 18 5 20 3 21Z', panel(c));
 
 const DRAWINGS = {
   // A woodland progression drawn for Borrowhood, rather than generic medals.
@@ -32,12 +37,34 @@ const DRAWINGS = {
     + rect(7, 23, 18, 5, 2, panel(c))
     + circle(3, 13, 1.8, accent(c)) + circle(16, 4, 1.8, accent(c)) + circle(29, 13, 1.8, accent(c)),
   acorn: c => p('M9 15H24V18C24 24 20 28 16.5 29C13 28 9 24 9 18Z', panel(c)) + p('M6 15C6 8 26 8 27 15L26 17H7Z', accent(c)) + p('M16 9V5C19 3 23 4 24 6C21 8 18 8 16 6M12 21C12 23 13 24 14 25'),
-  'rank-archer': c => p('M7 5C26 6 26 26 7 27L9 24C23 21 23 11 9 8Z', panel(c)) + p('M7 5L11 16L7 27M5 16H29M25 12L29 16L25 20M4 12L8 16L4 20'),
-  // A tied neckerchief gives Outlaw its own silhouette beside Robin's cap.
-  'rank-outlaw': c => p('M5 8C10 4 20 4 26 8L17 23C16 25 14 25 13 23Z', panel(c)) + p('M6 9C11 12 20 12 25 9M10 15L15 20') + p('M25 9C28 9 30 12 29 16L25 14L22 18L22 12Z', accent(c)) + circle(24, 10, 2.5, accent(c)),
-  'rank-ranger': c => p('M13 19H19L20 29H12Z', accent(c)) + p('M9 24C1 24 1 15 7 13C4 7 10 3 14 6C18 0 25 4 24 10C32 12 31 20 26 22C22 27 18 24 16 22C14 25 11 25 9 24Z', panel(c)) + p('M16 28V13M16 21L10 16M16 18L22 13'),
-  // Robin is Robin Hood: a longbow and a forest-green cap with a golden feather.
-  'rank-robin': c => p('M6 4C-1 15 5 26 16 29', `stroke="${c.accent}" stroke-width="2.8"`) + p('M6 4L16 29') + p('M8 22C11 13 17 12 24 10L23 18L28 22Z', panel(c)) + p('M20 16C18 8 24 2 29 3C29 9 26 14 20 16Z', accent(c)) + p('M19 18L26 6') + p('M6 23C11 19 17 20 22 22L29 23C24 29 12 29 6 23Z', panel(c)),
+  // Drawn arrow and recurve bow; the slight tilt reads clearly beside a name.
+  'rank-archer': c => '<g transform="rotate(-18 16 16)">'
+    + p('M9 5L6 16L9 27', 'stroke-width="1.4"')
+    + p('M10 3C7 2 6 5 9 6C21 9 21 23 9 26C6 27 7 30 10 29C27 23 27 9 10 3Z', panel(c))
+    + p('M20 13.5L23 13L23 19L20 18.5Z', `${accent(c)} stroke-width="1.1"`)
+    + p('M3 12.5L8 16L3 19.5L4.5 16Z', panel(c))
+    + p('M5 16H28') + p('M26 12.5L31 16L26 19.5Z', accent(c)) + '</g>',
+  // Bold cloth folds and a side knot keep Outlaw friendly and recognizable.
+  'rank-outlaw': c => p('M25 7C25 3 28 2 31 2C30 6 29 8 26 9Z', panel(c))
+    + p('M27 10C30 11 31 15 30 18C26 17 24 15 25 11Z', panel(c))
+    + p('M3 10C8 6 18 6 24 9C21 18 17 24 13 29C8 23 5 17 3 10Z', panel(c))
+    + p('M3 10C8 13 16 13 24 9C18 7 8 7 3 10Z', accent(c))
+    + p('M6 15L10 17M16 15L20 13M26 6L28 4M27 13L29 16', 'stroke-width="1.5"')
+    + circle(24.5, 9, 2.1, panel(c)),
+  // The old tree remains available for environmental stats and neighborhood art.
+  tree,
+  'rank-ranger': c => p('M4 4L28 28M28 4L4 28', 'stroke-width="1.7"')
+    + p('M2 2L7 3L3 7ZM30 2L25 3L29 7Z', accent(c))
+    + p('M3 25L2 28L5 27L4 30L7 28M25 28L28 30L27 27L30 28L29 25', 'stroke-width="1.7"')
+    + p('M7 7C10 8 13 7 16 5C19 7 22 8 25 7V17C25 23 21 27 16 29C11 27 7 23 7 17Z', panel(c))
+    + p('M16 10L12.7 14.8H14.1L11.3 18.5H13.2L10.5 22H14.3V25H17.7V22H21.5L18.8 18.5H20.7L17.9 14.8H19.3Z', `fill="${c.stroke}" stroke="none"`),
+  // Gold belongs to Robin's hat and laurels, not to the rating bar.
+  'rank-robin': c => '<g stroke-width="1.2">' + laurelSprig(c)
+    + `<g transform="translate(32 0) scale(-1 1)">${laurelSprig(c)}</g></g>`
+    + p('M8 22C10 16 12 12 19 12L20 19L25 22Z', panel(c))
+    + p('M17 15C19 8 23 4 30 3C27 10 24 15 17 17Z', accent(c))
+    + p('M17 18L26 7', 'stroke-width="1.4"')
+    + p('M6.5 23C11 19 17 20 23 22L25.5 23.5C20 26.5 12 26.5 6.5 23Z', panel(c)),
   home: c => p('M7 14V26C7 28 9 29 11 29H23C25 29 26 28 26 26V14', panel(c)) + p('M3 15L14 5C15 4 17 4 18 5L29 15', accent(c)) + p('M13 29V21C13 18 20 18 20 21V29M22 8V4H26V11'),
   heart,
   basket,
@@ -173,10 +200,11 @@ const PALETTES = {
   'neighbor-sprout': ['#B8CBA8', '#98B68B'],
   'rank-jester': ['#B8CBA8', '#E7C590'],
   acorn: ['#DBBB8E', '#A7BF98'],
-  'rank-archer': ['#DDB483', '#DDB483'],
-  'rank-outlaw': ['#DEA088', '#E9BC96'],
-  'rank-ranger': ['#9DBB90', '#D0A27A'],
-  'rank-robin': ['#8EB081', '#DFB66F'],
+  'rank-archer': ['#ACBA91', '#BA9653'],
+  'rank-outlaw': ['#B86555', '#D58A74'],
+  'rank-ranger': ['#9DBB90', '#C3A66C'],
+  'rank-robin': ['#D1AB50', '#E7CC7A'],
+  tree: ['#9DBB90', '#D0A27A'],
   heart: ['#E6A392', '#D48976'], home: ['#B8CBB0', '#DCA083'],
   handshake: ['#ABC5B8', '#E7C590'],
   'thumbs-up': ['#ABC5B8', '#E7C590'],

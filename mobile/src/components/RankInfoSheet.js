@@ -40,7 +40,9 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
               <View style={styles.marker}>
                 {rank.label === currentRank.label && <Ionicons name="chevron-down" size={16} color={COLORS.primary} />}
               </View>
-              <View style={[styles.segment, rank.label === currentRank.label && styles.currentSegment]} />
+              <View style={styles.segmentTrack}>
+                <View style={[styles.segment, { backgroundColor: rank.meterColor }, rank.label === currentRank.label && styles.currentSegment]} />
+              </View>
             </View>)}
           </View>}
           <Text style={styles.explanation}>Build your rank with positive exchanges.</Text>
@@ -84,8 +86,9 @@ const styles = StyleSheet.create({
   meter: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.md },
   meterColumn: { flex: 1 },
   marker: { height: 16, alignItems: 'center' },
-  segment: { height: 6, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted },
-  currentSegment: { backgroundColor: COLORS.primary },
+  segmentTrack: { height: 10, justifyContent: 'center' },
+  segment: { height: 6, borderRadius: RADIUS.full },
+  currentSegment: { height: 10 },
   explanation: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.sm },
   levels: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.separator },
   levelsTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.xs },
