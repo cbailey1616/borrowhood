@@ -2,6 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import MessageComposer from '../components/MessageComposer';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ShimmerImage from '../components/ShimmerImage';
+import ConversationContextCard from '../components/ConversationContextCard';
 import { useState, useEffect, useRef } from 'react';
 import { UNSTABLE_usePreventRemove as usePreventRemove, useIsFocused } from '@react-navigation/native';
 import useNavigationTask from '../hooks/useNavigationTask';
@@ -13,7 +14,6 @@ import {
   FlatList,
   ActivityIndicator,
   Keyboard,
-  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -28,7 +28,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const isFocused = useIsFocused();
   const startNavigationTask = useNavigationTask(navigation, route.params.requestId || route.params.listingId);
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
   const { listingId, listing, requestId, request, autoFocus, threadId, discussionId } = route.params;
   const isRequest = !!requestId;
@@ -120,7 +119,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
 
   useEffect(() => {
-    navigation.setOptions({ title: activeThreadId ? 'Thread' : 'Comments', headerBackButtonMenuEnabled: false });
+    navigation.setOptions({ title: activeThreadId ? 'Replies' : 'Comments', headerBackButtonMenuEnabled: false });
   }, [activeThreadId, navigation]);
 
   usePreventRemove(isFocused && !!activeThreadId, () => closeThread());
@@ -379,30 +378,41 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   };
 
   const renderComment = (post, parentId = null) => {
+    const name = [post.user.firstName, post.user.lastName].filter(Boolean).join(' ') || 'Neighbor';
+    const identity = <>
+      <ShimmerImage placeholderIcon="person" source={{ uri: post.user.profilePhotoUrl || null }} style={styles.postAvatar} />
+      <View style={styles.commentMeta}>
+        <Text style={styles.postAuthor}>{name}</Text>
+        <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
+      </View>
+    </>;
     return (
       <HapticPressable style={styles.comment} onLongPress={() => setActionTarget({ post, parentId })}
         accessible={false} accessibilityRole={undefined} haptic={false} scaleDown={1}
         testID={`Comments.message.${post.id}`}>
         <View style={styles.commentHeader}>
-          <ShimmerImage placeholderIcon="person" source={{ uri: post.user.profilePhotoUrl || null }}
-            style={[styles.postAvatar, !!parentId && styles.replyAvatar]} />
-          <View style={styles.commentMeta}>
-            <Text style={styles.postAuthor}>{[post.user.firstName, post.user.lastName].filter(Boolean).join(' ')}</Text>
-            <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
-          </View>
+          {post.user.id ? <HapticPressable style={styles.authorIdentity} accessibilityLabel={`View ${name}’s profile`}
+            onPress={() => navigateFromComments('UserProfile', { id: post.user.id })}>
+            {identity}
+          </HapticPressable> : <View style={styles.authorIdentity}>{identity}</View>}
           <HapticPressable accessibilityLabel={`Comment options for ${post.user.firstName}`} style={styles.moreButton}
             onPress={() => setActionTarget({ post, parentId })}>
             <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.primary} />
           </HapticPressable>
         </View>
-        <Text style={[styles.postContent, !!parentId && styles.replyIndent]}>{post.content}</Text>
-        {!activeThreadId && post.replyCount > 0 && (
+        <Text style={styles.postContent}>{post.content}</Text>
+        {!activeThreadId && (
           <View style={styles.postActions}>
-            <HapticPressable style={styles.actionButton} onPress={() => openThread(post.id)}
-              accessibilityLabel={`View ${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'} to ${post.user.firstName}`}>
-              <Ionicons name="chatbubble-outline" size={15} color={COLORS.primary} />
-              <Text style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
+            <HapticPressable style={styles.replyButton} onPress={() => openThread(post.id, true)}
+              accessibilityLabel={`Reply to ${post.user.firstName}`}>
+              <Ionicons name="chatbubble-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.actionText}>Reply</Text>
             </HapticPressable>
+            {post.replyCount > 0 && <HapticPressable style={styles.replyCountButton} onPress={() => openThread(post.id)}
+              accessibilityLabel={`View ${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'} to ${post.user.firstName}`}>
+              <Text style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            </HapticPressable>}
           </View>
         )}
       </HapticPressable>
@@ -472,15 +482,14 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
       {/* Header */}
-      <View style={styles.listingHeader}>
-        <View style={styles.listingContext}>
-          <Text style={styles.listingTitle} numberOfLines={fontScale > 1.4 ? undefined : 2}>{targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}</Text>
-          <HapticPressable style={styles.viewPostButton} accessibilityLabel="View original post"
-            onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}>
-            <Text style={styles.actionText}>View post</Text>
-          </HapticPressable>
-        </View>
-      </View>
+      <ConversationContextCard
+        title={targetTitle || (isRequest ? 'Neighbor request' : 'Shared item')}
+        label="Public comments"
+        photoUrl={target?.photoUrl || target?.photos?.[0]}
+        icon={isRequest ? 'chatbubble' : 'basket'}
+        accessibilityLabel="View original post"
+        onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}
+      />
       {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
 
       <FlatList
@@ -588,29 +597,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  listingHeader: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-  },
-  listingContext: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.md },
-  listingTitle: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    color: COLORS.text,
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 180,
-  },
-  viewPostButton: {
-    minHeight: 44, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderGreenStrong,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface,
-  },
   threadError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, padding: SPACING.lg },
   listContent: {
     paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
     paddingBottom: SPACING.lg,
   },
   list: { flex: 1 },
@@ -631,22 +621,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   postCard: {
-    paddingVertical: SPACING.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.separator,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surface,
   },
   comment: { minWidth: 0 },
   commentHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  commentMeta: { flex: 1, flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: SPACING.sm, rowGap: 2 },
+  authorIdentity: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  commentMeta: { flex: 1, gap: 2 },
   postAvatar: {
     width: 36,
     height: 36,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primaryMuted,
   },
   postAuthor: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.text,
     flexShrink: 1,
   },
@@ -656,15 +647,14 @@ const styles = StyleSheet.create({
   },
   moreButton: {
     width: 44, minHeight: 44, borderRadius: RADIUS.full,
-    borderWidth: 1, borderColor: COLORS.borderGreen,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
   postContent: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
     lineHeight: 23,
-    marginTop: SPACING.xs,
-    marginLeft: 44,
+    marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
   },
   postActions: {
     flexDirection: 'row',
@@ -672,15 +662,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: SPACING.sm,
     marginTop: SPACING.sm,
-    marginLeft: 44,
   },
+  replyButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: SPACING.xs },
+  replyCountButton: { minHeight: 44, marginLeft: 'auto', paddingHorizontal: SPACING.sm, flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   actionButton: {
     minHeight: 44,
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: COLORS.borderGreenStrong,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.primaryMuted,
     paddingHorizontal: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -694,20 +683,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     flexShrink: 1,
   },
-  threadParent: { paddingTop: SPACING.lg, paddingBottom: SPACING.md },
-  threadCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginLeft: 44, marginTop: SPACING.lg },
+  threadParent: { padding: SPACING.md, marginBottom: SPACING.md, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg },
+  threadCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.md, paddingHorizontal: SPACING.xs },
   threadReply: {
-    marginLeft: 18,
-    paddingLeft: SPACING.md,
+    marginLeft: SPACING.lg,
     borderLeftWidth: 2,
     borderLeftColor: COLORS.primaryMuted,
-    borderBottomWidth: 0,
   },
-  replyAvatar: {
-    width: 28,
-    height: 28,
-  },
-  replyIndent: { marginLeft: 36 },
   threadStatus: { paddingVertical: SPACING.md },
   replyStatus: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.sm },
   statusText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },

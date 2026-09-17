@@ -1,4 +1,5 @@
 import { endorsementSummary } from '../services/endorsements.js';
+import { friendshipSummary } from '../services/friendshipSummary.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
@@ -1021,6 +1022,7 @@ router.get('/:id', authenticate, async (req, res) => {
       endorsement: await endorsementSummary(user.id),
       totalTransactions: user.total_transactions,
       memberSince: user.created_at,
+      friendship: await friendshipSummary(req.user.id, user.id),
     });
   } catch (err) {
     console.error('Get user error:', err);

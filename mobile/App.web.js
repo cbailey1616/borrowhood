@@ -15,6 +15,8 @@ import ChatScreen from './src/screens/ChatScreen';
 import ConversationsScreen from './src/screens/ConversationsScreen';
 import ListingDetailScreen from './src/screens/ListingDetailScreen';
 import RequestDetailScreen from './src/screens/RequestDetailScreen';
+import ListingDiscussionScreen from './src/screens/ListingDiscussionScreen';
+import UserProfileScreen from './src/screens/UserProfileScreen';
 import { renderBackHeader } from './src/components/BackHeader';
 import UserBadges, { getTier, RankEmblem } from './src/components/UserBadges';
 import Icon from './src/components/Icon';
@@ -25,7 +27,7 @@ import { COLORS, TYPOGRAPHY } from './src/utils/config';
 
 const Stack = createNativeStackNavigator();
 const query = new URLSearchParams(window.location.search);
-const choices = [['Main', 'App screens'], ['RequestDetail', 'Request details'], ['Chat', 'Chat'], ['Ranks', 'Woodland ranks'], ['Artwork', 'Woodland artwork'], ['Icons', 'All icons']];
+const choices = [['Main', 'App screens'], ['RequestDetail', 'Request details'], ['Chat', 'Messages'], ['ListingDiscussion', 'Public comments'], ['Ranks', 'Woodland ranks'], ['Artwork', 'Woodland artwork'], ['Icons', 'All icons']];
 
 function Artwork() {
   return <ScrollView style={{ backgroundColor: COLORS.background }} contentContainerStyle={{ padding: 24, gap: 24 }}>
@@ -66,12 +68,14 @@ function PreviewApp() {
   return <GestureHandlerRootView style={{ flex: 1 }}><ErrorBoundary><SafeAreaProvider><AuthProvider>
     <NavigationContainer theme={theme} onUnhandledAction={() => window.alert('This screen needs the iPhone app. You can review the main tabs, listing details, chat, icons, and ranks here.')}>
       <ErrorProvider>
-        <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerTintColor: COLORS.primary, headerStyle: { backgroundColor: COLORS.surface }, headerShadowVisible: false, contentStyle: { backgroundColor: COLORS.background } }}>
+        <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ header: renderBackHeader, headerTintColor: COLORS.primary, headerStyle: { backgroundColor: COLORS.surface }, headerShadowVisible: false, contentStyle: { backgroundColor: COLORS.background } }}>
           <Stack.Screen name="Main" component={MainNavigator} options={{ headerShown: false }} />
           <Stack.Screen name="Chat" component={ChatScreen} initialParams={{ conversationId: 'preview-chat' }} options={{ title: 'Chat' }} />
           <Stack.Screen name="Conversations" component={ConversationsScreen} options={{ title: 'Messages' }} />
           <Stack.Screen name="ListingDetail" component={ListingDetailScreen} options={{ title: 'Item details' }} />
           <Stack.Screen name="RequestDetail" component={RequestDetailScreen} initialParams={{ id: 'preview-request' }} options={{ title: 'Request details', header: renderBackHeader }} />
+          <Stack.Screen name="ListingDiscussion" component={ListingDiscussionScreen} initialParams={{ listingId: 'preview-drill' }} options={{ title: 'Comments' }} />
+          <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Profile' }} />
           <Stack.Screen name="Ranks" component={Ranks} options={{ title: 'Borrowhood ranks' }} />
           <Stack.Screen name="Artwork" component={Artwork} options={{ title: 'Woodland artwork' }} />
           <Stack.Screen name="Icons" component={Icons} options={{ title: 'Borrowhood icons' }} />

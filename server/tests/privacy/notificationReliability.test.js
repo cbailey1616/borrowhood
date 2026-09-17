@@ -47,6 +47,7 @@ beforeAll(async () => {
     CREATE TABLE conversations(id UUID PRIMARY KEY, user1_id UUID, user2_id UUID, listing_id UUID, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), conversation_id UUID, sender_id UUID, content TEXT,
       image_url TEXT, deleted_at TIMESTAMPTZ, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE message_reactions(message_id UUID, user_id UUID, emoji TEXT);
     CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), listing_id UUID, request_id UUID, parent_id UUID,
       user_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, reply_count INT DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
@@ -60,13 +61,32 @@ beforeEach(async () => {
   state.allowed = true;
   await state.db.exec(`DROP TRIGGER IF EXISTS fail_notice ON notifications;
     TRUNCATE push_deliveries, push_devices, notifications, users, listings, listing_photos,
-      item_requests, borrow_transactions, conversations, messages, listing_discussions, user_blocks CASCADE`);
+      item_requests, borrow_transactions, conversations, messages, message_reactions, listing_discussions, user_blocks CASCADE`);
   await state.db.query('INSERT INTO users(id) VALUES($1),($2),($3)', [A,B,C]);
   await state.db.query('INSERT INTO listings(id, owner_id) VALUES($1,$2)', [item,A]);
   await state.db.query('INSERT INTO item_requests(id, user_id) VALUES($1,$2)', [item,A]);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { status: 'ok', id: 'ticket-1' } }) }));
 });
 afterAll(async () => { vi.unstubAllGlobals(); await state.db.close(); });
+
+it('clears only the viewer’s unread messages without revealing read receipts to either participant', async () => {
+  await state.db.query('INSERT INTO conversations(id,user1_id,user2_id) VALUES($1,$2,$3)', [root,A,B]);
+  await state.db.query("INSERT INTO messages(conversation_id,sender_id,content) VALUES($1,$2,'From A'),($1,$3,'From B')", [root,A,B]);
+  const before = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
+  expect(before.body[0].unreadCount).toBe(1);
+  const first = await request(app).get(`/messages/conversations/${root}`).set('x-user',A).expect(200);
+  expect(first.body.messages).toHaveLength(2);
+  expect(await rows('SELECT sender_id,is_read FROM messages ORDER BY sender_id')).toEqual([
+    { sender_id: A, is_read: false }, { sender_id: B, is_read: true },
+  ]);
+  const after = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
+  expect(after.body[0].unreadCount).toBe(0);
+  const second = await request(app).get(`/messages/conversations/${root}`).set('x-user',B).expect(200);
+  for (const message of [...first.body.messages, ...second.body.messages]) {
+    expect(message).not.toHaveProperty('isRead');
+    expect(message).not.toHaveProperty('readAt');
+  }
+});
 
 describe('device ownership and durable delivery', () => {
   it('migrates unique legacy tokens once, ignores ambiguous owners, and never replays old notifications', async () => {

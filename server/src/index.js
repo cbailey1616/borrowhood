@@ -21,6 +21,7 @@ validateStripeEnvironment();
 // Routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import profileLinkRoutes from './routes/profileLinks.js';
 import communityRoutes from './routes/communities.js';
 import listingRoutes from './routes/listings.js';
 import transactionRoutes from './routes/transactions.js';
@@ -131,6 +132,7 @@ app.use('/admin', (req, res, next) => {
 });
 
 // Serve legal pages (terms, privacy)
+app.use(profileLinkRoutes);
 app.use(express.static(path.join(__dirname, '../public')));
 app.get('/terms', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/terms.html'));

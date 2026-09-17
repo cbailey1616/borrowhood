@@ -31,4 +31,13 @@ describe('ConversationsScreen', () => {
     fireEvent.press(item);
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.anything());
   });
+  it('shows the latest message without a fixed item label or stored context prefix', async () => {
+    api.getConversations.mockResolvedValue([{ id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice' }, listing: { title: 'Old ladder' },
+      lastMessage: 'About item: “Garden chairs”\n\nAre these available?', lastMessageAt: new Date().toISOString(), unreadCount: 0 }]);
+    const Screen = require('../../src/screens/ConversationsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Are these available?');
+    expect(screen.queryByText('Old ladder')).toBeNull();
+    expect(screen.queryByText(/About item:/)).toBeNull();
+  });
 });

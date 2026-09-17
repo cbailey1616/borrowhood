@@ -244,8 +244,36 @@ it.each(['lend','giveaway','sell'])('makes endorsing the next action for a compl
   await screen.findByText('Endorsement sent');
   expect(api.endorseTransaction).toHaveBeenCalledWith('txn-1',true);
   expect(screen.queryByLabelText('Send endorsement')).toBeNull();
+  expect(screen.getByText('All done')).toBeTruthy();
+  expect(screen.getByText('Nothing else to do.')).toBeTruthy();
+  expect(screen.queryByText('What happens next')).toBeNull();
   fireEvent.press(screen.getByLabelText('Message Alice privately'));
   await waitFor(()=>expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'user-2',listingId:'l-1'})));
+  fireEvent.press(screen.getByLabelText('Back to Home'));
+  expect(mockNavigation.navigate).toHaveBeenLastCalledWith('Main',{screen:'Feed'});
+  screen.unmount();
+  const reopened=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  await reopened.findByText('All done');
+  expect(reopened.queryByText('What happens next')).toBeNull();
+});
+
+it('shows completion only after endorsement succeeds and retains it through a failed refresh',async()=>{
+  api.getTransaction.mockResolvedValueOnce({...mockTransaction,status:'completed',endorsement:{canRate:true}})
+    .mockRejectedValue(new Error('Offline'));
+  api.endorseTransaction.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue({success:true});
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  fireEvent.press(await screen.findByLabelText('Thumbs down'));
+  fireEvent.press(screen.getByLabelText('Send endorsement'));
+  await waitFor(()=>expect(screen.getByLabelText('Send endorsement')).not.toBeDisabled());
+  expect(screen.queryByText('All done')).toBeNull();
+  expect(screen.getByText('What happens next')).toBeTruthy();
+  fireEvent.press(screen.getByLabelText('Send endorsement'));
+  await screen.findByText('Could not refresh this exchange.');
+  expect(screen.getByText('All done')).toBeTruthy();
+  expect(screen.getByText('Nothing else to do.')).toBeTruthy();
+  expect(screen.queryByText('What happens next')).toBeNull();
+  expect(screen.queryByLabelText('Send endorsement')).toBeNull();
 });
 
 it('does not prompt for an expired or unavailable endorsement',async()=>{
@@ -265,6 +293,13 @@ it('keeps issue guidance visible when an endorsement is also available',async()=
   await screen.findByText('An issue is being reviewed');
   expect(screen.getByText('Leave an endorsement')).toBeTruthy();
   expect(screen.getByLabelText('Message Alice privately')).toBeTruthy();
+  fireEvent.press(screen.getByLabelText('Neutral'));
+  fireEvent.press(screen.getByLabelText('Send endorsement'));
+  await screen.findByText('Endorsement sent');
+  expect(screen.getByText('An issue is being reviewed')).toBeTruthy();
+  expect(screen.getByText('What happens next')).toBeTruthy();
+  expect(screen.queryByText('All done')).toBeNull();
+  expect(screen.queryByLabelText('Back to Home')).toBeNull();
 });
 
 it('retains return confirmation ahead of an inconsistent endorsement flag',async()=>{
@@ -294,11 +329,19 @@ it('opens useful giveaway details without notes and closes them again',async()=>
   expect(screen.queryByTestId('Transaction.detailsBody')).toBeNull();
 });
 
-it.each([0, 1, 3])('shows only the requester queue count (%s ahead)', async aheadCount => {
- api.getTransaction.mockResolvedValue({ ...mockTransaction, queue: { aheadCount, waiting: false } });
+it.each([
+ [{ aheadCount: 0, hasOtherRequests: false }, false],
+ [{ aheadCount: 0, hasOtherRequests: true }, true],
+ [{ aheadCount: 3, hasOtherRequests: true }, true],
+ [{ aheadCount: 1 }, true],
+ [{}, false],
+])('explains request review and other requests without a queue position (%j)', async (queue, hasOtherRequests) => {
+ api.getTransaction.mockResolvedValue({ ...mockTransaction, queue: { ...queue, waiting: false } });
  const Screen = require('../../src/screens/TransactionDetailScreen').default;
  const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'txn-1' } }} />);
- await screen.findByText(aheadCount === 0 ? 'No one ahead of you' : `${aheadCount} ${aheadCount === 1 ? 'person' : 'people'} ahead of you`);
+ await screen.findByText('Your request is being reviewed.');
+ expect(!!screen.queryByText('Multiple people have submitted a request. Some may be ahead of you.')).toBe(hasOtherRequests);
+ expect(screen.queryByText(/first in line|\d+ (person|people).*ahead of you/)).toBeNull();
  expect(screen.queryByTestId('Transaction.button.queue')).toBeNull();
 });
 it('keeps a reserved request waiting without promising a pickup', async () => {

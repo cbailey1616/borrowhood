@@ -2,13 +2,12 @@ import ConversationsScreen from './ConversationsScreen';
 import MessageComposer from '../components/MessageComposer';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ActionButton from '../components/ActionButton';
-import { requestPresentation } from '../utils/requestPresentation';
-import { privateMessagePrefix } from '../utils/conversationContext';
+import { privateMessagePrefix, messagePresentation } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
-import UserSafetyActions from '../components/UserSafetyActions';
+import ConversationHeader from '../components/ConversationHeader';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,7 +27,6 @@ import Animated, {
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import useFormDraft from '../hooks/useFormDraft';
-import ChatExchangeCard from '../components/ChatExchangeCard';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
@@ -65,11 +63,21 @@ function ChatConversation({ route, navigation }) {
   const [chatError, setChatError] = useState('');
   const { user } = useAuth();
   const [conversation, setConversation] = useState(null);
-  const [hasExchange, setHasExchange] = useState(false);
+  const otherUser = conversation?.otherUser || recipient || passedListing?.owner;
+  const profileId = recipientId || otherUser?.id;
+  const profileName = [otherUser?.firstName, otherUser?.lastName].filter(Boolean).join(' ') || 'neighbor';
+  const [messagesBlocked, setMessagesBlocked] = useState(false);
   const [messages, setMessages] = useState([]);
   const contextId = threadContext?.id || listingId;
-  const activeContext = threadContext || (listingId && (passedListing?.title || conversation?.listing?.title) ? { id: listingId, type: 'listing', title: passedListing?.title || conversation.listing.title } : null);
+  const contextTitle = passedListing?.title || (listingId && conversation?.listing?.id === listingId ? conversation.listing.title : null);
+  const routeContext = threadContext || (listingId && contextTitle ? { id: listingId, type: 'listing', title: contextTitle } : null);
+  const contextKey = routeContext ? JSON.stringify([profileId, routeContext.type, routeContext.id, routeContext.title, routeContext.replyText]) : null;
+  const [usedContextKey, setUsedContextKey] = useState(null);
+  const activeContext = contextKey !== usedContextKey ? routeContext : null;
   const contextPrefix = privateMessagePrefix(activeContext);
+  // A fresh visit from a post can introduce that subject again. Sending or
+  // removing it consumes only this reference, never the whole conversation.
+  useEffect(() => { setUsedContextKey(null); }, [threadContext, listingId, passedListing]);
   const draftTarget = recipientId || conversation?.otherUser?.id;
   const [composer, setComposer, draft] = useFormDraft(user?.id && draftTarget ? `${user.id}.chat.${draftTarget}${contextId ? `.${threadContext?.type || 'listing'}.${contextId}` : ''}` : null, { text: '', pending: null });
   const newMessage = composer.text;
@@ -121,18 +129,36 @@ function ChatConversation({ route, navigation }) {
           listing: passedListing,
           otherUser: passedListing.owner,
         });
+      } else if (recipientId) {
+        let current = true;
+        api.getUser(recipientId).then(person => {
+          if (current && person) setConversation({ otherUser: person });
+        }).catch(() => {});
+        return () => { current = false; };
       }
     }
   }, [conversationId, recipientId, isFocused]);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: profileName === 'neighbor' ? 'Messages' : profileName,
+      header: () => <ConversationHeader navigation={navigation} person={otherUser} userId={profileId} />,
+    });
+  }, [otherUser, profileId, profileName, navigation]);
+
+  // Recheck when returning from a profile, where blocking is managed.
   useEffect(() => {
-    // Update header with other user's name
-    if (conversation?.otherUser) {
-      navigation.setOptions({
-        title: `${conversation.otherUser.firstName || ''} ${conversation.otherUser.lastName || ''}`.trim() || 'Chat',
-      });
-    }
-  }, [conversation, navigation]);
+    if (!isFocused || !profileId) return;
+    let current = true;
+    api.getUserSafety(profileId).then(result => {
+      if (current) setMessagesBlocked(result.blocked === true);
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [isFocused, profileId]);
+
+  const openProfile = () => {
+    if (profileId) navigation.navigate('UserProfile', { id: profileId });
+  };
 
   const fetchMessages = async () => {
     try {
@@ -148,7 +174,7 @@ function ChatConversation({ route, navigation }) {
   };
 
   const deliver = async pending => {
-    if (sending.current || !draft.ready) return;
+    if (sending.current || !draft.ready || messagesBlocked) return;
     sending.current = true;
     setChatError('');
     setIsSending(true);
@@ -159,6 +185,7 @@ function ChatConversation({ route, navigation }) {
       if (!(await draft.retry())) throw new Error('draft-storage');
       const result = await api.sendMessage(pending.payload);
       acknowledged = true;
+      if (pending.contextKey) setUsedContextKey(pending.contextKey);
       let remainingText;
       setComposer(current => {
         remainingText = pending.payload.content && current.text.trim() === (pending.composerText ?? pending.payload.content) ? '' : current.text;
@@ -175,7 +202,6 @@ function ChatConversation({ route, navigation }) {
         // URL returned by the API immediately, without waiting for the next poll.
         imageUrl: result.imageUrl || pending.payload.imageUrl,
         isOwnMessage: true,
-        isRead: false,
         createdAt: result.createdAt || new Date().toISOString(),
       };
       setMessages(prev => mergeMessages(prev, [newMsg]));
@@ -200,7 +226,7 @@ function ChatConversation({ route, navigation }) {
   };
 
   const handleSend = async () => {
-    if ((!newMessage.trim() && !attachment) || sending.current || preparingPhoto.current || isUploading || composer.pending || !draft.ready) return;
+    if ((!newMessage.trim() && !attachment) || sending.current || preparingPhoto.current || isUploading || composer.pending || !draft.ready || messagesBlocked) return;
     const recipient = recipientId || conversation?.otherUser?.id;
     if (!recipient) return setChatError('Couldn’t identify the recipient. Reopen this conversation.');
     const text = newMessage.trim();
@@ -213,10 +239,10 @@ function ChatConversation({ route, navigation }) {
         imageUrl = await api.uploadImage(selected.uri, 'messages');
         setAttachment(current => current?.uri === selected.uri ? { ...current, imageUrl } : current);
       }
-      await deliver({ retryable: safeRetries, composerText: text, attachmentUri: selected?.uri, payload: {
+      await deliver({ retryable: safeRetries, composerText: text, attachmentUri: selected?.uri, contextKey: activeContext ? contextKey : null, payload: {
         recipientId: recipient, ...(text || contextPrefix ? { content: (contextPrefix + text).trim() } : {}),
         ...(imageUrl ? { imageUrl } : {}),
-        ...(activeContext?.type === 'request' ? {} : { listingId: listingId || conversation?.listing?.id }),
+        ...(activeContext?.type === 'listing' ? { listingId: activeContext.id } : {}),
         ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
       } });
     } catch {
@@ -245,7 +271,7 @@ function ChatConversation({ route, navigation }) {
 
     if (d.toDateString() === today.toDateString()) return 'Today';
     if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString();
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}) });
   };
 
   const handleMessageLongPress = useCallback((message) => {
@@ -391,16 +417,15 @@ function ChatConversation({ route, navigation }) {
         onPress: () => handleDeleteMessage(message.id),
       });
     }
-    if (!message.isOwnMessage) {
+    if (!message.isOwnMessage && profileId) {
       actions.push({
-        label: 'Report',
-        icon: <Ionicons name="flag-outline" size={20} color={COLORS.danger} />,
-        destructive: true,
-        onPress: () => {},
+        label: 'View profile',
+        icon: <Ionicons name="person-outline" size={20} color={COLORS.primary} />,
+        onPress: () => navigation.navigate('UserProfile', { id: profileId }),
       });
     }
     return actions;
-  }, [handleCopyMessage, handleDeleteMessage]);
+  }, [handleCopyMessage, handleDeleteMessage, profileId, navigation]);
 
   const renderReactionPills = (item) => {
     const reactions = item.reactions || [];
@@ -438,7 +463,10 @@ function ChatConversation({ route, navigation }) {
   const renderMessage = ({ item, index }) => {
     const showDate = index === 0 ||
       formatDate(messages[index - 1].createdAt) !== formatDate(item.createdAt);
-    const otherUser = conversation?.otherUser;
+    const next = messages[index + 1];
+    const continuesGroup = next && !next.isDeleted && !item.isDeleted && next.isOwnMessage === item.isOwnMessage &&
+      new Date(next.createdAt) - new Date(item.createdAt) < 5 * 60000 && formatDate(next.createdAt) === formatDate(item.createdAt);
+    const { text, context } = messagePresentation(item.content);
 
     return (
       <View>
@@ -458,58 +486,45 @@ function ChatConversation({ route, navigation }) {
               item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
             ]}
           >
-            {!item.isOwnMessage && (otherUser?.profilePhotoUrl ? <Image source={{ uri: otherUser.profilePhotoUrl }} style={styles.messageAvatar} /> : <View style={[styles.messageAvatar, { backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' }]}><Ionicons name="person-outline" size={16} color={COLORS.textSecondary} /></View>)}
+            {!item.isOwnMessage && (continuesGroup ? <View style={styles.avatarSlot} /> :
+              <HapticPressable onPress={openProfile} disabled={!profileId} style={styles.avatarSlot}
+                accessibilityLabel={`View ${profileName}’s profile`} testID={`Chat.avatar.${item.id}`}>
+                <ShimmerImage source={{ uri: otherUser?.profilePhotoUrl || null }} placeholderIcon="person" style={styles.messageAvatar} />
+              </HapticPressable>)}
             {item.isDeleted ? (
               <View style={[styles.messageBubble, styles.deletedMessage]}>
                 <Text style={styles.deletedMessageText}>This message was deleted</Text>
               </View>
-            ) : item.isOwnMessage ? (
+            ) : (
               <HapticPressable
                 onLongPress={() => handleMessageLongPress(item)}
                 haptic="medium"
-                style={[styles.messageBubble, styles.ownMessage, item.imageUrl && styles.imageBubble]}
+                accessible={false}
+                accessibilityRole={undefined}
+                style={[styles.messageBubble, item.isOwnMessage ? styles.ownMessage : styles.otherMessage, item.imageUrl && styles.imageBubble]}
               >
+                {context && <View style={styles.messageContext}>
+                  <View style={styles.messageContextTitle}>
+                    <Ionicons name={context.type === 'request' ? 'chatbubble' : 'basket'} size={15} color={COLORS.primary} illustrated />
+                    <Text style={styles.messageContextText}>{context.title}</Text>
+                  </View>
+                  {!!context.replyText && <Text style={styles.messageQuote}>“{context.replyText}”</Text>}
+                </View>}
                 {item.imageUrl && (
                   <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
                     <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
                   </HapticPressable>
                 )}
-                {item.content ? (
-                  <Text style={[styles.messageText, styles.ownMessageText]}>
-                    {item.content}
+                {text ? (
+                  <Text style={[styles.messageText, item.isOwnMessage ? styles.ownMessageText : styles.otherMessageText, item.imageUrl && styles.imageCaption]}>
+                    {text}
                   </Text>
                 ) : null}
                 <View style={styles.ownMessageMeta}>
                   <Text style={[styles.messageTime, styles.ownMessageTime]}>
                     {formatTime(item.createdAt)}
                   </Text>
-                  <Ionicons
-                    name={item.isRead ? 'checkmark-done' : 'checkmark'}
-                    size={14}
-                    color={item.isRead ? COLORS.primary : COLORS.textMuted}
-                    style={styles.readReceipt}
-                  />
                 </View>
-              </HapticPressable>
-            ) : (
-              <HapticPressable
-                onLongPress={() => handleMessageLongPress(item)}
-                haptic="medium"
-                style={[styles.messageBubble, styles.otherMessage, item.imageUrl && styles.imageBubble]}
-              >
-                  {item.imageUrl && (
-                    <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
-                      <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
-                    </HapticPressable>
-                  )}
-                  {item.content ? (
-                    <Text style={[styles.messageText, styles.otherMessageText]}>
-                      {item.content}
-                    </Text>
-                  ) : null}
-                  <Text style={[styles.messageTime, styles.otherMessageTime]}>
-                    {formatTime(item.createdAt)}
-                  </Text>
               </HapticPressable>
             )}
           </Animated.View>
@@ -533,37 +548,7 @@ function ChatConversation({ route, navigation }) {
       style={styles.container}
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
-      {/* Listing Context Header */}
-      <UserSafetyActions userId={recipientId || conversation?.otherUser?.id} />
-      {threadContext?.id && <HapticPressable style={styles.listingHeader} accessibilityRole="button"
-        accessibilityLabel={`View ${threadContext.title || 'original thread'}`}
-        onPress={() => navigation.navigate(threadContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: threadContext.id })}>
-        <Ionicons name={threadContext.type === 'request' ? requestPresentation(threadContext.requestType).icon : 'chatbubble'} size={28} color={COLORS.primary} illustrated />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ color: COLORS.text, fontWeight: '400' }}>{threadContext.title || 'From the thread'}</Text>
-          {!!threadContext.replyText && <Text style={{ color: COLORS.textSecondary, fontSize: 12 }} numberOfLines={2}>Replying to: “{threadContext.replyText}”</Text>}
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{threadContext.type === 'request' ? requestPresentation(threadContext.requestType).label : 'About this item'}</Text>
-        </View>
-      </HapticPressable>}
-      {!threadContext && conversation?.listing && !hasExchange && (
-        <HapticPressable
-          style={styles.listingHeader}
-          onPress={() => navigation.navigate('ListingDetail', { id: conversation.listing.id })}
-          haptic="light"
-        >
-          {(conversation.listing.photoUrl || conversation.listing.photos?.[0]) ? <Image source={{ uri: conversation.listing.photoUrl || conversation.listing.photos[0] }} style={styles.listingImage} /> : <View style={[styles.listingImage, { backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' }]}><Ionicons name="cube-outline" size={20} color={COLORS.primary} /></View>}
-          <View style={styles.listingInfo}>
-            <Text style={styles.listingLabel}>Chatting about</Text>
-            <Text style={styles.listingTitle} numberOfLines={1}>
-              {conversation.listing.title}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </HapticPressable>
-      )}
-
       {/* Messages List */}
-      {threadContext?.requestType !== 'service' && <ChatExchangeCard userId={user.id} otherId={recipientId || conversation?.otherUser?.id} listingId={listingId || conversation?.listing?.id} navigation={navigation} focused={isFocused} onActiveChange={setHasExchange} />}
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -584,6 +569,10 @@ function ChatConversation({ route, navigation }) {
         }
       />
 
+      {messagesBlocked && <View style={styles.blockedNotice}>
+        <Text style={styles.blockedText}>Messaging is blocked.</Text>
+        <HapticPressable onPress={openProfile} style={styles.profileLink}><Text style={styles.profileLinkText}>View profile</Text></HapticPressable>
+      </View>}
       {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>New messages ↓</Text></HapticPressable>}
       {!!chatError && <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{chatError}</Text>
@@ -592,7 +581,7 @@ function ChatConversation({ route, navigation }) {
       {!!composer.pending && !isSending && <View style={{ paddingHorizontal: 16, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 13, paddingTop: 8 }}>Unconfirmed {composer.pending.payload.imageUrl ? 'photo' : 'message'}{composer.pending.payload.content ? `: ${composer.pending.payload.content.slice(0, 90)}` : ''}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 8 }}>
-          {composer.pending.retryable && safeRetries && <ActionButton onPress={() => deliver(composer.pending)} label="Retry send" />}
+          {composer.pending.retryable && safeRetries && !messagesBlocked && <ActionButton onPress={() => deliver(composer.pending)} label="Retry send" />}
           <ActionButton onPress={dismissPending} label="Clear after checking" />
         </View>
         {!composer.pending.retryable && <Text style={{ color: COLORS.textSecondary, fontSize: 12, paddingBottom: 8 }}>Check the conversation before sending again. Safe retries need the updated server.</Text>}
@@ -606,18 +595,33 @@ function ChatConversation({ route, navigation }) {
         </HapticPressable>
       </View>}
       <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
+        {!!contextPrefix && !composer.pending && <View testID="Chat.postReference" style={styles.postReference}>
+          <HapticPressable style={styles.postReferenceLink} accessibilityLabel={`View ${activeContext.title}`}
+            onPress={() => navigation.navigate(activeContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: activeContext.id })}>
+            <Ionicons name={activeContext.type === 'request' ? 'chatbubble' : 'basket'} size={18} color={COLORS.primary} illustrated />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.postReferenceText}>About: {activeContext.title}</Text>
+              {!!activeContext.replyText && <Text style={styles.postReferenceQuote} numberOfLines={2}>“{activeContext.replyText}”</Text>}
+            </View>
+          </HapticPressable>
+          <HapticPressable style={styles.removeReference} accessibilityLabel="Remove post reference"
+            disabled={isSending || isUploading || !draft.ready} onPress={() => setUsedContextKey(contextKey)}>
+            <Ionicons name="close" size={18} color={COLORS.primary} />
+          </HapticPressable>
+        </View>}
         <MessageComposer
           testID="Chat.composer"
           value={newMessage}
           onChangeText={setNewMessage}
           onSend={handleSend}
-          placeholder="Private message…"
+          placeholder="Message…"
           inputTestID="Chat.input.message"
           maxLength={2000 - contextPrefix.length}
           loading={isSending || isUploading}
-          disabled={(!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready}
+          editable={!messagesBlocked}
+          disabled={(!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready || messagesBlocked}
           leadingAction={
-            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready}>
+            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
               {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
             </HapticPressable>
           }
@@ -687,37 +691,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  listingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    gap: SPACING.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.separator,
-  },
-  listingImage: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.gray[700],
-  },
-  listingInfo: {
-    flex: 1,
-  },
-  listingLabel: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  listingTitle: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
-    color: COLORS.text,
-    marginTop: 2,
-  },
   messagesContent: {
     padding: SPACING.lg,
     flexGrow: 1,
@@ -725,13 +698,13 @@ const styles = StyleSheet.create({
   },
   dateHeader: {
     alignItems: 'center',
-    marginVertical: SPACING.xl,
+    marginVertical: SPACING.md,
   },
   datePill: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.surfaceElevated,
   },
   dateText: {
     ...TYPOGRAPHY.caption1,
@@ -752,15 +725,16 @@ const styles = StyleSheet.create({
   messageAvatar: {
     width: 28,
     height: 28,
-    borderRadius: 10,
-    marginRight: SPACING.sm,
-    backgroundColor: COLORS.gray[700],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryMuted,
   },
+  avatarSlot: { width: 44, minHeight: 44, alignItems: 'flex-start', justifyContent: 'flex-end', paddingBottom: 2, opacity: 1 },
   messageBubble: {
-    maxWidth: '84%',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.xl,
+    maxWidth: '82%',
+    flexShrink: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: RADIUS.lg,
   },
   ownMessage: {
     backgroundColor: COLORS.chatOwn,
@@ -768,8 +742,6 @@ const styles = StyleSheet.create({
   },
   otherMessage: {
     backgroundColor: COLORS.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderBrown,
     borderBottomLeftRadius: SPACING.sm,
   },
   deletedMessage: {
@@ -809,9 +781,14 @@ const styles = StyleSheet.create({
     right: 20,
   },
   messageText: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.body,
     lineHeight: 23,
   },
+  messageContext: { borderLeftWidth: 2, borderLeftColor: COLORS.primary, paddingLeft: SPACING.sm, marginBottom: SPACING.sm, marginTop: 2 },
+  messageContextTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  messageContextText: { ...TYPOGRAPHY.caption1, color: COLORS.primary, flexShrink: 1 },
+  messageQuote: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: SPACING.xs },
+  imageCaption: { paddingHorizontal: SPACING.sm },
   ownMessageText: {
     color: COLORS.chatOwnText,
   },
@@ -821,7 +798,6 @@ const styles = StyleSheet.create({
   messageTime: {
     ...TYPOGRAPHY.caption1,
     fontSize: 11,
-    marginTop: SPACING.xs,
   },
   ownMessageMeta: {
     flexDirection: 'row',
@@ -832,12 +808,6 @@ const styles = StyleSheet.create({
   },
   ownMessageTime: {
     color: COLORS.textSecondary,
-  },
-  readReceipt: {
-    marginLeft: 2,
-  },
-  otherMessageTime: {
-    color: COLORS.textMuted,
   },
   emptyMessages: {
     flex: 1,
@@ -855,16 +825,25 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.sm,
     backgroundColor: COLORS.background,
   },
+  postReference: { flexDirection: 'row', alignItems: 'center', paddingLeft: SPACING.md, paddingRight: SPACING.xs, marginBottom: SPACING.xs, backgroundColor: COLORS.surface, borderRadius: RADIUS.md },
+  postReferenceLink: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: SPACING.sm },
+  postReferenceText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  postReferenceQuote: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: 2 },
+  removeReference: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   attachPhotoButton: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
+    marginBottom: 2,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   messageContainer: {
   },
+  blockedNotice: { paddingHorizontal: SPACING.lg, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm },
+  blockedText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  profileLink: { minHeight: 44, justifyContent: 'center' },
+  profileLinkText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, textDecorationLine: 'underline' },
   emojiPickerOverlay: {
     position: 'absolute',
     zIndex: 200,

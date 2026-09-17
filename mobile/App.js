@@ -78,7 +78,7 @@ export default function App() {
                 onReady={() => setNavigationRef(navigationRef)}
               >
                 <ErrorProvider navigationRef={navigationRef}>
-                  <RootNavigator />
+                  <RootNavigator navigationRef={navigationRef} />
                   <ThemedAlertHost />
                   <StatusBar style="dark" />
                 </ErrorProvider>

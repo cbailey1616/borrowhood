@@ -1,12 +1,11 @@
 import MemberSummary from '../components/MemberSummary';
 import VerifiedBadge from '../components/VerifiedBadge';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
@@ -15,6 +14,7 @@ import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import UserSafetyActions from '../components/UserSafetyActions';
 import { useAuth } from '../context/AuthContext';
+import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -25,64 +25,73 @@ export default function UserProfileScreen({ route, navigation }) {
   const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user: currentUser } = useAuth();
+  const { showError } = useError();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFriend, setIsFriend] = useState(false);
+  const [friendship, setFriendship] = useState('none');
   const [isAddingFriend, setIsAddingFriend] = useState(false);
   const [removeFriendSheetVisible, setRemoveFriendSheetVisible] = useState(false);
   const [messagesBlocked, setMessagesBlocked] = useState(false);
+  const friendshipRevision = useRef(0);
 
   const isOwnProfile = String(currentUser?.id) === String(id);
+  const isFriend = friendship === 'accepted';
+  const requestPending = friendship === 'pending';
+  const friendActionLabel = isFriend ? 'Friends' : requestPending ? 'Request sent' : friendship === 'received' ? 'Accept request' : 'Add friend';
 
   useEffect(() => {
+    let mounted = true;
+    let revision = 0;
     setMessagesBlocked(false);
     setUser(null);
+    setFriendship('none');
     setIsLoading(true);
-    fetchUser();
-    checkFriendStatus();
-    return navigation.addListener('focus', () => { fetchUser(); checkFriendStatus(); });
+    const fetchProfile = async () => {
+      const current = ++revision;
+      const beforeAction = friendshipRevision.current;
+      try {
+        const data = await api.getUser(id);
+        // Retain compatibility while the server update rolls out.
+        const status = data.friendship?.status ?? ((await api.getFriends()).some(f => f.id === id) ? 'accepted' : 'none');
+        if (!mounted || current !== revision) return;
+        setUser(data);
+        if (beforeAction === friendshipRevision.current) setFriendship(status);
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+      } finally {
+        if (mounted && current === revision) setIsLoading(false);
+      }
+    };
+    fetchProfile();
+    const unsubscribe = navigation.addListener('focus', fetchProfile);
+    return () => { mounted = false; unsubscribe(); };
   }, [id, navigation]);
 
-  const fetchUser = async () => {
-    try {
-      const data = await api.getUser(id);
-      setUser(data);
-    } catch (error) {
-      console.error('Failed to fetch user:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const checkFriendStatus = async () => {
-    try {
-      const friends = await api.getFriends();
-      setIsFriend(friends.some(f => f.id === id));
-    } catch (error) {
-      console.error('Failed to check friend status:', error);
-    }
-  };
-
   const handleAddFriend = async () => {
+    if (isAddingFriend || requestPending || isOwnProfile) return;
+    friendshipRevision.current += 1;
     setIsAddingFriend(true);
     try {
-      await api.addFriend(id);
-      setIsFriend(true);
+      const result = await api.addFriend(id);
+      setFriendship(['accepted', 'already_friends'].includes(result.status) ? 'accepted' : 'pending');
       haptics.success();
     } catch (error) {
       haptics.error();
+      showError('Could not send friend request', 'Please try again.');
     } finally {
       setIsAddingFriend(false);
     }
   };
 
   const handleRemoveFriend = async () => {
+    friendshipRevision.current += 1;
     setIsAddingFriend(true);
     try {
       await api.removeFriend(id);
-      setIsFriend(false);
+      setFriendship('none');
     } catch (error) {
       haptics.error();
+      showError('Could not remove friend', 'Please try again.');
     } finally {
       setIsAddingFriend(false);
     }
@@ -163,21 +172,22 @@ export default function UserProfileScreen({ route, navigation }) {
           <View style={styles.actionButtons}>
             <HapticPressable
               haptic="medium"
-              style={[styles.friendButton, isFriend && styles.friendButtonActive]}
+              style={[styles.friendButton, (isFriend || requestPending) && styles.friendButtonActive, requestPending && { opacity: 1 }]}
               onPress={isFriend ? () => setRemoveFriendSheetVisible(true) : handleAddFriend}
-              disabled={isAddingFriend}
+              accessibilityLabel={friendActionLabel}
+              disabled={isAddingFriend || requestPending}
             >
               {isAddingFriend ? (
                 <ActivityIndicator size="small" color="#fff" />
-              ) : isFriend ? (
+              ) : isFriend || requestPending ? (
                 <>
-                  <Ionicons name="checkmark" size={20} color={COLORS.primary} />
-                  <Text style={styles.friendButtonTextActive}>Friends</Text>
+                  <Ionicons name={isFriend ? 'checkmark' : 'time-outline'} size={20} color={COLORS.primary} />
+                  <Text style={styles.friendButtonTextActive}>{friendActionLabel}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="person-add-outline" size={20} color="#fff" />
-                  <Text style={styles.friendButtonText}>Add Friend</Text>
+                  <Text style={styles.friendButtonText}>{friendActionLabel}</Text>
                 </>
               )}
             </HapticPressable>

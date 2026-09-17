@@ -60,6 +60,15 @@ const chooseAction = (screen, label) => {
 };
 
 describe('InboxScreen', () => {
+  it('keeps the private message list focused on people and the latest message', async () => {
+    api.getConversations.mockResolvedValue([{ id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice' }, listing: { title: 'Old ladder' },
+      lastMessage: 'About item: “Garden chairs”\n\nAre these available?', lastMessageAt: new Date().toISOString(), unreadCount: 1 }]);
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Are these available?');
+    expect(screen.queryByText('Old ladder')).toBeNull();
+    expect(screen.queryByText(/About item:/)).toBeNull();
+  });
   it('keeps filtering and all-read actions in the header menu on both tabs', async () => {
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);

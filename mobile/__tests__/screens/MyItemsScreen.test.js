@@ -61,6 +61,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   api.getMyListings.mockResolvedValue([]);
   api.getMyRequests.mockResolvedValue([]);
+  api.getTransactions.mockResolvedValue([]);
   Image.sources = [];
 });
 
@@ -193,13 +194,13 @@ describe('MyItemsScreen', () => {
     await utils.findByText('Your listings start here');
   });
 
-  it('requests tab calls api.getMyRequests', async () => {
+  it('requests tab loads sent items and posted neighborhood requests', async () => {
     const MyItemsScreen = require('../../src/screens/MyItemsScreen').default;
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
-    // Switch to ISO tab (index 2)
     await selectTab(utils, 1);
     await waitFor(() => {
       expect(api.getMyRequests).toHaveBeenCalled();
+      expect(api.getTransactions).toHaveBeenCalledWith({ role: 'borrower' });
     });
   });
 
@@ -212,5 +213,99 @@ describe('MyItemsScreen', () => {
     const utils = render(<MyItemsScreen navigation={mockNavigation} />);
     await selectTab(utils, 1);
     await utils.findByText('Need a ladder');
+  });
+
+  const sentRequest = {
+    id: 'sent-1', status: 'pending', listingType: 'lend', isBorrower: true,
+    listing: { id: 'glue', title: 'Cabinet glue' }, lender: { firstName: 'Chris' },
+    startDate: '2026-09-17', endDate: '2026-09-18',
+  };
+  const postedRequest = { id: 'posted-1', title: 'Need a ladder', status: 'open' };
+  const selectRequestFilter = async (screen, label) => {
+    fireEvent.press(screen.getByRole('button', { name: /^Filter requests:/ }));
+    fireEvent.press(screen.getByRole('checkbox', { name: label }));
+    await waitFor(() => expect(screen.getByRole('button', { name: `Filter requests: ${label}` }).props.accessibilityState.expanded).toBe(false));
+  };
+
+  it('defaults to both request types and filters them without refetching or mixing their destinations', async () => {
+    // IDs can overlap across the two API resources.
+    api.getTransactions.mockResolvedValue([{ ...sentRequest, id: postedRequest.id }]);
+    api.getMyRequests.mockResolvedValue([postedRequest]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await selectTab(screen, 1);
+    await screen.findByText('Cabinet glue');
+    expect(screen.getByRole('header', { name: 'Items you requested' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Requests you posted' })).toBeTruthy();
+    expect(screen.getByText('Sep 17 – Sep 18')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Cabinet glue, Being reviewed' }));
+    expect(mockNavigation.navigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: postedRequest.id });
+
+    await selectRequestFilter(screen, 'Items you requested');
+    expect(screen.getByText('Cabinet glue')).toBeTruthy();
+    expect(screen.queryByText('Need a ladder')).toBeNull();
+    expect(screen.queryByTestId('post-swipe')).toBeNull();
+    await selectRequestFilter(screen, 'Requests you posted');
+    expect(screen.queryByText('Cabinet glue')).toBeNull();
+    fireEvent.press(screen.getByText('Need a ladder'));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestDetail', { id: postedRequest.id });
+    await selectRequestFilter(screen, 'All requests');
+    expect(screen.getByText('Cabinet glue')).toBeTruthy();
+    expect(screen.getByText('Need a ladder')).toBeTruthy();
+    expect(api.getTransactions).toHaveBeenCalledTimes(1);
+    expect(api.getMyRequests).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps active outgoing requests visible and excludes incoming and finished exchanges', async () => {
+    api.getTransactions.mockResolvedValue([
+      sentRequest,
+      { ...sentRequest, id: 'ready', status: 'approved', listingType: 'giveaway', startDate: null, endDate: null, listing: { title: 'Free books' } },
+      { ...sentRequest, id: 'borrowed', status: 'picked_up', endDate: '2099-12-31', listing: { title: 'Borrowed drill' } },
+      { ...sentRequest, id: 'return', status: 'return_pending', listing: { title: 'Ladder to return' } },
+      { ...sentRequest, id: 'incoming', isBorrower: false, listing: { title: 'Someone wants my bike' } },
+      ...['completed', 'returned', 'cancelled', 'declined', 'expired'].map(status => ({ ...sentRequest, id: status, status, listing: { title: `${status} item` } })),
+      { ...sentRequest, id: 'given-away', listingType: 'giveaway', status: 'picked_up', listing: { title: 'Books already collected' } },
+    ]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await selectTab(screen, 1);
+    await screen.findByText('Cabinet glue');
+    for (const label of ['Being reviewed', 'Ready for pickup', 'Currently borrowing', 'Waiting for return confirmation']) expect(screen.getByText(label)).toBeTruthy();
+    for (const label of ['Someone wants my bike', 'completed item', 'returned item', 'cancelled item', 'declined item', 'expired item', 'Books already collected', 'Invalid Date']) expect(screen.queryByText(label)).toBeNull();
+  });
+
+  it('retains the selected filter through refresh and removes an exchange once it is finished', async () => {
+    api.getTransactions.mockResolvedValue([sentRequest]);
+    api.getMyRequests.mockResolvedValue([postedRequest]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await selectTab(screen, 1);
+    await screen.findByText('Cabinet glue');
+    await selectRequestFilter(screen, 'Items you requested');
+    api.getTransactions.mockResolvedValue([{ ...sentRequest, status: 'completed' }]);
+    await act(async () => fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh'));
+    await screen.findByText('No items requested');
+    expect(screen.queryByText('Cabinet glue')).toBeNull();
+    expect(screen.queryByText('Need a ladder')).toBeNull();
+    fireEvent.press(screen.getByText('Browse items'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Feed');
+    await selectRequestFilter(screen, 'Requests you posted');
+    expect(screen.getByText('Need a ladder')).toBeTruthy();
+  });
+
+  it.each(['sent', 'posted'])('keeps the other request list usable when the %s list fails and supports retry', async failed => {
+    api.getTransactions.mockResolvedValue([sentRequest]);
+    api.getMyRequests.mockResolvedValue([postedRequest]);
+    (failed === 'sent' ? api.getTransactions : api.getMyRequests).mockRejectedValueOnce(new Error('offline'));
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await selectTab(screen, 1);
+    await screen.findByText(failed === 'sent' ? 'Couldn’t load items you requested.' : 'Couldn’t load requests you posted.');
+    expect(screen.getByText(failed === 'sent' ? 'Need a ladder' : 'Cabinet glue')).toBeTruthy();
+    expect(screen.queryByText('No requests yet')).toBeNull();
+    fireEvent.press(screen.getByText('Try again'));
+    await screen.findByText(failed === 'sent' ? 'Cabinet glue' : 'Need a ladder');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

@@ -19,6 +19,7 @@ const MessageComposer = forwardRef(function MessageComposer({
 
   return (
     <View testID={testID} style={[styles.container, style]}>
+      {leadingAction}
       <AppTextInput
         ref={ref}
         style={[styles.input, { height: inputHeight }]}
@@ -39,24 +40,21 @@ const MessageComposer = forwardRef(function MessageComposer({
         autoCorrect
         spellCheck
         showDoneAccessory={false}
-        keyboardAppearance="dark"
+        keyboardAppearance="light"
       />
-      <View style={styles.actions}>
-        {leadingAction}
-        <HapticPressable
-          haptic="medium"
-          accessibilityRole="button"
-          accessibilityLabel={sendAccessibilityLabel}
-          accessibilityState={{ disabled: unavailable, busy: loading }}
-          testID={sendTestID}
-          style={styles.sendButton}
-          disabled={unavailable}
-          onPress={() => { if (!unavailable) onSend?.(); }}
-        >
-          {loading ? <ActivityIndicator size="small" color={COLORS.surface} />
-            : <Ionicons name="send" size={21} color={COLORS.surface} />}
-        </HapticPressable>
-      </View>
+      <HapticPressable
+        haptic="medium"
+        accessibilityRole="button"
+        accessibilityLabel={sendAccessibilityLabel}
+        accessibilityState={{ disabled: unavailable, busy: loading }}
+        testID={sendTestID}
+        style={[styles.sendButton, unavailable && styles.sendUnavailable]}
+        disabled={unavailable}
+        onPress={() => { if (!unavailable) onSend?.(); }}
+      >
+        {loading ? <ActivityIndicator size="small" color={COLORS.primary} />
+          : <Ionicons name="arrow-up" size={23} color={unavailable ? COLORS.textMuted : COLORS.surface} />}
+      </HapticPressable>
     </View>
   );
 });
@@ -65,31 +63,36 @@ export default MessageComposer;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 6,
-    borderWidth: 1,
-    borderColor: COLORS.borderGreenStrong,
-    borderRadius: RADIUS.xl,
+    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: SPACING.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.separator,
+    borderRadius: 28,
     backgroundColor: COLORS.surface,
   },
   input: {
     ...TYPOGRAPHY.body,
+    flex: 1,
+    minWidth: 0,
     color: COLORS.text,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.md,
     minHeight: 48,
     maxHeight: 112,
     textAlignVertical: 'top',
   },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   sendButton: {
-    marginLeft: 'auto',
-    width: 48,
-    minHeight: 48,
+    width: 44,
+    height: 44,
+    marginBottom: 2,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sendUnavailable: { backgroundColor: COLORS.surfaceElevated, opacity: 1 },
 });

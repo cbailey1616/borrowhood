@@ -115,6 +115,8 @@ const DRAWINGS = {
   pencil: c => p('M5 22L22 5C26 1 31 6 27 10L10 27L3 29Z', panel(c)) + p('M19 8L24 13M5 22L10 27'),
   'request-note': c => p('M7 3H22C24 3 25 5 25 7V26C25 28 23 29 21 29H7C5 29 4 27 4 25V7C4 5 5 3 7 3Z', panel(c)) + p('M9 10H19M9 15H16M9 20H13') + p('M18 24C17 18 22 14 29 14C29 21 25 25 18 24Z', accent(c)) + p('M16 28L25 19'),
   share: c => p('M9 13H5V27H27V13H23M16 22V3M10 9L16 3L22 9', panel(c)),
+  'qr-code': c => rect(4, 4, 9, 9, 2, panel(c)) + rect(19, 4, 9, 9, 2, panel(c))
+    + rect(4, 19, 9, 9, 2, panel(c)) + p('M19 19H23V23H28V28H23M19 27V28M28 19V20'),
   open: () => p('M13 5H5V27H27V19M18 3H29V14M29 3L14 18'),
   'log-out': () => p('M14 4H5V28H14M12 16H29M23 10L29 16L23 22'),
   call: c => p('M8 3L14 10L10 14C12 18 14 20 18 22L22 18L29 24C23 38-6 11 8 3Z', panel(c)),

@@ -1,7 +1,7 @@
 import ShimmerImage from '../components/ShimmerImage';
 import { isTransferListing, isSaleListing } from '../utils/directFee';
 import { inboxActivity } from '../utils/inboxActivity';
-import { publicReplyRoute } from '../utils/conversationContext';
+import { publicReplyRoute, messagePresentation } from '../utils/conversationContext';
 import { notificationDestination } from '../utils/notificationDestination';
 import { readActivity } from '../utils/requestActivity';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -359,16 +359,11 @@ export default function InboxScreen({ navigation, route, onRead }) {
             </View>
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
-          {item.listing && (
-            <View style={styles.listingRow}>
-              <Text style={styles.conversationListing} numberOfLines={1}>{item.listing.title}</Text>
-            </View>
-          )}
           <Text
             style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
             numberOfLines={1}
           >
-            {item.lastMessage || 'No messages yet'}
+            {messagePresentation(item.lastMessage).text || (item.lastMessage ? 'Shared a post' : 'No messages yet')}
           </Text>
         </View>
         {item.unreadCount > 0 && <View style={styles.unreadDot} accessibilityLabel="Unread conversation" />}
@@ -636,18 +631,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
   },
-  listingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
-    backgroundColor: COLORS.primaryMuted,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 6,
-  },
-  conversationListing: { ...TYPOGRAPHY.caption1, color: COLORS.primary, flexShrink: 1 },
   listingText: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,

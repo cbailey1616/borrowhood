@@ -381,6 +381,9 @@ router.get('/:id', authenticate, async (req, res) => {
               (SELECT COUNT(*) FROM borrow_transactions q
                 WHERE t.status='pending' AND q.listing_id=t.listing_id AND q.status='pending'
                   AND (q.created_at,q.id) < (t.created_at,t.id)) AS queue_ahead,
+              EXISTS(SELECT 1 FROM borrow_transactions q
+                WHERE t.status='pending' AND q.listing_id=t.listing_id AND q.status='pending'
+                  AND q.id<>t.id) AS queue_has_other_requests,
               l.title as listing_title, l.description as listing_description,
               l.condition as listing_condition, l.listing_type, l.direct_fee,
               (SELECT array_agg(url ORDER BY sort_order) FROM listing_photos WHERE listing_id = l.id) as photos,
@@ -459,7 +462,7 @@ router.get('/:id', authenticate, async (req, res) => {
       isBorrower: t.borrower_id === req.user.id,
       isLender: t.lender_id === req.user.id,
       endorsement: await endorsementState(t.id, req.user.id),
-      queue: t.status === 'pending' ? { aheadCount: t.queue_ahead == null ? null : Number(t.queue_ahead), waiting: !t.stripe_payment_intent_id && !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
+      queue: t.status === 'pending' ? { aheadCount: t.queue_ahead == null ? null : Number(t.queue_ahead), hasOtherRequests: t.queue_has_other_requests === true, waiting: !t.stripe_payment_intent_id && !(await query('SELECT is_available FROM listings WHERE id=$1', [t.listing_id])).rows[0]?.is_available } : null,
       myRating: myRatingRow ? { rating: myRatingRow.rating, comment: myRatingRow.comment } : null,
       hasDispute: t.has_dispute || false,
       disputeId: t.dispute_id || null,

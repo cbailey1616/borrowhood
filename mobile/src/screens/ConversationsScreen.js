@@ -1,5 +1,6 @@
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
+import { messagePresentation } from '../utils/conversationContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -100,20 +101,11 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
 
-          {item.listing && (
-            <View style={styles.listingRow}>
-              <Ionicons name="cube-outline" size={12} color={COLORS.textMuted} />
-              <Text style={styles.listingTitle} numberOfLines={1}>
-                {item.listing.title}
-              </Text>
-            </View>
-          )}
-
           <Text
             style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
             numberOfLines={1}
           >
-            {item.lastMessage || 'No messages yet'}
+            {messagePresentation(item.lastMessage).text || (item.lastMessage ? 'Shared a post' : 'No messages yet')}
           </Text>
         </View>
 
@@ -215,17 +207,6 @@ const styles = StyleSheet.create({
   time: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
-  },
-  listingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    marginBottom: SPACING.xs,
-  },
-  listingTitle: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-    flex: 1,
   },
   lastMessage: {
     ...TYPOGRAPHY.bodySmall,

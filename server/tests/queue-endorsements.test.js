@@ -33,11 +33,15 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  const body={listingId:listing,startDate:'2026-11-01',endDate:'2026-11-03'};
  const duplicate=await Promise.all([request(app).post('/transactions').set(auth(first)).send(body),request(app).post('/transactions').set(auth(first)).send(body)]);
  expect(duplicate.map(r=>r.status).sort()).toEqual([201,409]);firstRequest=duplicate.find(r=>r.status===201).body.id;
+ const onlyRequest=await request(app).get(`/transactions/${firstRequest}`).set(auth(first));
+ expect(onlyRequest.status).toBe(200);expect(onlyRequest.body.queue).toMatchObject({aheadCount:0,hasOtherRequests:false});
  const next=await request(app).post('/transactions').set(auth(second)).send(body);expect(next.status).toBe(201);secondRequest=next.body.id;
  await query("UPDATE borrow_transactions SET created_at=NOW()-INTERVAL '1 hour' WHERE id=$1",[firstRequest]);
  expect((await request(app).get(`/listings/${listing}/requests`).set(auth(first))).status).toBe(404);
  const ownQueue=await request(app).get(`/transactions/${secondRequest}`).set(auth(second));
- expect(ownQueue.status).toBe(200);expect(ownQueue.body.queue).toEqual({aheadCount:1,waiting:false});
+ expect(ownQueue.status).toBe(200);expect(ownQueue.body.queue).toEqual({aheadCount:1,hasOtherRequests:true,waiting:false});
+ const earliestRequest=await request(app).get(`/transactions/${firstRequest}`).set(auth(first));
+ expect(earliestRequest.status).toBe(200);expect(earliestRequest.body.queue).toMatchObject({aheadCount:0,hasOtherRequests:true});
  expect((await request(app).get(`/transactions/${firstRequest}`).set(auth(second))).status).toBe(404);
  let queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
  expect(queue.status).toBe(200);expect(queue.body.requests.map(r=>r.id)).toEqual([firstRequest,secondRequest]);
@@ -49,6 +53,8 @@ it('deduplicates simultaneous requests, keeps FIFO private, and preserves the qu
  queue=await request(app).get(`/listings/${listing}/requests`).set(auth(owner));
  expect(queue.body.requests.map(r=>r.id)).toEqual([waiting]);expect(queue.body.listing.availabilityStatus).toBe('reserved');
  expect((await request(app).post(`/transactions/${chosen}/cancel`).set(auth(owner))).status).toBe(200);
+ const remainingRequest=await request(app).get(`/transactions/${waiting}`).set(auth(waiting===firstRequest ? first : second));
+ expect(remainingRequest.status).toBe(200);expect(remainingRequest.body.queue).toMatchObject({aheadCount:0,hasOtherRequests:false,waiting:false});
  expect((await request(app).post(`/rentals/${waiting}/approve`).set(auth(owner)).send({})).status).toBe(200);
  expect((await request(app).post(`/transactions/${chosen}/endorse`).set(auth(owner)).send({positive:false})).status).toBe(200);
  const own=await request(app).get(`/transactions/${chosen}`).set(auth(owner));expect(own.body.endorsement.submitted).toBe(true);

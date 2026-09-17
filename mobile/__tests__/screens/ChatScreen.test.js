@@ -20,9 +20,71 @@ jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: require('react-native').View,
 }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
-beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; mockWindowWidth = 390; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
+beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; mockWindowWidth = 390; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getUser.mockResolvedValue({ id: 'user-2', firstName: 'Alice', lastName: 'Jones' }); api.getUserSafety.mockResolvedValue({ blocked: false }); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
 describe('ChatScreen', () => {
   const route = { params: { conversationId: 'conv-1' } };
+  it('never shows read receipts, including with messages from an older server', async () => {
+    api.getConversation.mockResolvedValueOnce({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice' } },
+      messages: [true, false].map((isRead, index) => ({ id: `message-${index}`, content: `Hello ${index}`, isOwnMessage: true, isRead, createdAt: new Date().toISOString() })) });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Hello 0');
+    const icons = screen.UNSAFE_getAllByType(require('../../src/components/Icon').Ionicons.type);
+    expect(icons.some(icon => ['checkmark', 'checkmark-done'].includes(icon.props.name))).toBe(false);
+  });
+  it('opens the person’s profile from a message photo and the header, with safety actions off the chat', async () => {
+    api.getConversation.mockResolvedValueOnce({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' } },
+      messages: [{ id: 'incoming', content: 'Hi there', isOwnMessage: false, createdAt: new Date().toISOString() }] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Chat.avatar.incoming'));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('UserProfile', { id: 'user-2' });
+    expect(screen.queryByLabelText('Report or block')).toBeNull();
+    const header = mockNavigation.setOptions.mock.calls.at(-1)[0].header;
+    const headerScreen = render(header());
+    fireEvent.press(headerScreen.getByTestId('Chat.profileHeader'));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('UserProfile', { id: 'user-2' });
+    fireEvent.press(headerScreen.getByLabelText('Back'));
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  it('keeps older message subjects readable without repeating the stored prefix as prose', async () => {
+    api.getConversation.mockResolvedValueOnce({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice' } },
+      messages: [{ id: 'incoming', content: 'About item: “Hose clamp”\n\nNeed it for gutters', isOwnMessage: false, createdAt: new Date().toISOString() }] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Hose clamp');
+    expect(screen.getByText('Need it for gutters')).toBeTruthy();
+    expect(screen.queryByText(/About item:/)).toBeNull();
+  });
+
+  it('disables sending after a person is blocked on their profile and re-enables it after unblocking', async () => {
+    const focus = jest.spyOn(require('@react-navigation/native'), 'useIsFocused').mockReturnValue(true);
+    try {
+      const Screen = require('../../src/screens/ChatScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} route={route} />);
+      const input = await screen.findByTestId('Chat.input.message');
+      fireEvent.changeText(input, 'A saved draft');
+      await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+      const returnFromProfile = async blocked => {
+        focus.mockReturnValue(false);
+        screen.rerender(<Screen navigation={mockNavigation} route={route} />);
+        api.getUserSafety.mockResolvedValue({ blocked });
+        focus.mockReturnValue(true);
+        await act(async () => screen.rerender(<Screen navigation={mockNavigation} route={route} />));
+      };
+      await returnFromProfile(true);
+      expect(screen.getByText('Messaging is blocked.')).toBeTruthy();
+      expect(screen.getByLabelText('Send message')).toBeDisabled();
+      expect(screen.getByLabelText('Attach a photo')).toBeDisabled();
+      expect(input.props.value).toBe('A saved draft');
+      fireEvent.press(screen.getByLabelText('Send message'));
+      expect(api.sendMessage).not.toHaveBeenCalled();
+      await returnFromProfile(false);
+      expect(screen.queryByText('Messaging is blocked.')).toBeNull();
+      expect(screen.getByLabelText('Send message')).not.toBeDisabled();
+    } finally { focus.mockRestore(); }
+  });
   const choosePhoto = async (screen, label = 'Choose from library') => {
     await waitFor(() => expect(screen.getByLabelText('Attach a photo')).not.toBeDisabled());
     fireEvent.press(screen.getByLabelText('Attach a photo'));
@@ -39,7 +101,7 @@ describe('ChatScreen', () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     const input = await screen.findByTestId('Chat.input.message');
-    expect(input.props.keyboardAppearance).toBe('dark');
+    expect(input.props.keyboardAppearance).toBe('light');
     expect(input.props.inputAccessoryViewID).toBeUndefined();
     expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
     const viewportHeight = screenHeight - nativeOrigin;
@@ -91,12 +153,12 @@ describe('ChatScreen', () => {
     api.sendMessage.mockResolvedValueOnce({ id: 'photo-message', imageUrl: 'https://api.example/private-photos/signed' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByPlaceholderText('Private message…');
+    await screen.findByPlaceholderText('Message…');
     await choosePhoto(screen);
     await screen.findByText('Photo ready to send');
     expect(api.uploadImage).not.toHaveBeenCalled();
     expect(api.sendMessage).not.toHaveBeenCalled();
-    fireEvent.changeText(screen.getByPlaceholderText('Private message…'), 'Here is the ladder');
+    fireEvent.changeText(screen.getByPlaceholderText('Message…'), 'Here is the ladder');
     await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
     expect(api.uploadImage).toHaveBeenCalledWith('file:///photo.jpg', 'messages');
     expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ content: 'Here is the ladder', imageUrl: 'https://private-bucket/messages/photo.jpg' }));
@@ -111,7 +173,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockResolvedValueOnce({ id: 'sent-photo', imageUrl: 'https://api.example/sent-photo' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByPlaceholderText('Private message…');
+    await screen.findByPlaceholderText('Message…');
     await choosePhoto(screen);
     SecureStore.deleteItemAsync.mockRejectedValueOnce(new Error('local storage unavailable'));
     await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
@@ -120,7 +182,7 @@ describe('ChatScreen', () => {
     expect(screen.queryByText('Retry send')).toBeNull();
     expect(screen.queryByText('Photo ready to send')).toBeNull();
     expect(screen.getByLabelText('Send message')).toBeDisabled();
-    expect(screen.getByLabelText('Report or block')).toBeTruthy();
+    expect(screen.queryByLabelText('Report or block')).toBeNull();
   });
 
   it('takes a camera photo and safely retries an uncertain photo-only send without uploading twice', async () => {
@@ -131,7 +193,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout')).mockResolvedValueOnce({ id: 'photo-message' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByPlaceholderText('Private message…');
+    await screen.findByPlaceholderText('Message…');
     await choosePhoto(screen, 'Take a photo');
     await screen.findByText('Photo ready to send');
     expect(ImagePicker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true }));
@@ -148,7 +210,7 @@ describe('ChatScreen', () => {
     ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///remove.jpg' }] }).mockResolvedValueOnce({ canceled: true });
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByPlaceholderText('Private message…');
+    await screen.findByPlaceholderText('Message…');
     await choosePhoto(screen);
     await screen.findByText('Photo ready to send');
     fireEvent.press(screen.getByLabelText('Remove attached photo'));
@@ -163,7 +225,7 @@ describe('ChatScreen', () => {
     api.uploadImage.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce('https://private-bucket/messages/retry.jpg');
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    const input = await screen.findByPlaceholderText('Private message…');
+    const input = await screen.findByPlaceholderText('Message…');
     fireEvent.changeText(input, 'A closer look');
     await choosePhoto(screen);
     await screen.findByText('Photo ready to send');
@@ -181,7 +243,7 @@ describe('ChatScreen', () => {
     ImagePicker.requestCameraPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByPlaceholderText('Private message…');
+    await screen.findByPlaceholderText('Message…');
     await choosePhoto(screen, 'Take a photo');
     await screen.findByText(/Allow camera access in Settings/);
     expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
@@ -195,7 +257,7 @@ describe('ChatScreen', () => {
   it('renders message input', async () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText } = render(<Screen navigation={mockNavigation} route={route} />);
-    await findByPlaceholderText('Private message…');
+    await findByPlaceholderText('Message…');
   });
   it('displays messages', async () => {
     api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [{ id: 'msg-1', content: 'Hello there!', senderId: 'user-2', createdAt: new Date().toISOString() }] });
@@ -206,7 +268,7 @@ describe('ChatScreen', () => {
   it('send button calls api.sendMessage', async () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText } = render(<Screen navigation={mockNavigation} route={route} />);
-    const input = await findByPlaceholderText('Private message…');
+    const input = await findByPlaceholderText('Message…');
     fireEvent.changeText(input, 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => { fireEvent.press(getByLabelText('Send message')); });
@@ -216,7 +278,7 @@ describe('ChatScreen', () => {
   it('sends the visible post context to both participants and clears only the sent draft', async () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { ...route.params, threadContext: { id: 'request-1', type: 'request', title: 'Need a ladder', replyText: 'I have one you can use.' } } }} />);
-    const input = await screen.findByPlaceholderText('Private message…');
+    const input = await screen.findByPlaceholderText('Message…');
     fireEvent.changeText(input, 'Can I pick it up tomorrow?');
     await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
@@ -234,9 +296,9 @@ describe('ChatScreen', () => {
       ...route.params, recipientId: 'user-2',
       threadContext: { id: 'req-1', type: 'request', requestType: 'service', title: 'Babysitter' },
     } }} />);
-    const input = await screen.findByPlaceholderText('Private message…');
+    const input = await screen.findByPlaceholderText('Message…');
     expect(api.sendMessage).not.toHaveBeenCalled();
-    expect(screen.getByText('Service request')).toBeTruthy();
+    expect(screen.getByText('About: Babysitter')).toBeTruthy();
     expect(screen.queryByText('Old ladder')).toBeNull();
     expect(screen.UNSAFE_queryByType(require('../../src/components/ChatExchangeCard').default)).toBeNull();
     fireEvent.press(screen.getByLabelText('View Babysitter'));
@@ -250,6 +312,80 @@ describe('ChatScreen', () => {
     expect(input.props.value).toBe('');
   });
 
+  it('keeps an ordinary conversation free of its old item and sends without that item', async () => {
+    api.getConversation.mockResolvedValueOnce({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice' }, listing: { id: 'old-item', title: 'Old ladder' } }, messages: [] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    const input = await screen.findByTestId('Chat.input.message');
+    expect(screen.queryByText('Old ladder')).toBeNull();
+    expect(screen.queryByTestId('Chat.postReference')).toBeNull();
+    expect(api.getTransactions).not.toHaveBeenCalled();
+    fireEvent.changeText(input, 'Do you know a good gardener?');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenCalledWith({ recipientId: 'user-2', content: 'Do you know a good gardener?' });
+  });
+
+  it('references a post once and lets the next message change the subject', async () => {
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { ...route.params,
+      threadContext: { id: 'drill', type: 'listing', title: 'Drill' },
+    } }} />);
+    const input = await screen.findByTestId('Chat.input.message');
+    fireEvent.changeText(input, 'Is Saturday okay?');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenLastCalledWith({ recipientId: 'user-2', listingId: 'drill', content: 'About item: “Drill”\n\nIs Saturday okay?' });
+    expect(screen.queryByTestId('Chat.postReference')).toBeNull();
+    fireEvent.changeText(input, 'Also, are your garden chairs still available?');
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenLastCalledWith({ recipientId: 'user-2', content: 'Also, are your garden chairs still available?' });
+    screen.rerender(<Screen navigation={mockNavigation} route={{ params: { ...route.params,
+      threadContext: { id: 'chairs', type: 'listing', title: 'Garden chairs' },
+    } }} />);
+    await waitFor(() => expect(screen.getByLabelText('Remove post reference')).not.toBeDisabled());
+    fireEvent.changeText(screen.getByTestId('Chat.input.message'), 'These would be perfect for our picnic.');
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenLastCalledWith({ recipientId: 'user-2', listingId: 'chairs', content: 'About item: “Garden chairs”\n\nThese would be perfect for our picnic.' });
+  });
+
+  it('can remove a post reference before sending without discarding typed text', async () => {
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { ...route.params,
+      threadContext: { id: 'drill', type: 'listing', title: 'Drill' },
+    } }} />);
+    const input = await screen.findByTestId('Chat.input.message');
+    fireEvent.changeText(input, 'Just saying hello');
+    await waitFor(() => expect(screen.getByLabelText('Remove post reference')).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText('Remove post reference'));
+    expect(input.props.value).toBe('Just saying hello');
+    expect(screen.queryByTestId('Chat.postReference')).toBeNull();
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenLastCalledWith({ recipientId: 'user-2', content: 'Just saying hello' });
+  });
+
+  it('keeps a failed post reference intact for retry, then removes it from follow-up messages', async () => {
+    api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: true });
+    api.sendMessage.mockRejectedValueOnce(new Error('timeout')).mockResolvedValueOnce({ id: 'confirmed' });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { ...route.params,
+      threadContext: { id: 'drill', type: 'listing', title: 'Drill' },
+    } }} />);
+    const input = await screen.findByTestId('Chat.input.message');
+    fireEvent.changeText(input, 'Can I borrow it?');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    const firstPayload = api.sendMessage.mock.calls[0][0];
+    fireEvent.changeText(input, 'Another thought');
+    await act(async () => fireEvent.press(screen.getByText('Retry send')));
+    expect(api.sendMessage).toHaveBeenLastCalledWith(firstPayload);
+    expect(input.props.value).toBe('Another thought');
+    expect(screen.queryByTestId('Chat.postReference')).toBeNull();
+    await act(async () => fireEvent.press(screen.getByLabelText('Send message')));
+    expect(api.sendMessage).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'Another thought' }));
+    expect(api.sendMessage.mock.calls.at(-1)[0]).not.toHaveProperty('listingId');
+  });
+
   it('starts a new service conversation only when the responder sends a message', async () => {
     api.sendMessage.mockResolvedValueOnce({ id: 'first-reply', conversationId: 'new-conversation' });
     const Screen = require('../../src/screens/ChatScreen').default;
@@ -257,7 +393,7 @@ describe('ChatScreen', () => {
       recipientId: 'user-2', recipient: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' },
       threadContext: { id: 'req-1', type: 'request', requestType: 'service', title: 'Babysitter' },
     } }} />);
-    const input = await screen.findByPlaceholderText('Private message…');
+    const input = await screen.findByPlaceholderText('Message…');
     expect(api.getConversation).not.toHaveBeenCalled();
     expect(api.sendMessage).not.toHaveBeenCalled();
     fireEvent.changeText(input, 'I can help');
@@ -274,7 +410,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout')).mockResolvedValueOnce({ id: 'msg-1' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText, findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    const input = await findByPlaceholderText('Private message…');
+    const input = await findByPlaceholderText('Message…');
     fireEvent.changeText(input, 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(getByLabelText('Send message')));
@@ -290,7 +426,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout'));
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText, findByText, queryByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.changeText(await findByPlaceholderText('Private message…'), 'Hi!');
+    fireEvent.changeText(await findByPlaceholderText('Message…'), 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(getByLabelText('Send message')));
     await findByText('Clear after checking');
@@ -303,7 +439,7 @@ describe('ChatScreen', () => {
     SecureStore.setItemAsync.mockRejectedValue(new Error('full'));
     const Screen = require('../../src/screens/ChatScreen').default;
     const { findByPlaceholderText, getByLabelText, findByText } = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.changeText(await findByPlaceholderText('Private message…'), 'Hi!');
+    fireEvent.changeText(await findByPlaceholderText('Message…'), 'Hi!');
     await waitFor(() => expect(getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(getByLabelText('Send message')));
     await findByText(/Nothing was sent/);
@@ -318,7 +454,7 @@ describe('ChatScreen', () => {
     api.sendMessage.mockRejectedValueOnce(new Error('timeout')).mockResolvedValueOnce({ id: 'msg-1' });
     const Screen = require('../../src/screens/ChatScreen').default;
     const first = render(<Screen navigation={mockNavigation} route={{ params: { recipientId: 'user-2' } }} />);
-    fireEvent.changeText(await first.findByPlaceholderText('Private message…'), 'Keep this attempt');
+    fireEvent.changeText(await first.findByPlaceholderText('Message…'), 'Keep this attempt');
     await waitFor(() => expect(first.getByLabelText('Send message')).not.toBeDisabled());
     await act(async () => fireEvent.press(first.getByLabelText('Send message')));
     await first.findByText('Retry send');

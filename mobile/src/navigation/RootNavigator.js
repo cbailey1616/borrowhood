@@ -34,6 +34,8 @@ import RequestDetailScreen from '../screens/RequestDetailScreen';
 import ConversationsScreen from '../screens/ConversationsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FriendsScreen from '../screens/FriendsScreen';
+import MyQRCodeScreen from '../screens/MyQRCodeScreen';
+import useProfileLinks from '../hooks/useProfileLinks';
 import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import AddPaymentMethodScreen from '../screens/AddPaymentMethodScreen';
 import MyCommunityScreen from '../screens/MyCommunityScreen';
@@ -91,8 +93,9 @@ const modalScreenOptions = (title) => ({
   header: ({ options }) => <ModalHeader title={options.title || title} />,
 });
 
-export default function RootNavigator() {
+export default function RootNavigator({ navigationRef }) {
   const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
+  useProfileLinks(navigationRef, { isLoading, isAuthenticated, user });
   const [nameInput, setNameInput] = useState({ first: '', last: '' });
   const [savingName, setSavingName] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -229,6 +232,7 @@ export default function RootNavigator() {
               ? modalScreenOptions('Friends')
               : { ...sharedScreenOptions, title: 'Friends' }}
           />
+          <Stack.Screen name="MyQRCode" component={MyQRCodeScreen} options={{ ...sharedScreenOptions, title: 'My QR code' }} />
           <Stack.Screen
             name="PaymentMethods"
             component={PaymentMethodsScreen}

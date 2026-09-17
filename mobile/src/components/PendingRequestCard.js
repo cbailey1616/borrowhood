@@ -6,7 +6,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const shortDate = value => value ? new Date(value.slice(0, 10) + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 export default function PendingRequestCard({ transaction: t, onMessage, onCancel, onViewItem, busy, error, onRetry }) {
-  const ahead = t.queue?.aheadCount;
+  const hasOtherRequests = t.queue?.hasOtherRequests ?? (t.queue?.aheadCount > 0);
   const waiting = t.queue?.waiting;
   return <View style={styles.page}>
     <HapticPressable style={[styles.card, styles.item]} accessibilityLabel={`View ${t.listing.title}`} onPress={onViewItem}>
@@ -19,8 +19,8 @@ export default function PendingRequestCard({ transaction: t, onMessage, onCancel
     </HapticPressable>
     <View style={[styles.card, { backgroundColor: COLORS.primaryMuted }]} testID="Transaction.nextStep" accessibilityLiveRegion="polite">
       <Text style={styles.title}>{waiting ? 'Reserved for another neighbor' : 'Request sent'}</Text>
-      {Number.isInteger(ahead) && ahead >= 0 && <Text style={styles.body}>{ahead === 0 ? 'No one ahead of you' : `${ahead} ${ahead === 1 ? 'person' : 'people'} ahead of you`}</Text>}
-      <Text style={styles.body}>{waiting ? 'Your request is still waiting.' : 'The owner chooses who to approve.'}</Text>
+      <Text style={styles.body}>{waiting ? 'Your request is still waiting.' : 'Your request is being reviewed.'}</Text>
+      {hasOtherRequests && <Text style={styles.body}>Multiple people have submitted a request. Some may be ahead of you.</Text>}
       {!!error && <><Text style={styles.body}>Couldn’t refresh your request.</Text><HapticPressable style={styles.button} onPress={onRetry}><Text style={styles.buttonText}>Try again</Text></HapticPressable></>}
     </View>
     {((t.startDate && !['sell', 'giveaway'].includes(t.listingType)) || t.borrowerMessage) && <View style={styles.card}>

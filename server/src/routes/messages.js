@@ -143,7 +143,8 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
       }
     }
 
-    // Mark messages as read
+    // Read state only clears the viewer's own unread badge. Do not return it
+    // to either participant as a receipt for the other person's activity.
     await query(
       'UPDATE messages SET is_read = true WHERE conversation_id = $1 AND sender_id != $2 AND is_read = false',
       [req.params.id, req.user.id]
@@ -151,7 +152,7 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
 
     // Get messages
     const messages = await query(
-      `SELECT m.id, m.sender_id, m.content, m.is_read, m.created_at, m.deleted_at, m.image_url
+      `SELECT m.id, m.sender_id, m.content, m.created_at, m.deleted_at, m.image_url
        FROM messages m
        WHERE m.conversation_id = $1
        ORDER BY m.created_at DESC
@@ -189,7 +190,6 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
         senderId: m.sender_id,
         content: m.deleted_at ? null : m.content,
         imageUrl: m.deleted_at ? null : m.image_url,
-        isRead: m.is_read,
         isDeleted: !!m.deleted_at,
         createdAt: m.created_at,
         isOwnMessage: m.sender_id === req.user.id,

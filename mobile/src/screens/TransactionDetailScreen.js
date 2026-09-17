@@ -58,6 +58,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [endorsementSavedFor, setEndorsementSavedFor] = useState(null);
   const pollRef = useRef(null);
   const actionInProgress = useRef(false);
   const scrollRef = useRef(null);
@@ -210,7 +211,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
     || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
     || (isGiveaway && transaction.status === 'picked_up');
-  const showEndorsement = finished && (transaction.endorsement?.canRate || transaction.endorsement?.submitted);
+  const endorsementSubmitted = transaction.endorsement?.submitted || endorsementSavedFor === transaction.id;
+  const showEndorsement = finished && (transaction.endorsement?.canRate || endorsementSubmitted);
+  const allDone = finished && endorsementSubmitted && !transaction.hasDispute;
   const detailRows = exchangeDetailRows(transaction);
   const hasDetails = detailRows.length > 0 || transaction.borrowerMessage || transaction.lenderResponse || transaction.conditionNotes;
   const canCancel = !transaction.actualPickupAt && (
@@ -281,13 +284,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Text style={styles.detailText}>Could not refresh this exchange.</Text>
             <ActionButton label="Try again" onPress={fetchTransaction} />
           </View>}
-          <Text style={styles.cardEyebrow}>What happens next</Text>
+          <Text style={styles.cardEyebrow}>{allDone ? 'All done' : 'What happens next'}</Text>
           {showEndorsement ? <>
             {transaction.hasDispute && <>
               <Text style={styles.heroTitle}>{nextStep.title}</Text>
               <Text style={styles.heroDescription}>{nextStep.detail}</Text>
             </>}
-            <ExchangeEndorsement key={transaction.id} transaction={transaction} onSaved={fetchTransaction} embedded />
+            <ExchangeEndorsement key={transaction.id} transaction={transaction} onSaved={async () => {
+              setEndorsementSavedFor(transaction.id);
+              await fetchTransaction();
+            }} embedded />
+            {allDone && <>
+              <Text style={styles.heroDescription}>Nothing else to do.</Text>
+              <ActionButton label="Back to Home" onPress={() => navigation.navigate('Main', { screen: 'Feed' })} />
+            </>}
           </> : <>
           <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
           <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>

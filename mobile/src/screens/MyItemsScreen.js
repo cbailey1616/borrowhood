@@ -1,14 +1,15 @@
 import { listingAvailability } from '../utils/listingAvailability';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
+import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  SectionList,
   useWindowDimensions,
   RefreshControl,
-  Image,
   Animated as RNAnimated,
   InteractionManager,
 } from 'react-native';
@@ -22,19 +23,23 @@ import SegmentedControl from '../components/SegmentedControl';
 import NativeHeader from '../components/NativeHeader';
 import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
+import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const STATUS_COLORS = {
-  pending: COLORS.warning,
-  approved: COLORS.primary,
-  paid: COLORS.primary,
-  picked_up: COLORS.secondary,
-  return_pending: COLORS.warning,
-  returned: COLORS.secondary,
-  disputed: COLORS.danger,
+const REQUEST_FILTERS = [
+  { key: 'all', label: 'All requests' },
+  { key: 'sent', label: 'Items you requested' },
+  { key: 'posted', label: 'Requests you posted' },
+];
+const shortDate = value => {
+  if (!value) return '';
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
+const requestDateRange = item => isTransferListing(item) ? ''
+  : [shortDate(item.startDate), shortDate(item.endDate)].filter(Boolean).join(' – ');
 
 export default function MyItemsScreen({ navigation }) {
   const { width, fontScale } = useWindowDimensions();
@@ -42,40 +47,59 @@ export default function MyItemsScreen({ navigation }) {
   const gridWidth = Math.min(width, 1200);
   const cellWidth = (gridWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
   const { showError } = useError();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [listings, setListings] = useState([]);
   const [requests, setRequests] = useState([]);
-  const [rentals, setRentals] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const [requestFilter, setRequestFilter] = useState('all');
+  const [showRequestFilter, setShowRequestFilter] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const swipeableRefs = useRef({});
+  const fetchId = useRef(0);
 
 
   const fetchData = useCallback(async () => {
+    const currentFetch = ++fetchId.current;
     setLoadError(false);
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
+        if (currentFetch !== fetchId.current) return;
         // Keep active and paused inventory visible while exchanges are in progress.
         // Completed transfers remain in History.
         setListings(data.filter((listing) => ['active', 'paused'].includes(listing.status)));
       } else {
-        const data = await api.getMyRequests();
-        setRequests(data);
+        const [sent, posted] = await Promise.allSettled([
+          api.getTransactions({ role: 'borrower' }),
+          api.getMyRequests(),
+        ]);
+        if (currentFetch !== fetchId.current) return;
+        if (sent.status === 'fulfilled') {
+          setSentRequests(sent.value.filter(item => isBorrower(item, user?.id) && exchangeIsActive(item)));
+        }
+        if (posted.status === 'fulfilled') setRequests(posted.value);
+        if (sent.status === 'rejected' && posted.status === 'rejected') setLoadError('Couldn’t load your requests.');
+        else if (sent.status === 'rejected') setLoadError('Couldn’t load items you requested.');
+        else if (posted.status === 'rejected') setLoadError('Couldn’t load requests you posted.');
       }
     } catch (error) {
-      setLoadError(true);
+      if (currentFetch === fetchId.current) setLoadError('Couldn’t load this list. Your items haven’t been changed.');
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (currentFetch === fetchId.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, user?.id]);
 
   useEffect(() => {
     setIsLoading(true);
     fetchData();
+    return () => { fetchId.current += 1; };
   }, [fetchData]);
 
   useEffect(() => {
@@ -322,82 +346,67 @@ export default function MyItemsScreen({ navigation }) {
     </View>
   );
 
-  const getTimeAgo = (date) => {
-    if (!date) return '';
-    const now = new Date();
-    const diff = now - new Date(date);
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days}d ago`;
-    return new Date(date).toLocaleDateString();
-  };
-
-  const renderRentalItem = ({ item, index }) => {
-    const otherParty = item.isBorrower ? item.lender : item.borrower;
-    const statusColor = STATUS_COLORS[item.status] || COLORS.textSecondary;
-
+  const renderSentRequest = item => {
+    const status = item.status === 'pending' ? 'Being reviewed' : exchangeStatus(item, user?.id);
+    const dates = requestDateRange(item);
     return (
-      <View>
+      <LayeredCard style={styles.cardDepth}>
         <HapticPressable
-          style={styles.rentalCard}
-          onPress={() => navigation.getParent()?.navigate('TransactionDetail', { id: item.id })
-            || navigation.navigate('TransactionDetail', { id: item.id })}
+          style={styles.sentRequestCard}
+          accessibilityLabel={`${item.listing.title}, ${status}`}
+          onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
           haptic="light"
         >
-          <View style={styles.rentalTop}>
-            {item.listing.photoUrl ? (
-              <ShimmerImage source={{ uri: item.listing.photoUrl }} style={styles.rentalImage} />
-            ) : (
-              <View style={[styles.rentalImage, styles.imagePlaceholder]}>
-                <Ionicons name="image-outline" size={22} color={COLORS.gray[500]} />
-              </View>
-            )}
-            <View style={styles.rentalInfo}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.listing.title}</Text>
-              <View style={styles.rentalPartyRow}>
-                <Ionicons
-                  name={isTransferListing(item) ? 'gift' : item.isBorrower ? 'arrow-down-circle' : 'arrow-up-circle'}
-                  size={14}
-                  color={item.isBorrower ? COLORS.primary : COLORS.secondary}
-                />
-                <Text style={styles.rentalPartyText}>
-                  {isTransferListing(item)
-                    ? (item.isBorrower ? 'From' : 'Giving to')
-                    : (item.isBorrower ? 'Borrowing from' : 'Lending to')}{' '}
-                  {otherParty.firstName} {otherParty.lastName?.[0]}.
-                </Text>
-              </View>
-              <View style={styles.rentalDateRow}>
-                <Ionicons name="calendar-outline" size={12} color={COLORS.textMuted} />
-                <Text style={styles.rentalDateText}>
-                  {new Date(item.startDate).toLocaleDateString()} — {new Date(item.endDate).toLocaleDateString()}
-                </Text>
-              </View>
+          {item.listing.photoUrl ? (
+            <ShimmerImage source={{ uri: item.listing.photoUrl }} style={styles.sentRequestImage} />
+          ) : (
+            <View style={[styles.sentRequestImage, styles.imagePlaceholder]}>
+              <Ionicons name={isSaleListing(item) ? 'pricetag' : isTransferListing(item) ? 'gift' : 'basket'} size={28} illustrated />
             </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </View>
-          <View style={styles.rentalBottom}>
-            <View style={[styles.rentalStatusBadge, { backgroundColor: statusColor + '20' }]}>
-              <View style={[styles.rentalStatusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.rentalStatusText, { color: statusColor }]}>
-                {TRANSACTION_STATUS_LABELS[item.status] || item.status}
-              </Text>
+          )}
+          <View style={styles.sentRequestInfo}>
+            <Text style={styles.cardTitle} numberOfLines={2}>{item.listing.title}</Text>
+            <View style={styles.sentRequestStatus}>
+              <Text style={styles.sentRequestStatusText}>{status}</Text>
             </View>
-            {item.rentalFee > 0 && (
-              <Text style={styles.rentalFeeText}>${item.rentalFee.toFixed(2)}</Text>
-            )}
+            {!!item.lender?.firstName && <Text style={styles.sentRequestMeta} numberOfLines={1}>From {item.lender.firstName}</Text>}
+            {!!dates && <Text style={styles.sentRequestMeta}>{dates}</Text>}
           </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
         </HapticPressable>
-      </View>
+      </LayeredCard>
     );
   };
 
-  const data = activeTab === 0 ? listings : requests;
-  const emptyTitle = activeTab === 0 ? 'Your listings start here' : 'No requests yet';
-  const emptySubtitle = activeTab === 0
-    ? 'List an item and choose who can see it.'
-    : 'Post what you need and neighbors can offer to help';
+  const requestSections = [
+    { key: 'sent', title: 'Items you requested', items: sentRequests },
+    { key: 'posted', title: 'Requests you posted', items: requests },
+  ].filter(section => section.items.length && (requestFilter === 'all' || requestFilter === section.key))
+    .map(({ items, ...section }) => ({
+      ...section,
+      data: Array.from({ length: Math.ceil(items.length / columns) }, (_, index) => items.slice(index * columns, (index + 1) * columns)),
+    }));
+  const selectedFilter = REQUEST_FILTERS.find(filter => filter.key === requestFilter);
+  const emptyState = activeTab === 0
+    ? { title: 'Your listings start here', subtitle: 'List an item and choose who can see it.', action: 'Add an item', route: 'CreateListing' }
+    : requestFilter === 'posted'
+      ? { title: 'No requests posted', subtitle: 'Post what you need and neighbors can offer to help.', action: 'Ask for something', route: 'CreateRequest' }
+      : { title: requestFilter === 'sent' ? 'No items requested' : 'No requests yet',
+        subtitle: requestFilter === 'sent' ? 'Find an item and send its owner a request.' : 'Request an item or ask neighbors for what you need.',
+        action: 'Browse items', route: 'Feed' };
+  const emptyContent = !isLoading && !loadError ? (
+    <View style={styles.emptyContainer}>
+      <HeroIcon icon={activeTab === 0 ? 'basket' : 'search'} size={80} />
+      <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+      <Text style={styles.emptySubtitle}>{emptyState.subtitle}</Text>
+      <HapticPressable style={styles.addButton} onPress={() => navigation.navigate(emptyState.route)} haptic="medium">
+        <Ionicons name={emptyState.route === 'Feed' ? 'search' : 'add'} size={20} color={COLORS.surface} />
+        <Text style={styles.addButtonText}>{emptyState.action}</Text>
+      </HapticPressable>
+    </View>
+  ) : null;
+  const refreshControl = <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />;
+  const contentContainerStyle = [styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }];
 
   return (
     <View style={styles.container}>
@@ -416,47 +425,56 @@ export default function MyItemsScreen({ navigation }) {
           onIndexChange={setActiveTab}
           style={styles.segmented}
         />
+        {activeTab === 1 && <HapticPressable
+          accessibilityLabel={`Filter requests: ${selectedFilter.label}`}
+          accessibilityState={{ expanded: showRequestFilter }}
+          onPress={() => setShowRequestFilter(true)}
+          style={styles.requestFilter}
+        >
+          <Ionicons name="options-outline" size={18} color={COLORS.primary} />
+          <Text style={styles.requestFilterText}>{selectedFilter.label}</Text>
+          <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
+        </HapticPressable>}
       </NativeHeader>
 
-      {loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>Couldn’t load this list. Your items haven’t been changed.</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
+      {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
-      <FlatList
+      {activeTab === 0 ? <FlatList
         key={`posts-${columns}`}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
-        data={data}
-        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>{(activeTab === 0 ? renderListingItem : renderRequestItem)(info)}</View>}
+        data={listings}
+        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>{renderListingItem(info)}</View>}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.primary}
-          />
-        }
-        ListEmptyComponent={
-          !isLoading && !loadError && (
-            <View style={styles.emptyContainer}>
-              <HeroIcon icon={activeTab === 0 ? 'basket' : 'search'} size={80} />
-              <Text style={styles.emptyTitle}>{emptyTitle}</Text>
-              <Text style={styles.emptySubtitle}>{emptySubtitle}</Text>
-              {(
-                <HapticPressable
-                  style={styles.addButton}
-                  onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')}
-                  haptic="medium"
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.addButtonText}>
-                    {activeTab === 0 ? 'Add an item' : 'Ask for something'}
-                  </Text>
-                </HapticPressable>
-              )}
-            </View>
-          )
-        }
-
+        contentContainerStyle={contentContainerStyle}
+        refreshControl={refreshControl}
+        ListEmptyComponent={emptyContent}
+      /> : <SectionList
+        key={`requests-${columns}-${requestFilter}`}
+        sections={requestSections}
+        stickySectionHeadersEnabled={false}
+        keyExtractor={row => row[0].id}
+        renderSectionHeader={({ section }) => requestFilter === 'all'
+          ? <Text accessibilityRole="header" style={styles.requestSectionTitle}>{section.title}</Text> : null}
+        renderItem={({ item: row, section }) => <View style={styles.requestRow}>
+          {row.map(item => <View key={item.id} style={{ width: cellWidth }}>
+            {section.key === 'sent' ? renderSentRequest(item) : renderRequestItem({ item })}
+          </View>)}
+        </View>}
+        contentContainerStyle={contentContainerStyle}
+        refreshControl={refreshControl}
+        ListEmptyComponent={emptyContent}
+      />}
+      <ActionSheet
+        isVisible={activeTab === 1 && showRequestFilter}
+        onClose={() => setShowRequestFilter(false)}
+        variant="options"
+        title="Show requests"
+        actions={REQUEST_FILTERS.map(filter => ({
+          label: filter.label,
+          selected: requestFilter === filter.key,
+          onPress: () => setRequestFilter(filter.key),
+        }))}
       />
       <ActionSheet
         isVisible={!!pendingDelete}
@@ -485,6 +503,22 @@ const styles = StyleSheet.create({
   segmented: {
     marginTop: SPACING.sm,
   },
+  requestFilter: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+    maxWidth: '100%',
+    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surface,
+  },
+  requestFilterText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, flexShrink: 1 },
+  requestSectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.md },
+  requestRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.lg },
   listContent: {
     padding: SPACING.lg,
     paddingBottom: 100,
@@ -722,80 +756,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     ...TYPOGRAPHY.headline,
   },
-  rentalCard: {
+  sentRequestCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    marginBottom: SPACING.md,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
-  rentalTop: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.md,
     gap: SPACING.md,
   },
-  rentalImage: {
-    width: 56,
-    height: 56,
+  sentRequestImage: {
+    width: 64,
+    height: 64,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.gray[700],
+    backgroundColor: COLORS.surfaceElevated,
   },
-  rentalInfo: {
+  sentRequestInfo: {
     flex: 1,
-    gap: 3,
-  },
-  rentalPartyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    minWidth: 0,
     gap: SPACING.xs,
   },
-  rentalPartyText: {
+  sentRequestMeta: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
   },
-  rentalDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  rentalDateText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-  },
-  rentalBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.md,
-    paddingTop: SPACING.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.separator,
-    marginHorizontal: SPACING.md,
-  },
-  rentalStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  sentRequestStatus: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primaryMuted,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
-    gap: SPACING.xs,
   },
-  rentalStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  rentalStatusText: {
+  sentRequestStatusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-  },
-  rentalFeeText: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
-    color: COLORS.text,
+    color: COLORS.primary,
   },
   deleteAction: {
     backgroundColor: COLORS.danger,

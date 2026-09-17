@@ -63,6 +63,27 @@ const nativeBack = (type = 'GO_BACK') => {
 describe('ListingDiscussionScreen', () => {
   const route = { params: { listingId: 'listing-1', listing: { title: 'Camera', isOwner: false } } };
 
+  it('offers a direct reply and opens a known author’s profile from within a thread', async () => {
+    api.getDiscussions.mockResolvedValue({ posts: [makePost('alice-root', 'Alice')] });
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByLabelText('Reply to Alice'));
+    await screen.findByLabelText('Post reply');
+    expect(usePreventRemove).toHaveBeenLastCalledWith(true, expect.any(Function));
+    fireEvent.press(screen.getByLabelText('View Alice’s profile'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('UserProfile', { id: 'user-Alice' }));
+    expect(usePreventRemove).toHaveBeenLastCalledWith(false, expect.any(Function));
+  });
+
+  it('does not make a redacted public author’s identity a profile link', async () => {
+    api.getDiscussions.mockResolvedValue({ posts: [makePost('anonymous', 'Neighbor', { user: { firstName: 'Neighbor' } })] });
+    const Screen = require('../../src/screens/ListingDiscussionScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Neighbor');
+    expect(screen.queryByLabelText('View Neighbor’s profile')).toBeNull();
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+  });
+
   it.each([false,true])('opens the exact notification thread and reply page (request=%s)', async isRequest => {
     const scroll = jest.spyOn(FlatList.prototype, 'scrollToIndex').mockImplementation(() => {});
     const parent = makePost('older-root','Lauren',{replyCount:60});
@@ -192,7 +213,7 @@ describe('ListingDiscussionScreen', () => {
     expect(screen.getByText(post.content)).toBeTruthy();
     expect(screen.getByText('Camera')).toBeTruthy();
     expect(screen.queryByText('Back to comments')).toBeNull();
-    expect(mockNavigation.setOptions).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Thread' }));
+    expect(mockNavigation.setOptions).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Replies' }));
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
     fireEvent.changeText(screen.getByLabelText('Comment'), 'Yes, tomorrow works.');
     fireEvent.press(screen.getByLabelText('Post reply'));
@@ -266,7 +287,7 @@ describe('focused comment threads', () => {
   it('uses one composer without a Done strip and keeps native text suggestions', async () => {
     const screen = renderScreen();
     const input = await screen.findByLabelText('Comment');
-    expect(input.props).toMatchObject({ keyboardAppearance: 'dark', autoCorrect: true, spellCheck: true });
+    expect(input.props).toMatchObject({ keyboardAppearance: 'light', autoCorrect: true, spellCheck: true });
     expect(input.props.inputAccessoryViewID).toBeUndefined();
     expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
     expect(screen.getByLabelText('Post comment')).toBeTruthy();
