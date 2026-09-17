@@ -451,10 +451,10 @@ describe('Chat', () => {
 
     // Wait for chat to load - placeholder: "Type a message..."
     await waitFor(() => {
-      expect(getByPlaceholderText('Private message…')).toBeTruthy();
+      expect(getByPlaceholderText('Message…')).toBeTruthy();
     });
 
-    fireEvent.changeText(getByPlaceholderText('Private message…'), 'Hey, is this available?');
+    fireEvent.changeText(getByPlaceholderText('Message…'), 'Hey, is this available?');
     await act(async () => fireEvent.press(getByLabelText('Send message')));
     expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ recipientId: 'user-2', content: 'Hey, is this available?' }));
 
@@ -705,46 +705,5 @@ describe('Subscription', () => {
     // Should show the subscribe button (testID: Subscription.button.subscribe)
     const subscribeBtn = await findByTestId('Identity.button.verify');
     expect(subscribeBtn).toBeTruthy();
-  });
-});
-
-// ============================================
-// 15. Can a user open payment methods screen?
-// ============================================
-describe('PaymentMethods', () => {
-  it('should fetch and display payment methods', async () => {
-    api.getPaymentMethods.mockResolvedValue([
-      {
-        id: 'pm-1',
-        brand: 'visa',
-        last4: '4242',
-        expMonth: 12,
-        expYear: 2030,
-        isDefault: true,
-      },
-    ]);
-
-    const PaymentMethodsScreen = require('../src/screens/PaymentMethodsScreen').default;
-    const route = { params: {} };
-
-    const { findByText } = render(
-      <PaymentMethodsScreen navigation={mockNavigation} route={route} />
-    );
-
-    // Card display format: "visa •••• 4242"
-    await findByText(/4242/);
-    expect(api.getPaymentMethods).toHaveBeenCalled();
-  });
-
-  it('should show add payment method button', async () => {
-    const PaymentMethodsScreen = require('../src/screens/PaymentMethodsScreen').default;
-    const route = { params: {} };
-
-    const { findByText } = render(
-      <PaymentMethodsScreen navigation={mockNavigation} route={route} />
-    );
-
-    const addBtn = await findByText('Add Payment Method');
-    expect(addBtn).toBeTruthy();
   });
 });

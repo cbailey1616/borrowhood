@@ -1,4 +1,4 @@
-import { user, listings, requests, conversation, messages, reviewExchanges } from './fixtures';
+import { friends, comments, user, listings, requests, conversation, messages, reviewExchanges } from './fixtures';
 import { Settings } from 'react-native';
 const noop = async () => ({});
 let feedback = { canRate: true };
@@ -64,7 +64,8 @@ const requestDetail = {
 const api = {
   getMe: async () => user,
   getUser: async id => id === user.id ? user : listings.find(item => item.owner.id === id)?.owner,
-  getFriends: async () => [],
+  getFriends: async () => friends,
+  getFriendRequests: async () => [],
   getUserSafety: async () => ({ blocked: false }),
   endorseTransaction: async (_id, positive) => { feedback = { canRate: false, submitted: true, positive }; return { success: true }; },
   getTransaction: async id => [...reviewExchanges, ...ownerItemWaiting].find(item => item.id === id) || (waiting.some(item => item.id === id) ? { ...waiting.find(item => item.id === id), queue: { waiting: captureScreen === 'reserved-queue' } } : id === 'demo-pending-exchange' ? {
@@ -100,7 +101,7 @@ const api = {
     };
     return captureScreen === 'reserved-item' ? { ...listing, isAvailable: false, availabilityStatus: 'reserved' } : listing;
   },
-  getDiscussions: async () => ({ posts: [], total: 0 }),
+  getDiscussions: async () => ({ posts: comments, total: comments.length, hasMore: false }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
   getRequest: async id => id === requestDetail.id ? requestDetail : requests.find(item => item.id === id),
   getRequestOffers: async id => id === requestDetail.id ? [{

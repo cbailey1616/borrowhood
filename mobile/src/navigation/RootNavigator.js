@@ -36,12 +36,9 @@ import ChatScreen from '../screens/ChatScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import MyQRCodeScreen from '../screens/MyQRCodeScreen';
 import useProfileLinks from '../hooks/useProfileLinks';
-import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
-import AddPaymentMethodScreen from '../screens/AddPaymentMethodScreen';
 import MyCommunityScreen from '../screens/MyCommunityScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import DisputesScreen from '../screens/DisputesScreen';
-import SetupPayoutScreen from '../screens/SetupPayoutScreen';
 import EditListingScreen from '../screens/EditListingScreen';
 import EditRequestScreen from '../screens/EditRequestScreen';
 import ListingDiscussionScreen from '../screens/ListingDiscussionScreen';
@@ -55,12 +52,9 @@ import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
 import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 import LendingCirclesScreen from '../screens/LendingCirclesScreen';
 import CircleDetailScreen from '../screens/CircleDetailScreen';
-import PaymentFlowScreen from '../screens/PaymentFlowScreen';
-import RentalCheckoutScreen from '../screens/RentalCheckoutScreen';
 import DamageClaimScreen from '../screens/DamageClaimScreen';
 import ReportIssueScreen from '../screens/ReportIssueScreen';
 import RespondToDisputeScreen from '../screens/RespondToDisputeScreen';
-import EarningsScreen from '../screens/EarningsScreen';
 import TransactionHistoryScreen from '../screens/TransactionHistoryScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
@@ -234,16 +228,6 @@ export default function RootNavigator({ navigationRef }) {
           />
           <Stack.Screen name="MyQRCode" component={MyQRCodeScreen} options={{ ...sharedScreenOptions, title: 'My QR code' }} />
           <Stack.Screen
-            name="PaymentMethods"
-            component={PaymentMethodsScreen}
-            options={{ ...sharedScreenOptions, title: 'Payment Methods' }}
-          />
-          <Stack.Screen
-            name="AddPaymentMethod"
-            component={AddPaymentMethodScreen}
-            options={modalScreenOptions('Add Card')}
-          />
-          <Stack.Screen
             name="MyCommunity"
             component={MyCommunityScreen}
             options={{ ...sharedScreenOptions, title: 'My Neighborhood' }}
@@ -257,11 +241,6 @@ export default function RootNavigator({ navigationRef }) {
             name="Disputes"
             component={DisputesScreen}
             options={{ ...sharedScreenOptions, title: 'Disputes' }}
-          />
-          <Stack.Screen
-            name="SetupPayout"
-            component={SetupPayoutScreen}
-            options={{ ...sharedScreenOptions, title: 'Payout Settings' }}
           />
           <Stack.Screen
             name="ListingDiscussion"
@@ -316,16 +295,6 @@ export default function RootNavigator({ navigationRef }) {
           <Stack.Screen name="LendingCircles" component={LendingCirclesScreen} options={modalScreenOptions('Lending circles')} />
           <Stack.Screen name="CircleDetail" component={CircleDetailScreen} options={modalScreenOptions('Circle')} />
           <Stack.Screen
-            name="PaymentFlow"
-            component={PaymentFlowScreen}
-            options={modalScreenOptions('Payment')}
-          />
-          <Stack.Screen
-            name="RentalCheckout"
-            component={RentalCheckoutScreen}
-            options={modalScreenOptions('Borrow Checkout')}
-          />
-          <Stack.Screen
             name="DamageClaim"
             component={DamageClaimScreen}
             options={modalScreenOptions('Damage Claim')}
@@ -341,11 +310,6 @@ export default function RootNavigator({ navigationRef }) {
             options={({ route }) => modalScreenOptions(
               route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim'
             )}
-          />
-          <Stack.Screen
-            name="Earnings"
-            component={EarningsScreen}
-            options={{ ...sharedScreenOptions, title: 'Earnings' }}
           />
           <Stack.Screen
             name="TransactionHistory"

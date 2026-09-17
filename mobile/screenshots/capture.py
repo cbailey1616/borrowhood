@@ -13,7 +13,7 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
 screens = [('01-home', 'home'), ('02-request-details', 'request-detail'), ('03-giveaway', 'giveaway'),
-           ('04-my-posts', 'posts'), ('05-inbox', 'inbox'), ('06-messages', 'chat')]
+           ('04-my-posts', 'posts'), ('05-inbox', 'inbox'), ('06-messages', 'chat'), ('07-comments', 'comments'), ('08-friends', 'friends')]
 review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
 review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/reserved-queue', 'reserved-queue'), ('ui-review/owner-pending-request', 'owner-pending-request'), ('ui-review/inbox', 'inbox')]

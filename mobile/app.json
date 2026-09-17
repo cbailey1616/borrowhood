@@ -69,13 +69,6 @@
         }
       ],
       [
-        "@stripe/stripe-react-native",
-        {
-          "merchantIdentifier": "merchant.com.borrowhood.app",
-          "enableGooglePay": true
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": "Allow Borrowhood to select photos for your listings and private chats.",

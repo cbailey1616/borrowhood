@@ -2155,114 +2155,15 @@ PODS:
   - SDWebImageWebPCoder (0.14.6):
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.17)
-  - Stripe (25.0.1):
-    - StripeApplePay (= 25.0.1)
-    - StripeCore (= 25.0.1)
-    - StripePayments (= 25.0.1)
-    - StripePaymentsUI (= 25.0.1)
-    - StripeUICore (= 25.0.1)
   - stripe-identity-react-native (0.4.1):
     - React-Core
     - StripeIdentity (~> 25.0.0)
-  - stripe-react-native (0.57.3):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - stripe-react-native/Core (= 0.57.3)
-    - stripe-react-native/NewArch (= 0.57.3)
-    - Yoga
-  - stripe-react-native/Core (0.57.3):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Stripe (~> 25.0.1)
-    - StripeApplePay (~> 25.0.1)
-    - StripeFinancialConnections (~> 25.0.1)
-    - StripePayments (~> 25.0.1)
-    - StripePaymentSheet (~> 25.0.1)
-    - StripePaymentsUI (~> 25.0.1)
-    - Yoga
-  - stripe-react-native/NewArch (0.57.3):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - StripeApplePay (25.0.1):
-    - StripeCore (= 25.0.1)
   - StripeCameraCore (25.0.1):
     - StripeCore (= 25.0.1)
   - StripeCore (25.0.1)
-  - StripeFinancialConnections (25.0.1):
-    - StripeCore (= 25.0.1)
-    - StripeUICore (= 25.0.1)
   - StripeIdentity (25.0.1):
     - StripeCameraCore (= 25.0.1)
     - StripeCore (= 25.0.1)
-    - StripeUICore (= 25.0.1)
-  - StripePayments (25.0.1):
-    - StripeCore (= 25.0.1)
-    - StripePayments/Stripe3DS2 (= 25.0.1)
-  - StripePayments/Stripe3DS2 (25.0.1):
-    - StripeCore (= 25.0.1)
-  - StripePaymentSheet (25.0.1):
-    - StripeApplePay (= 25.0.1)
-    - StripeCore (= 25.0.1)
-    - StripePayments (= 25.0.1)
-    - StripePaymentsUI (= 25.0.1)
-  - StripePaymentsUI (25.0.1):
-    - StripeCore (= 25.0.1)
-    - StripePayments (= 25.0.1)
     - StripeUICore (= 25.0.1)
   - StripeUICore (25.0.1):
     - StripeCore (= 25.0.1)
@@ -2380,7 +2281,6 @@ DEPENDENCIES:
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
   - "stripe-identity-react-native (from `../node_modules/@stripe/stripe-identity-react-native`)"
-  - "stripe-react-native (from `../node_modules/@stripe/stripe-react-native`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2399,15 +2299,9 @@ SPEC REPOS:
     - SDWebImageAVIFCoder
     - SDWebImageSVGCoder
     - SDWebImageWebPCoder
-    - Stripe
-    - StripeApplePay
     - StripeCameraCore
     - StripeCore
-    - StripeFinancialConnections
     - StripeIdentity
-    - StripePayments
-    - StripePaymentSheet
-    - StripePaymentsUI
     - StripeUICore
     - ZXingObjC
 
@@ -2623,8 +2517,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-worklets"
   stripe-identity-react-native:
     :path: "../node_modules/@stripe/stripe-identity-react-native"
-  stripe-react-native:
-    :path: "../node_modules/@stripe/stripe-react-native"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2747,17 +2639,10 @@ SPEC CHECKSUMS:
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
-  Stripe: 4728e3e0dd8df134e4a420ab504e929a93a815f0
   stripe-identity-react-native: d5bc437d724d08c391c14178331a3c25ba46bbf5
-  stripe-react-native: aa82d72a6b502be17920a2399c4831d2b1b65e8b
-  StripeApplePay: 43997281ace138a1c75a8f2d7be11925ea28644c
   StripeCameraCore: e61d13cf270c450e699b12857dc75edc55a8455c
   StripeCore: 457c30e2fd3a7c4b274a5ad53d1ff03661eef2a0
-  StripeFinancialConnections: 8c2e326f767fb014b53174b3a5f8592c0a45fa56
   StripeIdentity: b6950bd769a564f33fa409f502128619befbcc16
-  StripePayments: 6955de4298a5265e66f02cffcc7954475ac7f6c8
-  StripePaymentSheet: 3f93ce6ea84afde770d3c7e18a9b8f99aed63896
-  StripePaymentsUI: 626726a01255a6458c35436f7f6431dacee82684
   StripeUICore: 30f8352fd7a5cf1541b7777a57b3ad1133bf6763
   Yoga: 3fd22c2cae22d7a2b0f0b538f55f7c2a17dc94d5
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5

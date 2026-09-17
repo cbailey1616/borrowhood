@@ -2,7 +2,6 @@ import 'react-native-get-random-values';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StripeProvider } from '@stripe/stripe-react-native';
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -18,22 +17,9 @@ import RootNavigator from './src/navigation/RootNavigator';
 import ThemedAlertHost from './src/components/ThemedAlert';
 import { setNavigationRef } from './src/hooks/usePushNotifications';
 import ErrorBoundary from './src/components/ErrorBoundary';
-import { COLORS, STRIPE_PUBLISHABLE_KEY } from './src/utils/config';
+import { COLORS } from './src/utils/config';
 
 SplashScreen.preventAutoHideAsync();
-
-// Stripe key safety check — runs once at module load
-if (STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')) {
-  console.log('⚠️ STRIPE TEST MODE — no real charges will be made');
-} else if (STRIPE_PUBLISHABLE_KEY.startsWith('pk_live_')) {
-  if (__DEV__) {
-    throw new Error(
-      '🚨 FATAL: Live Stripe publishable key detected in development build!\n' +
-      'Switch to pk_test_ key in src/utils/config.js before running locally.'
-    );
-  }
-  console.log('💳 Stripe LIVE mode — real charges enabled');
-}
 
 const navigationRef = createNavigationContainerRef();
 const navigationTheme = {
@@ -65,27 +51,21 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <ErrorBoundary>
-        <StripeProvider
-          publishableKey={STRIPE_PUBLISHABLE_KEY}
-          merchantIdentifier="merchant.com.borrowhood.app"
-          urlScheme="com.borrowhood.app"
-        >
-          <SafeAreaProvider>
-            <AuthProvider navigationRef={navigationRef}>
-              <NavigationContainer
-                theme={navigationTheme}
-                ref={navigationRef}
-                onReady={() => setNavigationRef(navigationRef)}
-              >
-                <ErrorProvider navigationRef={navigationRef}>
-                  <RootNavigator navigationRef={navigationRef} />
-                  <ThemedAlertHost />
-                  <StatusBar style="dark" />
-                </ErrorProvider>
-              </NavigationContainer>
-            </AuthProvider>
-          </SafeAreaProvider>
-        </StripeProvider>
+        <SafeAreaProvider>
+          <AuthProvider navigationRef={navigationRef}>
+            <NavigationContainer
+              theme={navigationTheme}
+              ref={navigationRef}
+              onReady={() => setNavigationRef(navigationRef)}
+            >
+              <ErrorProvider navigationRef={navigationRef}>
+                <RootNavigator navigationRef={navigationRef} />
+                <ThemedAlertHost />
+                <StatusBar style="dark" />
+              </ErrorProvider>
+            </NavigationContainer>
+          </AuthProvider>
+        </SafeAreaProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>
   );

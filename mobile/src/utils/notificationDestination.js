@@ -31,6 +31,5 @@ export function notificationDestination(item = {}) {
   if (item.disputeId) return { name: 'DisputeDetail', params: { id: item.disputeId } };
   if (item.transactionId) return { name: 'TransactionDetail', params: { id: item.transactionId } };
   if (item.listingId) return { name: 'ListingDetail', params: { id: item.listingId } };
-  if (item.type === 'payment_failed') return { name: 'SetupPayout' };
   return inbox();
 }

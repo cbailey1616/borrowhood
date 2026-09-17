@@ -295,33 +295,6 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
-jest.mock('@stripe/stripe-react-native', () => {
-  const View = require('react-native').View;
-  return {
-    StripeProvider: ({ children }) => children,
-    useStripe: () => ({
-      initPaymentSheet: jest.fn().mockResolvedValue({}),
-      presentPaymentSheet: jest.fn().mockResolvedValue({}),
-      confirmSetupIntent: jest.fn().mockResolvedValue({}),
-    }),
-    usePaymentSheet: () => ({
-      initPaymentSheet: jest.fn().mockResolvedValue({}),
-      presentPaymentSheet: jest.fn().mockResolvedValue({}),
-      loading: false,
-    }),
-    useConfirmSetupIntent: () => ({
-      confirmSetupIntent: jest.fn().mockResolvedValue({}),
-    }),
-    usePlatformPay: () => ({
-      isPlatformPaySupported: jest.fn().mockResolvedValue(false),
-      confirmPlatformPaySetupIntent: jest.fn().mockResolvedValue({}),
-    }),
-    CardField: View,
-    PlatformPayButton: View,
-    PlatformPay: { ButtonType: { SetUp: 0 }, ButtonStyle: { Black: 0 } },
-  };
-});
-
 jest.mock('@stripe/stripe-identity-react-native', () => ({
   useIdentityVerificationSheet: () => ({
     present: jest.fn().mockResolvedValue({ status: 'FlowCompleted' }),

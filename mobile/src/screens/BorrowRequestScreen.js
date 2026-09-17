@@ -171,24 +171,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
       });
 
       if (!isCurrent()) return;
-      if (result.clientSecret) {
-        // Paid rental — navigate to checkout to authorize payment
-        navigation.replace('RentalCheckout', {
-          transactionId: result.id,
-          rentalFee,
-          depositAmount: listing.depositAmount,
-          totalAmount: total,
-          rentalDays: days,
-          listingTitle: listing.title,
-          clientSecret: result.clientSecret,
-          ephemeralKey: result.ephemeralKey,
-          customerId: result.customerId,
-        });
-      } else {
-        // Open the request tracker so the next step is immediately available.
-        haptics.success();
-        navigation.replace('TransactionDetail', { id: result.id });
-      }
+      haptics.success();
+      navigation.replace('TransactionDetail', { id: result.id });
     } catch (error) {
       if (!isCurrent()) return;
       haptics.error();

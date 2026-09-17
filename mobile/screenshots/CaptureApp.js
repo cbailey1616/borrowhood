@@ -56,6 +56,8 @@ function openCapture() {
     sell: { name: 'ListingDetail', params: { id: 'demo-bike' } },
     'request-detail': { name: 'RequestDetail', params: { id: 'demo-request-detail' } },
     chat: { name: 'Chat', params: { conversationId: 'demo-chat' } },
+    comments: { name: 'ListingDiscussion', params: { listingId: 'demo-drill' } },
+    friends: { name: 'Friends' },
     notifications: { name: 'NotificationSettings' },
     'member-profile': { name: 'UserProfile', params: { id: 'demo-jamie' } },
     'pending-exchange': { name: 'TransactionDetail', params: { id: 'demo-pending-exchange' } },

@@ -2,7 +2,7 @@ import { Image } from 'react-native';
 const avatar = null;
 const photo = asset => Image.resolveAssetSource(asset).uri;
 const photos = {
-  drill: photo(require('./assets/drill.jpg')),
+  drill: photo(require('./assets/drill.png')),
   tent: photo(require('./assets/tent.jpg')),
   books: photo(require('./assets/books.jpg')),
   bike: photo(require('./assets/bike.jpg')),
@@ -21,7 +21,7 @@ export const listings = [
   { id: 'demo-plants', title: 'Garden trowel & shears', description: 'A spare trowel and pruning shears. Free to a neighbor with a green thumb.', categoryId: 'garden', owner: user, photoUrl: photos.plants, listingType: 'giveaway' },
 ].map((item, index) => ({ type: 'listing', status: 'active', listingType: 'lend', isFree: true, isAvailable: true, isBorrowed: false, condition: 'good', visibility: 'neighborhood', pricePerDay: 0, timesBorrowed: !item.listingType || item.listingType === 'lend' ? 3 + index : 0, pendingRequests: 0, maxBorrowDays: 14, minBorrowDays: 1, createdAt: new Date(Date.now() - (index + 1) * 3600000).toISOString(), ...item, user: item.owner, ownerId: item.owner.id, photos: [item.photoUrl] }));
 export const requests = [{ id: 'demo-request', type: 'request', title: 'Does anyone have a ladder?', description: 'Just need one for a little gardening this weekend. Happy to pick it up!', status: 'open', visibility: 'neighborhood', user: sam, userId: sam.id, createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), responseCount: 2 }];
-export const conversation = { id: 'demo-chat', otherUser: jamie, listing: listings[0], listingId: listings[0].id, lastMessage: 'Perfect, see you Saturday!', lastMessageAt: new Date().toISOString(), unreadCount: 0 };
+export const conversation = { id: 'demo-chat', otherUser: jamie, listing: listings[0], listingId: listings[0].id, lastMessage: 'Are your garden chairs still available?', lastMessageAt: new Date().toISOString(), unreadCount: 0 };
 const dayFromToday = offset => {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -52,9 +52,15 @@ export const reviewExchanges = [
 const messageClock = new Date();
 messageClock.setHours(9, 40, 0, 0);
 export const messages = [
-  { content: 'Hi Jamie! Could I borrow your drill this weekend?', senderId: user.id, isOwnMessage: true },
+  { content: 'About item: “Cordless drill & bits”\n\nHi Jamie! Could I borrow this on Saturday?', senderId: user.id, isOwnMessage: true },
   { content: 'Of course! Saturday morning works. I’ll put the bits in the case too.', senderId: jamie.id, isOwnMessage: false },
   { content: 'Thank you! I can pick it up around 10 and bring it back Sunday.', senderId: user.id, isOwnMessage: true },
   { content: 'That works for me. Happy to help with the project!', senderId: jamie.id, isOwnMessage: false },
-  { content: 'Perfect, see you Saturday!', senderId: user.id, isOwnMessage: true },
-].map((message, index) => ({ id: `demo-message-${index}`, ...message, isRead: true, reactions: [], createdAt: new Date(messageClock.getTime() - (6 - index) * 60000).toISOString() }));
+  { content: 'Perfect! Also, are your garden chairs still available?', senderId: user.id, isOwnMessage: true },
+].map((message, index) => ({ id: `demo-message-${index}`, ...message, reactions: [], createdAt: new Date(messageClock.getTime() - (6 - index) * 60000).toISOString() }));
+
+export const friends = [jamie, sam, taylor];
+export const comments = [
+  { id: 'demo-comment-1', content: 'Does it come with a masonry bit? Hoping to put up a shelf this weekend.', user: sam, createdAt: new Date(Date.now() - 3600000).toISOString(), replyCount: 2 },
+  { id: 'demo-comment-2', content: 'Borrowed this last week. Made my little project so much easier. Thank you!', user: taylor, createdAt: new Date(Date.now() - 86400000).toISOString(), replyCount: 0 },
+];

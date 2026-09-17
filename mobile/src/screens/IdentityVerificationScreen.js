@@ -51,8 +51,6 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           hasAutoChained.current = true;
           if (source === 'onboarding') {
             navigation.navigate('OnboardingComplete');
-          } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
-            navigation.replace('SetupPayout', { source, totalSteps });
           } else if (source === 'town_browse') {
             navigation.goBack();
           }
@@ -133,8 +131,6 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     const handleVerifiedDone = () => {
       if (source === 'onboarding') {
         navigation.navigate('OnboardingComplete');
-      } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
-        navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
         navigation.goBack();
       } else {
@@ -176,8 +172,6 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     const handleContinue = () => {
       if (source === 'onboarding') {
         navigation.navigate('OnboardingComplete');
-      } else if (ENABLE_PAYMENTS && source === 'rental_listing') {
-        navigation.replace('SetupPayout', { source, totalSteps });
       } else if (source === 'town_browse') {
         navigation.goBack();
       } else {

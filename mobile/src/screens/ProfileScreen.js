@@ -25,7 +25,7 @@ import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS, ENABLE_PAYMENTS } from '../utils/config';
+import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function ProfileScreen({ navigation, route }) {
   const { user, logout, refreshUser } = useAuth();
@@ -241,36 +241,6 @@ export default function ProfileScreen({ navigation, route }) {
           <GroupedListItem icon="shield-checkmark-outline" title="Safety reports" onPress={() => navigation.navigate('SafetyReports')} />
           <GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} />
         </GroupedListSection>}
-        {/* Borrowing & Payments Section */}
-        {(ENABLE_PAYMENTS || ENABLE_PAID_TIERS) && <GroupedListSection header="Borrowing">
-          {ENABLE_PAYMENTS && (
-          <GroupedListItem
-            icon="cash-outline"
-            title="Earnings"
-            onPress={() => navigation.navigate('Earnings')}
-          />
-          )}
-          {ENABLE_PAYMENTS && (
-          <GroupedListItem
-            icon="card-outline"
-            title="Payment Methods"
-            onPress={() => navigation.navigate('PaymentMethods')}
-          />
-          )}
-
-          {/* TODO: Restore when re-enabling paid tiers (ENABLE_PAID_TIERS) */}
-          {ENABLE_PAID_TIERS && (
-            <GroupedListItem
-              icon="star-outline"
-              title="Subscription"
-              onPress={() => navigation.navigate('Subscription')}
-              testID="Profile.menu.subscription"
-              accessibilityLabel="Subscription settings"
-              accessibilityRole="button"
-            />
-          )}
-        </GroupedListSection>}
-
         {/* Community Section */}
         {ENABLE_PAID_TIERS && (
           <GroupedListSection header="Community">

@@ -259,7 +259,7 @@ export default function EditListingScreen({ navigation, route }) {
     } catch (error) {
       haptics.error();
       const errorMsg = error.message?.toLowerCase() || '';
-      if (error.code === 'PAYOUT_SETUP_REQUIRED' || errorMsg.includes('set up payouts')) {
+      if (ENABLE_PAYMENTS && (error.code === 'PAYOUT_SETUP_REQUIRED' || errorMsg.includes('set up payouts'))) {
         showError({
           title: 'Payout Setup Required',
           message: 'Set up payouts to list items with borrow fees or deposits.',
