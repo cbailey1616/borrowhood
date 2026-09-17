@@ -11,6 +11,14 @@ beforeEach(() => {
 });
 
 describe('completion notifications', () => {
+  it('explains account deletion and links unresolved exchanges to their retained record', async () => {
+    await sendNotification('neighbor-1', 'exchange_account_deleted', { itemTitle:'Drill', transactionId:'exchange-1' });
+    const saved = query.mock.calls[0][1];
+    expect(saved[2]).toBe('Exchange needs attention');
+    expect(saved[3]).toContain('deleted their account');
+    expect(saved[3]).toContain('Contact support');
+    expect(saved[5]).toBe('exchange-1');
+  });
   it('discards automatic item matches without saving or sending them', async () => {
     expect(await sendNotification('neighbor-1', 'item_match', { itemTitle: 'Drill' })).toBeNull();
     expect(query).not.toHaveBeenCalled();

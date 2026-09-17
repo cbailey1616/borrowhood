@@ -24,6 +24,7 @@ export async function authenticate(req, res, next) {
       );
     } catch (colErr) {
       // Fallback if token_invalidated_at column doesn't exist yet
+      if (colErr.code !== '42703') throw colErr;
       result = await query(
         'SELECT id, email, first_name, last_name, status, is_admin FROM users WHERE id = $1',
         [decoded.userId]
@@ -55,7 +56,11 @@ export async function authenticate(req, res, next) {
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired', code: 'SESSION_EXPIRED' });
     }
-    return res.status(401).json({ error: 'Invalid token', code: 'INVALID_SESSION' });
+    if (['JsonWebTokenError', 'NotBeforeError'].includes(err.name)) {
+      return res.status(401).json({ error: 'Invalid token', code: 'INVALID_SESSION' });
+    }
+    // A temporary account lookup failure must not invalidate a valid sign-in.
+    return res.status(503).json({ error: 'Couldn’t check your account. Please try again.', code: 'AUTH_UNAVAILABLE' });
   }
 }
 

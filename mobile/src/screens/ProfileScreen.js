@@ -136,7 +136,7 @@ export default function ProfileScreen({ navigation, route }) {
     try {
       await api.deleteAccount();
       haptics.success();
-      logout();
+      await logout({ sessionExpired: true });
     } catch (err) {
       showError({
         message: err.message || 'Failed to delete account. Please try again or contact support.',
@@ -372,7 +372,7 @@ export default function ProfileScreen({ navigation, route }) {
         isVisible={showDeleteSheet}
         onClose={() => setShowDeleteSheet(false)}
         title="Delete Account"
-        message="This will permanently delete your account, listings, transaction history, and all associated data. This action cannot be undone."
+        message="This permanently deletes your account and posts and removes your profile from view. Records needed to resolve active exchanges or disputes are kept. This cannot be undone."
         actions={[
           { label: isDeleting ? 'Deleting...' : 'Delete My Account', destructive: true, onPress: handleDeleteAccount },
         ]}

@@ -37,6 +37,16 @@ beforeEach(() => {
 });
 
 describe('ProfileScreen', () => {
+  it('clears the local session after confirmed deletion even if push revocation must retry later', async () => {
+    api.deleteAccount = jest.fn().mockResolvedValueOnce({ success:true });
+    mockLogout.mockResolvedValueOnce(true);
+    const Screen = require('../../src/screens/ProfileScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(screen.getByText('Delete Account'));
+    fireEvent.press(screen.getByText('Delete My Account'));
+    await waitFor(() => expect(mockLogout).toHaveBeenCalledWith({ sessionExpired:true }));
+    expect(api.deleteAccount).toHaveBeenCalledTimes(1);
+  });
   it('renders user name', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByTestId } = render(<ProfileScreen navigation={mockNavigation} />);

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { deleteAccount } from '../services/accountDeletion.js';
 import { endorsementSummary } from '../services/endorsements.js';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -7,7 +8,7 @@ import { query, withTransaction } from '../utils/db.js';
 import { verifySocialIdentity, resolveSocialAccount } from '../services/socialAuth.js';
 import { startSocialLinkCode, completeSocialLinkCode } from '../services/socialLinkCodes.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
-import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession, cancelPaymentIntent } from '../services/stripe.js';
+import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession } from '../services/stripe.js';
 import { sendNotification } from '../services/notifications.js';
 import { sendResetCodeEmail, sendAccountHintEmail } from '../services/email.js';
 import { body, validationResult } from 'express-validator';
@@ -417,140 +418,7 @@ router.post('/admin/reset-user', async (req, res) => {
 // ============================================
 router.delete('/account', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    // Clean up active transactions before deleting user data
-    // Find all active transactions involving this user
-    const activeTxns = await query(
-      `SELECT id, status, stripe_payment_intent_id, listing_id, borrower_id, lender_id
-       FROM borrow_transactions
-       WHERE (borrower_id = $1 OR lender_id = $1)
-         AND status IN ('pending', 'approved', 'picked_up')`,
-      [userId]
-    );
-
-    for (const txn of activeTxns.rows) {
-      const otherPartyId = txn.borrower_id === userId ? txn.lender_id : txn.borrower_id;
-
-      if (txn.status === 'pending' || txn.status === 'approved') {
-        // Cancel Stripe PaymentIntent if present
-        if (txn.stripe_payment_intent_id) {
-          try {
-            await cancelPaymentIntent(txn.stripe_payment_intent_id);
-          } catch (stripeErr) {
-            console.error(`Failed to cancel PI ${txn.stripe_payment_intent_id} for txn ${txn.id}:`, stripeErr.message);
-          }
-        }
-
-        // Mark cancelled and re-enable listing
-        await query(
-          `UPDATE borrow_transactions SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
-          [txn.id]
-        );
-        await query(
-          `UPDATE listings SET is_available = true WHERE id = $1`,
-          [txn.listing_id]
-        );
-
-        // Notify the other party
-        try {
-          await sendNotification(otherPartyId, 'request_declined', {
-            body: 'The other party deleted their account. This request has been cancelled.',
-          });
-        } catch (notifyErr) {
-          console.error(`Failed to notify ${otherPartyId} of account deletion:`, notifyErr.message);
-        }
-      } else if (txn.status === 'picked_up') {
-        // Item is out — do NOT cancel the payment, flag for support
-        await query(
-          `UPDATE borrow_transactions SET status = 'account_deleted', updated_at = NOW() WHERE id = $1`,
-          [txn.id]
-        );
-
-        try {
-          await sendNotification(otherPartyId, 'borrow_request', {
-            body: 'The other party deleted their account. Please contact support for help completing this transaction.',
-          });
-        } catch (notifyErr) {
-          console.error(`Failed to notify ${otherPartyId} of account deletion:`, notifyErr.message);
-        }
-      }
-    }
-
-    // Delete in dependency order to avoid FK violations
-    // 1. Tables referencing borrow_transactions
-    await query('DELETE FROM disputes WHERE claimant_user_id = $1 OR respondent_user_id = $1', [userId]);
-    await query('DELETE FROM ratings WHERE rater_id = $1 OR ratee_id = $1', [userId]);
-    // 2. Transactions — only hard-delete completed/cancelled ones where user is sole party of interest
-    //    Keep account_deleted transactions so the other party retains a record
-    await query(
-      `DELETE FROM borrow_transactions
-       WHERE (borrower_id = $1 OR lender_id = $1)
-         AND status NOT IN ('account_deleted', 'picked_up')`,
-      [userId]
-    );
-    // 3. Tables referencing listings
-    await query('DELETE FROM listing_discussions WHERE user_id = $1', [userId]);
-    await query('DELETE FROM listing_discussions WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
-    await query('DELETE FROM listing_photos WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
-    await query('DELETE FROM listing_availability WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
-    await query('DELETE FROM saved_listings WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
-    await query('DELETE FROM saved_listings WHERE user_id = $1', [userId]);
-    await query('DELETE FROM bundle_items WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
-    await query('DELETE FROM community_library_items WHERE donated_by = $1', [userId]);
-    await query('DELETE FROM rto_contracts WHERE borrower_id = $1 OR lender_id = $1', [userId]);
-    await query('DELETE FROM conversations WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = $1)', [userId]);
-    // 4. Listings — keep any referenced by account_deleted transactions
-    await query(
-      `DELETE FROM listings WHERE owner_id = $1
-       AND id NOT IN (SELECT listing_id FROM borrow_transactions WHERE status = 'account_deleted')`,
-      [userId]
-    );
-    // 5. Messages & conversations (messages/participants reference conversations)
-    await query('DELETE FROM message_reactions WHERE user_id = $1', [userId]);
-    await query('DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE sender_id = $1)', [userId]);
-    await query('DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = $1 OR user2_id = $1)', [userId]);
-    await query('DELETE FROM conversations WHERE user1_id = $1 OR user2_id = $1', [userId]);
-    // 6. Remaining user-referenced tables
-    await query('DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1', [userId]);
-    await query('DELETE FROM community_memberships WHERE user_id = $1', [userId]);
-    await query('DELETE FROM user_badges WHERE user_id = $1', [userId]);
-    await query('DELETE FROM bundle_items WHERE bundle_id IN (SELECT id FROM bundles WHERE owner_id = $1)', [userId]);
-    await query('DELETE FROM bundles WHERE owner_id = $1', [userId]);
-    await query('DELETE FROM lending_circle_members WHERE user_id = $1', [userId]);
-    await query('DELETE FROM subscription_history WHERE user_id = $1', [userId]);
-    await query('DELETE FROM audit_log WHERE actor_id = $1', [userId]);
-    await query('DELETE FROM item_requests WHERE user_id = $1', [userId]);
-    // 7. Final cleanup — delete all notifications referencing this user (must be last before user delete)
-    await query('DELETE FROM notifications WHERE user_id = $1 OR from_user_id = $1', [userId]);
-    // Clear self-referencing FK and delete or anonymize user
-    await query('UPDATE users SET referred_by = NULL WHERE referred_by = $1', [userId]);
-
-    // Check if any account_deleted transactions still reference this user
-    const retainedTxns = await query(
-      `SELECT 1 FROM borrow_transactions
-       WHERE (borrower_id = $1 OR lender_id = $1) AND status = 'account_deleted' LIMIT 1`,
-      [userId]
-    );
-
-    if (retainedTxns.rows.length > 0) {
-      // Anonymize instead of delete — retained transactions have NOT NULL FKs to this user
-      await query(
-        `UPDATE users SET
-          first_name = 'Deleted', last_name = 'User', display_name = 'Deleted User',
-          email = 'deleted_' || id || '@deleted.borrowhood.com',
-          password_hash = '', phone = NULL, bio = NULL,
-          profile_photo_url = NULL, status = 'suspended',
-          stripe_customer_id = NULL, stripe_connect_account_id = NULL,
-          stripe_identity_session_id = NULL, date_of_birth = NULL,
-          address_line1 = NULL
-        WHERE id = $1`,
-        [userId]
-      );
-    } else {
-      await query('DELETE FROM users WHERE id = $1', [userId]);
-    }
-
+    await deleteAccount(req.user.id);
     res.json({ success: true });
   } catch (err) {
     console.error('Delete account error:', err.message, err.detail, err.constraint);

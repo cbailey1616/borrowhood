@@ -35,9 +35,15 @@ const NOTIFICATION_TEMPLATES = {
   },
   borrow_cancelled: {
     title: 'Borrow cancelled',
-    body: data => data.itemTitle
+    body: data => data.accountDeleted
+      ? `Your neighbor deleted their account. ${data.itemTitle ? `The pickup for ${data.itemTitle}` : 'This pickup'} was cancelled.`
+      : data.itemTitle
       ? `The pickup for ${data.itemTitle} was cancelled. No pickup is expected.`
       : 'This borrow was cancelled. No pickup is expected.',
+  },
+  exchange_account_deleted: {
+    title: 'Exchange needs attention',
+    body: data => `Your neighbor deleted their account. Contact support for help ${data.itemTitle ? `with ${data.itemTitle}` : 'completing this exchange'}.`,
   },
 
   // Transaction flow

@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -231,7 +232,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
       navigation.replace('RequestQueue', params);
     }
   };
-  const primaryAction = transaction.isLender && transaction.status === 'pending'
+  const primaryAction = transaction.status === 'account_deleted'
+    ? { label: 'Contact support', testID: 'Transaction.button.support', onPress: async () => {
+      try { await Linking.openURL(`mailto:chris@borrowhood.net?subject=${encodeURIComponent(`Help with exchange ${id}`)}`); }
+      catch { showError({ message: 'Email chris@borrowhood.net for help with this exchange.' }); }
+    } }
+    : transaction.isLender && transaction.status === 'pending'
     ? { label: 'View queue', testID: 'Transaction.button.queue', onPress: viewQueue }
     : needsPickup ? { label: 'Confirm pickup', testID: 'Transaction.button.confirmPickup', onPress: () => setPickupSheetVisible(true) }
     : needsReturn ? { label: 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
@@ -275,7 +281,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </HapticPressable>
             <View style={styles.cardDivider} />
-            <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />
+            {transaction.status !== 'account_deleted' && <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />}
           </View>
         </LayeredCard>
 
