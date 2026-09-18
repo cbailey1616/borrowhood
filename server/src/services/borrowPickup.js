@@ -55,6 +55,7 @@ export function confirmBorrowPickup({ borrowerOnly = false } = {}) {
         }
       }
     } catch (error) {
+      if (error.code === 'P0001' && error.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: error.message });
       logger.error('Confirm pickup failed', { code: error.code || error.name });
       return res.status(500).json({ error: 'Could not confirm pickup. Please try again.' });
     }

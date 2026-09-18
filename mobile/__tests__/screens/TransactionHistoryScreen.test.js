@@ -94,7 +94,7 @@ describe('TransactionHistoryScreen', () => {
       { ...mockTransactions[1], id: 'loan-out', status: 'picked_up' },
       { ...mockTransactions[1], id: 'pending', status: 'pending' },
       { ...mockTransactions[0], id: 'sale', status: 'picked_up', listingType: 'sell', listing: { title: 'Bookshelf' },
-        startDate: null, endDate: null, actualPickupAt: '2026-09-16T18:00:00Z' },
+        startDate: null, endDate: null, actualPickupAt: new Date(2026, 8, 16, 18).toISOString() },
       { ...mockTransactions[1], id: 'gift', status: 'picked_up', listingType: 'giveaway', listing: { title: 'Plant' },
         startDate: null, endDate: null },
     ]);

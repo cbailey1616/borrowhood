@@ -32,36 +32,35 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
             </View>
             <View style={styles.summaryCopy}>
               <Text style={styles.currentRating}>{currentRank.label}</Text>
-              <Text style={styles.note}>{isNew ? `Rating after ${RATING_UNLOCK_EXCHANGES} completed exchanges` : currentRank.tone}</Text>
+              <Text style={styles.note} accessibilityLabel={!isNew ? `Rating level: ${currentRank.tone}` : undefined}>
+                {isNew ? `Rating after ${RATING_UNLOCK_EXCHANGES} completed exchanges` : currentRank.tone}
+              </Text>
             </View>
-          </View>}
-          {currentRank && !isNew && <View style={styles.meter} accessible accessibilityLabel={`Rating level: ${currentRank.tone}`}>
-            {NEIGHBOR_RANKS.map(rank => <View key={rank.label} style={styles.meterColumn}>
-              <View style={styles.marker}>
-                {rank.label === currentRank.label && <Ionicons name="chevron-down" size={16} color={COLORS.primary} />}
-              </View>
-              <View style={styles.segmentTrack}>
-                <View style={[styles.segment, { backgroundColor: rank.meterColor }, rank.label === currentRank.label && styles.currentSegment]} />
-              </View>
-            </View>)}
           </View>}
           <Text style={styles.explanation}>Build your rank with positive exchanges.</Text>
           <View style={styles.levels}>
             <Text style={styles.levelsTitle} accessibilityRole="header">Rating levels</Text>
-            {NEIGHBOR_RANKS.map(rank => <View key={rank.label} testID={`RankInfo.level.${rank.label}`}
-              style={[styles.level, currentRank?.label === rank.label && styles.currentLevel]}>
-              <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
-              <View style={styles.levelCopy}>
-                <View style={styles.levelNameGroup}>
-                  <Text style={styles.levelName}>{rank.label}</Text>
-                  {currentRank?.label === rank.label && <View style={styles.currentBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                    <Text style={styles.current}>Current</Text>
-                  </View>}
+            {NEIGHBOR_RANKS.map(rank => {
+              const isCurrent = !isNew && currentRank?.label === rank.label;
+              return <View key={rank.label} testID={`RankInfo.level.${rank.label}`} style={styles.levelRow}>
+                <View style={styles.segmentTrack} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <View style={[styles.segment, { backgroundColor: rank.meterColor }, isCurrent && styles.currentSegment]} />
                 </View>
-                <Text style={[styles.note, styles.levelTone]}>{rank.tone}</Text>
-              </View>
-            </View>)}
+                <View style={[styles.level, isCurrent && styles.currentLevel]}>
+                  <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
+                  <View style={styles.levelCopy}>
+                    <View style={styles.levelNameGroup}>
+                      <Text style={styles.levelName}>{rank.label}</Text>
+                      {isCurrent && <View style={styles.currentBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                        <Text style={styles.current}>Current</Text>
+                      </View>}
+                    </View>
+                    <Text style={[styles.note, styles.levelTone]}>{rank.tone}</Text>
+                  </View>
+                </View>
+              </View>;
+            })}
           </View>
         </ScrollView>
       </Animated.View>
@@ -83,16 +82,14 @@ const styles = StyleSheet.create({
   emblem: { width: 48, height: 48, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   summaryCopy: { flex: 1, gap: SPACING.xs },
   currentRating: { ...TYPOGRAPHY.h2, letterSpacing: 0, color: COLORS.primary },
-  meter: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.md },
-  meterColumn: { flex: 1 },
-  marker: { height: 16, alignItems: 'center' },
-  segmentTrack: { height: 10, justifyContent: 'center' },
-  segment: { height: 6, borderRadius: RADIUS.full },
-  currentSegment: { height: 10 },
+  levelRow: { flexDirection: 'row', alignItems: 'stretch', gap: SPACING.xs },
+  segmentTrack: { width: 10, alignItems: 'center', paddingVertical: 3 },
+  segment: { flex: 1, width: 5, borderRadius: RADIUS.full },
+  currentSegment: { width: 9, borderWidth: 1, borderColor: COLORS.primary },
   explanation: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.sm },
   levels: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.separator },
   levelsTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.xs },
-  level: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, borderRadius: RADIUS.sm },
+  level: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, borderRadius: RADIUS.sm },
   currentLevel: { backgroundColor: COLORS.primaryMuted },
   levelCopy: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: SPACING.sm, rowGap: 2 },
   levelNameGroup: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: SPACING.sm, rowGap: 2, maxWidth: '100%' },

@@ -102,6 +102,7 @@ router.post('/:id/approve', authenticate,
 
       res.json({ success: true });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       logger.error('Approve rental error:', {
         message: err.message,
         type: err.type,
@@ -199,6 +200,7 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
 
     res.json({ success: true, status: pi.status });
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     logger.error('Confirm rental payment error:', err);
     res.status(500).json({ error: 'Failed to confirm payment' });
   }
@@ -263,7 +265,7 @@ router.post('/:id/return', authenticate,
       if (!t.stripe_payment_intent_id) {
         const result = await completeFreeReturn(t.id, req.user.id, condition, notes);
         if (result.error) return res.status(result.status).json({ error: result.error });
-        res.json({ success: true, conditionDegraded: !!result.conditionDegraded, alreadyConfirmed: !!result.alreadyConfirmed });
+        res.json({ success: true, pendingOwner: !!result.pendingOwner, conditionDegraded: !!result.conditionDegraded, alreadyConfirmed: !!result.alreadyConfirmed });
         if (result.borrow) await notifyFreeReturn(result.borrow, req.user.id).catch(error =>
           logger.error('Return notification failed', { code: error.code || error.name }));
         return;
@@ -432,6 +434,7 @@ router.post('/:id/return', authenticate,
 
       res.json({ success: true, conditionDegraded: false });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       logger.error('Confirm return error:', err);
       res.status(500).json({ error: 'Failed to confirm return' });
     }
@@ -528,6 +531,7 @@ router.post('/:id/damage-claim', authenticate,
         status: 'awaitingResponse',
       });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       logger.error('Damage claim error:', err);
       res.status(500).json({ error: err.message || 'Failed to process damage claim' });
     }
@@ -634,6 +638,7 @@ router.post('/:id/late-fee', authenticate, async (req, res) => {
       lateFeePerDay,
     });
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     logger.error('Late fee error:', err);
     res.status(500).json({ error: 'Failed to create late fee charge' });
   }
@@ -699,6 +704,7 @@ router.get('/:id/payment-status', authenticate, async (req, res) => {
 
     res.json(result);
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     logger.error('Get payment status error:', err);
     res.status(500).json({ error: 'Failed to get payment status' });
   }

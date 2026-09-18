@@ -35,9 +35,15 @@ const NOTIFICATION_TEMPLATES = {
   },
   borrow_cancelled: {
     title: 'Borrow cancelled',
-    body: data => data.itemTitle
+    body: data => data.accountDeleted
+      ? `Your neighbor deleted their account. ${data.itemTitle ? `The pickup for ${data.itemTitle}` : 'This pickup'} was cancelled.`
+      : data.itemTitle
       ? `The pickup for ${data.itemTitle} was cancelled. No pickup is expected.`
       : 'This borrow was cancelled. No pickup is expected.',
+  },
+  exchange_account_deleted: {
+    title: 'Exchange needs attention',
+    body: data => `Your neighbor deleted their account. Contact support for help ${data.itemTitle ? `with ${data.itemTitle}` : 'completing this exchange'}.`,
   },
 
   // Transaction flow
@@ -66,6 +72,10 @@ const NOTIFICATION_TEMPLATES = {
     title: 'More time for pickup',
     body: data => `The owner is holding ${data.itemTitle || 'your item'} for another 24 hours. Tap to arrange pickup.`,
   },
+  return_requested: { title: 'Was your item returned?', body: () => 'Your neighbor reported a return. Confirm only once you have the item back.' },
+  return_reported_missing: { title: 'Your return needs attention', body: () => 'The owner reported an item not returned. Open the exchange and Return help to respond within 48 hours. A report is not a confirmed incident.' },
+  return_date_extended: { title: 'Return date updated', body: () => 'The owner gave you more time. Open the exchange to see the new return date.' },
+  return_case_updated: { title: 'Return help update', body: () => 'There is an update to your return report. Open Return help to see the response or decision.' },
   return_confirmed: {
     title: 'Return Complete',
     body: returnCompleteBody,

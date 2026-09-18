@@ -1,3 +1,4 @@
+import { ensureReturnRecoverySchema } from '../services/returnRecovery.js';
 import { ensureEndorsementSchema } from '../services/endorsements.js';
 import { ensureNotificationSchema } from '../services/notificationSchema.js';
 import { ensureRankNotificationSchema } from '../services/rankNotifications.js';
@@ -700,6 +701,7 @@ export async function runMigrations() {
     await ensureRankNotificationSchema();
     await ensureNotificationSchema();
     await ensurePickupFollowupSchema();
+    await ensureReturnRecoverySchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

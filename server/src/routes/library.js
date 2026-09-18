@@ -52,6 +52,7 @@ router.get('/', authenticate, async (req, res) => {
       donationDate: i.donation_date,
     })));
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     console.error('Get library error:', err);
     res.status(500).json({ error: 'Failed to get library items' });
   }
@@ -115,6 +116,7 @@ router.post('/donate', authenticate,
 
       res.status(201).json({ success: true });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       console.error('Donate to library error:', err);
       res.status(500).json({ error: 'Failed to donate item' });
     }
@@ -180,6 +182,7 @@ router.post('/:itemId/checkout', authenticate,
 
       res.json({ transactionId: transaction.rows[0].id });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       console.error('Checkout library item error:', err);
       res.status(500).json({ error: 'Failed to checkout item' });
     }
@@ -218,6 +221,7 @@ router.post('/:itemId/return', authenticate, async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     console.error('Return library item error:', err);
     res.status(500).json({ error: 'Failed to return item' });
   }

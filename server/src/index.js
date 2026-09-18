@@ -1,3 +1,4 @@
+import returnRecoveryRoutes from './routes/returnRecovery.js';
 import { protectMediaResponses, servePrivatePhoto, blockPublicListingPhoto, assertPrivatePhotoStorage } from './services/privatePhotos.js';
 import insightsRoutes from './routes/insights.js';
 import 'dotenv/config';
@@ -245,6 +246,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/safety', safetyRoutes);
 app.use('/api/admin/safety-reports', safetyAdminRoutes);
+app.use('/api/return-help', returnRecoveryRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/sustainability', sustainabilityRoutes);

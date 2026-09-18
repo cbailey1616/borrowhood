@@ -6,8 +6,9 @@ export const DEFAULT_NOTIFICATION_PREFERENCES = {
 const groups = {
   rank_up: 'borrow_updates',
   borrow_request: 'borrow_updates', giveaway_claim: 'borrow_updates', request_approved: 'borrow_updates',
-  request_declined: 'borrow_updates', borrow_cancelled: 'borrow_updates', pickup_confirmed: 'borrow_updates',
+  request_declined: 'borrow_updates', borrow_cancelled: 'borrow_updates', exchange_account_deleted: 'borrow_updates', pickup_confirmed: 'borrow_updates',
   pickup_check: 'borrow_updates', pickup_extended: 'borrow_updates',
+  return_requested: 'borrow_updates', return_reported_missing: 'borrow_updates', return_date_extended: 'borrow_updates', return_case_updated: 'borrow_updates',
   return_confirmed: 'borrow_updates', giveaway_complete: 'borrow_updates', giveaway_expired: 'borrow_updates',
   giveaway_pickup_expired: 'borrow_updates', listing_comment: 'post_replies', request_comment: 'post_replies', request_offer: 'post_replies',
   discussion_reply: 'post_replies', friend_request: 'community_updates', friend_accepted: 'community_updates',
@@ -19,9 +20,9 @@ const legacyGroups = { request_approved: 'request_response', request_declined: '
 export const GRANULAR_NOTIFICATION_TYPES = {
   incoming_requests: ['borrow_request', 'giveaway_claim'],
   request_approvals: ['request_approved'], request_declines: ['request_declined'],
-  cancellations: ['borrow_cancelled'],
+  cancellations: ['borrow_cancelled', 'exchange_account_deleted'],
   pickup_updates: ['pickup_confirmed', 'giveaway_complete', 'giveaway_pickup_expired', 'pickup_check', 'pickup_extended'],
-  return_updates: ['return_confirmed'], expired_requests: ['giveaway_expired'],
+  return_updates: ['return_confirmed', 'return_requested', 'return_reported_missing', 'return_date_extended', 'return_case_updated'], expired_requests: ['giveaway_expired'],
   post_comments: ['listing_comment', 'request_comment', 'request_offer'], comment_replies: ['discussion_reply'],
   friend_requests: ['friend_request'], friend_acceptances: ['friend_accepted'],
   neighborhood_requests: ['join_request', 'circle_invite'], neighborhood_responses: ['join_approved'],

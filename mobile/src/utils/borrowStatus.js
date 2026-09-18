@@ -1,5 +1,6 @@
 // Presentation only: actions remain subject to server permissions and state.
 export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, lender, borrower, endDate, paymentStatus, pickupReview, actualPickupAt }) {
+  if (status === 'account_deleted') return { title: 'Your neighbor deleted their account', detail: 'Contact support for help completing this exchange. Your exchange record has been kept.' };
   const neighbor = (isBorrower ? lender : borrower)?.firstName || (isBorrower ? 'the owner' : 'your neighbor');
   const date = endDate && new Date(endDate);
   const due = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'the agreed date';

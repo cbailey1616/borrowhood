@@ -25,7 +25,7 @@ import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function ProfileScreen({ navigation, route }) {
   const { user, logout, refreshUser } = useAuth();
@@ -136,7 +136,7 @@ export default function ProfileScreen({ navigation, route }) {
     try {
       await api.deleteAccount();
       haptics.success();
-      logout();
+      await logout({ sessionExpired: true });
     } catch (err) {
       showError({
         message: err.message || 'Failed to delete account. Please try again or contact support.',
@@ -238,6 +238,7 @@ export default function ProfileScreen({ navigation, route }) {
         </GroupedListSection>
 
         {user?.isAdmin && <GroupedListSection header="Admin">
+          <GroupedListItem icon="time-outline" title="Return reviews" onPress={() => navigation.navigate('ReturnHelp', { admin: true })} />
           <GroupedListItem icon="shield-checkmark-outline" title="Safety reports" onPress={() => navigation.navigate('SafetyReports')} />
           <GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} />
         </GroupedListSection>}
@@ -273,20 +274,16 @@ export default function ProfileScreen({ navigation, route }) {
             title="Notifications"
             onPress={() => navigation.navigate('NotificationSettings')}
           />
+          <GroupedListItem icon="time-outline" title="Return help" onPress={() => navigation.navigate('ReturnHelp')} />
+          <GroupedListItem
+            icon="shield-checkmark-outline"
+            title="Privacy & safety"
+            onPress={() => navigation.navigate('PrivacySafety')}
+          />
           <GroupedListItem
             icon="help-circle-outline"
             title="Help & Support"
             onPress={() => Linking.openURL('mailto:chris@borrowhood.net')}
-          />
-          <GroupedListItem
-            icon="document-text-outline"
-            title="Terms of Service"
-            onPress={() => Linking.openURL(`${BASE_URL}/terms`)}
-          />
-          <GroupedListItem
-            icon="lock-closed-outline"
-            title="Privacy Policy"
-            onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}
           />
         </GroupedListSection>
 
@@ -372,7 +369,7 @@ export default function ProfileScreen({ navigation, route }) {
         isVisible={showDeleteSheet}
         onClose={() => setShowDeleteSheet(false)}
         title="Delete Account"
-        message="This will permanently delete your account, listings, transaction history, and all associated data. This action cannot be undone."
+        message="This permanently deletes your account and posts and removes your profile from view. Records needed to resolve active exchanges or disputes are kept. This cannot be undone."
         actions={[
           { label: isDeleting ? 'Deleting...' : 'Delete My Account', destructive: true, onPress: handleDeleteAccount },
         ]}

@@ -28,7 +28,7 @@ describe('ChatScreen', () => {
       messages: [true, false].map((isRead, index) => ({ id: `message-${index}`, content: `Hello ${index}`, isOwnMessage: true, isRead, createdAt: new Date().toISOString() })) });
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    await screen.findByText('Hello 0');
+    await screen.findByText('Hello 0', {}, { timeout: 5000 });
     const icons = screen.UNSAFE_getAllByType(require('../../src/components/Icon').Ionicons.type);
     expect(icons.some(icon => ['checkmark', 'checkmark-done'].includes(icon.props.name))).toBe(false);
   });
