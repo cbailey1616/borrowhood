@@ -1,5 +1,5 @@
 // Presentation only: actions remain subject to server permissions and state.
-export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, lender, borrower, endDate, paymentStatus }) {
+export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, lender, borrower, endDate, paymentStatus, pickupReview, actualPickupAt }) {
   const neighbor = (isBorrower ? lender : borrower)?.firstName || (isBorrower ? 'the owner' : 'your neighbor');
   const date = endDate && new Date(endDate);
   const due = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'the agreed date';
@@ -8,7 +8,11 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, len
     case 'pending': return isBorrower
       ? { title: `Waiting for ${neighbor}`, detail: `${neighbor} needs to approve your request. There’s nothing you need to do yet—we’ll notify you when they respond.` }
       : { title: 'Review your queue', detail: `${neighbor} is waiting. Open the queue to approve or decline requests.` };
-    case 'approved': case 'paid': return { title: 'Next: arrange pickup', detail: isBorrower
+    case 'approved': case 'paid':
+      if (!isBorrower && pickupReview?.needed && !actualPickupAt) return {
+        title: 'Was this item picked up?', detail: 'Confirm the handoff, give your neighbor more time, or cancel pickup.',
+      };
+      return { title: 'Next: arrange pickup', detail: isBorrower
       ? `Agree on a time and place with ${neighbor}. After you receive the item, tap Confirm pickup below.`
       : `Agree on a time and place with ${neighbor}. After you hand over the item, tap Confirm pickup below.` };
     case 'picked_up': return isGiveaway

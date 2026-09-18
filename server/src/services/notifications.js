@@ -58,6 +58,14 @@ const NOTIFICATION_TEMPLATES = {
         : `The item has been picked up.${returnBy} Tap to view your exchange.`;
     },
   },
+  pickup_check: {
+    title: 'Was your item picked up?',
+    body: data => `Was ${data.itemTitle || 'your item'} picked up? Confirm the handoff, give more time, or cancel pickup.`,
+  },
+  pickup_extended: {
+    title: 'More time for pickup',
+    body: data => `The owner is holding ${data.itemTitle || 'your item'} for another 24 hours. Tap to arrange pickup.`,
+  },
   return_confirmed: {
     title: 'Return Complete',
     body: returnCompleteBody,

@@ -26,6 +26,68 @@ beforeEach(() => { jest.clearAllMocks(); api.getTransaction.mockResolvedValue(mo
 describe('TransactionDetailScreen', () => {
   const route = { params: { id: 'txn-1' } };
 
+  it('gives more time only after confirmation and keeps the exchange open', async () => {
+    let exchange = { ...mockTransaction, status: 'paid', isBorrower: false, isLender: true,
+      pickupReview: { dueAt: '2026-09-17T12:00:00.000Z', needed: true } };
+    api.getTransaction.mockImplementation(async () => exchange);
+    api.extendPickup.mockImplementation(async () => {
+      exchange = { ...exchange, pickupReview: { dueAt: '2026-09-19T12:00:00.000Z', needed: false } };
+      return { success: true };
+    });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Was this item picked up?', {}, { timeout: 5000 });
+    fireEvent.press(screen.getByTestId('Transaction.button.giveMoreTime'));
+    expect(api.extendPickup).not.toHaveBeenCalled();
+    expect(screen.getByText('Keep the item reserved. We’ll check again in 24 hours. The return date stays the same.')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('Transaction.confirmMoreTime'));
+    await waitFor(() => expect(api.extendPickup).toHaveBeenCalledWith('txn-1', '2026-09-17T12:00:00.000Z'));
+    await waitFor(() => expect(screen.queryByTestId('Transaction.button.giveMoreTime')).toBeNull());
+    expect(screen.getByTestId('Transaction.button.confirmPickup')).toBeTruthy();
+    expect(api.confirmRentalPickup).not.toHaveBeenCalled();
+    expect(api.cancelRental).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('keeps the pickup decision available when giving more time fails', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'paid', isBorrower: false, isLender: true,
+      pickupReview: { dueAt: '2026-09-17T12:00:00.000Z', needed: true } });
+    api.extendPickup.mockRejectedValueOnce(new Error('Offline'));
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.giveMoreTime'));
+    fireEvent.press(screen.getByTestId('Transaction.confirmMoreTime'));
+    await waitFor(() => expect(api.extendPickup).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('Transaction.button.giveMoreTime')).not.toBeDisabled());
+    expect(api.confirmRentalPickup).not.toHaveBeenCalled();
+    expect(api.cancelRental).not.toHaveBeenCalled();
+  });
+
+  it('returns the owner to waiting requests only after cancellation succeeds', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'paid', isBorrower: false, isLender: true,
+      pickupReview: { dueAt: '2026-09-17T12:00:00.000Z', needed: true } });
+    api.cancelRental.mockResolvedValue({ success: true });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByTestId('Transaction.button.cancel'));
+    expect(screen.getByText('Cancel this pickup?')).toBeTruthy();
+    expect(api.cancelRental).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('Transaction.confirmCancel'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('RequestQueue', { listingId: 'l-1' }));
+    expect(api.cancelRental).toHaveBeenCalledWith('txn-1');
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('keeps the owner’s more-time control out of the borrower’s screen', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'paid',
+      pickupReview: { dueAt: '2026-09-17T12:00:00.000Z', needed: true } });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByTestId('Transaction.button.confirmPickup');
+    expect(screen.queryByTestId('Transaction.button.giveMoreTime')).toBeNull();
+    expect(screen.queryByText('Was this item picked up?')).toBeNull();
+  });
+
   it.each([true, false])('requires a handoff confirmation for pickup (borrower=%s)', async isBorrower => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isBorrower, isLender: !isBorrower });
     api.confirmRentalPickup.mockResolvedValue({ success: true });

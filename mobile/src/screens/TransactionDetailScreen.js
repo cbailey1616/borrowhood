@@ -55,6 +55,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [returnSheetVisible, setReturnSheetVisible] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
+  const [moreTimeSheetVisible, setMoreTimeSheetVisible] = useState(false);
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -147,7 +148,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
       await api.cancelRental(id);
       haptics.success();
       showToast(cancelAsRequest ? 'Request cancelled.' : 'Borrow cancelled.', 'success');
-      if (isCurrent()) navigation.goBack();
+      if (isCurrent()) {
+        if (needsPickupReview) viewQueue();
+        else navigation.goBack();
+      }
     } catch (error) {
       haptics.error();
       showError({ message: error.message || 'Couldn\'t cancel right now. Please check your connection and try again.' });
@@ -157,6 +161,27 @@ export default function TransactionDetailScreen({ route, navigation }) {
     }
   };
 
+  const handleGiveMoreTime = async () => {
+    if (actionInProgress.current) return;
+    const isCurrent = startNavigationTask();
+    actionInProgress.current = true;
+    setActionLoading(true);
+    try {
+      await api.extendPickup(id, transaction.pickupReview.dueAt);
+      if (!isCurrent()) return;
+      await fetchTransaction();
+      haptics.success();
+      showToast('Pickup held for another 24 hours.', 'success');
+    } catch (error) {
+      if (isCurrent()) {
+        await fetchTransaction();
+        showError({ message: error.message || 'Couldn’t give more time. Please try again.' });
+      }
+    } finally {
+      actionInProgress.current = false;
+      if (isCurrent()) setActionLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -207,6 +232,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     || (transaction.isLender && transaction.status === 'returned' && transaction.paymentStatus === 'authorized' && !transaction.hasDispute));
   const needsPickup = (transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
     && !transaction.hasDispute && ['approved', 'paid'].includes(transaction.status);
+  const needsPickupReview = transaction.isLender && needsPickup && transaction.pickupReview?.needed;
   const primaryIsMessage = !needsPickup && !needsReturn && !(transaction.isLender && transaction.status === 'pending');
   const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
     || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
@@ -221,7 +247,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     || ((transaction.isBorrower || transaction.isLender) && ['approved', 'paid'].includes(transaction.status))
   );
   const cancelAsRequest = isGiveaway || transaction.status === 'pending';
-  const cancelLabel = cancelAsRequest ? 'Cancel request' : 'Cancel borrow';
+  const cancelLabel = needsPickupReview ? 'Cancel pickup' : cancelAsRequest ? 'Cancel request' : 'Cancel borrow';
   const viewQueue = () => {
     const params = { listingId: transaction.listing.id };
     // Return to the queue we came from; old notification links can start here.
@@ -311,7 +337,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
             disabled={actionLoading || (!!fetchError && (needsPickup || needsReturn))} onPress={primaryAction.onPress}>
             {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
           </HapticPressable>}
-          {!primaryIsMessage && !finished && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+          {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"
+            disabled={actionLoading || !!fetchError} style={styles.outlinedAction} onPress={() => setMoreTimeSheetVisible(true)} />}
+          {!needsPickupReview && !primaryIsMessage && !finished && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
             style={styles.outlinedAction} onPress={messageNeighbor}>
             <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
           </HapticPressable>}
@@ -319,6 +347,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
             style={[styles.outlinedAction, styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
             <Text style={styles.cancelActionText}>{cancelLabel}</Text>
           </HapticPressable>}
+          {needsPickupReview && <ActionButton label={`Message ${otherPerson.firstName}`} accessibilityLabel={`Message ${otherPerson.firstName} privately`}
+            disabled={actionLoading} style={styles.outlinedAction} onPress={messageNeighbor} />}
           </>}
         </View>
 
@@ -443,10 +473,21 @@ export default function TransactionDetailScreen({ route, navigation }) {
       />
 
       <ActionSheet
+        isVisible={moreTimeSheetVisible}
+        onClose={() => setMoreTimeSheetVisible(false)}
+        variant="confirmation"
+        icon={<Ionicons name="time-outline" size={28} illustrated />}
+        title="Give more time?"
+        message={`Keep the item reserved. We’ll check again in 24 hours.${isGiveaway ? '' : ' The return date stays the same.'}`}
+        actions={[{ label: 'Give 24 hours', testID: 'Transaction.confirmMoreTime', onPress: handleGiveMoreTime, primary: true }]}
+      />
+
+      <ActionSheet
         isVisible={cancelSheetVisible}
         onClose={() => setCancelSheetVisible(false)}
-        title={cancelAsRequest ? 'Cancel this request?' : 'Cancel this borrow?'}
-        message={transaction.status === 'pending' ? 'This will withdraw your request and let your neighbor know.' : 'Plans changed? This will cancel the pickup and let your neighbor know.'}
+        title={needsPickupReview ? 'Cancel this pickup?' : cancelAsRequest ? 'Cancel this request?' : 'Cancel this borrow?'}
+        message={needsPickupReview ? 'Confirm you still have the item. We’ll let your neighbor know and take you to the waiting requests.'
+          : transaction.status === 'pending' ? 'This will withdraw your request and let your neighbor know.' : 'Plans changed? This will cancel the pickup and let your neighbor know.'}
         actions={[
           {
             label: cancelLabel,
@@ -455,7 +496,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             destructive: true,
           },
         ]}
-        cancelLabel={cancelAsRequest ? 'Keep request' : 'Keep borrow'}
+        cancelLabel={needsPickupReview ? 'Keep pickup' : cancelAsRequest ? 'Keep request' : 'Keep borrow'}
       />
     </KeyboardAvoidingView>
   );

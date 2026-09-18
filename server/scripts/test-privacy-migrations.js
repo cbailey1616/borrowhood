@@ -72,8 +72,12 @@ try {
     VALUES ($1, 'New test item', 'good', true) RETURNING visibility`, [owner])).rows[0];
   assert.equal(fresh.visibility, 'private');
   const indexes = await client.query(`SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
-    AND indexname IN ('idx_transactions_due', 'idx_transactions_overdue')`);
-  assert.equal(indexes.rows.length, 2, 'Borrow due-date indexes must survive the enum conversion.');
+    AND indexname IN ('idx_transactions_due', 'idx_transactions_overdue', 'pending_pickup_reviews')`);
+  assert.equal(indexes.rows.length, 3, 'Borrow and pickup due-date indexes must survive the enum conversion.');
+  const pickupTriggers = await client.query(`SELECT tgname FROM pg_trigger
+    WHERE tgrelid='borrow_transactions'::regclass
+      AND tgname IN ('schedule_pickup_review', 'resolve_pickup_review_notice')`);
+  assert.equal(pickupTriggers.rows.length, 2, 'Pickup follow-up triggers must survive the enum conversion.');
   await runMigrations();
   assert.equal(errors.length, 0, 'Repeated runtime migrations logged errors.');
   assert.equal((await client.query('SELECT COUNT(*)::int AS count FROM listings')).rows[0].count, 2);

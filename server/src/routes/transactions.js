@@ -3,6 +3,7 @@ import { declineBorrow } from '../services/borrowDecline.js';
 import { confirmBorrowPickup } from '../services/borrowPickup.js';
 import { approveFreeBorrow } from '../services/borrowReservation.js';
 import { cancelBorrow } from '../services/borrowCancellation.js';
+import { givePickupMoreTime, pickupReviewState } from '../services/pickupFollowup.js';
 import { canViewListing } from '../services/listingAccess.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
 import { Router } from 'express';
@@ -355,6 +356,7 @@ router.get('/', authenticate, async (req, res) => {
       startDate: t.requested_start_date,
       endDate: t.requested_end_date,
       actualPickupAt: t.actual_pickup_at,
+      pickupReview: pickupReviewState(t, req.user.id),
       paymentStatus: t.payment_status || null,
       hasDispute: !!t.dispute_id,
       disputeId: t.dispute_id || null,
@@ -446,6 +448,7 @@ router.get('/:id', authenticate, async (req, res) => {
       startDate: t.requested_start_date,
       endDate: t.requested_end_date,
       actualPickupAt: t.actual_pickup_at,
+      pickupReview: pickupReviewState(t, req.user.id),
       actualReturnAt: t.actual_return_at,
       rentalDays: t.rental_days,
       dailyRate: parseFloat(t.daily_rate),
@@ -660,6 +663,9 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
 // Either participant can cancel before pickup
 // ============================================
 router.post('/:id/cancel', authenticate, cancelBorrow);
+
+router.post('/:id/pickup-extension', authenticate,
+  body('reviewAt').isISO8601({ strict: true }), givePickupMoreTime);
 
 // ============================================
 // POST /api/transactions/:id/pickup

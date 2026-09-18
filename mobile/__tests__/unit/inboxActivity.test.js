@@ -21,6 +21,16 @@ it('keeps read, unfinished exchanges present without inventing an unread badge',
   expect(inboxActivity([], [exchange], 'me')[0]).toMatchObject({ isRead: true, notificationIds: [] });
 });
 
+it('keeps the missed-pickup reminder in the existing exchange row, then clears the action after extension', () => {
+  const ownerExchange = { ...exchange, isBorrower: false, pickupReview: { needed: true } };
+  const updates = [notice('approved', { isRead: true }), notice('pickup-check', { type: 'pickup_check', createdAt: '2026-09-18T12:00:00Z' })];
+  const rows = inboxActivity(updates, [ownerExchange], 'me');
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ title: 'Ladder', body: 'Was this item picked up?', isRead: false, action: { label: 'Review pickup' } });
+  const [extended] = inboxActivity(updates.map(n => ({ ...n, isRead: true })), [{ ...ownerExchange, pickupReview: { needed: false } }], 'me');
+  expect(extended).toMatchObject({ body: 'Ready for pickup', isRead: true, action: { label: 'View pickup' } });
+});
+
 it('retains one completed exchange card and leaves separate exchanges separate', () => {
   const old = { ...exchange, status: 'completed' };
   const newer = { ...exchange, id: 'second' };
