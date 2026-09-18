@@ -1,3 +1,4 @@
+import ReturnHelpScreen from '../screens/ReturnHelpScreen';
 import TextInput from '../components/AppTextInput';
 import RequestQueueScreen from '../screens/RequestQueueScreen';
 import { detailRouteIds } from './routeIdentity';
@@ -38,6 +39,7 @@ import MyQRCodeScreen from '../screens/MyQRCodeScreen';
 import useProfileLinks from '../hooks/useProfileLinks';
 import MyCommunityScreen from '../screens/MyCommunityScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
+import PrivacySafetyScreen from '../screens/PrivacySafetyScreen';
 import DisputesScreen from '../screens/DisputesScreen';
 import EditListingScreen from '../screens/EditListingScreen';
 import EditRequestScreen from '../screens/EditRequestScreen';
@@ -147,6 +149,7 @@ export default function RootNavigator({ navigationRef }) {
           />
           <Stack.Screen name="RequestQueue" getId={detailRouteIds.RequestQueue} component={RequestQueueScreen} options={{ ...sharedScreenOptions, ...requestQueueHeaderOptions }} />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
+          <Stack.Screen name="ReturnHelp" component={ReturnHelpScreen} options={{ ...sharedScreenOptions, title: 'Return help' }} />
           <Stack.Screen name="SafetyReports" component={SafetyReportsScreen} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
           <Stack.Screen
             name="TransactionDetail"
@@ -236,6 +239,11 @@ export default function RootNavigator({ navigationRef }) {
             name="NotificationSettings"
             component={NotificationSettingsScreen}
             options={{ ...sharedScreenOptions, title: 'Notification Settings' }}
+          />
+          <Stack.Screen
+            name="PrivacySafety"
+            component={PrivacySafetyScreen}
+            options={{ ...sharedScreenOptions, title: 'Privacy & safety' }}
           />
           <Stack.Screen
             name="Disputes"

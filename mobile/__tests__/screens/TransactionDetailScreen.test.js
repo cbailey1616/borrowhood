@@ -88,6 +88,18 @@ describe('TransactionDetailScreen', () => {
     expect(screen.queryByText('Was this item picked up?')).toBeNull();
   });
 
+  it('offers support without messaging or handoff actions when a neighbor deleted their account', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'account_deleted', hasDispute: true });
+    const Screen = require('../../src/screens/TransactionDetailScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Your neighbor deleted their account');
+    expect(screen.getByTestId('Transaction.button.support')).toBeTruthy();
+    expect(screen.queryByTestId('Transaction.button.message')).toBeNull();
+    expect(screen.queryByTestId('Transaction.button.confirmPickup')).toBeNull();
+    expect(screen.queryByTestId('Transaction.button.confirmReturn')).toBeNull();
+    expect(screen.queryByTestId('Transaction.button.cancel')).toBeNull();
+  });
+
   it.each([true, false])('requires a handoff confirmation for pickup (borrower=%s)', async isBorrower => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isBorrower, isLender: !isBorrower });
     api.confirmRentalPickup.mockResolvedValue({ success: true });

@@ -28,6 +28,15 @@ it('does not treat an incorrect password or a network failure as session expiry'
   await expect(api.getMe()).rejects.toThrow('Offline');
   expect(expired).not.toHaveBeenCalled();
 });
+it('keeps the same sign-in through a temporary account lookup failure and retry', async () => {
+  const expired = jest.fn(); api.setSessionExpiredHandler(expired);
+  fetch.mockResolvedValueOnce(errorResponse('AUTH_UNAVAILABLE', 503))
+    .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: 'current-account' }) });
+  await expect(api.getMe()).rejects.toMatchObject({ status: 503, code: 'AUTH_UNAVAILABLE' });
+  expect(expired).not.toHaveBeenCalled();
+  await expect(api.getMe()).resolves.toEqual({ id: 'current-account' });
+  expect(fetch.mock.calls[1][1].headers.Authorization).toBe('Bearer old-session');
+});
 it('ends a suspended account session but does not treat ordinary permission denials as suspension', async () => {
   const expired = jest.fn(); api.setSessionExpiredHandler(expired);
   fetch.mockResolvedValueOnce(errorResponse(undefined,403)).mockResolvedValueOnce(errorResponse('ACCOUNT_SUSPENDED',403));

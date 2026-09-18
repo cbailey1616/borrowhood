@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -128,7 +129,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       } else {
         await fetchTransaction();
         haptics.success();
-        showToast('Return confirmed!', 'success');
+        showToast(result.pendingOwner ? 'Return reported. Waiting for the owner.' : 'Return confirmed!', 'success');
       }
     } catch (error) {
       haptics.error();
@@ -257,10 +258,15 @@ export default function TransactionDetailScreen({ route, navigation }) {
       navigation.replace('RequestQueue', params);
     }
   };
-  const primaryAction = transaction.isLender && transaction.status === 'pending'
+  const primaryAction = transaction.status === 'account_deleted'
+    ? { label: 'Contact support', testID: 'Transaction.button.support', onPress: async () => {
+      try { await Linking.openURL(`mailto:chris@borrowhood.net?subject=${encodeURIComponent(`Help with exchange ${id}`)}`); }
+      catch { showError({ message: 'Email chris@borrowhood.net for help with this exchange.' }); }
+    } }
+    : transaction.isLender && transaction.status === 'pending'
     ? { label: 'View queue', testID: 'Transaction.button.queue', onPress: viewQueue }
     : needsPickup ? { label: 'Confirm pickup', testID: 'Transaction.button.confirmPickup', onPress: () => setPickupSheetVisible(true) }
-    : needsReturn ? { label: 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
+    : needsReturn ? { label: transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
     : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
     : null;
 
@@ -301,7 +307,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </HapticPressable>
             <View style={styles.cardDivider} />
-            <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />
+            {transaction.status !== 'account_deleted' && <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />}
           </View>
         </LayeredCard>
 
@@ -343,6 +349,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
             style={styles.outlinedAction} onPress={messageNeighbor}>
             <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
           </HapticPressable>}
+          {!isGiveaway && transaction.actualPickupAt && <ActionButton label={transaction.isLender && needsReturn ? 'Return options' : 'Return help'}
+            testID="Transaction.button.returnHelp" style={styles.outlinedAction}
+            onPress={() => navigation.navigate('ReturnHelp', { transaction })} />}
           {canCancel && <HapticPressable accessibilityRole="button" accessibilityLabel={cancelLabel} testID="Transaction.button.cancel"
             style={[styles.outlinedAction, styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
             <Text style={styles.cancelActionText}>{cancelLabel}</Text>
@@ -430,10 +439,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
         variant="confirmation"
         icon={<Ionicons name="cube" size={28} illustrated />}
         title="Item returned?"
-        message="Confirm once the item is back with your neighbor."
+        message="Let the owner know you returned it. They’ll confirm once they have it back."
         actions={[
           {
-            label: 'Confirm Return',
+            label: 'I returned it',
             onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
             primary: true,
           },

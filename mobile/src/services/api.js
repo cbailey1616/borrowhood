@@ -830,6 +830,11 @@ const getReferralStatus = () => get('/referrals/status');
 const claimReferralReward = () => post('/referrals/claim');
 
 export default {
+  getReturnHelp: (admin = false, page = 1, transactionId) => get(`/return-help${admin ? '/admin' : ''}?page=${page}${transactionId ? '&transactionId='+encodeURIComponent(transactionId) : ''}`),
+  reportNonReturn: (id, detail) => post(`/return-help/exchange/${id}/report`, { detail }),
+  extendReturn: (id, date) => post(`/return-help/exchange/${id}/extend`, { date }),
+  respondReturnReport: (id, text, version, appeal = false) => post(`/return-help/${id}/${appeal ? 'appeal' : 'respond'}`, { text, version }),
+  reviewReturnReport: (id, decision) => post(`/return-help/${id}/review`, decision),
   getSafetyReports: (status = 'open', page = 1) => get(`/admin/safety-reports?status=${encodeURIComponent(status)}&page=${page}`),
   reviewSafetyReport: (id, decision) => post(`/admin/safety-reports/${id}/review`, decision),
   setSessionExpiredHandler,

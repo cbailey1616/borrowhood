@@ -275,6 +275,7 @@ router.post('/', authenticate,
         customerId,
       });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       console.error('Create transaction error:', err);
       // Release item lock on any unhandled error
       if (acquiredPaymentLock && req.body.listingId) {
@@ -367,6 +368,7 @@ router.get('/', authenticate, async (req, res) => {
       createdAt: t.created_at,
     })));
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     console.error('Get transactions error:', err);
     res.status(500).json({ error: 'Failed to get transactions' });
   }
@@ -473,6 +475,7 @@ router.get('/:id', authenticate, async (req, res) => {
       createdAt: t.created_at,
     });
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     console.error('Get transaction error:', err);
     res.status(500).json({ error: 'Failed to get transaction' });
   }
@@ -570,6 +573,7 @@ router.post('/:id/approve', authenticate,
 
       res.json({ success: true });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       console.error('Approve transaction error:', err);
       res.status(500).json({ error: `Failed to approve request: ${err.message}` });
     }
@@ -653,6 +657,7 @@ router.post('/:id/confirm-payment', authenticate, async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
     console.error('Confirm payment error:', err);
     res.status(500).json({ error: 'Failed to confirm payment' });
   }
@@ -745,6 +750,7 @@ router.post('/:id/rate', authenticate,
 
       res.json({ success: true });
     } catch (err) {
+      if (err.code === 'P0001' && err.message?.startsWith('Borrowing is paused.')) return res.status(403).json({ error: err.message });
       console.error('Rate transaction error:', err);
       res.status(500).json({ error: 'Failed to submit rating' });
     }
