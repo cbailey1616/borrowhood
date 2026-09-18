@@ -341,7 +341,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
     <LayeredCard style={styles.cardDepth}>
       <HapticPressable
         style={styles.card}
-        onPress={() => item.kind === 'community' ? nav.navigate('MyCommunity', { communityId: item.communityId }) : nav.navigate('Chat', { conversationId: item.id })}
+        onPress={() => item.kind === 'community' ? nav.navigate('CommunityChat', { communityId: item.communityId, communityName: item.name }) : nav.navigate('Chat', { conversationId: item.id })}
         haptic="light"
       >
         <View style={styles.avatarContainer}>

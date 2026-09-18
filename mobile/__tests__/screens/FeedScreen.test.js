@@ -665,3 +665,51 @@ it('Browse items supersedes a slow initial feed without leaving it loading', asy
   expect(screen.queryByText('Old wanted post')).toBeNull();
   expect(screen.getByText('Available drill')).toBeTruthy();
 });
+
+it('opens neighborhood items directly with a visible, removable scope', async () => {
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const selection={id:'hood-1',name:'Maple Grove',requestId:'open-1'};
+ const markSeen=jest.fn();
+ const screen=render(<FeedSeenContext.Provider value={markSeen}><Screen navigation={mockNavigation} route={{params:{neighborhoodItems:selection}}}/></FeedSeenContext.Provider>);
+ await screen.findByText('Maple Grove');
+ expect(api.getFeed.mock.calls.every(([p])=>p.communityId==='hood-1')).toBe(true);
+ expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({communityId:'hood-1',type:'listings,giveaway,sell',visibility:'neighborhood'}));
+ expect(screen.getByLabelText('All items').props.accessibilityState.selected).toBe(true);
+ expect(markSeen).not.toHaveBeenCalled();
+ fireEvent.press(screen.getByLabelText('Clear neighborhood filter'));
+ await waitFor(()=>expect(api.getFeed.mock.calls.at(-1)[0].communityId).toBeUndefined());
+ expect(api.getFeed.mock.calls.at(-1)[0].visibility).toBeUndefined();
+ expect(screen.queryByText('Maple Grove')).toBeNull();
+});
+
+it('clears old Wanted and search selections when the neighborhood shortcut is used', async () => {
+ api.getFeed.mockResolvedValue({items:[{id:'item',type:'listing',title:'Drill',user:{firstName:'Sam'}}],hasMore:false});
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ await screen.findByText('Drill');
+ fireEvent.press(screen.getByTestId('Feed.type.requests'));
+ fireEvent.changeText(screen.getByPlaceholderText('What do you need?'),'ladder');
+ const route={params:{neighborhoodItems:{id:'hood-1',name:'Maple Grove',requestId:'open-1'}}};
+ screen.rerender(<Screen navigation={mockNavigation} route={route}/>);
+ await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({communityId:'hood-1',type:'listings,giveaway,sell'})));
+ expect(api.getFeed.mock.calls.at(-1)[0].search).toBeUndefined();
+ expect(screen.getByPlaceholderText('What do you need?').props.value).toBe('');
+ fireEvent.press(screen.getByTestId('Feed.type.giveaway'));
+ await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'giveaway',communityId:'hood-1'})));
+ screen.rerender(<Screen navigation={mockNavigation} route={route}/>);
+ expect(screen.getByTestId('Feed.type.giveaway').props.accessibilityState.selected).toBe(true);
+ screen.rerender(<Screen navigation={mockNavigation} route={{params:{neighborhoodItems:{id:'hood-2',name:'Oak Lane',requestId:'open-2'}}}}/>);
+ await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({communityId:'hood-2',type:'listings,giveaway,sell'})));
+ await screen.findByText('Oak Lane');
+});
+
+it('returns to the full feed when Browse items is used after a neighborhood shortcut',async()=>{
+ const Screen=require('../../src/screens/FeedScreen').default;
+ const neighborhoodItems={id:'hood-1',name:'Maple Grove',requestId:'open-1'};
+ const screen=render(<Screen navigation={mockNavigation} route={{params:{neighborhoodItems}}}/>);
+ await screen.findByText('Maple Grove');
+ screen.rerender(<Screen navigation={mockNavigation} route={{params:{neighborhoodItems,browseItems:'browse-2'}}}/>);
+ await waitFor(()=>expect(api.getFeed.mock.calls.at(-1)[0].communityId).toBeUndefined());
+ expect(api.getFeed.mock.calls.at(-1)[0].type).toBeUndefined();
+ expect(screen.queryByText('Maple Grove')).toBeNull();
+});

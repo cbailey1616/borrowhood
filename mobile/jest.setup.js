@@ -384,6 +384,7 @@ jest.mock('./src/services/api', () => ({
     getCommunity: jest.fn(),
     joinCommunity: jest.fn(),
     leaveCommunity: jest.fn(),
+    getCommunityChatSummary: jest.fn().mockResolvedValue({ lastMessage: null, unreadCount: 0 }),
     getCommunityChat: jest.fn().mockResolvedValue({ messages: [], readSequence: '0', muted: false, role: 'member' }),
     sendCommunityMessage: jest.fn().mockResolvedValue({ id: 'sent' }),
     markCommunityChatRead: jest.fn().mockResolvedValue({}),

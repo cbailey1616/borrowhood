@@ -33,6 +33,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   // Edit state
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editAnnouncement, setEditAnnouncement] = useState('');
   const [editBannerUrl, setEditBannerUrl] = useState(null);
   const [selectedBannerPhoto, setSelectedBannerPhoto] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -51,6 +52,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       setCommunity(data);
       setEditName(data.name || '');
       setEditDescription(data.description || '');
+      setEditAnnouncement(data.announcement || '');
       setEditBannerUrl(data.bannerUrl || null);
       setIsEditing(!!route.params?.editCover && (data.role === 'organizer' || user?.isAdmin));
     } catch (error) {
@@ -83,12 +85,14 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         name: editName.trim(),
         description: editDescription.trim(),
         bannerUrl: bannerUrl || null,
+        ...(editAnnouncement.trim() !== (community?.announcement || '').trim() ? { announcement: editAnnouncement.trim() } : {}),
       });
       setCommunity(prev => ({
         ...prev,
         name: editName.trim(),
         description: editDescription.trim(),
         bannerUrl: bannerUrl || null,
+        announcement: editAnnouncement.trim() || null,
       }));
       setSelectedBannerPhoto(null);
       setIsEditing(false);
@@ -106,6 +110,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const handleCancelEdit = () => {
     setEditName(community?.name || '');
     setEditDescription(community?.description || '');
+    setEditAnnouncement(community?.announcement || '');
     setEditBannerUrl(community?.bannerUrl || null);
     setSelectedBannerPhoto(null);
     setIsEditing(false);
@@ -210,6 +215,19 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               autoCapitalize="sentences"
               autoCorrect={true}
               spellCheck={true}
+            />
+
+            <Text style={styles.fieldLabel}>Announcement · Optional</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={editAnnouncement}
+              onChangeText={setEditAnnouncement}
+              accessibilityLabel="Neighborhood announcement"
+              placeholder="Share an update with your neighbors"
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              maxLength={500}
+              autoCapitalize="sentences"
             />
 
             <View style={styles.editActions}>

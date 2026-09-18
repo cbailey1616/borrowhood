@@ -97,7 +97,9 @@ export default function FeedScreen({ navigation, route }) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeFilters, setActiveFilters] = useState([]);
   const consumedBrowse = useRef(route?.params?.browseItems);
-  const [visibilityFilters, setVisibilityFilters] = useState([]);
+  const [neighborhood, setNeighborhood] = useState(route?.params?.neighborhoodItems || null);
+  const consumedNeighborhood = useRef(null);
+  const [visibilityFilters, setVisibilityFilters] = useState(route?.params?.neighborhoodItems ? ['neighborhood'] : []);
   const [categories, setCategories] = useState([]);
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -129,11 +131,26 @@ export default function FeedScreen({ navigation, route }) {
     feedRequest.current += 1;
     setFeed([]); setRequestCards([]);
     setActiveFilters([]);
+    setNeighborhood(null);
     setVisibilityFilters([]); setCategoryFilters([]);
     previousSearch.current = ''; setSearch('');
     setShowFiltersSheet(false); setActiveDropdown(null);
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [route?.params?.browseItems]);
+
+  useLayoutEffect(() => {
+    const selection = route?.params?.neighborhoodItems;
+    if (!selection?.id || selection.requestId === consumedNeighborhood.current) return;
+    consumedNeighborhood.current = selection.requestId;
+    feedRequest.current += 1;
+    setFeed([]); setRequestCards([]);
+    setNeighborhood(selection);
+    setActiveFilters([]); setVisibilityFilters(['neighborhood']); setCategoryFilters([]);
+    previousSearch.current = ''; setSearch('');
+    setShowFiltersSheet(false); setActiveDropdown(null);
+    navigation.setParams?.({ neighborhoodItems: undefined, browseItems: undefined });
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [route?.params?.neighborhoodItems, navigation]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     const events = viewableItems.filter(({ item, isViewable }) => {
@@ -147,7 +164,7 @@ export default function FeedScreen({ navigation, route }) {
     api.recordFeedEvents([{ id: item.id, type: item.type, event: 'click' }]).catch(() => {});
     navigation.navigate(item.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: item.id });
   };
-  const hasFilters = !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
+  const hasFilters = !!neighborhood || !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
   const extraFilterCount = visibilityFilters.length + categoryFilters.length;
   const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
     if (append && feedInFlight.current) return;
@@ -161,6 +178,10 @@ export default function FeedScreen({ navigation, route }) {
       const params = { layout: 'sections', page: pageNum, limit: 20, session: feedSession.current };
       if (!clear && search.trim()) params.search = search.trim();
       if (!clear && activeFilters.length > 0) params.type = activeFilters.join(',');
+      if (!clear && neighborhood) {
+        params.communityId = neighborhood.id;
+        if (!params.type) params.type = 'listings,giveaway,sell';
+      }
       if (!clear && visibilityFilters.length > 0) params.visibility = visibilityFilters.join(',');
       if (!clear && categoryFilters.length > 0) params.categoryId = categoryFilters.join(',');
 
@@ -190,7 +211,7 @@ export default function FeedScreen({ navigation, route }) {
       }
       setHasMore(!!data.hasMore);
       setPage(resolvedPage);
-      if (pageNum === 1 && !params.search && !params.type && !params.visibility && !params.categoryId &&
+      if (pageNum === 1 && !params.search && !params.type && !params.visibility && !params.categoryId && !params.communityId &&
           navigation.isFocused?.() && (AppState.currentState == null || AppState.currentState === 'active')) {
         markFeedSeen(data.latestPostAt);
       }
@@ -206,7 +227,7 @@ export default function FeedScreen({ navigation, route }) {
       setIsRefreshing(false);
       setIsLoadingMore(false);
     }
-  }, [search, activeFilters, visibilityFilters, categoryFilters, navigation, markFeedSeen, user?.id]);
+  }, [search, activeFilters, visibilityFilters, categoryFilters, neighborhood, navigation, markFeedSeen, user?.id]);
 
 
 
@@ -231,7 +252,7 @@ export default function FeedScreen({ navigation, route }) {
     // even if an older initial request is still pending or has been superseded.
     if (!filtersInitialized.current) { filtersInitialized.current = true; return; }
     fetchFeed(1, false);
-  }, [activeFilters, visibilityFilters, categoryFilters]);
+  }, [activeFilters, visibilityFilters, categoryFilters, neighborhood]);
 
   useEffect(() => {
     if (previousSearch.current === search) return;
@@ -351,6 +372,7 @@ export default function FeedScreen({ navigation, route }) {
   }, [fetchFeed]);
 
   const handleTownToggle = () => {
+    setNeighborhood(null);
     toggleFilter('town', visibilityKeys, setVisibilityFilters);
   };
 
@@ -619,12 +641,19 @@ export default function FeedScreen({ navigation, route }) {
                   <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
                 </HapticPressable>
               </View>
+              {!!neighborhood && <HapticPressable style={styles.neighborhoodFilter} accessibilityRole="button" accessibilityLabel="Clear neighborhood filter"
+                onPress={() => { setNeighborhood(null); setVisibilityFilters([]); }}>
+                <Ionicons name="people-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.neighborhoodFilterText} numberOfLines={1}>{neighborhood.name || 'Neighborhood'}</Text>
+                <Ionicons name="close" size={18} color={COLORS.primary} />
+              </HapticPressable>}
               <ScrollView horizontal style={styles.typeRibbon} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
-                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={option.label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
-                      <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{option.label}</Text>
+                    const label = option.key === 'all' && neighborhood ? 'All items' : option.label;
+                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
+                      <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{label}</Text>
                     </HapticPressable>;
                   })}
                 </View>
@@ -690,7 +719,7 @@ export default function FeedScreen({ navigation, route }) {
               if (feedError) return fetchFeed(1, false);
               if (!user?.city) return navigation.navigate('EditProfile');
               if (hasFilters) {
-                setSearch(''); setActiveFilters([]); setVisibilityFilters([]); setCategoryFilters([]);
+                setSearch(''); setActiveFilters([]); setVisibilityFilters([]); setCategoryFilters([]); setNeighborhood(null);
                 return fetchFeed(1, false, true);
               }
               navigation.navigate('CreateRequest');
@@ -721,7 +750,7 @@ export default function FeedScreen({ navigation, route }) {
         actions={[
           { label: `Visibility · ${visibilityChipLabel}`, accessibilityLabel: 'Filter by visibility', icon: <Ionicons name="people-outline" size={22} />, onPress: () => setActiveDropdown('visibility') },
           ...(categories.length ? [{ label: `Category · ${categoryChipLabel}`, accessibilityLabel: 'Filter by category', icon: <Ionicons name="pricetag-outline" size={22} />, onPress: () => setActiveDropdown('category') }] : []),
-          ...(extraFilterCount ? [{ label: 'Clear filters', onPress: () => { setVisibilityFilters([]); setCategoryFilters([]); } }] : []),
+          ...(extraFilterCount ? [{ label: 'Clear filters', onPress: () => { setVisibilityFilters([]); setCategoryFilters([]); setNeighborhood(null); } }] : []),
         ]}
       />
 
@@ -730,7 +759,7 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setActiveDropdown(null)}
         title={
           visibilityFilters.length > 0
-            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
+            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); setNeighborhood(null); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
             : 'Visibility'
         }
         multiSelect
@@ -740,7 +769,7 @@ export default function FeedScreen({ navigation, route }) {
             icon: visibilityFilters.length === 0
               ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
               : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
-            onPress: () => setVisibilityFilters([]),
+            onPress: () => { setVisibilityFilters([]); setNeighborhood(null); },
           },
           ...VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
             label: opt.label,
@@ -749,7 +778,7 @@ export default function FeedScreen({ navigation, route }) {
               : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
             onPress: opt.key === 'town'
               ? handleTownToggle
-              : () => toggleFilter(opt.key, visibilityKeys, setVisibilityFilters),
+              : () => { setNeighborhood(null); toggleFilter(opt.key, visibilityKeys, setVisibilityFilters); },
           })),
         ]}
       />
@@ -909,6 +938,9 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: COLORS.surface, borderWidth: 0, borderRadius: RADIUS.md,
   },
   filtersButton: { width: 48, height: 48, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
+  neighborhoodFilter: { minHeight: 44, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: RADIUS.full,
+    alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryMuted },
+  neighborhoodFilterText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
   filtersButtonActive: { backgroundColor: COLORS.primary },
   addButton: {
     flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',

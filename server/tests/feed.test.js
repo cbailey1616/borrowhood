@@ -17,6 +17,7 @@ let ownListing, ownRequest;
 const createdUserIds = [];
 const createdListingIds = [];
 const createdRequestIds = [];
+const createdCommunityIds = [];
 
 beforeAll(async () => {
   app = await createTestApp(
@@ -42,6 +43,7 @@ beforeAll(async () => {
 
   // Community
   communityId = await createTestCommunity({ name: 'Feed Neighborhood', city: 'FeedCity', state: 'FC' });
+  createdCommunityIds.push(communityId);
   await addCommunityMember(freeUser.userId, communityId, 'member');
   await addCommunityMember(verifiedPlusUser.userId, communityId, 'member');
 
@@ -92,8 +94,8 @@ afterAll(async () => {
   }
   try {
     await query('DELETE FROM friendships WHERE user_id = ANY($1) OR friend_id = ANY($1)', [createdUserIds]);
-    await query('DELETE FROM community_memberships WHERE community_id = $1', [communityId]);
-    await query('DELETE FROM communities WHERE id = $1', [communityId]);
+    await query('DELETE FROM community_memberships WHERE community_id = ANY($1::uuid[])', [createdCommunityIds]);
+    await query('DELETE FROM communities WHERE id = ANY($1::uuid[])', [createdCommunityIds]);
   } catch (e) { /* */ }
   for (const id of createdUserIds) {
     try { await cleanupTestUser(id); } catch (e) { /* */ }
@@ -101,6 +103,42 @@ afterAll(async () => {
 });
 
 describe('GET /api/feed', () => {
+  it('scopes items to the selected joined neighborhood, including when a session changes neighborhoods', async () => {
+    const second = await createTestCommunity({ name: 'Second Feed Neighborhood', city: 'FeedCity', state: 'FC' });
+    createdCommunityIds.push(second);
+    await addCommunityMember(freeUser.userId, second, 'member');
+    await addCommunityMember(verifiedPlusUser.userId, second, 'member');
+    const secondListing = await createTestListing(verifiedPlusUser.userId, { title: 'Second neighborhood rake', isFree: true, visibility: 'neighborhood' });
+    createdListingIds.push(secondListing);
+    await query('UPDATE listings SET community_id=$1 WHERE id=$2', [second, secondListing]);
+    const token = randomUUID();
+    const scoped = id => request(app).get('/api/feed').query({ communityId: id, type: 'listings,giveaway,sell', visibility: 'neighborhood', session: token })
+      .set('Authorization', `Bearer ${freeUser.token}`);
+    const first = await scoped(communityId);
+    expect(first.status).toBe(200);
+    expect(first.body.items.map(item => item.id)).toEqual([createdListingIds[0]]);
+    const other = await scoped(second);
+    expect(other.status).toBe(200);
+    expect(other.body.items.map(item => item.id)).toEqual([secondListing]);
+    expect((await scoped(communityId)).body.items.map(item => item.id)).toEqual([createdListingIds[0]]);
+    await query('DELETE FROM community_memberships WHERE community_id=$1 AND user_id=$2', [second, freeUser.userId]);
+    expect((await scoped(second)).status).toBe(403);
+  });
+
+  it('validates neighborhood filters and still enforces blocks', async () => {
+    const scoped = id => request(app).get('/api/feed').query({ communityId: id })
+      .set('Authorization', `Bearer ${freeUser.token}`);
+    expect((await scoped('not-a-neighborhood')).status).toBe(400);
+    expect((await scoped(randomUUID())).status).toBe(403);
+    await query('INSERT INTO user_blocks(user_id,blocked_id) VALUES($1,$2)', [freeUser.userId, verifiedPlusUser.userId]);
+    try {
+      const blocked = await scoped(communityId);
+      expect(blocked.status).toBe(200);
+      expect(blocked.body.items).toEqual([]);
+    } finally {
+      await query('DELETE FROM user_blocks WHERE user_id=$1 AND blocked_id=$2', [freeUser.userId, verifiedPlusUser.userId]);
+    }
+  });
   it('excludes your listings and requests across Home, search and tabs, while preserving My Posts', async () => {
     for (const suffix of ['', '?layout=sections', '?search=ladder', '?type=requests', '?type=listings']) {
       const response = await request(app).get('/api/feed' + suffix).set('Authorization', `Bearer ${freeUser.token}`);

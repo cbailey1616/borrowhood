@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { withTransaction } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
+import { communityConversations } from '../services/communityChat.js';
 
 const router = Router({ mergeParams: true });
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -30,6 +31,11 @@ function memberRoute(handler) {
 }
 function invalid(message, status = 400) { throw Object.assign(new Error(message), { status }); }
 router.use(authenticate);
+// The overview shares Inbox's preview and unread rules, without marking chat read.
+router.get('/summary', memberRoute(async (req, db) => {
+  const [summary] = await communityConversations(req.user.id, db, req.params.id);
+  return summary;
+}));
 router.get('/', memberRoute(async (req, db, member) => {
   const { before, parentId } = req.query;
   if (before && !sequence(before)) invalid('Invalid page');

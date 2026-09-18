@@ -5,7 +5,7 @@ import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fallbackRoute = 'Main' }) {
+export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fallbackRoute = 'Main', rightElement }) {
   const insets = useSafeAreaInsets();
   const goBack = () => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -19,7 +19,7 @@ export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fa
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
         </HapticPressable>
         <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-        <View accessible={false} style={styles.spacer} />
+        {rightElement || <View accessible={false} style={styles.spacer} />}
       </View>
     </View>
   );

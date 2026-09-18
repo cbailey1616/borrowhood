@@ -31,6 +31,7 @@ afterAll(async()=>state.db.close());
 it('restricts all operations to current members',async()=>{
  expect((await send(outsider,'hello')).status).toBe(403);
  expect((await request(app).get(url).set('x-user',outsider)).status).toBe(403);
+ expect((await request(app).get(`${url}/summary`).set('x-user',outsider)).status).toBe(403);
  expect((await request(app).post(`${url}/read`).set('x-user',outsider).send({sequence:'1'})).status).toBe(403);
  expect((await request(app).patch(`${url}/preferences`).set('x-user',outsider).send({muted:true})).status).toBe(403);
  await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
@@ -83,6 +84,18 @@ it('paginates without duplicates and validates input',async()=>{
  expect(new Set([...first.messages,...older.messages].map(m=>m.id)).size).toBe(55);
  expect((await send(a,' ')).status).toBe(400);expect((await send(a,'x'.repeat(2001))).status).toBe(400);
  expect((await request(app).get(`${url}?before=bad`).set('x-user',b)).status).toBe(400);
+});
+it('returns a read-only overview preview scoped to that neighborhood',async()=>{
+ await send(a,'First message');await send(a,'Other neighborhood',{},other);
+ const preview=await request(app).get(`${url}/summary`).set('x-user',b);
+ expect(preview.status).toBe(200);
+ expect(preview.body).toMatchObject({communityId:group,lastMessage:'First message',unreadCount:1});
+ expect((await communityConversations(b))[0].unreadCount).toBe(1);
+ expect((await request(app).get(`${url}/summary`).set('x-user',b)).body.unreadCount).toBe(1);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[a,b]);
+ expect((await request(app).get(`${url}/summary`).set('x-user',b)).body).toMatchObject({lastMessage:null,unreadCount:0});
+ await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
+ expect((await request(app).get(`${url}/summary`).set('x-user',b)).status).toBe(403);
 });
 it('deleting an author cannot prevent account deletion when other members replied',async()=>{
  const root=(await send(b,'root')).body.id;await send(a,'reply',{parentId:root});
