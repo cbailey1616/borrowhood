@@ -17,6 +17,7 @@ import {
   FlatList,
   ScrollView,
   RefreshControl,
+  Animated,
   ActivityIndicator,
   AppState,
   InteractionManager,
@@ -31,6 +32,7 @@ import RankInfoSheet from '../components/RankInfoSheet';
 import { memberReputation } from '../utils/reputation';
 import { nextHomeAction } from '../utils/homeAction';
 import useSavedListings from '../hooks/useSavedListings';
+import useFeedHeader from '../hooks/useFeedHeader';
 import { useError } from '../context/ErrorContext';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
@@ -95,6 +97,7 @@ export default function FeedScreen({ navigation, route }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const feedHeader = useFeedHeader({ pinned: searchFocused, columns });
   const [activeFilters, setActiveFilters] = useState([]);
   const consumedBrowse = useRef(route?.params?.browseItems);
   const [neighborhood, setNeighborhood] = useState(route?.params?.neighborhoodItems || null);
@@ -166,11 +169,10 @@ export default function FeedScreen({ navigation, route }) {
   };
   const hasFilters = !!neighborhood || !!search.trim() || activeFilters.length > 0 || visibilityFilters.length > 0 || categoryFilters.length > 0;
   const extraFilterCount = visibilityFilters.length + categoryFilters.length;
-  const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false) => {
+  const fetchFeed = useCallback(async (pageNum = 1, append = false, clear = false, { resetScroll = true } = {}) => {
     if (append && feedInFlight.current) return;
     feedInFlight.current = true;
     const requestId = ++feedRequest.current;
-    setFeedError(false);
     setIsFetching(true);
     setIsLoadingMore(append);
     try {
@@ -200,8 +202,9 @@ export default function FeedScreen({ navigation, route }) {
 
       if (!append) {
         // A fresh session replaces a paginated list. Reset its offset before
-        // shortening the content so it cannot strand the viewport below it.
-        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+        // shortening it, except during native pull-to-refresh: the list is
+        // already at the top and must finish its own settling animation.
+        if (resetScroll) listRef.current?.scrollToOffset({ offset: 0, animated: false });
         setRequestCards(nextRequests.filter(item => visibleOnHome(item, user?.id)));
       }
       if (append) {
@@ -210,6 +213,7 @@ export default function FeedScreen({ navigation, route }) {
         setFeed(nextItems);
       }
       setHasMore(!!data.hasMore);
+      setFeedError(false);
       setPage(resolvedPage);
       if (pageNum === 1 && !params.search && !params.type && !params.visibility && !params.categoryId && !params.communityId &&
           navigation.isFocused?.() && (AppState.currentState == null || AppState.currentState === 'active')) {
@@ -324,7 +328,7 @@ export default function FeedScreen({ navigation, route }) {
   const onRefresh = () => {
     setIsRefreshing(true);
     saved.refresh();
-    fetchFeed(1, false);
+    fetchFeed(1, false, false, { resetScroll: false });
     refreshUser(); // Refresh user data on manual pull-to-refresh
     fetchActiveDisputes();
     fetchBannerData();
@@ -595,36 +599,9 @@ export default function FeedScreen({ navigation, route }) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: tabBarHeight }]}>
-      <FlatList
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
-        ref={listRef}
-        testID="Feed.list"
-        key={`feed-${columns}`}
-        numColumns={columns}
-        columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
-        data={columns > 1 ? verticalFeed : displayFeed}
-        renderItem={columns > 1 ? info => <View style={{ width: tileWidth }}>{renderItem(info)}</View> : renderItem}
-        keyExtractor={(item) => `${item.type}-${item.id}`}
-        contentContainerStyle={[styles.listContent, { maxWidth: feedWidth }]}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        bounces
-        removeClippedSubviews={false}
-        style={{ backgroundColor: FEED.bg }}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.primary}
-            colors={[COLORS.primary]}
-          />
-        }
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.5}
-        ListHeaderComponent={
-          <>
+      <View style={styles.feedViewport}>
+        <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
+          style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
@@ -634,7 +611,7 @@ export default function FeedScreen({ navigation, route }) {
               <Text style={styles.addButtonText}>Post</Text>
             </HapticPressable>}
           >
-            {(isFetching || feed.length > 0 || requestCards.length > 0 || hasFilters || feedError || !user?.city) && <>
+            {(feed.length > 0 || requestCards.length > 0 || hasFilters || feedError || !user?.city) && <>
               <View style={styles.searchRow}>
                 <SearchBar value={search} onChangeText={setSearch} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
                 <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
@@ -660,77 +637,110 @@ export default function FeedScreen({ navigation, route }) {
               </ScrollView>
             </>}
           </NativeHeader>
-          {columns > 1 && <View style={{ paddingHorizontal: SPACING.lg }}>{displayFeed.filter(item => ['feed-banners', 'request-carousel', 'listing-heading'].includes(item.type)).map(item => <View key={item.id}>{renderItem({ item })}</View>)}</View>}
-          </>
-        }
-        ListHeaderComponentStyle={{ marginHorizontal: -SPACING.lg }}
-        stickyHeaderIndices={columns === 1 ? [0] : undefined}
-        stickyHeaderHiddenOnScroll={!searchFocused}
-        scrollEventThrottle={16}
-        ListFooterComponent={
-          isLoadingMore ? (
-            <View style={styles.loadingMore}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
+        </Animated.View>
+        <Animated.FlatList
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
+          ref={listRef}
+          testID="Feed.list"
+          key={`feed-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
+          data={columns > 1 ? verticalFeed : displayFeed}
+          renderItem={columns > 1 ? info => <View style={{ width: tileWidth }}>{renderItem(info)}</View> : renderItem}
+          keyExtractor={(item) => `${item.type}-${item.id}`}
+          contentContainerStyle={[styles.listContent, { maxWidth: feedWidth }]}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          bounces
+          removeClippedSubviews={false}
+          style={{ backgroundColor: FEED.bg }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              progressViewOffset={feedHeader.height}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
+              colors={[COLORS.primary]}
+            />
+          }
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.5}
+          ListHeaderComponent={
+            <>
+            <View style={{ height: feedHeader.height }} />
+            {columns > 1 && <View style={{ paddingHorizontal: SPACING.lg }}>{displayFeed.filter(item => ['feed-banners', 'request-carousel', 'listing-heading'].includes(item.type)).map(item => <View key={item.id}>{renderItem({ item })}</View>)}</View>}
+            </>
+          }
+          ListHeaderComponentStyle={{ marginHorizontal: -SPACING.lg }}
+          onScroll={feedHeader.onScroll}
+          scrollEventThrottle={16}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              </View>
+            ) : hasMore && !isFetching ? (
+              <View style={styles.feedEnd}>
+                {feedError && <Text style={styles.feedEndText}>Couldn’t load more posts.</Text>}
+                <HapticPressable accessibilityRole="button" style={styles.backToTop}
+                  onPress={() => fetchFeed(page + 1, true)}>
+                  <Text style={styles.backToTopText}>{feedError ? 'Try again' : 'Load more posts'}</Text>
+                </HapticPressable>
+              </View>
+            ) : !hasMore && (verticalFeed.length > 0 || carouselRequests.length > 0) ? (
+              <View style={styles.feedEnd}>
+                <Text style={styles.feedEndText}>You’re all caught up</Text>
+                <HapticPressable accessibilityRole="button" accessibilityLabel="Back to top" style={styles.backToTop}
+                  onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+                  <Ionicons name="arrow-up" size={18} color={COLORS.primary} />
+                  <Text style={styles.backToTopText}>Back to top</Text>
+                </HapticPressable>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={<View>{renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
+            <View style={styles.welcomeContainer}>
+              <HeroIcon icon="home-outline" size={88} />
+              <Text style={styles.emptyTitle}>What would you like to do?</Text>
+              <Text style={styles.welcomeSubtitle}>No posts nearby yet. Start by sharing or asking.</Text>
+              <View style={styles.welcomeActions}>
+                <HapticPressable accessibilityRole="button" accessibilityLabel="List an item" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateListing')}>
+                  <View style={styles.welcomeActionIcon}><Ionicons name="basket" size={36} color={COLORS.primary} /></View>
+                  <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>List an item</Text><Text style={styles.welcomeActionNote}>Share an item or service.</Text></View>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+                </HapticPressable>
+                <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
+                  <View style={styles.welcomeActionIcon}><Ionicons name="create-outline" size={36} color={COLORS.primary} /></View>
+                  <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Post in Wanted</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+                </HapticPressable>
+              </View>
+              <Text style={styles.welcomePrivacy}>You choose who sees each post.</Text>
             </View>
-          ) : hasMore && !isFetching ? (
-            <View style={styles.feedEnd}>
-              {feedError && <Text style={styles.feedEndText}>Couldn’t load more posts.</Text>}
-              <HapticPressable accessibilityRole="button" style={styles.backToTop}
-                onPress={() => fetchFeed(page + 1, true)}>
-                <Text style={styles.backToTopText}>{feedError ? 'Try again' : 'Load more posts'}</Text>
+          ) :
+            <View style={styles.emptyContainer}>
+              <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
+              <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
+              <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post what you’re looking for. Neighbors can offer to help.' : 'Add your town to discover items nearby.'}</Text>
+              <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
+                if (feedError) return fetchFeed(1, false);
+                if (!user?.city) return navigation.navigate('EditProfile');
+                if (hasFilters) {
+                  setSearch(''); setActiveFilters([]); setVisibilityFilters([]); setCategoryFilters([]); setNeighborhood(null);
+                  return fetchFeed(1, false, true);
+                }
+                navigation.navigate('CreateRequest');
+              }}>
+                <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
               </HapticPressable>
+              {!feedError && user?.city && <ActionButton style={{ marginTop: SPACING.sm }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}
+                label={hasFilters ? 'Post in Wanted' : 'Invite a neighbor'} />}
             </View>
-          ) : !hasMore && (verticalFeed.length > 0 || carouselRequests.length > 0) ? (
-            <View style={styles.feedEnd}>
-              <Text style={styles.feedEndText}>You’re all caught up</Text>
-              <HapticPressable accessibilityRole="button" accessibilityLabel="Back to top" style={styles.backToTop}
-                onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
-                <Ionicons name="arrow-up" size={18} color={COLORS.primary} />
-                <Text style={styles.backToTopText}>Back to top</Text>
-              </HapticPressable>
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={<View>{renderBanners()}{isFetching ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
-          <View style={styles.welcomeContainer}>
-            <HeroIcon icon="home-outline" size={88} />
-            <Text style={styles.emptyTitle}>What would you like to do?</Text>
-            <Text style={styles.welcomeSubtitle}>No posts nearby yet. Start by sharing or asking.</Text>
-            <View style={styles.welcomeActions}>
-              <HapticPressable accessibilityRole="button" accessibilityLabel="List an item" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateListing')}>
-                <View style={styles.welcomeActionIcon}><Ionicons name="basket" size={36} color={COLORS.primary} /></View>
-                <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>List an item</Text><Text style={styles.welcomeActionNote}>Share an item or service.</Text></View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-              </HapticPressable>
-              <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
-                <View style={styles.welcomeActionIcon}><Ionicons name="create-outline" size={36} color={COLORS.primary} /></View>
-                <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Post in Wanted</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-              </HapticPressable>
-            </View>
-            <Text style={styles.welcomePrivacy}>You choose who sees each post.</Text>
-          </View>
-        ) :
-          <View style={styles.emptyContainer}>
-            <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
-            <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
-            <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post what you’re looking for. Neighbors can offer to help.' : 'Add your town to discover items nearby.'}</Text>
-            <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
-              if (feedError) return fetchFeed(1, false);
-              if (!user?.city) return navigation.navigate('EditProfile');
-              if (hasFilters) {
-                setSearch(''); setActiveFilters([]); setVisibilityFilters([]); setCategoryFilters([]); setNeighborhood(null);
-                return fetchFeed(1, false, true);
-              }
-              navigation.navigate('CreateRequest');
-            }}>
-              <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
-            </HapticPressable>
-            {!feedError && user?.city && <ActionButton style={{ marginTop: SPACING.sm }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}
-              label={hasFilters ? 'Post in Wanted' : 'Invite a neighbor'} />}
-          </View>
-        }</View>}
-      />
+          }</View>}
+        />
+      </View>
 
       {selectedRank && <RankInfoSheet isVisible currentRank={selectedRank.rank} isNew={selectedRank.isNew}
         onClose={() => setSelectedRank(null)} />}
@@ -925,6 +935,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: FEED.bg,
   },
+  feedViewport: { flex: 1, overflow: 'hidden' },
+  feedHeader: { position: 'absolute', top: 0, zIndex: 1, backgroundColor: FEED.bg },
   skeletonContainer: {
     padding: SPACING.lg,
   },

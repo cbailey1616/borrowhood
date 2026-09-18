@@ -135,11 +135,12 @@ describe('FeedScreen', () => {
     const Screen = require('../../src/screens/FeedScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     const input = await screen.findByPlaceholderText('What do you need?');
+    expect(within(screen.getByTestId('Feed.list')).queryByTestId('Feed.searchBar')).toBeNull();
+    expect(within(screen.getByTestId('Feed.header')).getByTestId('Feed.typeRibbon')).toBeTruthy();
     fireEvent(input, 'focus');
-    expect(screen.getByTestId('Feed.list').props.stickyHeaderHiddenOnScroll).toBe(false);
+    expect(StyleSheet.flatten(screen.getByTestId('Feed.header').props.style).transform).toEqual([{ translateY: 0 }]);
     fireEvent.changeText(input, 'ladder');
     fireEvent(input, 'blur');
-    expect(screen.getByTestId('Feed.list').props.stickyHeaderHiddenOnScroll).toBe(true);
     await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'ladder' })));
     const tabPress = mockNavigation.addListener.mock.calls.filter(([event]) => event === 'tabPress').at(-1)[1];
     api.getFeed.mockClear();
@@ -537,7 +538,7 @@ it('retains posts through hidden pages and stops loading at the real end', async
   expect(api.getFeed).toHaveBeenCalledTimes(count);
 });
 
-it('returns to the top when a refresh shortens the feed and when Back to top is pressed', async () => {
+it('lets pull-to-refresh settle naturally while filters and Back to top still reset the list', async () => {
   const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
   api.getFeed.mockResolvedValue({ items: [{ id: 'one', type: 'listing', title: 'One item', user: { firstName: 'Sam' } }], hasMore: false });
   const Screen = require('../../src/screens/FeedScreen').default;
@@ -548,9 +549,51 @@ it('returns to the top when a refresh shortens the feed and when Back to top is 
   expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: true });
   scroll.mockClear();
   await act(async () => fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh'));
-  expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: false });
+  expect(scroll).not.toHaveBeenCalled();
   expect(screen.getByText('One item')).toBeTruthy();
+  fireEvent.press(screen.getByTestId('Feed.type.sell'));
+  await waitFor(() => expect(scroll).toHaveBeenCalledWith({ offset: 0, animated: false }));
   scroll.mockRestore();
+});
+
+it.each(['success', 'failure'])('keeps native refresh in control through a delayed %s', async outcome => {
+  const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
+  api.getFeed.mockResolvedValueOnce({ items: [{ id: 'one', type: 'listing', title: 'One item', user: { firstName: 'Sam' } }], hasMore: false });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('One item');
+  fireEvent(screen.getByTestId('Feed.header'), 'layout', { nativeEvent: { layout: { height: 210 } } });
+  expect(screen.UNSAFE_getByType(RefreshControl).props.progressViewOffset).toBe(210);
+  let finish, fail;
+  api.getFeed.mockImplementationOnce(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
+  scroll.mockClear();
+  fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+  expect(screen.getByText('One item')).toBeTruthy();
+  expect(scroll).not.toHaveBeenCalled();
+  await act(async () => outcome === 'success'
+    ? finish({ items: [{ id: 'two', type: 'listing', title: 'New item', user: { firstName: 'Sam' } }], hasMore: false })
+    : fail(new Error('offline')));
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  expect(screen.getByText(outcome === 'success' ? 'New item' : 'One item')).toBeTruthy();
+  expect(scroll).not.toHaveBeenCalled();
+  scroll.mockRestore();
+});
+
+it('does not expand and collapse the empty feed ribbon during refresh', async () => {
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('What would you like to do?');
+  let finish;
+  api.getFeed.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
+  expect(screen.queryByTestId('Feed.searchBar')).toBeNull();
+  expect(screen.queryByTestId('Feed.typeRibbon')).toBeNull();
+  expect(screen.getByText('What would you like to do?')).toBeTruthy();
+  expect(screen.queryByLabelText('Loading items')).toBeNull();
+  await act(async () => finish({ items: [], hasMore: false }));
+  expect(screen.queryByTestId('Feed.searchBar')).toBeNull();
+  expect(screen.getByText('What would you like to do?')).toBeTruthy();
 });
 
 it('keeps loaded pages, request cards, ranking session, and scroll position when returning from a post', async () => {
