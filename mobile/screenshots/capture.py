@@ -91,6 +91,11 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
             print(f'Capturing {name}: {route}', flush=True)
             launch_capture(udid, route)
             time.sleep(15)
+            if route.startswith('refresh-'):
+                subprocess.run(['maestro', '--device', udid, 'test',
+                                str(Path(__file__).with_name('refresh-gesture.yaml'))],
+                               check=True, timeout=180)
+                time.sleep(2)
             target = destination / f'{filename}.png'
             target.parent.mkdir(parents=True, exist_ok=True)
             run('io', udid, 'screenshot', '--type=png', str(target))

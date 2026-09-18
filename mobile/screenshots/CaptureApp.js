@@ -30,11 +30,8 @@ const ReviewStack = createNativeStackNavigator();
 function RefreshCapture() {
   const [refreshing, setRefreshing] = useState(false);
   const [generation, setGeneration] = useState(0);
-  useEffect(() => {
-    if (generation < 0) return;
-    const timer = setTimeout(() => setRefreshing(true), 750);
-    return () => clearTimeout(timer);
-  }, [generation]);
+  // The capture driver performs a real downward swipe. Starting this in a
+  // timer does not exercise the same UIKit path as the user's pull gesture.
   useEffect(() => {
     if (requested !== 'refresh-remount') return;
     const remove = setTimeout(() => { setRefreshing(false); setGeneration(-1); }, 2500);

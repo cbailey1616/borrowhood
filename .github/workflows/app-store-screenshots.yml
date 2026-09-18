@@ -91,6 +91,12 @@ jobs:
           name: borrowhood-app-store-screenshots
           path: ${{ runner.temp }}/app-store-screenshots
           retention-days: 14
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pinned native gesture driver
+        run: bash screenshots/install-maestro.sh
       - name: Capture native UI review screens
         env:
           BORROWHOOD_CAPTURE_REVIEW_ONLY: 'true'

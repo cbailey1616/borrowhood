@@ -1,0 +1,5 @@
+appId: com.borrowhood.app
+---
+- swipe:
+    direction: DOWN
+    duration: 800

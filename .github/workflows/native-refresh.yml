@@ -78,6 +78,12 @@ jobs:
           name: borrowhood-screenshot-simulator
           path: ${{ runner.temp }}/borrowhood-simulator-app.zip
           retention-days: 3
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pinned native gesture driver
+        run: bash screenshots/install-maestro.sh
       - name: Verify native green wheels on both iPhone sizes
         env:
           BORROWHOOD_CAPTURE_REFRESH_ONLY: 'true'
