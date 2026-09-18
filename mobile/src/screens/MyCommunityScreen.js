@@ -69,18 +69,20 @@ export default function MyCommunityScreen({ navigation, route }) {
     <View style={styles.hero}>
       {community.bannerUrl && <Image source={{ uri: community.bannerUrl }} style={styles.cover} accessibilityLabel={`${community.name} cover`} />}
       <View style={styles.titleRow}>
-        <Text style={styles.name} numberOfLines={2}>{community.name}</Text>
+        <View style={styles.identity}>
+          <Text style={styles.name} numberOfLines={2} accessibilityRole="header">{community.name}</Text>
+          <HapticPressable style={styles.members} accessibilityRole="button" accessibilityLabel="View neighbors"
+            onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })}>
+            <Ionicons name="people-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.description}>{community.memberCount ?? 0} neighbors</Text>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+          </HapticPressable>
+        </View>
         <HapticPressable style={styles.button} accessibilityRole="button" accessibilityLabel="Invite neighbors"
           onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}>
           <Text style={styles.buttonText}>+ Invite</Text>
         </HapticPressable>
       </View>
-      <HapticPressable style={styles.members} accessibilityRole="button" accessibilityLabel="View neighbors"
-        onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })}>
-        <Ionicons name="people-outline" size={20} color={COLORS.primary} />
-        <Text style={styles.description}>{community.memberCount ?? 0} neighbors</Text>
-        <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-      </HapticPressable>
     </View>
   </View>} />;
 }
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
   stateContent: { padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
   stateCard: { width: '100%', maxWidth: 480, padding: 24, alignItems: 'center' },
   stateIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  stateTitle: { ...TYPOGRAPHY.title2, color: COLORS.text, textAlign: 'center' },
+  stateTitle: { ...TYPOGRAPHY.h2, color: COLORS.text, textAlign: 'center' },
   stateDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
   stateButton: { minHeight: 52, width: '100%', marginTop: 24, paddingHorizontal: 18, paddingVertical: 14, borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
@@ -103,9 +105,10 @@ const styles = StyleSheet.create({
   hero: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
   cover: { width: '100%', height: 92, borderRadius: RADIUS.lg, marginBottom: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  name: { ...TYPOGRAPHY.title2, color: COLORS.text, flexShrink: 1, flexGrow: 1 },
+  identity: { flex: 1, minWidth: 0 },
+  name: { ...TYPOGRAPHY.h2, color: COLORS.text },
   button: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
   buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
-  members: { flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 44 },
+  members: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'flex-start', minHeight: 44 },
   description: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });
