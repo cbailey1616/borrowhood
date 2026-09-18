@@ -1,4 +1,5 @@
 import { ensureCommunityChatSchema } from '../services/communityChat.js';
+import { repairCommunityCoverReferences } from '../services/privatePhotos.js';
 import { ensureReturnRecoverySchema } from '../services/returnRecovery.js';
 import { ensureEndorsementSchema } from '../services/endorsements.js';
 import { ensureNotificationSchema } from '../services/notificationSchema.js';
@@ -671,6 +672,9 @@ export async function runMigrations() {
       await query('ALTER TABLE communities ADD COLUMN announcement_by UUID REFERENCES users(id) ON DELETE SET NULL');
       logger.info('Migration complete: communities banner and announcement columns added');
     }
+
+    const covers = await repairCommunityCoverReferences();
+    logger.info(`Community cover recovery: ${covers.repaired} restored, ${covers.skipped} unrecoverable`);
 
     // Keep date-only request deadlines in the creator's timezone. Legacy rows
     // retain UTC semantics until the owner edits or renews them.

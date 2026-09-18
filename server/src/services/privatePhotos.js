@@ -50,6 +50,40 @@ export function originalPhotoUrl(url, userId) {
   return decryptSource(data);
 }
 
+// Older neighborhood editors persisted one-hour display links. Recover only
+// references already stored in the database, checking every signature. Expiry
+// remains enforced for all incoming edits and for actual image delivery.
+export async function repairCommunityCoverReferences(db = { query }) {
+  const result = await db.query("SELECT id, banner_url FROM communities WHERE banner_url LIKE '%/api/private-photos/%'");
+  let repaired = 0;
+  let skipped = 0;
+  for (const row of result.rows) {
+    let source = row.banner_url;
+    try {
+      for (let depth = 0; depth < 4 && source.includes('/api/private-photos/'); depth++) {
+        const token = new URL(source).pathname.split('/api/private-photos/')[1];
+        const data = jwt.verify(token, process.env.JWT_SECRET, {
+          algorithms: ['HS256'], audience: 'listing-photo', ignoreExpiration: true,
+        });
+        source = decryptSource(data);
+      }
+      const url = new URL(source);
+      if (!managedPhoto(source) || (url.hostname === `${bucket}.s3.${region}.amazonaws.com`
+        ? !url.pathname.startsWith('/communities/') : !/^\/uploads\/[a-f0-9-]+\.(jpg|png|webp|heic)$/i.test(url.pathname))) {
+        throw new Error('Not a stored community cover');
+      }
+    } catch {
+      skipped += 1;
+      continue;
+    }
+    // A concurrent replacement/removal must win over startup recovery.
+    const update = await db.query('UPDATE communities SET banner_url = $1 WHERE id = $2 AND banner_url = $3',
+      [source, row.id, row.banner_url]);
+    repaired += update.rowCount || 0;
+  }
+  return { repaired, skipped };
+}
+
 export async function ownedPhotoReferences(photos, userId) {
   const originals = photos.map(url => originalPhotoUrl(url, userId));
   for (const source of originals) {
