@@ -1,5 +1,6 @@
 """Capture the actual native screens; never resize a phone layout into an iPad."""
 import hashlib
+import base64
 import json
 import os
 from pathlib import Path
@@ -103,6 +104,10 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
                     wheel = original.convert('RGB').crop((size[0] * 0.35, 0, size[0] * 0.65, size[1] * 0.4))
                     green = sum(1 for r, g, b in wheel.getdata() if g < 170 and g - r >= 10 and g - b >= 7)
                     if green < 30:
+                        # This fixture contains only the native wheel and system
+                        # chrome. Preserve a readable diagnostic when artifact
+                        # downloads are unavailable to the reviewer.
+                        print('NATIVE_REFRESH_SCREENSHOT:' + base64.b64encode(target.read_bytes()).decode(), flush=True)
                         raise RuntimeError(f'{name}/{route}: native refresh spinner is not visibly green ({green} pixels)')
                     print(f'{name}/{route}: native green spinner verified ({green} pixels)', flush=True)
             digest = hashlib.sha256(target.read_bytes()).hexdigest()
