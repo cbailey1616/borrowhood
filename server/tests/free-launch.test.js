@@ -115,7 +115,7 @@ describe('first-borrow improvements', () => {
     expect(borrowGuidance({ status: 'pending', isBorrower: false }).title).toBe('Review your queue');
   });
   it('does not describe a pending return as completed', () => {
-    expect(borrowGuidance({ status: 'return_pending' }).detail).toContain('Confirm only once you have the item back');
+    expect(borrowGuidance({ status: 'return_pending' }).detail).toContain('Confirm once you have it back in the same condition.');
   });
   it('does not ask for a giveaway back after pickup', () => {
     expect(borrowGuidance({ status: 'picked_up', isGiveaway: true }).title).toBe('Exchange complete');
