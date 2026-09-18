@@ -38,6 +38,7 @@ import FriendsScreen from '../screens/FriendsScreen';
 import MyQRCodeScreen from '../screens/MyQRCodeScreen';
 import useProfileLinks from '../hooks/useProfileLinks';
 import MyCommunityScreen from '../screens/MyCommunityScreen';
+import CommunityChatScreen from '../screens/CommunityChatScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import PrivacySafetyScreen from '../screens/PrivacySafetyScreen';
 import DisputesScreen from '../screens/DisputesScreen';
@@ -234,6 +235,12 @@ export default function RootNavigator({ navigationRef }) {
             name="MyCommunity"
             component={MyCommunityScreen}
             options={{ ...sharedScreenOptions, title: 'My Neighborhood' }}
+          />
+          <Stack.Screen
+            name="CommunityChat"
+            component={CommunityChatScreen}
+            getId={({ params }) => params?.communityId}
+            options={({ route }) => ({ ...sharedScreenOptions, title: route.params?.communityName || 'Neighborhood chat' })}
           />
           <Stack.Screen
             name="NotificationSettings"

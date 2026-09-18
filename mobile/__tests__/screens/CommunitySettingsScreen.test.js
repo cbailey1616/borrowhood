@@ -11,6 +11,15 @@ describe('CommunitySettingsScreen', () => {
   const coverRoute = { params: { id: 'comm-1', editCover: true } };
   const editableCommunity = { id: 'comm-1', name: 'Test Hood', description: 'A neighborhood', role: 'organizer', bannerUrl: 'https://example.com/old.jpg' };
 
+  it.each([[null, 'Cleanup on Saturday'], ['Cleanup on Saturday', '']])('saves a posted or cleared announcement (%s)', async (before, after) => {
+    api.getCommunity.mockResolvedValue({ ...editableCommunity, announcement: before });
+    const Screen = require('../../src/screens/CommunitySettingsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={coverRoute} />);
+    fireEvent.changeText(await screen.findByLabelText('Neighborhood announcement'), after);
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(api.updateCommunity).toHaveBeenCalledWith('comm-1', expect.objectContaining({ announcement: after })));
+  });
+
   it('previews a moderator’s photo and saves the uploaded URL before returning to the neighborhood', async () => {
     api.getCommunity.mockResolvedValue(editableCommunity);
     ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///new.jpg' }] });

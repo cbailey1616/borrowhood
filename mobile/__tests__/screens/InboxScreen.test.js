@@ -510,5 +510,5 @@ it('opens the same neighborhood channel from Messages', async () => {
   const Screen = require('../../src/screens/InboxScreen').default;
   const screen = render(<Screen navigation={mockNavigation} route={{params:{tab:'messages'}}} />);
   fireEvent.press(await screen.findByText('Maple Grove'));
-  expect(mockParentNavigate).toHaveBeenCalledWith('MyCommunity',{communityId:'hood'});
+  expect(mockParentNavigate).toHaveBeenCalledWith('CommunityChat',{communityId:'hood',communityName:'Maple Grove'});
 });

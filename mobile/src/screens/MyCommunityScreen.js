@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, AppState, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { randomUUID } from 'expo-crypto';
 import { useAuth } from '../context/AuthContext';
 import HapticPressable from '../components/HapticPressable';
 import LayeredCard from '../components/LayeredCard';
-import CommunityChat from '../components/CommunityChat';
+import BackHeader from '../components/BackHeader';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -14,6 +15,7 @@ export default function MyCommunityScreen({ navigation, route }) {
   const [membership, setMembership] = useState({ userId: null, communities: [], loading: true, error: false });
   const [selectedId, setSelectedId] = useState(route?.params?.communityId || null);
   const [reload, setReload] = useState(0);
+  const [chat, setChat] = useState({ key: null, data: null, loading: true, error: false });
   const requestedId = route?.params?.communityId;
   const retry = () => setReload(n => n + 1);
 
@@ -40,6 +42,42 @@ export default function MyCommunityScreen({ navigation, route }) {
   const community = communities.find(c => c.id === selectedId) || communities[0];
   const loading = !currentUser || membership.loading;
   const error = currentUser && membership.error;
+  const communityId = community?.id;
+  const chatKey = `${user?.id}:${communityId}`;
+  const canManage = !!community && (community.role === 'organizer' || user?.isAdmin);
+
+  useLayoutEffect(() => {
+    navigation.setOptions?.({ header: props => <BackHeader navigation={props.navigation} title="My Neighborhood"
+      rightElement={canManage ? <HapticPressable style={styles.manage} accessibilityRole="button" accessibilityLabel="Manage neighborhood"
+        onPress={() => navigation.navigate('CommunitySettings', { id: communityId })}>
+        <Text style={styles.manageText}>Manage</Text>
+      </HapticPressable> : null} /> });
+  }, [navigation, communityId, canManage]);
+
+  useFocusEffect(useCallback(() => {
+    if (!communityId) return undefined;
+    let active = true;
+    let request = 0;
+    setChat(old => old.key === chatKey ? old : { key: chatKey, data: null, loading: true, error: false });
+    const refresh = async () => {
+      const current = ++request;
+      try {
+        const data = await api.getCommunityChatSummary(communityId);
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid chat preview');
+        if (active && current === request) setChat({ key: chatKey, data, loading: false, error: false });
+      } catch {
+        if (active && current === request) setChat({ key: chatKey, data: null, loading: false, error: true });
+      }
+    };
+    refresh();
+    const timer = setInterval(() => { if (AppState.currentState === 'active') refresh(); }, 15000);
+    return () => { active = false; clearInterval(timer); };
+  }, [communityId, chatKey, reload]));
+
+  const preview = chat.key === chatKey ? chat : null;
+  const unreadCount = Math.max(0, Number(preview?.data?.unreadCount) || 0);
+  const chatNote = !preview || preview.loading ? 'Loading chat…' : preview.error ? 'Open neighborhood chat'
+    : preview.data?.lastMessage || 'Say hello to your neighbors.';
 
   if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.primary} accessibilityLabel="Loading your neighborhood" /></View>;
 
@@ -56,7 +94,8 @@ export default function MyCommunityScreen({ navigation, route }) {
     </LayeredCard>
   </ScrollView>;
 
-  return <CommunityChat key={`${user?.id}:${community.id}`} community={community} navigation={navigation} header={<View>
+  return <ScrollView style={styles.page} contentContainerStyle={styles.overviewContent}
+    refreshControl={<RefreshControl refreshing={loading} onRefresh={retry} tintColor={COLORS.primary} />}>
     {error && <HapticPressable accessibilityRole="button" accessibilityLabel="Retry loading neighborhoods" style={styles.refreshError} onPress={retry}>
       <Text style={styles.description}>Couldn’t refresh. Tap to retry.</Text>
     </HapticPressable>}
@@ -84,11 +123,42 @@ export default function MyCommunityScreen({ navigation, route }) {
         </HapticPressable>
       </View>
     </View>
-  </View>} />;
+    <View style={styles.shortcuts}>
+      <HapticPressable style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood chat"
+        accessibilityHint={unreadCount ? `${unreadCount} unread messages` : 'Open your neighborhood chat'}
+        onPress={() => navigation.navigate('CommunityChat', { communityId: community.id, communityName: community.name })}>
+        <View style={styles.shortcutIcon}><Ionicons name="chatbubble-ellipses" size={30} illustrated color={COLORS.primary} /></View>
+        <View style={styles.shortcutText}>
+          <Text style={styles.shortcutTitle}>Neighborhood chat</Text>
+          <Text style={styles.description} numberOfLines={2}>{chatNote}</Text>
+        </View>
+        {unreadCount > 0 && <View style={styles.unread}><Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>}
+        <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+      </HapticPressable>
+      <HapticPressable style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood items"
+        onPress={() => navigation.navigate('Main', { screen: 'Feed', params: {
+          neighborhoodItems: { id: community.id, name: community.name, requestId: randomUUID() },
+        } })}>
+        <View style={styles.shortcutIcon}><Ionicons name="basket" size={30} illustrated color={COLORS.primary} /></View>
+        <View style={styles.shortcutText}>
+          <Text style={styles.shortcutTitle}>Neighborhood items</Text>
+          <Text style={styles.description}>Browse items shared here.</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+      </HapticPressable>
+      {!!community.announcement?.trim() && <LayeredCard style={styles.announcement} radius={RADIUS.lg}>
+        <Text style={styles.announcementTitle} accessibilityRole="header">Announcement</Text>
+        <Text style={styles.announcementBody}>{community.announcement}</Text>
+      </LayeredCard>}
+    </View>
+  </ScrollView>;
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: COLORS.background },
+  overviewContent: { paddingBottom: 40 },
+  manage: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  manageText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
   stateContent: { padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
   stateCard: { width: '100%', maxWidth: 480, padding: 24, alignItems: 'center' },
@@ -111,4 +181,15 @@ const styles = StyleSheet.create({
   buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
   members: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'flex-start', minHeight: 44 },
   description: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  shortcuts: { padding: SPACING.lg, gap: SPACING.md },
+  shortcut: { minHeight: 100, padding: SPACING.lg, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface,
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  shortcutIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
+  shortcutText: { flex: 1, minWidth: 0, gap: SPACING.xs },
+  shortcutTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  unread: { minWidth: 24, minHeight: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
+  unreadText: { ...TYPOGRAPHY.caption1, color: COLORS.surface },
+  announcement: { padding: SPACING.lg, gap: SPACING.sm },
+  announcementTitle: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  announcementBody: { ...TYPOGRAPHY.body, color: COLORS.text },
 });

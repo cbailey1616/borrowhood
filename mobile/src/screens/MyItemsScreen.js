@@ -35,6 +35,13 @@ const shortDate = value => {
 };
 const requestDateRange = item => isTransferListing(item) ? ''
   : [shortDate(item.startDate), shortDate(item.endDate)].filter(Boolean).join(' – ');
+const listingSharingNote = item => {
+  const visibility = item.visibility || 'private';
+  const audience = item.sharingReviewRequired ? 'Private · review sharing' : visibility.includes('town') ? ''
+    : visibility.includes('neighborhood') ? 'Neighborhood' : visibility.includes('circle') ? 'Sharing needs review'
+      : visibility.includes('close_friends') ? 'Friends' : 'Private';
+  return [audience, item.activeOffers > 0 ? `${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''].filter(Boolean).join(' · ');
+};
 
 export default function MyItemsScreen({ navigation }) {
   const { width, fontScale } = useWindowDimensions();
@@ -204,14 +211,9 @@ export default function MyItemsScreen({ navigation }) {
                     {listingAvailability(item).label}
                   </Text>
                 </View>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
-                  {item.sharingReviewRequired ? 'Private · review sharing' :
-                    (item.visibility || 'private').includes('town') ? 'Town' :
-                    (item.visibility || 'private').includes('neighborhood') ? 'Neighborhood' :
-                    (item.visibility || 'private').includes('circle') ? 'Sharing needs review' :
-                    (item.visibility || 'private').includes('close_friends') ? 'Friends' : 'Private'}
-                  {item.activeOffers > 0 ? ` · ${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''}
-                </Text>
+                {!!listingSharingNote(item) && <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
+                  {listingSharingNote(item)}
+                </Text>}
 
 
               </View>

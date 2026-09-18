@@ -39,15 +39,22 @@ router.post('/events', authenticate, async (req, res) => {
 // Get combined feed of listings and requests
 // ============================================
 router.get('/', authenticate, async (req, res) => {
-  const { page = 1, limit = 20, search, type, categoryId, visibility } = req.query;
+  const { page = 1, limit = 20, search, type, categoryId, visibility, communityId } = req.query;
   const offset = (page - 1) * limit;
   if (!Number.isInteger(Number(page)) || Number(page) < 1 || !Number.isInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 100) return res.status(400).json({ error: 'Invalid page' });
   const token = req.query.session;
   const summary = req.query.summary === 'true';
   const sections = req.query.layout === 'sections' && !type && !search;
   if (token && !UUID.test(token)) return res.status(400).json({ error: 'Invalid session' });
+  if (communityId && (typeof communityId !== 'string' || !UUID.test(communityId))) return res.status(400).json({ error: 'Invalid neighborhood' });
 
   try {
+    if (communityId) {
+      const membership = await query(`SELECT 1 FROM community_memberships cm
+        JOIN communities c ON c.id = cm.community_id
+        WHERE cm.user_id = $1 AND c.id = $2 AND c.is_active = true`, [req.user.id, communityId]);
+      if (!membership.rows.length) return res.status(403).json({ error: 'Join this neighborhood to browse its items' });
+    }
     const visibilityFilters = visibility ? visibility.split(',') : [];
     let listingsResult = { rows: [] };
     let requestsResult = { rows: [] };
@@ -132,9 +139,16 @@ router.get('/', authenticate, async (req, res) => {
       listingQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('l', 'owner_id', '$' + (listingParams.length + 1), { listing: true }) + ')';
       listingParams.push(req.user.id);
       listingQuery += ` AND l.owner_id != $${listingParams.length}`;
+      listingQuery += ` AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
+        (b.user_id = $${listingParams.length} AND b.blocked_id = l.owner_id) OR
+        (b.blocked_id = $${listingParams.length} AND b.user_id = l.owner_id))`;
       if (visibilityFilters.length) {
         listingQuery += " AND string_to_array(l.visibility::text, ',') && $" + (listingParams.length + 1) + '::text[]';
         listingParams.push(visibilityFilters);
+      }
+      if (communityId) {
+        listingParams.push(communityId);
+        listingQuery += ` AND l.community_id = $${listingParams.length} AND 'neighborhood' = ANY(string_to_array(l.visibility::text, ','))`;
       }
       // Private inventory belongs in My Items, not the discovery feed.
       listingQuery += " AND l.privacy_version = 1 AND l.visibility != 'private'";
@@ -170,6 +184,9 @@ router.get('/', authenticate, async (req, res) => {
         JOIN users u ON r.user_id = u.id
         WHERE r.status = 'open'
           AND r.user_id != $1
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
+            (b.user_id = $1 AND b.blocked_id = r.user_id) OR
+            (b.blocked_id = $1 AND b.user_id = r.user_id))
           AND ${requestActiveSql('r')}`;
 
       const requestParams = [req.user.id];
@@ -180,6 +197,10 @@ router.get('/', authenticate, async (req, res) => {
       if (visibilityFilters.length) {
         requestQuery += " AND string_to_array(r.visibility::text, ',') && $" + (requestParams.length + 1) + '::text[]';
         requestParams.push(visibilityFilters);
+      }
+      if (communityId) {
+        requestParams.push(communityId);
+        requestQuery += ` AND r.community_id = $${requestParams.length} AND 'neighborhood' = ANY(string_to_array(r.visibility::text, ','))`;
       }
 
       if (search) {
@@ -275,7 +296,7 @@ router.get('/', authenticate, async (req, res) => {
     }));
 
     const candidates = [...listings, ...requests];
-    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '', sections]);
+    const filterKey = JSON.stringify([search || '', type || '', categoryId || '', visibility || '', sections, ...(communityId ? [communityId] : [])]);
     let keys;
     if (token) {
       const stored = await query('SELECT item_keys FROM feed_sessions WHERE user_id=$1 AND token=$2 AND filter_key=$3 AND created_at > NOW() - INTERVAL \'1 day\'', [req.user.id, token, filterKey]);
@@ -291,7 +312,10 @@ router.get('/', authenticate, async (req, res) => {
       if (token) {
         await query('DELETE FROM feed_sessions WHERE user_id=$1 AND created_at < NOW()-INTERVAL \'1 day\'', [req.user.id]);
         const stored = await query(`INSERT INTO feed_sessions(user_id,token,filter_key,item_keys) VALUES($1,$2,$3,$4)
-          ON CONFLICT(user_id,token) DO UPDATE SET token=EXCLUDED.token RETURNING item_keys`, [req.user.id,token,filterKey,JSON.stringify(keys)]);
+          ON CONFLICT(user_id,token) DO UPDATE SET
+            item_keys = CASE WHEN feed_sessions.filter_key = EXCLUDED.filter_key THEN feed_sessions.item_keys ELSE EXCLUDED.item_keys END,
+            filter_key = EXCLUDED.filter_key
+          RETURNING item_keys`, [req.user.id,token,filterKey,JSON.stringify(keys)]);
         keys = stored.rows[0].item_keys;
       }
     }

@@ -836,6 +836,7 @@ const getReferralStatus = () => get('/referrals/status');
 const claimReferralReward = () => post('/referrals/claim');
 
 export default {
+  getCommunityChatSummary: id => get(`/communities/${id}/chat/summary`),
   getCommunityChat: (id, params) => get(`/communities/${id}/chat`, params),
   sendCommunityMessage: (id, data) => post(`/communities/${id}/chat`, data),
   markCommunityChatRead: (id, sequence) => post(`/communities/${id}/chat/read`, { sequence }),
