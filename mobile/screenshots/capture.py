@@ -108,6 +108,8 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
                         # chrome. Preserve a readable diagnostic when artifact
                         # downloads are unavailable to the reviewer.
                         print('NATIVE_REFRESH_SCREENSHOT:' + base64.b64encode(target.read_bytes()).decode(), flush=True)
+                        if refresh_only:
+                            subprocess.run([sys.executable, str(Path(__file__).with_name('inspect-refresh.py')), udid, str(target)], timeout=120, check=False)
                         raise RuntimeError(f'{name}/{route}: native refresh spinner is not visibly green ({green} pixels)')
                     print(f'{name}/{route}: native green spinner verified ({green} pixels)', flush=True)
             digest = hashlib.sha256(target.read_bytes()).hexdigest()
