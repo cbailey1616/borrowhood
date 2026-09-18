@@ -38,6 +38,7 @@ import MyQRCodeScreen from '../screens/MyQRCodeScreen';
 import useProfileLinks from '../hooks/useProfileLinks';
 import MyCommunityScreen from '../screens/MyCommunityScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
+import PrivacySafetyScreen from '../screens/PrivacySafetyScreen';
 import DisputesScreen from '../screens/DisputesScreen';
 import EditListingScreen from '../screens/EditListingScreen';
 import EditRequestScreen from '../screens/EditRequestScreen';
@@ -236,6 +237,11 @@ export default function RootNavigator({ navigationRef }) {
             name="NotificationSettings"
             component={NotificationSettingsScreen}
             options={{ ...sharedScreenOptions, title: 'Notification Settings' }}
+          />
+          <Stack.Screen
+            name="PrivacySafety"
+            component={PrivacySafetyScreen}
+            options={{ ...sharedScreenOptions, title: 'Privacy & safety' }}
           />
           <Stack.Screen
             name="Disputes"

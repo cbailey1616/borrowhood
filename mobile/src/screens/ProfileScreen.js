@@ -25,7 +25,7 @@ import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function ProfileScreen({ navigation, route }) {
   const { user, logout, refreshUser } = useAuth();
@@ -274,19 +274,14 @@ export default function ProfileScreen({ navigation, route }) {
             onPress={() => navigation.navigate('NotificationSettings')}
           />
           <GroupedListItem
+            icon="shield-checkmark-outline"
+            title="Privacy & safety"
+            onPress={() => navigation.navigate('PrivacySafety')}
+          />
+          <GroupedListItem
             icon="help-circle-outline"
             title="Help & Support"
             onPress={() => Linking.openURL('mailto:chris@borrowhood.net')}
-          />
-          <GroupedListItem
-            icon="document-text-outline"
-            title="Terms of Service"
-            onPress={() => Linking.openURL(`${BASE_URL}/terms`)}
-          />
-          <GroupedListItem
-            icon="lock-closed-outline"
-            title="Privacy Policy"
-            onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}
           />
         </GroupedListSection>
 
