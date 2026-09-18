@@ -7,7 +7,7 @@ pid = subprocess.check_output(['pgrep', '-x', 'Borrowhood'], text=True).split()[
 commands = [
     'thread select 1',
     'expression -l objc++ -- @import UIKit;',
-    'expression -l objc++ -O -- ({ UIRefreshControl *refresh = nil; NSMutableArray *queue = [NSMutableArray arrayWithArray:[[UIApplication sharedApplication] windows]]; while ([queue count]) { UIView *v = [queue lastObject]; [queue removeLastObject]; if ([v isKindOfClass:[UIRefreshControl class]]) { refresh = (UIRefreshControl *)v; break; } [queue addObjectsFromArray:[v subviews]]; } [NSString stringWithFormat:@"refresh=%@ tint=%@ mode=%ld tree=%@", refresh, refresh.tintColor, (long)refresh.tintAdjustmentMode, [(id)refresh recursiveDescription]]; })',
+    'expression -l objc++ -O -- ({ UIRefreshControl *refresh = nil; NSMutableArray *queue = [NSMutableArray arrayWithArray:(NSArray *)[[UIApplication sharedApplication] windows]]; while ([queue count]) { UIView *v = [queue lastObject]; [queue removeLastObject]; if ([v isKindOfClass:[UIRefreshControl class]]) { refresh = (UIRefreshControl *)v; break; } [queue addObjectsFromArray:[v subviews]]; } [NSString stringWithFormat:@"refresh=%@ tint=%@ mode=%ld", refresh, [refresh tintColor], (long)[refresh tintAdjustmentMode]]; })',
     'process detach',
 ]
 args = ['xcrun', 'lldb', '--batch', '-p', pid]
