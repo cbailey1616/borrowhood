@@ -21,6 +21,7 @@ review_screens += [('ui-review/home-exchanges', 'home-exchanges'), ('ui-review/i
 # Capture both immediate text focus and a later number-field focus. The latter
 # has no return key, so the keyboard accessory is its explicit dismissal control.
 review_screens = [('ui-review/keyboard', 'keyboard'), ('ui-review/keyboard-number', 'keyboard-number')] + [screen for screen in review_screens if screen[1] != 'keyboard']
+review_screens = [('ui-review/refresh-control', 'refresh-control'), ('ui-review/refresh-remount', 'refresh-remount')] + review_screens
 manifest = []
 review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
 store_only = os.environ.get('BORROWHOOD_CAPTURE_STORE_ONLY') == 'true'
@@ -94,8 +95,16 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
                 if original.size != size:
                     raise RuntimeError(f'{name}: expected {size}, got {original.size}')
                 original.convert('RGB').save(target, optimize=True)
+                if route.startswith('refresh-'):
+                    # Only the real native spinner can be green on this empty
+                    # fixture. Gray/default/hidden controls must fail the check.
+                    wheel = original.convert('RGB').crop((size[0] * 0.35, 0, size[0] * 0.65, size[1] * 0.4))
+                    green = sum(1 for r, g, b in wheel.getdata() if g < 170 and g - r >= 10 and g - b >= 7)
+                    if green < 30:
+                        raise RuntimeError(f'{name}/{route}: native refresh spinner is not visibly green ({green} pixels)')
+                    print(f'{name}/{route}: native green spinner verified ({green} pixels)', flush=True)
             digest = hashlib.sha256(target.read_bytes()).hexdigest()
-            if digest in hashes:
+            if digest in hashes and not route.startswith('refresh-'):
                 raise RuntimeError(f'Duplicate screen on {name}; navigation needs inspection')
             hashes.add(digest)
             manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest})

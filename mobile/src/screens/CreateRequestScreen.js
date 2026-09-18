@@ -7,6 +7,7 @@ import useFormDraft from '../hooks/useFormDraft';
 import useNavigationTask from '../hooks/useNavigationTask';
 import DraftStatus from '../components/DraftStatus';
 import SharingPicker from '../components/SharingPicker';
+import { availableSharingAudiences } from '../utils/sharingAudiences';
 import { localDate, requestDatePreset, requestAudienceProblem } from '../utils/requestForm';
 import {
   View,
@@ -175,10 +176,17 @@ export default function CreateRequestScreen({ navigation, route }) {
     : ALL_VISIBILITIES.filter(v => v !== 'neighborhood');
 
   // A town request advertises a need, never the requester's inventory.
+  const sharingChosen = useRef(false);
   useEffect(() => {
-    if (communityId === undefined || !draft.ready || draft.restored) return;
-    updateField('visibility', user?.city?.trim() && user?.state?.trim() ? ['town'] : communityId ? ['neighborhood'] : ['close_friends']);
-  }, [communityId, draft.ready, draft.restored, user?.city, user?.state]);
+    if (communityId === undefined || friends.loading || !draft.ready || draft.restored || sharingChosen.current) return;
+    const visibility = availableSharingAudiences({
+      friendsAvailable: friends.count > 0,
+      neighborhoodAvailable: Boolean(communityId),
+      townAvailable: Boolean(user?.city?.trim() && user?.state?.trim()),
+    });
+    updateField('visibility', visibility.length ? visibility : ['close_friends']);
+    sharingChosen.current = true;
+  }, [communityId, friends.loading, friends.count, draft.ready, draft.restored, user?.city, user?.state]);
 
   // Loading state while checking community
   if (communityId === undefined) {
@@ -435,7 +443,10 @@ export default function CreateRequestScreen({ navigation, route }) {
 
       {/* Visibility */}
       <View style={styles.section}>
-        <SharingPicker request value={formData.visibility} onChange={next => updateField('visibility', next.visibility)}
+        <SharingPicker request value={formData.visibility} onChange={next => {
+          sharingChosen.current = true;
+          updateField('visibility', next.visibility);
+        }}
           audienceProblem={audienceProblem} audienceLoading={friends.loading}
           friendsAvailable={friends.count > 0} onInviteFriends={() => navigation.navigate('Friends', { fromPosting: true })}
           onRetryAudience={friends.error ? loadFriends : undefined}

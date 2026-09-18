@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import { readDraft, saveDraft } from '../../src/utils/draftStorage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
@@ -8,10 +10,58 @@ const mockShowError = jest.fn();
 
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: jest.fn() }) }));
+jest.mock('../../src/utils/draftStorage', () => ({ readDraft: jest.fn(), saveDraft: jest.fn(), deleteDraft: jest.fn().mockResolvedValue() }));
+
+beforeEach(() => { readDraft.mockResolvedValue(null); saveDraft.mockResolvedValue(); });
 
 beforeEach(() => { jest.clearAllMocks(); mockUser.isVerified = true; delete mockUser.city; delete mockUser.state; api.getFriends.mockResolvedValue([{ id: 'friend-1' }]); api.getCommunities.mockResolvedValue([]); api.getCategories.mockResolvedValue([{ id: 'cat-1', name: 'Tools', slug: 'tools-hardware' }]); api.createRequest.mockResolvedValue({ id: 'req-1' }); });
 
 describe('CreateRequestScreen', () => {
+  it.each([false, true])('includes all available audiences and preserves manual choices on refocus (opt out=%s)', async optOut => {
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    api.getCommunities.mockResolvedValue([{ id: 'community-1' }]);
+    const Screen = require('../../src/screens/CreateRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Visible to Friends and Neighborhood and Town');
+    if (optOut) {
+      fireEvent.press(screen.getByLabelText('Change who can see this post'));
+      fireEvent.press(screen.getByLabelText('Friends'));
+      mockUser.city = 'West Upton';
+      screen.rerender(<Screen navigation={mockNavigation} />);
+      await act(async () => { useFocusEffect.mock.calls[0][0](); useFocusEffect.mock.calls[1][0](); });
+      expect(screen.getByLabelText('Friends').props.accessibilityState.checked).toBe(false);
+    }
+    fireEvent.changeText(screen.getByPlaceholderText(/Power drill/), 'Weekend ladder');
+    await act(async () => fireEvent.press(screen.getByTestId('CreateRequest.button.submit')));
+    expect(api.createRequest).toHaveBeenCalledWith(expect.objectContaining({
+      visibility: optOut ? ['neighborhood', 'town'] : ['close_friends', 'neighborhood', 'town'],
+      communityId: 'community-1',
+    }));
+  });
+
+  it('waits for friends before choosing the default audience', async () => {
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    let finishFriends;
+    api.getFriends.mockReturnValueOnce(new Promise(resolve => { finishFriends = resolve; }));
+    const Screen = require('../../src/screens/CreateRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByPlaceholderText(/Power drill/);
+    expect(screen.getByTestId('CreateRequest.button.submit')).toBeDisabled();
+    await act(async () => finishFriends([{ id: 'friend-1' }]));
+    expect(screen.getByText('Visible to Friends and Town')).toBeTruthy();
+  });
+
+  it.each([['town'], ['close_friends']])('does not expand a restored %s request draft', async scope => {
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    api.getCommunities.mockResolvedValue([{ id: 'community-1' }]);
+    readDraft.mockResolvedValueOnce({ title: 'Saved request', visibility: [scope] });
+    const Screen = require('../../src/screens/CreateRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByDisplayValue('Saved request');
+    await waitFor(() => expect(screen.getByTestId('CreateRequest.button.submit')).not.toBeDisabled());
+    await act(async () => fireEvent.press(screen.getByTestId('CreateRequest.button.submit')));
+    expect(api.createRequest).toHaveBeenCalledWith(expect.objectContaining({ visibility: [scope] }));
+  });
   it('lets an unverified member with no friends post a Town request', async () => {
     mockUser.isVerified = false;
     mockUser.city = 'Upton'; mockUser.state = 'MA';

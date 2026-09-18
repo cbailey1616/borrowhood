@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import ActionSheet from './ActionSheet';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { availableSharingAudiences } from '../utils/sharingAudiences';
 
 const audiences = [
   ['private', 'Only me', 'Hidden from browsing. Private offers are shared separately.', 'lock-closed'],
@@ -17,6 +18,14 @@ export default function SharingPicker({ value = ['private'], onChange, request =
   friendsAvailable = true, onInviteFriends, audienceProblem, audienceLoading = false, onRetryAudience }) {
   const [expanded, setExpanded] = useState(false);
   const [neighborhoodPrompt, setNeighborhoodPrompt] = useState(false);
+  const excluded = useRef(new Set());
+  // Preserve opt-outs in restored Town posts as well as this editing session.
+  useEffect(() => {
+    for (const scope of ['close_friends', 'neighborhood']) {
+      if (value.includes(scope)) excluded.current.delete(scope);
+      else if (value.includes('town')) excluded.current.add(scope);
+    }
+  }, [value]);
   const townHint = request || ['giveaway', 'sell'].includes(listingType)
     ? 'Town members can see this post, your name, and your profile.'
     : 'For added safety, verify your identity to borrow across town. No verification needed to borrow from friends or your neighborhood.';
@@ -26,18 +35,24 @@ export default function SharingPicker({ value = ['private'], onChange, request =
       onChange({ visibility: ['private'], circleId: null });
       setExpanded(false); return;
     }
+    if (value.includes(scope)) {
+      const remaining = value.filter(item => item !== scope && item !== 'private');
+      if (request && !remaining.length) return;
+      excluded.current.add(scope);
+      onChange({ visibility: remaining.length ? remaining : ['private'], circleId: null });
+      return;
+    }
     if (scope === 'neighborhood' && !neighborhoodAvailable) {
       setNeighborhoodPrompt(true);
       return;
     }
     if (scope === 'close_friends' && !friendsAvailable && onInviteFriends) return onInviteFriends();
-    if (value.includes(scope)) {
-      const remaining = value.filter(item => item !== scope && item !== 'private');
-      if (request && !remaining.length) return;
-      onChange({ visibility: remaining.length ? remaining : ['private'], circleId: null });
-      return;
-    }
-    onChange({ visibility: [...value.filter(item => item !== 'private'), scope], circleId: null });
+    excluded.current.delete(scope);
+    const additions = scope === 'town'
+      ? availableSharingAudiences({ friendsAvailable, neighborhoodAvailable, townAvailable: true })
+        .filter(item => !excluded.current.has(item))
+      : [scope];
+    onChange({ visibility: [...new Set([...value.filter(item => item !== 'private'), ...additions])], circleId: null });
   };
 
   return (

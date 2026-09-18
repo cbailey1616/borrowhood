@@ -3,6 +3,8 @@ import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import { readDraft, saveDraft } from '../../src/utils/draftStorage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null, onboardingCompleted: true, rating: 4.5, ratingCount: 10, totalTransactions: 5 };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
@@ -10,9 +12,12 @@ const mockShowError = jest.fn();
 
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true, refreshUser: jest.fn() }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: jest.fn() }) }));
+jest.mock('../../src/utils/draftStorage', () => ({ readDraft: jest.fn(), saveDraft: jest.fn(), deleteDraft: jest.fn().mockResolvedValue() }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  readDraft.mockResolvedValue(null);
+  saveDraft.mockResolvedValue();
   mockUser.isVerified = true;
   delete mockUser.city;
   delete mockUser.state;
@@ -48,6 +53,55 @@ describe('CreateListingScreen', () => {
     const Screen = require('../../src/screens/CreateListingScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     await findByText('Visible to Neighborhood');
+  });
+  it.each([false, true])('posts to all available audiences unless unchecked (opt out=%s)', async optOut => {
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    api.getFriends.mockResolvedValue([{ id: 'friend-1' }]);
+    api.getCommunities.mockResolvedValue([{ id: 'community-1' }]);
+    ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///ladder.jpg' }] });
+    api.uploadImages.mockResolvedValueOnce(['https://example.com/ladder.jpg']);
+    const Screen = require('../../src/screens/CreateListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Visible to Friends and Neighborhood and Town');
+    if (optOut) {
+      fireEvent.press(screen.getByLabelText('Change who can see this item'));
+      fireEvent.press(screen.getByLabelText('Friends'));
+      // Returning to the form must not reset a person's audience choices.
+      await act(async () => useFocusEffect.mock.calls[0][0]());
+      expect(screen.getByLabelText('Friends').props.accessibilityState.checked).toBe(false);
+    }
+    fireEvent.changeText(screen.getByLabelText('Listing title'), 'A ladder');
+    await act(async () => fireEvent.press(screen.getByText('Camera')));
+    await act(async () => fireEvent.press(screen.getByTestId('CreateListing.button.submit')));
+    expect(api.createListing).toHaveBeenCalledWith(expect.objectContaining({
+      visibility: optOut ? ['neighborhood', 'town'] : ['close_friends', 'neighborhood', 'town'],
+      communityId: 'community-1', sharingConfirmed: true,
+    }));
+  });
+  it.each([['town'], ['private'], ['close_friends']])('preserves a restored %s draft with every audience available', async scope => {
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    api.getFriends.mockResolvedValue([{ id: 'friend-1' }]);
+    api.getCommunities.mockResolvedValue([{ id: 'community-1' }]);
+    readDraft.mockResolvedValueOnce({ title: 'Saved ladder', visibility: [scope] });
+    const Screen = require('../../src/screens/CreateListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByDisplayValue('Saved ladder');
+    await waitFor(() => expect(api.getFriends).toHaveBeenCalled());
+    fireEvent.press(screen.getByLabelText('Change who can see this item'));
+    for (const [value, label] of [['private', 'Only me'], ['close_friends', 'Friends'], ['neighborhood', 'Neighborhood'], ['town', 'Town']]) {
+      expect(screen.getByLabelText(label).props.accessibilityState.checked).toBe(value === scope);
+    }
+  });
+  it.each(['requestMatch', 'relistFrom'])('keeps %s listings private when Town is available', async flow => {
+    mockUser.city = 'Upton'; mockUser.state = 'MA';
+    api.getFriends.mockResolvedValue([{ id: 'friend-1' }]);
+    api.getCommunities.mockResolvedValue([{ id: 'community-1' }]);
+    const Screen = require('../../src/screens/CreateListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { [flow]: { id: 'source-1', title: 'Private ladder' } } }} />);
+    await screen.findByDisplayValue('Private ladder');
+    await waitFor(() => expect(api.getFriends).toHaveBeenCalled());
+    expect(screen.queryByText('Visible to Friends and Neighborhood and Town')).toBeNull();
+    expect(screen.getByText(flow === 'requestMatch' ? 'Send private offer' : 'Save to my inventory')).toBeTruthy();
   });
   it('reveals offline pricing without payout setup', async () => {
     const Screen = require('../../src/screens/CreateListingScreen').default;

@@ -13,6 +13,11 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // RN 0.81 Fabric skips the initial RefreshControl tint prop. Apply the
+    // native appearance before any controls are created (COLORS.spinner).
+    // https://github.com/facebook/react-native/issues/53987
+    UIRefreshControl.appearance().tintColor = UIColor(red: 36/255, green: 56/255, blue: 45/255, alpha: 1)
+
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

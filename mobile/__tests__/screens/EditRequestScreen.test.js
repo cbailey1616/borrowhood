@@ -42,6 +42,16 @@ describe('EditRequestScreen', () => {
     expect(api.updateRequest).toHaveBeenCalled();
   });
 
+  it('preserves an existing Town-only audience when saving another edit', async () => {
+    api.getCommunities.mockResolvedValueOnce([{ id: 'community-1' }]);
+    const Screen = require('../../src/screens/EditRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { request: { ...request, visibility: 'town' } } }} />);
+    await act(async () => {});
+    fireEvent.changeText(screen.getByDisplayValue('Need a Drill'), 'Updated request');
+    await act(async () => fireEvent.press(screen.getByText(/Save/i)));
+    expect(api.updateRequest).toHaveBeenCalledWith(request.id, expect.objectContaining({ visibility: ['town'] }));
+  });
+
   it('validates required title', async () => {
     const emptyRoute = { params: { request: { ...request, title: '' } } };
     const Screen = require('../../src/screens/EditRequestScreen').default;
