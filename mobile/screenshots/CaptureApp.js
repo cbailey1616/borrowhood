@@ -38,7 +38,9 @@ function RefreshCapture() {
     const mount = setTimeout(() => setGeneration(1), 4000);
     return () => { clearTimeout(remove); clearTimeout(mount); };
   }, []);
-  return <View style={{ flex: 1, backgroundColor: COLORS.background, paddingTop: 80 }}>
+  const ready = generation >= (requested === 'refresh-remount' ? 1 : 0);
+  return <View accessible testID={`RefreshCapture.${refreshing ? 'refreshing' : ready ? 'ready' : 'preparing'}`}
+    style={{ flex: 1, backgroundColor: COLORS.background, paddingTop: 80 }}>
     {generation >= 0 && <ScrollView key={generation} style={{ flex: 1 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
       <View style={{ height: 1800 }} />

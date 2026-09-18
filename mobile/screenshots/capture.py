@@ -89,13 +89,15 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
         for filename, route in device_screens:
             # A launch argument selects the screen without an iOS open-link dialog.
             print(f'Capturing {name}: {route}', flush=True)
-            launch_capture(udid, route)
-            time.sleep(15)
             if route.startswith('refresh-'):
-                subprocess.run(['maestro', '--device', udid, 'test',
+                subprocess.run(['maestro', '--device', udid, 'test', '-e', f'CAPTURE_SCREEN={route}',
                                 str(Path(__file__).with_name('refresh-gesture.yaml'))],
-                               check=True, timeout=180)
+                               check=True, timeout=180,
+                               env={**os.environ, 'MAESTRO_CLI_NO_ANALYTICS': '1'})
                 time.sleep(2)
+            else:
+                launch_capture(udid, route)
+                time.sleep(15)
             target = destination / f'{filename}.png'
             target.parent.mkdir(parents=True, exist_ok=True)
             run('io', udid, 'screenshot', '--type=png', str(target))
@@ -113,8 +115,6 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
                         # chrome. Preserve a readable diagnostic when artifact
                         # downloads are unavailable to the reviewer.
                         print('NATIVE_REFRESH_SCREENSHOT:' + base64.b64encode(target.read_bytes()).decode(), flush=True)
-                        if refresh_only:
-                            subprocess.run([sys.executable, str(Path(__file__).with_name('inspect-refresh.py')), udid, str(target)], timeout=120, check=False)
                         raise RuntimeError(f'{name}/{route}: native refresh spinner is not visibly green ({green} pixels)')
                     print(f'{name}/{route}: native green spinner verified ({green} pixels)', flush=True)
             digest = hashlib.sha256(target.read_bytes()).hexdigest()

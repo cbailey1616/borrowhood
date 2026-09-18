@@ -1,5 +1,17 @@
 appId: com.borrowhood.app
 ---
+- launchApp:
+    arguments:
+      BorrowhoodCaptureScreen: ${CAPTURE_SCREEN}
+- extendedWaitUntil:
+    visible:
+      id: RefreshCapture.ready
+    timeout: 15000
 - swipe:
-    direction: DOWN
-    duration: 800
+    start: "50%, 25%"
+    end: "50%, 85%"
+    duration: 1200
+- extendedWaitUntil:
+    visible:
+      id: RefreshCapture.refreshing
+    timeout: 10000
