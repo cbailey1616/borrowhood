@@ -21,10 +21,12 @@ review_screens += [('ui-review/home-exchanges', 'home-exchanges'), ('ui-review/i
 # Capture both immediate text focus and a later number-field focus. The latter
 # has no return key, so the keyboard accessory is its explicit dismissal control.
 review_screens = [('ui-review/keyboard', 'keyboard'), ('ui-review/keyboard-number', 'keyboard-number')] + [screen for screen in review_screens if screen[1] != 'keyboard']
-review_screens = [('ui-review/refresh-control', 'refresh-control'), ('ui-review/refresh-remount', 'refresh-remount')] + review_screens
+refresh_screens = [('ui-review/refresh-control', 'refresh-control'), ('ui-review/refresh-remount', 'refresh-remount')]
+review_screens = refresh_screens + review_screens
 manifest = []
 review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
 store_only = os.environ.get('BORROWHOOD_CAPTURE_STORE_ONLY') == 'true'
+refresh_only = os.environ.get('BORROWHOOD_CAPTURE_REFRESH_ONLY') == 'true'
 # Keep the software keyboard visible in the native keyboard-accessory capture.
 subprocess.run(['defaults', 'write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'false'], check=True)
 
@@ -55,7 +57,7 @@ def launch_capture(udid, route):
 for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752)), ('iphone-se', 'iPhone SE (3rd generation)', (750, 1334))]:
     if store_only and folder == 'iphone-se':
         continue
-    if review_only and folder == 'ipad-pro-13':
+    if (review_only or refresh_only) and folder == 'ipad-pro-13':
         continue
     matches = [(runtime, device) for runtime, group in devices.items() if '.iOS-' in runtime for device in group if device['name'] == name and device.get('isAvailable')]
     created_device = False
@@ -82,7 +84,7 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
         prepare_device(udid)
         run('install', udid, str(app))
         hashes = set()
-        device_screens = screens if store_only else review_screens if review_only or folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
+        device_screens = refresh_screens if refresh_only else screens if store_only else review_screens if review_only or folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
         for filename, route in device_screens:
             # A launch argument selects the screen without an iOS open-link dialog.
             print(f'Capturing {name}: {route}', flush=True)

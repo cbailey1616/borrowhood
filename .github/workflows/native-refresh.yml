@@ -1,0 +1,86 @@
+name: Native iOS refresh color
+
+on:
+  pull_request:
+    paths:
+      - mobile/ios/**
+      - mobile/src/utils/config.js
+      - mobile/screenshots/**
+      - .github/workflows/native-refresh.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: native-refresh-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: macos-15
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install dependencies and fixture assets
+        run: |
+          npm ci
+          python3 screenshots/prepare-assets.py
+      - name: Find a compatible simulator archive
+        id: native-cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 screenshots/reuse-native.py
+      - name: Restore simulator archive
+        id: restore-native
+        if: steps.native-cache.outputs.run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: borrowhood-screenshot-simulator
+          run-id: ${{ steps.native-cache.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/borrowhood-native-cache
+      - name: Update restored app with the current fixture bundle
+        if: steps.restore-native.outcome == 'success'
+        env:
+          BORROWHOOD_SCREENSHOTS: '1'
+        run: |
+          mkdir -p "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
+          ditto -x -k "$RUNNER_TEMP/borrowhood-native-cache/borrowhood-simulator-app.zip" "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
+          node node_modules/@expo/cli/build/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
+      - name: Build native app when native inputs changed
+        if: steps.restore-native.outcome != 'success'
+        env:
+          BORROWHOOD_SCREENSHOTS: '1'
+        run: |
+          pod install --project-directory=ios
+          export ENTRY_FILE="$PWD/screenshots/index.js"
+          xcodebuild -workspace ios/Borrowhood.xcworkspace -scheme Borrowhood -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/borrowhood-capture-build" CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" build > "$RUNNER_TEMP/borrowhood-native-build.log" 2>&1
+      - name: Verify native green wheels on both iPhone sizes
+        env:
+          BORROWHOOD_CAPTURE_REFRESH_ONLY: 'true'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/borrowhood-refresh-python"
+          "$RUNNER_TEMP/borrowhood-refresh-python/bin/pip" install Pillow
+          "$RUNNER_TEMP/borrowhood-refresh-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/native-refresh"
+      - name: Save native refresh evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrowhood-native-refresh
+          path: |
+            ${{ runner.temp }}/native-refresh
+            ${{ runner.temp }}/borrowhood-native-build.log
+          retention-days: 14
