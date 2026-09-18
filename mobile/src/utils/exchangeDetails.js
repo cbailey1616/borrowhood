@@ -27,6 +27,7 @@ export function exchangeDetailRows(transaction) {
     ...(!transfer ? [['Returned', formatDate(transaction.actualReturnAt)]] : []),
     ['Price', price],
     ['Condition at pickup', CONDITION_LABELS[transaction.conditionAtPickup]],
-    ...(!transfer ? [['Condition at return', CONDITION_LABELS[transaction.conditionAtReturn]]] : []),
+    ...(!transfer && transaction.conditionAtReturn !== transaction.conditionAtPickup
+      ? [['Condition at return', CONDITION_LABELS[transaction.conditionAtReturn]]] : []),
   ].filter(([, value]) => Boolean(value));
 }

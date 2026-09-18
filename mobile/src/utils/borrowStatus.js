@@ -20,10 +20,10 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, len
       ? { title: 'Exchange complete', detail: 'The handoff is complete. No return is needed.' }
       : { title: isBorrower ? `Return by ${due}` : `Waiting for ${neighbor} to return it`, detail: isBorrower
         ? `Arrange the return with ${neighbor}. Confirm return only after you’ve handed the item back.`
-        : `The return is due ${due}. Confirm return only once the item is back with you.` };
+        : `The return is due ${due}. Confirm return once the item is back in the same condition.` };
     case 'return_pending': return isBorrower
       ? { title: `Waiting for ${neighbor} to confirm`, detail: `Your return was reported. ${neighbor} needs to confirm they have the item back. Nothing else to do right now.` }
-      : { title: 'Your turn: confirm the return', detail: `${neighbor} reported the return. Confirm only once you have the item back.` };
+      : { title: 'Your turn: confirm the return', detail: `${neighbor} reported the return. Confirm once you have it back in the same condition.` };
     case 'returned':
       if (paymentStatus === 'authorized') return isBorrower
         ? { title: `Waiting for ${neighbor} to confirm`, detail: 'The return is recorded. The owner still needs to confirm receipt and release the deposit.' }

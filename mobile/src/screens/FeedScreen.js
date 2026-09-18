@@ -4,7 +4,7 @@ import { requestPresentation } from '../utils/requestPresentation';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
-import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useContext } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,7 +75,7 @@ const visibleOnHome = (item, userId) => {
   return !(userId && authorId === userId) && (item.type !== 'listing' || listingAvailability(item).available);
 };
 
-export default function FeedScreen({ navigation }) {
+export default function FeedScreen({ navigation, route }) {
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
@@ -96,6 +96,7 @@ export default function FeedScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeFilters, setActiveFilters] = useState([]);
+  const consumedBrowse = useRef(route?.params?.browseItems);
   const [visibilityFilters, setVisibilityFilters] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryFilters, setCategoryFilters] = useState([]);
@@ -116,8 +117,24 @@ export default function FeedScreen({ navigation }) {
   const feedRequest = useRef(0);
   const feedInFlight = useRef(false);
   const previousSearch = useRef(search);
+  const filtersInitialized = useRef(false);
   const feedSession = useRef(null);
   const impressions = useRef(new Set());
+  // Explicit browsing opens the default All feed even if Home last showed Wanted.
+  // Consume each request once; ordinary returns preserve feed order and position.
+  useLayoutEffect(() => {
+    const request = route?.params?.browseItems;
+    if (!request || request === consumedBrowse.current) return;
+    consumedBrowse.current = request;
+    feedRequest.current += 1;
+    setFeed([]); setRequestCards([]);
+    setActiveFilters([]);
+    setVisibilityFilters([]); setCategoryFilters([]);
+    previousSearch.current = ''; setSearch('');
+    setShowFiltersSheet(false); setActiveDropdown(null);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [route?.params?.browseItems]);
+
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     const events = viewableItems.filter(({ item, isViewable }) => {
       const key = `${item.type}:${item.id}`;
@@ -210,9 +227,10 @@ export default function FeedScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    if (!isInitialLoad) {
-      fetchFeed(1, false);
-    }
+    // The mount effect owns the first request. Later filter changes must fetch
+    // even if an older initial request is still pending or has been superseded.
+    if (!filtersInitialized.current) { filtersInitialized.current = true; return; }
+    fetchFeed(1, false);
   }, [activeFilters, visibilityFilters, categoryFilters]);
 
   useEffect(() => {

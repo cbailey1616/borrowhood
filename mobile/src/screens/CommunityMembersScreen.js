@@ -1,3 +1,4 @@
+import ActionSheet from '../components/ActionSheet';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -20,6 +21,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
   const communityId = route?.params?.id || route?.params?.communityId;
   const { user } = useAuth();
   const { showToast, showError } = useError();
+  const [actionMember, setActionMember] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(route?.params?.role || 'member');
@@ -45,7 +47,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
   useEffect(() => {
-    navigation.setOptions?.({ title: isOrganizer ? 'Manage Members' : 'Neighbors' });
+    navigation.setOptions?.({ title: 'Neighbors' });
   }, [isOrganizer, navigation]);
 
   const handlePromote = (member) => {
@@ -111,7 +113,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
         style={styles.avatar}
       />
       <View style={styles.memberInfo}>
-        <View style={styles.nameRow}>
+        <View style={{ gap: 4, alignItems: 'flex-start' }}>
           <Text style={styles.memberName}>{item.firstName} {item.lastName}</Text>
           {item.role === 'organizer' && (
             <View style={styles.adminBadge}>
@@ -125,33 +127,10 @@ export default function CommunityMembersScreen({ route, navigation }) {
         )}
       </View>
       {isOrganizer && item.role !== 'organizer' && item.id !== user?.id && (
-        <View style={styles.adminActions}>
-          <HapticPressable
-            haptic="medium"
-            style={styles.promoteButton}
-            accessibilityLabel={`Make ${item.firstName} a moderator`}
-            onPress={event => { event?.stopPropagation?.(); handlePromote(item); }}
-          >
-            <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.promoteButtonText}>Make moderator</Text>
-          </HapticPressable>
-          <HapticPressable
-            haptic="medium"
-            style={styles.removeButton}
-            accessibilityLabel={`Remove ${item.firstName}`}
-            onPress={event => { event?.stopPropagation?.(); handleRemove(item); }}
-            disabled={removingMemberId === item.id}
-          >
-            {removingMemberId === item.id ? (
-              <ActivityIndicator size="small" color={COLORS.danger} />
-            ) : (
-              <>
-                <Ionicons name="person-remove-outline" size={17} color={COLORS.danger} />
-                <Text style={styles.removeButtonText}>Remove</Text>
-              </>
-            )}
-          </HapticPressable>
-        </View>
+        <HapticPressable accessibilityRole="button" accessibilityLabel={`Manage ${item.firstName}`}
+          onPress={event => { event?.stopPropagation?.(); setActionMember(item); }} style={{ padding: 12 }} disabled={removingMemberId === item.id}>
+          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.primary} />
+        </HapticPressable>
       )}
     </HapticPressable>
   );
@@ -190,6 +169,8 @@ export default function CommunityMembersScreen({ route, navigation }) {
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{members.length}</Text>
             </View>
+            <HapticPressable accessibilityLabel="Invite neighbors" onPress={() => navigation.navigate('InviteMembers', { communityId })}
+              style={{ marginLeft: 'auto', backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 12 }}><Text style={{ color: COLORS.surface }}>+ Invite</Text></HapticPressable>
           </View>
         }
         ListEmptyComponent={
@@ -198,6 +179,11 @@ export default function CommunityMembersScreen({ route, navigation }) {
           </View>
         }
       />
+      <ActionSheet isVisible={!!actionMember} onClose={() => setActionMember(null)} title={actionMember?.firstName}
+        actions={actionMember ? [
+          { label: 'Make moderator', onPress: () => handlePromote(actionMember) },
+          { label: 'Remove from neighborhood', destructive: true, onPress: () => handleRemove(actionMember) },
+        ] : []} />
     </View>
   );
 }

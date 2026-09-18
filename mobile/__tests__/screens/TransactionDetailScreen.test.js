@@ -121,18 +121,15 @@ describe('TransactionDetailScreen', () => {
     expect(api.getTransaction).toHaveBeenCalledTimes(2);
   });
 
-  it('confirms the return only after the owner explicitly confirms in the sheet', async () => {
-    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'picked_up', isLender: true, isBorrower: false });
+  it.each([true, false])('confirms a normal return in one tap (owner=%s)', async isLender => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'picked_up', isLender, isBorrower: !isLender, conditionAtPickup: 'like_new' });
     api.confirmRentalReturn.mockResolvedValue({});
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     fireEvent.press(await screen.findByTestId('Transaction.button.confirmReturn'));
-    expect(api.confirmRentalReturn).not.toHaveBeenCalled();
-    expect(screen.getAllByLabelText('Close confirmation')).toHaveLength(1);
-    expect(screen.queryByText('Cancel')).toBeNull();
-    fireEvent.press(screen.getByTestId('Transaction.confirmReturn'));
+    expect(screen.queryByLabelText('Close confirmation')).toBeNull();
     await waitFor(() => expect(api.confirmRentalReturn).toHaveBeenCalledTimes(1));
-    expect(api.confirmRentalReturn).toHaveBeenCalledWith('txn-1', 'good');
+    expect(api.confirmRentalReturn).toHaveBeenCalledWith('txn-1', 'like_new');
   });
 
   it('lets the owner message about a return without completing the exchange', async () => {
@@ -140,11 +137,12 @@ describe('TransactionDetailScreen', () => {
       borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S' } });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByTestId('Transaction.button.confirmReturn'));
+    fireEvent.press(await screen.findByTestId('Transaction.button.reportReturnIssue'));
+    expect(screen.getByText('Something different?')).toBeTruthy();
     fireEvent.press(screen.getByTestId('Transaction.messageAboutReturn'));
     await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: 'user-3', listingId: 'l-1' })));
     expect(api.confirmRentalReturn).not.toHaveBeenCalled();
-    expect(screen.queryByText('Everything back?')).toBeNull();
+    expect(screen.queryByText('Something different?')).toBeNull();
   });
 
   it('fetches transaction via api.getTransaction(id)', async () => {
@@ -318,16 +316,16 @@ it.each(['lend','giveaway','sell'])('makes endorsing the next action for a compl
   await screen.findByText('Endorsement sent');
   expect(api.endorseTransaction).toHaveBeenCalledWith('txn-1',true);
   expect(screen.queryByLabelText('Send endorsement')).toBeNull();
-  expect(screen.getByText('All done')).toBeTruthy();
-  expect(screen.getByText('Nothing else to do.')).toBeTruthy();
+  expect(screen.queryByText('All done')).toBeNull();
+  expect(screen.queryByText('Nothing else to do.')).toBeNull();
   expect(screen.queryByText('What happens next')).toBeNull();
   fireEvent.press(screen.getByLabelText('Message Alice privately'));
   await waitFor(()=>expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'user-2',listingId:'l-1'})));
-  fireEvent.press(screen.getByLabelText('Back to Home'));
-  expect(mockNavigation.navigate).toHaveBeenLastCalledWith('Main',{screen:'Feed'});
+  expect(screen.queryByLabelText('Back to Home')).toBeNull();
   screen.unmount();
   const reopened=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
-  await reopened.findByText('All done');
+  await reopened.findByText('Endorsement sent');
+  expect(reopened.queryByText('All done')).toBeNull();
   expect(reopened.queryByText('What happens next')).toBeNull();
 });
 
@@ -344,8 +342,8 @@ it('shows completion only after endorsement succeeds and retains it through a fa
   expect(screen.getByText('What happens next')).toBeTruthy();
   fireEvent.press(screen.getByLabelText('Send endorsement'));
   await screen.findByText('Could not refresh this exchange.');
-  expect(screen.getByText('All done')).toBeTruthy();
-  expect(screen.getByText('Nothing else to do.')).toBeTruthy();
+  expect(screen.queryByText('All done')).toBeNull();
+  expect(screen.queryByText('Nothing else to do.')).toBeNull();
   expect(screen.queryByText('What happens next')).toBeNull();
   expect(screen.queryByLabelText('Send endorsement')).toBeNull();
 });

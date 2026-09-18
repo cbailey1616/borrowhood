@@ -454,8 +454,14 @@ const getMessageCapabilities = () => get('/messages/capabilities');
 const sendMessage = (data) =>
   post('/messages', data);
 
-const markConversationRead = (id) =>
-  post(`/messages/conversations/${id}/read`);
+const markConversationRead = async (id) => {
+  if (id.startsWith('community:')) {
+    const communityId = id.slice(10);
+    const snapshot = await get(`/communities/${communityId}/chat`);
+    return post(`/communities/${communityId}/chat/read`, { sequence: snapshot.readSequence });
+  }
+  return post(`/messages/conversations/${id}/read`);
+};
 
 const deleteMessage = (id) =>
   del(`/messages/${id}`);
@@ -830,6 +836,11 @@ const getReferralStatus = () => get('/referrals/status');
 const claimReferralReward = () => post('/referrals/claim');
 
 export default {
+  getCommunityChat: (id, params) => get(`/communities/${id}/chat`, params),
+  sendCommunityMessage: (id, data) => post(`/communities/${id}/chat`, data),
+  markCommunityChatRead: (id, sequence) => post(`/communities/${id}/chat/read`, { sequence }),
+  setCommunityChatMuted: (id, muted) => patch(`/communities/${id}/chat/preferences`, { muted }),
+  deleteCommunityMessage: (id, messageId) => del(`/communities/${id}/chat/${messageId}`),
   getReturnHelp: (admin = false, page = 1, transactionId) => get(`/return-help${admin ? '/admin' : ''}?page=${page}${transactionId ? '&transactionId='+encodeURIComponent(transactionId) : ''}`),
   reportNonReturn: (id, detail) => post(`/return-help/exchange/${id}/report`, { detail }),
   extendReturn: (id, date) => post(`/return-help/exchange/${id}/extend`, { date }),

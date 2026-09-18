@@ -504,3 +504,11 @@ describe('InboxScreen', () => {
     expect(mockParentNavigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ conversationId: 'conv-1' }));
   });
 });
+
+it('opens the same neighborhood channel from Messages', async () => {
+  api.getConversations.mockResolvedValue([{ id:'community:hood',kind:'community',communityId:'hood',name:'Maple Grove',unreadCount:1,lastMessage:'Hello neighbors' }]);
+  const Screen = require('../../src/screens/InboxScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{params:{tab:'messages'}}} />);
+  fireEvent.press(await screen.findByText('Maple Grove'));
+  expect(mockParentNavigate).toHaveBeenCalledWith('MyCommunity',{communityId:'hood'});
+});

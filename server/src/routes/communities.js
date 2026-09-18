@@ -1,9 +1,11 @@
+import communityChat from './communityChat.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified, requireOrganizer } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 
 const router = Router();
+router.use('/:id/chat', communityChat);
 
 // ============================================
 // GET /api/communities
@@ -32,6 +34,7 @@ router.get('/', authenticate, async (req, res) => {
         id: c.id,
         name: c.name,
         slug: c.slug,
+        communityType: c.community_type,
         description: c.description,
         city: c.city,
         state: c.state,

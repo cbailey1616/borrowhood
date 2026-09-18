@@ -36,7 +36,9 @@ it('lets a neighborhood moderator remove a regular member', async () => {
   ]);
   const Screen = require('../../src/screens/CommunityMembersScreen').default;
   const screen = render(<Screen route={{ params: { id: 'hood-1', role: 'organizer' } }} navigation={navigation} />);
-  fireEvent.press(await screen.findByLabelText('Remove Sam'));
+  fireEvent.press(await screen.findByLabelText('Manage Sam'));
+  const Sheet = require('../../src/components/ActionSheet').default;
+  act(() => screen.UNSAFE_getByType(Sheet).props.actions.find(action => action.label === 'Remove from neighborhood').onPress());
   expect(mockAlert).toHaveBeenCalledWith('Remove Member', 'Remove Sam from this neighborhood?', expect.any(Array));
   const remove = mockAlert.mock.calls[0][2].find(button => button.text === 'Remove');
   await act(async () => remove.onPress());

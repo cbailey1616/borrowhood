@@ -1,69 +1,60 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import api from '../../src/services/api';
-const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
-jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
-jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
-beforeEach(() => { jest.clearAllMocks(); api.getCommunities.mockResolvedValue([]); api.getCommunityMembers.mockResolvedValue([]); });
-describe('MyCommunityScreen', () => {
-  it.each([null, 'https://example.com/cover.jpg'])('gives moderators a direct cover editor for %s', async bannerUrl => {
-    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer', bannerUrl }]);
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const screen = render(<Screen navigation={mockNavigation} />);
-    fireEvent.press(await screen.findByRole('button', { name: bannerUrl ? 'Change cover photo' : 'Add cover photo' }));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunitySettings', { id: 'comm-1', editCover: true });
-  });
-
-  it('does not offer cover editing to regular members', async () => {
-    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'member' }]);
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const screen = render(<Screen navigation={mockNavigation} />);
-    await screen.findByText('Test Hood');
-    expect(screen.queryByLabelText('Add cover photo')).toBeNull();
-    expect(screen.queryByLabelText('Change cover photo')).toBeNull();
-  });
-
-  it('hides legacy pinned announcements and uses member display names', async () => {
-    api.getCommunities.mockResolvedValue([{ id: 'c', name: 'Our neighborhood', announcement: 'Old pinned note' }]);
-    api.getCommunityMembers.mockResolvedValue([{ id: 'u', displayName: 'Friendly Neighbor', firstName: 'LEGAL NAME', role: 'organizer' }]);
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const { findByText, queryByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Friendly Neighbor');
-    expect(queryByText('Old pinned note')).toBeNull();
-    expect(queryByText('Pinned')).toBeNull();
-    expect(queryByText('Neighborhood organizer')).toBeTruthy();
-  });
-  it('fetches communities on mount', async () => {
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    render(<Screen navigation={mockNavigation} />);
-    await waitFor(() => { expect(api.getCommunities).toHaveBeenCalledWith(expect.objectContaining({ member: 'true' })); });
-  });
-  it('shows empty state when no community', async () => {
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText(/No Neighborhood/i);
-  });
-  it('displays community info', async () => {
-    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', description: 'A neighborhood', memberCount: 25, listingCount: 10, imageUrl: null }]);
-    api.getCommunityMembers.mockResolvedValue([{ id: 'user-1', firstName: 'Test', lastName: 'User', profilePhotoUrl: null, role: 'member' }]);
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Test Hood');
-  });
-  it('shows invite neighbors button', async () => {
-    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', description: 'A neighborhood', memberCount: 25, listingCount: 10, imageUrl: null }]);
-    api.getCommunityMembers.mockResolvedValue([]);
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Invite Neighbors');
-  });
-  it('opens member management directly for neighborhood moderators', async () => {
-    api.getCommunities.mockResolvedValue([{ id: 'comm-1', name: 'Test Hood', role: 'organizer' }]);
-    api.getCommunityMembers.mockResolvedValue([{ id: 'user-1', firstName: 'Test', role: 'organizer' }]);
-    const Screen = require('../../src/screens/MyCommunityScreen').default;
-    const { findByText } = render(<Screen navigation={mockNavigation} />);
-    fireEvent.press(await findByText('Manage'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', { id: 'comm-1', role: 'organizer' });
-  });
+import Screen from '../../src/screens/MyCommunityScreen';
+const navigation = { navigate: jest.fn() };
+jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
+jest.mock('../../src/components/ComposerKeyboardView', () => ({children}) => <>{children}</>);
+const community = { id:'hood', name:'Maple Grove', role:'organizer', memberCount:4 };
+beforeEach(()=>{
+ jest.clearAllMocks();useFocusEffect.mockImplementation(cb=>React.useEffect(cb,[cb]));
+ api.getCommunities.mockResolvedValue([community]);
+ api.getCommunityChat.mockResolvedValue({messages:[],readSequence:'0',muted:false,role:'organizer'});
+});
+it('opens chat directly and keeps listing/dashboard clutter out',async()=>{
+ const screen=render(<Screen navigation={navigation}/>);
+ await screen.findByText('Say hello to your neighbors.');
+ expect(api.getCommunityChat).toHaveBeenCalledWith('hood',{});
+ expect(screen.queryByText('Sharing')).toBeNull();expect(screen.queryByText('Items')).toBeNull();
+ fireEvent.press(screen.getByLabelText('View neighbors'));
+ expect(navigation.navigate).toHaveBeenCalledWith('CommunityMembers',{id:'hood',role:'organizer'});
+ fireEvent.press(screen.getByLabelText('Invite neighbors'));
+ expect(navigation.navigate).toHaveBeenCalledWith('InviteMembers',{communityId:'hood'});
+});
+it('honors the Inbox channel instead of opening the first neighborhood',async()=>{
+ api.getCommunities.mockResolvedValue([community,{id:'second',name:'Oak Lane',memberCount:8}]);
+ const screen=render(<Screen route={{params:{communityId:'second'}}} navigation={navigation}/>);
+ await screen.findByText('Say hello to your neighbors.');
+ expect(api.getCommunityChat).toHaveBeenCalledWith('second',{});
+ expect(api.getCommunityChat).not.toHaveBeenCalledWith('hood',{});
+});
+it('clears the previous channel on a neighborhood switch',async()=>{
+ api.getCommunities.mockResolvedValue([community,{id:'second',name:'Oak Lane'}]);
+ const screen=render(<Screen navigation={navigation}/>);await screen.findByText('Say hello to your neighbors.');
+ fireEvent.press(screen.getByText('Oak Lane'));
+ await waitFor(()=>expect(api.getCommunityChat).toHaveBeenCalledWith('second',{}));
+});
+it('offers retry for load failure and joining for an empty list',async()=>{
+ api.getCommunities.mockRejectedValueOnce(new Error('offline')).mockResolvedValue([]);
+ const screen=render(<Screen navigation={navigation}/>);fireEvent.press(await screen.findByText('Try again'));
+ fireEvent.press(await screen.findByText('Find your neighborhood'));
+ expect(navigation.navigate).toHaveBeenCalledWith('JoinCommunity');
+});
+it('keeps text and retry key after send failure and clears on success',async()=>{
+ api.sendCommunityMessage.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue({id:'sent'});
+ const screen=render(<Screen navigation={navigation}/>);await screen.findByText('Say hello to your neighbors.');
+ fireEvent.changeText(screen.getByLabelText('Message'),'Hello neighbors');
+ fireEvent.press(screen.getByLabelText('Send message'));await screen.findByText('Offline');
+ expect(screen.getByLabelText('Message').props.value).toBe('Hello neighbors');
+ fireEvent.press(screen.getByLabelText('Send message'));
+ await waitFor(()=>expect(screen.getByLabelText('Message').props.value).toBe(''));
+ expect(api.sendCommunityMessage.mock.calls[0][1].clientRequestId).toBe(api.sendCommunityMessage.mock.calls[1][1].clientRequestId);
+});
+it('opens profiles and threaded replies from a message',async()=>{
+ api.getCommunityChat.mockResolvedValue({messages:[{id:'m',sequence:'1',content:'Hello',sender:{id:'neighbor',name:'Sam'},createdAt:'2026-09-18',replyCount:1}],readSequence:'1',role:'member'});
+ const screen=render(<Screen navigation={navigation}/>);await screen.findByText('Hello');
+ fireEvent.press(screen.getByLabelText("View Sam's profile"));expect(navigation.navigate).toHaveBeenCalledWith('UserProfile',{id:'neighbor'});
+ fireEvent.press(screen.getByLabelText('Reply to Sam'));
+ await waitFor(()=>expect(api.getCommunityChat).toHaveBeenCalledWith('hood',{parentId:'m'}));
 });

@@ -624,3 +624,44 @@ it('keeps loaded posts and offers retry when loading the next page fails', async
   await screen.findByText('Two items');
   expect(screen.getByText('One item')).toBeTruthy();
 });
+
+it('Browse items opens the default All feed on first mount', async () => {
+  const Screen = require('../../src/screens/FeedScreen').default;
+  render(<Screen navigation={mockNavigation} route={{ params: { browseItems: 'first' } }} />);
+  await waitFor(() => expect(api.getFeed).toHaveBeenCalled());
+  expect(api.getFeed.mock.calls.every(([params]) => params.type === undefined)).toBe(true);
+});
+
+it('a new Browse items request clears Wanted and search, without resetting ordinary returns', async () => {
+  api.getFeed.mockImplementation(async ({type}) => ({ items: [{ id:'item',type:type==='requests'?'request':'listing',title:type==='requests'?'Need a ladder':'Ladder',user:{id:'neighbor',firstName:'Sam'} }],hasMore:false }));
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('Ladder');
+  fireEvent.press(screen.getByTestId('Feed.type.requests'));
+  await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'requests'})));
+  fireEvent.changeText(screen.getByTestId('Feed.searchBar'),'saw');
+  const route={params:{browseItems:'from-my-requests'}};
+  screen.rerender(<Screen navigation={mockNavigation} route={route}/>);
+  await waitFor(()=>expect(api.getFeed.mock.calls.at(-1)[0]).not.toHaveProperty('type'));
+  expect(api.getFeed.mock.calls.at(-1)[0]).not.toHaveProperty('search');
+  expect(screen.getByTestId('Feed.type.all').props.accessibilityState.selected).toBe(true);
+  fireEvent.press(screen.getByTestId('Feed.type.giveaway'));
+  await waitFor(()=>expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({type:'giveaway'})));
+  screen.rerender(<Screen navigation={mockNavigation} route={route}/>);
+  expect(screen.getByTestId('Feed.type.giveaway').props.accessibilityState.selected).toBe(true);
+  screen.rerender(<Screen navigation={mockNavigation} route={{params:{browseItems:'another-visit'}}}/>);
+  await waitFor(()=>expect(api.getFeed.mock.calls.at(-1)[0]).not.toHaveProperty('type'));
+});
+
+it('Browse items supersedes a slow initial feed without leaving it loading', async () => {
+  let finishOld;
+  api.getFeed.mockImplementationOnce(() => new Promise(resolve => { finishOld=resolve; }))
+    .mockResolvedValue({items:[{id:'fresh',type:'listing',title:'Available drill',user:{firstName:'Sam'}}],hasMore:false});
+  const Screen=require('../../src/screens/FeedScreen').default;
+  const screen=render(<Screen navigation={mockNavigation}/>);
+  screen.rerender(<Screen navigation={mockNavigation} route={{params:{browseItems:'new-intent'}}}/>);
+  await screen.findByText('Available drill');
+  await act(async()=>finishOld({items:[{id:'old',type:'request',title:'Old wanted post',user:{firstName:'Sam'}}],hasMore:false}));
+  expect(screen.queryByText('Old wanted post')).toBeNull();
+  expect(screen.getByText('Available drill')).toBeTruthy();
+});

@@ -38,6 +38,7 @@ beforeAll(async () => {
     CREATE TABLE community_library_items(donated_by TEXT);
     CREATE TABLE rto_contracts(borrower_id TEXT, lender_id TEXT);
     CREATE TABLE conversations(id TEXT, listing_id TEXT, user1_id TEXT, user2_id TEXT);
+    CREATE TABLE community_chat_messages(sender_id TEXT, content TEXT, deleted_at TIMESTAMPTZ);
     CREATE TABLE messages(id TEXT, conversation_id TEXT, sender_id TEXT);
     CREATE TABLE message_reactions(user_id TEXT, message_id TEXT);
     CREATE TABLE friendships(user_id TEXT, friend_id TEXT);
