@@ -18,11 +18,11 @@ it('explains Town borrowing verification separately from other post types', () =
   }
 });
 
-it('adds an audience without replacing existing selections', () => {
+it('selecting Town includes the available Friends and Neighborhood audiences', () => {
   const { getByLabelText } = render(<SharingPicker value={['close_friends']} onChange={onChange} verified />);
   fireEvent.press(getByLabelText('Change who can see this item'));
   fireEvent.press(getByLabelText('Town'));
-  expect(onChange).toHaveBeenCalledWith({ visibility: ['close_friends', 'town'], circleId: null });
+  expect(onChange).toHaveBeenCalledWith({ visibility: ['close_friends', 'neighborhood', 'town'], circleId: null });
 });
 
 it('returns to private when the final audience is unchecked', () => {
@@ -67,7 +67,55 @@ it('lets unverified users select Town without opening verification', () => {
   fireEvent.press(getByLabelText('Change who can see this item'));
   fireEvent.press(getByLabelText('Town'));
   expect(onVerify).not.toHaveBeenCalled();
+  expect(onChange).toHaveBeenCalledWith({ visibility: ['close_friends', 'neighborhood', 'town'], circleId: null });
+});
+
+it('does not add unavailable groups when Town is selected', () => {
+  const screen = render(<SharingPicker onChange={onChange} friendsAvailable={false} neighborhoodAvailable={false} />);
+  fireEvent.press(screen.getByLabelText('Change who can see this item'));
+  fireEvent.press(screen.getByLabelText('Town'));
   expect(onChange).toHaveBeenCalledWith({ visibility: ['town'], circleId: null });
+});
+
+it.each([false, true])('keeps explicit opt-outs when Town is toggled and the picker is reopened (request=%s)', request => {
+  function Form() {
+    const [value, setValue] = React.useState(['close_friends', 'neighborhood', 'town']);
+    return <SharingPicker value={value} request={request} onChange={next => setValue(next.visibility)} />;
+  }
+  const screen = render(<Form />);
+  const trigger = request ? 'Change who can see this post' : 'Change who can see this item';
+  fireEvent.press(screen.getByLabelText(trigger));
+  fireEvent.press(screen.getByLabelText('Friends'));
+  fireEvent.press(screen.getByLabelText('Town'));
+  fireEvent.press(screen.getByLabelText('Town'));
+  fireEvent.press(screen.getByLabelText(trigger));
+  fireEvent.press(screen.getByLabelText(trigger));
+  expect(screen.getByLabelText('Friends').props.accessibilityState.checked).toBe(false);
+  expect(screen.getByLabelText('Neighborhood').props.accessibilityState.checked).toBe(true);
+  expect(screen.getByLabelText('Town').props.accessibilityState.checked).toBe(true);
+  fireEvent.press(screen.getByLabelText('Friends'));
+  expect(screen.getByLabelText('Friends').props.accessibilityState.checked).toBe(true);
+});
+
+it('leaves a restored Town-only choice unchanged, including when Town is toggled', () => {
+  function Form() {
+    const [value, setValue] = React.useState(['town']);
+    return <SharingPicker value={value} onChange={next => { onChange(next); setValue(next.visibility); }} />;
+  }
+  const screen = render(<Form />);
+  expect(onChange).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByLabelText('Change who can see this item'));
+  fireEvent.press(screen.getByLabelText('Town'));
+  fireEvent.press(screen.getByLabelText('Town'));
+  expect(onChange).toHaveBeenLastCalledWith({ visibility: ['town'], circleId: null });
+});
+
+it('allows unchecking an unavailable group without opening its join flow', () => {
+  const screen = render(<SharingPicker value={['neighborhood', 'town']} neighborhoodAvailable={false} onChange={onChange} />);
+  fireEvent.press(screen.getByLabelText('Change who can see this item'));
+  fireEvent.press(screen.getByLabelText('Neighborhood'));
+  expect(onChange).toHaveBeenCalledWith({ visibility: ['town'], circleId: null });
+  expect(screen.queryByText('Find your neighborhood')).toBeNull();
 });
 
 it('offers the same friends, neighborhood, and town choices used elsewhere', () => {

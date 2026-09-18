@@ -1,5 +1,6 @@
 """Capture the actual native screens; never resize a phone layout into an iPad."""
 import hashlib
+import base64
 import json
 import os
 from pathlib import Path
@@ -21,9 +22,12 @@ review_screens += [('ui-review/home-exchanges', 'home-exchanges'), ('ui-review/i
 # Capture both immediate text focus and a later number-field focus. The latter
 # has no return key, so the keyboard accessory is its explicit dismissal control.
 review_screens = [('ui-review/keyboard', 'keyboard'), ('ui-review/keyboard-number', 'keyboard-number')] + [screen for screen in review_screens if screen[1] != 'keyboard']
+refresh_screens = [('ui-review/refresh-control', 'refresh-control'), ('ui-review/refresh-remount', 'refresh-remount')]
+review_screens = refresh_screens + review_screens
 manifest = []
 review_only = os.environ.get('BORROWHOOD_CAPTURE_REVIEW_ONLY') == 'true'
 store_only = os.environ.get('BORROWHOOD_CAPTURE_STORE_ONLY') == 'true'
+refresh_only = os.environ.get('BORROWHOOD_CAPTURE_REFRESH_ONLY') == 'true'
 # Keep the software keyboard visible in the native keyboard-accessory capture.
 subprocess.run(['defaults', 'write', 'com.apple.iphonesimulator', 'ConnectHardwareKeyboard', '-bool', 'false'], check=True)
 
@@ -54,7 +58,7 @@ def launch_capture(udid, route):
 for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778)), ('ipad-pro-13', 'iPad Pro 13-inch (M4)', (2064, 2752)), ('iphone-se', 'iPhone SE (3rd generation)', (750, 1334))]:
     if store_only and folder == 'iphone-se':
         continue
-    if review_only and folder == 'ipad-pro-13':
+    if (review_only or refresh_only) and folder == 'ipad-pro-13':
         continue
     matches = [(runtime, device) for runtime, group in devices.items() if '.iOS-' in runtime for device in group if device['name'] == name and device.get('isAvailable')]
     created_device = False
@@ -81,12 +85,19 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
         prepare_device(udid)
         run('install', udid, str(app))
         hashes = set()
-        device_screens = screens if store_only else review_screens if review_only or folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
+        device_screens = refresh_screens if refresh_only else screens if store_only else review_screens if review_only or folder == 'iphone-se' else screens + (review_screens if folder == 'iphone-pro-max' else [])
         for filename, route in device_screens:
             # A launch argument selects the screen without an iOS open-link dialog.
             print(f'Capturing {name}: {route}', flush=True)
-            launch_capture(udid, route)
-            time.sleep(15)
+            if route.startswith('refresh-'):
+                subprocess.run(['maestro', '--device', udid, 'test', '-e', f'CAPTURE_SCREEN={route}',
+                                str(Path(__file__).with_name('refresh-gesture.yaml'))],
+                               check=True, timeout=300,
+                               env={**os.environ, 'MAESTRO_CLI_NO_ANALYTICS': '1'})
+                time.sleep(2)
+            else:
+                launch_capture(udid, route)
+                time.sleep(15)
             target = destination / f'{filename}.png'
             target.parent.mkdir(parents=True, exist_ok=True)
             run('io', udid, 'screenshot', '--type=png', str(target))
@@ -94,8 +105,20 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
                 if original.size != size:
                     raise RuntimeError(f'{name}: expected {size}, got {original.size}')
                 original.convert('RGB').save(target, optimize=True)
+                if route.startswith('refresh-'):
+                    # Only the real native spinner can be green on this empty
+                    # fixture. Gray/default/hidden controls must fail the check.
+                    wheel = original.convert('RGB').crop((size[0] * 0.35, 0, size[0] * 0.65, size[1] * 0.4))
+                    green = sum(1 for r, g, b in wheel.getdata() if g < 170 and g - r >= 10 and g - b >= 7)
+                    if green < 30:
+                        # This fixture contains only the native wheel and system
+                        # chrome. Preserve a readable diagnostic when artifact
+                        # downloads are unavailable to the reviewer.
+                        print('NATIVE_REFRESH_SCREENSHOT:' + base64.b64encode(target.read_bytes()).decode(), flush=True)
+                        raise RuntimeError(f'{name}/{route}: native refresh spinner is not visibly green ({green} pixels)')
+                    print(f'{name}/{route}: native green spinner verified ({green} pixels)', flush=True)
             digest = hashlib.sha256(target.read_bytes()).hexdigest()
-            if digest in hashes:
+            if digest in hashes and not route.startswith('refresh-'):
                 raise RuntimeError(f'Duplicate screen on {name}; navigation needs inspection')
             hashes.add(digest)
             manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest})

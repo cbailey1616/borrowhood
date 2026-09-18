@@ -1,10 +1,12 @@
-name: App Store screenshots
+name: Native iOS refresh color
 
 on:
   pull_request:
     paths:
+      - mobile/ios/**
+      - mobile/src/utils/config.js
       - mobile/screenshots/**
-      - .github/workflows/app-store-screenshots.yml
+      - .github/workflows/native-refresh.yml
   workflow_dispatch:
 
 permissions:
@@ -12,11 +14,11 @@ permissions:
   actions: read
 
 concurrency:
-  group: screenshots-${{ github.ref }}
+  group: native-refresh-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  capture:
+  refresh:
     runs-on: macos-15
     timeout-minutes: 50
     defaults:
@@ -31,10 +33,10 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: mobile/package-lock.json
-      - name: Install app dependencies
-        run: npm ci
-      - name: Prepare isolated mock photos
-        run: python3 screenshots/prepare-assets.py
+      - name: Install dependencies and fixture assets
+        run: |
+          npm ci
+          python3 screenshots/prepare-assets.py
       - name: Find a compatible simulator archive
         id: native-cache
         env:
@@ -50,7 +52,7 @@ jobs:
           run-id: ${{ steps.native-cache.outputs.run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/borrowhood-native-cache
-      - name: Update restored app with the current screenshot bundle
+      - name: Update restored app with the current fixture bundle
         if: steps.restore-native.outcome == 'success'
         env:
           BORROWHOOD_SCREENSHOTS: '1'
@@ -58,56 +60,43 @@ jobs:
           mkdir -p "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
           ditto -x -k "$RUNNER_TEMP/borrowhood-native-cache/borrowhood-simulator-app.zip" "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
           node node_modules/@expo/cli/build/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
-      - name: Prepare native dependencies
-        if: steps.restore-native.outcome != 'success'
-        run: pod install --project-directory=ios
-      - name: Build actual native app with screenshot fixtures
+      - name: Build native app when native inputs changed
         if: steps.restore-native.outcome != 'success'
         env:
           BORROWHOOD_SCREENSHOTS: '1'
         run: |
+          pod install --project-directory=ios
           export ENTRY_FILE="$PWD/screenshots/index.js"
           xcodebuild -workspace ios/Borrowhood.xcworkspace -scheme Borrowhood -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/borrowhood-capture-build" CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" build > "$RUNNER_TEMP/borrowhood-native-build.log" 2>&1
-      - name: Archive the current simulator app
+      - name: Archive the fresh simulator app
+        if: steps.restore-native.outcome != 'success'
         run: ditto -c -k --keepParent "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/borrowhood-simulator-app.zip"
-      - name: Preserve simulator app for capture diagnostics
+      - name: Preserve the compiled app for matching native inputs
+        if: steps.restore-native.outcome != 'success'
         uses: actions/upload-artifact@v4
         with:
           name: borrowhood-screenshot-simulator
           path: ${{ runner.temp }}/borrowhood-simulator-app.zip
           retention-days: 3
-      - name: Capture App Store screens on iPhone and iPad
-        env:
-          BORROWHOOD_CAPTURE_STORE_ONLY: 'true'
-        run: |
-          python3 -m venv "$RUNNER_TEMP/borrowhood-capture-python"
-          "$RUNNER_TEMP/borrowhood-capture-python/bin/pip" install Pillow
-          "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/app-store-screenshots"
-          cp screenshots/README.md "$RUNNER_TEMP/app-store-screenshots/README.md"
-          cp screenshots/assets.json "$RUNNER_TEMP/app-store-screenshots/photo-sources.json"
-      - name: Save upload-ready App Store screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: borrowhood-app-store-screenshots
-          path: ${{ runner.temp }}/app-store-screenshots
-          retention-days: 14
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - name: Install pinned native gesture driver
         run: bash screenshots/install-maestro.sh
-      - name: Capture native UI review screens
+      - name: Verify native green wheels on both iPhone sizes
         env:
-          BORROWHOOD_CAPTURE_REVIEW_ONLY: 'true'
+          BORROWHOOD_CAPTURE_REFRESH_ONLY: 'true'
         run: |
-          "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/ui-review"
-      - name: Save screenshots and build log
+          python3 -m venv "$RUNNER_TEMP/borrowhood-refresh-python"
+          "$RUNNER_TEMP/borrowhood-refresh-python/bin/pip" install Pillow
+          "$RUNNER_TEMP/borrowhood-refresh-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/native-refresh"
+      - name: Save native refresh evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: borrowhood-ui-review
+          name: borrowhood-native-refresh
           path: |
-            ${{ runner.temp }}/ui-review
+            ${{ runner.temp }}/native-refresh
             ${{ runner.temp }}/borrowhood-native-build.log
           retention-days: 14

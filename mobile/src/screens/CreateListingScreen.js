@@ -2,6 +2,7 @@ import TextInput from '../components/AppTextInput';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
 import SharingPicker from '../components/SharingPicker';
+import { availableSharingAudiences } from '../utils/sharingAudiences';
 import DirectFeePicker from '../components/DirectFeePicker';
 import { directFeePayload } from '../utils/directFee';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
@@ -187,10 +188,14 @@ export default function CreateListingScreen({ navigation, route }) {
   useEffect(() => {
     // Never widen restored drafts, relists, private offers, or a user's choice.
     if (!dataLoaded || !draft.ready || draft.restored || requestMatchId || route?.params?.relistFrom || sharingChosen.current) return;
-    const scope = user?.city?.trim() && user?.state?.trim() ? 'town' : communityId ? 'neighborhood' : 'close_friends';
-    setFormData(previous => ({ ...previous, visibility: [scope] }));
+    const visibility = availableSharingAudiences({
+      friendsAvailable: hasFriends,
+      neighborhoodAvailable: Boolean(communityId),
+      townAvailable: Boolean(user?.city?.trim() && user?.state?.trim()),
+    });
+    setFormData(previous => ({ ...previous, visibility: visibility.length ? visibility : ['close_friends'] }));
     sharingChosen.current = true;
-  }, [dataLoaded, draft.ready, draft.restored, requestMatchId, communityId, user?.city, user?.state]);
+  }, [dataLoaded, draft.ready, draft.restored, requestMatchId, communityId, hasFriends, user?.city, user?.state]);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -521,6 +526,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
         {requestMatchId ? <Text style={styles.hint}>Private offer: only this requester can see this item for up to 14 days while their request is open. Your other items stay private.</Text> : (
         <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={formData.listingType}
+          friendsAvailable={hasFriends}
           neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}

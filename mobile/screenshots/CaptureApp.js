@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Settings, ScrollView, Text } from 'react-native';
+import { RefreshControl, Settings, ScrollView, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
@@ -25,6 +25,28 @@ const tabs = ['Feed', 'Saved', 'MyItems', 'Activity', 'Profile'];
 const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: COLORS.primary, background: COLORS.background, card: COLORS.surface, text: COLORS.text, border: COLORS.border, notification: COLORS.danger } };
 const requested = Settings.get('BorrowhoodCaptureScreen') || 'home';
 const ReviewStack = createNativeStackNavigator();
+// Exercise the real iOS control, including Fabric's recycled native views.
+// Keep this surface empty so the capture can verify the spinner's actual pixels.
+function RefreshCapture() {
+  const [refreshing, setRefreshing] = useState(false);
+  const [generation, setGeneration] = useState(0);
+  // The capture driver performs a real downward swipe. Starting this in a
+  // timer does not exercise the same UIKit path as the user's pull gesture.
+  useEffect(() => {
+    if (requested !== 'refresh-remount') return;
+    const remove = setTimeout(() => { setRefreshing(false); setGeneration(-1); }, 2500);
+    const mount = setTimeout(() => setGeneration(1), 4000);
+    return () => { clearTimeout(remove); clearTimeout(mount); };
+  }, []);
+  const ready = generation >= (requested === 'refresh-remount' ? 1 : 0);
+  return <View accessible testID={`RefreshCapture.${refreshing ? 'refreshing' : ready ? 'ready' : 'preparing'}`}
+    style={{ flex: 1, backgroundColor: COLORS.background, paddingTop: 80 }}>
+    {generation >= 0 && <ScrollView key={generation} style={{ flex: 1 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
+      <View style={{ height: 1800 }} />
+    </ScrollView>}
+  </View>;
+}
 function FeedbackCapture() {
   const [endorsement, setEndorsement] = useState({ canRate: true });
   return <ScrollView style={{ backgroundColor: COLORS.background }} contentContainerStyle={{ padding: 16 }}>
@@ -48,7 +70,7 @@ function KeyboardCapture() {
   </ScrollView>;
 }
 function openCapture() {
-  if (!navigation.isReady() || ['feedback', 'keyboard', 'keyboard-number'].includes(requested)) return;
+  if (!navigation.isReady() || ['feedback', 'keyboard', 'keyboard-number', 'refresh-control', 'refresh-remount'].includes(requested)) return;
   const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', 'inbox-messages': 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
@@ -80,8 +102,8 @@ export default function CaptureApp() {
       <ErrorBoundary><SafeAreaProvider><AuthProvider>
         <NavigationContainer ref={navigation} theme={theme} onReady={openCapture}>
           <ErrorProvider navigationRef={navigation}>
-            {['feedback', 'keyboard', 'keyboard-number'].includes(requested) ? <ReviewStack.Navigator screenOptions={{ headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary }}>
-              <ReviewStack.Screen name="ComponentPreview" component={requested.startsWith('keyboard') ? KeyboardCapture : FeedbackCapture} options={{ title: requested === 'keyboard-number' ? 'Post an item' : requested === 'keyboard' ? 'Message neighbor' : 'Exchange feedback' }} />
+            {['feedback', 'keyboard', 'keyboard-number', 'refresh-control', 'refresh-remount'].includes(requested) ? <ReviewStack.Navigator screenOptions={{ headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary }}>
+              <ReviewStack.Screen name="ComponentPreview" component={requested.startsWith('refresh-') ? RefreshCapture : requested.startsWith('keyboard') ? KeyboardCapture : FeedbackCapture} options={{ headerShown: !requested.startsWith('refresh-'), title: requested === 'keyboard-number' ? 'Post an item' : requested === 'keyboard' ? 'Message neighbor' : 'Exchange feedback' }} />
             </ReviewStack.Navigator> : <RootNavigator />}
             {requested === 'ranks' && <RankInfoSheet isVisible onClose={() => {}} currentRank={memberReputation(user).rank} isNew={memberReputation(user).isNew} />}
             <ThemedAlertHost />

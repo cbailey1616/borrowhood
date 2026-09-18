@@ -53,6 +53,23 @@ it('permits town previews while keeping town borrow and discussion access gated'
   expect(await canViewListing('town','friend')).toBe(false);
 });
 
+it.each([
+  ['close_friends,neighborhood,town', ['friend', 'neighbor', 'verified']],
+  ['neighborhood,town', ['neighbor', 'verified']],
+  ['close_friends,town', ['friend', 'verified']],
+  ['town', ['verified']],
+])('honors exactly the selected audiences for listings and Wanted posts: %s', async (visibility, allowed) => {
+  // Relationships can reach beyond town. Town must not implicitly restore an
+  // unchecked group, nor expose a post to another town with the same name.
+  await state.db.exec("UPDATE users SET city='Boston' WHERE id IN ('friend','neighbor')");
+  await state.db.query("INSERT INTO listings(id,owner_id,visibility,community_id) VALUES('combined','owner',$1,'block')", [visibility]);
+  await state.db.query("INSERT INTO item_requests(id,user_id,visibility,community_id,town_preview_enabled) VALUES('combined','owner',$1,'block',true)", [visibility]);
+  for (const viewer of ['friend', 'neighbor', 'verified', 'other-town']) {
+    expect(await canViewListing('combined', viewer, { discovery: true }), `listing/${viewer}`).toBe(allowed.includes(viewer));
+    expect(await canViewRequest('combined', viewer), `request/${viewer}`).toBe(allowed.includes(viewer));
+  }
+});
+
 it('revokes relationship access when friendship or membership ends', async () => {
   await state.db.exec("DELETE FROM friendships; DELETE FROM community_memberships WHERE user_id='neighbor'; UPDATE lending_circle_members SET status='pending' WHERE user_id='neighbor'");
   expect(await canViewListing('friends','friend')).toBe(false);

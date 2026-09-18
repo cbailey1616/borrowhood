@@ -53,6 +53,16 @@ describe('EditListingScreen', () => {
     expect(api.updateListing).toHaveBeenCalled();
   });
 
+  it('preserves an existing Town-only audience when saving another edit', async () => {
+    api.getCommunities.mockResolvedValueOnce([{ id: 'community-1' }]);
+    const Screen = require('../../src/screens/EditListingScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { ...listing, visibility: 'town' } } }} />);
+    await act(async () => {});
+    fireEvent.changeText(screen.getByDisplayValue('My Drill'), 'Updated drill');
+    await act(async () => fireEvent.press(screen.getByText('Save Changes')));
+    expect(api.updateListing).toHaveBeenCalledWith(listing.id, expect.objectContaining({ visibility: ['town'] }));
+  });
+
   it('saves giveaways as free even with a legacy price', async () => {
     const Screen = require('../../src/screens/EditListingScreen').default;
     const saleRoute = { params: { listing: { ...listing, listingType: 'giveaway', directFee: { amount: 25, unit: 'flat', currency: 'USD' } } } };
