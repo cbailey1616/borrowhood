@@ -1,3 +1,4 @@
+import RefreshControl from '../components/AppRefreshControl';
 import { listingAvailability } from '../utils/listingAvailability';
 import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
@@ -16,7 +17,6 @@ import {
   StyleSheet,
   FlatList,
   ScrollView,
-  RefreshControl,
   Animated,
   ActivityIndicator,
   AppState,

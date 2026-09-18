@@ -1,3 +1,4 @@
+import RefreshControl from '../components/AppRefreshControl';
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
 import { messagePresentation } from '../utils/conversationContext';
@@ -7,7 +8,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';

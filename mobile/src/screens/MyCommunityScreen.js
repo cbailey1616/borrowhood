@@ -1,5 +1,6 @@
+import RefreshControl from '../components/AppRefreshControl';
 import React, { useCallback, useLayoutEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, AppState, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, AppState, } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { randomUUID } from 'expo-crypto';
 import { useAuth } from '../context/AuthContext';

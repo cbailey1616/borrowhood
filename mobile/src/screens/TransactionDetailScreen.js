@@ -1,3 +1,4 @@
+import RefreshControl from '../components/AppRefreshControl';
 import PendingRequestCard from '../components/PendingRequestCard';
 import useNavigationTask from '../hooks/useNavigationTask';
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
@@ -15,7 +16,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  RefreshControl,
   Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';

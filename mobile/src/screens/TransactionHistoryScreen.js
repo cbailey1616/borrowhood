@@ -1,5 +1,6 @@
+import RefreshControl from '../components/AppRefreshControl';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';

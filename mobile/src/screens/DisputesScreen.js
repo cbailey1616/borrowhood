@@ -1,10 +1,10 @@
+import RefreshControl from '../components/AppRefreshControl';
 import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';

@@ -1,5 +1,6 @@
+import RefreshControl from '../components/AppRefreshControl';
 import { useState, useEffect } from 'react';
-import { ScrollView, View, Text, ActivityIndicator, RefreshControl } from 'react-native';
+import { ScrollView, View, Text, ActivityIndicator, } from 'react-native';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import { COLORS } from '../utils/config';

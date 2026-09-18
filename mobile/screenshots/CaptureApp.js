@@ -1,5 +1,6 @@
+import RefreshControl from '../src/components/AppRefreshControl';
 import { useEffect, useRef, useState } from 'react';
-import { Settings, ScrollView, Text, View, RefreshControl } from 'react-native';
+import { Settings, ScrollView, Text, View, } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';

@@ -5,6 +5,7 @@ on:
     paths:
       - mobile/ios/**
       - mobile/src/utils/config.js
+      - mobile/src/components/AppRefreshControl.js
       - mobile/screenshots/**
       - .github/workflows/native-refresh.yml
   workflow_dispatch:
