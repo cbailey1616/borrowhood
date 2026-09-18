@@ -223,12 +223,6 @@ describe('MyItemsScreen', () => {
     startDate: '2026-09-17', endDate: '2026-09-18',
   };
   const postedRequest = { id: 'posted-1', title: 'Need a ladder', status: 'open' };
-  const selectRequestFilter = async (screen, label) => {
-    fireEvent.press(screen.getByRole('button', { name: /^Filter requests:/ }));
-    fireEvent.press(screen.getByRole('checkbox', { name: label }));
-    await waitFor(() => expect(screen.getByRole('button', { name: `Filter requests: ${label}` }).props.accessibilityState.expanded).toBe(false));
-  };
-
   it('separates wanted posts and sent requests even when their IDs match', async () => {
     // IDs can overlap across the two API resources.
     api.getTransactions.mockResolvedValue([{ ...sentRequest, id: postedRequest.id }]);
@@ -250,31 +244,19 @@ describe('MyItemsScreen', () => {
     expect(mockNavigation.navigate).toHaveBeenLastCalledWith('TransactionDetail', { id: postedRequest.id });
     expect(screen.queryByText('Need a ladder')).toBeNull();
     expect(screen.queryByTestId('post-swipe')).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'Browse items' }));
-    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('Feed');
+    expect(screen.queryByRole('button', { name: 'Browse items' })).toBeNull();
   });
 
-  it('filters outgoing requests by review or progress without refetching', async () => {
-    api.getTransactions.mockResolvedValue([
-      sentRequest,
-      { ...sentRequest, id: 'ready', status: 'approved', listing: { title: 'Ladder ready for pickup' } },
-    ]);
+  it('shows every active request without a filter or header Browse button', async () => {
+    api.getTransactions.mockResolvedValue([sentRequest, { ...sentRequest, id: 'ready', status: 'approved', listing: { title: 'Ladder ready for pickup' } }]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await selectTab(screen, 2);
     await screen.findByText('Cabinet glue');
     expect(screen.getByText('Ladder ready for pickup')).toBeTruthy();
-    await selectRequestFilter(screen, 'Being reviewed');
-    expect(screen.getByText('Cabinet glue')).toBeTruthy();
-    expect(screen.queryByText('Ladder ready for pickup')).toBeNull();
-    await selectRequestFilter(screen, 'In progress');
-    expect(screen.queryByText('Cabinet glue')).toBeNull();
-    expect(screen.getByText('Ladder ready for pickup')).toBeTruthy();
-    await selectRequestFilter(screen, 'All requests');
-    expect(screen.getByText('Cabinet glue')).toBeTruthy();
-    expect(screen.getByText('Ladder ready for pickup')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Filter requests:/ })).toBeNull();
+    expect(screen.queryByText('Browse')).toBeNull();
     expect(api.getTransactions).toHaveBeenCalledTimes(1);
-    expect(api.getMyRequests).not.toHaveBeenCalled();
   });
 
   it('keeps active outgoing requests visible and excludes incoming and finished exchanges', async () => {
@@ -295,25 +277,25 @@ describe('MyItemsScreen', () => {
     for (const label of ['Someone wants my bike', 'completed item', 'returned item', 'cancelled item', 'declined item', 'expired item', 'Books already collected', 'Invalid Date']) expect(screen.queryByText(label)).toBeNull();
   });
 
-  it('retains the selected filter through refresh and removes an exchange once it is finished', async () => {
+  it('removes completed requests and offers one Browse items action', async () => {
     api.getTransactions.mockResolvedValue([sentRequest]);
     api.getMyRequests.mockResolvedValue([postedRequest]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await selectTab(screen, 2);
     await screen.findByText('Cabinet glue');
-    await selectRequestFilter(screen, 'Being reviewed');
     api.getTransactions.mockResolvedValue([{ ...sentRequest, status: 'completed' }]);
     await act(async () => fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh'));
-    await screen.findByText('No requests being reviewed');
+    await screen.findByText('No requests yet');
     expect(screen.queryByText('Cabinet glue')).toBeNull();
     expect(screen.queryByText('Need a ladder')).toBeNull();
     fireEvent.press(screen.getByText('Browse items'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Feed');
+    expect(screen.getAllByRole('button', { name: 'Browse items' })).toHaveLength(1);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Feed', { browseItems: expect.any(String) });
     await selectTab(screen, 1);
     await screen.findByText('Need a ladder');
     await selectTab(screen, 2);
-    expect(screen.getByRole('button', { name: 'Filter requests: Being reviewed' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Filter requests:/ })).toBeNull();
   });
 
   it.each(['sent', 'posted'])('keeps the other tab usable when the %s list fails and supports retry', async failed => {

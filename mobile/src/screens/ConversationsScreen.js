@@ -77,11 +77,11 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
         haptic="light"
         style={[styles.card, selectedId === item.id && { backgroundColor: COLORS.primaryMuted }]}
         accessibilityState={{ selected: selectedId === item.id }}
-        onPress={() => onSelect ? onSelect(item.id) : navigation.navigate('Chat', { conversationId: item.id })}
+        onPress={() => item.kind === 'community' ? navigation.navigate('MyCommunity', { communityId: item.communityId }) : onSelect ? onSelect(item.id) : navigation.navigate('Chat', { conversationId: item.id })}
       >
         <View style={styles.avatarContainer}>
-          <ShimmerImage placeholderIcon="person"
-            source={{ uri: item.otherUser?.profilePhotoUrl || null }}
+          <ShimmerImage placeholderIcon={item.kind === 'community' ? 'people' : 'person'}
+            source={{ uri: item.photoUrl || item.otherUser?.profilePhotoUrl || null }}
             style={styles.avatar}
           />
           {item.unreadCount > 0 && (
@@ -96,7 +96,7 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
         <View style={styles.content}>
           <View style={styles.headerRow}>
             <Text numberOfLines={1} style={[styles.name, { flex: 1 }, item.unreadCount > 0 && styles.nameUnread]}>
-              {item.otherUser?.firstName || 'Unknown'} {item.otherUser?.lastName || ''}
+              {item.kind === 'community' ? item.name : [item.otherUser?.firstName || 'Unknown', item.otherUser?.lastName].filter(Boolean).join(' ')}
             </Text>
             <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>

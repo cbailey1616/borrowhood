@@ -1,3 +1,4 @@
+import { communityConversations } from '../services/communityChat.js';
 import { Router } from 'express';
 import { registerPushDevice, unregisterPushDevice, revokePushDevice, validPushToken, validInstallationId } from '../services/pushDevices.js';
 import { query } from '../utils/db.js';
@@ -112,7 +113,8 @@ router.get('/badge-count', authenticate, async (req, res) => {
       ),
     ]);
 
-    const messages = parseInt(messagesResult.rows[0].count);
+    const groups = await communityConversations(userId);
+    const messages = parseInt(messagesResult.rows[0].count) + groups.filter(group => group.unreadCount > 0).length;
     const notifications = parseInt(notificationsResult.rows[0].count);
     const actions = parseInt(actionsResult.rows[0].count);
 

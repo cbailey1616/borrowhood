@@ -1,3 +1,4 @@
+import { randomUUID } from 'expo-crypto';
 import { listingAvailability } from '../utils/listingAvailability';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
@@ -27,11 +28,6 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const REQUEST_FILTERS = [
-  { key: 'all', label: 'All requests' },
-  { key: 'pending', label: 'Being reviewed' },
-  { key: 'active', label: 'In progress' },
-];
 const shortDate = value => {
   if (!value) return '';
   const date = new Date(`${value.slice(0, 10)}T12:00:00`);
@@ -51,8 +47,6 @@ export default function MyItemsScreen({ navigation }) {
   const [listings, setListings] = useState([]);
   const [requests, setRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
-  const [requestFilter, setRequestFilter] = useState('all');
-  const [showRequestFilter, setShowRequestFilter] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -374,23 +368,21 @@ export default function MyItemsScreen({ navigation }) {
     );
   };
 
-  const filteredSentRequests = sentRequests.filter(item => requestFilter === 'all'
-    || (requestFilter === 'pending' ? item.status === 'pending' : item.status !== 'pending'));
-  const visibleItems = activeTab === 0 ? listings : activeTab === 1 ? requests : filteredSentRequests;
-  const selectedFilter = REQUEST_FILTERS.find(filter => filter.key === requestFilter);
+  const visibleItems = activeTab === 0 ? listings : activeTab === 1 ? requests : sentRequests;
+  const browseItems = () => navigation.navigate('Feed', { browseItems: randomUUID() });
   const emptyState = activeTab === 0
     ? { title: 'Your listings start here', subtitle: 'List an item and choose who can see it.', action: 'Add an item', route: 'CreateListing' }
     : activeTab === 1
       ? { title: 'No wanted posts yet', subtitle: 'Tell neighbors what you’re looking for.', action: 'Post in Wanted', route: 'CreateRequest' }
-      : { title: requestFilter === 'pending' ? 'No requests being reviewed' : requestFilter === 'active' ? 'No requests in progress' : 'No requests yet',
-        subtitle: 'Find an item and send its owner a request.',
+      : { title: 'No requests yet',
+        subtitle: 'Items you request will appear here.',
         action: 'Browse items', route: 'Feed' };
   const emptyContent = !isLoading && !loadError ? (
     <View style={styles.emptyContainer}>
       <HeroIcon icon={activeTab === 0 ? 'basket' : 'search'} size={80} />
       <Text style={styles.emptyTitle}>{emptyState.title}</Text>
       <Text style={styles.emptySubtitle}>{emptyState.subtitle}</Text>
-      <HapticPressable style={styles.addButton} onPress={() => navigation.navigate(emptyState.route)} haptic="medium">
+      <HapticPressable style={styles.addButton} accessibilityRole="button" onPress={() => emptyState.route === 'Feed' ? browseItems() : navigation.navigate(emptyState.route)} haptic="medium">
         <Ionicons name={emptyState.route === 'Feed' ? 'search' : 'add'} size={20} color={COLORS.surface} />
         <Text style={styles.addButtonText}>{emptyState.action}</Text>
       </HapticPressable>
@@ -401,11 +393,11 @@ export default function MyItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={
-        <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : activeTab === 1 ? 'Post in Wanted' : 'Browse items'}
-          onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : activeTab === 1 ? 'CreateRequest' : 'Feed')} style={styles.compactAdd}>
-          <Ionicons name={activeTab === 2 ? 'search' : 'add'} size={20} color={COLORS.surface} />
-          <Text style={styles.headerButtonText}>{activeTab === 2 ? 'Browse' : 'Add'}</Text>
+      <NativeHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={activeTab !== 2 &&
+        <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
+          onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
+          <Ionicons name="add" size={20} color={COLORS.surface} />
+          <Text style={styles.headerButtonText}>Add</Text>
         </HapticPressable>
       }>
         <SegmentedControl
@@ -413,19 +405,10 @@ export default function MyItemsScreen({ navigation }) {
           variant="underline"
           segments={['Items', 'Wanted', 'My requests']}
           selectedIndex={activeTab}
-          onIndexChange={index => { setShowRequestFilter(false); setActiveTab(index); }}
+          onIndexChange={setActiveTab}
           style={styles.segmented}
         />
-        {activeTab === 2 && <HapticPressable
-          accessibilityLabel={`Filter requests: ${selectedFilter.label}`}
-          accessibilityState={{ expanded: showRequestFilter }}
-          onPress={() => setShowRequestFilter(true)}
-          style={styles.requestFilter}
-        >
-          <Ionicons name="options-outline" size={18} color={COLORS.primary} />
-          <Text style={styles.requestFilterText}>{selectedFilter.label}</Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
-        </HapticPressable>}
+
       </NativeHeader>
 
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
@@ -442,17 +425,6 @@ export default function MyItemsScreen({ navigation }) {
         contentContainerStyle={contentContainerStyle}
         refreshControl={refreshControl}
         ListEmptyComponent={emptyContent}
-      />
-      <ActionSheet
-        isVisible={activeTab === 2 && showRequestFilter}
-        onClose={() => setShowRequestFilter(false)}
-        variant="options"
-        title="Show requests"
-        actions={REQUEST_FILTERS.map(filter => ({
-          label: filter.label,
-          selected: requestFilter === filter.key,
-          onPress: () => setRequestFilter(filter.key),
-        }))}
       />
       <ActionSheet
         isVisible={!!pendingDelete}
@@ -481,20 +453,6 @@ const styles = StyleSheet.create({
   segmented: {
     marginTop: SPACING.sm,
   },
-  requestFilter: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 44,
-    maxWidth: '100%',
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    gap: SPACING.sm,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface,
-  },
-  requestFilterText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, flexShrink: 1 },
   listContent: {
     padding: SPACING.lg,
     paddingBottom: 100,

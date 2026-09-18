@@ -54,7 +54,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [fetchError, setFetchError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [returnSheetVisible, setReturnSheetVisible] = useState(false);
+  const [returnIssueVisible, setReturnIssueVisible] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
   const [moreTimeSheetVisible, setMoreTimeSheetVisible] = useState(false);
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
@@ -266,7 +266,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
     : transaction.isLender && transaction.status === 'pending'
     ? { label: 'View queue', testID: 'Transaction.button.queue', onPress: viewQueue }
     : needsPickup ? { label: 'Confirm pickup', testID: 'Transaction.button.confirmPickup', onPress: () => setPickupSheetVisible(true) }
-    : needsReturn ? { label: transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => setReturnSheetVisible(true) }
+    : needsReturn ? { label: transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => handleConfirmReturn(transaction.conditionAtPickup || transaction.listing.condition || 'good') }
     : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
     : null;
 
@@ -311,12 +311,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         </LayeredCard>
 
-        <View style={styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
+        <View style={allDone ? styles.completedEndorsement : styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
           {!!fetchError && <View style={{ gap: 8 }}>
             <Text style={styles.detailText}>Could not refresh this exchange.</Text>
             <ActionButton label="Try again" onPress={fetchTransaction} />
           </View>}
-          <Text style={styles.cardEyebrow}>{allDone ? 'All done' : 'What happens next'}</Text>
+          {!allDone && <Text style={styles.cardEyebrow}>What happens next</Text>}
           {showEndorsement ? <>
             {transaction.hasDispute && <>
               <Text style={styles.heroTitle}>{nextStep.title}</Text>
@@ -326,10 +326,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
               setEndorsementSavedFor(transaction.id);
               await fetchTransaction();
             }} embedded />
-            {allDone && <>
-              <Text style={styles.heroDescription}>Nothing else to do.</Text>
-              <ActionButton label="Back to Home" onPress={() => navigation.navigate('Main', { screen: 'Feed' })} />
-            </>}
           </> : <>
           <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
           <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
@@ -342,6 +338,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
             accessibilityLabel={primaryAction.label} style={styles.approveButton}
             disabled={actionLoading || (!!fetchError && (needsPickup || needsReturn))} onPress={primaryAction.onPress}>
             {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
+          </HapticPressable>}
+          {needsReturn && <HapticPressable accessibilityRole="button" accessibilityLabel="Report an issue"
+            testID="Transaction.button.reportReturnIssue" style={styles.secondaryAction} disabled={actionLoading}
+            onPress={() => setReturnIssueVisible(true)}>
+            <Text style={styles.neighborMessageTitle}>Report an issue</Text>
           </HapticPressable>}
           {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"
             disabled={actionLoading || !!fetchError} style={styles.outlinedAction} onPress={() => setMoreTimeSheetVisible(true)} />}
@@ -434,39 +435,18 @@ export default function TransactionDetailScreen({ route, navigation }) {
       </ScrollView>
 
       <ActionSheet
-        isVisible={returnSheetVisible && transaction?.isBorrower}
-        onClose={() => setReturnSheetVisible(false)}
+        isVisible={returnIssueVisible}
+        onClose={() => setReturnIssueVisible(false)}
         variant="confirmation"
         icon={<Ionicons name="cube" size={28} illustrated />}
-        title="Item returned?"
-        message="Let the owner know you returned it. They’ll confirm once they have it back."
+        title="Something different?"
+        message="Tell your neighbor about any damage or change in condition. The return stays open until the owner confirms it."
         actions={[
-          {
-            label: 'I returned it',
-            onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
-            primary: true,
-          },
-        ]}
-      />
-
-      <ActionSheet
-        isVisible={returnSheetVisible && transaction?.isLender}
-        onClose={() => setReturnSheetVisible(false)}
-        variant="confirmation"
-        icon={<Ionicons name="cube" size={28} illustrated />}
-        title="Everything back?"
-        message={`Confirm once ${transaction?.listing?.title || 'the item'} is back with you in the same condition. If something needs attention, message your neighbor first.`}
-        actions={[
-          {
-            label: 'Confirm return',
-            testID: 'Transaction.confirmReturn',
-            onPress: () => handleConfirmReturn(transaction?.conditionAtPickup || 'good'),
-            primary: true,
-          },
           {
             label: 'Message neighbor',
             testID: 'Transaction.messageAboutReturn',
-            onPress: () => navigation.navigate('Chat', { recipientId: transaction?.borrower?.id, recipient: transaction?.borrower, listingId: transaction?.listing?.id, listing: transaction?.listing }),
+            onPress: messageNeighbor,
+            primary: true,
           },
         ]}
       />
@@ -517,6 +497,7 @@ const styles = StyleSheet.create({
   cancelAction: { borderColor: COLORS.danger, backgroundColor: COLORS.danger },
   cancelActionText: { fontSize: 15, fontWeight: '400', color: COLORS.surface },
   nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
+  completedEndorsement: { paddingHorizontal: 8, gap: SPACING.sm },
   secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
   detailsSection: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, overflow: 'hidden' },
   detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12 },

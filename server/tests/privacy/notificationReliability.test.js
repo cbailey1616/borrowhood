@@ -1,3 +1,4 @@
+import { ensureCommunityChatSchema } from '../../src/services/communityChat.js';
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import express from 'express';
@@ -51,7 +52,10 @@ beforeAll(async () => {
     CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), listing_id UUID, request_id UUID, parent_id UUID,
       user_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, reply_count INT DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,banner_url TEXT,is_active BOOLEAN DEFAULT true,community_type TEXT DEFAULT 'neighborhood');
+    CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',PRIMARY KEY(community_id,user_id));
     CREATE TABLE user_blocks(user_id UUID, blocked_id UUID);`);
+  await ensureCommunityChatSchema();
   await ensureNotificationSchema();
   await ensurePublicationSchema();
   app = express(); app.use(express.json()); app.use('/notifications', notificationRoutes);
@@ -385,4 +389,18 @@ it.each([['listing',false],['listing',true],['request',false],['request',true]])
   expect(await count('notifications')).toBe(isReply ? 2 : 1);
   expect(await count('push_deliveries')).toBe(isReply ? 2 : 1);
   expect(fetch).not.toHaveBeenCalled(); // Delivery is deferred until after commit.
+});
+
+it('combines neighborhood channels with direct messages and counts each unread channel once', async () => {
+  const hood = '99999999-9999-4999-8999-999999999999';
+  await state.db.query("INSERT INTO communities(id,name) VALUES($1,'Maple Grove')", [hood]);
+  await state.db.query('INSERT INTO community_memberships(community_id,user_id) VALUES($1,$2)',[hood,A]);
+  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id)
+    VALUES($1,$2,'Hello',gen_random_uuid()),($1,$2,'Again',gen_random_uuid())`,[hood,B]);
+  const inbox = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
+  expect(inbox.body.find(c=>c.communityId===hood)).toMatchObject({name:'Maple Grove',unreadCount:2});
+  const badge = await request(app).get('/notifications/badge-count').set('x-user',A).expect(200);
+  expect(badge.body.messages).toBe(1);
+  await state.db.query('UPDATE community_memberships SET chat_muted=true WHERE community_id=$1',[hood]);
+  expect((await request(app).get('/notifications/badge-count').set('x-user',A)).body.messages).toBe(0);
 });

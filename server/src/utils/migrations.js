@@ -1,3 +1,4 @@
+import { ensureCommunityChatSchema } from '../services/communityChat.js';
 import { ensureReturnRecoverySchema } from '../services/returnRecovery.js';
 import { ensureEndorsementSchema } from '../services/endorsements.js';
 import { ensureNotificationSchema } from '../services/notificationSchema.js';
@@ -702,6 +703,7 @@ export async function runMigrations() {
     await ensureNotificationSchema();
     await ensurePickupFollowupSchema();
     await ensureReturnRecoverySchema();
+    await ensureCommunityChatSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

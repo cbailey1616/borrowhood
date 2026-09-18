@@ -1,3 +1,4 @@
+import { communityConversations } from '../services/communityChat.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
@@ -71,7 +72,7 @@ router.get('/conversations', authenticate, async (req, res) => {
       [req.user.id]
     );
 
-    res.json(result.rows.map(c => ({
+    const direct = result.rows.map(c => ({
       id: c.id,
       listing: c.listing_title ? {
         id: c.listing_id,
@@ -90,7 +91,11 @@ router.get('/conversations', authenticate, async (req, res) => {
       lastMessageSenderId: c.last_message_sender,
       unreadCount: parseInt(c.unread_count) || 0,
       createdAt: c.created_at,
-    })));
+    }));
+    const groups = await communityConversations(req.user.id);
+    res.json([...direct, ...groups].sort((a, b) =>
+      (Date.parse(b.lastMessageAt || b.createdAt) || 0) - (Date.parse(a.lastMessageAt || a.createdAt) || 0)
+      || a.id.localeCompare(b.id)));
   } catch (err) {
     console.error('Get conversations error:', err);
     res.status(500).json({ error: 'Failed to get conversations' });

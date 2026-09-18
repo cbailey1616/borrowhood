@@ -341,12 +341,12 @@ export default function InboxScreen({ navigation, route, onRead }) {
     <LayeredCard style={styles.cardDepth}>
       <HapticPressable
         style={styles.card}
-        onPress={() => nav.navigate('Chat', { conversationId: item.id })}
+        onPress={() => item.kind === 'community' ? nav.navigate('MyCommunity', { communityId: item.communityId }) : nav.navigate('Chat', { conversationId: item.id })}
         haptic="light"
       >
         <View style={styles.avatarContainer}>
-          <ShimmerImage placeholderIcon="person"
-            source={{ uri: item.otherUser?.profilePhotoUrl || null }}
+          <ShimmerImage placeholderIcon={item.kind === 'community' ? 'people' : 'person'}
+            source={{ uri: item.photoUrl || item.otherUser?.profilePhotoUrl || null }}
             style={styles.avatar}
           />
 
@@ -355,7 +355,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
           <View style={styles.cardHeader}>
             <View style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:5}}>
               <Text style={[styles.name, {flex:undefined,flexShrink:1}, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
-                {item.otherUser?.firstName} {item.otherUser?.lastName}
+                {item.kind === 'community' ? item.name : [item.otherUser?.firstName, item.otherUser?.lastName].filter(Boolean).join(' ')}
               </Text>
               {item.otherUser?.isVerified === true && <VerifiedBadge size={16} />}
             </View>

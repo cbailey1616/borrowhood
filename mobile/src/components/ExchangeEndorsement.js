@@ -33,16 +33,17 @@ export default function ExchangeEndorsement({ transaction, onSaved, embedded = f
     try { await onSaved?.(); } catch { /* The saved endorsement remains visible. */ }
   };
   return <View style={[styles.card, embedded && styles.embedded]}>
-    <Text accessibilityRole="header" style={styles.title}>{submitted ? 'Endorsement sent' : 'Leave an endorsement'}</Text>
     {submitted ? <View style={styles.savedVote}>
-      <Ionicons name={savedChoice === null ? 'remove-outline' : savedChoice ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={24} illustrated color={COLORS.primary} />
+      <Ionicons name={savedChoice === null ? 'balance-scale' : savedChoice ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={26} illustrated color={COLORS.primary} />
+      <Text style={styles.sentLabel}>Endorsement sent</Text>
       <Text style={styles.savedLabel}>{savedChoice === null ? 'Neutral' : savedChoice ? 'Thumbs up' : 'Thumbs down'}</Text>
     </View> : <>
+      <Text accessibilityRole="header" style={styles.title}>Leave an endorsement</Text>
       <View style={{ flexDirection:stackChoices ? 'column' : 'row',gap:12 }}>
         {[true,null,false].map(positive => <HapticPressable key={String(positive)} accessibilityRole="button" accessibilityLabel={positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}
           accessibilityState={{ selected:choice === positive,disabled:saving }} disabled={saving} onPress={() => setSelection({ id: transaction.id, positive })}
           style={{ flexGrow:1,flexShrink:1,flexBasis:stackChoices ? 'auto' : 0,flexDirection:stackChoices ? 'row' : 'column',minHeight:stackChoices ? 56 : 88,gap:stackChoices ? 12 : 6,padding:12,alignItems:'center',justifyContent:stackChoices ? 'flex-start' : 'center',borderWidth:choice===positive ? 2 : 1,borderColor:choice===positive ? COLORS.primary : COLORS.borderBrown,borderRadius:RADIUS.md,backgroundColor:choice===positive ? COLORS.primaryMuted : COLORS.surface }}>
-          <Ionicons name={positive === null ? 'remove-outline' : positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={32} illustrated selected={choice===positive} color={COLORS.primary} />
+          <Ionicons name={positive === null ? 'balance-scale' : positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={32} illustrated selected={choice===positive} color={COLORS.primary} />
           <Text style={{ ...TYPOGRAPHY.footnote,color:COLORS.primary,textAlign:stackChoices ? 'left' : 'center',flexShrink:1,fontFamily:choice===positive ? 'DMSans_500Medium' : 'DMSans_400Regular',fontWeight:choice===positive ? '500' : '400' }}>{positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}</Text>
         </HapticPressable>)}
       </View>
@@ -60,5 +61,6 @@ const styles = StyleSheet.create({
   embedded: { padding:0,marginTop:0,borderWidth:0,backgroundColor:'transparent' },
   title: { ...TYPOGRAPHY.h2,color:COLORS.primary,lineHeight:28 },
   savedVote: { flexDirection:'row',alignItems:'center',gap:SPACING.sm },
-  savedLabel: { ...TYPOGRAPHY.body,color:COLORS.primary,flexShrink:1 },
+  sentLabel: { ...TYPOGRAPHY.footnote,color:COLORS.primary,flex:1 },
+  savedLabel: { ...TYPOGRAPHY.footnote,color:COLORS.textSecondary,flexShrink:1 },
 });

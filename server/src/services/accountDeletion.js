@@ -80,6 +80,8 @@ export async function deleteAccount(userId) {
     );
     // Retained items must not remain discoverable under an anonymized owner.
     await query("UPDATE listings SET status = 'paused', is_available = false WHERE owner_id = $1", [userId]);
+    // Erase neighborhood message bodies even when the account must be anonymized.
+    await query("UPDATE community_chat_messages SET content = 'Message removed', deleted_at = NOW() WHERE sender_id = $1", [userId]);
     // 5. Messages & conversations (messages/participants reference conversations)
     await query('DELETE FROM message_reactions WHERE user_id = $1', [userId]);
     await query('DELETE FROM message_reactions WHERE message_id IN (SELECT id FROM messages WHERE sender_id = $1)', [userId]);

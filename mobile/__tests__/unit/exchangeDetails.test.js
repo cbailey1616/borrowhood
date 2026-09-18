@@ -37,3 +37,8 @@ it('does not describe a picked-up transfer as currently borrowed', () => {
   expect(Object.fromEntries(exchangeDetailRows({listingType:'giveaway',status:'picked_up'})).Status).toBe('Completed');
   expect(Object.fromEntries(exchangeDetailRows({listingType:'lend',status:'returned',paymentStatus:'authorized'})).Status).toBe('Awaiting return confirmation');
 });
+
+it('omits the automatic return condition when it has not changed', () => {
+  expect(Object.fromEntries(exchangeDetailRows({status:'completed',conditionAtPickup:'like_new',conditionAtReturn:'like_new'})))
+    .toEqual({Status:'Completed','Condition at pickup':'Like New'});
+});
