@@ -139,6 +139,9 @@ router.get('/', authenticate, async (req, res) => {
       listingQuery += ' AND (' + fullAccess + ' OR ' + townPreviewSql('l', 'owner_id', '$' + (listingParams.length + 1), { listing: true }) + ')';
       listingParams.push(req.user.id);
       listingQuery += ` AND l.owner_id != $${listingParams.length}`;
+      listingQuery += ` AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
+        (b.user_id = $${listingParams.length} AND b.blocked_id = l.owner_id) OR
+        (b.blocked_id = $${listingParams.length} AND b.user_id = l.owner_id))`;
       if (visibilityFilters.length) {
         listingQuery += " AND string_to_array(l.visibility::text, ',') && $" + (listingParams.length + 1) + '::text[]';
         listingParams.push(visibilityFilters);
@@ -181,6 +184,9 @@ router.get('/', authenticate, async (req, res) => {
         JOIN users u ON r.user_id = u.id
         WHERE r.status = 'open'
           AND r.user_id != $1
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
+            (b.user_id = $1 AND b.blocked_id = r.user_id) OR
+            (b.blocked_id = $1 AND b.user_id = r.user_id))
           AND ${requestActiveSql('r')}`;
 
       const requestParams = [req.user.id];

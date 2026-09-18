@@ -125,18 +125,35 @@ describe('GET /api/feed', () => {
     expect((await scoped(second)).status).toBe(403);
   });
 
-  it('validates neighborhood filters and still enforces blocks', async () => {
+  it('validates neighborhood filters', async () => {
     const scoped = id => request(app).get('/api/feed').query({ communityId: id })
       .set('Authorization', `Bearer ${freeUser.token}`);
     expect((await scoped('not-a-neighborhood')).status).toBe(400);
     expect((await scoped(randomUUID())).status).toBe(403);
-    await query('INSERT INTO user_blocks(user_id,blocked_id) VALUES($1,$2)', [freeUser.userId, verifiedPlusUser.userId]);
+  });
+  it.each(['viewer', 'author'])('hides blocked posts and summaries when the %s creates the block', async direction => {
+    const block = direction === 'viewer'
+      ? [freeUser.userId, verifiedPlusUser.userId]
+      : [verifiedPlusUser.userId, freeUser.userId];
+    const getFeed = params => request(app).get('/api/feed').query(params)
+      .set('Authorization', `Bearer ${freeUser.token}`);
+    const token = randomUUID();
+    const before = await getFeed({ communityId, session: token });
+    expect(before.status).toBe(200);
+    expect(before.body.items.map(item => item.id)).toEqual(expect.arrayContaining([createdListingIds[0], createdRequestIds[0]]));
+    await query('INSERT INTO user_blocks(user_id,blocked_id) VALUES($1,$2)', block);
     try {
-      const blocked = await scoped(communityId);
-      expect(blocked.status).toBe(200);
-      expect(blocked.body.items).toEqual([]);
+      for (const params of [{ communityId, session: token }, {}, { layout: 'sections' }]) {
+        const blocked = await getFeed(params);
+        expect(blocked.status).toBe(200);
+        const posts = [...blocked.body.items, ...(blocked.body.requests || [])];
+        expect(posts.some(post => [...createdListingIds, ...createdRequestIds].includes(post.id))).toBe(false);
+      }
+      const summary = await getFeed({ communityId, summary: 'true' });
+      expect(summary.status).toBe(200);
+      expect(summary.body.latestPostAt).toBeNull();
     } finally {
-      await query('DELETE FROM user_blocks WHERE user_id=$1 AND blocked_id=$2', [freeUser.userId, verifiedPlusUser.userId]);
+      await query('DELETE FROM user_blocks WHERE user_id=$1 AND blocked_id=$2', block);
     }
   });
   it('excludes your listings and requests across Home, search and tabs, while preserving My Posts', async () => {
