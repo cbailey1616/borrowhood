@@ -107,6 +107,20 @@ describe('GET /api/communities', () => {
     expect(res.status).toBe(200);
     expect(res.body.length).toBe(0);
   });
+
+  it('keeps legacy town-labelled memberships visible to build 257 and in chat', async () => {
+    await query("UPDATE communities SET community_type = 'town' WHERE id = $1", [communityId]);
+    const res = await request(app).get('/api/communities?member=true')
+      .set('Authorization', `Bearer ${userA.token}`);
+    expect(res.status).toBe(200);
+    // Exercise the shipped 257 filter, not just the API's presence in the list.
+    expect(res.body.filter(c => !c.communityType || c.communityType === 'neighborhood')
+      .some(c => c.id === communityId)).toBe(true);
+    const chat = await request(app).get(`/api/communities/${communityId}/chat`)
+      .set('Authorization', `Bearer ${userA.token}`);
+    expect(chat.status).toBe(200);
+    expect(chat.body.role).toBe('organizer');
+  });
 });
 
 describe('GET /api/communities/nearby', () => {
@@ -175,6 +189,8 @@ describe('POST /api/communities', () => {
       [res.body.id, userA.userId]
     );
     expect(membership.rows[0].role).toBe('organizer');
+    const created = await query('SELECT community_type FROM communities WHERE id = $1', [res.body.id]);
+    expect(created.rows[0].community_type).toBe('neighborhood');
   });
 
   it('should reject community creation without city set', async () => {

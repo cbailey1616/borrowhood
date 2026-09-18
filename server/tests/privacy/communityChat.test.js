@@ -15,7 +15,7 @@ const send=(user,content,extra={},community=group)=>request(app).post(`/communit
 beforeAll(async()=>{
  state.db=new PGlite();
  await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY,first_name TEXT,display_name TEXT,profile_photo_url TEXT);
- CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,banner_url TEXT,is_active BOOLEAN DEFAULT true,community_type TEXT DEFAULT 'neighborhood');
+ CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,banner_url TEXT,is_active BOOLEAN DEFAULT true,community_type TEXT DEFAULT 'town');
  CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',PRIMARY KEY(community_id,user_id));
  CREATE TABLE user_blocks(user_id UUID,blocked_id UUID);`);
  await ensureCommunityChatSchema();await ensureCommunityChatSchema();
@@ -24,6 +24,7 @@ beforeAll(async()=>{
 },20000);
 beforeEach(async()=>{
  await state.db.exec('TRUNCATE community_chat_messages,community_memberships,user_blocks RESTART IDENTITY CASCADE');
+ await state.db.exec("UPDATE communities SET community_type='town', is_active=true");
  await state.db.query("INSERT INTO community_memberships(community_id,user_id,role) VALUES($1,$2,'organizer'),($1,$3,'member'),($4,$2,'organizer')",[group,a,b,other]);
 });
 afterAll(async()=>state.db.close());
@@ -34,6 +35,14 @@ it('restricts all operations to current members',async()=>{
  expect((await request(app).patch(`${url}/preferences`).set('x-user',outsider).send({muted:true})).status).toBe(403);
  await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
  expect((await send(b,'removed')).status).toBe(403);expect(await communityConversations(b)).toEqual([]);
+});
+it('keeps legacy joined neighborhoods in chat and Inbox while denying inactive groups',async()=>{
+ expect((await request(app).get(url).set('x-user',b)).status).toBe(200);
+ expect((await communityConversations(b))[0]).toMatchObject({communityId:group,name:'Maple'});
+ await state.db.query('UPDATE communities SET is_active=false WHERE id=$1',[group]);
+ expect((await request(app).get(url).set('x-user',b)).status).toBe(403);
+ expect((await send(b,'hidden')).status).toBe(403);
+ expect(await communityConversations(b)).toEqual([]);
 });
 it('deduplicates retries; keeps read state private and later arrivals unread',async()=>{
  const key=randomUUID();const first=await send(a,'hello',{clientRequestId:key});expect(first.status).toBe(200);

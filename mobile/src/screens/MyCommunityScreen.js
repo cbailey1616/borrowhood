@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 're
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import HapticPressable from '../components/HapticPressable';
+import LayeredCard from '../components/LayeredCard';
 import CommunityChat from '../components/CommunityChat';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
@@ -10,44 +11,101 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function MyCommunityScreen({ navigation, route }) {
   const { user } = useAuth();
-  const [communities, setCommunities] = useState([]);
+  const [membership, setMembership] = useState({ userId: null, communities: [], loading: true, error: false });
   const [selectedId, setSelectedId] = useState(route?.params?.communityId || null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
   const requestedId = route?.params?.communityId;
+  const retry = () => setReload(n => n + 1);
+
   useFocusEffect(useCallback(() => {
     let active = true;
-    setLoading(true);
+    const userId = user?.id;
+    setMembership(old => ({ userId, communities: old.userId === userId ? old.communities : [], loading: true, error: false }));
     api.getCommunities({ member: 'true' }).then(result => {
-      const data = (result || []).filter(c => !c.communityType || c.communityType === 'neighborhood');
       if (!active) return;
-      setCommunities(data || []); setError(false);
-      setSelectedId(old => requestedId && data.some(c => c.id === requestedId) ? requestedId : data.some(c => c.id === old) ? old : data[0]?.id);
-    }).catch(() => { if (active) { setError(true); setCommunities([]); } })
-      .finally(() => { if (active) setLoading(false); });
+      if (!Array.isArray(result)) throw new Error('Invalid membership response');
+      // This endpoint already returns explicit memberships. Older neighborhoods
+      // may carry a geographic town label; that does not change membership.
+      setMembership({ userId, communities: result, loading: false, error: false });
+      setSelectedId(old => requestedId && result.some(c => c.id === requestedId)
+        ? requestedId : result.some(c => c.id === old) ? old : result[0]?.id);
+    }).catch(() => {
+      if (active) setMembership(old => ({ ...old, loading: false, error: true }));
+    });
     return () => { active = false; };
   }, [user?.id, requestedId, reload]));
-  if (loading) return <View style={styles.center}><ActivityIndicator color={COLORS.primary} /></View>;
-  if (error) return <View style={styles.center}><Text style={styles.description}>Could not load neighborhoods.</Text><HapticPressable style={styles.button} onPress={() => setReload(n => n + 1)}><Text style={styles.buttonText}>Try again</Text></HapticPressable></View>;
-  const community = communities.find(c => c.id === selectedId);
-  if (!community) return <View style={styles.center}><Ionicons name="home" size={56} illustrated /><Text style={styles.name}>No neighborhood yet</Text><HapticPressable style={styles.button} onPress={() => navigation.navigate('JoinCommunity')}><Text style={styles.buttonText}>Find your neighborhood</Text></HapticPressable></View>;
+
+  const currentUser = membership.userId === user?.id;
+  const communities = currentUser ? membership.communities : [];
+  const community = communities.find(c => c.id === selectedId) || communities[0];
+  const loading = !currentUser || membership.loading;
+  const error = currentUser && membership.error;
+
+  if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.primary} accessibilityLabel="Loading your neighborhood" /></View>;
+
+  if (!community) return <ScrollView style={styles.page} contentContainerStyle={styles.stateContent}>
+    <LayeredCard style={styles.stateCard} radius={RADIUS.xl}>
+      <View style={styles.stateIcon}><Ionicons name="home" size={44} illustrated color={COLORS.primary} /></View>
+      <Text style={styles.stateTitle} accessibilityRole="header">{error ? 'Couldn’t load your neighborhood' : 'Meet your neighbors'}</Text>
+      <Text style={styles.stateDescription}>{error ? 'Check your connection and try again.' : 'Join a neighborhood to chat and share.'}</Text>
+      <HapticPressable accessibilityRole="button" style={styles.stateButton}
+        onPress={error ? retry : () => navigation.navigate('JoinCommunity')}>
+        <Text style={styles.stateButtonText}>{error ? 'Try again' : 'Find your neighborhood'}</Text>
+        {!error && <Ionicons name="arrow-forward" size={20} color={COLORS.surface} />}
+      </HapticPressable>
+    </LayeredCard>
+  </ScrollView>;
+
   return <CommunityChat key={`${user?.id}:${community.id}`} community={community} navigation={navigation} header={<View>
+    {error && <HapticPressable accessibilityRole="button" accessibilityLabel="Retry loading neighborhoods" style={styles.refreshError} onPress={retry}>
+      <Text style={styles.description}>Couldn’t refresh. Tap to retry.</Text>
+    </HapticPressable>}
     {communities.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selector}>
-      {communities.map(c => <HapticPressable key={c.id} onPress={() => setSelectedId(c.id)} accessibilityRole="button" accessibilityState={{ selected: c.id === community.id }} style={[styles.chip, c.id === community.id && styles.selected]}><Text style={{ color: c.id === community.id ? COLORS.surface : COLORS.primary }}>{c.name}</Text></HapticPressable>)}
+      {communities.map(c => <HapticPressable key={c.id} onPress={() => setSelectedId(c.id)} accessibilityRole="button"
+        accessibilityState={{ selected: c.id === community.id }} style={[styles.chip, c.id === community.id && styles.selected]}>
+        <Text style={{ color: c.id === community.id ? COLORS.surface : COLORS.primary }}>{c.name}</Text>
+      </HapticPressable>)}
     </ScrollView>}
     <View style={styles.hero}>
       {community.bannerUrl && <Image source={{ uri: community.bannerUrl }} style={styles.cover} accessibilityLabel={`${community.name} cover`} />}
-      <View style={styles.titleRow}><Text style={styles.name} numberOfLines={2}>{community.name}</Text><HapticPressable style={styles.button} accessibilityLabel="Invite neighbors" onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}><Text style={styles.buttonText}>+ Invite</Text></HapticPressable></View>
-      <HapticPressable style={styles.members} accessibilityLabel="View neighbors" onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })}><Ionicons name="people-outline" size={20} color={COLORS.primary} /><Text style={styles.description}>{community.memberCount ?? 0} neighbors</Text><Ionicons name="chevron-forward" size={16} color={COLORS.primary} /></HapticPressable>
+      <View style={styles.titleRow}>
+        <Text style={styles.name} numberOfLines={2}>{community.name}</Text>
+        <HapticPressable style={styles.button} accessibilityRole="button" accessibilityLabel="Invite neighbors"
+          onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}>
+          <Text style={styles.buttonText}>+ Invite</Text>
+        </HapticPressable>
+      </View>
+      <HapticPressable style={styles.members} accessibilityRole="button" accessibilityLabel="View neighbors"
+        onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })}>
+        <Ionicons name="people-outline" size={20} color={COLORS.primary} />
+        <Text style={styles.description}>{community.memberCount ?? 0} neighbors</Text>
+        <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+      </HapticPressable>
     </View>
   </View>} />;
 }
+
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16, backgroundColor: COLORS.background },
-  selector: { padding: SPACING.md, gap: 8 }, chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: COLORS.surface }, selected: { backgroundColor: COLORS.primary },
-  hero: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm }, cover: { width: '100%', height: 92, borderRadius: RADIUS.lg, marginBottom: 12 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, name: { ...TYPOGRAPHY.title2, color: COLORS.text, flexShrink: 1, flexGrow: 1 },
-  button: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.primary }, buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
-  members: { flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 44 }, description: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  page: { flex: 1, backgroundColor: COLORS.background },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  stateContent: { padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
+  stateCard: { width: '100%', maxWidth: 480, padding: 24, alignItems: 'center' },
+  stateIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  stateTitle: { ...TYPOGRAPHY.title2, color: COLORS.text, textAlign: 'center' },
+  stateDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
+  stateButton: { minHeight: 52, width: '100%', marginTop: 24, paddingHorizontal: 18, paddingVertical: 14, borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  stateButtonText: { ...TYPOGRAPHY.body, color: COLORS.surface, textAlign: 'center', flexShrink: 1 },
+  refreshError: { paddingHorizontal: SPACING.lg, paddingVertical: 12, minHeight: 44 },
+  selector: { padding: SPACING.md, gap: 8 },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
+  selected: { backgroundColor: COLORS.primary },
+  hero: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
+  cover: { width: '100%', height: 92, borderRadius: RADIUS.lg, marginBottom: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  name: { ...TYPOGRAPHY.title2, color: COLORS.text, flexShrink: 1, flexGrow: 1 },
+  button: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
+  buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
+  members: { flexDirection: 'row', gap: 8, alignItems: 'center', minHeight: 44 },
+  description: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

@@ -4,10 +4,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import api from '../../src/services/api';
 import Screen from '../../src/screens/MyCommunityScreen';
 const navigation = { navigate: jest.fn() };
-jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
+const mockUser = { id: 'me' };
+jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('../../src/components/ComposerKeyboardView', () => ({children}) => <>{children}</>);
-const community = { id:'hood', name:'Maple Grove', role:'organizer', memberCount:4 };
+const community = { id:'hood', name:'Maple Grove', role:'organizer', memberCount:4, communityType:'town' };
 beforeEach(()=>{
+ mockUser.id='me';
  jest.clearAllMocks();useFocusEffect.mockImplementation(cb=>React.useEffect(cb,[cb]));
  api.getCommunities.mockResolvedValue([community]);
  api.getCommunityChat.mockResolvedValue({messages:[],readSequence:'0',muted:false,role:'organizer'});
@@ -40,6 +42,34 @@ it('offers retry for load failure and joining for an empty list',async()=>{
  const screen=render(<Screen navigation={navigation}/>);fireEvent.press(await screen.findByText('Try again'));
  fireEvent.press(await screen.findByText('Find your neighborhood'));
  expect(navigation.navigate).toHaveBeenCalledWith('JoinCommunity');
+});
+it('preserves the joined neighborhood and draft when refreshing membership fails',async()=>{
+ const screen=render(<Screen navigation={navigation}/>);
+ await screen.findByText('Maple Grove');
+ fireEvent.changeText(screen.getByLabelText('Message'),'Hello neighbors');
+ api.getCommunities.mockRejectedValueOnce(new Error('Offline'));
+ screen.rerender(<Screen route={{params:{communityId:'hood'}}} navigation={navigation}/>);
+ await screen.findByLabelText('Retry loading neighborhoods');
+ expect(screen.getByText('Maple Grove')).toBeTruthy();
+ expect(screen.getByLabelText('Message').props.value).toBe('Hello neighbors');
+ expect(screen.queryByText('Meet your neighbors')).toBeNull();
+});
+it('does not treat a malformed membership response as an empty membership',async()=>{
+ api.getCommunities.mockResolvedValue({});
+ const screen=render(<Screen navigation={navigation}/>);
+ await screen.findByText('Couldn’t load your neighborhood');
+ expect(screen.queryByText('Find your neighborhood')).toBeNull();
+});
+it('clears the previous account’s neighborhood while a different account loads',async()=>{
+ const screen=render(<Screen navigation={navigation}/>);
+ await screen.findByText('Maple Grove');
+ let finish;
+ api.getCommunities.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ mockUser.id='another';
+ screen.rerender(<Screen navigation={navigation}/>);
+ expect(screen.queryByText('Maple Grove')).toBeNull();
+ await act(async()=>finish([]));
+ await screen.findByText('Meet your neighbors');
 });
 it('keeps text and retry key after send failure and clears on success',async()=>{
  api.sendCommunityMessage.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue({id:'sent'});

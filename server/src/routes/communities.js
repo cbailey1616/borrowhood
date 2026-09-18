@@ -34,7 +34,8 @@ router.get('/', authenticate, async (req, res) => {
         id: c.id,
         name: c.name,
         slug: c.slug,
-        communityType: c.community_type,
+        // Memberships are explicit joins. Legacy neighborhoods can have the
+        // geographic 'town' default, which build 257 incorrectly filters out.
         description: c.description,
         city: c.city,
         state: c.state,
@@ -616,13 +617,13 @@ router.post('/', authenticate,
             RETURNING id`;
           insertParams = [name, uniqueSlug, user.city, user.state, description, latitude, longitude, radius || 1];
         } else {
-          insertQuery = `INSERT INTO communities (name, slug, city, state, description)
-            VALUES ($1, $2, $3, $4, $5) RETURNING id`;
+          insertQuery = `INSERT INTO communities (name, slug, city, state, description, community_type)
+            VALUES ($1, $2, $3, $4, $5, 'neighborhood') RETURNING id`;
           insertParams = [name, uniqueSlug, user.city, user.state, description];
         }
       } else {
-        insertQuery = `INSERT INTO communities (name, slug, city, state, description)
-          VALUES ($1, $2, $3, $4, $5) RETURNING id`;
+        insertQuery = `INSERT INTO communities (name, slug, city, state, description, community_type)
+          VALUES ($1, $2, $3, $4, $5, 'neighborhood') RETURNING id`;
         insertParams = [name, uniqueSlug, user.city, user.state, description];
       }
 
