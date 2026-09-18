@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, ActivityIndicator, AppState } from 'react-native';
+import { View, Text, FlatList, ScrollView, Image, StyleSheet, ActivityIndicator, AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -118,11 +118,16 @@ export default function CommunityChat({ community, navigation, header }) {
       </HapticPressable>
     </View>
     {!!error && <HapticPressable onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
-    {loading ? <ActivityIndicator style={{ flex: 1 }} color={COLORS.primary} /> : <FlatList
-      ref={list} inverted data={messages} keyExtractor={item => item.id}
+    {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.primary} /> : !messages.length ? <ScrollView
+      style={styles.conversation} contentContainerStyle={styles.emptyConversation} keyboardShouldPersistTaps="handled">
+      {!error && <View style={styles.welcome}>
+        <View style={styles.welcomeIcon}><Ionicons name="chatbubble-ellipses" size={32} illustrated color={COLORS.primary} /></View>
+        <Text style={styles.empty}>{thread ? 'No replies yet.' : 'Say hello to your neighbors.'}</Text>
+      </View>}
+    </ScrollView> : <FlatList
+      ref={list} style={styles.conversation} inverted data={messages} keyExtractor={item => item.id}
       keyboardShouldPersistTaps="handled" contentContainerStyle={styles.messages}
       onScroll={event => { nearBottom.current = event.nativeEvent.contentOffset.y < 80; }} scrollEventThrottle={100}
-      ListEmptyComponent={<View style={{ transform: [{ scaleY: -1 }], padding: 24 }}><Text style={styles.empty}>Say hello to your neighbors.</Text></View>}
       ListFooterComponent={nextBefore ? <HapticPressable onPress={() => refresh(nextBefore)} style={styles.more}><Text style={styles.link}>Earlier messages</Text></HapticPressable> : null}
       renderItem={({ item }) => <View style={[styles.message, item.sender.id === user?.id && styles.own]}>
         <HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })} accessibilityLabel={`View ${item.sender.name}'s profile`}>
@@ -149,12 +154,16 @@ const styles = StyleSheet.create({
   chatHeading: { paddingHorizontal: SPACING.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heading: { ...TYPOGRAPHY.headline, color: COLORS.primary }, back: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
   more: { padding: 12, alignItems: 'center' }, messages: { padding: SPACING.md, gap: 10 },
+  conversation: { flex: 1 },
+  emptyConversation: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
+  welcome: { alignItems: 'center', padding: SPACING.xl, gap: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface },
+  welcomeIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
   message: { flexDirection: 'row', gap: 10, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14 },
   own: { backgroundColor: COLORS.primaryMuted }, avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
   messageHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, name: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   time: { ...TYPOGRAPHY.caption1, color: COLORS.textMuted }, body: { ...TYPOGRAPHY.body, color: COLORS.text, marginTop: 5 },
   reply: { minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' }, link: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   messageOptions: { position: 'absolute', bottom: -4, right: 0, padding: 10 },
-  dock: { paddingHorizontal: SPACING.md, paddingTop: 8 }, empty: { ...TYPOGRAPHY.body, textAlign: 'center', color: COLORS.textSecondary },
+  dock: { paddingHorizontal: SPACING.md, paddingTop: 8 }, empty: { ...TYPOGRAPHY.body, textAlign: 'center', color: COLORS.text },
   error: { padding: 12 }, errorText: { ...TYPOGRAPHY.footnote, color: COLORS.danger },
 });
