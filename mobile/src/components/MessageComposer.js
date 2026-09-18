@@ -52,7 +52,7 @@ const MessageComposer = forwardRef(function MessageComposer({
         disabled={unavailable}
         onPress={() => { if (!unavailable) onSend?.(); }}
       >
-        {loading ? <ActivityIndicator size="small" color={COLORS.primary} />
+        {loading ? <ActivityIndicator size="small" color={COLORS.spinner} />
           : <Ionicons name="arrow-up" size={23} color={unavailable ? COLORS.textMuted : COLORS.surface} />}
       </HapticPressable>
     </View>

@@ -81,7 +81,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
       <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
         <OnboardingProgressBar step={4} total={4} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.spinner} />
         </View>
       </View>
     );

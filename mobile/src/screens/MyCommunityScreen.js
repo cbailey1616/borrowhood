@@ -82,7 +82,7 @@ export default function MyCommunityScreen({ navigation, route }) {
   const chatNote = !preview || preview.loading ? 'Loading chat…' : preview.error ? 'Open neighborhood chat'
     : preview.data?.lastMessage || 'Say hello to your neighbors.';
 
-  if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.primary} accessibilityLabel="Loading your neighborhood" /></View>;
+  if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading your neighborhood" /></View>;
 
   if (!community) return <ScrollView style={styles.page} contentContainerStyle={styles.stateContent}>
     <LayeredCard style={styles.stateCard} radius={RADIUS.xl}>
@@ -98,7 +98,7 @@ export default function MyCommunityScreen({ navigation, route }) {
   </ScrollView>;
 
   return <ScrollView style={styles.page} contentContainerStyle={styles.overviewContent}
-    refreshControl={<RefreshControl refreshing={loading} onRefresh={retry} tintColor={COLORS.primary} />}>
+    refreshControl={<RefreshControl refreshing={loading} onRefresh={retry} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
     {error && <HapticPressable accessibilityRole="button" accessibilityLabel="Retry loading neighborhoods" style={styles.refreshError} onPress={retry}>
       <Text style={styles.description}>Couldn’t refresh. Tap to retry.</Text>
     </HapticPressable>}

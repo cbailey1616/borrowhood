@@ -134,7 +134,7 @@ export default function CoverPhotoCropper({ photo, onCancel, onComplete }) {
               {[1, 2].map(n => <View key={`v${n}`} style={[styles.grid, { left: `${n * 100 / 3}%`, top: 0, bottom: 0, width: 1 }]} />)}
               {[1, 2].map(n => <View key={`h${n}`} style={[styles.grid, { top: `${n * 100 / 3}%`, left: 0, right: 0, height: 1 }]} />)}
             </View>
-          </> : !error && <ActivityIndicator color={COLORS.primary} accessibilityLabel="Preparing cover photo" />}
+          </> : !error && <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Preparing cover photo" />}
         </View>
         <Text style={styles.hint}>Drag to position · Pinch to zoom</Text>
         <View style={styles.zoomRow}>

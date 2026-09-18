@@ -297,7 +297,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               testID="Onboarding.Friends.syncContacts"
             >
               {isSyncingContacts ? (
-                <ActivityIndicator color={COLORS.primary} size="small" />
+                <ActivityIndicator color={COLORS.spinner} size="small" />
               ) : (
                 <Ionicons name="call-outline" size={20} color={COLORS.primary} />
               )}
@@ -318,7 +318,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
 
         {/* Search results */}
         {isSearching ? (
-          <ActivityIndicator color={COLORS.primary} style={styles.loader} />
+          <ActivityIndicator color={COLORS.spinner} style={styles.loader} />
         ) : showSearch ? (
           <FlatList
             data={searchResults}
@@ -354,7 +354,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
             }}
             ListEmptyComponent={
               isLoadingSuggested ? (
-                <ActivityIndicator color={COLORS.primary} style={styles.loader} />
+                <ActivityIndicator color={COLORS.spinner} style={styles.loader} />
               ) : (
                 <View style={styles.emptyPrompt}>
                   <Ionicons name="people-outline" size={40} color={COLORS.gray[600]} />

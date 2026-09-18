@@ -70,7 +70,7 @@ export default function SocialSignInButtons({ disabled = false, onBusyChange, on
         </HapticPressable>
       </View>
       {!!busy && <View style={styles.progress} accessibilityLiveRegion="polite">
-        <ActivityIndicator color={COLORS.primary} /><Text style={styles.note}>Signing you in…</Text>
+        <ActivityIndicator color={COLORS.spinner} /><Text style={styles.note}>Signing you in…</Text>
       </View>}
       {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     </View>

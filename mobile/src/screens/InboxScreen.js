@@ -395,7 +395,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
             accessibilityHint="Filter unread items or mark the inbox as read."
             accessibilityState={{ disabled: isLoading || reading, expanded: optionsVisible, busy: reading }}
             disabled={isLoading || reading} onPress={() => setOptionsVisible(true)}>
-            {reading ? <ActivityIndicator color={COLORS.primary} size="small" />
+            {reading ? <ActivityIndicator color={COLORS.spinner} size="small" />
               : <Ionicons name="ellipsis-horizontal" size={22} color={COLORS.primary} />}
           </HapticPressable>
         </View>
@@ -430,7 +430,8 @@ export default function InboxScreen({ navigation, route, onRead }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
           ListHeaderComponent={
@@ -478,7 +479,8 @@ export default function InboxScreen({ navigation, route, onRead }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
           ListHeaderComponent={loadError.messages ? renderRetry('Couldn’t refresh messages.') : null}

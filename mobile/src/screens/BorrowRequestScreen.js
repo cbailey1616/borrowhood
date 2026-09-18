@@ -188,7 +188,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   if (accessCheck.loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }

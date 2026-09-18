@@ -537,7 +537,7 @@ function ChatConversation({ route, navigation }) {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }
@@ -622,7 +622,7 @@ function ChatConversation({ route, navigation }) {
           disabled={(!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready || messagesBlocked}
           leadingAction={
             <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
-              {isUploading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
+              {isUploading ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
             </HapticPressable>
           }
         />
