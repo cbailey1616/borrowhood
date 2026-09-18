@@ -15,6 +15,19 @@ beforeEach(()=>{
  api.getCommunityChatSummary.mockResolvedValue({lastMessage:null,unreadCount:0});
  api.getCommunityChat.mockResolvedValue({messages:[],readSequence:'0',muted:false,role:'organizer'});
 });
+it('offers the cover editor when a moderator has no cover',async()=>{
+ const screen=render(<Screen navigation={navigation}/>);
+ fireEvent.press(await screen.findByText('Add cover photo'));
+ expect(navigation.navigate).toHaveBeenCalledWith('CommunitySettings',{id:'hood',editCover:true});
+});
+it('reloads a failed cover with a fresh membership response',async()=>{
+ api.getCommunities.mockResolvedValueOnce([{...community,bannerUrl:'https://example.com/expired'}])
+  .mockResolvedValue([{...community,bannerUrl:'https://example.com/fresh'}]);
+ const screen=render(<Screen navigation={navigation}/>);
+ fireEvent(await screen.findByLabelText('Maple Grove cover'),'error');
+ fireEvent.press(screen.getByText('Reload cover photo'));
+ await waitFor(()=>expect(screen.getByLabelText('Maple Grove cover').props.source.uri).toBe('https://example.com/fresh'));
+});
 it('shows shortcuts without a composer and opens the same chat channel as Inbox',async()=>{
  const screen=render(<Screen navigation={navigation}/>);
  await screen.findByText('Say hello to your neighbors.');

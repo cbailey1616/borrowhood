@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate, requireVerified, requireOrganizer } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
+import { originalPhotoUrl } from '../services/privatePhotos.js';
 
 const router = Router();
 router.use('/:id/chat', communityChat);
@@ -336,8 +337,16 @@ router.patch('/:id', authenticate, async (req, res) => {
       params.push(description.trim());
     }
     if (bannerUrl !== undefined) {
+      let source = null;
+      try {
+        if (bannerUrl !== null && typeof bannerUrl !== 'string') throw new Error('Invalid cover');
+        source = bannerUrl ? originalPhotoUrl(bannerUrl, req.user.id) : null;
+        if (source && !['https:', 'http:'].includes(new URL(source).protocol)) throw new Error('Invalid cover');
+      } catch {
+        return res.status(400).json({ error: 'Please choose the cover photo again.' });
+      }
       updates.push(`banner_url = $${paramIndex++}`);
-      params.push(bannerUrl || null);
+      params.push(source);
     }
     if (announcement !== undefined) {
       if (announcement && announcement.trim()) {
@@ -358,12 +367,12 @@ router.patch('/:id', authenticate, async (req, res) => {
     }
 
     params.push(req.params.id);
-    await query(
-      `UPDATE communities SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+    const updated = await query(
+      `UPDATE communities SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING banner_url`,
       params
     );
 
-    res.json({ success: true });
+    res.json({ success: true, bannerUrl: updated.rows[0]?.banner_url || null });
   } catch (err) {
     console.error('Update community error:', err);
     res.status(500).json({ error: 'Failed to update community' });

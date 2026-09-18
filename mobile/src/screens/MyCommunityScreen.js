@@ -9,6 +9,7 @@ import BackHeader from '../components/BackHeader';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COVER_ASPECT } from '../utils/coverCrop';
 
 export default function MyCommunityScreen({ navigation, route }) {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ export default function MyCommunityScreen({ navigation, route }) {
   const [selectedId, setSelectedId] = useState(route?.params?.communityId || null);
   const [reload, setReload] = useState(0);
   const [chat, setChat] = useState({ key: null, data: null, loading: true, error: false });
+  const [failedCover, setFailedCover] = useState(null);
   const requestedId = route?.params?.communityId;
   const retry = () => setReload(n => n + 1);
 
@@ -45,6 +47,7 @@ export default function MyCommunityScreen({ navigation, route }) {
   const communityId = community?.id;
   const chatKey = `${user?.id}:${communityId}`;
   const canManage = !!community && (community.role === 'organizer' || user?.isAdmin);
+  const coverKey = `${user?.id}:${communityId}:${community?.bannerUrl}`;
 
   useLayoutEffect(() => {
     navigation.setOptions?.({ header: props => <BackHeader navigation={props.navigation} title="My Neighborhood"
@@ -106,7 +109,15 @@ export default function MyCommunityScreen({ navigation, route }) {
       </HapticPressable>)}
     </ScrollView>}
     <View style={styles.hero}>
-      {community.bannerUrl && <Image source={{ uri: community.bannerUrl }} style={styles.cover} accessibilityLabel={`${community.name} cover`} />}
+      {community.bannerUrl && failedCover !== coverKey
+        ? <Image source={{ uri: community.bannerUrl }} style={styles.cover} resizeMode="cover"
+          accessibilityLabel={`${community.name} cover`} onError={() => setFailedCover(coverKey)} />
+        : (community.bannerUrl || canManage) && <HapticPressable style={[styles.cover, styles.coverFallback]} accessibilityRole="button"
+          onPress={community.bannerUrl ? () => { setFailedCover(null); retry(); }
+            : () => navigation.navigate('CommunitySettings', { id: community.id, editCover: true })}>
+          <Ionicons name={community.bannerUrl ? 'refresh-outline' : 'camera-outline'} size={26} color={COLORS.primary} />
+          <Text style={styles.description}>{community.bannerUrl ? 'Reload cover photo' : 'Add cover photo'}</Text>
+        </HapticPressable>}
       <View style={styles.titleRow}>
         <View style={styles.identity}>
           <Text style={styles.name} numberOfLines={2} accessibilityRole="header">{community.name}</Text>
@@ -173,7 +184,8 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
   selected: { backgroundColor: COLORS.primary },
   hero: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
-  cover: { width: '100%', height: 92, borderRadius: RADIUS.lg, marginBottom: 12 },
+  cover: { width: '100%', aspectRatio: COVER_ASPECT, borderRadius: RADIUS.lg, marginBottom: 12 },
+  coverFallback: { backgroundColor: COLORS.primaryMuted, justifyContent: 'center', alignItems: 'center', gap: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   identity: { flex: 1, minWidth: 0 },
   name: { ...TYPOGRAPHY.h2, color: COLORS.text },

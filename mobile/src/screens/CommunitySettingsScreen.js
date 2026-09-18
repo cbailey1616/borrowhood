@@ -1,5 +1,5 @@
 import TextInput from '../components/AppTextInput';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '../components/Icon';
@@ -16,15 +17,17 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import ActionButton from '../components/ActionButton';
+import CoverPhotoCropper from '../components/CoverPhotoCropper';
+import { COVER_ASPECT } from '../utils/coverCrop';
 import { haptics } from '../utils/haptics';
 import { useError } from '../context/ErrorContext';
 
 import useNavigationTask from '../hooks/useNavigationTask';
 
 export default function CommunitySettingsScreen({ route, navigation }) {
-  const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const { id } = route.params;
   const { user } = useAuth();
+  const startNavigationTask = useNavigationTask(navigation, `${user?.id}:${id}`);
   const { showError, showToast } = useError();
   const [community, setCommunity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,33 +41,40 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const [selectedBannerPhoto, setSelectedBannerPhoto] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showPhotoSheet, setShowPhotoSheet] = useState(false);
+  const [isPickingPhoto, setIsPickingPhoto] = useState(false);
+  const [coverFailed, setCoverFailed] = useState(false);
+  const [cropPhoto, setCropPhoto] = useState(null);
+  const pickerBusy = useRef(false);
 
   const canEdit = community?.role === 'organizer' || user?.isAdmin;
   const canManageMembers = community?.role === 'organizer';
 
   useEffect(() => {
-    fetchCommunity();
-  }, [id, route.params?.editCover]);
-
-  const fetchCommunity = async () => {
-    try {
-      const data = await api.getCommunity(id);
+    let active = true;
+    setIsLoading(true);
+    setSelectedBannerPhoto(null);
+    setCropPhoto(null);
+    setShowPhotoSheet(false);
+    api.getCommunity(id).then(data => {
+      if (!active) return;
       setCommunity(data);
       setEditName(data.name || '');
       setEditDescription(data.description || '');
       setEditAnnouncement(data.announcement || '');
       setEditBannerUrl(data.bannerUrl || null);
       setIsEditing(!!route.params?.editCover && (data.role === 'organizer' || user?.isAdmin));
-    } catch (error) {
+    }).catch(error => {
       console.error('Failed to fetch community:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }).finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [id, user?.id, user?.isAdmin, route.params?.editCover]);
+
+  useEffect(() => { setCoverFailed(false); }, [selectedBannerPhoto, editBannerUrl]);
 
   const handleSave = async () => {
     const isCurrent = startNavigationTask();
-    if (!canEdit || isSaving) return;
+    if (!canEdit || isSaving || pickerBusy.current) return;
     if (!editName.trim()) {
       haptics.warning();
       showError({ type: 'validation', title: 'Name Required', message: 'Neighborhood name cannot be empty.' });
@@ -81,19 +91,25 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         bannerUrl = urls[0];
       }
 
-      await api.updateCommunity(id, {
+      if (!isCurrent()) return;
+      const coverChanged = !!selectedBannerPhoto || editBannerUrl !== (community?.bannerUrl || null);
+      const saved = await api.updateCommunity(id, {
         name: editName.trim(),
         description: editDescription.trim(),
-        bannerUrl: bannerUrl || null,
+        ...(coverChanged ? { bannerUrl: bannerUrl || null } : {}),
         ...(editAnnouncement.trim() !== (community?.announcement || '').trim() ? { announcement: editAnnouncement.trim() } : {}),
       });
+      if (!isCurrent()) return;
+      // The saved response supplies a fresh display URL for private storage.
+      const savedCover = saved?.bannerUrl === undefined ? bannerUrl : saved.bannerUrl;
       setCommunity(prev => ({
         ...prev,
         name: editName.trim(),
         description: editDescription.trim(),
-        bannerUrl: bannerUrl || null,
+        bannerUrl: savedCover || null,
         announcement: editAnnouncement.trim() || null,
       }));
+      setEditBannerUrl(savedCover || null);
       setSelectedBannerPhoto(null);
       setIsEditing(false);
       haptics.success();
@@ -117,21 +133,39 @@ export default function CommunitySettingsScreen({ route, navigation }) {
     if (route.params?.editCover) navigation.goBack();
   };
 
-  const handlePickBanner = async () => {
-    if (!canEdit || isSaving) return;
+  const handlePickBanner = async (camera = false) => {
+    if (!canEdit || isSaving || pickerBusy.current) return;
+    const isCurrent = startNavigationTask();
+    pickerBusy.current = true;
+    setIsPickingPhoto(true);
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [3, 1],
+      if (camera) {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!isCurrent()) return;
+        if (!permission.granted && permission.status !== 'granted') {
+          showError({ type: 'permission', title: 'Camera access needed',
+            message: 'Allow camera access in Settings to take a cover photo.',
+            primaryAction: 'Open Settings', secondaryAction: 'Cancel',
+            onPrimaryPress: () => Linking.openSettings().catch(() => showError({ message: 'Open your device Settings to allow camera access.' })),
+          });
+          return;
+        }
+      }
+      const result = await (camera ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync)({
+        mediaTypes: ['images'],
+        // Keep the full image for the dedicated wide cover crop on both platforms.
+        allowsEditing: false,
         quality: 0.8,
+        exif: false,
       });
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setSelectedBannerPhoto(result.assets[0].uri);
-        haptics.light();
+      if (isCurrent() && !result.canceled && result.assets?.[0]?.uri) {
+        setCropPhoto(result.assets[0]);
       }
     } catch (error) {
-      showError({ type: 'generic', message: 'Could not open your photos. Please try again.' });
+      if (isCurrent()) showError({ type: 'generic', message: camera ? 'Could not open the camera. Please try again.' : 'Could not open your photos. Please try again.' });
+    } finally {
+      pickerBusy.current = false;
+      setIsPickingPhoto(false);
     }
   };
 
@@ -170,13 +204,19 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             <Text style={styles.fieldLabel}>Cover Photo</Text>
             {(selectedBannerPhoto || editBannerUrl) ? (
               <View style={styles.bannerPreviewContainer}>
-                <Image
+                {coverFailed ? <View style={[styles.bannerPreview, styles.coverFallback]}>
+                  <Ionicons name="image-outline" size={28} color={COLORS.primary} />
+                  <Text style={styles.bannerPickerText}>Cover couldn’t load</Text>
+                </View> : <Image
                   source={{ uri: selectedBannerPhoto || editBannerUrl }}
                   style={styles.bannerPreview}
-                />
+                  resizeMode="cover"
+                  accessibilityLabel="Cover photo preview"
+                  onError={() => setCoverFailed(true)}
+                />}
               </View>
             ) : (
-              <HapticPressable style={styles.bannerPickerButton} onPress={handlePickBanner} haptic="light" disabled={isSaving} accessibilityRole="button">
+              <HapticPressable style={styles.bannerPickerButton} onPress={() => setShowPhotoSheet(true)} haptic="light" disabled={isSaving || isPickingPhoto} accessibilityRole="button">
                 <Ionicons name="image-outline" size={24} color={COLORS.primary} />
                 <Text style={styles.bannerPickerText}>Add cover photo</Text>
               </HapticPressable>
@@ -184,8 +224,8 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
             {(selectedBannerPhoto || editBannerUrl) && (
               <View style={{ gap: SPACING.sm, marginBottom: SPACING.md }}>
-                <ActionButton label="Change cover photo" onPress={handlePickBanner} disabled={isSaving} />
-                <ActionButton label="Remove cover photo" destructive disabled={isSaving}
+                <ActionButton label="Change cover photo" onPress={() => setShowPhotoSheet(true)} disabled={isSaving || isPickingPhoto} />
+                <ActionButton label="Remove cover photo" destructive disabled={isSaving || isPickingPhoto}
                   onPress={() => { setSelectedBannerPhoto(null); setEditBannerUrl(null); haptics.light(); }} />
               </View>
             )}
@@ -237,7 +277,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               <HapticPressable
                 style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                 onPress={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || isPickingPhoto}
                 haptic="medium"
               >
                 {isSaving ? (
@@ -319,6 +359,16 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
       <View style={styles.bottomPadding} />
 
+      {cropPhoto && <CoverPhotoCropper key={`${user?.id}:${id}:${cropPhoto.uri}`} photo={cropPhoto}
+        onCancel={() => setCropPhoto(null)}
+        onComplete={uri => { setSelectedBannerPhoto(uri); setCropPhoto(null); haptics.light(); }} />}
+
+      <ActionSheet isVisible={showPhotoSheet} onClose={() => setShowPhotoSheet(false)} title="Cover photo"
+        actions={[
+          { label: 'Take photo', icon: <Ionicons name="camera" size={28} illustrated />, onPress: () => handlePickBanner(true) },
+          { label: 'Choose photo', icon: <Ionicons name="image" size={28} illustrated />, onPress: () => handlePickBanner(false) },
+        ]} />
+
       <ActionSheet
         isVisible={showLeaveSheet}
         onClose={() => setShowLeaveSheet(false)}
@@ -337,6 +387,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  coverFallback: { justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: COLORS.primaryMuted },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -516,7 +567,7 @@ const styles = StyleSheet.create({
   },
   bannerPreview: {
     width: '100%',
-    height: 100,
+    aspectRatio: COVER_ASPECT,
     borderRadius: RADIUS.md,
   },
   bannerPickerButton: {
