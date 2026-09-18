@@ -41,6 +41,8 @@ const NOTIFICATION_ICONS = {
   request_declined: 'close-circle',
   payment_confirmed: 'card',
   pickup_confirmed: 'cube',
+  pickup_check: 'basket',
+  pickup_extended: 'time',
   return_confirmed: 'checkbox',
   return_reminder: 'alarm',
   dispute_opened: 'warning',

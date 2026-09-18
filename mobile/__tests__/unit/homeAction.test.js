@@ -52,6 +52,15 @@ it('shows just the highest-priority action and moves to the next after it resolv
   expect(nextHomeAction([request, { ...overdue, status: 'returned' }], [], 'me', now).destination.name).toBe('RequestQueue');
 });
 
+it('asks only the owner to review a missed pickup and removes that prompt after an extension', () => {
+  const pickupReview = { needed: true };
+  expect(action({ status: 'paid', isBorrower: false, pickupReview })).toMatchObject({ title: 'Was Ladder picked up?', label: 'Review pickup' });
+  expect(action({ status: 'paid', isBorrower: true, pickupReview }).label).toBe('View pickup');
+  expect(action({ status: 'paid', isBorrower: false, pickupReview: { needed: false } }).label).toBe('View pickup');
+  expect(action({ status: 'paid', isBorrower: false, pickupReview, hasDispute: true })).toBeNull();
+  expect(action({ status: 'paid', isBorrower: false, pickupReview, actualPickupAt: now.toISOString() })).toBeNull();
+});
+
 it('shows a dispute only when this person has a response to give', () => {
   const issue = { id: 'issue', status: 'awaitingResponse', respondent: { id: 'me' }, claimant: { id: 'sam' }, listing: { title: 'Ladder' } };
   expect(nextHomeAction([], [issue], 'me', now)).toMatchObject({ title: 'Review an issue with Ladder', destination: { name: 'DisputeDetail', params: { id: 'issue' } } });

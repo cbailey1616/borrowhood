@@ -779,6 +779,9 @@ const confirmRentalReturn = (id, condition, notes) =>
 const cancelRental = (id) =>
   post(`/rentals/${id}/cancel`);
 
+const extendPickup = (id, reviewAt) =>
+  post(`/transactions/${id}/pickup-extension`, { reviewAt });
+
 const submitDamageClaim = (id, { amountCents, notes, evidenceUrls }) =>
   post(`/rentals/${id}/damage-claim`, { amountCents, notes, evidenceUrls });
 
@@ -1022,6 +1025,7 @@ export default {
   confirmRentalPickup,
   confirmRentalReturn,
   cancelRental,
+  extendPickup,
   submitDamageClaim,
   createLateFee,
   getRentalPaymentStatus,

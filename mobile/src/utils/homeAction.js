@@ -29,6 +29,9 @@ export function exchangeHomeAction(transaction, userId, now = new Date()) {
   const lender = isLender(transaction, userId);
   if ((!borrower && !lender) || transaction.hasDispute || transaction.status === 'disputed') return null;
   const base = { id: transaction.id, icon: 'basket', destination: { name: 'TransactionDetail', params: { id: transaction.id } }, time: time(transaction.createdAt) };
+  if (lender && transaction.pickupReview?.needed && ['approved', 'paid'].includes(transaction.status) && !transaction.actualPickupAt) {
+    return { ...base, title: `Was ${title} picked up?`, label: 'Review pickup', priority: 1 };
+  }
   if (lender && (transaction.status === 'return_pending' || transaction.status === 'returned' && transaction.paymentStatus === 'authorized')) {
     return { ...base, title: `Was ${title} returned?`, label: 'Confirm return', priority: 1 };
   }
@@ -68,7 +71,8 @@ export function exchangeStatus(transaction, userId, now = new Date()) {
   if (transaction.status === 'disputed') return 'Issue under review';
   switch (transaction.status) {
     case 'pending': return borrower ? 'Waiting for approval' : `${transaction.requestCount || 1} request${transaction.requestCount > 1 ? 's' : ''} to review`;
-    case 'approved': case 'paid': return 'Ready for pickup';
+    case 'approved': case 'paid': return !borrower && transaction.pickupReview?.needed && !transaction.actualPickupAt && !transaction.hasDispute
+      ? 'Was this item picked up?' : 'Ready for pickup';
     case 'picked_up': return isTransferListing(transaction) ? 'Pickup complete' : borrower ? returnTiming(transaction, now)?.label || 'Currently borrowing' : 'Currently lent out';
     case 'return_pending': return borrower ? 'Waiting for return confirmation' : 'Confirm the return';
     case 'returned': return transaction.paymentStatus === 'authorized' ? borrower ? 'Waiting for return confirmation' : 'Confirm the return' : 'Returned';

@@ -6,6 +6,7 @@ import { logger } from './logger.js';
 import { ensureSignupSchema } from '../services/signupVerification.js';
 import { ensureSafetyReviewSchema } from '../services/safetyReview.js';
 import { ensureExchangeCompletionSchema } from '../services/exchangeCompletionSchema.js';
+import { ensurePickupFollowupSchema } from '../services/pickupFollowup.js';
 
 /**
  * Run pending migrations on server startup
@@ -690,6 +691,7 @@ export async function runMigrations() {
     await ensureEndorsementSchema();
     await ensureRankNotificationSchema();
     await ensureNotificationSchema();
+    await ensurePickupFollowupSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

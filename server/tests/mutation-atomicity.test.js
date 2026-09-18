@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import { query } from '../src/utils/db.js';
 import * as db from '../src/utils/db.js';
-import { expireGiveawayPickups } from '../src/services/scheduler.js';
+import { sendPickupFollowups } from '../src/services/pickupFollowup.js';
 
 describe('Current workflow failure and retry behavior on PostgreSQL', () => {
   let app, owner, neighbor, ownerToken, neighborToken;
@@ -152,16 +152,14 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
       ? { status:'cancelled',listing_status:'active',is_available:true }
       : { status:'returned',listing_status:'given_away',is_available:false });
   });
-  it('never revives a paused listing when an uncollected sale expires', async () => {
+  it('keeps an uncollected sale reserved and asks its owner once, preserving a paused listing', async () => {
     const { listing,exchange } = await seedExchange('sell');
-    // The baseline updated_at trigger replaces ordinary UPDATE timestamps.
-    await query('ALTER TABLE borrow_transactions DISABLE TRIGGER USER');
-    try { await query("UPDATE borrow_transactions SET updated_at=NOW()-INTERVAL '8 days' WHERE id=$1",[exchange]); }
-    finally { await query('ALTER TABLE borrow_transactions ENABLE TRIGGER USER'); }
+    await query("UPDATE borrow_transactions SET pickup_review_at=NOW()-INTERVAL '1 hour' WHERE id=$1",[exchange]);
     await query("UPDATE listings SET status='paused' WHERE id=$1",[listing]);
-    await expireGiveawayPickups();
-    expect((await query('SELECT status FROM borrow_transactions WHERE id=$1',[exchange])).rows[0].status).toBe('cancelled');
+    await Promise.all([sendPickupFollowups(), sendPickupFollowups()]);
+    expect((await query('SELECT status FROM borrow_transactions WHERE id=$1',[exchange])).rows[0].status).toBe('paid');
     expect((await query('SELECT status FROM listings WHERE id=$1',[listing])).rows[0].status).toBe('paused');
+    expect((await query("SELECT user_id FROM notifications WHERE transaction_id=$1 AND type='pickup_check'",[exchange])).rows).toEqual([{ user_id:owner }]);
   });
   it('returns a delivered message even if preparing its notification fails', async () => {
     const original = db.query;
@@ -173,6 +171,42 @@ describe('Current workflow failure and retry behavior on PostgreSQL', () => {
       expect(result.status).toBe(201);
       expect((await original('SELECT content FROM messages WHERE id=$1',[result.body.id])).rows[0].content).toBe('Already sent');
     } finally { spy.mockRestore(); }
+  });
+
+  it('authorizes pickup extensions and applies simultaneous retries only once', async () => {
+    const { listing, exchange } = await seedExchange();
+    const { rows: [before] } = await query(`UPDATE borrow_transactions
+      SET pickup_review_at=NOW()-INTERVAL '1 hour' WHERE id=$1 RETURNING pickup_review_at,requested_end_date`, [exchange]);
+    await sendPickupFollowups();
+    const payload = { reviewAt: before.pickup_review_at.toISOString() };
+    const endpoint = `/transactions/${exchange}/pickup-extension`;
+    expect((await request(app).post(endpoint).send(payload)).status).toBe(401);
+    expect((await request(app).post(endpoint).set(auth(neighborToken)).send(payload)).status).toBe(404);
+    const responses = await Promise.all([1, 2].map(() => request(app).post(endpoint).set(auth(ownerToken)).send(payload)));
+    expect(responses.map(res => res.status)).toEqual([200, 200]);
+    expect(responses.filter(res => res.body.alreadyExtended)).toHaveLength(1);
+    expect(responses[0].body.pickupReviewAt).toBe(responses[1].body.pickupReviewAt);
+    expect((await query("SELECT id FROM notifications WHERE transaction_id=$1 AND type='pickup_extended'", [exchange])).rows).toHaveLength(1);
+    expect((await query("SELECT is_read FROM notifications WHERE transaction_id=$1 AND type='pickup_check'", [exchange])).rows).toEqual([{ is_read: true }]);
+    const detail = await request(app).get(`/transactions/${exchange}`).set(auth(ownerToken));
+    expect(detail.body.pickupReview.needed).toBe(false);
+    expect(new Date(detail.body.endDate).getTime()).toBe(new Date(before.requested_end_date).getTime());
+    expect((await query('SELECT is_available FROM listings WHERE id=$1', [listing])).rows[0].is_available).toBe(false);
+  });
+
+  it('does not let an extension racing a handoff return the exchange to awaiting pickup', async () => {
+    const { exchange } = await seedExchange();
+    const { rows: [before] } = await query(`UPDATE borrow_transactions
+      SET pickup_review_at=NOW()-INTERVAL '1 hour' WHERE id=$1 RETURNING pickup_review_at`, [exchange]);
+    const [pickup, extension] = await Promise.all([
+      request(app).post(`/rentals/${exchange}/pickup`).set(auth(ownerToken)).send({}),
+      request(app).post(`/transactions/${exchange}/pickup-extension`).set(auth(ownerToken)).send({ reviewAt: before.pickup_review_at.toISOString() }),
+    ]);
+    expect(pickup.status).toBe(200);
+    expect([200, 409]).toContain(extension.status);
+    const t = (await query('SELECT status,actual_pickup_at FROM borrow_transactions WHERE id=$1', [exchange])).rows[0];
+    expect(t.status).toBe('picked_up');
+    expect(t.actual_pickup_at).toBeTruthy();
   });
   it('resets identity verification using a supported account status', async () => {
     const response = await request(app).post('/auth/reset-verification').set(auth(ownerToken)).send({});
