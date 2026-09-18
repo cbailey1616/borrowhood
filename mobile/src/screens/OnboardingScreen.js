@@ -228,7 +228,7 @@ export default function OnboardingScreen({ onComplete }) {
         haptic="medium"
       >
         {isGettingLocation ? (
-          <ActivityIndicator color={COLORS.primary} />
+          <ActivityIndicator color={COLORS.spinner} />
         ) : (
           <>
             <Ionicons name="navigate" size={20} color={COLORS.primary} />
@@ -284,7 +284,7 @@ export default function OnboardingScreen({ onComplete }) {
       </Text>
 
       {isLoadingNeighborhoods ? (
-        <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
+        <ActivityIndicator size="large" color={COLORS.spinner} style={styles.loader} />
       ) : neighborhoods.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No neighborhoods in {city} yet.</Text>
@@ -376,7 +376,7 @@ export default function OnboardingScreen({ onComplete }) {
       </View>
 
       {isSearching ? (
-        <ActivityIndicator color={COLORS.primary} style={styles.loader} />
+        <ActivityIndicator color={COLORS.spinner} style={styles.loader} />
       ) : searchQuery.length >= 2 ? (
         <FlatList
           data={searchResults}

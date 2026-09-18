@@ -172,7 +172,7 @@ export default function DisputesScreen({ navigation }) {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }
@@ -208,7 +208,8 @@ export default function DisputesScreen({ navigation }) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primary}
+            tintColor={COLORS.spinner}
+            colors={[COLORS.spinner]}
           />
         }
         ListEmptyComponent={

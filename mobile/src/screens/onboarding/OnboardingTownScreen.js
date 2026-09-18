@@ -62,7 +62,7 @@ export default function OnboardingTownScreen() {
           <TextInput accessibilityLabel="Your first name" value={firstName} onChangeText={setFirstName} editable={!busy} autoCapitalize="words" autoCorrect={false} textContentType="givenName" maxLength={100} style={styles.input} placeholder="What should we call you?" placeholderTextColor={COLORS.textMuted} />
         </>}
         <HapticPressable accessibilityRole="button" disabled={locating || busy} onPress={locate} style={styles.secondary}>
-          {locating ? <ActivityIndicator color={COLORS.primary} /> : <Text style={styles.link}>Use my current location</Text>}
+          {locating ? <ActivityIndicator color={COLORS.spinner} /> : <Text style={styles.link}>Use my current location</Text>}
         </HapticPressable>
         <Text style={styles.label}>Town or city</Text>
         <TextInput accessibilityLabel="Town or city" value={city} onChangeText={setCity} editable={!busy && !locating} autoCapitalize="words" autoCorrect={false} maxLength={100} style={styles.input} placeholder="Enter your town" placeholderTextColor={COLORS.textMuted} />

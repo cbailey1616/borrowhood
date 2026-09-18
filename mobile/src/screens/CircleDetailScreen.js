@@ -34,7 +34,7 @@ export default function CircleDetailScreen({ route, navigation }) {
       } },
     ]);
   if (error) return <View style={styles.container}><HapticPressable onPress={load} style={styles.card}><Text>Could not load this group. Tap to retry.</Text></HapticPressable></View>;
-  if (!group) return <ActivityIndicator color={COLORS.primary} style={{ margin: 32 }} />;
+  if (!group) return <ActivityIndicator color={COLORS.spinner} style={{ margin: 32 }} />;
   return <ScrollView style={styles.container} contentContainerStyle={styles.content}>
     <Text style={styles.title}>{group.name}</Text>
     <Text style={styles.hint}>Invite-only. Members see only items explicitly shared with this group.</Text>

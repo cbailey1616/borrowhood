@@ -306,7 +306,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 
         {isGettingLocation && (
           <View style={styles.detectingContainer}>
-            <ActivityIndicator color={COLORS.primary} />
+            <ActivityIndicator color={COLORS.spinner} />
             <Text style={styles.detectingText}>Detecting your location...</Text>
           </View>
         )}
@@ -358,7 +358,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
         {showNeighborhoods && (
           <>
             {isLoadingNeighborhoods ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
+              <ActivityIndicator size="large" color={COLORS.spinner} style={styles.loader} />
             ) : neighborhoods.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>No neighborhoods in {city} yet.</Text>

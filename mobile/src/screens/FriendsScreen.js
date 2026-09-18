@@ -495,12 +495,13 @@ export default function FriendsScreen({ navigation, route }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
 
           ListEmptyComponent={
-            isLoading ? <View style={styles.emptyContainer}><ActivityIndicator size="large" color={COLORS.primary} /></View> : !friendsError && (
+            isLoading ? <View style={styles.emptyContainer}><ActivityIndicator size="large" color={COLORS.spinner} /></View> : !friendsError && (
               <View style={styles.emptyContainer}>
                 <HeroIcon icon="people-outline" size={80} />
                 <Text style={styles.emptyTitle}>{search ? 'No matching friends' : 'Good neighbors start with a hello'}</Text>
@@ -523,10 +524,11 @@ export default function FriendsScreen({ navigation, route }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
-          ListEmptyComponent={isLoadingRequests ? <View style={styles.emptyContainer}><ActivityIndicator size="large" color={COLORS.primary} /></View> : !requestsError ? (
+          ListEmptyComponent={isLoadingRequests ? <View style={styles.emptyContainer}><ActivityIndicator size="large" color={COLORS.spinner} /></View> : !requestsError ? (
             <View style={styles.emptyContainer}>
               <HeroIcon icon="mail-outline" size={80} />
               <Text style={styles.emptyTitle}>No pending requests</Text>
@@ -551,7 +553,7 @@ export default function FriendsScreen({ navigation, route }) {
             </View>
           ) : isLoadingContacts || (!contactsFetched && contactsPermission === null) ? (
             <View style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+              <ActivityIndicator size="large" color={COLORS.spinner} />
               <Text style={styles.emptySubtitle}>Checking your contacts...</Text>
             </View>
           ) : (
@@ -568,7 +570,8 @@ export default function FriendsScreen({ navigation, route }) {
                 <RefreshControl
                   refreshing={isRefreshing}
                   onRefresh={onRefresh}
-                  tintColor={COLORS.primary}
+                  tintColor={COLORS.spinner}
+                  colors={[COLORS.spinner]}
                 />
               }
               ListHeaderComponent={
@@ -610,7 +613,7 @@ export default function FriendsScreen({ navigation, route }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               {isSearching ? (
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <ActivityIndicator size="large" color={COLORS.spinner} />
               ) : search.length < 2 ? (
                 <>
                   <HeroIcon icon="search-outline" size={80} />

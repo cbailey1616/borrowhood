@@ -175,7 +175,7 @@ export default function RequestDetailScreen({ route, navigation }) {
     }
   };
 
-  if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.spinner} /></View>;
   if (!request) return <View style={styles.center}>
     <Text style={styles.body}>Couldn’t load this wanted post.</Text>
     <ActionButton label="Try again" onPress={fetchRequest} />
@@ -259,7 +259,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         </View>
         {offers.length > 0 && <Text style={styles.sectionHint}>Only you and the other person can see these.</Text>}
         {offerError && <ActionButton label="Couldn’t load offers. Try again" onPress={fetchOffers} />}
-        {offersLoading && offers.length === 0 ? <ActivityIndicator color={COLORS.primary} />
+        {offersLoading && offers.length === 0 ? <ActivityIndicator color={COLORS.spinner} />
           : !offerError && offers.length === 0 && <Text style={styles.metaText}>No offers yet.</Text>}
         {offers.map(item => <LayeredCard key={item.id}>
           <View style={styles.offerCard}>

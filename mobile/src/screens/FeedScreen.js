@@ -475,7 +475,7 @@ export default function FeedScreen({ navigation, route }) {
                     style={styles.tileSaveButton}
                   >
                     {saved.status === 'loading' || saved.pendingIds.has(item.id)
-                      ? <ActivityIndicator size="small" color={COLORS.primary} />
+                      ? <ActivityIndicator size="small" color={COLORS.spinner} />
                       : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
                   </HapticPressable>
                 )}
@@ -661,8 +661,8 @@ export default function FeedScreen({ navigation, route }) {
               refreshing={isRefreshing}
               progressViewOffset={feedHeader.height}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
-              colors={[COLORS.primary]}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
           onEndReached={onEndReached}
@@ -679,7 +679,7 @@ export default function FeedScreen({ navigation, route }) {
           ListFooterComponent={
             isLoadingMore ? (
               <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <ActivityIndicator size="small" color={COLORS.spinner} />
               </View>
             ) : hasMore && !isFetching ? (
               <View style={styles.feedEnd}>
@@ -700,7 +700,7 @@ export default function FeedScreen({ navigation, route }) {
               </View>
             ) : null
           }
-          ListEmptyComponent={<View>{renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.primary} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
+          ListEmptyComponent={<View>{renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.spinner} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
             <View style={styles.welcomeContainer}>
               <HeroIcon icon="home-outline" size={88} />
               <Text style={styles.emptyTitle}>What would you like to do?</Text>

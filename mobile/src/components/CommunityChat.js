@@ -118,7 +118,7 @@ export default function CommunityChat({ community, navigation, header }) {
       </HapticPressable>
     </View>
     {!!error && <HapticPressable onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
-    {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.primary} /> : !messages.length ? <ScrollView
+    {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.spinner} /> : !messages.length ? <ScrollView
       style={styles.conversation} contentContainerStyle={styles.emptyConversation} keyboardShouldPersistTaps="handled">
       {!error && <View style={styles.welcome}>
         <View style={styles.welcomeIcon}><Ionicons name="chatbubble-ellipses" size={32} illustrated color={COLORS.primary} /></View>

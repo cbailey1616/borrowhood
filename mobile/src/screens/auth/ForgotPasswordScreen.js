@@ -353,7 +353,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
 
                 {isLoading && (
                   <View style={styles.verifyingRow}>
-                    <ActivityIndicator size="small" color={COLORS.primary} />
+                    <ActivityIndicator size="small" color={COLORS.spinner} />
                     <Text style={styles.verifyingText}>Verifying...</Text>
                   </View>
                 )}

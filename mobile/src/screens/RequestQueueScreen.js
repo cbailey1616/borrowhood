@@ -93,12 +93,12 @@ export default function RequestQueueScreen({ route, navigation }) {
 
   if (data?.listing.id !== listingId) return <View style={styles.center}>{error
     ? <View style={{ gap: SPACING.md }}><Text style={styles.body}>Couldn’t load requests.</Text><HapticPressable accessibilityRole="button" onPress={load} style={styles.outline}><Text style={styles.action}>Try again</Text></HapticPressable></View>
-    : <ActivityIndicator color={COLORS.primary} />}</View>;
+    : <ActivityIndicator color={COLORS.spinner} />}</View>;
   const availability = listingAvailability(data.listing);
   return <View style={{ flex: 1, backgroundColor: COLORS.background }}>
     <FlatList contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}
       data={data.requests} keyExtractor={item => item.id}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.primary} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}
       ListHeaderComponent={<View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
         <View style={styles.headingRow}>
           <Text style={styles.title}>{data.listing.title}</Text>

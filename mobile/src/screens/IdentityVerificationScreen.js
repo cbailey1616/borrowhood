@@ -91,7 +91,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   if (loading || status === null) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }

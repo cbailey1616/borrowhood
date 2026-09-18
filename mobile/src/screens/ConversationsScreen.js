@@ -125,7 +125,8 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primary}
+            tintColor={COLORS.spinner}
+            colors={[COLORS.spinner]}
           />
         }
         ListEmptyComponent={

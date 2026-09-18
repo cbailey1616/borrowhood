@@ -296,7 +296,8 @@ export default function BrowseScreen({ navigation }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
           ListEmptyComponent={
@@ -322,7 +323,8 @@ export default function BrowseScreen({ navigation }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
           ListEmptyComponent={

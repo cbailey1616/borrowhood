@@ -429,7 +429,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const renderThreadStatus = () => (
     <View style={styles.threadStatus}>
       {loadingReplies[activeThreadId] ? <View style={styles.replyStatus}>
-        <ActivityIndicator size="small" color={COLORS.primary} />
+        <ActivityIndicator size="small" color={COLORS.spinner} />
         <Text style={styles.statusText}>Loading replies…</Text>
       </View> : replyErrors[activeThreadId] ? <View style={styles.replyStatus}>
         <Text accessibilityRole="alert" style={styles.replyError}>{replyErrors[activeThreadId]}</Text>
@@ -448,7 +448,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }

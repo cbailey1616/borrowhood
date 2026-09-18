@@ -137,7 +137,7 @@ export default function CommunityLibraryScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }
@@ -164,7 +164,8 @@ export default function CommunityLibraryScreen({ navigation }) {
                 setRefreshing(true);
                 loadItems();
               }}
-              tintColor={COLORS.primary}
+              tintColor={COLORS.spinner}
+              colors={[COLORS.spinner]}
             />
           }
         />

@@ -69,12 +69,12 @@ export default function UserSafetyActions({ userId, name = 'this person', label 
       <GroupedListItem icon="flag-outline" title="Report user" onPress={() => { if (!busy) setSheet('report'); }} />
       <GroupedListItem icon="shield-outline" title={blocked ? 'Unblock user' : 'Block user'} onPress={() => run(async () => {
         const result = await api.getUserSafety(userId); setBlocked(result.blocked); setSheet('block');
-      })} rightElement={busy ? <ActivityIndicator color={COLORS.primary} /> : null} />
+      })} rightElement={busy ? <ActivityIndicator color={COLORS.spinner} /> : null} />
     </GroupedListSection> :
     <HapticPressable accessibilityRole="button" accessibilityLabel={label === 'More' ? 'More profile options' : label}
       disabled={busy} onPress={open}
       style={{ minHeight: 44, minWidth: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, paddingHorizontal: SPACING.md }}>
-      {busy ? <ActivityIndicator size="small" color={COLORS.primary} /> : <>
+      {busy ? <ActivityIndicator size="small" color={COLORS.spinner} /> : <>
         <Ionicons name="shield-outline" size={20} color={COLORS.primary} />
         <Text style={{ color: COLORS.primary }}>{label}</Text>
       </>}

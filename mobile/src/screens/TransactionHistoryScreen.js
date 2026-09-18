@@ -165,7 +165,7 @@ export default function TransactionHistoryScreen({ navigation }) {
       {isLoading ? <View style={styles.skeletonWrap}><SkeletonCard /><SkeletonCard /></View> : (
         <FlatList data={filteredTransactions} keyExtractor={item => item.id} renderItem={renderTransaction}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}
           ListEmptyComponent={!loadError ? <View style={styles.emptyContainer}>
             <HeroIcon icon="receipt-outline" size={72} />
             <Text style={styles.emptyTitle}>{hasFilter ? 'No matching history' : 'No history yet'}</Text>

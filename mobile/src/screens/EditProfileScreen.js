@@ -300,7 +300,7 @@ export default function EditProfileScreen({ navigation }) {
                 disabled={isGettingLocation}
               >
                 {isGettingLocation ? (
-                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <ActivityIndicator size="small" color={COLORS.spinner} />
                 ) : (
                   <>
                     <Ionicons name="location" size={16} color={COLORS.primary} />

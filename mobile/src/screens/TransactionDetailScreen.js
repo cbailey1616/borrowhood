@@ -187,7 +187,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.spinner} />
       </View>
     );
   }
@@ -284,7 +284,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           }
         }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />
         }
       >
         <Text style={styles.pageEyebrow}>{transaction.status === 'pending' ? 'Your request' : 'Your exchange'}</Text>

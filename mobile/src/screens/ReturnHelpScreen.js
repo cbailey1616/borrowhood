@@ -74,7 +74,7 @@ export default function ReturnHelpScreen({route,navigation}) {
   return <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={styles.heading}>{admin?'Return reviews':transaction?.listing?.title||'Return help'}</Text>
     <Text style={styles.body}>The owner confirms when an item is back. Existing messages and returns stay available during borrowing restrictions.</Text>
-    {loading&&<ActivityIndicator color={COLORS.primary}/>}
+    {loading&&<ActivityIndicator color={COLORS.spinner}/>}
     {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {!!success&&<Text accessibilityRole="alert" style={styles.body}>{success}</Text>}
     {!!data.restriction&&<View style={styles.notice}><Text style={styles.title}>Borrowing paused</Text><Text style={styles.body}>{restrictionText[data.restriction.state]}</Text>

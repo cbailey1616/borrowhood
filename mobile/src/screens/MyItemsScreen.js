@@ -390,7 +390,7 @@ export default function MyItemsScreen({ navigation }) {
       </HapticPressable>
     </View>
   ) : null;
-  const refreshControl = <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />;
+  const refreshControl = <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />;
   const contentContainerStyle = [styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }];
 
   return (

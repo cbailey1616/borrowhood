@@ -16,10 +16,10 @@ export default function InsightsScreen() {
   };
   useEffect(() => { load(); }, []);
   const rows = data ? [['New accounts', data.signups], ['Finished onboarding', data.onboarded], ['Members who listed an item', data.first_listers], ['Members who requested an item', data.first_requesters], ['Borrow requests', data.requests], ['Accepted requests', data.accepted], ['Returns / giveaway handoffs', data.returned], ['Onboarding completion', data.onboardingRate == null ? '—' : `${data.onboardingRate}%`], ['Request acceptance', data.acceptanceRate == null ? '—' : `${data.acceptanceRate}%`]] : [];
-  return <ScrollView style={{ flex: 1, backgroundColor: COLORS.background }} contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 50 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}>
+  return <ScrollView style={{ flex: 1, backgroundColor: COLORS.background }} contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 50 }} refreshControl={<RefreshControl tintColor={COLORS.spinner} colors={[COLORS.spinner]} refreshing={loading} onRefresh={load} />}>
     <Text style={{ color: COLORS.text, fontSize: 26, fontWeight: '400' }}>Last 30 days</Text>
     <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22 }}>Member activity and exchange completion. Aggregate counts only.</Text>
-    {loading && !data && <ActivityIndicator color={COLORS.primary} />}
+    {loading && !data && <ActivityIndicator color={COLORS.spinner} />}
     {!!error && <HapticPressable accessibilityRole="button" onPress={load}><Text style={{ color: COLORS.danger }}>{error} Tap to retry.</Text></HapticPressable>}
     {rows.map(([label, value]) => <View key={label} style={{ padding: 18, borderRadius: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.borderLight }}>
       <Text style={{ fontSize: 15, color: COLORS.textSecondary }}>{label}</Text><Text style={{ fontSize: 28, fontWeight: '400', color: COLORS.text, marginTop: 8 }}>{value}</Text>

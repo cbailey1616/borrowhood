@@ -61,7 +61,7 @@ export default function SafetyReportsScreen({ navigation }) {
   return <View style={styles.container}>
     <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
       contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { if (!saving) { setSelected(null); load(); } }} tintColor={COLORS.primary} />}>
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { if (!saving) { setSelected(null); load(); } }} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
       <View style={styles.heading}><Ionicons name="shield-checkmark-outline" size={36} color={COLORS.primary} /><View style={{ flex: 1 }}>
         <Text style={styles.title}>Community safety</Text><Text style={styles.body}>Review reports and manage account access.</Text>
       </View></View>
@@ -71,7 +71,7 @@ export default function SafetyReportsScreen({ navigation }) {
       {!!error && <View style={styles.errorBox}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
         {!saving && <HapticPressable style={styles.action} onPress={() => { setSelected(null); load(); }}><Text style={styles.link}>Refresh reports</Text></HapticPressable>}
       </View>}
-      {loading && !data.reports.length && <ActivityIndicator color={COLORS.primary} />}
+      {loading && !data.reports.length && <ActivityIndicator color={COLORS.spinner} />}
       {!loading && !error && !data.reports.length && <View style={styles.card}><Text style={styles.name}>{filter === 'open' ? 'No open reports' : 'No reports yet'}</Text><Text style={styles.body}>Reports submitted by members will appear here.</Text></View>}
       {data.reports.map(report => <View key={report.id} style={styles.card}>
         <HapticPressable disabled={saving} accessibilityLabel={`Review report about ${report.reportedName}`} onPress={() => {
@@ -91,7 +91,7 @@ export default function SafetyReportsScreen({ navigation }) {
           <TextInput accessibilityLabel="Review note" multiline value={note} onChangeText={setNote} maxLength={2000} editable={!saving}
             placeholder="Explain your decision. Visible only to administrators." placeholderTextColor={COLORS.textSecondary} style={styles.input} />
           <Text style={styles.caption}>Every decision is saved with the reviewer and time. A report alone does not suspend an account.</Text>
-          {saving ? <ActivityIndicator color={COLORS.primary} /> : <>
+          {saving ? <ActivityIndicator color={COLORS.spinner} /> : <>
             {report.reportedId && !report.reportedIsAdmin && report.reportedId !== user.id && report.accountStatus !== 'suspended' &&
               <HapticPressable style={[styles.action, styles.dangerAction]} onPress={() => choose('suspend')}><Text style={styles.error}>Suspend account</Text></HapticPressable>}
             {report.canRestore && !report.reportedIsAdmin && <HapticPressable style={[styles.action, styles.primaryAction]} onPress={() => choose('restore')}><Text style={styles.primaryText}>Restore account</Text></HapticPressable>}
