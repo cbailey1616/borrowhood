@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import { randomUUID } from 'expo-crypto';
 import { listingAvailability } from '../utils/listingAvailability';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
@@ -10,6 +9,7 @@ import {
   StyleSheet,
   FlatList,
   useWindowDimensions,
+  RefreshControl,
   Animated as RNAnimated,
   InteractionManager,
 } from 'react-native';

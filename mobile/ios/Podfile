@@ -15,7 +15,9 @@ end
 ENV['RCT_NEW_ARCH_ENABLED'] ||= '0' if podfile_properties['newArchEnabled'] == 'false'
 ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] ||= podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
 ENV['RCT_USE_RN_DEP'] ||= '1' if podfile_properties['ios.buildReactNativeFromSource'] != 'true' && podfile_properties['newArchEnabled'] != 'false'
-ENV['RCT_USE_PREBUILT_RNCORE'] ||= '1' if podfile_properties['ios.buildReactNativeFromSource'] != 'true' && podfile_properties['newArchEnabled'] != 'false'
+# Compile the refresh-control initialization fix below into React Native. The
+# prebuilt framework ignores local source corrections. Keep dependencies prebuilt.
+ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
@@ -40,6 +42,19 @@ target 'Borrowhood' do
   end
 
   config = use_native_modules!(config_command)
+
+  # RN 0.81 replays stored props at first layout, but compares them with the same
+  # stored props instead of the supplied defaults. Initial tint/offset/refresh
+  # values are consequently skipped, including on recycled native views.
+  # https://github.com/react/react-native/issues/53987
+  refresh_source = File.join(config[:reactNativePath], 'React/Fabric/Mounting/ComponentViews/ScrollView/RCTPullToRefreshViewComponentView.mm')
+  refresh_code = File.read(refresh_source)
+  skipped_props = 'const auto &oldConcreteProps = static_cast<const PullToRefreshViewProps &>(*_props);'
+  supplied_props = 'const auto &oldConcreteProps = static_cast<const PullToRefreshViewProps &>(*(oldProps ? oldProps : PullToRefreshViewShadowNode::defaultSharedProps()));'
+  unless refresh_code.include?(supplied_props)
+    raise 'Refresh control implementation changed; review the initialization fix before building.' unless refresh_code.scan(skipped_props).length == 1
+    File.write(refresh_source, refresh_code.sub(skipped_props, supplied_props))
+  end
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']

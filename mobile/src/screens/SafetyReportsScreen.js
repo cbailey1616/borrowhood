@@ -1,7 +1,6 @@
-import RefreshControl from '../components/AppRefreshControl';
 import TextInput from '../components/AppTextInput';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Keyboard } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, StyleSheet, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';

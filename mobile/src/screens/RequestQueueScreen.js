@@ -1,6 +1,5 @@
-import RefreshControl from '../components/AppRefreshControl';
 import { useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useFocusEffect } from '@react-navigation/native';
 import HapticPressable from '../components/HapticPressable';

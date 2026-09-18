@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -6,6 +5,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Image,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';

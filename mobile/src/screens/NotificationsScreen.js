@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import { notificationDestination } from '../utils/notificationDestination';
 import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
 import { useState, useEffect, useCallback } from 'react';
@@ -7,6 +6,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';

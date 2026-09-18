@@ -5,7 +5,6 @@ on:
     paths:
       - mobile/ios/**
       - mobile/src/utils/config.js
-      - mobile/src/components/AppRefreshControl.js
       - mobile/screenshots/**
       - .github/workflows/native-refresh.yml
   workflow_dispatch:
@@ -21,7 +20,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: macos-15
-    timeout-minutes: 35
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: mobile

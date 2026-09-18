@@ -563,7 +563,7 @@ it.each(['success', 'failure'])('keeps native refresh in control through a delay
   const screen = render(<Screen navigation={mockNavigation} />);
   await screen.findByText('One item');
   fireEvent(screen.getByTestId('Feed.header'), 'layout', { nativeEvent: { layout: { height: 210 } } });
-  await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.progressViewOffset).toBe(210));
+  expect(screen.UNSAFE_getByType(RefreshControl).props.progressViewOffset).toBe(210);
   let finish, fail;
   api.getFeed.mockImplementationOnce(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
   scroll.mockClear();

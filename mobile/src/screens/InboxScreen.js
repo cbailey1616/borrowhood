@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import ShimmerImage from '../components/ShimmerImage';
 import { isTransferListing, isSaleListing } from '../utils/directFee';
 import { inboxActivity } from '../utils/inboxActivity';
@@ -12,6 +11,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Image,
   InteractionManager,
   Linking,

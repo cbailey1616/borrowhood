@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import TextInput from '../components/AppTextInput';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
@@ -6,6 +5,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Image,
   ActivityIndicator,
   Linking,

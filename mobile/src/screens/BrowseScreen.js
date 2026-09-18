@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import TextInput from '../components/AppTextInput';
 import ListingOffer from '../components/ListingOffer';
 import { useState, useEffect, useCallback } from 'react';
@@ -8,6 +7,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';

@@ -1,4 +1,3 @@
-import RefreshControl from '../components/AppRefreshControl';
 import { useState, useEffect, useCallback } from 'react';
 import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
@@ -7,6 +6,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   useWindowDimensions,
   InteractionManager,
 } from 'react-native';
