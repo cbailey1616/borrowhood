@@ -47,7 +47,7 @@ target 'Borrowhood' do
   # stored props instead of the supplied defaults. Initial tint/offset/refresh
   # values are consequently skipped, including on recycled native views.
   # https://github.com/react/react-native/issues/53987
-  refresh_source = File.join(config[:reactNativePath], 'React/Fabric/Mounting/ComponentViews/ScrollView/RCTPullToRefreshViewComponentView.mm')
+  refresh_source = File.join(File.expand_path(config[:reactNativePath], __dir__), 'React/Fabric/Mounting/ComponentViews/ScrollView/RCTPullToRefreshViewComponentView.mm')
   refresh_code = File.read(refresh_source)
   skipped_props = 'const auto &oldConcreteProps = static_cast<const PullToRefreshViewProps &>(*_props);'
   supplied_props = 'const auto &oldConcreteProps = static_cast<const PullToRefreshViewProps &>(*(oldProps ? oldProps : PullToRefreshViewShadowNode::defaultSharedProps()));'
