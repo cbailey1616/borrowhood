@@ -3,7 +3,7 @@ import { Platform, RefreshControl } from 'react-native';
 import { COLORS } from '../utils/config';
 
 export default function AppRefreshControl({
-  refreshing, tintColor = COLORS.spinner, colors = [tintColor], progressViewOffset = 0, ...props
+  refreshing, onRefresh, tintColor = COLORS.spinner, colors = [tintColor], progressViewOffset = 0, ...props
 }) {
   const [ready, setReady] = useState(Platform.OS !== 'ios');
   useEffect(() => {
@@ -16,7 +16,14 @@ export default function AppRefreshControl({
     return () => clearTimeout(timer);
   }, []);
 
-  return <RefreshControl {...props} refreshing={ready && refreshing}
+  const handleRefresh = () => {
+    // A native gesture also proves the control has mounted. Handle a quick
+    // first pull immediately, even if the initial tint timer is still pending.
+    setReady(true);
+    return onRefresh?.();
+  };
+
+  return <RefreshControl {...props} refreshing={ready && refreshing} onRefresh={handleRefresh}
     tintColor={ready ? tintColor : undefined} colors={colors}
     progressViewOffset={ready ? progressViewOffset : 0} />;
 }

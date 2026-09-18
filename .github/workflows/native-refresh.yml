@@ -69,6 +69,16 @@ jobs:
           pod install --project-directory=ios
           export ENTRY_FILE="$PWD/screenshots/index.js"
           xcodebuild -workspace ios/Borrowhood.xcworkspace -scheme Borrowhood -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/borrowhood-capture-build" CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" build > "$RUNNER_TEMP/borrowhood-native-build.log" 2>&1
+      - name: Archive the fresh simulator app
+        if: steps.restore-native.outcome != 'success'
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/borrowhood-simulator-app.zip"
+      - name: Preserve the compiled app for matching native inputs
+        if: steps.restore-native.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrowhood-screenshot-simulator
+          path: ${{ runner.temp }}/borrowhood-simulator-app.zip
+          retention-days: 3
       - name: Verify native green wheels on both iPhone sizes
         env:
           BORROWHOOD_CAPTURE_REFRESH_ONLY: 'true'

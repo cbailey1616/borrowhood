@@ -26,6 +26,7 @@ it('forwards a pull immediately and does not restart a refresh that finished bef
   const screen = render(<AppRefreshControl refreshing={false} onRefresh={refresh} />);
   fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
   expect(refresh).toHaveBeenCalledTimes(1);
+  expect(screen.UNSAFE_getByType(RefreshControl).props.tintColor).toBe(COLORS.spinner);
   screen.rerender(<AppRefreshControl refreshing onRefresh={refresh} />);
   screen.rerender(<AppRefreshControl refreshing={false} onRefresh={refresh} />);
   act(() => jest.advanceTimersByTime(500));
