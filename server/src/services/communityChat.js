@@ -15,7 +15,8 @@ export async function ensureCommunityChatSchema(db = { query }) {
     ADD COLUMN IF NOT EXISTS chat_muted BOOLEAN NOT NULL DEFAULT false`);
 }
 
-// Shared by the inbox and app badge. A removed member has no channel access.
+// Shared by the inbox and app badge. Explicit membership, not the legacy
+// geographic type, controls chat access. A removed member has no access.
 export async function communityConversations(userId, db = { query }) {
   const result = await db.query(`SELECT c.id, c.name, c.banner_url, cm.chat_muted,
     m.content, m.deleted_at, m.created_at, m.sender_id,
@@ -31,7 +32,7 @@ export async function communityConversations(userId, db = { query }) {
         (b.user_id = $1 AND b.blocked_id = msg.sender_id) OR
         (b.blocked_id = $1 AND b.user_id = msg.sender_id))
       ORDER BY sequence DESC LIMIT 1) m ON true
-    WHERE cm.user_id = $1 AND c.is_active = true AND c.community_type = 'neighborhood'`, [userId]);
+    WHERE cm.user_id = $1 AND c.is_active = true`, [userId]);
   return result.rows.map(c => ({ id: `community:${c.id}`, kind: 'community', communityId: c.id,
     name: c.name, photoUrl: c.banner_url, muted: c.chat_muted,
     lastMessage: c.deleted_at ? 'Message removed' : c.content,

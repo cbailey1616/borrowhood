@@ -17,7 +17,7 @@ function memberRoute(handler) {
       const data = await withTransaction(async db => {
         const member = await db.query(`SELECT cm.role, cm.chat_muted FROM community_memberships cm
           JOIN communities c ON c.id = cm.community_id WHERE cm.community_id = $1 AND cm.user_id = $2
-          AND c.is_active = true AND c.community_type = 'neighborhood' FOR UPDATE OF cm`, [req.params.id, req.user.id]);
+          AND c.is_active = true FOR UPDATE OF cm`, [req.params.id, req.user.id]);
         if (!member.rows.length) throw Object.assign(new Error('Join this neighborhood to access its chat'), { status: 403 });
         return handler(req, db, member.rows[0]);
       });
