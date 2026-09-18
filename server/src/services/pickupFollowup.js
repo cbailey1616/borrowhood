@@ -4,12 +4,14 @@ import { query, withTransaction } from '../utils/db.js';
 import { sendNotification } from './notifications.js';
 import logger from '../utils/logger.js';
 
-export async function ensurePickupFollowupSchema() {
+export async function ensurePickupFollowupSchema(client = null) {
   const sql = await readFile(new URL('../../migrations/022_pickup_followup.sql', import.meta.url), 'utf8');
-  await withTransaction(async client => {
-    await client.query('SELECT pg_advisory_xact_lock(812769)');
-    await client.query(sql);
-  });
+  const migrate = async connection => {
+    await connection.query('SELECT pg_advisory_xact_lock(812769)');
+    await connection.query(sql);
+  };
+  if (client) await migrate(client);
+  else await withTransaction(migrate);
 }
 
 export function pickupReviewState(transaction, userId, now = new Date()) {

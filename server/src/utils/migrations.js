@@ -635,8 +635,15 @@ export async function runMigrations() {
       // Keep their removal, conversion and restoration atomic: an error must
       // not leave a partially changed schema or silently remove an index.
       await withTransaction(async client => {
+        // Match the pickup migration's lock order when instances start together.
+        await client.query('SELECT pg_advisory_xact_lock(812769)');
         await client.query('DROP INDEX IF EXISTS idx_transactions_overdue');
         await client.query('DROP INDEX IF EXISTS idx_transactions_due');
+        // Numbered migration replay can install these before the legacy enum
+        // conversion. Restore them in this same transaction after conversion.
+        await client.query('DROP INDEX IF EXISTS pending_pickup_reviews');
+        await client.query('DROP TRIGGER IF EXISTS schedule_pickup_review ON borrow_transactions');
+        await client.query('DROP TRIGGER IF EXISTS resolve_pickup_review_notice ON borrow_transactions');
         await client.query('ALTER TABLE borrow_transactions ALTER COLUMN status DROP DEFAULT');
         await client.query('ALTER TABLE borrow_transactions ALTER COLUMN status TYPE VARCHAR(30) USING status::text');
         await client.query("ALTER TABLE borrow_transactions ALTER COLUMN status SET DEFAULT 'pending'");
@@ -644,6 +651,7 @@ export async function runMigrations() {
           ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
         await client.query(`CREATE INDEX idx_transactions_due
           ON borrow_transactions(requested_end_date) WHERE status = 'picked_up'`);
+        await ensurePickupFollowupSchema(client);
       });
       logger.info('Migration complete: borrow_transactions.status is now varchar');
     }
