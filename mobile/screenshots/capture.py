@@ -92,7 +92,7 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
             if route.startswith('refresh-'):
                 subprocess.run(['maestro', '--device', udid, 'test', '-e', f'CAPTURE_SCREEN={route}',
                                 str(Path(__file__).with_name('refresh-gesture.yaml'))],
-                               check=True, timeout=180,
+                               check=True, timeout=300,
                                env={**os.environ, 'MAESTRO_CLI_NO_ANALYTICS': '1'})
                 time.sleep(2)
             else:
