@@ -62,7 +62,7 @@ export const TRANSACTION_STATUS_LABELS = {
 export const COLORS = {
   primary: '#42594C', primaryDark: '#32483C', primaryLight: '#688566',
   // Keep enough green saturation to remain visible as native segments fade on parchment.
-  spinner: '#154F32',
+  spinner: '#007A3D',
   primaryMuted: '#E0E8D8', secondary: '#42594C', secondaryMuted: '#E0E8D8',
   accent: '#875039', accentMuted: '#F1DDD1',
   saved: '#B45376', savedMuted: '#F4DEE5',
