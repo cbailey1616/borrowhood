@@ -37,10 +37,10 @@ describe('Free launch and retained subscription history', () => {
     await query('UPDATE users SET is_verified=true WHERE id=$1', [member.userId]);
     expect((await get('/access-check?feature=town')).body).toMatchObject({ canAccess: true, nextStep: null, upgradeRequired: false });
   });
-  it('blocks verification payment initiation while payments are disabled', async () => {
+  it('permanently retires external verification payment initiation', async () => {
     const res = await request(app).post('/api/subscriptions/verify-payment').set('Authorization', `Bearer ${member.token}`);
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('PAYMENTS_DISABLED');
+    expect(res.status).toBe(410);
+    expect(res.body.code).toBe('VERIFICATION_IAP_REQUIRED');
   });
   it.each(['subscribe','cancel'])('does not restore removed recurring %s routes', async endpoint => {
     expect((await request(app).post('/api/subscriptions/' + endpoint).set('Authorization', `Bearer ${member.token}`)).status).toBe(404);

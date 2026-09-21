@@ -242,7 +242,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
               style={styles.promptButton}
               onPress={() => navigation.navigate('Subscription')}
             >
-              <Text style={styles.promptButtonText}>Verify & Unlock — $1.99</Text>
+              <Text style={styles.promptButtonText}>See verification options</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </HapticPressable>
           </View>

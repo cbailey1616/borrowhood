@@ -23,7 +23,7 @@ export default function VerificationIntroduction({
       <Text style={styles.subtitle}>{subtitle}</Text>
       <VerificationComparison />
       <Text style={styles.privacy}>
-        Stripe handles verification and shares the result with Borrowhood.
+        Identity verification is securely provided by Stripe.
       </Text>
     </>
   );

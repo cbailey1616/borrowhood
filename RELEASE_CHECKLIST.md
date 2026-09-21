@@ -1,5 +1,12 @@
 # First-borrow release
 
+## Apple verification purchase — staged integration
+
+The integration supports a $1.99 one-time Apple non-consumable and defaults to
+free launch. Deploy the server before a mobile build using the new eligibility
+endpoint. Native StoreKit sandbox testing and App Review remain release gates. Follow
+[`docs/qa/apple-verification-iap.md`](docs/qa/apple-verification-iap.md).
+
 ## Next update — push authorized; native build not yet submitted
 - Typography validation: all 136 mobile suites / 1,029 tests passed after the style update; iOS Hermes export passed. TestFlight submission is blocked in this workspace: EAS setup network approval was cancelled and the connected Mac is offline.
 - Approved lighter typography: regular DM Sans headings, names, prices, buttons and navigation across the app. Retain medium-weight unread/selected endorsement emphasis, provider branding, existing colors and font sizes. Physical-device large-text review remains pending.
@@ -20,7 +27,7 @@
 - September 15 local validation: all 131 mobile suites / 977 tests and all 22 isolated server suites / 246 tests passed. Re-ran the 27-test discussion suite after adding exact-reply scrolling. Offline iOS and Android Hermes bundle exports passed; `git diff --check` passed. No APNs/FCM/device-delivery claim is made from mocked-network tests.
 - Approved People waiting redesign: compact requester identity with adjacent rank, dates below the name, one full-width Approve request action, and a smaller Message / Details / Decline row.
 - Removed queue-card exchange counts and redundant position labels; retain oldest-first context for multiple requests, request messages, and availability safeguards.
-- Before release: check this queue on a small iPhone and with larger text. Chris authorized pushing the update on September 15; native submission remains pending.
+- Before release: check this queue on a small iPhone and with larger text.
 
 ## Final launch gates — September 15 review
 
@@ -31,7 +38,7 @@ The automated pass is 1,338 tests at local commit `5ac7dff`; it does not establi
 - **Real services and interrupted work:** Apple/Google sign-in, verification email delivery, Stripe verification return/webhook, and real push delivery in foreground/background/terminated states. Interrupt uploads and submissions with airplane mode or app termination, then recover without duplicate posts or account leakage.
 - **Database and rollout rehearsal:** run the independent local PostgreSQL/HTTP/migration suite on a supported machine or CI. Rehearse schema upgrades twice with representative synthetic legacy records, race two approvals from separate connections, and verify older installed clients against the new backend. Release the server before the new mobile client. Confirm a backup/restore and application rollback path in an isolated environment.
 - **Production observability and capacity:** verify crash/error capture, server alerting, slow-query monitoring, and a modest concurrent-user load rehearsal. Source review found that the mobile error boundary currently only logs to the console, and `/health` only reports that the process responds; neither proves remote crash reporting or database readiness. Dashboard/service configuration was not verified.
-- **App Review:** test the review account, complete backend access, account deletion, reporting/blocking and support/privacy links on the candidate. Address Apple's PassKit question in review notes. The checked-in native project still includes the Apple Pay entitlement and StripeApplePay dependency; removing them safely would require a separate native configuration/build check. Confirm what is actually packaged before describing the integration to Apple. Official review checklist: https://developer.apple.com/app-store/review/guidelines/#before-you-submit
+- **App Review:** test the review account, complete backend access, account deletion, reporting/blocking and support/privacy links on the candidate. Native Stripe packages and Apple Pay entitlements were removed for hosted identity verification; the new verification purchase uses StoreKit. Audit the exact signed archive before describing it to Apple, and ensure review notes and the attached build match the tested candidate. Official review checklist: https://developer.apple.com/app-store/review/guidelines/#before-you-submit
 - **Candidate freeze:** after the final fixes, test one unchanged candidate with a small tester group and monitor errors before public release. Any change to fonts or text layout needs fresh keyboard, large-text and button-wrap checks.
 
 ## Implemented

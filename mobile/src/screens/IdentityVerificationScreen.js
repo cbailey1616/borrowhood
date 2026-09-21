@@ -1,6 +1,7 @@
 import VerificationIntroduction from '../components/VerificationIntroduction';
 import useNavigationTask from '../hooks/useNavigationTask';
-import StripeVerificationButton from '../components/StripeVerificationButton';
+import VerificationPurchaseActions from '../components/VerificationPurchaseActions';
+import useVerificationOffer from '../hooks/useVerificationOffer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollView, useWindowDimensions } from 'react-native';
 import { ENABLE_PAYMENTS } from '../utils/config';
@@ -11,7 +12,6 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { verifyIdentityInBrowser } from '../services/identityVerification';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -23,21 +23,23 @@ import GateStepper from '../components/GateStepper';
 import { isUserVerified } from '../utils/auth';
 
 export default function IdentityVerificationScreen({ navigation, route }) {
-  const startNavigationTask = useNavigationTask(navigation, route?.params?.source);
+  const { user, refreshUser } = useAuth();
+  const startNavigationTask = useNavigationTask(navigation, `${user?.id || ''}:${route?.params?.source || ''}`);
+  const purchase = useVerificationOffer(navigation, startNavigationTask, user?.id);
   const source = route?.params?.source || 'generic';
   const insets = useSafeAreaInsets();
   const totalSteps = route?.params?.totalSteps;
-  const { refreshUser } = useAuth();
   const { height, fontScale } = useWindowDimensions();
   const inlineActions = height < 500 || fontScale >= 1.4;
   const hasAutoChained = useRef(false);
   const { showError } = useError();
   const [status, setStatus] = useState(null); // none, pending, processing, requires_input, verified
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
 
   const loadStatus = useCallback(async () => {
     const isCurrent = startNavigationTask();
+    if (!isCurrent()) return;
+    setLoading(true);
     try {
       const result = await api.getVerificationStatus();
       if (!isCurrent()) return;
@@ -56,22 +58,24 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         }
       }
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('Failed to load verification status:', err);
       setStatus('none');
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [source, totalSteps, navigation, refreshUser, startNavigationTask]);
+  }, [source, totalSteps, navigation, refreshUser, startNavigationTask, user?.id]);
 
   useEffect(() => {
     loadStatus();
-  }, [loadStatus]);
+    const unsubscribe = navigation?.addListener?.('focus', loadStatus);
+    return () => unsubscribe?.();
+  }, [loadStatus, navigation]);
 
   const handleVerify = async () => {
     const isCurrent = startNavigationTask();
-    setStarting(true);
     try {
-      const result = await verifyIdentityInBrowser(isCurrent);
+      const result = await purchase.verify(isCurrent);
       if (!result || !isCurrent()) return;
       haptics.success();
       setStatus(isUserVerified(result) ? 'verified' : 'submitted');
@@ -83,8 +87,6 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         message: err.message || 'Couldn\'t start verification right now. Please check your connection and try again.',
         type: 'network',
       });
-    } finally {
-      setStarting(false);
     }
   };
 
@@ -137,7 +139,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     );
   }
 
-  // Submitted — grace period active, but not yet fully verified
+  // Submitted — processing is not a successful identity verification.
   if (status === 'submitted' || status === 'processing') {
     const handleContinue = () => {
       if (source === 'onboarding') {
@@ -202,8 +204,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
   const actions = (
     <View style={[styles.actionFooter, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
       <View style={styles.readableWidth}>
-        <Text style={styles.verificationNote}>Free during launch</Text>
-        <StripeVerificationButton onPress={handleVerify} loading={starting} testID="Identity.button.verify" />
+        <VerificationPurchaseActions purchase={purchase} onVerify={handleVerify} testID="Identity.button.verify" />
         <HapticPressable
           style={styles.tertiaryButton}
           onPress={() => {
@@ -258,7 +259,6 @@ const styles = StyleSheet.create({
   introductionContent: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xl },
   readableWidth: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   actionFooter: { backgroundColor: COLORS.surface, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.borderLight },
-  verificationNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.sm },
   iconContainer: {
     alignItems: 'center',
     marginBottom: SPACING.xl,

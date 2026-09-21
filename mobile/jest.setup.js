@@ -199,6 +199,18 @@ jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn().mockResolvedValue({ type: 'cancel' }),
 }));
 
+jest.mock('expo-iap', () => ({
+  initConnection: jest.fn().mockResolvedValue(true),
+  fetchProducts: jest.fn().mockResolvedValue([{ id: 'com.borrowhood.app.verification', displayPrice: '$1.99' }]),
+  getAvailablePurchases: jest.fn().mockResolvedValue([]),
+  getPendingTransactionsIOS: jest.fn().mockResolvedValue([]),
+  syncIOS: jest.fn().mockResolvedValue(true),
+  requestPurchase: jest.fn(),
+  finishTransaction: jest.fn().mockResolvedValue(undefined),
+  purchaseUpdatedListener: jest.fn(() => ({ remove: jest.fn() })),
+  purchaseErrorListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+
 jest.mock('expo-font', () => ({
   useFonts: jest.fn(() => [true]),
   loadAsync: jest.fn(),
@@ -477,6 +489,8 @@ jest.mock('./src/services/api', () => ({
     claimReferralReward: jest.fn(),
     // Identity
     startIdentityVerification: jest.fn().mockResolvedValue({ verificationUrl: 'https://verify.stripe.com/start/test_session' }),
+    getVerificationEligibility: jest.fn().mockResolvedValue({ mode: 'free_launch', productId: 'com.borrowhood.app.verification', appAccountToken: '11111111-1111-4111-8111-111111111111', paymentRequired: false, canStartVerification: true, hasVerificationPurchase: false, isVerified: false }),
+    confirmAppleVerificationPurchase: jest.fn(),
     checkVerification: jest.fn(),
     // Uploads
     uploadImage: jest.fn().mockResolvedValue('https://test.s3.amazonaws.com/test.jpg'),

@@ -1,14 +1,21 @@
 import { Router } from 'express';
 import { query } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
-import {
-  stripe,
-  createStripeCustomer,
-  createIdentityVerificationSession,
-  getIdentityVerificationSession,
-} from '../services/stripe.js';
+import { getIdentityVerificationSession } from '../services/stripe.js';
+import { startIdentitySession, sendIdentityError } from '../services/identitySession.js';
+import { getVerificationEligibility, recordAppleVerificationPurchase } from '../services/verificationPurchases.js';
 
 const router = Router();
+
+router.get('/eligibility', authenticate, async (req, res) => {
+  try { res.json(await getVerificationEligibility(req.user.id)); }
+  catch (error) { sendIdentityError(res, error); }
+});
+
+router.post('/apple-purchase', authenticate, async (req, res) => {
+  try { res.json(await recordAppleVerificationPurchase(req.user.id, req.body?.signedTransaction)); }
+  catch (error) { sendIdentityError(res, error); }
+});
 
 // ============================================
 // POST /api/identity/verify
@@ -17,82 +24,10 @@ const router = Router();
 // ============================================
 router.post('/verify', authenticate, async (req, res) => {
   try {
-    const userResult = await query(
-      'SELECT stripe_customer_id, email, first_name, last_name, is_verified, stripe_identity_session_id FROM users WHERE id = $1',
-      [req.user.id]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (userResult.rows[0].is_verified) {
-      return res.status(400).json({ error: 'Already verified' });
-    }
-
-    let customerId = userResult.rows[0].stripe_customer_id;
-
-    // Create Stripe customer if needed
-    if (!customerId) {
-      const user = userResult.rows[0];
-      const customer = await createStripeCustomer(
-        user.email,
-        `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-        { userId: req.user.id }
-      );
-      customerId = customer.id;
-      await query(
-        'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
-        [customerId, req.user.id]
-      );
-    }
-
-    // Create verification session with document + selfie
-    // Resume the same check if the member returns to an unfinished flow.
-    const previousSessionId = userResult.rows[0].stripe_identity_session_id;
-    let session = previousSessionId ? await getIdentityVerificationSession(previousSessionId) : null;
-    if (session?.status === 'verified') {
-      return res.status(409).json({ error: 'Verification is complete. Refresh your verification status.' });
-    }
-    if (!session || session.status === 'canceled') session = await stripe.identity.verificationSessions.create({
-      type: 'document',
-      metadata: {
-        customer_id: customerId,
-        userId: req.user.id,
-      },
-      options: {
-        document: {
-          require_id_number: false,
-          require_live_capture: true,
-          require_matching_selfie: true,
-          allowed_types: ['driving_license', 'id_card', 'passport'],
-        },
-      },
-    }, { idempotencyKey: `identity-${req.user.id}-${previousSessionId || 'initial'}` });
-
-    // Store session ID and update verification status
-    await query(
-      `UPDATE users SET
-        stripe_identity_session_id = $1,
-        verification_status = 'pending'
-       WHERE id = $2`,
-      [session.id, req.user.id]
-    );
-
-    // Create ephemeral key for the verification session (required by RN SDK)
-    const ephemeralKey = await stripe.ephemeralKeys.create(
-      { verification_session: session.id },
-      { apiVersion: '2024-06-20' }
-    );
-
-    res.json({
-      clientSecret: session.client_secret,
-      sessionId: session.id,
-      ephemeralKeySecret: ephemeralKey.secret,
-    });
+    res.json(await startIdentitySession(req.user.id, { native: true }));
   } catch (err) {
     console.error('Create verification session error:', err);
-    res.status(500).json({ error: 'Failed to start identity verification' });
+    sendIdentityError(res, err);
   }
 });
 

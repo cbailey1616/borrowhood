@@ -81,7 +81,9 @@ describe('free launch', () => {
 });
 
  it('optional verification resumes an unfinished session without a payment', async () => {
-    query.mockResolvedValueOnce({ rows: [{ stripe_customer_id: 'cus_existing', is_verified: false, stripe_identity_session_id: 'vs_existing' }] }).mockResolvedValueOnce({ rows: [] });
+    query.mockResolvedValueOnce({ rows: [{ stripe_customer_id: 'cus_existing', is_verified: false, stripe_identity_session_id: 'vs_existing' }] })
+      .mockResolvedValueOnce({ rows: [{ is_verified: false, has_launch_grant: false, has_purchase: false }] })
+      .mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] });
     getIdentityVerificationSession.mockResolvedValueOnce({ id: 'vs_existing', status: 'requires_input', client_secret: 'session-secret' });
     const response = await request(app).post('/identity/verify');
     expect(response.status).toBe(200); expect(response.body.sessionId).toBe('vs_existing');

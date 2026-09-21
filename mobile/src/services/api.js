@@ -762,6 +762,12 @@ const createVerificationSession = () =>
 const getVerificationStatus = () =>
   get('/identity/status');
 
+const getVerificationEligibility = () =>
+  get('/identity/eligibility');
+
+const confirmAppleVerificationPurchase = (signedTransaction) =>
+  post('/identity/apple-purchase', { signedTransaction });
+
 // Rentals
 // NOTE: rental/borrow requests are created via createTransaction (POST /transactions),
 // which creates the manual-capture PaymentIntent. The old /rentals/request endpoint
@@ -1035,6 +1041,8 @@ export default {
   // Identity Verification
   createVerificationSession,
   getVerificationStatus,
+  getVerificationEligibility,
+  confirmAppleVerificationPurchase,
   // Rentals
   approveRental,
   declineRental,

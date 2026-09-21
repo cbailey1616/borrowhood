@@ -7,10 +7,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { verifyIdentityInBrowser } from '../../services/identityVerification';
 import useNavigationTask from '../../hooks/useNavigationTask';
+import useVerificationOffer from '../../hooks/useVerificationOffer';
+import VerificationPurchaseActions from '../../components/VerificationPurchaseActions';
 import { Ionicons } from '../../components/Icon';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import HapticPressable from '../../components/HapticPressable';
@@ -23,37 +23,37 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 import { isUserVerified } from '../../utils/auth';
 
 export default function OnboardingVerifyScreen({ navigation }) {
-  const startNavigationTask = useNavigationTask(navigation);
+  const { user, refreshUser } = useAuth();
+  const startNavigationTask = useNavigationTask(navigation, user?.id);
+  const purchase = useVerificationOffer(navigation, startNavigationTask, user?.id);
   const insets = useSafeAreaInsets();
-  const { refreshUser } = useAuth();
   const { showError } = useError();
-  const [isStarting, setIsStarting] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
 
-  // Check if already verified on mount
-  useEffect(() => {
-    checkStatus();
-  }, []);
-
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
+    const isCurrent = startNavigationTask();
     try {
       const result = await api.getVerificationStatus();
-      if (isUserVerified(result)) {
-        setAlreadyVerified(true);
-      }
+      if (!isCurrent()) return;
+      setAlreadyVerified(isUserVerified(result));
     } catch (e) {
       // Non-blocking — just show the verify screen
     } finally {
-      setIsChecking(false);
+      if (isCurrent()) setIsChecking(false);
     }
-  };
+  }, [startNavigationTask, user?.id]);
+
+  useEffect(() => {
+    checkStatus();
+    const unsubscribe = navigation?.addListener?.('focus', checkStatus);
+    return () => unsubscribe?.();
+  }, [checkStatus, navigation]);
 
   const handleVerify = async () => {
     const isCurrent = startNavigationTask();
-    setIsStarting(true);
     try {
-      const result = await verifyIdentityInBrowser(isCurrent);
+      const result = await purchase.verify(isCurrent);
       if (!result || !isCurrent()) return;
       haptics.success();
       await refreshUser();
@@ -65,16 +65,15 @@ export default function OnboardingVerifyScreen({ navigation }) {
         message: err.message || 'Couldn\'t start verification. Please check your connection and try again.',
         type: 'network',
       });
-    } finally {
-      setIsStarting(false);
     }
   };
 
   const goToComplete = useCallback(async () => {
+    const isCurrent = startNavigationTask();
     haptics.medium();
     try { await api.updateOnboardingStep(4); } catch (e) {}
-    navigation.navigate('OnboardingComplete');
-  }, [navigation]);
+    if (isCurrent()) navigation.navigate('OnboardingComplete');
+  }, [navigation, startNavigationTask]);
 
   if (isChecking) {
     return (
@@ -160,23 +159,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-        <HapticPressable onPress={handleVerify} disabled={isStarting} haptic="medium">
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.verifyButton, isStarting && styles.buttonDisabled]}
-          >
-            {isStarting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="card" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
-                <Text style={styles.verifyButtonText}>Get verified</Text>
-              </>
-            )}
-          </LinearGradient>
-        </HapticPressable>
+        <VerificationPurchaseActions purchase={purchase} onVerify={handleVerify} testID="OnboardingVerification.button.verify" />
 
         <HapticPressable
           style={styles.skipButton}

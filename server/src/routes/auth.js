@@ -8,7 +8,7 @@ import { query, withTransaction } from '../utils/db.js';
 import { verifySocialIdentity, resolveSocialAccount } from '../services/socialAuth.js';
 import { startSocialLinkCode, completeSocialLinkCode } from '../services/socialLinkCodes.js';
 import { generateTokens, authenticate } from '../middleware/auth.js';
-import { createStripeCustomer, createIdentityVerificationSession, getIdentityVerificationSession } from '../services/stripe.js';
+import { startIdentitySession, sendIdentityError } from '../services/identitySession.js';
 import { sendNotification } from '../services/notifications.js';
 import { sendResetCodeEmail, sendAccountHintEmail } from '../services/email.js';
 import { body, validationResult } from 'express-validator';
@@ -174,73 +174,10 @@ router.post('/social-link/complete', body('challengeId').isUUID(), body('code').
 // ============================================
 router.post('/verify-identity', authenticate, async (req, res) => {
   try {
-    // Get user's Stripe customer ID, create one if needed
-    const userResult = await query(
-      'SELECT stripe_customer_id, email, first_name, last_name, is_verified, stripe_identity_session_id FROM users WHERE id = $1',
-      [req.user.id]
-    );
-
-    // If already verified, no need to create a new session
-    if (userResult.rows[0]?.is_verified) {
-      return res.status(400).json({ error: 'Already verified' });
-    }
-
-    // If there's an existing unresolved session, return it instead of creating a duplicate
-    const existingSessionId = userResult.rows[0]?.stripe_identity_session_id;
-    if (existingSessionId) {
-      try {
-        const existingSession = await getIdentityVerificationSession(existingSessionId);
-        if (existingSession && !['verified', 'canceled'].includes(existingSession.status)) {
-          return res.json({
-            verificationUrl: existingSession.url,
-            sessionId: existingSession.id,
-          });
-        }
-      } catch (sessionErr) {
-        // Session no longer exists on Stripe — fall through to create a new one
-        console.warn('Existing session lookup failed, creating new:', sessionErr.message);
-      }
-    }
-
-    let customerId = userResult.rows[0]?.stripe_customer_id;
-
-    if (!customerId) {
-      const user = userResult.rows[0];
-      const customer = await createStripeCustomer(
-        user.email,
-        `${user.first_name} ${user.last_name}`,
-        { userId: req.user.id }
-      );
-      customerId = customer.id;
-      await query(
-        'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
-        [customerId, req.user.id]
-      );
-    }
-
-    const returnUrl = 'borrowhood://verification-complete';
-    const session = await createIdentityVerificationSession(
-      customerId,
-      returnUrl
-    );
-
-    // Store session ID
-    try {
-      await query(
-        'UPDATE users SET stripe_identity_session_id = $1 WHERE id = $2',
-        [session.id, req.user.id]
-      );
-    } catch (storeErr) {
-      console.error('Failed to store identity session ID:', storeErr.message);
-    }
-
-    res.json({
-      verificationUrl: session.url,
-      sessionId: session.id,
-    });
+    res.json(await startIdentitySession(req.user.id));
   } catch (err) {
     console.error('Identity verification error:', err);
-    res.status(500).json({ error: 'Failed to start identity verification' });
+    sendIdentityError(res, err);
   }
 });
 
@@ -255,6 +192,7 @@ router.post('/reset-verification', authenticate, async (req, res) => {
         is_verified = false,
         status = 'pending',
         stripe_identity_session_id = NULL,
+        identity_session_revision = identity_session_revision + 1,
         verified_at = NULL,
         verification_grace_until = NULL,
         verification_status = NULL
@@ -397,7 +335,8 @@ router.post('/admin/reset-user', async (req, res) => {
         stripe_connect_account_id = NULL,
         verification_grace_until = NULL,
         verification_status = NULL,
-        stripe_identity_session_id = NULL
+        stripe_identity_session_id = NULL,
+        identity_session_revision = identity_session_revision + 1
       WHERE email = $1 RETURNING id, email`,
       [email]
     );

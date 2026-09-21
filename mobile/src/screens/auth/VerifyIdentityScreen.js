@@ -1,13 +1,13 @@
 import VerificationIntroduction from '../../components/VerificationIntroduction';
-import StripeVerificationButton from '../../components/StripeVerificationButton';
+import VerificationPurchaseActions from '../../components/VerificationPurchaseActions';
+import useVerificationOffer from '../../hooks/useVerificationOffer';
+import useNavigationTask from '../../hooks/useNavigationTask';
 import { ScrollView, useWindowDimensions } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Linking,
-  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
@@ -17,61 +17,67 @@ import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { isUserVerified } from '../../utils/auth';
 
 export default function VerifyIdentityScreen({ navigation, route }) {
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const startNavigationTask = useNavigationTask(navigation, `${user?.id || ''}:${route?.params?.source || ''}`);
+  const purchase = useVerificationOffer(navigation, startNavigationTask, user?.id);
   const { height, fontScale } = useWindowDimensions();
   const inlineActions = height < 500 || fontScale >= 1.4;
   const { showError, showToast } = useError();
   const [isLoading, setIsLoading] = useState(false);
   const [skipSheetVisible, setSkipSheetVisible] = useState(false);
-  const hasOpenedStripe = useRef(false);
+  const checkingStatus = useRef(null);
 
-  // Auto-check verification when app returns to foreground
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active' && hasOpenedStripe.current) {
-        hasOpenedStripe.current = false;
-        handleCheckStatus();
+    const resetStaleCheck = () => {
+      if (checkingStatus.current && !checkingStatus.current()) {
+        checkingStatus.current = null;
+        setIsLoading(false);
       }
-    });
-    return () => subscription.remove();
-  }, []);
-
-  // Also handle deep link return
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      if (url?.includes('verification-complete')) {
-        handleCheckStatus();
-      }
-    });
-    return () => subscription.remove();
-  }, []);
+    };
+    resetStaleCheck();
+    const unsubscribe = navigation?.addListener?.('focus', resetStaleCheck);
+    return () => unsubscribe?.();
+  }, [navigation, user?.id]);
 
   const handleStartVerification = async () => {
-    setIsLoading(true);
+    if (checkingStatus.current) return;
+    const isCurrent = startNavigationTask();
     try {
-      const response = await api.startIdentityVerification();
-      // Open Stripe Identity verification in browser
-      hasOpenedStripe.current = true;
-      await Linking.openURL(response.verificationUrl);
+      const result = await purchase.verify(isCurrent);
+      if (!result || !isCurrent()) return;
+      await refreshUser();
+      if (!isCurrent()) return;
+      if (isUserVerified(result)) {
+        haptics.success();
+        showToast('You’re verified!', 'success');
+        navigation.goBack();
+      } else {
+        showToast('Verification is processing. You can keep exploring.', 'info');
+      }
     } catch (error) {
+      if (!isCurrent()) return;
       showError({
         type: 'verification',
         title: 'Couldn\'t Start Verification',
         message: error.message || 'Something went wrong. Please check your connection and try again.',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleCheckStatus = async () => {
+    if (checkingStatus.current || purchase.busy) return;
+    const isCurrent = startNavigationTask();
+    checkingStatus.current = isCurrent;
     setIsLoading(true);
     try {
       const result = await api.checkVerification();
-      if (result.verified) {
+      if (!isCurrent()) return;
+      if (isUserVerified(result)) {
         await refreshUser();
+        if (!isCurrent()) return;
         haptics.success();
         showToast('You’re verified!', 'success');
         navigation.goBack();
@@ -84,17 +90,21 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       } else {
         showError({
           title: 'Not Started Yet',
-          message: 'Tap "Verify through Stripe" to get started.',
+          message: 'Use the verification button to get started.',
           primaryAction: 'OK',
         });
       }
     } catch (error) {
+      if (!isCurrent()) return;
       showError({
         type: 'network',
         message: error.message || 'Couldn\'t check your verification status. Please check your connection and try again.',
       });
     } finally {
-      setIsLoading(false);
+      if (checkingStatus.current === isCurrent) {
+        checkingStatus.current = null;
+        if (isCurrent()) setIsLoading(false);
+      }
     }
   };
 
@@ -105,8 +115,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
   const actions = (
     <View style={styles.actionFooter}>
       <View style={styles.readableWidth}>
-        <Text style={styles.verificationNote}>Free during launch</Text>
-        <StripeVerificationButton onPress={handleStartVerification} loading={isLoading} />
+        <VerificationPurchaseActions purchase={purchase} onVerify={handleStartVerification} disabled={isLoading} />
         <HapticPressable style={styles.skipButton} onPress={handleSkipForNow} haptic="light">
           <Text style={styles.skipButtonText}>Skip for now</Text>
         </HapticPressable>
@@ -122,7 +131,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
           <HapticPressable
             style={styles.secondaryButton}
             onPress={handleCheckStatus}
-            disabled={isLoading}
+            disabled={isLoading || purchase.busy}
             haptic="light"
           >
             <Text style={styles.secondaryButtonText}>I've already verified</Text>
@@ -154,7 +163,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xl },
   readableWidth: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   actionFooter: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.md, backgroundColor: COLORS.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.borderLight },
-  verificationNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.sm },
   secondaryButton: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, minHeight: 44, padding: SPACING.md, marginTop: SPACING.lg, alignItems: 'center', justifyContent: 'center' },
   secondaryButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   skipButton: { minHeight: 44, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingVertical: SPACING.sm, marginTop: SPACING.sm, alignItems: 'center', justifyContent: 'center' },

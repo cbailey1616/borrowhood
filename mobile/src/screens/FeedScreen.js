@@ -883,10 +883,10 @@ export default function FeedScreen({ navigation, route }) {
                 }}
                 haptic="medium"
                 testID="Feed.overlay.upgrade.button"
-                accessibilityLabel="Verify and unlock"
+                accessibilityLabel="See verification options"
                 accessibilityRole="button"
               >
-                <Text style={styles.overlayButtonText}>Verify & Unlock — $1.99</Text>
+                <Text style={styles.overlayButtonText}>See verification options</Text>
               </HapticPressable>
               <HapticPressable
                 style={styles.overlayDismiss}

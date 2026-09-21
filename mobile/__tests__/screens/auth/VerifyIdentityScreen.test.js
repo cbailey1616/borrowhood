@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking } from 'react-native';
+import { openAuthSessionAsync } from 'expo-web-browser';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../../src/services/api';
 
@@ -11,7 +11,10 @@ const mockShowToast = jest.fn();
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ refreshUser: mockRefreshUser }) }));
 jest.mock('../../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: mockShowToast }) }));
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  api.getVerificationStatus.mockResolvedValue({ status: 'none' });
+});
 
 describe('VerifyIdentityScreen', () => {
   const route = { params: {} };
@@ -30,16 +33,15 @@ describe('VerifyIdentityScreen', () => {
     expect(getByLabelText('Borrow across town. Not verified: not available. Verified: available.')).toBeTruthy();
   });
 
-  it('opens the Stripe verification URL from its clearly named button', async () => {
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  it('uses the guarded shared verification flow instead of opening an unchecked URL', async () => {
     api.startIdentityVerification.mockResolvedValueOnce({ verificationUrl: 'https://verify.stripe.com/test-session' });
     const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
-    const { getByRole } = render(<Screen navigation={mockNavigation} route={route} />);
-    await act(async () => fireEvent.press(getByRole('button', { name: 'Verify through Stripe' })));
+    const { getByRole, findByText } = render(<Screen navigation={mockNavigation} route={route} />);
+    await findByText('No payment required.');
+    await act(async () => fireEvent.press(getByRole('button', { name: 'Verify now' })));
     expect(api.startIdentityVerification).toHaveBeenCalledTimes(1);
-    expect(openURL).toHaveBeenCalledWith('https://verify.stripe.com/test-session');
+    expect(openAuthSessionAsync).toHaveBeenCalledWith('https://verify.stripe.com/test-session', 'borrowhood://verification-complete');
     expect(mockShowError).not.toHaveBeenCalled();
-    openURL.mockRestore();
   });
 
   it('refreshes the account when an existing verification is confirmed', async () => {
@@ -50,6 +52,33 @@ describe('VerifyIdentityScreen', () => {
     expect(api.checkVerification).toHaveBeenCalledTimes(1);
     expect(mockRefreshUser).toHaveBeenCalledTimes(1);
     expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not open Stripe after leaving the legacy auth verification screen', async () => {
+    let resolve;
+    api.startIdentityVerification.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('No payment required.');
+    fireEvent.press(screen.getByRole('button', { name: 'Verify now' }));
+    await waitFor(() => expect(api.startIdentityVerification).toHaveBeenCalledTimes(1));
+    act(() => mockNavigation.addListener.mock.calls.find(([name]) => name === 'blur')[1]());
+    await act(async () => resolve({ verificationUrl: 'https://verify.stripe.com/start/late' }));
+    expect(openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(mockRefreshUser).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate after an old status check returns on a different screen', async () => {
+    let resolve;
+    api.checkVerification.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const Screen = require('../../../src/screens/auth/VerifyIdentityScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(screen.getByText("I've already verified"));
+    act(() => mockNavigation.addListener.mock.calls.find(([name]) => name === 'blur')[1]());
+    await act(async () => resolve({ verified: true }));
+    expect(mockRefreshUser).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
   });
 
   it('has skip for now button', () => {

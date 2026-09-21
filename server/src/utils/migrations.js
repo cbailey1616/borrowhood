@@ -10,6 +10,7 @@ import { ensureSignupSchema } from '../services/signupVerification.js';
 import { ensureSafetyReviewSchema } from '../services/safetyReview.js';
 import { ensureExchangeCompletionSchema } from '../services/exchangeCompletionSchema.js';
 import { ensurePickupFollowupSchema } from '../services/pickupFollowup.js';
+import { ensureVerificationPurchaseSchema } from '../services/verificationPurchases.js';
 
 /**
  * Run pending migrations on server startup
@@ -708,6 +709,7 @@ export async function runMigrations() {
     await ensurePickupFollowupSchema();
     await ensureReturnRecoverySchema();
     await ensureCommunityChatSchema();
+    await ensureVerificationPurchaseSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);
