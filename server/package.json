@@ -41,6 +41,7 @@
     "demo:update": "node scripts/update-demo-password.js"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^3.1.0",
     "@anthropic-ai/sdk": "^0.72.1",
     "@aws-sdk/client-s3": "^3.540.0",
     "@aws-sdk/s3-request-presigner": "^3.540.0",

@@ -21,10 +21,10 @@ describe('OnboardingVerifyScreen', () => {
     await findByText('Build town trust. Get verified.');
   });
 
-  it('shows Get verified button', async () => {
+  it('shows Verify now button', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const { findByText } = render(<Screen navigation={mockNavigation} />);
-    await findByText('Get verified');
+    await findByText('Verify now');
   });
 
   it('shows skip button', async () => {
@@ -58,7 +58,7 @@ describe('OnboardingVerifyScreen', () => {
     api.getVerificationStatus.mockResolvedValueOnce({ status: 'none' }).mockResolvedValue({ status: 'processing' });
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    const button = await screen.findByText('Get verified');
+    const button = await screen.findByText('Verify now');
     await act(async () => fireEvent.press(button));
     expect(openAuthSessionAsync).toHaveBeenCalled();
     expect(mockRefreshUser).toHaveBeenCalledTimes(1);
@@ -68,7 +68,7 @@ describe('OnboardingVerifyScreen', () => {
   it('stays on verification when the browser is canceled before submission', async () => {
     const Screen = require('../../../src/screens/onboarding/OnboardingVerifyScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    const button = await screen.findByText('Get verified');
+    const button = await screen.findByText('Verify now');
     await act(async () => fireEvent.press(button));
     expect(mockRefreshUser).not.toHaveBeenCalled();
     expect(mockNavigation.navigate).not.toHaveBeenCalled();

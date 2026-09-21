@@ -205,7 +205,7 @@ export default function ProfileScreen({ navigation, route }) {
             </View>
             <View style={styles.verifyBannerText}>
               <Text style={styles.verifyBannerTitle}>Verify Your Identity</Text>
-              <Text style={styles.verifyBannerSubtitle}>Optional · Free during launch</Text>
+              <Text style={styles.verifyBannerSubtitle}>See verification options</Text>
               <Text style={styles.verifyBannerSubtitle}>Powered by Stripe Identity</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />

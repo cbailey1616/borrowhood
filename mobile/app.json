@@ -99,6 +99,7 @@
         }
       ],
       "expo-web-browser",
+      "expo-iap",
       "expo-font",
       [
         "expo-splash-screen",

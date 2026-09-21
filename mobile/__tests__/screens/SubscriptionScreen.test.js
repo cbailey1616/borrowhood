@@ -34,8 +34,9 @@ it('does not treat a legacy paid tier as identity verification', async () => {
 it('explains Stripe verification and starts it without collecting payment information', async () => {
   api.startIdentityVerification.mockResolvedValueOnce({ verificationUrl: 'https://verify.stripe.com/start/test_session' });
   const screen = render(<Screen navigation={navigation} route={route} />);
-  await screen.findByText('Stripe handles verification and shares the result with Borrowhood.');
-  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Verify through Stripe' })));
+  await screen.findByText('Identity verification is securely provided by Stripe.');
+  await screen.findByText('No payment required.');
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Verify now' })));
   expect(api.startIdentityVerification).toHaveBeenCalledTimes(1);
   expect(openAuthSessionAsync).toHaveBeenCalledWith('https://verify.stripe.com/start/test_session', 'borrowhood://verification-complete');
   expect(api.createVerificationPayment).not.toHaveBeenCalled();

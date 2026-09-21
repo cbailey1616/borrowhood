@@ -1,9 +1,6 @@
-import { requirePaymentsEnabled } from '../middleware/freeLaunch.js';
 import { Router } from 'express';
-import crypto from 'crypto';
 import { query } from '../utils/db.js';
 import { authenticate, ENABLE_PAID_TIERS } from '../middleware/auth.js';
-import { stripe, createEphemeralKey } from '../services/stripe.js';
 
 const router = Router();
 
@@ -107,90 +104,12 @@ router.get('/current', authenticate, async (req, res) => {
 
 // ============================================
 // POST /api/subscriptions/verify-payment
-// Create one-time PaymentIntent for $1.99 verification fee
+// Retired: digital verification purchases use Apple IAP, never Stripe Checkout
 // ============================================
-router.post('/verify-payment', authenticate, requirePaymentsEnabled, async (req, res) => {
-  try {
-    const user = await query(
-      `SELECT email, stripe_customer_id, subscription_tier FROM users WHERE id = $1`,
-      [req.user.id]
-    );
-
-    if (user.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (user.rows[0].subscription_tier === 'plus') {
-      return res.status(400).json({ error: 'Already verified' });
-    }
-
-    let customerId = user.rows[0].stripe_customer_id;
-
-    // Verify existing customer is accessible (handles live/test mode mismatch)
-    if (customerId) {
-      try {
-        await stripe.customers.retrieve(customerId);
-      } catch (e) {
-        // Customer from a different Stripe mode — clear and recreate
-        customerId = null;
-        await query(
-          `UPDATE users SET stripe_customer_id = NULL WHERE id = $1`,
-          [req.user.id]
-        );
-      }
-    }
-
-    // Create Stripe customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.rows[0].email,
-        metadata: { userId: req.user.id },
-      });
-      customerId = customer.id;
-
-      await query(
-        `UPDATE users SET stripe_customer_id = $1 WHERE id = $2`,
-        [customerId, req.user.id]
-      );
-    }
-
-    // Create one-time PaymentIntent for $1.99
-    const idempotencyKey = `verify_${req.user.id}_${crypto.randomUUID()}`;
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: VERIFICATION_FEE_CENTS,
-      currency: 'usd',
-      customer: customerId,
-      metadata: {
-        userId: req.user.id,
-        type: 'verification_fee',
-      },
-      payment_method_options: {
-        card: {
-          setup_future_usage: 'off_session',
-        },
-      },
-    }, {
-      idempotencyKey,
-    });
-
-    // Store the PaymentIntent ID on the user
-    await query(
-      `UPDATE users SET stripe_verification_payment_intent_id = $1 WHERE id = $2`,
-      [paymentIntent.id, req.user.id]
-    );
-
-    // Generate ephemeral key for PaymentSheet
-    const ephemeralKey = await createEphemeralKey(customerId, '2024-06-20');
-
-    res.json({
-      clientSecret: paymentIntent.client_secret,
-      ephemeralKey: ephemeralKey.secret,
-      customerId,
-    });
-  } catch (err) {
-    console.error('Verify payment error:', err);
-    res.status(500).json({ error: 'Failed to create verification payment' });
-  }
+router.post('/verify-payment', authenticate, (_req, res) => {
+  // Deliberately unconditional: ENABLE_PAYMENTS controls historical physical
+  // rentals, and must never reactivate external digital verification charges.
+  res.status(410).json({ code: 'VERIFICATION_IAP_REQUIRED', error: 'Update Borrowhood to use Apple verification purchases.' });
 });
 
 // ============================================

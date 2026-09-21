@@ -14,6 +14,7 @@ import { logger } from './utils/logger.js';
 import { runMigrations } from './utils/migrations.js';
 import { ensureNotificationSchema } from './services/notificationSchema.js';
 import { ensurePublicationSchema } from './services/publicationReceipts.js';
+import { ensureVerificationPurchaseSchema } from './services/verificationPurchases.js';
 import { validateStripeEnvironment } from './utils/stripeGuard.js';
 
 // Validate Stripe keys match the environment
@@ -29,6 +30,7 @@ import transactionRoutes from './routes/transactions.js';
 import disputeRoutes from './routes/disputes.js';
 import notificationRoutes from './routes/notifications.js';
 import webhookRoutes from './routes/webhooks.js';
+import appleNotificationRoutes from './routes/appleNotifications.js';
 import requestRoutes from './routes/requests.js';
 import messageRoutes from './routes/messages.js';
 import safetyRoutes from './routes/safety.js';
@@ -270,6 +272,7 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/earnings', earningsRoutes);
 app.use('/webhooks', webhookRoutes);
+app.use('/webhooks', appleNotificationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -293,7 +296,8 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 // Run migrations before starting server
-runMigrations().then(ensureNotificationSchema).then(ensurePublicationSchema).then(assertPrivatePhotoStorage).then(() => {
+runMigrations().then(ensureNotificationSchema).then(ensurePublicationSchema)
+  .then(ensureVerificationPurchaseSchema).then(assertPrivatePhotoStorage).then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Borrowhood server running on port ${PORT}`);
     startScheduler();
