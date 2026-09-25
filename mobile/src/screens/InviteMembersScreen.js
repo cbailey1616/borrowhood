@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Share, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
+import LayeredCard from '../components/LayeredCard';
 import { Ionicons } from '../components/Icon';
 import { useError } from '../context/ErrorContext';
 import { inviteMessage, inviteToBorrowhood } from '../utils/invites';
@@ -35,7 +36,7 @@ export default function InviteMembersScreen({ route }) {
     <View style={styles.art}><HeroIcon icon="people" size={96} /></View>
     <Text style={styles.title}>Good neighbors start here.</Text>
     <Text style={styles.body}>{name ? `Invite someone to share in ${name}. They can download Borrowhood, then find your neighborhood and ask to join.` : 'Invite a neighbor to Borrowhood, then connect in the app.'}</Text>
-    <View style={styles.card}>
+    <LayeredCard radius={RADIUS.xl} style={styles.card}>
       <HapticPressable style={styles.primary} disabled={busy} onPress={() => invite(true)}>
         <Ionicons name="chatbubble" size={22} color={COLORS.surface} />
         <Text style={styles.primaryText}>Invite by text</Text>
@@ -45,7 +46,7 @@ export default function InviteMembersScreen({ route }) {
         <Text style={styles.secondaryText}>Share another way</Text>
       </HapticPressable>
       <Text style={styles.hint}>You choose the people and send the invitation from your messaging or email app.</Text>
-    </View>
+    </LayeredCard>
   </ScrollView>;
 }
 

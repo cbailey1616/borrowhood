@@ -88,6 +88,17 @@ async function processJob(job) {
         const unread = await run(`SELECT 1 FROM messages WHERE conversation_id=$1 AND sender_id<>$2 AND is_read=false LIMIT 1`, [row.conversation_id, row.user_id]);
         allowed = unread.rows.length > 0;
       }
+      if (allowed && row.type === 'return_reminder') {
+        const when = row.push_data?.dueDate;
+        // Recheck at delivery: an extension or return can make a queued push
+        // obsolete. Older jobs have no returnDate, so infer it from their day.
+        const current = ['today', 'tomorrow'].includes(when) && await run(`SELECT 1 FROM borrow_transactions
+          WHERE id=$1 AND status='picked_up'
+            AND requested_end_date::date=CURRENT_DATE+$2::int
+            AND requested_end_date::date=COALESCE($3::date,$4::timestamptz::date+$2::int)`,
+          [row.transaction_id, when === 'tomorrow' ? 1 : 0, row.push_data?.returnDate || null, row.created_at]);
+        allowed = !!current?.rows.length;
+      }
       if (!allowed) {
         await run("UPDATE push_deliveries SET status='suppressed', lease_until=NULL WHERE id=$1", [job.id]);
         return;

@@ -22,7 +22,7 @@ import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function OnboardingNeighborhoodScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -672,12 +672,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: SPACING.lg,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   neighborhoodCard: {
     marginBottom: SPACING.sm,
     padding: SPACING.lg,

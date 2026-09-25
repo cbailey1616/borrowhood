@@ -6,7 +6,7 @@ import { Ionicons } from './Icon';
 import api from '../services/api';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { exchangesWith, exchangeAction } from '../utils/chatExchange';
-import { COLORS, RADIUS } from '../utils/config';
+import { CARD_SURFACE, COLORS, RADIUS } from '../utils/config';
 
 export default function ChatExchangeCard({ userId, otherId, listingId, navigation, focused, onActiveChange }) {
   const [exchanges, setExchanges] = useState([]);
@@ -64,7 +64,7 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   </View>;
 }
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 16, marginTop: 8, marginBottom: 4, padding: 12, backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1, borderRadius: RADIUS.lg },
+  card: { ...CARD_SURFACE, marginHorizontal: 16, marginTop: 8, marginBottom: 4, padding: 12, borderColor: COLORS.borderLight, borderWidth: 1 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
   title: { color: COLORS.text, fontSize: 15, fontWeight: '400' },
   secondary: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 18 },

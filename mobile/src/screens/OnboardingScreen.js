@@ -21,7 +21,7 @@ import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const { width } = Dimensions.get('window');
 
@@ -798,12 +798,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   noResults: {
     textAlign: 'center',
     color: COLORS.textMuted,

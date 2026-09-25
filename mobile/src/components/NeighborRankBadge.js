@@ -3,7 +3,7 @@ import { Ionicons } from './Icon';
 import HapticPressable from './HapticPressable';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function NeighborRankBadge({ rank, showName = false, onPress, accessibilityLabel }) {
+export default function NeighborRankBadge({ rank, size = 16, showName = false, onPress, accessibilityLabel }) {
   if (!rank) return null;
 
   return <HapticPressable
@@ -12,7 +12,7 @@ export default function NeighborRankBadge({ rank, showName = false, onPress, acc
     accessibilityHint="Opens rating details and rank levels"
     onPress={event => { event?.stopPropagation?.(); onPress?.(); }}
   >
-    <Ionicons name={rank.icon} size={showName ? 20 : 24} illustrated color={COLORS.primary} />
+    <Ionicons name={rank.icon} size={size} illustrated color={COLORS.primary} />
     {showName && <Text style={styles.name}>{rank.label}</Text>}
   </HapticPressable>;
 }

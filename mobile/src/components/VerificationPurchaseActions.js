@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import StripeVerificationButton from './StripeVerificationButton';
-import HapticPressable from './HapticPressable';
+import ActionButton from './ActionButton';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export default function VerificationPurchaseActions({ purchase, onVerify, testID, disabled = false }) {
@@ -27,9 +27,7 @@ export default function VerificationPurchaseActions({ purchase, onVerify, testID
       {error && (
         <>
           <Text style={styles.note} accessibilityRole="alert">{error}</Text>
-          <HapticPressable onPress={() => refreshOffer()} disabled={busy || loading} style={styles.secondary} haptic="light">
-            <Text style={styles.actionText}>Retry</Text>
-          </HapticPressable>
+          <ActionButton label="Retry" icon="refresh-outline" onPress={() => refreshOffer()} disabled={busy || loading} style={styles.secondary} />
         </>
       )}
       <StripeVerificationButton onPress={onVerify} loading={busy || loading}
@@ -37,9 +35,7 @@ export default function VerificationPurchaseActions({ purchase, onVerify, testID
       {paidMode && (
         <>
           <Text style={[styles.note, styles.disclosure]}>Payment does not guarantee successful identity verification.</Text>
-          <HapticPressable onPress={restore} disabled={busy || loading || disabled} style={styles.secondary} haptic="light">
-            <Text style={styles.actionText}>Restore purchase</Text>
-          </HapticPressable>
+          <ActionButton label="Restore purchase" onPress={restore} disabled={busy || loading || disabled} style={styles.secondary} />
         </>
       )}
       {notice && <Text style={styles.note} accessibilityLiveRegion="polite">{notice}</Text>}
@@ -50,6 +46,5 @@ export default function VerificationPurchaseActions({ purchase, onVerify, testID
 const styles = StyleSheet.create({
   note: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginBottom: SPACING.sm },
   disclosure: { ...TYPOGRAPHY.caption1, marginTop: SPACING.sm, marginBottom: 0 },
-  secondary: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.md },
-  actionText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  secondary: { marginVertical: SPACING.sm },
 });

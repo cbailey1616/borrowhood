@@ -12,9 +12,10 @@ import {
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const CORE_SETTINGS = [
   { key: 'new_item_requests', label: 'Items wanted', icon: 'cube' },
@@ -121,7 +122,9 @@ export default function NotificationSettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {loadError ? <HapticPressable accessibilityRole="button" onPress={fetchPreferences} style={styles.section}><Text style={styles.settingLabel}>Couldn’t load settings. Tap to try again.</Text></HapticPressable> : null}
+      {loadError ? <View style={{ gap: SPACING.md }}><Text accessibilityRole="alert" style={styles.settingLabel}>Couldn’t load settings.</Text>
+        <ActionButton label="Try again" icon="refresh-outline" onPress={fetchPreferences} />
+      </View> : null}
       {notifsDenied && (
         <View style={styles.section}>
           <HapticPressable
@@ -215,12 +218,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm,
     paddingBottom: SPACING.xxl, gap: SPACING.xl,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderLight },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

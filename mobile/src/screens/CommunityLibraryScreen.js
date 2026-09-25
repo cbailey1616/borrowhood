@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
@@ -249,12 +249,7 @@ const styles = StyleSheet.create({
   itemCardPressable: {
     marginBottom: SPACING.md,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   itemCard: {
     flexDirection: 'row',
     borderRadius: RADIUS.md,

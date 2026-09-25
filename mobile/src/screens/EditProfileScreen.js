@@ -17,6 +17,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Ionicons } from '../components/Icon';
 import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
@@ -182,9 +183,7 @@ export default function EditProfileScreen({ navigation }) {
             source={{ uri: selectedPhoto || user?.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          <HapticPressable haptic="light" style={styles.changePhotoButton} onPress={handleChangePhoto}>
-            <Text style={styles.changePhotoText}>Change Photo</Text>
-          </HapticPressable>
+          <ActionButton label="Change Photo" icon="camera-outline" style={styles.changePhotoButton} onPress={handleChangePhoto} />
           {selectedPhoto && (
             <Text style={styles.photoHint}>New photo will be saved when you save changes</Text>
           )}

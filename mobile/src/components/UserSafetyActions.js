@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text } from 'react-native';
-import HapticPressable from './HapticPressable';
+import { ActivityIndicator } from 'react-native';
+import ActionButton from './ActionButton';
 import ActionSheet from './ActionSheet';
 import { GroupedListSection, GroupedListItem } from './GroupedList';
 import { Ionicons } from './Icon';
-import { COLORS, SPACING } from '../utils/config';
+import { COLORS } from '../utils/config';
 import api from '../services/api';
 
 export default function UserSafetyActions({ userId, name = 'this person', label = 'Report or block', variant = 'button', onBlockChange }) {
@@ -71,14 +71,8 @@ export default function UserSafetyActions({ userId, name = 'this person', label 
         const result = await api.getUserSafety(userId); setBlocked(result.blocked); setSheet('block');
       })} rightElement={busy ? <ActivityIndicator color={COLORS.spinner} /> : null} />
     </GroupedListSection> :
-    <HapticPressable accessibilityRole="button" accessibilityLabel={label === 'More' ? 'More profile options' : label}
-      disabled={busy} onPress={open}
-      style={{ minHeight: 44, minWidth: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, paddingHorizontal: SPACING.md }}>
-      {busy ? <ActivityIndicator size="small" color={COLORS.spinner} /> : <>
-        <Ionicons name="shield-outline" size={20} color={COLORS.primary} />
-        <Text style={{ color: COLORS.primary }}>{label}</Text>
-      </>}
-    </HapticPressable>}
+    <ActionButton label={label} icon="shield-outline" accessibilityLabel={label === 'More' ? 'More profile options' : label}
+      loading={busy} onPress={open} style={{ minHeight: 44, minWidth: 44 }} />}
     {sheet && <ActionSheet key={sheet} isVisible {...dialog}
       onClose={() => setSheet(current => current === sheet ? null : current)} />}
   </>;

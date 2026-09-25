@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
 import SegmentedControl from '../components/SegmentedControl';
 import ActionSheet from '../components/ActionSheet';
 import LayeredCard from '../components/LayeredCard';
@@ -157,9 +158,7 @@ export default function TransactionHistoryScreen({ navigation }) {
 
       {loadError && <View style={styles.errorRow}>
         <Text style={styles.errorText} accessibilityRole="alert">Couldn't load history. Please try again.</Text>
-        <HapticPressable style={styles.retryButton} onPress={onRefresh} disabled={isRefreshing} accessibilityLabel="Retry history">
-          <Text style={styles.filterText}>{isRefreshing ? 'Loading…' : 'Retry'}</Text>
-        </HapticPressable>
+        <ActionButton label="Retry" onPress={onRefresh} loading={isRefreshing} accessibilityLabel="Retry history" />
       </View>}
 
       {isLoading ? <View style={styles.skeletonWrap}><SkeletonCard /><SkeletonCard /></View> : (

@@ -17,6 +17,7 @@ import { useError } from '../context/ErrorContext';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
 import ActionSheet from '../components/ActionSheet';
 import SegmentedControl from '../components/SegmentedControl';
 import LayeredCard from '../components/LayeredCard';
@@ -480,9 +481,7 @@ export default function FriendsScreen({ navigation, route }) {
       {activeTab === 'search' && <View style={styles.searchContainer}>{searchField}</View>}
       {loadError && <View style={styles.errorRow}>
         <Text style={styles.errorText} accessibilityRole="alert">Couldn't load {activeTab === 'friends' ? 'friends' : 'friend requests'}. Please try again.</Text>
-        <HapticPressable style={styles.retryButton} onPress={onRefresh} disabled={isRefreshing} accessibilityLabel="Retry friends">
-          <Text style={styles.backText}>{isRefreshing ? 'Loading…' : 'Retry'}</Text>
-        </HapticPressable>
+        <ActionButton label="Retry" onPress={onRefresh} loading={isRefreshing} accessibilityLabel="Retry friends" />
       </View>}
 
       {activeTab === 'friends' && (

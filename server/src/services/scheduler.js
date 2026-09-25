@@ -7,8 +7,7 @@ import { sendPickupFollowups } from './pickupFollowup.js';
 
 /**
  * Check for rentals due back tomorrow or today and send reminders.
- * Runs every hour. Only sends one reminder per type per transaction
- * by tracking via the reminder_sent_at columns.
+ * Runs every hour. Sends one reminder per type for each agreed return date.
  */
 export async function sendReturnReminders() {
   try {
@@ -27,7 +26,8 @@ export async function sendReturnReminders() {
       try {
         await withTransaction(async client => {
           const runQuery = client.query.bind(client);
-          const { rows: [current] } = await runQuery(`SELECT *, requested_end_date::date=CURRENT_DATE AS due_today
+          const { rows: [current] } = await runQuery(`SELECT *, requested_end_date::date=CURRENT_DATE AS due_today,
+            requested_end_date::date::text AS reminder_date
             FROM borrow_transactions WHERE id=$1 AND status='picked_up'
             AND requested_end_date::date BETWEEN CURRENT_DATE AND CURRENT_DATE+1 FOR UPDATE`, [txn.id]);
           if (!current) return;
@@ -36,8 +36,9 @@ export async function sendReturnReminders() {
           const recipients = current.due_today ? [current.borrower_id, current.lender_id] : [current.borrower_id];
           for (const recipient of new Set(recipients)) {
             const id = await sendNotification(recipient, 'return_reminder', {
-              itemTitle: txn.item_title, dueDate: current.due_today ? 'today' : 'tomorrow', transactionId: txn.id,
-            }, { runQuery, throwOnError: true, dedupeKey: `${txn.id}:${flag}` });
+              itemTitle: txn.item_title, dueDate: current.due_today ? 'today' : 'tomorrow',
+              returnDate: current.reminder_date, transactionId: txn.id,
+            }, { runQuery, throwOnError: true, dedupeKey: `${txn.id}:${current.reminder_date}:${flag}` });
             if (!id) throw new Error('Reminder was not persisted');
           }
           // Activity, durable pushes and flags are all-or-nothing, even with

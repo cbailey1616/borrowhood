@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal } from 'react-native';
 import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import { COLORS } from '../../src/utils/config';
 
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null };
 const mockNavigation = { getState: jest.fn(() => ({ routes: [{ name: 'RequestQueue' }, { name: 'TransactionDetail' }] })), replace: jest.fn(), navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
@@ -137,7 +138,9 @@ describe('TransactionDetailScreen', () => {
       borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S' } });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByTestId('Transaction.button.reportReturnIssue'));
+    const reportButton = await screen.findByTestId('Transaction.button.reportReturnIssue');
+    expect(reportButton).toHaveStyle({ backgroundColor: COLORS.danger, minHeight: 52 });
+    fireEvent.press(reportButton);
     expect(screen.getByText('Something different?')).toBeTruthy();
     fireEvent.press(screen.getByTestId('Transaction.messageAboutReturn'));
     await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: 'user-3', listingId: 'l-1' })));

@@ -8,7 +8,7 @@ import OnboardingProgress from '../../components/OnboardingProgress';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 const COMPARISON_ROWS = [
   { feature: 'Borrow from friends & neighbors', free: true, plus: true },
@@ -239,12 +239,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   comparisonCard: {
     padding: 0,
     overflow: 'hidden',

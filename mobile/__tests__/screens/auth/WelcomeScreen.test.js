@@ -49,12 +49,12 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.google'));
-    fireEvent.press(await screen.findByText('Email me a sign-in code'));
+    fireEvent.press(await screen.findByText('Email me a code'));
     await screen.findByTestId('Welcome.input.linkCode');
     expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
     expect(api.startSocialLinkCode).toHaveBeenCalledWith('google', { idToken: 'mock-google-token' });
     fireEvent.changeText(screen.getByTestId('Welcome.input.linkCode'), '123456');
-    await act(async () => fireEvent.press(screen.getByText('Connect Google & sign in')));
+    await act(async () => fireEvent.press(screen.getByText('Verify & sign in')));
     expect(mockCompleteLinkCode).toHaveBeenCalledWith({ provider: 'google', token: { idToken: 'mock-google-token' }, email: 'neighbor@example.com' }, 'challenge-1', '123456');
     expect(mockLogin).not.toHaveBeenCalled();
   });
@@ -65,13 +65,13 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.google'));
-    fireEvent.press(await screen.findByText('Use my Borrowhood password'));
+    fireEvent.press(await screen.findByText('Use password instead'));
     fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'wrong');
-    fireEvent.press(screen.getByText('Connect Google & sign in'));
+    fireEvent.press(screen.getByText('Connect & sign in'));
     await screen.findByText('Incorrect password.');
     fireEvent.press(screen.getByText('Forgot your password?'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword', { email: 'neighbor@example.com' });
-    expect(screen.getByText('Use an email code instead')).toBeTruthy();
+    expect(screen.getByText('Use email code instead')).toBeTruthy();
   });
 
   it('shows a delivery error without pretending a code was sent', async () => {
@@ -80,11 +80,12 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.google'));
-    fireEvent.press(await screen.findByText('Email me a sign-in code'));
+    fireEvent.press(await screen.findByText('Email me a code'));
     await screen.findByText('Could not send the code.');
     expect(screen.queryByTestId('Welcome.input.linkCode')).toBeNull();
     expect(mockCompleteLinkCode).not.toHaveBeenCalled();
-    expect(screen.getByText('Forgot your password?')).toBeTruthy();
+    expect(screen.queryByText('Forgot your password?')).toBeNull();
+    expect(screen.getByText('Use password instead')).toBeTruthy();
   });
 
   it('distinguishes joining from signing in before showing password fields', async () => {
@@ -179,9 +180,10 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.apple'));
-    await screen.findByText('Email me a sign-in code');
+    await screen.findByText('Email me a code');
+    fireEvent.press(screen.getByRole('button', { name: 'Back to sign-in' }));
     await act(async () => fireEvent.press(screen.getByTestId('Auth.google')));
-    expect(screen.queryByText('Connect Apple & sign in')).toBeNull();
+    expect(screen.queryByText('Connect Apple')).toBeNull();
     expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
     expect(mockLogin).not.toHaveBeenCalled();
   });
@@ -192,15 +194,33 @@ describe('WelcomeScreen', () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
     const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
     fireEvent.press(await screen.findByTestId('Auth.apple'));
-    await screen.findByText('Email me a sign-in code');
+    await screen.findByText('Email me a code');
+    fireEvent.press(screen.getByRole('button', { name: 'Back to sign-in' }));
     fireEvent.press(screen.getByTestId('Auth.google'));
-    await screen.findByText(/Connect Google with a code/);
-    fireEvent.press(screen.getByText('Use my Borrowhood password'));
+    await screen.findByText('Connect Google');
+    fireEvent.press(screen.getByText('Use password instead'));
     expect(screen.queryByText(/password once to connect Apple/)).toBeNull();
     expect(screen.getByText(/Enter your Borrowhood password to connect Google/)).toBeTruthy();
     fireEvent.changeText(screen.getByTestId('Welcome.input.email'), 'test@test.com');
     fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'MyPass123');
-    await act(async () => fireEvent.press(screen.getByText('Connect Google & sign in')));
+    await act(async () => fireEvent.press(screen.getByText('Connect & sign in')));
     expect(mockLogin).toHaveBeenCalledWith('test@test.com', 'MyPass123', { provider: 'google', token: { idToken: 'mock-google-token' } });
+  });
+
+  it('replaces provider choices and signup links with one focused account-linking step', async () => {
+    mockGoogle.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { code: 'ACCOUNT_LINK_REQUIRED', email: 'neighbor@example.com' }));
+    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Auth.google'));
+    await screen.findByText('Finish signing in');
+    expect(screen.getByText('neighbor@example.com')).toBeTruthy();
+    expect(screen.getByText("You already have a Borrowhood account. Confirm it's yours to use Google.")).toBeTruthy();
+    expect(screen.queryByTestId('Auth.google')).toBeNull();
+    expect(screen.queryByTestId('Auth.apple')).toBeNull();
+    expect(screen.queryByText('Use Apple or Google instead')).toBeNull();
+    expect(screen.queryByText('Forgot your password?')).toBeNull();
+    expect(screen.queryByText('New here?')).toBeNull();
+    expect(screen.queryByText('Create an account with email')).toBeNull();
+    expect(api.startSocialLinkCode).not.toHaveBeenCalled();
   });
 });

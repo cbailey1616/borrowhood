@@ -52,9 +52,9 @@ it('disables child controls while push is off and saves the master switch', asyn
 it('offers retry instead of editable defaults when loading fails', async () => {
   api.getNotificationPreferences.mockRejectedValueOnce(new Error('offline'));
   const view = render(<Screen />);
-  await view.findByText('Couldn’t load settings. Tap to try again.');
+  await view.findByText('Couldn’t load settings.');
   expect(view.queryByLabelText('Messages')).toBeNull();
-  fireEvent.press(view.getByText('Couldn’t load settings. Tap to try again.'));
+  fireEvent.press(view.getByRole('button', { name: 'Try again' }));
   await view.findByLabelText('Messages');
 });
 
