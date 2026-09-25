@@ -15,6 +15,7 @@ import { registerPushDevice, unregisterPushDevice, revokePushDevice } from '../.
 import { sendNotification, sendBulkNotification } from '../../src/services/notifications.js';
 import { processPushDeliveries, expoRequest, pushMessage } from '../../src/services/pushDelivery.js';
 import { sendReturnReminders } from '../../src/services/scheduler.js';
+import { extendReturn } from '../../src/services/returnRecovery.js';
 import { notifyThreadParticipants, getDiscussionThread } from '../../src/services/discussionNotifications.js';
 import notificationRoutes from '../../src/routes/notifications.js';
 import discussionRoutes from '../../src/routes/discussions.js';
@@ -37,11 +38,13 @@ beforeAll(async () => {
   state.db = new PGlite();
   await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, first_name TEXT DEFAULT 'Neighbor', last_name TEXT,
     display_name TEXT, profile_photo_url TEXT, is_verified BOOLEAN DEFAULT true, push_token TEXT, notification_preferences JSONB DEFAULT '{}');
-    CREATE TABLE listings(id UUID PRIMARY KEY, title TEXT DEFAULT 'Ladder', owner_id UUID, status TEXT DEFAULT 'active');
+    CREATE TABLE listings(id UUID PRIMARY KEY, title TEXT DEFAULT 'Ladder', owner_id UUID, status TEXT DEFAULT 'active', listing_type TEXT DEFAULT 'lend');
     CREATE TABLE item_requests(id UUID PRIMARY KEY, title TEXT DEFAULT 'Ladder', user_id UUID, status TEXT DEFAULT 'open');
     CREATE TABLE listing_photos(listing_id UUID, url TEXT, sort_order INT);
     CREATE TABLE borrow_transactions(id UUID PRIMARY KEY, listing_id UUID, borrower_id UUID, lender_id UUID,
-      status TEXT, requested_end_date DATE, reminder_day_before_sent BOOLEAN DEFAULT false, reminder_day_of_sent BOOLEAN DEFAULT false);
+      status TEXT, requested_end_date DATE, actual_pickup_at TIMESTAMPTZ DEFAULT NOW(), actual_return_at TIMESTAMPTZ,
+      reminder_day_before_sent BOOLEAN DEFAULT false, reminder_day_of_sent BOOLEAN DEFAULT false);
+    CREATE TABLE return_reports(transaction_id UUID REFERENCES borrow_transactions(id), status TEXT, resolved_at TIMESTAMPTZ, version INT DEFAULT 0);
     CREATE TABLE notifications(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES users(id), type TEXT, title TEXT, body TEXT,
       from_user_id UUID, transaction_id UUID, listing_id UUID, request_id UUID, conversation_id UUID, dispute_id UUID,
       is_read BOOLEAN DEFAULT false, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), push_sent BOOLEAN DEFAULT false);
@@ -289,14 +292,15 @@ describe('grouped exchange activity', () => {
   });
 
   it('counts one unread exchange and one unread conversation consistently in app and push badges', async () => {
-    await state.db.query("INSERT INTO borrow_transactions(id,listing_id,borrower_id,lender_id,status) VALUES($1,$2,$3,$4,'approved')", [root,item,A,B]);
+    await state.db.query("INSERT INTO borrow_transactions(id,listing_id,borrower_id,lender_id,status,requested_end_date) VALUES($1,$2,$3,$4,'approved',CURRENT_DATE)", [root,item,A,B]);
     await state.db.query('INSERT INTO conversations(id,user1_id,user2_id) VALUES($1,$2,$3)',[reply,A,B]);
     await state.db.query("INSERT INTO messages(conversation_id,sender_id,content) VALUES($1,$2,'Hello'),($1,$2,'Noon works')",[reply,B]);
     await state.db.query("INSERT INTO notifications(user_id,type,title,transaction_id) VALUES($1,'request_approved','Approved',$2),($1,'pickup_confirmed','Pickup confirmed',$2)",[A,root]);
     const badge = await request(app).get('/notifications/badge-count').set('x-user',A).expect(200);
     expect(badge.body).toEqual({ messages: 1, notifications: 1, actions: 1, total: 2 });
+    await state.db.query("UPDATE borrow_transactions SET status='picked_up' WHERE id=$1", [root]);
     await registerPushDevice(A,'ExponentPushToken[phone]',phone,secret);
-    await sendNotification(A,'return_reminder',{ transactionId:root, itemTitle:'Ladder' });
+    await sendNotification(A,'return_reminder',{ transactionId:root, itemTitle:'Ladder', dueDate:'today' });
     await processPushDeliveries();
     expect(JSON.parse(fetch.mock.calls[0][1].body).badge).toBe(2);
   });
@@ -343,6 +347,43 @@ describe('thread notifications and destinations', () => {
 });
 
 describe('reminders and inbox ordering', () => {
+  it.each([
+    [0, true], [1, true], [0, false], [1, false],
+  ])('notifies an extension and delivers fresh reminders for day +%i (legacy=%s)', async (days, legacy) => {
+    await registerPushDevice(A,'ExponentPushToken[phone]',phone,secret);
+    await registerPushDevice(B,'ExpoPushToken[tablet]',tablet,secret);
+    await state.db.query(`INSERT INTO borrow_transactions(id,listing_id,borrower_id,lender_id,status,requested_end_date,
+      reminder_day_before_sent,reminder_day_of_sent) VALUES($1,$2,$3,$4,'picked_up',CURRENT_DATE-2,true,true)`, [root,item,A,B]);
+    const [{ oldDate, newDate }] = await rows('SELECT (CURRENT_DATE-2)::text AS "oldDate", (CURRENT_DATE+$1::int)::text AS "newDate"', [days]);
+    const flag = days ? 'reminder_day_before_sent' : 'reminder_day_of_sent';
+    const recipients = days ? [A] : [A,B];
+    const oldIds = [];
+    for (const recipient of recipients) {
+      oldIds.push(await sendNotification(recipient,'return_reminder',{
+        transactionId:root,itemTitle:'Ladder',dueDate:days?'tomorrow':'today',...(!legacy&&{returnDate:oldDate}),
+      }, {dedupeKey:legacy?`${root}:${flag}`:`${root}:${oldDate}:${flag}`}));
+    }
+    // These reminders were queued for the old date but have not reached a device yet.
+    await state.db.query('UPDATE notifications SET created_at=NOW()-($1::int * INTERVAL \'1 day\') WHERE id=ANY($2::uuid[])', [2+days,oldIds]);
+    await extendReturn(root,B,newDate);
+    expect(await rows("SELECT user_id,transaction_id,title FROM notifications WHERE type='return_date_extended'"))
+      .toEqual([{user_id:A,transaction_id:root,title:'Return date updated'}]);
+    expect((await rows('SELECT reminder_day_before_sent,reminder_day_of_sent FROM borrow_transactions'))[0])
+      .toEqual({reminder_day_before_sent:false,reminder_day_of_sent:false});
+    await sendReturnReminders(); await sendReturnReminders();
+    const reminders = await rows("SELECT user_id,push_data FROM notifications WHERE type='return_reminder' AND NOT(id=ANY($1::uuid[])) ORDER BY user_id", [oldIds]);
+    expect(reminders).toHaveLength(recipients.length);
+    expect(reminders.map(row=>row.user_id)).toEqual(recipients);
+    for (const reminder of reminders) expect(reminder.push_data).toMatchObject({returnDate:newDate,dueDate:days?'tomorrow':'today'});
+    await processPushDeliveries();
+    const delivered = fetch.mock.calls.map(([,options])=>JSON.parse(options.body));
+    expect(delivered.filter(message=>message.data.type==='return_date_extended')).toHaveLength(1);
+    expect(delivered.filter(message=>message.data.type==='return_reminder')).toHaveLength(recipients.length);
+    expect(delivered.every(message=>!oldIds.includes(message.data.notificationId))).toBe(true);
+    expect(await rows('SELECT status FROM push_deliveries WHERE notification_id=ANY($1::uuid[])',[oldIds]))
+      .toEqual(oldIds.map(()=>({status:'suppressed'})));
+  });
+
   it('commits reminder flags and both recipients together, and retries after a failed insert', async () => {
     await state.db.query("INSERT INTO borrow_transactions(id,listing_id,borrower_id,lender_id,status,requested_end_date) VALUES($1,$2,$3,$4,'picked_up',CURRENT_DATE)",[root,item,A,B]);
     await state.db.exec(`CREATE OR REPLACE FUNCTION fail_notice() RETURNS trigger AS $$ BEGIN

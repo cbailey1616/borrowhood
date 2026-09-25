@@ -115,7 +115,7 @@ export default function RequestQueueScreen({ route, navigation }) {
           <View style={styles.personRow}>
             <ShimmerImage source={item.borrower.profilePhotoUrl ? { uri: item.borrower.profilePhotoUrl } : null} placeholderIcon="person" style={styles.avatar} />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <MemberSummary user={item.borrower} showExchangeCount={false} compact>
+              <MemberSummary user={item.borrower} showExchangeCount={false} compact badgeSize={18}>
                 <HapticPressable style={styles.profileName} accessibilityRole="button" accessibilityLabel={`View ${item.borrower.firstName}'s profile${item.borrower.isVerified === true ? ', verified identity' : ''}`} onPress={() => navigation.navigate('UserProfile', { id: item.borrower.id })}>
                   <Text style={styles.name}>{item.borrower.firstName}</Text>
                   {item.borrower.isVerified === true && <VerifiedBadge size={18} />}

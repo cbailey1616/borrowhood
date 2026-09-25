@@ -138,7 +138,7 @@ export default function UserProfileScreen({ route, navigation }) {
             source={{ uri: user.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          <MemberSummary user={user} centered profileHeader>
+          <MemberSummary user={user} centered profileHeader badgeSize={20}>
             <Text style={[styles.name,{flexShrink:1}]}>{user.firstName} {user.lastName}</Text>
             {user.isVerified === true && <VerifiedBadge size={20} interactive />}
           </MemberSummary>
