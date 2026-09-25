@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { ScrollView, View, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import api from '../services/api';
-import HapticPressable from '../components/HapticPressable';
-import { COLORS } from '../utils/config';
+import ActionButton from '../components/ActionButton';
+import LayeredCard from '../components/LayeredCard';
+import { COLORS, TYPOGRAPHY } from '../utils/config';
 
 export default function InsightsScreen() {
   const [data, setData] = useState(null);
@@ -20,10 +21,12 @@ export default function InsightsScreen() {
     <Text style={{ color: COLORS.text, fontSize: 26, fontWeight: '400' }}>Last 30 days</Text>
     <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22 }}>Member activity and exchange completion. Aggregate counts only.</Text>
     {loading && !data && <ActivityIndicator color={COLORS.spinner} />}
-    {!!error && <HapticPressable accessibilityRole="button" onPress={load}><Text style={{ color: COLORS.danger }}>{error} Tap to retry.</Text></HapticPressable>}
-    {rows.map(([label, value]) => <View key={label} style={{ padding: 18, borderRadius: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.borderLight }}>
-      <Text style={{ fontSize: 15, color: COLORS.textSecondary }}>{label}</Text><Text style={{ fontSize: 28, fontWeight: '400', color: COLORS.text, marginTop: 8 }}>{value}</Text>
-    </View>)}
+    {!!error && <View style={{ gap: 12 }}><Text accessibilityRole="alert" style={{ ...TYPOGRAPHY.bodySmall, color: COLORS.danger }}>{error}</Text>
+      <ActionButton label="Try again" icon="refresh-outline" loading={loading} onPress={load} />
+    </View>}
+    {rows.map(([label, value]) => <LayeredCard key={label} style={{ padding: 18, gap: 8 }}>
+      <Text style={{ ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary }}>{label}</Text><Text style={{ ...TYPOGRAPHY.h1, color: COLORS.primary }}>{value}</Text>
+    </LayeredCard>)}
     {data && <Text style={{ fontSize: 13, lineHeight: 20, color: COLORS.textSecondary }}>{data.note}</Text>}
   </ScrollView>;
 }

@@ -142,13 +142,23 @@ export const SHADOWS = {
   },
 };
 
+// Shared panel surface; screens add only their own layout and semantic accents.
+export const CARD_SURFACE = {
+  backgroundColor: COLORS.card,
+  borderRadius: RADIUS.lg,
+  ...SHADOWS.md,
+};
+
 export const TYPOGRAPHY = {
   // Light visual hierarchy: regular DM Sans; size and spacing distinguish headings.
   largeTitle: { fontSize: 32, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: -0.6 },
+  title2: { fontSize: 22, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 28, letterSpacing: -0.3 },
+  title3: { fontSize: 20, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 26 },
   headline: { fontSize: 17, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 22 },
   subheadline: { fontSize: 15, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 20 },
   footnote: { fontSize: 13, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 18 },
   caption1: { fontSize: 12, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 16 },
+  caption2: { fontSize: 11, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 16 },
   // Existing aliases (kept for migration)
   h1: { fontSize: 28, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: -0.5 },
   h2: { fontSize: 22, fontFamily: 'DMSans_400Regular', fontWeight: '400', letterSpacing: -0.3 },

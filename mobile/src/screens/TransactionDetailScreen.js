@@ -2,6 +2,7 @@ import PendingRequestCard from '../components/PendingRequestCard';
 import useNavigationTask from '../hooks/useNavigationTask';
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
 import ActionButton from '../components/ActionButton';
+import ActionRow from '../components/ActionRow';
 import { isSaleListing, isTransferListing } from '../utils/directFee';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { exchangeDetailRows } from '../utils/exchangeDetails';
@@ -31,6 +32,7 @@ import { haptics } from '../utils/haptics';
 import RentalProgress from '../components/RentalProgress';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS } from '../utils/config';
 import { cancelReturnReminders } from '../utils/returnReminders';
+import { formatCalendarDate, parseCalendarDate } from '../utils/calendarDate';
 
 async function dismissRelatedNotifications(transactionId) {
   try {
@@ -269,6 +271,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
     : needsReturn ? { label: transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => handleConfirmReturn(transaction.conditionAtPickup || transaction.listing.condition || 'good') }
     : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
     : null;
+  const activeReturn = !isGiveaway && !transaction.hasDispute && ['picked_up', 'return_pending'].includes(transaction.status);
+  const waitingForReturn = activeReturn && transaction.isLender && transaction.status === 'picked_up';
+  const returnDue = formatCalendarDate(transaction.endDate, { weekday: 'short', month: 'short', day: 'numeric' });
+  const showMessageRow = !primaryIsMessage && !finished && !needsPickupReview;
+  const showReturnHelp = !isGiveaway && !!transaction.actualPickupAt;
 
   return (
     <KeyboardAvoidingView
@@ -287,20 +294,18 @@ export default function TransactionDetailScreen({ route, navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />
         }
       >
-        <Text style={styles.pageEyebrow}>{transaction.status === 'pending' ? 'Your request' : 'Your exchange'}</Text>
-
         {transaction.isBorrower && transaction.status === 'pending' ? <PendingRequestCard
           transaction={transaction} onMessage={messageNeighbor} onCancel={() => setCancelSheetVisible(true)}
           onViewItem={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}
           busy={actionLoading} error={fetchError} onRetry={fetchTransaction} /> : <>
-        <LayeredCard radius={RADIUS.xl}>
+        <LayeredCard radius={RADIUS.xl} accent>
           <View style={styles.detailCard}>
             <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`View ${transaction.listing.title}`}
               style={styles.itemSummary} onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}>
               {transaction.listing.photos?.[0] ? <Image source={{ uri: transaction.listing.photos[0] }} style={styles.itemPhoto} />
                 : <View style={[styles.itemPhoto, styles.imagePlaceholder]}><Ionicons name={isGiveaway ? 'gift' : 'basket'} size={46} illustrated /></View>}
               <View style={{ flex: 1 }}>
-                <Text style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : 'Borrowing'}</Text>
+                <Text style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : transaction.isLender ? 'Lending' : 'Borrowing'}</Text>
                 <Text style={styles.itemName}>{transaction.listing.title}</Text>
                 <Text style={styles.detailText}>{CONDITION_LABELS[transaction.listing.condition]}</Text>
               </View>
@@ -311,12 +316,16 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         </LayeredCard>
 
-        <View style={allDone ? styles.completedEndorsement : styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
+        <LayeredCard radius={RADIUS.xl} style={allDone ? styles.completedEndorsement : styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
           {!!fetchError && <View style={{ gap: 8 }}>
             <Text style={styles.detailText}>Could not refresh this exchange.</Text>
             <ActionButton label="Try again" onPress={fetchTransaction} />
           </View>}
           {!allDone && <Text style={styles.cardEyebrow}>What happens next</Text>}
+          {activeReturn && !!returnDue && <View style={styles.dueBadge}>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.dueText}>Due {returnDue}</Text>
+          </View>}
           {showEndorsement ? <>
             {transaction.hasDispute && <>
               <Text style={styles.heroTitle}>{nextStep.title}</Text>
@@ -327,32 +336,23 @@ export default function TransactionDetailScreen({ route, navigation }) {
               await fetchTransaction();
             }} embedded />
           </> : <>
-          <Text style={styles.heroTitle}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
-          <Text style={styles.heroDescription}>{transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
+          <View style={styles.guidanceCopy}>
+            <Text style={styles.heroTitle}>{waitingForReturn ? 'Waiting for return' : transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
+            {waitingForReturn && <Text style={styles.returnNeighbor}>{otherPerson.firstName} has your item.</Text>}
+            <Text style={styles.heroDescription}>{waitingForReturn ? 'Confirm once it’s back in the same condition.' : transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
+          </View>
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button"
             accessibilityLabel={`View ${otherPerson.firstName}'s profile`} style={styles.outlinedAction}
             onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
             <Text style={styles.neighborMessageTitle}>View {otherPerson.firstName}'s profile</Text>
           </HapticPressable>}
-          {primaryAction && <HapticPressable accessibilityRole="button" testID={primaryAction.testID}
-            accessibilityLabel={primaryAction.label} style={styles.approveButton}
-            disabled={actionLoading || (!!fetchError && (needsPickup || needsReturn))} onPress={primaryAction.onPress}>
-            {actionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveButtonText}>{primaryAction.label}</Text>}
-          </HapticPressable>}
-          {needsReturn && <HapticPressable accessibilityRole="button" accessibilityLabel="Report an issue"
-            testID="Transaction.button.reportReturnIssue" style={styles.secondaryAction} disabled={actionLoading}
-            onPress={() => setReturnIssueVisible(true)}>
-            <Text style={styles.neighborMessageTitle}>Report an issue</Text>
-          </HapticPressable>}
+          {primaryAction && <ActionButton testID={primaryAction.testID} label={primaryAction.label} variant="primary"
+            icon={needsPickup || needsReturn ? 'checkmark-circle-outline' : primaryIsMessage ? 'chatbubble-outline' : 'people-outline'}
+            loading={actionLoading} disabled={!!fetchError && (needsPickup || needsReturn)} onPress={primaryAction.onPress} />}
+          {needsReturn && <ActionButton label="Report an issue" variant="primary" destructive icon="flag-outline"
+            testID="Transaction.button.reportReturnIssue" disabled={actionLoading} onPress={() => setReturnIssueVisible(true)} />}
           {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"
             disabled={actionLoading || !!fetchError} style={styles.outlinedAction} onPress={() => setMoreTimeSheetVisible(true)} />}
-          {!needsPickupReview && !primaryIsMessage && !finished && <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${otherPerson.firstName} privately`}
-            style={styles.outlinedAction} onPress={messageNeighbor}>
-            <Text style={styles.neighborMessageTitle}>Message {otherPerson.firstName}</Text>
-          </HapticPressable>}
-          {!isGiveaway && transaction.actualPickupAt && <ActionButton label={transaction.isLender && needsReturn ? 'Return options' : 'Return help'}
-            testID="Transaction.button.returnHelp" style={styles.outlinedAction}
-            onPress={() => navigation.navigate('ReturnHelp', { transaction })} />}
           {canCancel && <HapticPressable accessibilityRole="button" accessibilityLabel={cancelLabel} testID="Transaction.button.cancel"
             style={[styles.outlinedAction, styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
             <Text style={styles.cancelActionText}>{cancelLabel}</Text>
@@ -360,20 +360,28 @@ export default function TransactionDetailScreen({ route, navigation }) {
           {needsPickupReview && <ActionButton label={`Message ${otherPerson.firstName}`} accessibilityLabel={`Message ${otherPerson.firstName} privately`}
             disabled={actionLoading} style={styles.outlinedAction} onPress={messageNeighbor} />}
           </>}
-        </View>
+        </LayeredCard>
+
+        {!showEndorsement && (showMessageRow || showReturnHelp) && <LayeredCard radius={RADIUS.xl}>
+          {showMessageRow && <ActionRow label={`Message ${otherPerson.firstName}`} icon="chatbubble-outline"
+            accessibilityLabel={`Message ${otherPerson.firstName} privately`} onPress={messageNeighbor} />}
+          {showMessageRow && showReturnHelp && <View style={styles.actionDivider} />}
+          {showReturnHelp && <ActionRow label={transaction.isLender && needsReturn ? 'Return options' : 'Return help'} icon="return-down-back-outline"
+            testID="Transaction.button.returnHelp" onPress={() => navigation.navigate('ReturnHelp', { transaction })} />}
+        </LayeredCard>}
 
         {!isGiveaway && <LayeredCard radius={RADIUS.xl}><View style={styles.detailCard}>
           <View style={styles.borrowDates}>
             <View style={styles.borrowDate}>
               <Text style={styles.smallLabel}>Pickup</Text>
-              <Text style={styles.borrowDateValue}>{new Date(transaction.startDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-              <Text style={styles.detailText}>{new Date(transaction.startDate).getFullYear()}</Text>
+              <Text style={styles.borrowDateValue}>{formatCalendarDate(transaction.startDate, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+              <Text style={styles.detailText}>{parseCalendarDate(transaction.startDate)?.getFullYear()}</Text>
             </View>
             <Ionicons name="arrow-forward" size={22} color={COLORS.primary} />
             <View style={styles.borrowDate}>
               <Text style={styles.smallLabel}>Return by</Text>
-              <Text style={styles.borrowDateValue}>{new Date(transaction.endDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-              <Text style={styles.detailText}>{new Date(transaction.endDate).getFullYear()}</Text>
+              <Text style={styles.borrowDateValue}>{returnDue}</Text>
+              <Text style={styles.detailText}>{parseCalendarDate(transaction.endDate)?.getFullYear()}</Text>
             </View>
           </View>
         </View></LayeredCard>}
@@ -496,9 +504,13 @@ const styles = StyleSheet.create({
   outlinedAction: { minHeight: 50, paddingVertical: 14, paddingHorizontal: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   cancelAction: { borderColor: COLORS.danger, backgroundColor: COLORS.danger },
   cancelActionText: { fontSize: 15, fontWeight: '400', color: COLORS.surface },
-  nextStepCard: { backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20, gap: 14 },
-  completedEndorsement: { paddingHorizontal: 8, gap: SPACING.sm },
-  secondaryAction: { paddingVertical: 12, alignItems: 'center', gap: 4 },
+  nextStepCard: { backgroundColor: COLORS.requestSurface, borderRadius: 24, padding: 20, gap: 14 },
+  completedEndorsement: { paddingHorizontal: 8, gap: SPACING.sm, backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 },
+  dueBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: SPACING.sm, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full },
+  dueText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
+  returnNeighbor: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  guidanceCopy: { gap: SPACING.sm },
+  actionDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: SPACING.lg, backgroundColor: COLORS.separator },
   detailsSection: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, overflow: 'hidden' },
   detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12 },
   detailsBody: { padding: SPACING.lg, paddingTop: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, gap: SPACING.md },
@@ -507,11 +519,10 @@ const styles = StyleSheet.create({
   factValue: { ...TYPOGRAPHY.footnote, color: COLORS.text, textAlign: 'right', flex: 1.5 },
   notesSection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, paddingTop: SPACING.md, gap: SPACING.sm },
   completedMessage: { marginTop: SPACING.lg, flexDirection: 'row', gap: SPACING.sm },
-  pageContent: { padding: 18, paddingBottom: 28, gap: 24 },
-  pageEyebrow: { fontSize: 11, lineHeight: 16, letterSpacing: 1.1, textTransform: 'uppercase', color: COLORS.textSecondary, fontWeight: '400', marginTop: 6 },
+  pageContent: { padding: 20, paddingBottom: 28, gap: 20, maxWidth: 720, width: '100%', alignSelf: 'center' },
   statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },
   heroIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  heroTitle: { fontSize: 23, lineHeight: 29, fontWeight: '400', color: COLORS.primary, marginBottom: 8 },
+  heroTitle: { ...TYPOGRAPHY.h2, lineHeight: 28, color: COLORS.primary },
   heroDescription: { fontSize: 14, lineHeight: 21, color: COLORS.textSecondary },
   detailCard: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 18 },
   itemSummary: { flexDirection: 'row', gap: 14, alignItems: 'center' },
@@ -524,7 +535,7 @@ const styles = StyleSheet.create({
   borrowDate: { flex: 1 },
   borrowDateValue: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '400', marginTop: 6 },
   durationNote: { color: COLORS.primary, fontSize: 12, textAlign: 'center', marginTop: 12 },
-  cardEyebrow: { fontSize: 12, fontWeight: '400', color: COLORS.primary, marginBottom: 15 },
+  cardEyebrow: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   neighborRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   neighborAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primaryMuted },
   neighborName: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '400' },
@@ -846,11 +857,11 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.primaryMuted,
   },
   avatarPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.gray[800],
+    backgroundColor: COLORS.primaryMuted,
   },
 });

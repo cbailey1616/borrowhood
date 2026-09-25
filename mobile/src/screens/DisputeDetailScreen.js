@@ -13,7 +13,7 @@ import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -752,12 +752,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
 
   // Warning
   warningBanner: {

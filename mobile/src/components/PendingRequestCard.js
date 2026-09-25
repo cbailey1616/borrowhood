@@ -2,7 +2,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
 import ListingOffer from './ListingOffer';
 import HapticPressable from './HapticPressable';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const shortDate = value => value ? new Date(value.slice(0, 10) + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 export default function PendingRequestCard({ transaction: t, onMessage, onCancel, onViewItem, busy, error, onRetry }) {
@@ -28,12 +28,12 @@ export default function PendingRequestCard({ transaction: t, onMessage, onCancel
       {!!t.borrowerMessage && <Text style={styles.body}>{t.borrowerMessage}</Text>}
     </View>}
     <HapticPressable accessibilityLabel="Message owner" testID="Transaction.button.message" style={styles.button} onPress={onMessage}><Text style={styles.buttonText}>Message owner</Text></HapticPressable>
-    <HapticPressable accessibilityLabel="Cancel request" testID="Transaction.button.cancel" style={[styles.button, { borderColor: COLORS.danger }]} disabled={busy} onPress={onCancel}><Text style={[styles.buttonText, { color: COLORS.danger }]}>Cancel request</Text></HapticPressable>
+    <HapticPressable accessibilityLabel="Cancel request" testID="Transaction.button.cancel" style={[styles.button, { borderColor: COLORS.danger, backgroundColor: COLORS.danger }]} disabled={busy} onPress={onCancel}><Text style={[styles.buttonText, { color: COLORS.surface }]}>Cancel request</Text></HapticPressable>
   </View>;
 }
 const styles = StyleSheet.create({
   page: { gap: SPACING.lg },
-  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.lg, gap: SPACING.md },
+  card: { ...CARD_SURFACE, borderRadius: RADIUS.xl, padding: SPACING.lg, gap: SPACING.md },
   item: { flexDirection: 'row', alignItems: 'center' },
   photo: { width: 88, height: 100, borderRadius: RADIUS.md },
   title: { ...TYPOGRAPHY.title2, fontSize: 24, fontWeight: '400', color: COLORS.primary },

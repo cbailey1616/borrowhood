@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
+import LayeredCard from '../components/LayeredCard';
 import ActionSheet from '../components/ActionSheet';
 import SegmentedControl from '../components/SegmentedControl';
 import { Ionicons } from '../components/Icon';
@@ -69,11 +71,11 @@ export default function SafetyReportsScreen({ navigation }) {
         if (saving) return; setSelected(null); setNote(''); setData({ reports: [], page: 1, hasMore: false }); setFilter(i ? 'all' : 'open');
       }} />
       {!!error && <View style={styles.errorBox}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
-        {!saving && <HapticPressable style={styles.action} onPress={() => { setSelected(null); load(); }}><Text style={styles.link}>Refresh reports</Text></HapticPressable>}
+        {!saving && <ActionButton label="Refresh reports" icon="refresh-outline" disabled={loading} onPress={() => { setSelected(null); load(); }} />}
       </View>}
       {loading && !data.reports.length && <ActivityIndicator color={COLORS.spinner} />}
-      {!loading && !error && !data.reports.length && <View style={styles.card}><Text style={styles.name}>{filter === 'open' ? 'No open reports' : 'No reports yet'}</Text><Text style={styles.body}>Reports submitted by members will appear here.</Text></View>}
-      {data.reports.map(report => <View key={report.id} style={styles.card}>
+      {!loading && !error && !data.reports.length && <LayeredCard style={styles.card}><Ionicons name="document-text-outline" size={28} color={COLORS.primary} /><Text style={styles.name}>{filter === 'open' ? 'No open reports' : 'No reports yet'}</Text><Text style={styles.body}>Reports submitted by members will appear here.</Text></LayeredCard>}
+      {data.reports.map(report => <LayeredCard key={report.id} style={styles.card}>
         <HapticPressable disabled={saving} accessibilityLabel={`Review report about ${report.reportedName}`} onPress={() => {
           setSelected(selected?.id === report.id ? null : report); setNote(''); setError('');
         }} style={styles.reportHeader}>
@@ -85,7 +87,7 @@ export default function SafetyReportsScreen({ navigation }) {
           <Text style={styles.body}>Reported by {report.reporterName}</Text>
           <Text style={styles.body}>Account: {report.accountStatus || 'Deleted'} · {report.reportCount} total reports</Text>
           <Text style={styles.body}>{report.activeExchanges} active exchanges</Text>
-          {!!report.reportedId && <HapticPressable style={styles.action} disabled={saving} onPress={() => navigation.navigate('UserProfile', { id: report.reportedId })}><Text style={styles.link}>View reported profile</Text></HapticPressable>}
+          {!!report.reportedId && <ActionButton label="View reported profile" icon="person-outline" disabled={saving} onPress={() => navigation.navigate('UserProfile', { id: report.reportedId })} />}
           {report.history?.map((entry, i) => <View key={i} style={styles.history}><Text style={styles.reason}>{labels[entry.action]} · {entry.adminName}</Text><Text style={styles.body}>{entry.note}</Text><Text style={styles.caption}>{date(entry.createdAt)}</Text></View>)}
           <Text style={styles.reason}>Review note</Text>
           <TextInput accessibilityLabel="Review note" multiline value={note} onChangeText={setNote} maxLength={2000} editable={!saving}
@@ -93,13 +95,13 @@ export default function SafetyReportsScreen({ navigation }) {
           <Text style={styles.caption}>Every decision is saved with the reviewer and time. A report alone does not suspend an account.</Text>
           {saving ? <ActivityIndicator color={COLORS.spinner} /> : <>
             {report.reportedId && !report.reportedIsAdmin && report.reportedId !== user.id && report.accountStatus !== 'suspended' &&
-              <HapticPressable style={[styles.action, styles.dangerAction]} onPress={() => choose('suspend')}><Text style={styles.error}>Suspend account</Text></HapticPressable>}
-            {report.canRestore && !report.reportedIsAdmin && <HapticPressable style={[styles.action, styles.primaryAction]} onPress={() => choose('restore')}><Text style={styles.primaryText}>Restore account</Text></HapticPressable>}
-            <HapticPressable style={[styles.action, styles.secondaryAction]} onPress={() => choose(report.status === 'open' ? 'dismiss' : 'reopen')}><Text style={styles.link}>{report.status === 'open' ? 'Dismiss report' : 'Reopen report'}</Text></HapticPressable>
+              <ActionButton label="Suspend account" variant="primary" destructive icon="ban-outline" onPress={() => choose('suspend')} />}
+            {report.canRestore && !report.reportedIsAdmin && <ActionButton label="Restore account" variant="primary" icon="checkmark-circle-outline" onPress={() => choose('restore')} />}
+            <ActionButton label={report.status === 'open' ? 'Dismiss report' : 'Reopen report'} onPress={() => choose(report.status === 'open' ? 'dismiss' : 'reopen')} />
           </>}
         </View>}
-      </View>)}
-      {data.hasMore && <HapticPressable disabled={loading || saving} style={styles.action} onPress={() => load(data.page + 1)}><Text style={styles.link}>{loading ? 'Loading…' : 'Load more reports'}</Text></HapticPressable>}
+      </LayeredCard>)}
+      {data.hasMore && <ActionButton label="Load more reports" disabled={loading || saving} loading={loading} onPress={() => load(data.page + 1)} />}
     </ScrollView>
     {!!decision && <ActionSheet isVisible variant="confirmation" title={`${labels[decision]}?`} message={explanations[decision]}
       icon={<Ionicons name="shield-outline" size={24} color={COLORS.primary} />} onClose={() => setDecision(null)}

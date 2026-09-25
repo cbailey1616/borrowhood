@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 import useNavigationTask from '../hooks/useNavigationTask';
 
@@ -232,12 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

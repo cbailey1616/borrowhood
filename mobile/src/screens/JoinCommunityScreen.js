@@ -16,7 +16,7 @@ import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
 import useNavigationTask from '../hooks/useNavigationTask';
@@ -378,12 +378,7 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     paddingTop: 0,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   neighborhoodCard: {
     marginBottom: SPACING.md,
     borderWidth: 1,

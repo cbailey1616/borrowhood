@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
+import ActionButton from '../components/ActionButton';
 import { ThemedAlert as Alert } from '../components/ThemedAlert';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -145,14 +146,12 @@ export default function CommunityMembersScreen({ route, navigation }) {
 
   if (!communityId) return <View style={styles.emptyContainer}>
     <Text style={styles.emptyText}>Choose a neighborhood to see its members.</Text>
-    <HapticPressable onPress={() => navigation.navigate('MyCommunity')} style={{ padding: SPACING.lg }}>
-      <Text style={{ color: COLORS.primary }}>My neighborhoods</Text>
-    </HapticPressable>
+    <ActionButton label="My neighborhoods" icon="people-outline" onPress={() => navigation.navigate('MyCommunity')} />
   </View>;
 
   if (loadError) return <View style={styles.emptyContainer}>
     <Text style={styles.emptyText}>Could not load members.</Text>
-    <HapticPressable onPress={fetchMembers} style={{ padding: SPACING.lg }}><Text style={{ color: COLORS.primary }}>Try again</Text></HapticPressable>
+    <ActionButton label="Try again" icon="refresh-outline" onPress={fetchMembers} />
   </View>;
 
   return (

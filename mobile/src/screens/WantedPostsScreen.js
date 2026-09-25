@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 
 import ActionSheet from '../components/ActionSheet';
@@ -204,12 +204,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-  },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
