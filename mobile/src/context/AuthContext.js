@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import api from '../services/api';
 import usePushNotifications, { resetPushSession } from '../hooks/usePushNotifications';
 import { revokePushRegistration } from '../utils/pushRegistration';
+import BiometricEnrollmentPrompt from '../components/BiometricEnrollmentPrompt';
 
 const AuthContext = createContext(null);
 
@@ -11,6 +12,7 @@ export function AuthProvider({ children, navigationRef }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [biometricEnrollment, setBiometricEnrollment] = useState(null);
   const sessionRevision = useRef(0);
   const credentialWrites = useRef(Promise.resolve());
   const assertCurrent = revision => {
@@ -21,7 +23,7 @@ export function AuthProvider({ children, navigationRef }) {
     credentialWrites.current = next;
     return next;
   };
-  const acceptSession = (response, revision, { hydrate = true, passwordChange = false } = {}) => writeCredentials(async () => {
+  const acceptSession = (response, revision, { hydrate = true, passwordChange = false, biometricCredentials = null } = {}) => writeCredentials(async () => {
     assertCurrent(revision);
     if (!response.accessToken || !response.refreshToken || (!passwordChange && !response.user)) throw new Error('Could not confirm your session. Please try again.');
     try {
@@ -37,6 +39,7 @@ export function AuthProvider({ children, navigationRef }) {
     if (!passwordChange) {
       setUser(response.user);
       setIsAuthenticated(true);
+      setBiometricEnrollment(biometricCredentials ? { ...biometricCredentials, revision } : null);
       if (hydrate) api.getMe().then(full => {
         if (revision === sessionRevision.current) setUser(current => current?.id === response.user.id ? full : current);
       }).catch(() => {});
@@ -82,7 +85,7 @@ export function AuthProvider({ children, navigationRef }) {
     assertCurrent(revision);
     // Keep the welcome screen visible until both proofs have been checked.
     if (pendingLink) await api.linkAccount(pendingLink.provider, pendingLink.token, response.accessToken);
-    return acceptSession(response, revision);
+    return acceptSession(response, revision, { biometricCredentials: { email: response.user?.email || email, password } });
   };
 
   const register = async (data) => {
@@ -118,6 +121,7 @@ export function AuthProvider({ children, navigationRef }) {
 
   const logout = async ({ sessionExpired = false } = {}) => {
     const revision = ++sessionRevision.current;
+    setBiometricEnrollment(null);
     try { await revokePushRegistration(); }
     catch (error) {
       if (!sessionExpired) {
@@ -165,6 +169,11 @@ export function AuthProvider({ children, navigationRef }) {
     return new Date(user.verificationGraceUntil) > new Date();
   }, [user?.verificationGraceUntil]);
 
+  const isCurrentBiometricSession = useCallback(revision => revision === sessionRevision.current, []);
+  const finishBiometricEnrollment = useCallback(revision => {
+    setBiometricEnrollment(current => current?.revision === revision ? null : current);
+  }, []);
+
   const value = {
     user,
     isLoading,
@@ -184,6 +193,12 @@ export function AuthProvider({ children, navigationRef }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      {biometricEnrollment && <BiometricEnrollmentPrompt
+        key={biometricEnrollment.revision}
+        request={biometricEnrollment}
+        isCurrent={isCurrentBiometricSession}
+        onComplete={finishBiometricEnrollment}
+      />}
     </AuthContext.Provider>
   );
 }
