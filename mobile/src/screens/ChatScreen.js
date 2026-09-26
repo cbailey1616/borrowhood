@@ -1,3 +1,5 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
+import RequestTypeIcon from '../components/RequestTypeIcon';
 import ConversationsScreen from './ConversationsScreen';
 import MessageComposer from '../components/MessageComposer';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
@@ -505,7 +507,7 @@ function ChatConversation({ route, navigation }) {
               >
                 {context && <View style={styles.messageContext}>
                   <View style={styles.messageContextTitle}>
-                    <Ionicons name={context.type === 'request' ? 'chatbubble' : 'basket'} size={15} color={COLORS.primary} illustrated />
+                    {context.type === 'request' ? <RequestTypeIcon type={context.requestType} size={18} /> : <ListingTypeIcon listing={context} /> }
                     <Text style={styles.messageContextText}>{context.title}</Text>
                   </View>
                   {!!context.replyText && <Text style={styles.messageQuote}>“{context.replyText}”</Text>}
@@ -598,7 +600,7 @@ function ChatConversation({ route, navigation }) {
         {!!contextPrefix && !composer.pending && <View testID="Chat.postReference" style={styles.postReference}>
           <HapticPressable style={styles.postReferenceLink} accessibilityLabel={`View ${activeContext.title}`}
             onPress={() => navigation.navigate(activeContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: activeContext.id })}>
-            <Ionicons name={activeContext.type === 'request' ? 'chatbubble' : 'basket'} size={18} color={COLORS.primary} illustrated />
+            {activeContext.type === 'request' ? <RequestTypeIcon type={activeContext.requestType} size={18} /> : <ListingTypeIcon listing={activeContext} /> }
             <View style={{ flex: 1 }}>
               <Text style={styles.postReferenceText}>About: {activeContext.title}</Text>
               {!!activeContext.replyText && <Text style={styles.postReferenceQuote} numberOfLines={2}>“{activeContext.replyText}”</Text>}

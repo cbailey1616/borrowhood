@@ -7,7 +7,6 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { availableSharingAudiences } from '../utils/sharingAudiences';
 
 const audiences = [
-  ['private', 'Only me', 'Hidden from browsing. Private offers are shared separately.', 'lock-closed'],
   ['close_friends', 'Friends', 'Only people you have accepted as friends.', 'people'],
   ['neighborhood', 'Neighborhood', 'People in your neighborhood can see this item.', 'home'],
   ['town', 'Town', 'People in your town.', 'location'],
@@ -16,7 +15,6 @@ const audiences = [
 export default function SharingPicker({ value = ['private'], onChange, request = false, listingType = 'lend',
   neighborhoodAvailable = true, onJoinNeighborhood, onCreateNeighborhood,
   friendsAvailable = true, onInviteFriends, audienceProblem, audienceLoading = false, onRetryAudience }) {
-  const [expanded, setExpanded] = useState(false);
   const [neighborhoodPrompt, setNeighborhoodPrompt] = useState(false);
   const excluded = useRef(new Set());
   // Preserve opt-outs in restored Town posts as well as this editing session.
@@ -28,13 +26,9 @@ export default function SharingPicker({ value = ['private'], onChange, request =
   }, [value]);
   const townHint = request || ['giveaway', 'sell'].includes(listingType)
     ? 'Town members can see this post, your name, and your profile.'
-    : 'For added safety, verify your identity to borrow across town. No verification needed to borrow from friends or your neighborhood.';
+    : 'People in your town can see this item.';
 
   const confirm = (scope) => {
-    if (scope === 'private') {
-      onChange({ visibility: ['private'], circleId: null });
-      setExpanded(false); return;
-    }
     if (value.includes(scope)) {
       const remaining = value.filter(item => item !== scope && item !== 'private');
       if (request && !remaining.length) return;
@@ -58,18 +52,11 @@ export default function SharingPicker({ value = ['private'], onChange, request =
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{request ? 'Who can see this post?' : 'Who can see this item?'}</Text>
-      {!request && <Text style={styles.hint}>Select all that apply. Only this item is shared—not your inventory or pickup address. People who can see it may save screenshots.</Text>}
-      <HapticPressable accessibilityRole="button" accessibilityLabel={request ? 'Change who can see this post' : 'Change who can see this item'} accessibilityState={{ expanded }}
-        style={styles.option} onPress={() => setExpanded(!expanded)}>
-        <Ionicons name={value.includes('private') ? 'lock-closed' : 'people'} size={24} color={COLORS.primary} />
-        <View style={styles.copy}><Text style={styles.label}>{request && audienceProblem
-          ? audienceLoading ? 'Checking your audience…' : 'Choose who can see your post'
-          : value.includes('private') ? 'Only me' : `Visible to ${value.map(scope => audiences.find(a => a[0] === scope)?.[1] || 'Sharing needs review').join(' and ')}`}</Text>
-          {!request && <Text style={styles.hint}>Sharing this item never shares the rest.</Text>}</View>
-        <Text style={{ color: COLORS.primary }}>{expanded ? 'Done' : 'Change'}</Text>
-      </HapticPressable>
-      {!expanded && value.includes('town') && <Text style={styles.hint}>{townHint}</Text>}
-      {expanded && audiences.filter(([scope]) => !request || scope !== 'private').map(([scope, title, hint, icon]) => (
+      <Text style={styles.hint}>{request ? 'Select all that apply.' : 'Select all that apply. Your other items and pickup address stay private.'}</Text>
+      {request && audienceProblem && <Text accessibilityRole="alert" style={styles.hint}>
+        {audienceLoading ? 'Checking your audience…' : 'Choose who can see your post'}
+      </Text>}
+      {audiences.map(([scope, title, hint, icon]) => (
         <HapticPressable key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
           accessibilityLabel={title} style={[styles.option, value.includes(scope) && styles.selected]}
           onPress={() => confirm(scope)}>
@@ -83,7 +70,8 @@ export default function SharingPicker({ value = ['private'], onChange, request =
           <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         </HapticPressable>
       ))}
-      {expanded && onRetryAudience && <HapticPressable accessibilityRole="button" onPress={onRetryAudience} style={styles.option}>
+      {!request && !audiences.some(([scope]) => value.includes(scope)) && <Text style={styles.hint}>Only you can see this item.</Text>}
+      {onRetryAudience && <HapticPressable accessibilityRole="button" onPress={onRetryAudience} style={styles.option}>
         <Text style={styles.label}>Couldn’t check friends. Try again</Text>
       </HapticPressable>}
       <ActionSheet isVisible={neighborhoodPrompt} onClose={() => setNeighborhoodPrompt(false)}

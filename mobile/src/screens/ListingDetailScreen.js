@@ -1,7 +1,9 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
+import { listingIcon } from '../utils/listingPresentation';
 import { listingAvailability } from '../utils/listingAvailability';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
 import useNavigationTask from '../hooks/useNavigationTask';
-import ListingPrice from '../components/ListingPrice';
+import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
@@ -192,14 +194,14 @@ export default function ListingDetailScreen({ route, navigation }) {
               listing.photos.map((photo, index) => (
                 <ShimmerImage
                   key={index}
-                  source={{ uri: photo }}
+                  source={{ uri: photo }} placeholderIcon={listingIcon(listing)}
                   style={[styles.photo, photoStyle]}
                   sharedTransitionTag={index === 0 ? `listing-photo-${id}` : undefined}
                 />
               ))
             ) : (
               <View style={[styles.photo, photoStyle, styles.noPhoto]}>
-                <Ionicons name="image-outline" size={48} color={COLORS.gray[300]} />
+                <ListingTypeIcon listing={listing} size={48} />
               </View>
             )}
           </ScrollView>
@@ -224,9 +226,9 @@ export default function ListingDetailScreen({ route, navigation }) {
                 <Animated.View style={heartAnimStyle}>
                   <Ionicons
                     name={isSaved ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={COLORS.primary}
-                    illustrated={isSaved}
+                    size={24}
+                    color={isSaved ? COLORS.saved : COLORS.primary}
+                    illustrated={false}
                   />
                 </Animated.View>
               </HapticPressable>
@@ -258,7 +260,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 )}
               </View>
               {!listing.ownerMasked && <View style={[styles.priceBlock, stackSummary && styles.priceBlockStacked]}>
-                <ListingPrice listing={listing} compact alignment={stackSummary ? 'start' : 'end'} />
+                <ListingOffer listing={listing} alignment={stackSummary ? 'start' : 'end'} />
               </View>}
             </View>
 

@@ -149,7 +149,6 @@ describe('CreateListingScreen — no subscription gate on town', () => {
     const { getByText, getByLabelText } = render(
       <CreateListingScreen navigation={mockNavigation} route={{ params: {} }} />
     );
-    fireEvent.press(getByLabelText('Change who can see this item'));
     await waitFor(() => {
       expect(getByText('Town')).toBeTruthy();
     });

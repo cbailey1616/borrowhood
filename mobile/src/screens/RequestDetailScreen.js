@@ -1,3 +1,5 @@
+import RequestTypeIcon from '../components/RequestTypeIcon';
+import { listingIcon } from '../utils/listingPresentation';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -204,7 +206,7 @@ export default function RequestDetailScreen({ route, navigation }) {
           <View style={styles.summary}>
             <View style={styles.metaRow}>
               <View style={styles.typeLabel}>
-                <Ionicons name={presentation.icon} size={18} illustrated color={COLORS.primary} />
+                <RequestTypeIcon type={request.type} size={18} />
                 <Text style={styles.metaText}>{presentation.label}</Text>
               </View>
               <View style={[styles.statusBadge, acceptingOffers && styles.openBadge]}>
@@ -265,7 +267,7 @@ export default function RequestDetailScreen({ route, navigation }) {
           <View style={styles.offerCard}>
             <HapticPressable style={styles.offerRow} accessibilityRole="button" accessibilityLabel={`View offered item: ${item.title}`}
               onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
-              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon="cube" style={styles.offerPhoto} />
+              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.offerPhoto} />
               <View style={styles.offerContent}>
                 <Text style={styles.offerTitle}>{item.title}</Text>
                 <Text style={styles.metaText}>{item.isOwn ? 'Your offer' : 'View item'}</Text>

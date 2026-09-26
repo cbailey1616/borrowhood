@@ -1,3 +1,4 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
 import PendingRequestCard from '../components/PendingRequestCard';
 import useNavigationTask from '../hooks/useNavigationTask';
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
@@ -303,7 +304,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`View ${transaction.listing.title}`}
               style={styles.itemSummary} onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}>
               {transaction.listing.photos?.[0] ? <Image source={{ uri: transaction.listing.photos[0] }} style={styles.itemPhoto} />
-                : <View style={[styles.itemPhoto, styles.imagePlaceholder]}><Ionicons name={isGiveaway ? 'gift' : 'basket'} size={46} illustrated /></View>}
+                : <View style={[styles.itemPhoto, styles.imagePlaceholder]}><ListingTypeIcon listing={transaction} size={46} /></View>}
               <View style={{ flex: 1 }}>
                 <Text style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : transaction.isLender ? 'Lending' : 'Borrowing'}</Text>
                 <Text style={styles.itemName}>{transaction.listing.title}</Text>
@@ -446,7 +447,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         isVisible={returnIssueVisible}
         onClose={() => setReturnIssueVisible(false)}
         variant="confirmation"
-        icon={<Ionicons name="cube" size={28} illustrated />}
+        icon={<ListingTypeIcon listing={transaction} size={28} />}
         title="Something different?"
         message="Tell your neighbor about any damage or change in condition. The return stays open until the owner confirms it."
         actions={[
@@ -463,7 +464,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         isVisible={pickupSheetVisible}
         onClose={() => setPickupSheetVisible(false)}
         variant="confirmation"
-        icon={<Ionicons name="cube" size={28} illustrated />}
+        icon={<ListingTypeIcon listing={transaction} size={28} />}
         title="Has the item been picked up?"
         message={transaction.isBorrower ? 'Confirm only after you have received the item.' : `Confirm only after you have handed the item to ${otherPerson.firstName}.`}
         actions={[{ label: 'Confirm pickup', testID: 'Transaction.confirmPickup', onPress: handleConfirmPickup, primary: true }]}

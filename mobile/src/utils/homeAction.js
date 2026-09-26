@@ -1,3 +1,4 @@
+import { listingIcon } from './listingPresentation';
 import { isTransferListing } from './directFee';
 import { groupPendingExchanges } from './requestActivity';
 
@@ -28,7 +29,7 @@ export function exchangeHomeAction(transaction, userId, now = new Date()) {
   const borrower = isBorrower(transaction, userId);
   const lender = isLender(transaction, userId);
   if ((!borrower && !lender) || transaction.hasDispute || transaction.status === 'disputed') return null;
-  const base = { id: transaction.id, icon: 'basket', destination: { name: 'TransactionDetail', params: { id: transaction.id } }, time: time(transaction.createdAt) };
+  const base = { id: transaction.id, icon: listingIcon(transaction), destination: { name: 'TransactionDetail', params: { id: transaction.id } }, time: time(transaction.createdAt) };
   if (lender && transaction.pickupReview?.needed && ['approved', 'paid'].includes(transaction.status) && !transaction.actualPickupAt) {
     return { ...base, title: `Was ${title} picked up?`, label: 'Review pickup', priority: 1 };
   }

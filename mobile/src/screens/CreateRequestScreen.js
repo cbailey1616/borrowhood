@@ -1,3 +1,4 @@
+import RequestTypeIcon from '../components/RequestTypeIcon';
 import TextInput from '../components/AppTextInput';
 import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import { REQUIRE_IDENTITY_VERIFICATION } from '../utils/config';
@@ -227,8 +228,8 @@ export default function CreateRequestScreen({ navigation, route }) {
         <Text style={styles.label}>I’m looking for…</Text>
         <View style={styles.options}>
           {[
-            { value: 'item', label: 'Item', icon: 'cube-outline' },
-            { value: 'service', label: 'Help', icon: 'handshake-outline' },
+            { value: 'item', label: 'Item' },
+            { value: 'service', label: 'Help' },
           ].map((opt) => {
             const isSelected = formData.type === opt.value;
             return (
@@ -240,12 +241,7 @@ export default function CreateRequestScreen({ navigation, route }) {
                 onPress={() => updateField('type', opt.value)}
                 haptic="light"
               >
-                <Ionicons
-                  name={opt.icon}
-                  size={36}
-                  color={COLORS.primary}
-                  illustrated
-                />
+                <RequestTypeIcon type={opt.value} size={32} />
                 <Text style={styles.typeTitle}>
                   {opt.label}
                 </Text>

@@ -1,5 +1,6 @@
+import { requestPresentation } from '../utils/requestPresentation';
+import { listingIcon } from '../utils/listingPresentation';
 import ShimmerImage from '../components/ShimmerImage';
-import { isTransferListing, isSaleListing } from '../utils/directFee';
 import { inboxActivity } from '../utils/inboxActivity';
 import { publicReplyRoute, messagePresentation } from '../utils/conversationContext';
 import { notificationDestination } from '../utils/notificationDestination';
@@ -36,11 +37,11 @@ import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const NOTIFICATION_ICONS = {
-  borrow_request: 'hand-left',
+  borrow_request: listingIcon(),
   request_approved: 'checkmark-circle',
   request_declined: 'close-circle',
   payment_confirmed: 'card',
-  pickup_confirmed: 'cube',
+  pickup_confirmed: listingIcon(),
   pickup_check: 'basket',
   pickup_extended: 'time',
   return_confirmed: 'checkbox',
@@ -58,8 +59,8 @@ const NOTIFICATION_ICONS = {
   rank_down: 'ribbon',
   rank_ready: 'ribbon',
   join_approved: 'people',
-  request_offer: 'cube',
-  new_request: 'search',
+  request_offer: listingIcon(),
+  new_request: requestPresentation().icon,
   new_message: 'chatbubble',
   friend_request: 'person-add',
   friend_accepted: 'people',
@@ -306,7 +307,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
         <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
           {item.exchange ? (
             <ShimmerImage source={item.exchange.listing?.photoUrl ? { uri: item.exchange.listing.photoUrl } : null}
-              placeholderIcon={isSaleListing(item.exchange) ? 'pricetag' : isTransferListing(item.exchange) ? 'gift' : 'basket'}
+              placeholderIcon={listingIcon(item.exchange)}
               style={styles.notifAvatar} />
           ) : item.fromUser?.profilePhotoUrl ? (
             <Image

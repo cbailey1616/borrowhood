@@ -1,7 +1,9 @@
+import { listingIcon } from '../utils/listingPresentation';
 import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect } from 'react';
 import { directFeeLabel, isSaleListing, isTransferListing } from '../utils/directFee';
+import ListingOffer from '../components/ListingOffer';
 import {
   View,
   Text,
@@ -201,7 +203,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
             <ShimmerImage
-              source={{ uri: listing.photos?.[0] || null }}
+              source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
               style={styles.promptItemImage}
             />
             <View style={styles.promptItemInfo}>
@@ -267,7 +269,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
             <ShimmerImage
-              source={{ uri: listing.photos?.[0] || null }}
+              source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
               style={styles.promptItemImage}
             />
             <View style={styles.promptItemInfo}>
@@ -333,7 +335,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
         <ShimmerImage
-          source={{ uri: listing.photos?.[0] || null }}
+          source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
           style={styles.itemImage}
         />
         <View style={styles.itemInfo}>
@@ -341,12 +343,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <Text style={styles.itemOwner}>
             {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner?.firstName || 'the owner'}${listing.owner?.lastName ? ` ${listing.owner.lastName}` : ''}`}
           </Text>
-          {isGiveaway && (
-            <View style={styles.giveawayBadge}>
-              <Ionicons name={isSaleListing(listing) ? 'pricetag' : 'gift'} size={12} color={COLORS.secondary} />
-              <Text style={styles.giveawayBadgeText}>{isSaleListing(listing) ? 'For sale — Yours to keep' : 'Giveaway — Yours to Keep'}</Text>
-            </View>
-          )}
+          <ListingOffer listing={listing} showPrice={false} />
         </View>
       </View>
 

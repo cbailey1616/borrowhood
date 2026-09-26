@@ -1,3 +1,4 @@
+import { listingIcon } from '../utils/listingPresentation';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
 import { COLORS, SPACING } from '../utils/config';
@@ -6,7 +7,7 @@ export default function RentalProgress({ status, isBorrower, isGiveaway, isSale 
   const steps = [
     { icon: 'request-note', label: 'Requested' },
     { icon: 'checkmark-circle', label: 'Approved' },
-    { icon: isSale ? 'pricetag' : isGiveaway ? 'gift' : 'basket', label: isGiveaway && !isBorrower ? (isSale ? 'Sold' : 'Given') : 'Picked up' },
+    { icon: listingIcon({ listingType: isSale ? 'sell' : isGiveaway ? 'giveaway' : 'lend' }), label: isGiveaway && !isBorrower ? (isSale ? 'Sold' : 'Given') : 'Picked up' },
     ...(!isGiveaway ? [{ icon: 'home', label: status === 'return_pending' ? 'Return pending' : 'Returned' }] : []),
   ];
   const active = ({ pending: 0, approved: 1, paid: 1, picked_up: 2, return_pending: steps.length - 1, returned: steps.length - 1, completed: steps.length - 1 })[status] ?? -1;

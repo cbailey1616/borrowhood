@@ -4,6 +4,38 @@ import { readDraft, saveDraft, deleteDraft } from '../../../src/utils/draftStora
 jest.mock('../../../src/utils/draftStorage', () => ({ readDraft: jest.fn(), saveDraft: jest.fn(), deleteDraft: jest.fn() }));
 beforeEach(() => { jest.clearAllMocks(); readDraft.mockResolvedValue(null); saveDraft.mockResolvedValue(); deleteDraft.mockResolvedValue(); });
 
+it('leaves photos out of a new form until the saved draft is explicitly resumed', async () => {
+  const savedDraft = { title: 'Old ladder', photos: ['file:///ladder.jpg'], visibility: ['private'] };
+  readDraft.mockResolvedValue(savedDraft);
+  const { result, unmount } = renderHook(() => useFormDraft('a.item', { title: '', photos: [], visibility: ['close_friends'] }, { restoreAutomatically: false }));
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  expect(result.current[0].photos).toEqual([]);
+  expect(result.current[2].hasPendingDraft).toBe(true);
+  // Automatic audience defaults must not overwrite an unfinished item's photos.
+  act(() => result.current[1](previous => ({ ...previous, visibility: ['town'] }), { markChanged: false }));
+  await act(async () => result.current[2].retry());
+  expect(saveDraft).not.toHaveBeenCalled();
+  act(() => result.current[2].resume());
+  expect(result.current[0]).toEqual(savedDraft);
+  expect(result.current[2].restored).toBe(true);
+  expect(result.current[2].hasPendingDraft).toBe(false);
+  unmount();
+  expect(saveDraft).not.toHaveBeenCalled();
+});
+
+it('does not let a stale resume action replace edits to a new item', async () => {
+  readDraft.mockResolvedValue({ title: 'Old ladder', photos: ['old-photo'] });
+  const { result } = renderHook(() => useFormDraft('a.item', { title: '', photos: [] }, { restoreAutomatically: false }));
+  await waitFor(() => expect(result.current[2].ready).toBe(true));
+  const resume = result.current[2].resume;
+  act(() => result.current[1]({ title: 'New drill', photos: ['new-photo'] }));
+  act(() => resume());
+  expect(result.current[0]).toEqual({ title: 'New drill', photos: ['new-photo'] });
+  expect(result.current[2].hasPendingDraft).toBe(false);
+  await act(async () => result.current[2].retry());
+  expect(saveDraft).toHaveBeenLastCalledWith('a.item', { title: 'New drill', photos: ['new-photo'] });
+});
+
 it('restores a saved form when reopened', async () => {
   readDraft.mockResolvedValue({ title: 'My ladder', visibility: ['private'] });
   const { result } = renderHook(() => useFormDraft('a.item', { title: '', condition: 'good' }));

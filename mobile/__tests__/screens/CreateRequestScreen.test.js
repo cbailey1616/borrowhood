@@ -22,9 +22,9 @@ describe('CreateRequestScreen', () => {
     api.getCommunities.mockResolvedValue([{ id: 'community-1' }]);
     const Screen = require('../../src/screens/CreateRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await screen.findByText('Visible to Friends and Neighborhood and Town');
+    await waitFor(() => ['Friends', 'Neighborhood', 'Town'].forEach(label =>
+      expect(screen.getByLabelText(label).props.accessibilityState.checked).toBe(true)));
     if (optOut) {
-      fireEvent.press(screen.getByLabelText('Change who can see this post'));
       fireEvent.press(screen.getByLabelText('Friends'));
       mockUser.city = 'West Upton';
       screen.rerender(<Screen navigation={mockNavigation} />);
@@ -48,7 +48,7 @@ describe('CreateRequestScreen', () => {
     await screen.findByPlaceholderText(/Power drill/);
     expect(screen.getByTestId('CreateRequest.button.submit')).toBeDisabled();
     await act(async () => finishFriends([{ id: 'friend-1' }]));
-    expect(screen.getByText('Visible to Friends and Town')).toBeTruthy();
+    for (const label of ['Friends', 'Town']) expect(screen.getByLabelText(label).props.accessibilityState.checked).toBe(true);
   });
 
   it.each([['town'], ['close_friends']])('does not expand a restored %s request draft', async scope => {
@@ -68,7 +68,7 @@ describe('CreateRequestScreen', () => {
     api.getFriends.mockResolvedValue([]);
     const Screen = require('../../src/screens/CreateRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
-    await screen.findByText('Visible to Town');
+    await waitFor(() => expect(screen.getByLabelText('Town').props.accessibilityState.checked).toBe(true));
     fireEvent.changeText(screen.getByPlaceholderText(/Power drill/), 'A ladder for the weekend');
     await waitFor(() => expect(screen.getByTestId('CreateRequest.button.submit')).not.toBeDisabled());
     fireEvent.press(screen.getByTestId('CreateRequest.button.submit'));

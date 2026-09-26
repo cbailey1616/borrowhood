@@ -1,3 +1,7 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
+import { listingIcon } from '../utils/listingPresentation';
+import RequestTypeIcon from '../components/RequestTypeIcon';
+import { requestPresentation } from '../utils/requestPresentation';
 import TextInput from '../components/AppTextInput';
 import ListingOffer from '../components/ListingOffer';
 import { useState, useEffect, useCallback } from 'react';
@@ -87,10 +91,10 @@ export default function BrowseScreen({ navigation }) {
         haptic="light"
       >
         {item.photoUrl ? (
-          <ShimmerImage source={{ uri: item.photoUrl }} style={styles.cardImage} />
+          <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.cardImage} />
         ) : (
           <View style={[styles.cardImage, styles.imagePlaceholder]}>
-            <Ionicons name="image-outline" size={32} color={COLORS.gray[500]} />
+            <ListingTypeIcon listing={item} size={32} />
           </View>
         )}
         <View style={styles.cardContent}>
@@ -165,16 +169,12 @@ export default function BrowseScreen({ navigation }) {
           <Text style={styles.requestTitle}>{item.title}</Text>
           {!!item.photoUrl && <Image source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" resizeMode="contain" style={{ width: '100%', height: 180, marginBottom: SPACING.md }} />}
           <View style={styles.requestTypeBadge}>
-            <Ionicons
-              name={item.type === 'service' ? 'construct-outline' : 'cube-outline'}
-              size={12}
-              color={item.type === 'service' ? COLORS.primary : COLORS.textSecondary}
-            />
+            <RequestTypeIcon type={item.type} size={18} />
             <Text style={[
               styles.requestTypeBadgeText,
               item.type === 'service' && { color: COLORS.primary },
             ]}>
-              {item.type === 'service' ? 'Help wanted' : 'Item wanted'}
+              {requestPresentation(item.type).label}
             </Text>
           </View>
           {item.description && (
@@ -202,7 +202,7 @@ export default function BrowseScreen({ navigation }) {
             }}
             haptic={null}
           >
-            <Ionicons name="hand-right-outline" size={16} color={COLORS.primary} />
+            <RequestTypeIcon type="service" size={18} />
             <Text style={styles.haveThisText}>I Can Help</Text>
           </HapticPressable>
         </HapticPressable>
@@ -303,7 +303,7 @@ export default function BrowseScreen({ navigation }) {
           ListEmptyComponent={
             !isLoading && (
               <View style={styles.emptyContainer}>
-                <Ionicons name="cube-outline" size={64} color={COLORS.gray[700]} />
+                <RequestTypeIcon size={64} />
                 <Text style={styles.emptyTitle}>No items found</Text>
                 <Text style={styles.emptySubtitle}>
                   {search ? 'Try a different search term' : 'Be the first to list an item!'}
