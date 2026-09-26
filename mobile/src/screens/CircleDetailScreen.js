@@ -1,3 +1,4 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -49,7 +50,7 @@ export default function CircleDetailScreen({ route, navigation }) {
     <Text style={styles.title}>Shared items</Text>
     {(group.items || []).length === 0 && <Text style={styles.hint}>No items shared with this group yet.</Text>}
     {(group.items || []).map(item => <HapticPressable key={item.id} style={styles.card} onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
-      <Ionicons name="cube" size={24} /><Text style={styles.label}>{item.title}</Text>
+      <ListingTypeIcon listing={item} size={24} /><Text style={styles.label}>{item.title}</Text>
     </HapticPressable>)}
     <ActionSheet isVisible={inviting} onClose={() => setInviting(false)} title="Invite a friend"
       message={friends.length ? 'Select someone to invite. They must accept before joining.' : 'Add a friend first, or everyone in your circle is already a member.'}

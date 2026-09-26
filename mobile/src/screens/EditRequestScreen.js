@@ -1,3 +1,4 @@
+import RequestTypeIcon from '../components/RequestTypeIcon';
 import TextInput from '../components/AppTextInput';
 import RequestPhotoPicker from '../components/RequestPhotoPicker';
 import SharingPicker from '../components/SharingPicker';
@@ -155,8 +156,8 @@ export default function EditRequestScreen({ navigation, route }) {
         <Text style={styles.label}>Type</Text>
         <View style={styles.options}>
           {[
-            { value: 'item', label: 'Item', icon: 'cube-outline' },
-            { value: 'service', label: 'Help', icon: 'handshake-outline' },
+            { value: 'item', label: 'Item' },
+            { value: 'service', label: 'Help' },
           ].map((opt) => {
             const isSelected = formData.type === opt.value;
             return (
@@ -166,12 +167,7 @@ export default function EditRequestScreen({ navigation, route }) {
                 onPress={() => updateField('type', opt.value)}
                 haptic="light"
               >
-                <Ionicons
-                  name={opt.icon}
-                  size={16}
-                  color={isSelected ? '#fff' : COLORS.textSecondary}
-                  style={{ marginRight: SPACING.xs }}
-                />
+                <RequestTypeIcon type={opt.value} size={18} color={isSelected ? COLORS.surface : COLORS.primary} style={{ marginRight: SPACING.xs }} />
                 <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
                   {opt.label}
                 </Text>

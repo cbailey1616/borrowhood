@@ -1,3 +1,5 @@
+import { listingIcon } from '../utils/listingPresentation';
+import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingAvailability } from '../utils/listingAvailability';
 import ActionButton from '../components/ActionButton';
 import { requestPresentation } from '../utils/requestPresentation';
@@ -463,7 +465,7 @@ export default function FeedScreen({ navigation, route }) {
           <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID="FeedCard">
             <View style={styles.tilePhotoFrame}>
               <View style={styles.tileThumb}>
-                <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+                <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
                 {!item.ownerMasked && (
                   <HapticPressable
                     testID={`Feed.save.${item.id}`}
@@ -500,7 +502,7 @@ export default function FeedScreen({ navigation, route }) {
           style={[styles.tile, styles.ribbonContent]} testID={`Feed.request.${item.id}`}>
           <View style={styles.ribbonCopy}>
             <View style={styles.ribbonLabel}>
-              <Ionicons name={requestPresentation(item.requestType).icon} size={24} illustrated />
+              <RequestTypeIcon type={item.requestType} />
               <Text style={styles.ribbonLabelText}>{requestPresentation(item.requestType).label}</Text>
               <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
@@ -526,7 +528,7 @@ export default function FeedScreen({ navigation, route }) {
         <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
-              <View style={styles.requestIcon}><Ionicons name={requestPresentation(item.requestType).icon} size={28} illustrated /></View>
+              <View style={styles.requestIcon}><RequestTypeIcon type={item.requestType} size={28} /></View>
               <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
@@ -712,7 +714,7 @@ export default function FeedScreen({ navigation, route }) {
                   <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
                 </HapticPressable>
                 <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
-                  <View style={styles.welcomeActionIcon}><Ionicons name="create-outline" size={36} color={COLORS.primary} /></View>
+                  <View style={styles.welcomeActionIcon}><RequestTypeIcon size={36} /></View>
                   <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Post in Wanted</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
                   <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
                 </HapticPressable>

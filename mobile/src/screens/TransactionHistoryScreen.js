@@ -1,3 +1,4 @@
+import { listingIcon } from '../utils/listingPresentation';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '../components/Icon';
@@ -125,7 +126,7 @@ export default function TransactionHistoryScreen({ navigation }) {
         <HapticPressable style={styles.cardBody}
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}>
           <ShimmerImage source={{ uri: item.listing?.photoUrl }} style={styles.photo}
-            contentPosition="center" placeholderIcon={isSaleListing(item) ? 'pricetag' : isTransferListing(item) ? 'gift' : 'basket'} />
+            contentPosition="center" placeholderIcon={listingIcon(item)} />
           <View style={styles.cardContent}>
             <Text style={styles.listingTitle} numberOfLines={2}>{item.listing?.title || 'Item unavailable'}</Text>
             <View style={[styles.statusBadge, config.complete && styles.completeBadge]}>

@@ -107,6 +107,46 @@ describe('MyItemsScreen', () => {
     for (const text of ['Sold bike', 'Claimed books', 'Good']) expect(screen.queryByText(text)).toBeNull();
   });
 
+  it('shows the borrower, return date, pending requests, and audience directly on an item', async () => {
+    api.getMyListings.mockResolvedValue([{ id: 'ladder', title: 'Extension ladder', status: 'active',
+      listingType: 'lend', isAvailable: false, availabilityStatus: 'borrowed', pendingRequests: 2,
+      visibility: ['close_friends', 'neighborhood', 'town'] }]);
+    api.getTransactions.mockResolvedValue([{ id: 'loan', listing: { id: 'ladder' }, listingType: 'lend',
+      status: 'picked_up', isBorrower: false, borrower: { firstName: 'Alex' }, endDate: '2099-09-28' }]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('With Alex');
+    expect(api.getTransactions).toHaveBeenCalledWith({ role: 'lender' });
+    for (const text of ['Borrowed', 'Free to borrow', 'Due Sep 28', 'Friends · Neighborhood · Town', 'Review requests · 2']) expect(screen.getByText(text)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: /^View exchange for Extension ladder/ }));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('TransactionDetail', { id: 'loan' });
+    fireEvent.press(screen.getByRole('button', { name: 'Review 2 requests for Extension ladder' }));
+    expect(mockNavigation.navigate).toHaveBeenLastCalledWith('RequestQueue', { listingId: 'ladder' });
+  });
+
+  it('keeps borrowed inventory visible when exchange details fail to load', async () => {
+    api.getMyListings.mockResolvedValue([{ id: 'ladder', title: 'Extension ladder', status: 'active', isAvailable: false, availabilityStatus: 'borrowed' }]);
+    api.getTransactions.mockRejectedValueOnce(new Error('Network unavailable'));
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Extension ladder');
+    expect(screen.getByText('Borrowed')).toBeTruthy();
+    expect(screen.getByText('Exchange details couldn’t load. Pull to refresh.')).toBeTruthy();
+    expect(screen.queryByText('Your listings start here')).toBeNull();
+  });
+
+  it('refreshes an extended due date without retaining the previous deadline', async () => {
+    api.getMyListings.mockResolvedValue([{ id: 'ladder', title: 'Extension ladder', status: 'active', isAvailable: false, availabilityStatus: 'borrowed' }]);
+    const exchange = { id: 'loan', listing: { id: 'ladder' }, status: 'picked_up', isBorrower: false, borrower: { firstName: 'Alex' }, listingType: 'lend' };
+    api.getTransactions.mockResolvedValueOnce([{ ...exchange, endDate: '2099-09-28' }]).mockResolvedValue([{ ...exchange, endDate: '2099-09-30' }]);
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await screen.findByText('Due Sep 28');
+    await act(async () => screen.UNSAFE_getByType(RefreshControl).props.onRefresh());
+    await screen.findByText('Due Sep 30');
+    expect(screen.queryByText('Due Sep 28')).toBeNull();
+  });
+
   it('retains its loaded image during refresh, fresh API objects, a focus fetch, and a failed refresh', async () => {
     const listing = {
       id: 'retained-photo', title: 'My ladder', status: 'active', condition: 'good', isAvailable: true,

@@ -1,6 +1,10 @@
+import { listingIcon } from '../utils/listingPresentation';
+import ListingTypeIcon from '../components/ListingTypeIcon';
+import RequestTypeIcon from '../components/RequestTypeIcon';
+import { activeLendingExchange, listingSharingDetails, lendingDetails } from '../utils/ownerListingSummary';
 import { randomUUID } from 'expo-crypto';
 import { listingAvailability } from '../utils/listingAvailability';
-import { isSaleListing, isTransferListing } from '../utils/directFee';
+import { isTransferListing } from '../utils/directFee';
 import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -15,6 +19,7 @@ import {
 } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
+import ListingOffer from '../components/ListingOffer';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
@@ -35,13 +40,6 @@ const shortDate = value => {
 };
 const requestDateRange = item => isTransferListing(item) ? ''
   : [shortDate(item.startDate), shortDate(item.endDate)].filter(Boolean).join(' – ');
-const listingSharingNote = item => {
-  const visibility = item.visibility || 'private';
-  const audience = item.sharingReviewRequired ? 'Private · review sharing' : visibility.includes('town') ? ''
-    : visibility.includes('neighborhood') ? 'Neighborhood' : visibility.includes('circle') ? 'Sharing needs review'
-      : visibility.includes('close_friends') ? 'Friends' : 'Private';
-  return [audience, item.activeOffers > 0 ? `${item.activeOffers} private ${item.activeOffers === 1 ? 'offer' : 'offers'}` : ''].filter(Boolean).join(' · ');
-};
 
 export default function MyItemsScreen({ navigation }) {
   const { width, fontScale } = useWindowDimensions();
@@ -71,7 +69,18 @@ export default function MyItemsScreen({ navigation }) {
         if (currentFetch !== fetchId.current) return;
         // Keep active and paused inventory visible while exchanges are in progress.
         // Completed transfers remain in History.
-        setListings(data.filter((listing) => ['active', 'paused'].includes(listing.status)));
+        const inventory = data.filter((listing) => ['active', 'paused'].includes(listing.status));
+        let exchanges = [];
+        let detailsUnavailable = false;
+        if (inventory.some(item => !listingAvailability(item).available)) {
+          try { exchanges = await api.getTransactions({ role: 'lender' }); }
+          catch { detailsUnavailable = true; }
+        }
+        if (currentFetch !== fetchId.current) return;
+        setListings(inventory.map(item => ({ ...item,
+          activeExchange: activeLendingExchange(item, exchanges, user?.id),
+          detailsUnavailable: detailsUnavailable && ['borrowed', 'reserved'].includes(listingAvailability(item).state),
+        })));
       } else if (activeTab === 1) {
         const data = await api.getMyRequests();
         if (currentFetch !== fetchId.current) return;
@@ -162,7 +171,11 @@ export default function MyItemsScreen({ navigation }) {
     );
   };
 
-  const renderListingItem = ({ item, index }) => (
+  const renderListingItem = ({ item }) => {
+    const availability = listingAvailability(item);
+    const sharing = listingSharingDetails(item);
+    const exchange = lendingDetails(item.activeExchange);
+    return (
     <View>
       <Swipeable
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
@@ -177,54 +190,52 @@ export default function MyItemsScreen({ navigation }) {
             haptic="light"
           >
             {item.photoUrl ? (
-              <ShimmerImage source={{ uri: item.photoUrl }} style={styles.cardImage} />
+              <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.cardImage} />
             ) : (
               <View style={[styles.cardImage, styles.imagePlaceholder]}>
-                <Ionicons name="image-outline" size={28} color={COLORS.gray[500]} />
+                <ListingTypeIcon listing={item} size={32} />
               </View>
             )}
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-
-
-              {item.totalEarnings > 0 && (
-                <View style={styles.cardStats}>
-                  <View style={styles.stat}>
-                    <Ionicons name="cash" size={14} color={COLORS.secondary} />
-                    <Text style={[styles.statText, { color: COLORS.secondary }]}>
-                      ${item.totalEarnings.toFixed(0)} earned
-                    </Text>
-                  </View>
-                </View>
-              )}
-
+              <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
               <View style={styles.cardFooter}>
-                <View style={[
+                <ListingOffer listing={item} />
+                {!availability.available && <View style={[
                   styles.statusBadge,
-                  { backgroundColor: item.isAvailable ? COLORS.secondaryMuted : COLORS.primaryMuted }
+                  availability.state === 'borrowed' && styles.borrowedBadge,
+                  availability.state === 'reserved' && styles.reservedBadge,
                 ]}>
-                  {isTransferListing(item) && <Ionicons name={isSaleListing(item) ? 'pricetag' : 'gift'} size={18} illustrated />}
                   <Text style={[
                     styles.statusText,
-                    { color: item.isAvailable ? COLORS.secondary : COLORS.primary }
-                  ]}>
-                    {listingAvailability(item).label}
-                  </Text>
+                    availability.state === 'borrowed' && styles.borrowedText,
+                    availability.state === 'reserved' && styles.reservedText,
+                  ]}>{availability.label}</Text>
+                </View>}
+                <View style={styles.sharingRow} accessible accessibilityLabel={`Visible to: ${sharing.label}`}>
+                  <Ionicons name={sharing.icon} size={16} illustrated />
+                  <Text style={styles.summaryMeta}>{sharing.label}</Text>
                 </View>
-                {!!listingSharingNote(item) && <Text style={{ color: COLORS.textSecondary, fontSize: 12, flexShrink: 1 }}>
-                  {listingSharingNote(item)}
-                </Text>}
-
-
+                {item.activeOffers > 0 && <Text style={styles.summaryMeta}>{item.activeOffers} private {item.activeOffers === 1 ? 'offer' : 'offers'}</Text>}
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} style={{ alignSelf: 'center', marginRight: 12 }} />
           </HapticPressable>
+          {exchange && <HapticPressable style={styles.exchangeSummary} accessibilityRole="button"
+            accessibilityLabel={`View exchange for ${item.title}: ${exchange.person}${exchange.timing ? `, ${exchange.timing}` : ''}`}
+            onPress={() => navigation.navigate('TransactionDetail', { id: item.activeExchange.id })}>
+            <Ionicons name="person" size={22} illustrated />
+            <View style={styles.exchangeCopy}>
+              <Text style={styles.exchangePerson}>{exchange.person}</Text>
+              {!!exchange.timing && <Text style={[styles.summaryMeta, exchange.attention && styles.attentionText, exchange.overdue && styles.overdueText]}>{exchange.timing}</Text>}
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+          </HapticPressable>}
+          {item.detailsUnavailable && <Text style={styles.detailsUnavailable}>Exchange details couldn’t load. Pull to refresh.</Text>}
           {item.pendingRequests > 0 && (
             <HapticPressable accessibilityRole="button"
               accessibilityLabel={`Review ${item.pendingRequests} ${item.pendingRequests === 1 ? 'request' : 'requests'} for ${item.title}`}
               onPress={() => navigation.navigate('RequestQueue', { listingId: item.id })} style={styles.requestReview}>
-              <Ionicons name="people-outline" size={20} color={COLORS.primary} />
+              <ListingTypeIcon listing={item} size={20} />
               <Text style={styles.requestReviewText}>Review {item.pendingRequests === 1 ? 'request' : 'requests'} · {item.pendingRequests}</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </HapticPressable>
@@ -232,7 +243,8 @@ export default function MyItemsScreen({ navigation }) {
         </LayeredCard>
       </Swipeable>
     </View>
-  );
+    );
+  };
 
   const handleRenew = async (requestId) => {
     try {
@@ -265,11 +277,7 @@ export default function MyItemsScreen({ navigation }) {
             <View style={styles.requestContent}>
               <View style={styles.requestHeader}>
                 <View style={styles.requestTitleRow}>
-                  <Ionicons
-                    name={item.type === 'service' ? 'handshake' : 'cube'} illustrated
-                    size={34}
-                    color={COLORS.primary}
-                  />
+                  <RequestTypeIcon type={item.type} size={28} />
                   <Text style={[styles.requestTitle, { fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
                 </View>
                 <View style={styles.requestBadges}>
@@ -350,10 +358,10 @@ export default function MyItemsScreen({ navigation }) {
           haptic="light"
         >
           {item.listing.photoUrl ? (
-            <ShimmerImage source={{ uri: item.listing.photoUrl }} style={styles.sentRequestImage} />
+            <ShimmerImage source={{ uri: item.listing.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.sentRequestImage} />
           ) : (
             <View style={[styles.sentRequestImage, styles.imagePlaceholder]}>
-              <Ionicons name={isSaleListing(item) ? 'pricetag' : isTransferListing(item) ? 'gift' : 'basket'} size={28} illustrated />
+              <ListingTypeIcon listing={item} size={28} />
             </View>
           )}
           <View style={styles.sentRequestInfo}>
@@ -480,6 +488,14 @@ const styles = StyleSheet.create({
     color: COLORS.background,
   },
   cardDepth: { marginBottom: SPACING.xl },
+  sharingRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, alignSelf: 'stretch' },
+  summaryMeta: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, flexShrink: 1 },
+  exchangeSummary: { marginHorizontal: SPACING.sm, marginBottom: SPACING.sm, padding: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.borderLight, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  exchangeCopy: { flex: 1, gap: SPACING.xs },
+  exchangePerson: { ...TYPOGRAPHY.subheadline, color: COLORS.text },
+  attentionText: { color: COLORS.primary, fontWeight: '500' },
+  overdueText: { color: COLORS.danger },
+  detailsUnavailable: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginHorizontal: SPACING.md, marginBottom: SPACING.md },
   card: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
@@ -530,12 +546,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: SPACING.xs,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryMuted,
   },
   statusText: {
     ...TYPOGRAPHY.caption1,
     fontWeight: '400',
+    color: COLORS.primary,
   },
+  borrowedBadge: { backgroundColor: COLORS.warningMuted },
+  borrowedText: { color: COLORS.warning },
+  reservedBadge: { backgroundColor: COLORS.infoMuted },
+  reservedText: { color: COLORS.infoDark },
   pendingBadge: {
     backgroundColor: COLORS.primaryMuted,
     paddingHorizontal: SPACING.sm,
@@ -549,8 +571,7 @@ const styles = StyleSheet.create({
   },
   requestCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderWidth: 0,
     borderRadius: RADIUS.lg,
     flexDirection: 'row',
     overflow: 'hidden',

@@ -1,3 +1,4 @@
+import RequestTypeIcon from '../components/RequestTypeIcon';
 import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
@@ -110,7 +111,7 @@ export default function WantedPostsScreen({ navigation }) {
             onPress={() => setSelectedRequest(item)}
             haptic="medium"
           >
-            <Ionicons name="hand-right-outline" size={18} color={COLORS.primary} />
+            <RequestTypeIcon type="service" size={18} />
             <Text style={styles.haveThisText}>I Can Help</Text>
           </HapticPressable>
         </View>

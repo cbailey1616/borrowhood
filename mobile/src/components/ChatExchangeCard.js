@@ -1,3 +1,4 @@
+import ListingTypeIcon from './ListingTypeIcon';
 import { isTransferListing } from '../utils/directFee';
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -49,7 +50,7 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   const date = value => value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
   return <View style={styles.card}>
     <HapticPressable accessibilityRole="button" accessibilityLabel={`Borrow details for ${exchange.listing?.title}`} onPress={details} style={styles.heading}>
-      <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
+      <ListingTypeIcon listing={exchange} size={24} />
       <View style={{ flex: 1 }}><Text style={styles.title} numberOfLines={1}>{exchange.listing?.title}</Text><Text style={styles.secondary}>{date(exchange.startDate)}{exchange.endDate && !isTransferListing(exchange) ? ` – ${date(exchange.endDate)}` : ''} · {guidance.title}</Text></View>
       <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
     </HapticPressable>

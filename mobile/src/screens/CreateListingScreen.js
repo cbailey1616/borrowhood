@@ -1,3 +1,4 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
 import TextInput from '../components/AppTextInput';
 import GiveawayOptions from '../components/GiveawayOptions';
 import SalePriceInput from '../components/SalePriceInput';
@@ -81,7 +82,7 @@ export default function CreateListingScreen({ navigation, route }) {
     minDuration: '1',
     maxDuration: '14',
     photos: [],
-  });
+  }, { restoreAutomatically: false });
   const listingType = formData.listingType;
   const isGiveaway = ['giveaway', 'sell'].includes(listingType);
   const isSale = listingType === 'sell';
@@ -125,7 +126,7 @@ export default function CreateListingScreen({ navigation, route }) {
         minDuration: relistFrom.minDuration?.toString() || '1',
         maxDuration: relistFrom.maxDuration?.toString() || '14',
         photos: [], // Photos left empty — originals are S3 URLs
-      }));
+      }), { markChanged: false });
     }
   }, [route?.params?.relistFrom, draft.ready, draft.restored]);
 
@@ -137,7 +138,7 @@ export default function CreateListingScreen({ navigation, route }) {
         title: requestMatch.title || '',
         description: requestMatch.title ? `Re: ${requestMatch.title}` : '',
         categoryId: requestMatch.categoryId || null,
-      }));
+      }), { markChanged: false });
     }
   }, [requestMatch, draft.ready, draft.restored]);
 
@@ -193,7 +194,7 @@ export default function CreateListingScreen({ navigation, route }) {
       neighborhoodAvailable: Boolean(communityId),
       townAvailable: Boolean(user?.city?.trim() && user?.state?.trim()),
     });
-    setFormData(previous => ({ ...previous, visibility: visibility.length ? visibility : ['close_friends'] }));
+    setFormData(previous => ({ ...previous, visibility: visibility.length ? visibility : ['close_friends'] }), { markChanged: false });
     sharingChosen.current = true;
   }, [dataLoaded, draft.ready, draft.restored, requestMatchId, communityId, hasFriends, user?.city, user?.state]);
 
@@ -426,6 +427,9 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Photos */}
       <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
         <DraftStatus draft={draft} quiet />
+        {draft.hasPendingDraft && <HapticPressable accessibilityRole="button" onPress={draft.resume} style={styles.resumeDraft}>
+          <Text style={styles.resumeDraftText}>Resume unfinished item</Text>
+        </HapticPressable>}
         {formData.photos.some(uri => failedPhotos[uri]) && <Text accessibilityRole="alert" style={styles.hint}>A photo couldn’t load. Remove it and choose it again.</Text>}
         <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Up to 10 photos</Text>
@@ -504,14 +508,14 @@ export default function CreateListingScreen({ navigation, route }) {
         <Text style={styles.label}>What would you like to do?</Text>
         <View style={styles.options}>
           {[
-            ['lend', 'Lend', 'They return it', 'basket'],
-            ['giveaway', 'Giveaway', 'Free to keep', 'gift'],
-            ['sell', 'Sell', 'Set your price', 'pricetag'],
-          ].map(([value, title, hint, icon]) => (
+            ['lend', 'Lend', 'They return it'],
+            ['giveaway', 'Giveaway', 'Free to keep'],
+            ['sell', 'Sell', 'Set your price'],
+          ].map(([value, title, hint]) => (
             <HapticPressable key={value} style={[styles.typeChoice, listingType === value && styles.typeChoiceSelected]}
               accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{ checked: listingType === value }}
               onPress={() => { setListingType(value); haptics.selection(); }} haptic={null}>
-              <Ionicons name={icon} size={32} illustrated />
+              <ListingTypeIcon listing={{ listingType: value }} size={32} />
               <Text style={styles.typeTitle}>{title}</Text>
               <Text style={styles.typeHint}>{hint}</Text>
             </HapticPressable>
@@ -682,6 +686,8 @@ export default function CreateListingScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  resumeDraft: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  resumeDraftText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
   typeChoice: { flexGrow: 1, flexBasis: 85, padding: SPACING.sm, gap: 6, alignItems: 'center', borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 2, borderColor: COLORS.border },
   typeChoiceSelected: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
   typeTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },

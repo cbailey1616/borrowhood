@@ -29,7 +29,7 @@ export default function PrivacySafetyScreen({ navigation }) {
       tint: COLORS.primaryMuted,
       title: 'Who sees your posts',
       summary: 'Choose who you share with.',
-      detail: 'Choose friends, your neighborhood or your town when you post. Items can also be set to Only me. Sharing one item doesn’t share the rest of your inventory. You can change the audience when you edit a post.',
+      detail: 'Choose friends, your neighborhood or your town when you post. Leave all three unchecked to keep an item private. Sharing one item doesn’t share the rest of your inventory. You can change the audience when you edit a post.',
       action: 'Manage my posts',
       onPress: () => navigation.navigate('Main', { screen: 'MyItems' }),
     },

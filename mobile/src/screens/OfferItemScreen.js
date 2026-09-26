@@ -1,3 +1,4 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import useNavigationTask from '../hooks/useNavigationTask';
@@ -59,7 +60,7 @@ export default function OfferItemScreen({ route, navigation }) {
       <FlatList data={items} keyExtractor={item => item.id}
         ListEmptyComponent={<Text style={styles.hint}>No available items yet. Add one privately below.</Text>}
         renderItem={({ item }) => <HapticPressable style={styles.row} disabled={Boolean(sending)} onPress={() => offer(item)}>
-          {item.photoUrl || item.photos?.[0] ? <Image source={{ uri: item.photoUrl || item.photos[0] }} accessibilityLabel={item.title} style={{ width: 52, height: 52, borderRadius: 12 }} /> : <Ionicons name="cube" size={36} color={COLORS.primary} />}
+          {item.photoUrl || item.photos?.[0] ? <Image source={{ uri: item.photoUrl || item.photos[0] }} accessibilityLabel={item.title} style={{ width: 52, height: 52, borderRadius: 12 }} /> : <ListingTypeIcon listing={item} size={36} />}
           <Text style={styles.itemTitle}>{item.title}</Text>
           {sending === item.id ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="chevron-forward" size={20} />}
         </HapticPressable>} />}

@@ -1,3 +1,4 @@
+import { listingIcon } from '../utils/listingPresentation';
 import { useState, useEffect, useCallback } from 'react';
 import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
@@ -47,7 +48,7 @@ function HeartButton({ onUnsave, title }) {
   return (
     <HapticPressable onPress={handlePress} haptic={null} style={styles.heartButton} accessibilityRole="button" accessibilityLabel={`Unsave ${title}`}>
       <Animated.View style={animStyle}>
-        <Ionicons name="heart" size={22} color={COLORS.saved} illustrated={false} selected />
+        <Ionicons name="heart" size={24} color={COLORS.saved} illustrated={false} selected />
       </Animated.View>
     </HapticPressable>
   );
@@ -111,7 +112,7 @@ export default function SavedScreen({ navigation }) {
       >
         <View style={styles.imageWrap}>
           <ShimmerImage
-            source={{ uri: item.photoUrl || null }}
+            source={{ uri: item.photoUrl || null }} placeholderIcon={listingIcon(item)}
             style={styles.cardImage}
           />
           <HeartButton title={item.title} onUnsave={() => handleUnsave(item.id)} />

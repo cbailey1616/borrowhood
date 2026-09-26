@@ -1,3 +1,4 @@
+import ListingTypeIcon from '../components/ListingTypeIcon';
 import { useCallback, useRef, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -138,7 +139,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     {transaction?.listing ? <LayeredCard radius={RADIUS.xl}>
       <View style={styles.itemSummary}>
         {transaction.listing.photos?.[0] ? <Image source={{uri:transaction.listing.photos[0]}} style={styles.itemPhoto} resizeMode="cover" />
-          : <View style={[styles.itemPhoto,styles.placeholder]}><Ionicons name="cube-outline" size={36} color={COLORS.primary} /></View>}
+          : <View style={[styles.itemPhoto,styles.placeholder]}><ListingTypeIcon listing={transaction} size={36} /></View>}
         <View style={styles.itemCopy}>
           <Text style={styles.eyebrow}>{transaction.isLender?'Your item':'You borrowed'}</Text>
           <Text style={styles.heading}>{transaction.listing.title}</Text>

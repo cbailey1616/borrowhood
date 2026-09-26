@@ -1,3 +1,5 @@
+import { requestPresentation } from '../utils/requestPresentation';
+import { listingIcon } from '../utils/listingPresentation';
 import { notificationDestination } from '../utils/notificationDestination';
 import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
 import { useState, useEffect, useCallback } from 'react';
@@ -19,12 +21,12 @@ import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
 const NOTIFICATION_ICONS = {
-  borrow_request: 'hand-left',
+  borrow_request: listingIcon(),
   request_approved: 'checkmark-circle',
   request_declined: 'close-circle',
   borrow_cancelled: 'close-circle',
   payment_confirmed: 'card',
-  pickup_confirmed: 'cube',
+  pickup_confirmed: listingIcon(),
   return_confirmed: 'checkbox',
   return_reminder: 'alarm',
   dispute_opened: 'warning',
@@ -35,8 +37,8 @@ const NOTIFICATION_ICONS = {
   rank_down: 'ribbon',
   rank_ready: 'ribbon',
   join_approved: 'people',
-  request_offer: 'cube',
-  new_request: 'search',
+  request_offer: listingIcon(),
+  new_request: requestPresentation().icon,
   new_message: 'chatbubble',
   discussion_reply: 'chatbubble-ellipses',
   listing_comment: 'chatbubble-ellipses',

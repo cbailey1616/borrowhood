@@ -1,5 +1,5 @@
+import ListingTypeIcon from './ListingTypeIcon';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { Ionicons } from './Icon';
 import ListingOffer from './ListingOffer';
 import HapticPressable from './HapticPressable';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -10,10 +10,10 @@ export default function PendingRequestCard({ transaction: t, onMessage, onCancel
   const waiting = t.queue?.waiting;
   return <View style={styles.page}>
     <HapticPressable style={[styles.card, styles.item]} accessibilityLabel={`View ${t.listing.title}`} onPress={onViewItem}>
-      {t.listing.photos?.[0] ? <Image source={{ uri: t.listing.photos[0] }} style={styles.photo} /> : <Ionicons name="basket" size={48} illustrated />}
+      {t.listing.photos?.[0] ? <Image source={{ uri: t.listing.photos[0] }} style={styles.photo} /> : <ListingTypeIcon listing={t} size={48} />}
       <View style={{ flex: 1, gap: SPACING.sm }}>
         <Text style={styles.title}>{t.listing.title}</Text>
-        <ListingOffer listing={{ ...t.listing, listingType: t.listingType, directFee: t.directFee, pricePerDay: t.dailyRate, isFree: !t.dailyRate }} />
+        <ListingOffer listing={{ ...t.listing, listingType: t.listingType ?? t.listing.listingType, directFee: t.directFee ?? t.listing.directFee, pricePerDay: t.dailyRate, isFree: !t.dailyRate }} />
         <Text style={styles.body}>From {t.lender.firstName}</Text>
       </View>
     </HapticPressable>
