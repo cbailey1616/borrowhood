@@ -163,26 +163,43 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Email address</Text>
-                <TextInput
-                  style={[styles.input, focusedField === 'email' && styles.inputFocused]}
-                  value={email}
-                  onChangeText={(t) => { setEmail(t); setLoginError(null); }}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                  editable={!isLoading && !socialBusy}
-                  placeholder="you@example.com"
-                  placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="next"
-                  submitBehavior="submit"
-                  onSubmitEditing={() => passwordInput.current?.focus()}
-                  textContentType="username"
-                  autoComplete="email"
-                  testID="Welcome.input.email"
-                  accessibilityLabel="Email address"
-                />
+                <View style={[styles.fieldContainer, focusedField === 'email' && styles.inputFocused]}>
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={email}
+                    onChangeText={(t) => { setEmail(t); setLoginError(null); }}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
+                    editable={!isLoading && !socialBusy}
+                    placeholder="you@example.com"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    submitBehavior="submit"
+                    onSubmitEditing={() => passwordInput.current?.focus()}
+                    textContentType="username"
+                    autoComplete="email"
+                    testID="Welcome.input.email"
+                    accessibilityLabel="Email address"
+                  />
+                  {canUseBiometrics && !biometricsLoading && (
+                    <HapticPressable
+                      style={[styles.biometricAction, (isLoading || socialBusy) && styles.loginButtonDisabled]}
+                      onPress={handleBiometricLogin}
+                      disabled={isLoading || socialBusy}
+                      haptic="medium"
+                      testID="Welcome.button.biometric"
+                      accessibilityLabel={`Sign in with ${biometricType}`}
+                      accessibilityHint="Sign in using your saved account"
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: isLoading || socialBusy }}
+                    >
+                      <BiometricIcon type={biometricType} size={22} color={COLORS.primary} />
+                    </HapticPressable>
+                  )}
+                </View>
               </View>
 
               <View style={styles.inputContainer}>
@@ -193,10 +210,10 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
                     <Text style={styles.forgotPasswordText}>Forgot password?</Text>
                   </HapticPressable>
                 </View>
-                <View style={[styles.passwordContainer, focusedField === 'password' && styles.inputFocused]}>
+                <View style={[styles.fieldContainer, focusedField === 'password' && styles.inputFocused]}>
                   <TextInput
                     ref={passwordInput}
-                    style={styles.passwordInput}
+                    style={styles.fieldInput}
                     value={password}
                     onChangeText={(t) => { setPassword(t); setLoginError(null); }}
                     onFocus={() => setFocusedField('password')}
@@ -254,22 +271,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
               </HapticPressable>
 
             </View>
-
-            {canUseBiometrics && !biometricsLoading && (
-              <HapticPressable
-                style={[styles.biometricButton, (isLoading || socialBusy) && styles.loginButtonDisabled]}
-                onPress={handleBiometricLogin}
-                disabled={isLoading || socialBusy}
-                haptic="medium"
-                testID="Welcome.button.biometric"
-                accessibilityLabel={`Sign in with ${biometricType}`}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: isLoading || socialBusy }}
-              >
-                <BiometricIcon type={biometricType} size={20} color={COLORS.primary} />
-                <Text style={styles.biometricButtonText}>Use {biometricType}</Text>
-              </HapticPressable>
-            )}
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
@@ -376,26 +377,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   authTitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
-  biometricButton: {
-    alignSelf: 'center',
-    flexDirection: 'row',
+  biometricAction: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-    marginTop: SPACING.md,
-    backgroundColor: COLORS.primaryMuted,
-    borderWidth: 1,
-    borderColor: COLORS.borderGreenStrong,
-    borderRadius: RADIUS.md,
-    gap: SPACING.sm,
-  },
-  biometricButtonText: {
-    ...TYPOGRAPHY.subheadline,
-    color: COLORS.primary,
-    textAlign: 'center',
-    flexShrink: 1,
+    width: 48,
+    minHeight: 48,
+    marginRight: SPACING.xs,
   },
   form: {
     gap: SPACING.md,
@@ -407,20 +394,9 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subheadline,
     color: COLORS.text,
   },
-  input: {
-    ...TYPOGRAPHY.body,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: COLORS.borderGreenStrong,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.surface,
-    color: COLORS.text,
-  },
   inputFocused: { borderColor: COLORS.primary, backgroundColor: '#FFFFFF' },
   passwordLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: SPACING.sm },
-  passwordContainer: {
+  fieldContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 48,
@@ -429,7 +405,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surface,
   },
-  passwordInput: {
+  fieldInput: {
     ...TYPOGRAPHY.body,
     flex: 1,
     minWidth: 0,
