@@ -81,6 +81,21 @@ describe('protected photo delivery', () => {
     expect(query).toHaveBeenCalledTimes(1);
     expect(send).not.toHaveBeenCalled();
   });
+  it('reports a temporary database outage as retryable while keeping the image private', async () => {
+    query.mockRejectedValue(new Error('database unavailable'));
+    const response = await request(app).get(new URL(privatePhotoUrl(source, id)).pathname);
+    expect(response.status).toBe(503);
+    expect(response.headers['retry-after']).toBe('5');
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('distinguishes missing objects from storage outages after checking access', async () => {
+    query.mockResolvedValue({ rows: [{ id }] });
+    const url = new URL(privatePhotoUrl('https://borrowhood-uploads.s3.us-east-1.amazonaws.com/listings/owner/item.jpg', id));
+    send.mockRejectedValueOnce(Object.assign(new Error('missing'), { name: 'NoSuchKey' }));
+    expect((await request(app).get(url.pathname)).status).toBe(404);
+    send.mockRejectedValueOnce(new Error('provider temporarily unavailable'));
+    expect((await request(app).get(url.pathname)).status).toBe(503);
+  });
   it('never fetches arbitrary external hosts even with a valid signature', async () => {
     query.mockResolvedValue({ rows: [{ id }] });
     expect((await request(app).get(new URL(privatePhotoUrl('http://example.invalid/private.jpg', id)).pathname)).status).toBe(404);

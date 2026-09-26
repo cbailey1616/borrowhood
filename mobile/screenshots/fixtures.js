@@ -1,6 +1,11 @@
 import { Image } from 'react-native';
-const avatar = null;
 const photo = asset => Image.resolveAssetSource(asset).uri;
+const avatars = {
+  alex: photo(require('./assets/neighbor-alex.jpg')),
+  jamie: photo(require('./assets/neighbor-jamie.jpg')),
+  sam: photo(require('./assets/neighbor-sam.jpg')),
+  taylor: photo(require('./assets/neighbor-taylor.jpg')),
+};
 const photos = {
   drill: photo(require('./assets/drill.png')),
   tent: photo(require('./assets/tent.jpg')),
@@ -8,11 +13,11 @@ const photos = {
   bike: photo(require('./assets/bike.jpg')),
   plants: photo(require('./assets/plants.jpg')),
 };
-export const user = { id: 'demo-alex', firstName: 'Alex', lastName: 'Green', displayName: 'Alex Green', email: 'alex@example.com', isVerified: true, totalTransactions: 18, onboardingCompleted: true, town: 'Maplewood', townName: 'Maplewood', city: 'Maplewood', state: 'NJ', latitude: 40.73, longitude: -74.27, profilePhotoUrl: avatar, subscriptionTier: 'free', rating: 4.9, ratingCount: 12 };
+export const user = { id: 'demo-alex', firstName: 'Alex', lastName: 'Green', displayName: 'Alex Green', email: 'alex@example.com', isVerified: true, totalTransactions: 18, onboardingCompleted: true, town: 'Maplewood', townName: 'Maplewood', city: 'Maplewood', state: 'NJ', latitude: 40.73, longitude: -74.27, profilePhotoUrl: avatars.alex, subscriptionTier: 'free', rating: 4.9, ratingCount: 12 };
 user.endorsement = { count: 6, percent: 100, score: 89 };
-const jamie = { ...user, id: 'demo-jamie', firstName: 'Jamie', lastName: 'Miller', displayName: 'Jamie Miller', totalTransactions: 24, endorsement: { count: 20, percent: 100, score: 95 } };
-const sam = { ...user, id: 'demo-sam', firstName: 'Sam', lastName: 'Rivera', displayName: 'Sam Rivera', totalTransactions: 8 };
-const taylor = { ...user, id: 'demo-taylor', firstName: 'Taylor', lastName: 'Reed', displayName: 'Taylor Reed', totalTransactions: 27 };
+const jamie = { ...user, id: 'demo-jamie', profilePhotoUrl: avatars.jamie, firstName: 'Jamie', lastName: 'Miller', displayName: 'Jamie Miller', totalTransactions: 24, endorsement: { count: 20, percent: 100, score: 95 } };
+const sam = { ...user, id: 'demo-sam', profilePhotoUrl: avatars.sam, firstName: 'Sam', lastName: 'Rivera', displayName: 'Sam Rivera', totalTransactions: 8 };
+const taylor = { ...user, id: 'demo-taylor', profilePhotoUrl: avatars.taylor, firstName: 'Taylor', lastName: 'Reed', displayName: 'Taylor Reed', totalTransactions: 27 };
 export const listings = [
   { id: 'demo-drill', title: 'Cordless drill & bits', description: 'Everything you need for a little weekend project. Happy to lend the drill and full bit set.', categoryId: 'tools', owner: jamie, photoUrl: photos.drill },
   { id: 'demo-books', title: 'A few good reads', description: 'A stack of books ready for a new home. Take one or take them all — free to keep.', categoryId: 'other', owner: taylor, photoUrl: photos.books, listingType: 'giveaway' },
@@ -60,6 +65,17 @@ export const messages = [
 ].map((message, index) => ({ id: `demo-message-${index}`, ...message, reactions: [], createdAt: new Date(messageClock.getTime() - (6 - index) * 60000).toISOString() }));
 
 export const friends = [jamie, sam, taylor];
+// Offline sample neighborhood for the promotional capture. No live membership.
+export const neighborhood = {
+  id: 'demo-town', name: 'Maplewood', role: 'member', memberCount: 4,
+  announcement: 'Have something to share? Post it for your neighbors.',
+};
+export const neighborhoodChatSummary = {
+  unreadCount: 2, lastMessage: 'Does anyone have a ladder for Saturday?',
+};
+export const neighborhoodMembers = [user, ...friends].map(member => ({
+  ...member, role: member.id === taylor.id ? 'organizer' : 'member',
+}));
 export const comments = [
   { id: 'demo-comment-1', content: 'Does it come with a masonry bit? Hoping to put up a shelf this weekend.', user: sam, createdAt: new Date(Date.now() - 3600000).toISOString(), replyCount: 2 },
   { id: 'demo-comment-2', content: 'Borrowed this last week. Made my little project so much easier. Thank you!', user: taylor, createdAt: new Date(Date.now() - 86400000).toISOString(), replyCount: 0 },

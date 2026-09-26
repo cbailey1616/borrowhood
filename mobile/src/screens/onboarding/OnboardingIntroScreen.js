@@ -1,21 +1,26 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Linking } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import WoodlandIllustration from '../../components/WoodlandIllustration';
+import { View, Text, StyleSheet, Linking } from 'react-native';
+import OnboardingLayout from '../../components/OnboardingLayout';
+import LayeredCard from '../../components/LayeredCard';
 import Icon from '../../components/Icon';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import HapticPressable from '../../components/HapticPressable';
 import api from '../../services/api';
-import { BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { BASE_URL, COLORS, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
-const Point = ({ icon, title, children }) => (
+const Point = ({ icon, title, children, tone = COLORS.primaryMuted }) => (
   <View style={styles.pointRow}>
-    {icon === 'identity-seal' ? <VerifiedBadge size={28} /> : <Icon name={icon} size={28} illustrated />}
-    <View style={styles.pointCopy}><Text accessibilityRole="header" style={styles.point}>{title}</Text><Text style={styles.detail}>{children}</Text></View>
+    <View style={[styles.pointIcon, { backgroundColor: tone }]}>
+      {icon === 'identity-seal' ? <VerifiedBadge size={27} /> : <Icon name={icon} size={27} illustrated />}
+    </View>
+    <View style={styles.pointCopy}>
+      <Text accessibilityRole="header" style={styles.point}>{title}</Text>
+      <Text style={styles.detail}>{children}</Text>
+    </View>
   </View>
 );
+
 export default function OnboardingIntroScreen({ navigation }) {
-  const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -30,57 +35,60 @@ export default function OnboardingIntroScreen({ navigation }) {
     finally { setBusy(false); }
   };
   return (
-    <ScrollView key={page} contentContainerStyle={[styles.content, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
-      <View style={styles.hero}>
-        <View style={styles.illustrationFrame}>
-          <WoodlandIllustration scene="neighborhood" width={190} style={styles.illustration} />
-        </View>
-        <Text accessibilityLabel={`Introduction, page ${page + 1} of 2`} style={styles.step}>{page + 1} OF 2</Text>
-        <Text accessibilityRole="header" style={styles.title}>{page === 0 ? 'Good things.\nCloser to home.' : 'Friends.\nNeighborhood. Town.'}</Text>
-        <Text style={styles.body}>{page === 0 ? 'Borrow what you need. Share what you have.' : 'Choose who you share with, from people you know to neighbors nearby.'}</Text>
-      </View>
-      <View style={styles.card}>
-        {page === 0 ? <>
-          <Point icon="chatbubble" title="Ask before you buy">Tell neighbors what you need. Someone nearby may have just the thing.</Point>
-          <Point icon="gift" title="Lend, give away, or sell">A little more use from things you already own. Giveaways are always free.</Point>
-          <Point icon="people" title="Get to know your neighbors">Make connections with every exchange.</Point>
-        </> : <>
-          <Point icon="people" title="Your listing. Your audience.">Share with friends, neighborhood groups, or your town. Keep other items just for you.</Point>
-          <Point icon="identity-seal" title="Verified neighbors. More confidence.">Verify your identity to connect across your town. The verified badge helps you know who you’re sharing with.</Point>
-          <Point icon="chatbubble" title="Make plans in private">Use a private chat to agree on pickup and share the details.</Point>
-        </>}
-      </View>
-      {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      <HapticPressable accessibilityRole="button" accessibilityLabel={page === 0 ? 'Continue' : 'Choose your town'} disabled={busy} onPress={next} style={styles.button}>
-        {busy ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>{page === 0 ? 'Continue' : 'Choose your town'}</Text>}
-      </HapticPressable>
-      {page === 1 && <View style={styles.footer}>
-        <HapticPressable accessibilityRole="button" onPress={() => { setPage(0); setError(''); }} disabled={busy} style={styles.linkButton}><Text style={styles.link}>Back</Text></HapticPressable>
-        <HapticPressable accessibilityRole="link" onPress={() => Linking.openURL(`${BASE_URL}/privacy`).catch(() => setError('Could not open the Privacy Policy. Please try again.'))} style={styles.linkButton}><Text style={styles.link}>Privacy Policy</Text></HapticPressable>
+    <OnboardingLayout
+      step={page + 1}
+      compact={page === 1}
+      title={page === 0 ? 'Good things.\nCloser to home.' : 'Your things.\nYour choice.'}
+      description={page === 0 ? 'Borrow what you need. Share what you have.' : 'Choose friends, your neighborhood, or town. Keep other items private.'}
+      scene={page === 0 ? 'onboardingShare' : 'onboardingAudience'}
+      tone={page === 0 ? COLORS.primaryMuted : COLORS.infoMuted}
+      buttonLabel={page === 0 ? 'Continue' : 'Choose your town'}
+      onContinue={next} busy={busy} error={error}
+      note="Get started now. Verify your identity later."
+      secondaryActions={page === 1 ? <View style={styles.footerLinks}>
+        <HapticPressable accessibilityRole="button" onPress={() => { setPage(0); setError(''); }} disabled={busy} style={styles.linkButton}>
+          <Text style={styles.link}>Back</Text>
+        </HapticPressable>
+        <HapticPressable accessibilityRole="link" onPress={() => Linking.openURL(BASE_URL + '/privacy').catch(() => setError('Could not open the Privacy Policy. Please try again.'))} style={styles.linkButton}>
+          <Text style={styles.link}>Privacy Policy</Text>
+        </HapticPressable>
+      </View> : null}>
+      {page === 1 && <View style={styles.audiences}>
+        {[['people', 'Friends'], ['home', 'Neighborhood'], ['location', 'Town']].map(([icon, label]) => (
+          <View key={label} style={styles.audience}>
+            <Icon name={icon} size={19} illustrated />
+            <Text style={styles.audienceLabel}>{label}</Text>
+          </View>
+        ))}
       </View>}
-      <Text style={styles.note}>Get started now. Verify your identity later.</Text>
-    </ScrollView>
+      <LayeredCard style={styles.card} radius={RADIUS.xl}>
+        {page === 0 ? <>
+          <Point icon="chatbubble" title="Ask before you buy" tone={COLORS.infoMuted}>Someone nearby may have just the thing.</Point>
+          <View style={styles.divider} />
+          <Point icon="gift" title="Lend, give away, or sell" tone={COLORS.warningMuted}>Give your things a little more use. Giveaways are free.</Point>
+          <View style={styles.divider} />
+          <Point icon="people" title="Get to know your neighbors" tone={COLORS.accentMuted}>A small exchange can start a good connection.</Point>
+        </> : <>
+          <Point icon="identity-seal" title="Look for the verified badge" tone={COLORS.warningMuted}>It means an identity was checked. You can verify later.</Point>
+          <View style={styles.divider} />
+          <Point icon="chatbubble" title="Make plans in private" tone={COLORS.infoMuted}>Agree on pickup and share details in a private chat.</Point>
+        </>}
+      </LayeredCard>
+    </OnboardingLayout>
   );
 }
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, backgroundColor: COLORS.background, paddingHorizontal: 24, alignItems: 'center', gap: 16 },
-  hero: { width: '100%', alignItems: 'center', gap: 8 },
-  // Trim the illustration's transparent margins while keeping its drawing at the same size.
-  illustrationFrame: { width: 190, height: 88, overflow: 'hidden' },
-  illustration: { transform: [{ translateY: -14 }] },
-  step: { fontSize: 11, lineHeight: 16, fontWeight: '400', letterSpacing: 1.5, color: COLORS.textSecondary },
-  title: { ...TYPOGRAPHY.largeTitle, width: '100%', fontSize: 28, lineHeight: 34, fontFamily: 'DMSans_400Regular', fontWeight: '400', color: COLORS.primaryDark, textAlign: 'center' },
-  body: { fontSize: 16, lineHeight: 23, color: COLORS.textSecondary, textAlign: 'center' },
-  card: { width: '100%', padding: 20, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface },
-  pointRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12 },
-  pointCopy: { flex: 1 },
-  point: { fontSize: 17, lineHeight: 23, fontFamily: 'DMSans_400Regular', fontWeight: '400', color: COLORS.primaryDark },
-  detail: { fontSize: 14, lineHeight: 21, color: COLORS.textSecondary, marginTop: 5 },
-  button: { width: '100%', minHeight: 52, padding: SPACING.lg, borderRadius: RADIUS.full, alignItems: 'center', backgroundColor: COLORS.primary },
-  buttonText: { fontSize: 17, fontWeight: '400', color: 'white' },
-  note: { fontSize: 13, lineHeight: 19, color: COLORS.textSecondary, textAlign: 'center' },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  link: { fontSize: 15, color: COLORS.primary, fontWeight: '400' },
-  error: { color: COLORS.danger, fontSize: 15 },
+  card: { width: '100%', paddingHorizontal: 18, paddingVertical: 6 },
+  pointRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 13, paddingVertical: 16 },
+  pointIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  pointCopy: { flex: 1, gap: 5 },
+  point: { ...TYPOGRAPHY.body, color: COLORS.primaryDark },
+  detail: { ...TYPOGRAPHY.bodySmall, lineHeight: 20, color: COLORS.textSecondary },
+  divider: { marginLeft: 57, height: 1, backgroundColor: COLORS.borderLight },
+  audiences: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 18 },
+  audience: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
+  audienceLabel: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  footerLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  link: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
 });

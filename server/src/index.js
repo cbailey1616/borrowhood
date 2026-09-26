@@ -57,6 +57,9 @@ import rentalRoutes from './routes/rentals.js';
 import onboardingRoutes from './routes/onboarding.js';
 import earningsRoutes from './routes/earnings.js';
 import { startScheduler } from './services/scheduler.js';
+import { healthCheck } from './services/health.js';
+import { observeRequest, startPoolMonitoring } from './services/observability.js';
+import { closeDatabase } from './utils/db.js';
 
 const app = express();
 
@@ -65,6 +68,7 @@ app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
+app.use(observeRequest);
 
 // CORS configuration
 const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
@@ -227,15 +231,6 @@ app.get('/connect/refresh', (req, res) => {
 </body></html>`);
 });
 
-// Request logging
-app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`, {
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-  });
-  next();
-});
-
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -275,14 +270,12 @@ app.use('/webhooks', webhookRoutes);
 app.use('/webhooks', appleNotificationRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+app.get('/health', healthCheck);
 
 
 // Error handling
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error:', err);
+  logger.error('Unhandled request error', { code: err.code || err.name });
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
   });
@@ -298,10 +291,25 @@ const PORT = process.env.PORT || 3000;
 // Run migrations before starting server
 runMigrations().then(ensureNotificationSchema).then(ensurePublicationSchema)
   .then(ensureVerificationPurchaseSchema).then(assertPrivatePhotoStorage).then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
+  let stopScheduler;
+  const stopMonitoring = startPoolMonitoring();
+  const server = app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Borrowhood server running on port ${PORT}`);
-    startScheduler();
+    if (process.env.SCHEDULER_ENABLED !== 'false') stopScheduler = startScheduler();
   });
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    stopMonitoring();
+    const deadline = setTimeout(() => process.exit(1), 25000);
+    deadline.unref();
+    await Promise.all([new Promise(resolve => server.close(resolve)), stopScheduler?.()]);
+    await closeDatabase();
+    clearTimeout(deadline);
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 }).catch(error => {
   logger.error('Server startup blocked by migration/storage readiness check', { message: error.message });
   process.exit(1);

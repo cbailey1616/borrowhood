@@ -1,4 +1,4 @@
-import { requestPresentation } from '../utils/requestPresentation';
+import NotificationIcon from '../components/NotificationIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import ShimmerImage from '../components/ShimmerImage';
 import { inboxActivity } from '../utils/inboxActivity';
@@ -36,40 +36,7 @@ import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const NOTIFICATION_ICONS = {
-  borrow_request: listingIcon(),
-  request_approved: 'checkmark-circle',
-  request_declined: 'close-circle',
-  payment_confirmed: 'card',
-  pickup_confirmed: listingIcon(),
-  pickup_check: 'basket',
-  pickup_extended: 'time',
-  return_confirmed: 'checkbox',
-  return_reminder: 'alarm',
-  dispute_opened: 'warning',
-  dispute_filed_against_you: 'alert-circle',
-  dispute_counter_received: 'swap-horizontal',
-  dispute_response_received: 'chatbubble-ellipses',
-  dispute_ready_for_review: 'eye',
-  dispute_under_review: 'time',
-  dispute_resolved: 'checkmark-done',
-  new_rating: 'star',
-  rating_received: 'star',
-  rank_up: 'trophy',
-  rank_down: 'ribbon',
-  rank_ready: 'ribbon',
-  join_approved: 'people',
-  request_offer: listingIcon(),
-  new_request: requestPresentation().icon,
-  new_message: 'chatbubble',
-  friend_request: 'person-add',
-  friend_accepted: 'people',
-  referral_joined: 'gift',
-  referral_reward: 'trophy',
-  payment_failed: 'card',
-  verification_failed: 'shield-checkmark',
-  circle_invite: 'people',
-};
+
 
 const PAGE_SIZE = 50;
 const HIDDEN_ACTIVITY_TYPES = new Set(['item_match', 'new_message', 'new_rating', 'rating_received', 'referral_reward', 'subscription_expired', 'verification_expiring']);
@@ -304,7 +271,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
         accessibilityLabel={item.exchange ? [item.title, item.body].filter(Boolean).join('. ') : item.title}
         haptic={null}
       >
-        <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
+        <View style={styles.iconContainer}>
           {item.exchange ? (
             <ShimmerImage source={item.exchange.listing?.photoUrl ? { uri: item.exchange.listing.photoUrl } : null}
               placeholderIcon={listingIcon(item.exchange)}
@@ -315,11 +282,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
               style={styles.notifAvatar}
             />
           ) : (
-            <Ionicons
-              name={item.queueListingId ? 'people' : NOTIFICATION_ICONS[item.type] || 'notifications'}
-              size={20}
-              color={!item.isRead ? COLORS.primary : COLORS.gray[400]}
-            />
+            <NotificationIcon notification={item} />
           )}
         </View>
         <View style={styles.cardContent}>
@@ -580,9 +543,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconContainerUnread: {
-    backgroundColor: COLORS.primary + '20',
   },
   notifAvatar: {
     width: 44,

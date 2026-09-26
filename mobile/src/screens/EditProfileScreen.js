@@ -15,7 +15,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Ionicons } from '../components/Icon';
-import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import ActionButton from '../components/ActionButton';
 import { useAuth } from '../context/AuthContext';
@@ -192,13 +191,10 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.form}>
           {isVerified && (
             <View style={styles.verifiedBanner}>
-              <VerifiedBadge size={26} glow />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.verifiedBannerTitle}>Identity Verified</Text>
-                <Text style={styles.verifiedBannerText}>
-                  Your legal name and address match your verified ID. You can still edit your display name below.
-                </Text>
-              </View>
+              <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} illustrated={false} />
+              <Text style={styles.verifiedBannerText}>
+                Legal name and location are locked after verification.
+              </Text>
               <HapticPressable
                 haptic="light"
                 onPress={() => {
@@ -255,7 +251,7 @@ export default function EditProfileScreen({ navigation }) {
               autoCapitalize="words"
             />
             <Text style={styles.fieldHint}>
-              This is how your name appears to others (e.g., "Danny" instead of "Daniel"). You can change it after verification.
+              Shown to neighbors. You can change it anytime.
             </Text>
           </View>
 
@@ -290,7 +286,10 @@ export default function EditProfileScreen({ navigation }) {
 
           {/* Location Section */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Location</Text>
+            <View style={styles.sectionLabel}>
+              <Text style={styles.sectionTitle}>Location</Text>
+              {isVerified && <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} illustrated={false} />}
+            </View>
             {!isVerified && (
               <HapticPressable
                 haptic="light"
@@ -447,22 +446,12 @@ const styles = StyleSheet.create({
   verifiedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    gap: SPACING.md,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderGreen,
-  },
-  verifiedBannerTitle: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
-    color: COLORS.primary,
+    gap: SPACING.sm,
   },
   verifiedBannerText: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    flex: 1,
   },
   verifiedChangeLink: {
     ...TYPOGRAPHY.footnote,
@@ -472,6 +461,11 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     paddingTop: 14,
+  },
+  sectionLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
   },
   sectionHeader: {
     flexDirection: 'row',

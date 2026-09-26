@@ -65,6 +65,15 @@ try {
       ANTHROPIC_API_KEY: 'local_placeholder', AWS_EC2_METADATA_DISABLED: 'true',
     });
   }
+  if (process.argv.includes('--launch')) {
+    await run(path.join(bin, 'createdb'), ['-h','127.0.0.1','-p',String(port),'-U','privacy_test',
+      'borrowhood_launch_test'], { ...cleanEnv, PGPASSWORD: password });
+    const launchUrl = url.replace('/borrowhood_privacy_test','/borrowhood_launch_test');
+    const launchEnv = { ...cleanEnv, LAUNCH_TEST_DATABASE_URL: launchUrl, LAUNCH_TEST_FRESH_CLUSTER: 'yes',
+      NODE_ENV: 'test', AWS_EC2_METADATA_DISABLED: 'true', PRIVACY_PG_BIN: bin };
+    await run(process.execPath, ['node_modules/vitest/vitest.mjs','run','--config','vitest.launch.config.js'], launchEnv);
+    await run(process.execPath, ['scripts/rehearse-launch-restore.js'], launchEnv);
+  }
 } catch (error) {
   console.error('Isolated database test could not finish:', error.message);
   process.exitCode = 1;

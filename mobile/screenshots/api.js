@@ -1,4 +1,4 @@
-import { friends, comments, user, listings, requests, conversation, messages, reviewExchanges } from './fixtures';
+import { friends, comments, user, listings, requests, conversation, messages, reviewExchanges, neighborhood, neighborhoodChatSummary, neighborhoodMembers } from './fixtures';
 import { Settings } from 'react-native';
 const noop = async () => ({});
 let feedback = { canRate: true };
@@ -24,7 +24,11 @@ let conversationRead = false;
 const reviewTransactions = () => captureScreen === 'home-exchanges' ? [reviewExchanges[0], waiting[0]]
   : captureScreen === 'owner-pickup' ? [reviewExchanges[1]]
   : captureScreen === 'owner-active-item' ? [reviewExchanges[2], ...ownerItemWaiting]
-  : captureScreen === 'inbox' ? waiting : [];
+  : captureScreen === 'inbox' ? waiting
+  : captureScreen === 'posts' ? [
+    { ...reviewExchanges[0], id: 'demo-posts-drill', borrower: friends[0], lender: user, isBorrower: false, isLender: true },
+    { ...reviewExchanges[1], id: 'demo-posts-books', listing: listings[1], listingType: 'giveaway', borrower: friends[1] },
+  ] : [];
 const activityNotices = () => {
   const source = captureScreen === 'inbox' ? notices : captureScreen === 'home-exchanges' ? notices.slice(0, 1) : [];
   if (!source.length) return [];
@@ -80,8 +84,16 @@ const api = {
     : { items: [listings[0], requests[0], ...listings.slice(1)], hasMore: false },
   recordFeedEvents: noop,
   getCategories: async () => [{ id: 'tools', name: 'Tools' }, { id: 'outdoors', name: 'Outdoors' }, { id: 'garden', name: 'Garden' }, { id: 'other', name: 'Other' }],
-  getCommunities: async () => [{ id: 'demo-town', name: 'Maplewood' }],
-  getMyListings: async () => listings.map(item => ({ ...item, owner: user, user, ownerId: user.id })),
+  getCommunities: async () => [neighborhood],
+  getCommunityChatSummary: async id => id === neighborhood.id ? neighborhoodChatSummary : {},
+  getCommunityMembers: async id => id === neighborhood.id ? neighborhoodMembers : [],
+  getMyListings: async () => listings.map((item, index) => ({ ...item, owner: user, user, ownerId: user.id,
+    ...(captureScreen === 'posts' ? {
+      visibility: index === 0 ? 'close_friends,neighborhood,town' : index === 1 ? 'neighborhood,town' : 'close_friends,neighborhood',
+      ...(index === 0 ? { isAvailable: false, isBorrowed: true, availabilityStatus: 'borrowed', pendingRequests: 2 } : {}),
+      ...(index === 1 ? { isAvailable: false, availabilityStatus: 'reserved' } : {}),
+    } : {}),
+  })),
   getMyRequests: async () => requests,
   getTransactions: async () => reviewTransactions(),
   getRequestQueue: async id => id === 'demo-tent' ? {

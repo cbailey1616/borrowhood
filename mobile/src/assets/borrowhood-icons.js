@@ -11,7 +11,8 @@ const chevron = (direction) => `<g transform="rotate(${direction} 16 16)">${p('M
 const person = (c) => circle(16, 10, 4.5, panel(c)) + p('M7 27V25C7 19 11 17 16 17S25 19 25 25V27Z', panel(c));
 const heart = (c) => p('M16 27C13 25 4 19 4 12C4 6 11 3 16 9C21 3 28 6 28 12C28 19 19 25 16 27Z', panel(c));
 const bell = (c) => p('M7 21C9 18 8 15 9 11C10 4 22 4 23 11C24 15 23 18 25 21C26 23 24 24 22 24H10C8 24 6 23 7 21Z', panel(c)) + p('M13 28C14 30 18 30 19 28M16 3V5');
-const chat = (c) => p('M7 5H25C28 5 29 7 29 10V19C29 22 27 24 24 24H14L7 28V24C4 24 3 22 3 19V10C3 7 4 5 7 5Z', panel(c)) + dot(10, 14, c) + dot(16, 14, c) + dot(22, 14, c);
+const chatPanel = (c) => p('M7 5H25C28 5 29 7 29 10V19C29 22 27 24 24 24H14L7 28V24C4 24 3 22 3 19V10C3 7 4 5 7 5Z', panel(c));
+const chat = (c) => chatPanel(c) + dot(10, 14, c) + dot(16, 14, c) + dot(22, 14, c);
 const shield = (c) => p('M16 3C20 6 24 7 27 7V15C27 22 22 27 16 29C10 27 5 22 5 15V7C8 7 12 6 16 3Z', panel(c));
 const camera = (c) => p('M5 9H10L12 5H20L22 9H27C29 9 30 11 30 13V24C30 26 28 27 26 27H6C3 27 2 25 2 23V13C2 11 3 9 5 9Z', panel(c)) + circle(16, 18, 5) + dot(25, 13, c);
 const picture = (c) => rect(4, 5, 24, 22, 4, panel(c)) + circle(11, 12, 2.3, accent(c)) + p('M5 24L12 17L17 22L22 16L28 23');
@@ -76,6 +77,8 @@ const DRAWINGS = {
   'person-remove': c => `<g transform="translate(-3 0) scale(.85 1)">${person(c)}</g>` + p('M20 17H29'),
   people: c => circle(12, 10, 4, panel(c)) + circle(23, 11, 3, accent(c)) + p('M3 27V24C3 15 21 15 21 24V27Z', panel(c)) + p('M23 18C27 18 30 21 30 25V27H25'),
   chatbubble: chat,
+  'chat-question': c => chatPanel(c) + p('M12 11C12 6 21 7 20 12C19 15 16 14 16 17') + dot(16, 20, c, 1.1),
+  'chat-reply': c => chatPanel(c) + p('M13 10L8 14L13 18M9 14H19C23 14 25 17 25 20'),
   mail: c => rect(3, 7, 26, 20, 4, panel(c)) + p('M4 9L14 17C15 18 17 18 18 17L28 9M4 25L11 19M28 25L21 19'),
   'mail-unread': c => rect(3, 9, 26, 18, 4, panel(c))
     + p('M4 11L14 18C15 19 17 19 18 18L28 11')
@@ -218,6 +221,14 @@ const PALETTES = {
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
   'mail-unread': ['#E7C590', '#DEA088'],
   'messages-read': ['#AFCABB', '#D8E5DA'],
+  'chat-question': ['#B8CAD7', '#D8E5DA'],
+  'chat-reply': ['#AFCABB', '#D8E5DA'],
+  trophy: ['#DFB66F', '#E7CC7A'],
+  ribbon: ['#E7CC7A', '#A7BF98'],
+  star: ['#E7CC7A', '#DFB66F'],
+  alarm: ['#DEA088', '#E9CA92'],
+  time: ['#E9CA92', '#DEA088'],
+  calendar: ['#B8C4DA', '#D6DDE9'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
   gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
   notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'],

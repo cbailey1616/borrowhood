@@ -1,844 +1,215 @@
-import TextInput from '../../components/AppTextInput';
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
-} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Pressable, ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
-import { Ionicons } from '../../components/Icon';
-import HeroIcon from '../../components/HeroIcon';
+import TextInput from '../../components/AppTextInput';
 import HapticPressable from '../../components/HapticPressable';
-import ActionSheet from '../../components/ActionSheet';
-import OnboardingProgressBar from '../../components/OnboardingProgressBar';
+import OnboardingLayout from '../../components/OnboardingLayout';
+import PopupLayer from '../../components/PopupLayer';
+import SheetDismissArea from '../../components/SheetDismissArea';
+import { Ionicons } from '../../components/Icon';
 import { useAuth } from '../../context/AuthContext';
+import useNavigationTask from '../../hooks/useNavigationTask';
 import api from '../../services/api';
-import { haptics } from '../../utils/haptics';
-import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { COLORS, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function OnboardingNeighborhoodScreen({ navigation }) {
+  const { user, refreshUser } = useAuth();
+  const startTask = useNavigationTask(navigation, `${user?.id}:${user?.city}:${user?.state}`);
   const insets = useSafeAreaInsets();
-  const { refreshUser } = useAuth();
-
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [locationSearch, setLocationSearch] = useState('');
-  const [locationError, setLocationError] = useState('');
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationGranted, setLocationGranted] = useState(false);
-  const [coordinates, setCoordinates] = useState(null);
-
+  const { height } = useWindowDimensions();
+  const action = useRef(false);
+  const loadVersion = useRef(0);
   const [neighborhoods, setNeighborhoods] = useState([]);
-  const [isLoadingNeighborhoods, setIsLoadingNeighborhoods] = useState(false);
-  const [joinedCommunity, setJoinedCommunity] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [locationSaved, setLocationSaved] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [createError, setCreateError] = useState('');
 
-  // Create neighborhood sheet
-  const [showSkipWarning, setShowSkipWarning] = useState(false);
-  const [createSheet, setCreateSheet] = useState(false);
-  const [neighborhoodName, setNeighborhoodName] = useState('');
-  const [neighborhoodDesc, setNeighborhoodDesc] = useState('');
-  const [neighborhoodRadius, setNeighborhoodRadius] = useState(1);
-
-  // Error/overlap sheets
-  const [errorSheet, setErrorSheet] = useState({ visible: false, title: '', message: '' });
-  const [overlapSheet, setOverlapSheet] = useState({ visible: false, names: [] });
-
+  const load = useCallback(async () => {
+    const isCurrent = startTask();
+    const version = ++loadVersion.current;
+    setLoading(true); setLoadError('');
+    try {
+      if (!user?.city || !user?.state) throw new Error('Go back and add your town and state first.');
+      // Discovery uses the town saved in step one, never device coordinates.
+      const result = await api.getCommunities();
+      if (!isCurrent() || version !== loadVersion.current) return;
+      if (!Array.isArray(result)) throw new Error('Could not load neighborhoods. Please try again.');
+      setNeighborhoods(result);
+      setSelectedId(previous => result.some(item => item.id === previous)
+        ? previous : result.find(item => item.isMember)?.id || null);
+    } catch (err) {
+      if (isCurrent() && version === loadVersion.current) setLoadError(err.message || 'Could not load neighborhoods. Please try again.');
+    } finally {
+      if (isCurrent() && version === loadVersion.current) setLoading(false);
+    }
+  }, [startTask, user?.city, user?.state]);
   useEffect(() => {
-    requestLocation();
-  }, []);
+    load();
+    const unsubscribe = navigation?.addListener?.('focus', load);
+    return () => unsubscribe?.();
+  }, [load, navigation]);
 
-  const requestLocation = async () => {
-    setIsGettingLocation(true);
+  const advance = async isCurrent => {
+    if (!isCurrent()) return;
+    await api.updateOnboardingStep(3);
+    if (!isCurrent()) return;
+    await refreshUser();
+    if (isCurrent()) navigation.navigate('OnboardingVerify');
+  };
+  const proceed = async (skip = false) => {
+    if (action.current) return;
+    const selected = neighborhoods.find(item => item.id === selectedId);
+    if (!skip && !selected) return;
+    const isCurrent = startTask();
+    action.current = true; setBusy(true); setError('');
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        setLocationGranted(true);
-        const location = await Location.getCurrentPositionAsync({});
-        const coords = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-        setCoordinates(coords);
-
-        const [address] = await Location.reverseGeocodeAsync(coords);
-        if (address) {
-          const detectedCity = address.city || address.subregion || '';
-          const detectedState = address.region || '';
-          setCity(detectedCity);
-          setState(detectedState);
-
-          // Auto-save location and fetch neighborhoods
-          if (detectedCity && detectedState) {
-            try {
-              await api.updateProfile({
-                city: detectedCity,
-                state: detectedState,
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-              });
-            } catch (profileErr) {
-              // Ignore — user may already be verified with a locked location
-            }
-            await refreshUser();
-            setLocationSaved(true);
-            fetchNeighborhoods(coords);
-          }
-        }
+      if (!skip && !selected.isMember) {
+        await api.joinCommunity(selected.id);
+        if (!isCurrent()) return;
+        // Preserve a successful join if saving progress needs a retry.
+        setNeighborhoods(items => items.map(item => item.id === selected.id ? { ...item, isMember: true } : item));
       }
-    } catch (error) {
-      console.warn('Location error:', error);
+      await advance(isCurrent);
+    } catch (err) {
+      if (isCurrent()) setError(err.message || 'Could not continue. Please try again.');
     } finally {
-      setIsGettingLocation(false);
+      action.current = false;
+      if (isCurrent()) setBusy(false);
     }
   };
-
-  const handleSaveManualLocation = async () => {
-    const searchText = locationSearch.trim();
-    if (!searchText) {
-      setLocationError('Please enter a city name.');
-      return;
-    }
-    setLocationError('');
-    setIsLoading(true);
+  const openCreate = () => { setName(''); setDescription(''); setCreateError(''); setCreateOpen(true); };
+  const closeCreate = () => { if (!action.current) setCreateOpen(false); };
+  const create = async () => {
+    if (action.current) return;
+    if (name.trim().length < 3) { setCreateError('Use at least 3 characters for the neighborhood name.'); return; }
+    const isCurrent = startTask();
+    action.current = true; setBusy(true); setCreateError(''); setError('');
+    let created = false;
     try {
-      // Geocode the input to validate it's a real place
-      const geocoded = await Location.geocodeAsync(searchText);
-      if (!geocoded || geocoded.length === 0) {
-        setLocationError("We couldn't find that city — try including the state (e.g. 'Boston, MA').");
-        setIsLoading(false);
-        return;
-      }
-
-      // Reverse geocode to get canonical city/state names
-      const coords = { latitude: geocoded[0].latitude, longitude: geocoded[0].longitude };
-      const [address] = await Location.reverseGeocodeAsync(coords);
-      const resolvedCity = address?.city || address?.subregion || '';
-      const resolvedState = address?.region || '';
-
-      if (!resolvedCity) {
-        setLocationError("We couldn't find that city — try including the state (e.g. 'Boston, MA').");
-        setIsLoading(false);
-        return;
-      }
-
-      setCity(resolvedCity);
-      setState(resolvedState);
-      setCoordinates(coords);
-
-      try {
-        await api.updateProfile({
-          city: resolvedCity,
-          state: resolvedState,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        });
-      } catch (profileErr) {
-        // Ignore — user may already be verified with a locked location
-      }
-      await refreshUser();
-      setLocationSaved(true);
-      fetchNeighborhoods(coords);
-    } catch (error) {
-      setLocationError("We couldn't find that city — try including the state (e.g. 'Boston, MA').");
+      const result = await api.createCommunity({ name: name.trim(), ...(description.trim() ? { description: description.trim() } : {}) });
+      if (!isCurrent()) return;
+      if (!result?.id) throw new Error('Could not confirm the new neighborhood. Please try again.');
+      // The server adds the creator as organizer. Do not send a second join.
+      const neighborhood = { id: result.id, name: name.trim(), memberCount: 1, isMember: true };
+      created = true;
+      setNeighborhoods(items => [neighborhood, ...items]); setSelectedId(result.id);
+      setSearch(''); setCreateOpen(false);
+      await advance(isCurrent);
+    } catch (err) {
+      if (isCurrent()) (created ? setError : setCreateError)(err.message || 'Could not create the neighborhood. Please try again.');
     } finally {
-      setIsLoading(false);
+      action.current = false;
+      if (isCurrent()) setBusy(false);
     }
   };
 
-  const fetchNeighborhoods = async (coords) => {
-    setIsLoadingNeighborhoods(true);
-    try {
-      let data;
-      if (coords) {
-        data = await api.getNearbyNeighborhoods(coords.latitude, coords.longitude);
-      } else {
-        data = await api.getCommunities();
-      }
-      setNeighborhoods(data);
-    } catch (error) {
-      console.error('Failed to fetch neighborhoods:', error);
-    } finally {
-      setIsLoadingNeighborhoods(false);
-    }
-  };
-
-  const handleJoinNeighborhood = async (community) => {
-    setIsLoading(true);
-    try {
-      await api.joinCommunity(community.id);
-      setJoinedCommunity(community);
-      setNeighborhoods(prev =>
-        prev.map(n => n.id === community.id ? { ...n, isMember: true } : n)
-      );
-      haptics.success();
-    } catch (error) {
-      setErrorSheet({ visible: true, title: 'Error', message: 'Failed to join neighborhood.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLeaveNeighborhood = async (community) => {
-    setIsLoading(true);
-    try {
-      await api.leaveCommunity(community.id);
-      if (joinedCommunity?.id === community.id) setJoinedCommunity(null);
-      setNeighborhoods(prev =>
-        prev.map(n => n.id === community.id ? { ...n, isMember: false } : n)
-      );
-      haptics.light();
-    } catch (error) {
-      setErrorSheet({ visible: true, title: 'Error', message: error.message || 'Failed to leave neighborhood.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateNeighborhood = () => {
-    setNeighborhoodName('');
-    setNeighborhoodDesc('');
-    setNeighborhoodRadius(1);
-    setCreateSheet(true);
-  };
-
-  const handleConfirmCreate = async () => {
-    if (!neighborhoodName?.trim()) return;
-    setCreateSheet(false);
-    setIsLoading(true);
-    try {
-      const createData = {
-        name: neighborhoodName.trim(),
-        description: neighborhoodDesc.trim() || undefined,
-      };
-      if (coordinates) {
-        createData.latitude = coordinates.latitude;
-        createData.longitude = coordinates.longitude;
-        createData.radius = neighborhoodRadius;
-      }
-      const result = await api.createCommunity(createData);
-      const newCommunity = {
-        id: result.id,
-        name: neighborhoodName.trim(),
-        description: neighborhoodDesc.trim() || '',
-        memberCount: 1,
-        listingCount: 0,
-        distanceMiles: 0,
-        isMember: true,
-      };
-      setJoinedCommunity(newCommunity);
-      setNeighborhoods(prev => [newCommunity, ...prev]);
-      haptics.success();
-      await refreshUser(); // Picks up isFounder
-    } catch (error) {
-      if (error.code === 'OVERLAP' || error.message?.includes('already exists')) {
-        // Show overlap suggestion
-        try {
-          const parsed = JSON.parse(error.message);
-          setOverlapSheet({ visible: true, names: parsed.overlapping || [] });
-        } catch {
-          setOverlapSheet({ visible: true, names: [] });
-        }
-      } else {
-        setErrorSheet({ visible: true, title: 'Error', message: error.message || 'Failed to create neighborhood.' });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const isSkipping = !joinedCommunity && !neighborhoods.some(n => n.isMember);
-
-  const handleContinue = async () => {
-    if (isSkipping && !showSkipWarning) {
-      setShowSkipWarning(true);
-      haptics.light();
-      return;
-    }
-    haptics.medium();
-    try {
-      await api.updateOnboardingStep(2);
-    } catch (e) {}
-    navigation.navigate('OnboardingFriends', {
-      joinedCommunityId: joinedCommunity?.id || null,
-    });
-  };
-
-  const showLocationForm = !locationSaved && !isGettingLocation;
-  const showNeighborhoods = locationSaved;
-
-  return (
-    <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <OnboardingProgressBar step={2} total={4} />
-
-      {navigation.canGoBack() && (
-        <HapticPressable
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          haptic="light"
-        >
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </HapticPressable>
-      )}
-
-      <Animated.View style={styles.stepContainer} entering={FadeInDown.duration(500).springify().damping(18)}>
-        <View style={styles.iconContainer}>
-          <HeroIcon icon="home" size={76} colors={[COLORS.primaryLight, COLORS.primaryDark]} />
-        </View>
-        <Text style={styles.title}>Join a Neighborhood</Text>
-        <Text style={styles.subtitle}>
-          {showNeighborhoods
-            ? `Connect with neighbors in ${city} to share and borrow items`
-            : 'We\'ll find neighborhoods near you'}
-        </Text>
-
-        {isGettingLocation && (
-          <View style={styles.detectingContainer}>
-            <ActivityIndicator color={COLORS.spinner} />
-            <Text style={styles.detectingText}>Detecting your location...</Text>
+  const empty = !loading && !loadError && neighborhoods.length === 0;
+  const selected = neighborhoods.find(item => item.id === selectedId);
+  const matches = neighborhoods.filter(item => item.name?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const label = loadError ? 'Retry' : empty ? 'Create a neighborhood' : selected?.isMember ? 'Continue' : 'Join neighborhood';
+  return <>
+    <OnboardingLayout step={2} compact keyboardAvoiding scene="onboardingAudience" tone={COLORS.infoMuted}
+      title={'Find your\nneighborhood.'} description="Share items and chat with neighbors."
+      onBack={() => navigation.navigate('OnboardingTown')} busy={busy}
+      buttonLabel={label} onContinue={loadError ? load : empty ? openCreate : () => proceed()}
+      disabled={loading || (!loadError && !empty && !selected)} error={error}
+      secondaryActions={<HapticPressable accessibilityRole="button" disabled={busy} onPress={() => proceed(true)} style={styles.linkButton}>
+        <Text style={styles.link}>Not now</Text>
+      </HapticPressable>}>
+      <View style={styles.location}><Ionicons name="location" size={18} color={COLORS.primary} />
+        <Text style={styles.locationText}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text></View>
+      {loading ? <ActivityIndicator style={styles.loading} color={COLORS.spinner} accessibilityLabel="Finding neighborhoods" />
+        : loadError ? <View style={styles.emptyCard}>
+          <Ionicons name="refresh-outline" size={34} color={COLORS.primary} />
+          <Text style={styles.emptyTitle}>Couldn’t load neighborhoods</Text>
+          <Text style={styles.detail} accessibilityRole="alert">{loadError}</Text>
+        </View> : empty ? <View style={styles.emptyCard}>
+          <Ionicons name="home" size={48} illustrated />
+          <Text style={styles.emptyTitle}>No neighborhoods nearby yet</Text>
+          <Text style={styles.detail}>Start one and invite your neighbors.</Text>
+        </View> : <>
+          <View style={styles.search}>
+            <Ionicons name="search" size={20} color={COLORS.primary} />
+            <TextInput accessibilityLabel="Search neighborhoods" placeholder="Search neighborhoods" placeholderTextColor={COLORS.textMuted}
+              value={search} onChangeText={setSearch} editable={!busy} style={styles.searchInput} autoCorrect={false} />
           </View>
-        )}
-
-        {showLocationForm && (
-          <>
-            <HapticPressable
-              style={styles.locationButton}
-              onPress={requestLocation}
-              haptic="medium"
-              testID="Onboarding.Neighborhood.useLocation"
-            >
-              <Ionicons name="navigate" size={20} color={COLORS.primary} />
-              <Text style={styles.locationButtonText}>Use My Location</Text>
-            </HapticPressable>
-
-            <Text style={styles.orText}>or enter manually</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="City, State (e.g. Boston, MA)"
-              placeholderTextColor={COLORS.textMuted}
-              value={locationSearch}
-              onChangeText={(v) => { setLocationSearch(v); setLocationError(''); }}
-              testID="Onboarding.Neighborhood.cityInput"
-              autoCorrect={false}
-              returnKeyType="search"
-              onSubmitEditing={handleSaveManualLocation}
-            />
-            {locationError ? (
-              <Text style={styles.locationError}>{locationError}</Text>
-            ) : null}
-
-            <HapticPressable
-              style={[styles.saveLocationButton, !locationSearch.trim() && styles.buttonDisabled]}
-              onPress={handleSaveManualLocation}
-              disabled={!locationSearch.trim() || isLoading}
-              haptic="medium"
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveLocationText}>Find Neighborhoods</Text>
-              )}
-            </HapticPressable>
-          </>
-        )}
-
-        {showNeighborhoods && (
-          <>
-            {isLoadingNeighborhoods ? (
-              <ActivityIndicator size="large" color={COLORS.spinner} style={styles.loader} />
-            ) : neighborhoods.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No neighborhoods in {city} yet.</Text>
-                <Text style={styles.emptySubtext}>Be the first to create one!</Text>
-                <HapticPressable style={styles.createButton} onPress={handleCreateNeighborhood} haptic="medium">
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.createButtonText}>Create Neighborhood</Text>
-                </HapticPressable>
-              </View>
-            ) : (
-              <FlatList
-                data={neighborhoods}
-                keyExtractor={(item) => item.id}
-                style={styles.list}
-                renderItem={({ item }) => (
-                  <View style={[styles.neighborhoodCard, styles.cardBox]}>
-                    <View style={styles.neighborhoodRow}>
-                      <View style={styles.neighborhoodInfo}>
-                        <Text style={styles.neighborhoodName}>{item.name}</Text>
-                        <Text style={styles.neighborhoodStats}>
-                          {item.memberCount} members · {item.listingCount} items
-                          {item.distanceMiles > 0 ? ` · ${item.distanceMiles.toFixed(1)} mi` : ''}
-                        </Text>
-                      </View>
-                      {item.isMember ? (
-                        <HapticPressable
-                          style={styles.joinedBadge}
-                          onPress={() => handleLeaveNeighborhood(item)}
-                          disabled={isLoading}
-                          haptic="light"
-                        >
-                          <Ionicons name="checkmark" size={16} color={COLORS.primary} />
-                          <Text style={styles.joinedText}>Joined</Text>
-                        </HapticPressable>
-                      ) : (
-                        <HapticPressable
-                          style={styles.joinButton}
-                          onPress={() => handleJoinNeighborhood(item)}
-                          disabled={isLoading}
-                          haptic="medium"
-                        >
-                          <Text style={styles.joinButtonText}>Join</Text>
-                        </HapticPressable>
-                      )}
-                    </View>
-                  </View>
-                )}
-                ListFooterComponent={
-                  <HapticPressable style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
-                    <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
-                    <Text style={styles.createLinkText}>Create a new neighborhood</Text>
-                  </HapticPressable>
-                }
-              />
-            )}
-          </>
-        )}
-      </Animated.View>
-
-      {showNeighborhoods && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-          {showSkipWarning && isSkipping && (
-            <Text style={styles.skipWarning}>
-              Without a neighborhood, your feed will be empty. You can join one later in Settings.
-            </Text>
-          )}
-          <HapticPressable
-            onPress={handleContinue}
-            haptic="medium"
-            testID="Onboarding.Neighborhood.continue"
-          >
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>
-                {!isSkipping ? 'Continue' : showSkipWarning ? 'Skip anyway' : 'Skip for now'}
-              </Text>
-              {!isSkipping && <Ionicons name="arrow-forward" size={18} color="#fff" />}
-            </LinearGradient>
+          {!matches.length && <Text style={styles.noMatch}>No matching neighborhoods. Try another name.</Text>}
+          {matches.map(item => <HapticPressable key={item.id} accessibilityRole="radio"
+            accessibilityLabel={`${item.name}, ${item.memberCount || 0} neighbors${item.isMember ? ', joined' : ''}`}
+            accessibilityState={{ checked: item.id === selectedId, disabled: busy }} disabled={busy}
+            onPress={() => setSelectedId(item.id)} style={[styles.row, item.id === selectedId && styles.selected]}>
+            <View style={styles.rowIcon}><Ionicons name="home" size={32} illustrated /></View>
+            <View style={styles.rowContent}><Text style={styles.rowTitle}>{item.name}</Text>
+              <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : ''}</Text></View>
+            <Ionicons name={item.id === selectedId ? 'checkmark-circle' : 'ellipse-outline'} size={26} color={COLORS.primary} />
+          </HapticPressable>)}
+          <HapticPressable accessibilityRole="button" disabled={busy} onPress={openCreate} style={styles.linkButton}>
+            <Text style={styles.link}>Create a neighborhood</Text>
           </HapticPressable>
-        </View>
-      )}
-
-      {showLocationForm && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-          <HapticPressable
-            onPress={() => {
-              haptics.light();
-              api.updateOnboardingStep(2).catch(() => {});
-              navigation.navigate('OnboardingFriends', { joinedCommunityId: null });
-            }}
-            haptic="light"
-            testID="Onboarding.Neighborhood.skip"
-          >
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>Skip for now</Text>
-            </LinearGradient>
-          </HapticPressable>
-        </View>
-      )}
-
-      {/* Create Neighborhood Modal */}
-      <Modal
-        visible={createSheet}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setCreateSheet(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.modalHeader}>
-            <HapticPressable onPress={() => setCreateSheet(false)} haptic="light">
-              <Text style={styles.modalCancel}>Cancel</Text>
+        </>}
+    </OnboardingLayout>
+    {createOpen && <PopupLayer visible onRequestClose={closeCreate}>
+      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined} onAccessibilityEscape={closeCreate}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={closeCreate} accessible={false} />
+        <View style={[styles.createSheet, { maxHeight: height - insets.top - 20, paddingBottom: Math.max(insets.bottom, 20) }]} accessibilityViewIsModal>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.createContent}>
+            <SheetDismissArea onDismiss={closeCreate}>
+              <View style={styles.sheetHeader}><Text accessibilityRole="header" style={styles.sheetTitle}>Create a neighborhood</Text>
+                <HapticPressable accessibilityRole="button" accessibilityLabel="Close" disabled={busy} onPress={closeCreate} style={styles.close}>
+                  <Ionicons name="close" size={22} color={COLORS.primary} /></HapticPressable></View>
+            </SheetDismissArea>
+            <Text style={styles.detail}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text>
+            <Text style={styles.fieldLabel}>Neighborhood name</Text>
+            <TextInput accessibilityLabel="Neighborhood name" value={name} onChangeText={setName} editable={!busy}
+              maxLength={100} placeholder="e.g. Oak Street" placeholderTextColor={COLORS.textMuted} style={styles.input} autoCapitalize="words" />
+            <Text style={styles.fieldLabel}>Description (optional)</Text>
+            <TextInput accessibilityLabel="Description (optional)" value={description} onChangeText={setDescription} editable={!busy}
+              maxLength={1000} multiline style={[styles.input, styles.description]} placeholder="Tell neighbors about your area" placeholderTextColor={COLORS.textMuted} />
+            {!!createError && <Text accessibilityRole="alert" style={styles.error}>{createError}</Text>}
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Create neighborhood" disabled={busy}
+              accessibilityState={{ disabled: busy, busy }} onPress={create} style={styles.createButton}>
+              {busy ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.createLabel}>Create neighborhood</Text>}
             </HapticPressable>
-            <Text style={styles.modalTitle}>Create Neighborhood</Text>
-            <View style={{ width: 60 }} />
-          </View>
-          <View style={styles.sheetContent}>
-            <TextInput
-              style={styles.sheetInput}
-              placeholder="Neighborhood name"
-              placeholderTextColor={COLORS.textMuted}
-              value={neighborhoodName}
-              onChangeText={setNeighborhoodName}
-              autoFocus
-            />
-            <TextInput
-              style={[styles.sheetInput, { height: 72, textAlignVertical: 'top' }]}
-              placeholder="Description (optional)"
-              placeholderTextColor={COLORS.textMuted}
-              value={neighborhoodDesc}
-              onChangeText={setNeighborhoodDesc}
-              multiline
-            />
-            {coordinates && (
-              <View style={styles.radiusRow}>
-                <Text style={styles.radiusLabel}>Radius: {neighborhoodRadius} mi</Text>
-                <View style={styles.radiusButtons}>
-                  {[0.25, 0.5, 1, 2].map(r => (
-                    <HapticPressable
-                      key={r}
-                      style={[styles.radiusChip, neighborhoodRadius === r && styles.radiusChipActive]}
-                      onPress={() => setNeighborhoodRadius(r)}
-                      haptic="light"
-                    >
-                      <Text style={[styles.radiusChipText, neighborhoodRadius === r && styles.radiusChipTextActive]}>
-                        {r} mi
-                      </Text>
-                    </HapticPressable>
-                  ))}
-                </View>
-              </View>
-            )}
-            <HapticPressable
-              style={[styles.primaryButton, !neighborhoodName?.trim() && styles.buttonDisabled]}
-              onPress={handleConfirmCreate}
-              disabled={!neighborhoodName?.trim()}
-              haptic="medium"
-            >
-              <Text style={styles.primaryButtonText}>Create</Text>
-            </HapticPressable>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Overlap Sheet */}
-      <ActionSheet
-        isVisible={overlapSheet.visible}
-        onClose={() => setOverlapSheet({ visible: false, names: [] })}
-        title="Neighborhood Already Exists"
-        message={`A neighborhood already exists in this area${overlapSheet.names.length > 0 ? `: ${overlapSheet.names.join(', ')}` : ''}. Would you like to join it instead?`}
-        actions={[
-          { label: 'Join Existing', onPress: () => {
-            // Refresh the list so user can join existing
-            if (coordinates) fetchNeighborhoods(coordinates);
-            else fetchNeighborhoods(null);
-          }},
-          { label: 'Try Different Name', onPress: () => setCreateSheet(true) },
-        ]}
-        cancelLabel="Cancel"
-      />
-
-      {/* Error Sheet */}
-      <ActionSheet
-        isVisible={errorSheet.visible}
-        onClose={() => setErrorSheet({ visible: false, title: '', message: '' })}
-        title={errorSheet.title}
-        message={errorSheet.message}
-        actions={[{ label: 'OK', onPress: () => {} }]}
-        cancelLabel="Dismiss"
-      />
-    </KeyboardAvoidingView>
-  );
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </PopupLayer>}
+  </>;
 }
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 56,
-    left: SPACING.lg,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepContainer: {
-    flex: 1,
-    padding: SPACING.xl,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.xl,
-  },
-  title: {
-    ...TYPOGRAPHY.h1,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: SPACING.xxl,
-  },
-  detectingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.md,
-    paddingVertical: SPACING.xl,
-  },
-  detectingText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-  },
-  locationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '15',
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.lg,
-  },
-  locationButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: COLORS.primary,
-  },
-  orText: {
-    textAlign: 'center',
-    color: COLORS.textMuted,
-    ...TYPOGRAPHY.footnote,
-    marginBottom: SPACING.lg,
-  },
-  input: {
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.md,
-    padding: SPACING.lg,
-    fontSize: 16,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  locationError: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.danger,
-    marginBottom: SPACING.md,
-  },
-  saveLocationButton: {
-    backgroundColor: COLORS.primary,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-  },
-  saveLocationText: {
-    ...TYPOGRAPHY.button,
-    color: '#fff',
-  },
-  skipLink: {
-    alignSelf: 'center',
-    paddingVertical: SPACING.md,
-    marginTop: SPACING.xs,
-  },
-  skipLinkText: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
-    color: COLORS.textMuted,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  loader: { marginTop: SPACING.xxl },
-  list: {
-    flex: 1,
-    marginBottom: SPACING.lg,
-  },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
-  neighborhoodCard: {
-    marginBottom: SPACING.sm,
-    padding: SPACING.lg,
-  },
-  neighborhoodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  neighborhoodInfo: { flex: 1 },
-  neighborhoodName: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  neighborhoodStats: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  joinButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xl - SPACING.xs,
-    borderRadius: RADIUS.xl,
-  },
-  joinButtonText: {
-    color: '#fff',
-    fontWeight: '400',
-  },
-  joinedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  joinedText: {
-    color: COLORS.primary,
-    fontWeight: '400',
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    marginTop: SPACING.lg,
-  },
-  createButtonText: {
-    color: '#fff',
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-  },
-  createLinkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    padding: SPACING.lg,
-  },
-  createLinkText: {
-    color: COLORS.primary,
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xxl,
-  },
-  emptyText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  emptySubtext: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-  },
-  footer: {
-    paddingHorizontal: SPACING.xl,
-  },
-  skipWarning: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.warning,
-    textAlign: 'center',
-    marginBottom: SPACING.md,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    padding: 17,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
-  },
-  // Modal content
-  modalContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.separator,
-  },
-  modalCancel: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.primary,
-  },
-  modalTitle: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.text,
-  },
-  sheetContent: {
-    padding: SPACING.xl,
-    gap: SPACING.md,
-  },
-  sheetInput: {
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.md,
-    padding: SPACING.lg,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  radiusRow: {
-    gap: SPACING.sm,
-  },
-  radiusLabel: {
-    ...TYPOGRAPHY.footnote,
-    color: COLORS.textSecondary,
-  },
-  radiusButtons: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  radiusChip: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  radiusChipActive: {
-    backgroundColor: COLORS.primary,
-  },
-  radiusChipText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-    color: COLORS.textSecondary,
-  },
-  radiusChipTextActive: {
-    color: '#fff',
-  },
+  location: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 16 },
+  locationText: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, marginBottom: 12 },
+  searchInput: { ...TYPOGRAPHY.body, color: COLORS.text, flex: 1, minHeight: 50 },
+  loading: { padding: 40 },
+  emptyCard: { backgroundColor: COLORS.surface, padding: 24, borderRadius: RADIUS.xl, alignItems: 'center', gap: 14 },
+  emptyTitle: { ...TYPOGRAPHY.title3, color: COLORS.primary, textAlign: 'center' },
+  detail: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  noMatch: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, paddingVertical: 24, textAlign: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.borderLight, backgroundColor: COLORS.surface },
+  selected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryMuted },
+  rowIcon: { width: 50, height: 50, borderRadius: RADIUS.md, backgroundColor: COLORS.accentMuted, alignItems: 'center', justifyContent: 'center' },
+  rowContent: { flex: 1, gap: 5 },
+  rowTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary },
+  linkButton: { alignItems: 'center', justifyContent: 'center', minHeight: 48, padding: 10 },
+  link: { ...TYPOGRAPHY.body, color: COLORS.primary, textAlign: 'center', textDecorationLine: 'underline' },
+  overlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
+  createSheet: { backgroundColor: COLORS.background, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  createContent: { padding: 24, gap: 12 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sheetTitle: { ...TYPOGRAPHY.title2, color: COLORS.primary, flex: 1 },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.text, marginTop: 10 },
+  input: { ...TYPOGRAPHY.body, color: COLORS.text, minHeight: 52, padding: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: RADIUS.md },
+  description: { minHeight: 88, textAlignVertical: 'top' },
+  error: { ...TYPOGRAPHY.footnote, color: COLORS.danger },
+  createButton: { minHeight: 54, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.full, padding: 14, backgroundColor: COLORS.primary, marginTop: 12 },
+  createLabel: { ...TYPOGRAPHY.button, color: COLORS.surface, textAlign: 'center' },
 });

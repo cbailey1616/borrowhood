@@ -2,10 +2,10 @@ import { beforeAll, afterAll, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-const state = vi.hoisted(() => ({ db: null }));
+const state = vi.hoisted(() => ({ db: null, queries: [] }));
 vi.mock('../../src/utils/db.js', () => ({
-  query: (...args) => state.db.query(...args),
-  withTransaction: fn => state.db.transaction(tx => fn({ query: tx.query.bind(tx) })),
+  query: (...args) => { state.queries.push(args[0]); return state.db.query(...args); },
+  withTransaction: fn => state.db.transaction(tx => fn({ query: (...args) => { state.queries.push(args[0]); return tx.query(...args); } })),
 }));
 import { ensureRankNotificationSchema, checkRankChanges, rankChange, rankTier } from '../../src/services/rankNotifications.js';
 import { shouldSendPush } from '../../src/services/notificationPreferences.js';
@@ -85,4 +85,17 @@ it('rolls back the tier snapshot if its activity cannot be saved, then retries o
   await checkRankChanges();
   await checkRankChanges();
   expect((await state.db.query('SELECT type FROM notifications WHERE user_id=$1', [newcomer])).rows).toEqual([{ type: 'rank_ready' }]);
+});
+
+it('coalesces member changes and does no rank scan when the durable queue is empty', async () => {
+  await checkRankChanges();
+  expect((await state.db.query('SELECT user_id FROM neighbor_rank_pending')).rows).toHaveLength(0);
+  const transaction=randomUUID();
+  await state.db.query("INSERT INTO borrow_transactions(id,borrower_id,lender_id,status) VALUES($1,$2,$3,'pending')",[transaction,borrower,owner]);
+  await state.db.query("UPDATE borrow_transactions SET status='approved' WHERE id=$1",[transaction]);
+  expect((await state.db.query('SELECT user_id FROM neighbor_rank_pending')).rows).toHaveLength(2);
+  await checkRankChanges();
+  state.queries=[];
+  await checkRankChanges();
+  expect(state.queries.some(sql=>String(sql).includes('borrow_transactions'))).toBe(false);
 });

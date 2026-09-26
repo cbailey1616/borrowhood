@@ -174,7 +174,7 @@ describe('Login', () => {
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'MyPassword1');
 
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByText('Sign in'));
     });
 
     expect(mockLogin).toHaveBeenCalledWith('test@test.com', 'MyPassword1');

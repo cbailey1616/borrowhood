@@ -80,6 +80,8 @@ function openCapture() {
     chat: { name: 'Chat', params: { conversationId: 'demo-chat' } },
     comments: { name: 'ListingDiscussion', params: { listingId: 'demo-drill' } },
     friends: { name: 'Friends' },
+    neighborhood: { name: 'MyCommunity', params: { communityId: 'demo-town' } },
+    'neighborhood-members': { name: 'CommunityMembers', params: { id: 'demo-town', role: 'member' } },
     notifications: { name: 'NotificationSettings' },
     'member-profile': { name: 'UserProfile', params: { id: 'demo-jamie' } },
     'pending-exchange': { name: 'TransactionDetail', params: { id: 'demo-pending-exchange' } },

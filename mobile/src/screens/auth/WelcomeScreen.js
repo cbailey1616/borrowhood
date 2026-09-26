@@ -10,12 +10,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import ActionSheet from '../../components/ActionSheet';
-import WoodlandIllustration from '../../components/WoodlandIllustration';
 import SocialSignInButtons from '../../components/SocialSignInButtons';
 import SocialAccountLink from '../../components/SocialAccountLink';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +24,7 @@ import useBiometrics from '../../hooks/useBiometrics';
 import { haptics } from '../../utils/haptics';
 import { BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
-export default function WelcomeScreen({ navigation }) {
+export default function WelcomeScreen({ navigation, showBackButton = false }) {
   const { login } = useAuth();
 
   const { showError } = useError();
@@ -40,6 +40,7 @@ export default function WelcomeScreen({ navigation }) {
   } = useBiometrics();
 
   const passwordInput = useRef(null);
+  const signInLock = useRef(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +49,7 @@ export default function WelcomeScreen({ navigation }) {
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
   const [biometricSheetVisible, setBiometricSheetVisible] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
-  const [showEmail, setShowEmail] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
   const [socialBusy, setSocialBusy] = useState(false);
   const [pendingLink, setPendingLink] = useState(null);
   const resetLink = () => {
@@ -71,6 +72,8 @@ export default function WelcomeScreen({ navigation }) {
   };
 
   const handleBiometricLogin = async () => {
+    if (signInLock.current || socialBusy) return;
+    signInLock.current = true;
     setIsLoading(true);
     try {
       const success = await authenticate();
@@ -92,6 +95,7 @@ export default function WelcomeScreen({ navigation }) {
         message: error.message || 'Couldn\'t sign you in. Please try entering your email and password.',
       });
     } finally {
+      signInLock.current = false;
       setIsLoading(false);
     }
   };
@@ -107,27 +111,30 @@ export default function WelcomeScreen({ navigation }) {
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (signInLock.current || socialBusy) return;
+    if (!email.trim() || !password) {
       haptics.warning();
       setLoginError('Please enter your email and password.');
       return;
     }
 
     setLoginError(null);
+    signInLock.current = true;
     setIsLoading(true);
     try {
-      await signInWithPassword(email, password);
+      await signInWithPassword(email.trim(), password);
     } catch (error) {
       haptics.error();
       setLoginError(error.message || 'Incorrect email or password. Please try again.');
     } finally {
+      signInLock.current = false;
       setIsLoading(false);
     }
   };
 
 
   if (pendingLink) return <SocialAccountLink link={pendingLink} navigation={navigation} onPasswordSignIn={signInWithPassword}
-    onCancel={() => { resetLink(); setShowEmail(false); setSocialBusy(false); }}/>;
+    onCancel={() => { resetLink(); setSocialBusy(false); }}/>;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,127 +148,151 @@ export default function WelcomeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
+            {showBackButton && <HapticPressable style={styles.backButton} onPress={() => navigation.goBack()}
+              disabled={isLoading || socialBusy} accessibilityRole="button" accessibilityLabel="Go back">
+              <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
+            </HapticPressable>}
             <View style={styles.logoContainer}>
-              <Text style={styles.wordmark}>Borrowhood</Text>
-              <WoodlandIllustration scene="neighborhood" width={218} />
-              <Text accessibilityRole="header" style={styles.authTitle}>{showEmail ? 'Welcome back' : 'Sign up or sign in'}</Text>
-              {!showEmail && <Text style={styles.welcomeLine}>Apple and Google work for both.</Text>}
+              <View style={styles.logoBadge}>
+                <Image source={require('../../../assets/logo.png')} style={styles.logo} accessible={false} />
+              </View>
+              <Text accessibilityRole="header" style={styles.wordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>Borrowhood</Text>
+              <Text style={styles.authTitle}>Sign in to your account</Text>
             </View>
 
-            {/* Biometric Login Button */}
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email address</Text>
+                <TextInput
+                  style={[styles.input, focusedField === 'email' && styles.inputFocused]}
+                  value={email}
+                  onChangeText={(t) => { setEmail(t); setLoginError(null); }}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
+                  editable={!isLoading && !socialBusy}
+                  placeholder="you@example.com"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => passwordInput.current?.focus()}
+                  textContentType="username"
+                  autoComplete="email"
+                  testID="Welcome.input.email"
+                  accessibilityLabel="Email address"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <View style={styles.passwordLabelRow}>
+                  <Text style={styles.label}>Password</Text>
+                  <HapticPressable onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() })}
+                    disabled={isLoading || socialBusy} style={styles.recoveryLink} accessibilityRole="link">
+                    <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                  </HapticPressable>
+                </View>
+                <View style={[styles.passwordContainer, focusedField === 'password' && styles.inputFocused]}>
+                  <TextInput
+                    ref={passwordInput}
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); setLoginError(null); }}
+                    onFocus={() => setFocusedField('password')}
+                    onBlur={() => setFocusedField(null)}
+                    editable={!isLoading && !socialBusy}
+                    placeholder="Enter your password"
+                    placeholderTextColor={COLORS.textMuted}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="password"
+                    textContentType="password"
+                    returnKeyType="go"
+                    onSubmitEditing={handleLogin}
+                    testID="Welcome.input.password"
+                    accessibilityLabel="Password"
+                  />
+                  <HapticPressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeButton}
+                    haptic="light"
+                    disabled={isLoading || socialBusy}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <Text style={styles.eyeButtonText}>
+                      {showPassword ? 'Hide' : 'Show'}
+                    </Text>
+                  </HapticPressable>
+                </View>
+              </View>
+
+              {loginError && (
+                <View style={styles.errorCard} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                  <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
+                  <Text style={styles.errorText}>{loginError}</Text>
+                </View>
+              )}
+
+              <HapticPressable
+                style={[styles.loginButton, (isLoading || socialBusy) && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={isLoading || socialBusy}
+                haptic="medium"
+                testID="Welcome.button.signIn"
+                accessibilityLabel="Sign in"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isLoading || socialBusy, busy: isLoading }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.background} />
+                ) : (
+                  <Text style={styles.loginButtonText}>Sign in</Text>
+                )}
+              </HapticPressable>
+
+            </View>
+
             {canUseBiometrics && !biometricsLoading && (
               <HapticPressable
-                style={styles.biometricButton}
+                style={[styles.biometricButton, (isLoading || socialBusy) && styles.loginButtonDisabled]}
                 onPress={handleBiometricLogin}
                 disabled={isLoading || socialBusy}
                 haptic="medium"
                 testID="Welcome.button.biometric"
-                accessibilityLabel="Sign in with biometrics"
+                accessibilityLabel={`Sign in with ${biometricType}`}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: isLoading || socialBusy }}
               >
-                <BiometricIcon type={biometricType} size={32} color={COLORS.primary} />
-                <Text style={styles.biometricButtonText}>
-                  Sign in with {biometricType}
-                </Text>
+                <BiometricIcon type={biometricType} size={20} color={COLORS.primary} />
+                <Text style={styles.biometricButtonText}>Use {biometricType}</Text>
               </HapticPressable>
             )}
 
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
             <SocialSignInButtons disabled={isLoading} onBusyChange={busy => {
               setSocialBusy(busy);
-              if (busy) { resetLink(); setShowEmail(false); }
+              if (busy) resetLink();
             }} onLinkRequired={link => { setSocialBusy(false); setPendingLink(link); if (link.email) setEmail(link.email); }} />
-            <HapticPressable onPress={() => { setShowEmail(!showEmail); resetLink(); }} disabled={socialBusy || isLoading} style={styles.forgotPassword} accessibilityRole="button" accessibilityState={{ expanded: showEmail }}>
-              <Text style={styles.forgotPasswordText}>{showEmail ? 'Use Apple or Google instead' : 'Sign in with email'}</Text>
-            </HapticPressable>
-            {showEmail && <View style={styles.formCard}>
-              <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={email}
-                    onChangeText={(t) => { setEmail(t); setLoginError(null); }}
-                    placeholder="you@example.com"
-                    placeholderTextColor={COLORS.textMuted}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    returnKeyType="next"
-                    submitBehavior="submit"
-                    onSubmitEditing={() => passwordInput.current?.focus()}
-                    textContentType="username"
-                    autoComplete="email"
-                    testID="Welcome.input.email"
-                    accessibilityLabel="Email address"
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Password</Text>
-                  <View style={styles.passwordContainer}>
-                    <TextInput
-                      ref={passwordInput}
-                      style={styles.passwordInput}
-                      value={password}
-                      onChangeText={(t) => { setPassword(t); setLoginError(null); }}
-                      placeholder="Enter your password"
-                      placeholderTextColor={COLORS.textMuted}
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete="password"
-                      textContentType="password"
-                      testID="Welcome.input.password"
-                      accessibilityLabel="Password"
-                    />
-                    <HapticPressable
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.eyeButton}
-                      haptic="light"
-                    >
-                      <Text style={styles.eyeButtonText}>
-                        {showPassword ? 'Hide' : 'Show'}
-                      </Text>
-                    </HapticPressable>
-                  </View>
-                </View>
-
-                <HapticPressable onPress={() => navigation.navigate('ForgotPassword', { email })} style={styles.recoveryLink} accessibilityRole="link">
-                  <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
-                </HapticPressable>
-
-                {loginError && (
-                  <View style={styles.errorCard}>
-                    <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
-                    <Text style={styles.errorText}>{loginError}</Text>
-                  </View>
-                )}
-
-                <HapticPressable
-                  style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-                  onPress={handleLogin}
-                  disabled={isLoading || socialBusy}
-                  haptic="medium"
-                  testID="Welcome.button.signIn"
-                  accessibilityLabel="Sign in"
-                  accessibilityRole="button"
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={COLORS.background} />
-                  ) : (
-                    <Text style={styles.loginButtonText}>Sign In</Text>
-                  )}
-                </HapticPressable>
-
-              </View>
-            </View>}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>New here?</Text>
-              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account with email" accessibilityRole="link" style={styles.createAccountLink}>
-                <Text style={styles.footerLink}>Create an account with email</Text>
+              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link" style={styles.createAccountLink}>
+                <Text style={styles.footerLink}>Create an account</Text>
               </HapticPressable>
             </View>
+
+            {showBackButton && <HapticPressable style={styles.findAccount} disabled={isLoading || socialBusy}
+              onPress={() => navigation.navigate('FindAccount')} accessibilityRole="link">
+              <Text style={styles.forgotPasswordText}>Can't find your account?</Text>
+            </HapticPressable>}
 
             <Text style={styles.terms}>By continuing, you agree to our{' '}
               <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>Terms</Text> and{' '}
@@ -295,7 +326,7 @@ export default function WelcomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  terms: { fontSize: 12, lineHeight: 18, textAlign: 'center', color: COLORS.textSecondary, paddingTop: 16 },
+  terms: { ...TYPOGRAPHY.caption1, lineHeight: 18, textAlign: 'center', color: COLORS.textSecondary, paddingTop: SPACING.sm },
   termsLink: { color: COLORS.primary, textDecorationLine: 'underline' },
   container: {
     flex: 1,
@@ -309,75 +340,109 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     paddingHorizontal: SPACING.xl,
     paddingBottom: SPACING.xl,
+    paddingTop: SPACING.md,
     justifyContent: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    paddingTop: SPACING.xl,
     marginBottom: SPACING.xl,
   },
-  wordmark: { ...TYPOGRAPHY.h1, color: COLORS.primary, marginBottom: SPACING.sm },
-  authTitle: { ...TYPOGRAPHY.h2, color: COLORS.text, textAlign: 'center', marginTop: SPACING.md, marginBottom: SPACING.sm },
-  welcomeLine: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
-  biometricButton: {
+  backButton: { minWidth: 44, minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', marginBottom: SPACING.sm },
+  logoBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.xl - SPACING.xs,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  logo: { width: 62, height: 62, resizeMode: 'contain' },
+  wordmark: {
+    ...TYPOGRAPHY.largeTitle,
+    fontSize: 36,
+    lineHeight: 44,
+    letterSpacing: -1,
+    color: COLORS.primary,
+    textAlign: 'center',
+    maxWidth: '100%',
+    marginBottom: SPACING.xs,
+  },
+  authTitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
+  biometricButton: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.primaryMuted,
     borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
+    borderColor: COLORS.borderGreenStrong,
+    borderRadius: RADIUS.md,
     gap: SPACING.sm,
   },
   biometricButtonText: {
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.primary,
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-  },
-  formCard: {
-    padding: SPACING.xl,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderBrown,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   form: {
-    gap: SPACING.xl - SPACING.xs,
+    gap: SPACING.md,
   },
   inputContainer: {
-    gap: SPACING.sm,
+    gap: 6,
   },
   label: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
-    color: COLORS.textSecondary,
-  },
-  input: {
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: 14,
-    fontSize: 16,
-    backgroundColor: COLORS.surfaceElevated,
+    ...TYPOGRAPHY.subheadline,
     color: COLORS.text,
   },
+  input: {
+    ...TYPOGRAPHY.body,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: COLORS.borderGreenStrong,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
+  },
+  inputFocused: { borderColor: COLORS.primary, backgroundColor: '#FFFFFF' },
+  passwordLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: SPACING.sm },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceElevated,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: COLORS.borderGreenStrong,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surface,
   },
   passwordInput: {
+    ...TYPOGRAPHY.body,
     flex: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: 14,
-    fontSize: 16,
+    minWidth: 0,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
     color: COLORS.text,
   },
   eyeButton: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: 14,
+    minWidth: 52,
+    minHeight: 44,
+    paddingHorizontal: SPACING.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   eyeButtonText: {
     color: COLORS.primary,
@@ -386,16 +451,19 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.full,
+    minHeight: 48,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.sm,
     alignItems: 'center',
-    marginTop: SPACING.md,
+    justifyContent: 'center',
+    marginTop: SPACING.xs,
   },
   loginButtonDisabled: {
     opacity: 0.7,
   },
   loginButtonText: {
-    color: COLORS.background,
+    color: '#FFFFFF',
     ...TYPOGRAPHY.headline,
   },
   errorCard: {
@@ -414,24 +482,25 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
-  forgotPassword: {
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-  },
-  recoveryLink: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  recoveryLink: { minHeight: 44, justifyContent: 'center' },
   forgotPasswordText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '400',
   },
   footer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: SPACING.md,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    columnGap: SPACING.xs,
   },
-  createAccountLink: { minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.sm },
+  createAccountLink: { minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.xs },
+  findAccount: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginVertical: SPACING.lg },
+  dividerLine: { height: 1, flex: 1, backgroundColor: COLORS.borderGreenStrong },
+  dividerText: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
   footerText: {
     color: COLORS.textSecondary,
     ...TYPOGRAPHY.subheadline,

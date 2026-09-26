@@ -223,7 +223,7 @@ export default function FeedScreen({ navigation, route }) {
       }
     } catch (error) {
       if (requestId !== feedRequest.current) return;
-      setFeedError(true);
+      setFeedError(error.status === 409 ? 'refresh' : true);
       // Keep the current feed visible when a requested refresh fails.
     } finally {
       if (requestId !== feedRequest.current) return;
@@ -685,10 +685,10 @@ export default function FeedScreen({ navigation, route }) {
               </View>
             ) : hasMore && !isFetching ? (
               <View style={styles.feedEnd}>
-                {feedError && <Text style={styles.feedEndText}>Couldn’t load more posts.</Text>}
+                {feedError && <Text style={styles.feedEndText}>{feedError === 'refresh' ? 'Refresh to see the latest posts.' : 'Couldn’t load more posts.'}</Text>}
                 <HapticPressable accessibilityRole="button" style={styles.backToTop}
-                  onPress={() => fetchFeed(page + 1, true)}>
-                  <Text style={styles.backToTopText}>{feedError ? 'Try again' : 'Load more posts'}</Text>
+                  onPress={() => feedError === 'refresh' ? fetchFeed(1, false) : fetchFeed(page + 1, true)}>
+                  <Text style={styles.backToTopText}>{feedError === 'refresh' ? 'Refresh posts' : feedError ? 'Try again' : 'Load more posts'}</Text>
                 </HapticPressable>
               </View>
             ) : !hasMore && (verticalFeed.length > 0 || carouselRequests.length > 0) ? (

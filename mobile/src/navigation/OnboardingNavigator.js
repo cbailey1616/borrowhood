@@ -4,7 +4,9 @@ import { ModalHeader } from '../components/ModalControls';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { COLORS, ENABLE_PAID_TIERS } from '../utils/config';
 
-import OnboardingIntroScreen from '../screens/onboarding/OnboardingIntroScreen';
+import OnboardingNeighborhoodScreen from '../screens/onboarding/OnboardingNeighborhoodScreen';
+import { useAuth } from '../context/AuthContext';
+import { initialOnboardingRoute } from '../utils/onboarding';
 import OnboardingFriendsScreen from '../screens/onboarding/OnboardingFriendsScreen';
 import OnboardingPlanScreen from '../screens/onboarding/OnboardingPlanScreen';
 import OnboardingVerifyScreen from '../screens/onboarding/OnboardingVerifyScreen';
@@ -14,17 +16,9 @@ import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 
 const Stack = createNativeStackNavigator();
 
-// Map step number to route name
-const STEP_TO_ROUTE = {
-  1: 'OnboardingIntro',
-  2: 'OnboardingNeighborhood',
-  3: 'OnboardingNeighborhood',
-  4: 'OnboardingNeighborhood',
-  5: 'OnboardingNeighborhood',
-};
-
 export default function OnboardingNavigator({ initialStep = 1 }) {
-  const initialRoute = STEP_TO_ROUTE[initialStep] || 'OnboardingIntro';
+  const { user } = useAuth();
+  const initialRoute = initialOnboardingRoute(initialStep, user);
 
   return (
     <Stack.Navigator
@@ -40,12 +34,16 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
     >
       <Stack.Screen
         name="OnboardingIntro"
-        component={OnboardingIntroScreen}
+        component={OnboardingTownScreen}
         options={{ animation: 'fade_from_bottom' }}
       />
       <Stack.Screen
-        name="OnboardingNeighborhood"
+        name="OnboardingTown"
         component={OnboardingTownScreen}
+      />
+      <Stack.Screen
+        name="OnboardingNeighborhood"
+        component={OnboardingNeighborhoodScreen}
       />
       <Stack.Screen
         name="OnboardingFriends"
