@@ -1,9 +1,10 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
+const mockRefreshUser = jest.fn().mockResolvedValue();
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'plus', isVerified: true, profilePhotoUrl: null, city: 'Boston', state: 'MA', latitude: 42.36, longitude: -71.06 };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true };
-jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
+jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, refreshUser: mockRefreshUser }) }));
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
 beforeEach(() => { jest.clearAllMocks(); api.getCommunities.mockResolvedValue([]); api.joinCommunity.mockResolvedValue({}); api.createCommunity.mockResolvedValue({ id: 'comm-new' }); });
 describe('JoinCommunityScreen', () => {
@@ -47,4 +48,22 @@ describe('JoinCommunityScreen', () => {
     const { findByPlaceholderText } = render(<Screen navigation={mockNavigation} />);
     await findByPlaceholderText(/search/i);
   });
+});
+
+it('requests moderator approval without claiming membership or leaving the screen', async () => {
+  api.getCommunities.mockResolvedValue([{ id: 'hood-1', name: 'Oak Street', isMember: false, rejoinStatus: 'removed' }]);
+  api.joinCommunity.mockRejectedValueOnce(Object.assign(new Error('Approval needed'), { code: 'REJOIN_APPROVAL_REQUIRED' }));
+  const Screen = require('../../src/screens/JoinCommunityScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  fireEvent.press(await screen.findByText('Request to rejoin'));
+  await screen.findByText('Approval requested');
+  expect(api.joinCommunity).toHaveBeenCalledWith('hood-1');
+  expect(mockRefreshUser).not.toHaveBeenCalled(); expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  expect(screen.queryByText('Joined')).toBeNull(); expect(screen.queryByText('Request to rejoin')).toBeNull();
+});
+it('keeps a pending request visible on reopening', async () => {
+  api.getCommunities.mockResolvedValue([{ id: 'hood-1', name: 'Oak Street', isMember: false, rejoinStatus: 'pending' }]);
+  const Screen = require('../../src/screens/JoinCommunityScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('Approval requested'); expect(api.joinCommunity).not.toHaveBeenCalled();
 });

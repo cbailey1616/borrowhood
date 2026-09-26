@@ -7,7 +7,7 @@ export const giveawayCompleteBody = ({ itemTitle } = {}) =>
 
 // Correct previously stored notices when read, without changing their IDs,
 // read state, participant context, or the historical record in the database.
-export function currentNotificationBody(type, body) {
+export function currentNotificationBody(type, body, data = {}) {
   if (typeof body !== 'string') return body;
   if (['return_confirmed', 'giveaway_complete'].includes(type)) {
     return body.replace(/Tap to leave a rating(?: for your neighbor)?\./gi, 'Tap to view your exchange.');
@@ -19,11 +19,13 @@ export function currentNotificationBody(type, body) {
   if (type === 'pickup_confirmed') return body
     .replace(/is now in your hands\./gi, 'has been picked up.')
     .replace(/Remember to return it by /gi, 'Return due ');
-  if (type === 'join_approved') return 'You’re ready to browse and share with your neighbors. Tap to see nearby items.';
+  if (type === 'join_approved' && !data.rejoin) return 'You’re ready to browse and share with your neighbors. Tap to see nearby items.';
   return body;
 }
 
-export function currentNotificationTitle(type, title) {
+export function currentNotificationTitle(type, title, data = {}) {
+  if (data.rejoin && type === 'join_request') return 'Rejoin request';
+  if (data.rejoin && type === 'join_approved') return 'Welcome back';
   return ({ pickup_confirmed: 'Pickup confirmed', giveaway_complete: 'Pickup complete',
     request_approved: 'Request approved', request_declined: 'Request declined',
     join_approved: 'Welcome to Borrowhood', return_reminder: 'Return reminder' })[type] || title;

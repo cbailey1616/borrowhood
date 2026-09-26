@@ -23,7 +23,8 @@ export function notificationDestination(item = {}) {
   if (['rank_up', 'rank_down', 'rank_ready', 'new_rating', 'rating_received'].includes(item.type)) {
     return { name: 'Main', params: { screen: 'Profile', params: { openRating: true } } };
   }
-  if (item.type === 'join_approved') return { name: 'Main', params: { screen: 'Feed' } };
+  if (item.type === 'join_approved') return item.communityId
+    ? { name: 'MyCommunity', params: { communityId: item.communityId } } : { name: 'Main', params: { screen: 'Feed' } };
   if (item.type === 'join_request') return item.communityId
     ? { name: 'CommunityMembers', params: { id: item.communityId } } : { name: 'MyCommunity' };
   if (['verification_expiring', 'verification_failed'].includes(item.type)) return { name: 'IdentityVerification', params: { source: 'generic' } };

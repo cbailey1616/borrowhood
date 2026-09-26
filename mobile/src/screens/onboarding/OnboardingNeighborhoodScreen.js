@@ -70,7 +70,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     const isCurrent = startTask();
     action.current = true; setBusy(true); setError('');
     try {
-      if (!skip && !selected.isMember) {
+      if (!skip && !selected.isMember && selected.rejoinStatus !== 'pending') {
         await api.joinCommunity(selected.id);
         if (!isCurrent()) return;
         // Preserve a successful join if saving progress needs a retry.
@@ -78,7 +78,9 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
       }
       await advance(isCurrent);
     } catch (err) {
-      if (isCurrent()) setError(err.message || 'Could not continue. Please try again.');
+      if (isCurrent() && err.code === 'REJOIN_APPROVAL_REQUIRED') {
+        setNeighborhoods(items => items.map(item => item.id === selected.id ? { ...item, isMember: false, rejoinStatus: 'pending' } : item));
+      } else if (isCurrent()) setError(err.message || 'Could not continue. Please try again.');
     } finally {
       // Navigation can blur this retained screen before finally runs. Release
       // the spinner with the action lock even when results are no longer current.
@@ -115,7 +117,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
   const empty = !loading && !loadError && neighborhoods.length === 0;
   const selected = neighborhoods.find(item => item.id === selectedId);
   const matches = neighborhoods.filter(item => item.name?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
-  const label = loadError ? 'Retry' : empty ? 'Create a neighborhood' : selected?.isMember ? 'Continue' : 'Join neighborhood';
+  const label = loadError ? 'Retry' : empty ? 'Create a neighborhood' : selected?.isMember || selected?.rejoinStatus === 'pending' ? 'Continue' : selected?.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join neighborhood';
   return <>
     <OnboardingLayout step={2} compact keyboardAvoiding scene="onboardingAudience" tone={COLORS.infoMuted}
       title={'Find your\nneighborhood.'} description="Share items and chat with neighbors."
@@ -144,14 +146,15 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
           </View>
           {!matches.length && <Text style={styles.noMatch}>No matching neighborhoods. Try another name.</Text>}
           {matches.map(item => <HapticPressable key={item.id} accessibilityRole="radio"
-            accessibilityLabel={`${item.name}, ${item.memberCount || 0} neighbors${item.isMember ? ', joined' : ''}`}
+            accessibilityLabel={`${item.name}, ${item.memberCount || 0} neighbors${item.isMember ? ', joined' : item.rejoinStatus === 'pending' ? ', approval requested' : item.rejoinStatus === 'removed' ? ', moderator approval required' : ''}`}
             accessibilityState={{ checked: item.id === selectedId, disabled: busy }} disabled={busy}
             onPress={() => setSelectedId(item.id)} style={[styles.row, item.id === selectedId && styles.selected]}>
             <View style={styles.rowIcon}><Ionicons name="home" size={32} illustrated /></View>
             <View style={styles.rowContent}><Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : ''}</Text></View>
+              <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : item.rejoinStatus === 'pending' ? ' · Approval requested' : item.rejoinStatus === 'removed' ? ' · Moderator approval required' : ''}</Text></View>
             <Ionicons name={item.id === selectedId ? 'checkmark-circle' : 'ellipse-outline'} size={26} color={COLORS.primary} />
           </HapticPressable>)}
+          {selected?.rejoinStatus === 'pending' && <Text style={styles.detail} accessibilityLiveRegion="polite">Waiting for a neighborhood moderator. You can continue setting up your account.</Text>}
           <HapticPressable accessibilityRole="button" disabled={busy} onPress={openCreate} style={styles.linkButton}>
             <Text style={styles.link}>Create a neighborhood</Text>
           </HapticPressable>

@@ -10,6 +10,7 @@ vi.mock('../../src/middleware/auth.js', () => ({
  requireVerified: (req,res,next) => next(), requireOrganizer: (req,res,next) => next(),
 }));
 import router from '../../src/routes/communities.js';
+import { ensureCommunityMembershipSchema } from '../../src/services/communityMemberships.js';
 import { ensureCommunityChatSchema, communityConversations } from '../../src/services/communityChat.js';
 const app=express();app.use(express.json());app.use('/communities',router);
 const a=randomUUID(),b=randomUUID(),outsider=randomUUID(),group=randomUUID(),other=randomUUID();
@@ -22,6 +23,7 @@ beforeAll(async()=>{
  CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',joined_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(community_id,user_id));
  CREATE TABLE user_blocks(user_id UUID,blocked_id UUID);`);
  await ensureCommunityChatSchema();await ensureCommunityChatSchema();
+ await ensureCommunityMembershipSchema();
  await state.db.query("INSERT INTO users(id,first_name) VALUES($1,'Alex'),($2,'Blair'),($3,'Outside')",[a,b,outsider]);
  await state.db.query("INSERT INTO communities(id,name) VALUES($1,'Maple'),($2,'Other')",[group,other]);
 },20000);

@@ -405,6 +405,8 @@ jest.mock('./src/services/api', () => ({
     getCommunityMembers: jest.fn().mockResolvedValue([]),
     addCommunityAdmin: jest.fn(),
     removeCommunityMember: jest.fn(),
+    getCommunityRejoinRequests: jest.fn().mockResolvedValue([]),
+    reviewCommunityRejoinRequest: jest.fn().mockResolvedValue({ success: true }),
     createCommunity: jest.fn(),
     // Listings
     getListings: jest.fn().mockResolvedValue([]),

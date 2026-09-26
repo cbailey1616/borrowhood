@@ -71,6 +71,12 @@ export default function JoinCommunityScreen({ navigation, route }) {
       haptics.success();
       navigation.goBack();
     } catch (error) {
+      if (!isCurrent()) return;
+      if (error.code === 'REJOIN_APPROVAL_REQUIRED') {
+        setNeighborhoods(items => items.map(item => item.id === neighborhood.id ? { ...item, isMember: false, rejoinStatus: 'pending' } : item));
+        haptics.success();
+        return;
+      }
       haptics.error();
       showError({
         message: error.message || 'Couldn\'t join this neighborhood right now. Please check your connection and try again.',
@@ -159,6 +165,14 @@ export default function JoinCommunityScreen({ navigation, route }) {
             <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
             <Text style={styles.memberBadgeText}>Joined</Text>
           </View>
+        ) : item.rejoinStatus === 'pending' ? (
+          <View style={styles.memberBadge}>
+            <Ionicons name="time-outline" size={18} color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.memberBadgeText}>Approval requested</Text>
+              <Text style={styles.neighborhoodStats}>Waiting for a neighborhood moderator.</Text>
+            </View>
+          </View>
         ) : (
           <HapticPressable
             style={styles.joinButton}
@@ -169,7 +183,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
             {joiningId === item.id ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.joinButtonText}>Join Neighborhood</Text>
+              <Text style={styles.joinButtonText}>{item.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join Neighborhood'}</Text>
             )}
           </HapticPressable>
         )}

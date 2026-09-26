@@ -11,6 +11,7 @@ vi.mock('../../src/middleware/auth.js', () => ({
   requireVerified: (req, res, next) => next(), requireOrganizer: (req, res, next) => next(),
 }));
 import router from '../../src/routes/communities.js';
+import { ensureCommunityMembershipSchema } from '../../src/services/communityMemberships.js';
 import { originalPhotoUrl, privatePhotoUrl, protectMediaResponses, repairCommunityCoverReferences } from '../../src/services/privatePhotos.js';
 const app = express(); app.use(express.json()); app.use(protectMediaResponses); app.use('/communities', router);
 const owner = randomUUID(), member = randomUUID(), hood = randomUUID();
@@ -30,6 +31,7 @@ beforeAll(async () => {
       announcement TEXT,announcement_at TIMESTAMPTZ,announcement_by UUID,requires_approval BOOLEAN,is_active BOOLEAN DEFAULT true);
     CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID,role TEXT);
     CREATE TABLE listings(community_id UUID,status TEXT,privacy_version INTEGER,visibility TEXT);`);
+  await ensureCommunityMembershipSchema();
   await state.db.query("INSERT INTO users(id,first_name) VALUES($1,'Owner'),($2,'Member')", [owner, member]);
 }, 20000);
 beforeEach(async () => {

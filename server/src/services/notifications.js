@@ -180,13 +180,17 @@ const NOTIFICATION_TEMPLATES = {
   // Community
   join_request: {
     title: 'New Neighbor',
-    body: (data) => data.userName
+    body: (data) => data.rejoin
+      ? `${data.userName || 'A neighbor'} asked to rejoin ${data.communityName || 'your neighborhood'}. Tap to review.`
+      : data.userName
       ? `${data.userName} wants to join ${data.communityName || 'your community'}. Tap to review.`
       : 'Someone wants to join your community. Tap to review their request.',
   },
   join_approved: {
     title: 'Welcome to Borrowhood',
-    body: () => 'You’re ready to browse and share with your neighbors. Tap to see nearby items.',
+    body: data => data.rejoin
+      ? `Your return to ${data.communityName || 'your neighborhood'} was approved. Welcome back!`
+      : 'You’re ready to browse and share with your neighbors. Tap to see nearby items.',
   },
 
   // A neighbor deliberately responded to an item request.
@@ -286,7 +290,8 @@ export async function sendNotification(userId, type, data, options = {}) {
       return null;
     }
 
-    let title = template.title;
+    let title = data.rejoin && type === 'join_request' ? 'Rejoin request'
+      : data.rejoin && type === 'join_approved' ? 'Welcome back' : template.title;
     let body = typeof template.body === 'function' ? template.body(data) : template.body;
     let queue = null;
     const listingId = options.listingId || data.listingId;
