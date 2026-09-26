@@ -37,12 +37,12 @@ it('keeps resend disabled until its countdown ends and explains the replacement 
   await act(async () => jest.advanceTimersByTime(61000));
   await act(async () => fireEvent.press(getByLabelText('Resend code')));
   expect(api.resendSignupCode).toHaveBeenCalledWith('challenge-1');
-  expect(getByText('A new code is on its way. Use the most recent email.')).toBeTruthy();
+  expect(getByText('New code sent. Use the latest email.')).toBeTruthy();
 });
 
 it('offers change email and sign in without requiring a code', () => {
-  const { getByText } = render(<Screen route={route} navigation={navigation} />);
-  fireEvent.press(getByText('Change email address'));
+  const { getByLabelText, getByText } = render(<Screen route={route} navigation={navigation} />);
+  fireEvent.press(getByLabelText('Change email address'));
   expect(navigation.goBack).toHaveBeenCalled();
   fireEvent.press(getByText('Sign in instead'));
   expect(navigation.navigate).toHaveBeenCalledWith('Login');
