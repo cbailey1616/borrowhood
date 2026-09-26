@@ -30,6 +30,12 @@ from the built-in image-generation tool. Member photos are bundled locally and
 shared consistently across Friends, messages, profiles, and posts. Sources are in
 `assets.json`; the drill and its creation notes are in `source-assets/`.
 
+Each capture manifest records the checked-out source commit, capture time,
+dimensions, and image hash. Use fresh native captures from the intended release
+source when replacing App Store pictures; the earlier web-rendered promotional
+concepts are not the upload source. Keep My Neighborhood and the consistent
+fictional member portraits in both iPhone and iPad sets.
+
 Usability review captures include Home with an item due back tomorrow and a
 request to review, Inbox with unread messages only, an owner's pickup screen,
 and an owner's borrowed item with requests still waiting. These are actual app
