@@ -20,7 +20,7 @@ CREATE TABLE item_requests(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id
 CREATE TABLE user_blocks(user_id UUID,blocked_id UUID,PRIMARY KEY(user_id,blocked_id));
 CREATE TABLE friendships(user_id UUID,friend_id UUID,status TEXT,PRIMARY KEY(user_id,friend_id));
 CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,is_active BOOLEAN DEFAULT true,banner_url TEXT,community_type TEXT);
-CREATE TABLE community_memberships(community_id UUID,user_id UUID,role TEXT,PRIMARY KEY(community_id,user_id));
+CREATE TABLE community_memberships(community_id UUID,user_id UUID,role TEXT,joined_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(community_id,user_id));
 CREATE TABLE lending_circle_members(circle_id UUID,user_id UUID,status TEXT,PRIMARY KEY(circle_id,user_id));
 CREATE TABLE lending_circles(id UUID PRIMARY KEY,photo_url TEXT);
 CREATE TABLE listing_shares(listing_id UUID,user_id UUID,request_id UUID,revoked_at TIMESTAMPTZ,expires_at TIMESTAMPTZ);
