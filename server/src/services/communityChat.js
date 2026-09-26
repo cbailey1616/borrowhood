@@ -10,25 +10,42 @@ export async function ensureCommunityChatSchema(db = { query }) {
     client_request_id UUID NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ, UNIQUE(sender_id, client_request_id))`);
   await db.query('CREATE INDEX IF NOT EXISTS community_chat_timeline ON community_chat_messages(community_id, sequence DESC)');
+  await db.query('CREATE INDEX IF NOT EXISTS community_chat_since_join ON community_chat_messages(community_id, created_at, sequence DESC)');
   await db.query(`ALTER TABLE community_memberships
     ADD COLUMN IF NOT EXISTS chat_read_sequence BIGINT NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS chat_muted BOOLEAN NOT NULL DEFAULT false`);
+  // An unknown legacy join date starts now instead of exposing the archive.
+  // Keep every known join date intact, including on repeated startup checks.
+  await db.query('UPDATE community_memberships SET joined_at = NOW() WHERE joined_at IS NULL');
+}
+
+// Internal SQL aliases/parameter slots only. An older thread must not reappear
+// through its replies, preview, or unread badge after someone joins.
+export function communityChatVisibleSql(message, joinedAt) {
+  return `${message}.created_at >= ${joinedAt}
+    AND (${message}.parent_id IS NULL OR EXISTS (
+      SELECT 1 FROM community_chat_messages chat_root
+      WHERE chat_root.id = ${message}.parent_id AND chat_root.community_id = ${message}.community_id
+      AND chat_root.created_at >= ${joinedAt}))`;
 }
 
 // Shared by the inbox and app badge. Explicit membership, not the legacy
-// geographic type, controls chat access. A removed member has no access.
+// geographic type, controls chat access, starting at the current membership.
+// A removed member has no access; rejoining starts a new history boundary.
 export async function communityConversations(userId, db = { query }, communityId = null) {
   const result = await db.query(`SELECT c.id, c.name, c.banner_url, cm.chat_muted,
     m.content, m.deleted_at, m.created_at, m.sender_id,
     (SELECT COUNT(*) FROM community_chat_messages msg
       WHERE msg.community_id = c.id AND msg.sequence > cm.chat_read_sequence
+      AND ${communityChatVisibleSql('msg', 'cm.joined_at')}
       AND msg.sender_id != $1 AND msg.deleted_at IS NULL
       AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
         (b.user_id = $1 AND b.blocked_id = msg.sender_id) OR
         (b.blocked_id = $1 AND b.user_id = msg.sender_id))) AS unread_count
     FROM community_memberships cm JOIN communities c ON c.id = cm.community_id
     LEFT JOIN LATERAL (SELECT content, deleted_at, created_at, sender_id FROM community_chat_messages msg
-      WHERE msg.community_id = c.id AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
+      WHERE msg.community_id = c.id AND ${communityChatVisibleSql('msg', 'cm.joined_at')}
+      AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
         (b.user_id = $1 AND b.blocked_id = msg.sender_id) OR
         (b.blocked_id = $1 AND b.user_id = msg.sender_id))
       ORDER BY sequence DESC LIMIT 1) m ON true
