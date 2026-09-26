@@ -131,7 +131,9 @@ export default function OnboardingScreen({ onComplete }) {
         prev.map(n => n.id === community.id ? { ...n, isMember: true } : n)
       );
     } catch (error) {
-      setGenericErrorSheet({ visible: true, title: 'Error', message: 'Failed to join neighborhood.' });
+      if (error.code === 'REJOIN_APPROVAL_REQUIRED') {
+        setNeighborhoods(items => items.map(item => item.id === community.id ? { ...item, rejoinStatus: 'pending' } : item));
+      } else setGenericErrorSheet({ visible: true, title: 'Error', message: error.message || 'Failed to join neighborhood.' });
     } finally {
       setIsLoading(false);
     }
@@ -313,6 +315,8 @@ export default function OnboardingScreen({ onComplete }) {
                     <Ionicons name="checkmark" size={16} color={COLORS.primary} />
                     <Text style={styles.joinedText}>Joined</Text>
                   </View>
+                ) : item.rejoinStatus === 'pending' ? (
+                  <View style={styles.joinedBadge}><Text style={styles.joinedText}>Approval requested</Text></View>
                 ) : (
                   <HapticPressable
                     style={styles.joinButton}
@@ -320,7 +324,7 @@ export default function OnboardingScreen({ onComplete }) {
                     disabled={isLoading}
                     haptic="medium"
                   >
-                    <Text style={styles.joinButtonText}>Join</Text>
+                    <Text style={styles.joinButtonText}>{item.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join'}</Text>
                   </HapticPressable>
                 )}
               </View>

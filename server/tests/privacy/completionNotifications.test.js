@@ -78,3 +78,10 @@ describe('completion notifications', () => {
     expect(currentNotificationBody('new_message', 'Drill is now in your hands.')).toBe('Drill is now in your hands.');
   });
 });
+
+it('preserves the specific rejoin decision in notification copy', () => {
+  const body = 'Your return to Oak Street was approved. Welcome back!';
+  expect(currentNotificationBody('join_approved', body, { rejoin: true })).toBe(body);
+  expect(currentNotificationTitle('join_approved', 'Welcome back', { rejoin: true })).toBe('Welcome back');
+  expect(currentNotificationTitle('join_request', 'Rejoin request', { rejoin: true })).toBe('Rejoin request');
+});

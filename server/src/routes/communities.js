@@ -1,6 +1,7 @@
 import communityChat from './communityChat.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
+import { joinCommunity, removeCommunityMember, getRejoinRequests, reviewRejoinRequest, withCommunityMembershipLock, requireCommunityModerator } from '../services/communityMemberships.js';
 import { authenticate, requireVerified, requireOrganizer } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { originalPhotoUrl } from '../services/privatePhotos.js';
@@ -85,7 +86,9 @@ router.get('/', authenticate, async (req, res) => {
       `SELECT c.*,
               (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
               (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
-              EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
+              EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member,
+                (SELECT CASE WHEN r.requested_at IS NULL THEN 'removed' ELSE 'pending' END
+                 FROM community_member_removals r WHERE r.community_id = c.id AND r.user_id = $2) AS rejoin_status
        FROM communities c
        WHERE ${whereConditions.join(' AND ')}
        ORDER BY c.name`,
@@ -102,6 +105,7 @@ router.get('/', authenticate, async (req, res) => {
       memberCount: parseInt(c.member_count),
       listingCount: parseInt(c.listing_count),
       isMember: c.is_member,
+      rejoinStatus: c.rejoin_status || null,
     })));
   } catch (err) {
     console.error('Get communities error:', err);
@@ -140,7 +144,9 @@ router.get('/nearby', authenticate, async (req, res) => {
                 ST_Distance(c.center::geography, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) / 1609.34 as distance_miles,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
                 (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
-                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $4) as is_member
+                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $4) as is_member,
+                (SELECT CASE WHEN r.requested_at IS NULL THEN 'removed' ELSE 'pending' END
+                 FROM community_member_removals r WHERE r.community_id = c.id AND r.user_id = $4) AS rejoin_status
          FROM communities c
          WHERE c.is_active = true
            AND c.center IS NOT NULL
@@ -164,7 +170,9 @@ router.get('/nearby', authenticate, async (req, res) => {
                 0 as distance_miles,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
                 (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
-                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
+                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member,
+                (SELECT CASE WHEN r.requested_at IS NULL THEN 'removed' ELSE 'pending' END
+                 FROM community_member_removals r WHERE r.community_id = c.id AND r.user_id = $2) AS rejoin_status
          FROM communities c
          WHERE c.is_active = true AND LOWER(c.city) = LOWER($1)
          ORDER BY c.name
@@ -184,6 +192,7 @@ router.get('/nearby', authenticate, async (req, res) => {
       memberCount: parseInt(c.member_count),
       listingCount: parseInt(c.listing_count),
       isMember: c.is_member,
+      rejoinStatus: c.rejoin_status || null,
     })));
   } catch (err) {
     console.error('Get nearby communities error:', err);
@@ -197,7 +206,9 @@ router.get('/nearby', authenticate, async (req, res) => {
         `SELECT c.*,
                 (SELECT COUNT(*) FROM community_memberships WHERE community_id = c.id) as member_count,
                 (SELECT COUNT(*) FROM listings WHERE community_id = c.id AND status = 'active' AND privacy_version = 1 AND 'town' = ANY(string_to_array(visibility::text, ','))) as listing_count,
-                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member
+                EXISTS(SELECT 1 FROM community_memberships WHERE community_id = c.id AND user_id = $2) as is_member,
+                (SELECT CASE WHEN r.requested_at IS NULL THEN 'removed' ELSE 'pending' END
+                 FROM community_member_removals r WHERE r.community_id = c.id AND r.user_id = $2) AS rejoin_status
          FROM communities c
          WHERE c.is_active = true AND LOWER(c.city) = LOWER($1)
          ORDER BY c.name LIMIT 50`,
@@ -215,6 +226,7 @@ router.get('/nearby', authenticate, async (req, res) => {
         memberCount: parseInt(c.member_count),
         listingCount: parseInt(c.listing_count),
         isMember: c.is_member,
+        rejoinStatus: c.rejoin_status || null,
       })));
     } catch (fallbackErr) {
       console.error('Nearby fallback error:', fallbackErr);
@@ -250,6 +262,9 @@ router.get('/:id', authenticate, async (req, res) => {
       [c.id, req.user.id]
     );
 
+    const removal = await query(`SELECT CASE WHEN requested_at IS NULL THEN 'removed' ELSE 'pending' END AS status
+      FROM community_member_removals WHERE community_id = $1 AND user_id = $2`, [c.id, req.user.id]);
+
     // Get organizers
     const organizers = await query(
       `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
@@ -283,6 +298,7 @@ router.get('/:id', authenticate, async (req, res) => {
       description: c.description,
       city: c.city,
       state: c.state,
+      rejoinStatus: removal.rows[0]?.status || null,
       bannerUrl: c.banner_url || null,
       announcement: c.announcement || null,
       announcementAt: c.announcement_at || null,
@@ -385,36 +401,14 @@ router.patch('/:id', authenticate, async (req, res) => {
 // ============================================
 router.post('/:id/join', authenticate, async (req, res) => {
   try {
-    // Verify community exists
-    const community = await query(
-      'SELECT * FROM communities WHERE id = $1',
-      [req.params.id]
-    );
-
-    if (community.rows.length === 0) {
-      return res.status(404).json({ error: 'Community not found' });
-    }
-
-    // Geographic validation: user's city must match the community's city
-    const userResult = await query('SELECT city FROM users WHERE id = $1', [req.user.id]);
-    const userCity = userResult.rows[0]?.city;
-    const communityCity = community.rows[0].city;
-
-    if (userCity && communityCity && userCity.toLowerCase() !== communityCity.toLowerCase()) {
-      return res.status(403).json({ error: 'You can only join communities in your city.' });
-    }
-
-    await query(
-      `INSERT INTO community_memberships (user_id, community_id)
-       VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
-      [req.user.id, req.params.id]
-    );
-
-    res.json({ success: true });
+    const result = await joinCommunity(req.params.id, req.user.id);
+    if (result.approvalRequired) return res.status(403).json({
+      code: 'REJOIN_APPROVAL_REQUIRED', rejoinStatus: 'pending',
+      error: 'Request sent. A neighborhood moderator must approve your return.',
+    });
+    res.json(result);
   } catch (err) {
-    console.error('Join community error:', err);
-    res.status(500).json({ error: 'Failed to join community' });
+    membershipError(res, err, 'Failed to join community');
   }
 });
 
@@ -424,36 +418,24 @@ router.post('/:id/join', authenticate, async (req, res) => {
 // ============================================
 router.post('/:id/leave', authenticate, async (req, res) => {
   try {
-    // Check if user has active listings or transactions
-    const active = await query(
-      `SELECT
+    const result = await withCommunityMembershipLock(req.params.id, async client => {
+      const active = await client.query(`SELECT
         (SELECT COUNT(*) FROM listings WHERE owner_id = $1 AND community_id = $2 AND status = 'active') as listings,
-        (SELECT COUNT(*) FROM borrow_transactions t
-         JOIN listings l ON t.listing_id = l.id
-         WHERE (t.borrower_id = $1 OR t.lender_id = $1) AND l.community_id = $2
-         AND t.status NOT IN ('completed', 'cancelled')) as transactions`,
-      [req.user.id, req.params.id]
-    );
-
-    const counts = active.rows[0];
-
-    if (parseInt(counts.listings) > 0 || parseInt(counts.transactions) > 0) {
-      return res.status(400).json({
+        (SELECT COUNT(*) FROM borrow_transactions t JOIN listings l ON t.listing_id = l.id
+          WHERE (t.borrower_id = $1 OR t.lender_id = $1) AND l.community_id = $2
+          AND t.status NOT IN ('completed', 'cancelled')) as transactions`, [req.user.id, req.params.id]);
+      const counts = active.rows[0];
+      if (Number(counts.listings) > 0 || Number(counts.transactions) > 0) return {
         error: 'Cannot leave community with active listings or transactions',
-        activeListings: parseInt(counts.listings),
-        activeTransactions: parseInt(counts.transactions),
-      });
-    }
-
-    await query(
-      'DELETE FROM community_memberships WHERE user_id = $1 AND community_id = $2',
-      [req.user.id, req.params.id]
-    );
-
-    res.json({ success: true });
+        activeListings: Number(counts.listings), activeTransactions: Number(counts.transactions),
+      };
+      // Leaving never clears a prior moderator removal.
+      await client.query('DELETE FROM community_memberships WHERE user_id = $1 AND community_id = $2', [req.user.id, req.params.id]);
+      return { success: true };
+    });
+    res.status(result.error ? 400 : 200).json(result);
   } catch (err) {
-    console.error('Leave community error:', err);
-    res.status(500).json({ error: 'Failed to leave community' });
+    membershipError(res, err, 'Failed to leave community');
   }
 });
 
@@ -461,48 +443,37 @@ router.post('/:id/leave', authenticate, async (req, res) => {
 // DELETE /api/communities/:id/members/:userId
 // Remove a member (neighborhood moderator only; creators are moderators)
 // ============================================
+function membershipError(res, err, fallback) {
+  if (err.status) return res.status(err.status).json({ error: err.message });
+  console.error(fallback, err);
+  return res.status(500).json({ error: fallback });
+}
+
 router.delete('/:id/members/:userId', authenticate, async (req, res) => {
-  const { id: communityId, userId } = req.params;
-
   try {
-    // The neighborhood creator receives the organizer role at creation. Any
-    // organizer is a moderator and can remove regular members.
-    const callerRole = await query(
-      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
-      [communityId, req.user.id]
-    );
-    if (!callerRole.rows.length || callerRole.rows[0].role !== 'organizer') {
-      return res.status(403).json({ error: 'Only neighborhood moderators can remove members' });
-    }
-
-    // Cannot remove yourself
-    if (userId === req.user.id) {
-      return res.status(400).json({ error: 'Cannot remove yourself' });
-    }
-
-    // Cannot remove other organizers
-    const targetRole = await query(
-      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
-      [communityId, userId]
-    );
-    if (!targetRole.rows.length) {
-      return res.status(404).json({ error: 'Member not found' });
-    }
-    if (targetRole.rows[0].role === 'organizer') {
-      return res.status(400).json({ error: 'Moderators cannot remove another moderator' });
-    }
-
-    await query(
-      'DELETE FROM community_memberships WHERE community_id = $1 AND user_id = $2',
-      [communityId, userId]
-    );
-
-    res.json({ success: true });
+    res.json(await removeCommunityMember(req.params.id, req.params.userId, req.user.id));
   } catch (err) {
-    console.error('Remove member error:', err);
-    res.status(500).json({ error: 'Failed to remove member' });
+    membershipError(res, err, 'Failed to remove member');
   }
 });
+
+router.get('/:id/rejoin-requests', authenticate, async (req, res) => {
+  try {
+    res.json(await getRejoinRequests(req.params.id, req.user.id));
+  } catch (err) {
+    membershipError(res, err, 'Failed to load rejoin requests');
+  }
+});
+
+for (const decision of ['approve', 'decline']) {
+  router.post(`/:id/rejoin-requests/:userId/${decision}`, authenticate, async (req, res) => {
+    try {
+      res.json(await reviewRejoinRequest(req.params.id, req.params.userId, req.user.id, decision === 'approve'));
+    } catch (err) {
+      membershipError(res, err, 'Failed to review rejoin request');
+    }
+  });
+}
 
 // ============================================
 // GET /api/communities/:id/members
@@ -664,39 +635,16 @@ router.post('/', authenticate,
 // Add another user as admin/organizer (only current organizers can do this)
 // ============================================
 router.post('/:id/add-admin', authenticate, async (req, res) => {
-  const { userId } = req.body;
-
   try {
-    // Check if requester is an organizer
-    const membership = await query(
-      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2',
-      [req.params.id, req.user.id]
-    );
-
-    if (membership.rows.length === 0 || membership.rows[0].role !== 'organizer') {
-      return res.status(403).json({ error: 'Only organizers can add admins' });
-    }
-
-    // Check if target user is a member
-    const targetMembership = await query(
-      'SELECT id FROM community_memberships WHERE community_id = $1 AND user_id = $2',
-      [req.params.id, userId]
-    );
-
-    if (targetMembership.rows.length === 0) {
-      return res.status(400).json({ error: 'User must be a member first' });
-    }
-
-    // Promote to organizer
-    await query(
-      `UPDATE community_memberships SET role = 'organizer' WHERE community_id = $1 AND user_id = $2`,
-      [req.params.id, userId]
-    );
-
+    await withCommunityMembershipLock(req.params.id, async client => {
+      await requireCommunityModerator(client, req.params.id, req.user.id);
+      const result = await client.query(`UPDATE community_memberships SET role = 'organizer'
+        WHERE community_id = $1 AND user_id = $2 RETURNING user_id`, [req.params.id, req.body.userId]);
+      if (!result.rows.length) throw Object.assign(new Error('User must be a member first'), { status: 400 });
+    });
     res.json({ success: true });
   } catch (err) {
-    console.error('Add admin error:', err);
-    res.status(500).json({ error: 'Failed to add admin' });
+    membershipError(res, err, 'Failed to add admin');
   }
 });
 

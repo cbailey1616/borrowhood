@@ -17,7 +17,8 @@ const createdCommunityIds = [];
 
 beforeAll(async () => {
   app = await createTestApp(
-    { path: '/api/communities', module: '../../src/routes/communities.js' }
+    { path: '/api/communities', module: '../../src/routes/communities.js' },
+    { path: '/api/notifications', module: '../../src/routes/notifications.js' }
   );
 
   // Create test users with city/state set
@@ -372,5 +373,38 @@ describe('DELETE /api/communities/:id/members/:userId', () => {
       .set('Authorization', `Bearer ${userA.token}`);
     expect(otherModerator.status).toBe(400);
     expect(otherModerator.body.error).toContain('another moderator');
+  });
+});
+
+describe('moderator approval after removal', () => {
+  it('serializes concurrent removal, join retries and approval and routes the moderator notification', async () => {
+    const id = await createTestCommunity({ name: 'Rejoin review test', city: 'CommCity', state: 'CS' });
+    createdCommunityIds.push(id);
+    await addCommunityMember(userA.userId, id, 'organizer');
+    await addCommunityMember(userB.userId, id, 'member');
+    const join = () => request(app).post(`/api/communities/${id}/join`).set('Authorization', `Bearer ${userB.token}`);
+    const remove = () => request(app).delete(`/api/communities/${id}/members/${userB.userId}`).set('Authorization', `Bearer ${userA.token}`);
+    const membership = () => query('SELECT * FROM community_memberships WHERE community_id=$1 AND user_id=$2', [id, userB.userId]);
+    const [removed, racingJoin] = await Promise.all([remove(), join()]);
+    expect(removed.status).toBe(200); expect([200, 403]).toContain(racingJoin.status);
+    expect((await membership()).rows).toHaveLength(0);
+    const retries = await Promise.all([join(), join(), join()]);
+    retries.forEach(res => { expect(res.status).toBe(403); expect(res.body.code).toBe('REJOIN_APPROVAL_REQUIRED'); });
+    expect((await membership()).rows).toHaveLength(0);
+    const pending = await query("SELECT * FROM notifications WHERE type='join_request' AND push_data->>'communityId'=$1", [id]);
+    expect(pending.rows).toHaveLength(1); expect(pending.rows[0].user_id).toBe(userA.userId);
+    const inbox = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userA.token}`);
+    expect(inbox.status).toBe(200);
+    expect(inbox.body.notifications.find(n => n.id === pending.rows[0].id)?.communityId).toBe(id);
+    const approve = user => request(app).post(`/api/communities/${id}/rejoin-requests/${userB.userId}/approve`).set('Authorization', `Bearer ${user.token}`);
+    expect((await approve(userB)).status).toBe(403);
+    const reviewed = await Promise.all([approve(userA), approve(userA)]);
+    expect(reviewed.map(res => res.status).sort()).toEqual([200, 404]);
+    expect((await membership()).rows).toHaveLength(1);
+    expect((await query("SELECT * FROM notifications WHERE type='join_approved' AND push_data->>'communityId'=$1", [id])).rows).toHaveLength(1);
+    const approvedInbox = await request(app).get('/api/notifications').set('Authorization', `Bearer ${userB.token}`);
+    expect(approvedInbox.body.notifications.find(n => n.communityId === id)).toMatchObject({ title: 'Welcome back', body: expect.stringContaining('was approved') });
+    expect((await remove()).status).toBe(200); expect((await join()).status).toBe(403);
+    expect((await membership()).rows).toHaveLength(0);
   });
 });

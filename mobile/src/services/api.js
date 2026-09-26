@@ -283,6 +283,12 @@ const addCommunityAdmin = (communityId, userId) =>
 const removeCommunityMember = (communityId, userId) =>
   del(`/communities/${communityId}/members/${userId}`);
 
+const getCommunityRejoinRequests = (communityId) =>
+  get(`/communities/${communityId}/rejoin-requests`);
+
+const reviewCommunityRejoinRequest = (communityId, userId, decision) =>
+  post(`/communities/${communityId}/rejoin-requests/${userId}/${decision}`);
+
 const createCommunity = (data) =>
   post('/communities', data);
 
@@ -900,6 +906,8 @@ export default {
   getCommunityMembers,
   addCommunityAdmin,
   removeCommunityMember,
+  getCommunityRejoinRequests,
+  reviewCommunityRejoinRequest,
   createCommunity,
   // Listings
   getListings,

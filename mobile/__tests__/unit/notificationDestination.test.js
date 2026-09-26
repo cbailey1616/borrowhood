@@ -48,3 +48,7 @@ describe('notification destinations', () => {
     expect(notificationDestination({ type: 'item_match', listingId: 'item' })).toBeNull();
   });
 });
+
+it('opens the neighborhood after a moderator approves a return', () => {
+  expect(notificationDestination({ type: 'join_approved', communityId: 'hood-1' })).toEqual({ name: 'MyCommunity', params: { communityId: 'hood-1' } });
+});

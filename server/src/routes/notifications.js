@@ -51,8 +51,8 @@ router.get('/', authenticate, async (req, res) => {
       notifications: result.rows.map(n => ({
         id: n.id,
         type: n.type,
-        title: currentNotificationTitle(n.type, n.title),
-        body: currentNotificationBody(n.type, n.body),
+        title: currentNotificationTitle(n.type, n.title, n.push_data || {}),
+        body: currentNotificationBody(n.type, n.body, n.push_data || {}),
         ...(n.queue_listing_id ? requestQueueCopy(Number(n.request_count), n.listing_title, n.from_display_name || n.from_first_name) : {}),
         transactionId: n.transaction_id,
         listingId: n.item_listing_id,
@@ -66,6 +66,7 @@ router.get('/', authenticate, async (req, res) => {
         discussionId: n.discussion_id,
         threadId: n.thread_id,
         circleId: n.circle_id,
+        communityId: n.push_data?.communityId || null,
         fromUserId: n.from_user_id,
         fromUser: n.from_first_name && Number(n.request_count) < 2 ? {
           firstName: n.from_display_name || n.from_first_name,

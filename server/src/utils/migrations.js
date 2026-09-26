@@ -1,3 +1,4 @@
+import { ensureCommunityMembershipSchema } from '../services/communityMemberships.js';
 import { ensureFeedWindowSchema } from '../services/feedWindows.js';
 import { ensureCommunityChatSchema } from '../services/communityChat.js';
 import { repairCommunityCoverReferences } from '../services/privatePhotos.js';
@@ -711,6 +712,7 @@ export async function runMigrations() {
     await ensurePickupFollowupSchema();
     await ensureReturnRecoverySchema();
     await ensureCommunityChatSchema();
+    await ensureCommunityMembershipSchema();
     await ensureVerificationPurchaseSchema();
     logger.info('Migrations check complete');
   } catch (err) {

@@ -1,6 +1,6 @@
 import ActionSheet from '../components/ActionSheet';
 import ShimmerImage from '../components/ShimmerImage';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,21 @@ export default function CommunityMembersScreen({ route, navigation }) {
   const [userRole, setUserRole] = useState(route?.params?.role || 'member');
   const [loadError, setLoadError] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState(null);
+  const [rejoinRequests, setRejoinRequests] = useState([]);
+  const [requestLoadError, setRequestLoadError] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
+  const reviewLock = useRef(false);
   const isOrganizer = userRole === 'organizer';
+
+  const fetchRequests = useCallback(async () => {
+    try {
+      const requests = await api.getCommunityRejoinRequests(communityId);
+      setRejoinRequests(requests || []);
+      setRequestLoadError(false);
+    } catch {
+      setRequestLoadError(true);
+    }
+  }, [communityId]);
 
   const fetchMembers = useCallback(async () => {
     if (!communityId) { setLoading(false); return; }
@@ -36,7 +50,10 @@ export default function CommunityMembersScreen({ route, navigation }) {
       const data = await api.getCommunityMembers(communityId, { limit: 100 });
       setMembers(data || []);
       const me = (data || []).find(m => m.id === user?.id);
-      setUserRole(me?.role || route?.params?.role || 'member');
+      const role = me?.role || route?.params?.role || 'member';
+      setUserRole(role);
+      if (role === 'organizer') await fetchRequests();
+      else { setRejoinRequests([]); setRequestLoadError(false); }
       setLoadError(false);
     } catch (err) {
       setLoadError(true);
@@ -44,9 +61,13 @@ export default function CommunityMembersScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [communityId, route?.params?.role, user?.id]);
+  }, [communityId, route?.params?.role, user?.id, fetchRequests]);
 
-  useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  useEffect(() => {
+    fetchMembers();
+    const unsubscribe = navigation.addListener?.('focus', fetchMembers);
+    return () => unsubscribe?.();
+  }, [fetchMembers, navigation]);
   useEffect(() => {
     navigation.setOptions?.({ title: 'Neighbors' });
   }, [isOrganizer, navigation]);
@@ -78,7 +99,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
   const handleRemove = (member) => {
     Alert.alert(
       'Remove Member',
-      `Remove ${member.firstName} from this neighborhood?`,
+      `Remove ${member.firstName} from this neighborhood? They’ll need a moderator’s approval to rejoin.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -101,6 +122,24 @@ export default function CommunityMembersScreen({ route, navigation }) {
         },
       ]
     );
+  };
+
+  const reviewRequest = async (request, decision) => {
+    if (reviewLock.current) return;
+    reviewLock.current = true;
+    setReviewingId(request.id);
+    try {
+      await api.reviewCommunityRejoinRequest(communityId, request.id, decision);
+      setRejoinRequests(current => current.filter(item => item.id !== request.id));
+      haptics.success();
+      showToast(decision === 'approve' ? `${request.firstName} can rejoin` : 'Request declined', 'success');
+      if (decision === 'approve') await fetchMembers();
+    } catch (err) {
+      showError({ message: err.message || 'Could not review this request. Please try again.' });
+    } finally {
+      reviewLock.current = false;
+      setReviewingId(null);
+    }
   };
 
   const renderMember = ({ item }) => (
@@ -162,7 +201,32 @@ export default function CommunityMembersScreen({ route, navigation }) {
         renderItem={renderMember}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.cardGap} />}
-        ListHeaderComponent={
+        ListHeaderComponent={<>
+          {isOrganizer && (requestLoadError || rejoinRequests.length > 0) && <View style={styles.requestsSection}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Rejoin requests</Text>
+            <Text style={styles.requestDetail}>These neighbors were removed. Approve a request to welcome them back.</Text>
+            {requestLoadError && <View>
+              <Text accessibilityRole="alert" style={styles.requestDetail}>Could not load rejoin requests.</Text>
+              <ActionButton label="Retry requests" icon="refresh-outline" onPress={fetchRequests} />
+            </View>}
+            {rejoinRequests.map(request => <View key={request.id} style={styles.requestCard}>
+              <View style={styles.requestPerson}>
+                <ShimmerImage placeholderIcon="person" source={{ uri: request.profilePhotoUrl || null }} style={styles.avatar} />
+                <Text style={[styles.memberName, { flex: 1 }]}>{request.firstName} {request.lastName}</Text>
+                {reviewingId === request.id && <ActivityIndicator color={COLORS.spinner} />}
+              </View>
+              <View style={styles.requestActions}>
+                <HapticPressable accessibilityRole="button" accessibilityLabel={`Approve ${request.firstName}’s return`}
+                  disabled={!!reviewingId} onPress={() => reviewRequest(request, 'approve')} style={styles.approveButton}>
+                  <Text style={styles.approveLabel}>Approve</Text>
+                </HapticPressable>
+                <HapticPressable accessibilityRole="button" accessibilityLabel={`Decline ${request.firstName}’s return`}
+                  disabled={!!reviewingId} onPress={() => reviewRequest(request, 'decline')} style={styles.declineButton}>
+                  <Text style={styles.declineLabel}>Decline</Text>
+                </HapticPressable>
+              </View>
+            </View>)}
+          </View>}
           <View style={styles.listHeader}>
             <Text style={styles.sectionTitle}>Neighbors</Text>
             <View style={styles.countBadge}>
@@ -171,7 +235,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
             <HapticPressable accessibilityLabel="Invite neighbors" onPress={() => navigation.navigate('InviteMembers', { communityId })}
               style={{ marginLeft: 'auto', backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 12 }}><Text style={{ color: COLORS.surface }}>+ Invite</Text></HapticPressable>
           </View>
-        }
+        </>}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No members yet</Text>
@@ -188,6 +252,15 @@ export default function CommunityMembersScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  requestsSection: { gap: SPACING.sm, marginBottom: SPACING.xl },
+  requestDetail: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
+  requestCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.borderBrown, padding: SPACING.md, gap: SPACING.md },
+  requestPerson: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  requestActions: { flexDirection: 'row', gap: SPACING.sm },
+  approveButton: { flex: 1, minHeight: 44, padding: SPACING.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primary, borderRadius: RADIUS.full },
+  approveLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.surface },
+  declineButton: { flex: 1, minHeight: 44, padding: SPACING.sm, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.borderBrown, borderRadius: RADIUS.full },
+  declineLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.error },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

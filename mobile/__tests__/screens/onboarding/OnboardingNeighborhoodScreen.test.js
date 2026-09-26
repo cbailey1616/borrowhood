@@ -142,3 +142,16 @@ it('ignores a join from a previous visit and releases its controls when it settl
   await press(screen, 'Not now');
   expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
 });
+it('lets a removed neighbor request approval and continue onboarding without joining', async () => {
+  api.getCommunities.mockResolvedValue([{ ...neighborhood, rejoinStatus: 'removed' }]);
+  api.joinCommunity.mockRejectedValueOnce(Object.assign(new Error('Approval required'), { code: 'REJOIN_APPROVAL_REQUIRED' }));
+  const screen = render(<Screen navigation={navigation} />);
+  fireEvent.press(await screen.findByRole('radio', { name: /Oak Street/ }));
+  await press(screen, 'Request to rejoin');
+  expect(screen.getByText(/Waiting for a neighborhood moderator/)).toBeTruthy();
+  expect(screen.queryByText(/· Joined/)).toBeNull();
+  expect(api.updateOnboardingStep).not.toHaveBeenCalled();
+  await press(screen, 'Continue');
+  expect(api.joinCommunity).toHaveBeenCalledTimes(1);
+  expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
+});
