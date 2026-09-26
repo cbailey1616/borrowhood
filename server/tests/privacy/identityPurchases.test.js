@@ -92,7 +92,13 @@ beforeEach(async () => {
     if (!state.sessions.has(id)) throw new Error('Provider could not retrieve identity session');
     return state.sessions.get(id);
   });
-  state.sessionCreate.mockReset().mockImplementation(async (_params, { idempotencyKey }) => {
+  state.sessionCreate.mockReset().mockImplementation(async (params, { idempotencyKey }) => {
+    // Match Stripe's validation so an app-only return scheme cannot pass mocks
+    // and then break every live verification request.
+    const returnUrl = new URL(params.return_url);
+    if (returnUrl.protocol !== 'https:' || returnUrl.username || returnUrl.password) {
+      throw Object.assign(new Error('Not a valid URL'), { code: 'url_invalid', param: 'return_url' });
+    }
     if (!state.sessionsByKey.has(idempotencyKey)) {
       const created = session({ id: `vs_created_${state.sessionsByKey.size + 1}` });
       state.sessions.set(created.id, created);
@@ -151,6 +157,7 @@ it('starts a free hosted check, durably grants launch eligibility, and never mar
   expect(await rows("SELECT * FROM verification_entitlements WHERE source='launch_free'")).toHaveLength(1);
   expect(state.sessionCreate).toHaveBeenCalledWith(expect.objectContaining({
     type: 'document', metadata: { customer_id: 'cus_created', userId },
+    return_url: 'https://borrowhood-production.up.railway.app/verification-complete',
     options: { document: expect.objectContaining({ require_live_capture: true, require_matching_selfie: true }) },
   }), { idempotencyKey: `identity-${userId}-0-initial` });
   paidMode();
@@ -170,6 +177,20 @@ it('reuses one existing session for hosted/native retries without creating anoth
   expect(state.sessionCreate).not.toHaveBeenCalled();
   expect(state.customerCreate).not.toHaveBeenCalled();
   expect(state.ephemeralCreate).toHaveBeenCalledWith({ verification_session: existing.id }, { apiVersion: '2024-06-20' });
+});
+
+it('retries a rejected Stripe request without resetting identity or changing its idempotency key', async () => {
+  state.sessionCreate.mockRejectedValueOnce(Object.assign(new Error('Not a valid URL'), {
+    code: 'url_invalid', param: 'return_url',
+  }));
+  await expect(startIdentitySession(userId)).rejects.toMatchObject({ code: 'url_invalid' });
+  expect(await user()).toMatchObject({ is_verified: false, stripe_identity_session_id: null });
+  expect(await rows('SELECT * FROM verification_entitlements')).toHaveLength(0);
+  expect(await startIdentitySession(userId)).toMatchObject({ sessionId: 'vs_created_1' });
+  expect(state.sessionCreate.mock.calls.map(call => call[1].idempotencyKey)).toEqual([
+    `identity-${userId}-0-initial`, `identity-${userId}-0-initial`,
+  ]);
+  expect(state.sessionsByKey.size).toBe(1);
 });
 
 it('does not turn a failed provider lookup into a new billable check', async () => {
