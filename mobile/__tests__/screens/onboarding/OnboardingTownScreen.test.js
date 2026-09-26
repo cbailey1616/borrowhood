@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import * as Location from 'expo-location';
 import api from '../../../src/services/api';
 import Screen from '../../../src/screens/onboarding/OnboardingTownScreen';
+import navigationVisit from '../../setup/navigationVisit';
 
 const mockRefreshUser = jest.fn();
 const chooseState = screen => {
@@ -10,12 +11,15 @@ const chooseState = screen => {
   fireEvent(screen.getByTestId('Onboarding.statePicker'), 'valueChange', 'MA');
   fireEvent.press(screen.getByText('Done'));
 };
-const navigation = { navigate: jest.fn(), addListener: jest.fn(() => jest.fn()) };
+let visit;
+let navigation;
 let mockUser = { firstName: 'Chris' };
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, refreshUser: mockRefreshUser }) }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  visit = navigationVisit();
+  navigation = visit.navigation;
   mockUser = { firstName: 'Chris' };
   api.updateProfile.mockResolvedValue({});
   api.completeOnboarding.mockResolvedValue({});
@@ -125,4 +129,30 @@ it('preserves verified identity fields when continuing', async () => {
   fireEvent.press(screen.getByText('Continue'));
   await waitFor(() => expect(navigation.navigate).toHaveBeenCalledWith('OnboardingNeighborhood'));
   expect(api.updateProfile).not.toHaveBeenCalled();
+});
+it('keeps town fields and Continue usable when returning from neighborhoods', async () => {
+  mockUser = { firstName: 'Chris', city: 'Upton', state: 'MA' };
+  const screen = render(<Screen navigation={navigation} />);
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue' })));
+  expect(navigation.navigate).toHaveBeenCalledWith('OnboardingNeighborhood');
+  await act(async () => visit.focus());
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  expect(screen.getByLabelText('Town or city').props.editable).toBe(true);
+  fireEvent.changeText(screen.getByLabelText('Town or city'), 'Mendon');
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue' })));
+  expect(api.updateProfile).toHaveBeenLastCalledWith({ firstName: 'Chris', city: 'Mendon', state: 'MA' });
+  expect(navigation.navigate).toHaveBeenCalledTimes(2);
+});
+it('releases location controls without applying a result from a previous visit', async () => {
+  let resolve;
+  Location.requestForegroundPermissionsAsync.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  const screen = render(<Screen navigation={navigation} />);
+  fireEvent.press(screen.getByRole('button', { name: 'Use my current location' }));
+  act(() => visit.blur());
+  await act(async () => visit.focus());
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  await act(async () => resolve({ status: 'granted' }));
+  expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  expect(screen.getByLabelText('Town or city').props.editable).toBe(true);
 });

@@ -3,13 +3,17 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import * as Location from 'expo-location';
 import api from '../../../src/services/api';
 import Screen from '../../../src/screens/onboarding/OnboardingNeighborhoodScreen';
-const navigation = { navigate: jest.fn(), addListener: jest.fn(() => jest.fn()) };
+import navigationVisit from '../../setup/navigationVisit';
+let visit;
+let navigation;
 const mockRefreshUser = jest.fn();
 const mockUser = { id: 'user-1', firstName: 'Chris', city: 'Upton', state: 'MA' };
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, refreshUser: mockRefreshUser }) }));
 const neighborhood = { id: 'n-1', name: 'Oak Street', memberCount: 12, isMember: false };
 beforeEach(() => {
   jest.clearAllMocks();
+  visit = navigationVisit();
+  navigation = visit.navigation;
   api.getCommunities.mockResolvedValue([]);
   api.joinCommunity.mockResolvedValue({ success: true });
   api.createCommunity.mockResolvedValue({ id: 'new-1', isFounder: true });
@@ -92,7 +96,35 @@ it('keeps the new neighborhood if progress fails and prevents a second creation 
   expect(api.createCommunity).toHaveBeenCalledTimes(1);
   expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
 });
-it('does not navigate after the user leaves during a join', async () => {
+it.each(['join', 'continue', 'skip', 'create'])('can return from verification and continue after %s', async mode => {
+  const joined = { ...neighborhood, id: mode === 'create' ? 'new-1' : neighborhood.id, isMember: true };
+  api.getCommunities.mockResolvedValue(mode === 'create' ? [] : [mode === 'continue' ? joined : neighborhood]);
+  const screen = render(<Screen navigation={navigation} />);
+  if (mode === 'create') {
+    await screen.findByText('No neighborhoods nearby yet');
+    await press(screen, 'Create a neighborhood');
+    fireEvent.changeText(screen.getByLabelText('Neighborhood name'), 'Oak Street');
+    await press(screen, 'Create neighborhood');
+  } else if (mode === 'skip') {
+    await press(screen, 'Not now');
+  } else {
+    fireEvent.press(await screen.findByRole('radio', { name: /Oak Street/ }));
+    await press(screen, mode === 'continue' ? 'Continue' : 'Join neighborhood');
+  }
+  expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
+  expect(navigation.isFocused()).toBe(false);
+
+  api.getCommunities.mockResolvedValue([mode === 'skip' ? neighborhood : joined]);
+  await act(async () => visit.focus());
+  expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Not now' })).toBeEnabled();
+  expect(screen.getByRole('radio', { name: /Oak Street/ })).toBeEnabled();
+  await press(screen, mode === 'skip' ? 'Not now' : 'Continue');
+  expect(navigation.navigate).toHaveBeenCalledTimes(2);
+  expect(api.joinCommunity).toHaveBeenCalledTimes(mode === 'join' ? 1 : 0);
+  expect(api.createCommunity).toHaveBeenCalledTimes(mode === 'create' ? 1 : 0);
+});
+it('ignores a join from a previous visit and releases its controls when it settles', async () => {
   let resolve;
   api.getCommunities.mockResolvedValue([neighborhood]);
   api.joinCommunity.mockReturnValueOnce(new Promise(done => { resolve = done; }));
@@ -100,8 +132,13 @@ it('does not navigate after the user leaves during a join', async () => {
   fireEvent.press(await screen.findByRole('radio', { name: 'Oak Street, 12 neighbors' }));
   fireEvent.press(screen.getByRole('button', { name: 'Join neighborhood' }));
   await waitFor(() => expect(api.joinCommunity).toHaveBeenCalledTimes(1));
-  act(() => navigation.addListener.mock.calls.find(([event]) => event === 'blur')[1]());
+  act(() => visit.blur());
+  await act(async () => visit.focus());
+  expect(screen.getByRole('button', { name: 'Not now' })).toBeDisabled();
   await act(async () => resolve({ success: true }));
   expect(api.updateOnboardingStep).not.toHaveBeenCalled();
   expect(navigation.navigate).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+  await press(screen, 'Not now');
+  expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
 });

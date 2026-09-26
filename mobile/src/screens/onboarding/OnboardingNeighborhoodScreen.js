@@ -80,8 +80,10 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     } catch (err) {
       if (isCurrent()) setError(err.message || 'Could not continue. Please try again.');
     } finally {
+      // Navigation can blur this retained screen before finally runs. Release
+      // the spinner with the action lock even when results are no longer current.
       action.current = false;
-      if (isCurrent()) setBusy(false);
+      setBusy(false);
     }
   };
   const openCreate = () => { setName(''); setDescription(''); setCreateError(''); setCreateOpen(true); };
@@ -106,7 +108,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
       if (isCurrent()) (created ? setError : setCreateError)(err.message || 'Could not create the neighborhood. Please try again.');
     } finally {
       action.current = false;
-      if (isCurrent()) setBusy(false);
+      setBusy(false);
     }
   };
 

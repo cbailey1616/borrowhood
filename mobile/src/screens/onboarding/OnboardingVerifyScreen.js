@@ -15,6 +15,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const startTask = useNavigationTask(navigation, user?.id);
   const purchase = useVerificationOffer(navigation, startTask, user?.id);
+  // Release completion UI together with this lock, even after leaving the step.
   const action = useRef(false);
   const statusVersion = useRef(0);
   const [checking, setChecking] = useState(true);
@@ -54,7 +55,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
     action.current = true; setError('');
     try { await complete(isCurrent); }
     catch { if (isCurrent()) setError('Could not finish setup. Please try again.'); }
-    finally { action.current = false; if (isCurrent()) setFinishing(false); }
+    finally { action.current = false; setFinishing(false); }
   };
   const verify = async () => {
     if (action.current) return;
@@ -69,7 +70,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
       await complete(isCurrent);
     } catch (err) {
       if (isCurrent()) setError(err.message || 'Could not start verification. Please try again.');
-    } finally { action.current = false; if (isCurrent()) setFinishing(false); }
+    } finally { action.current = false; setFinishing(false); }
   };
   const verified = status === 'verified';
   const processing = ['submitted', 'processing'].includes(status);

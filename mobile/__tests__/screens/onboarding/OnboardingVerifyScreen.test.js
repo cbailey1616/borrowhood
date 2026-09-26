@@ -3,11 +3,15 @@ import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import api from '../../../src/services/api';
 import { openAuthSessionAsync } from 'expo-web-browser';
 import Screen from '../../../src/screens/onboarding/OnboardingVerifyScreen';
-const navigation = { navigate: jest.fn(), addListener: jest.fn(() => jest.fn()) };
+import navigationVisit from '../../setup/navigationVisit';
+let visit;
+let navigation;
 const mockRefreshUser = jest.fn();
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-1' }, refreshUser: mockRefreshUser }) }));
 beforeEach(() => {
   jest.clearAllMocks();
+  visit = navigationVisit();
+  navigation = visit.navigation;
   api.getVerificationStatus.mockResolvedValue({ status: 'none' });
   api.getVerificationEligibility.mockResolvedValue({ mode: 'free_launch', paymentRequired: false, canStartVerification: true, hasVerificationPurchase: false, isVerified: false });
   api.completeOnboarding.mockResolvedValue({});
@@ -86,4 +90,21 @@ it('submits only one completion request after repeated taps', async () => {
   act(() => { fireEvent.press(button); fireEvent.press(button); });
   expect(api.completeOnboarding).toHaveBeenCalledTimes(1);
   await act(async () => resolve({}));
+});
+it('releases a completion from an earlier visit without refreshing or advancing', async () => {
+  let resolve;
+  api.completeOnboarding.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  const screen = render(<Screen navigation={navigation} />);
+  await ready(screen);
+  fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
+  act(() => visit.blur());
+  await act(async () => visit.focus());
+  expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+  await act(async () => resolve({}));
+  expect(mockRefreshUser).not.toHaveBeenCalled();
+  expect(navigation.navigate).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+  expect(api.completeOnboarding).toHaveBeenCalledTimes(2);
+  expect(mockRefreshUser).toHaveBeenCalledTimes(1);
 });

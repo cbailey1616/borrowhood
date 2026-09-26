@@ -16,6 +16,8 @@ import { US_STATES, normalizeUSState, stateName } from '../../utils/usStates';
 export default function OnboardingTownScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const startTask = useNavigationTask(navigation, user?.id);
+  // Results require the current visit; loading flags follow the action lock
+  // until it is released, including when navigation has blurred this screen.
   const action = useRef(null);
   const locked = user?.isVerified === true;
   const [city, setCity] = useState(user?.city || '');
@@ -45,7 +47,7 @@ export default function OnboardingTownScreen({ navigation }) {
       if (!town || !stateCode) throw new Error('Could not identify your town. Please enter it below.');
       setCity(town); setState(stateCode);
     } catch (e) { if (isCurrent()) setError(e.message || 'Could not find your town. You can enter it below.'); }
-    finally { action.current = null; if (isCurrent()) setLocating(false); }
+    finally { action.current = null; setLocating(false); }
   };
   const finish = async () => {
     if (action.current) return;
@@ -63,7 +65,7 @@ export default function OnboardingTownScreen({ navigation }) {
       await refreshUser();
       if (isCurrent()) navigation.navigate('OnboardingNeighborhood');
     } catch { if (isCurrent()) setError('Could not save your details. Check your connection and try again.'); }
-    finally { action.current = null; if (isCurrent()) setBusy(false); }
+    finally { action.current = null; setBusy(false); }
   };
   return (
     <OnboardingLayout step={1} compact keyboardAvoiding scene="onboardingTown" tone={COLORS.accentMuted}
