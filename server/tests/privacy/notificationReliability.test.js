@@ -56,7 +56,7 @@ beforeAll(async () => {
       user_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, reply_count INT DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,banner_url TEXT,is_active BOOLEAN DEFAULT true,community_type TEXT DEFAULT 'neighborhood');
-    CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',PRIMARY KEY(community_id,user_id));
+    CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',joined_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(community_id,user_id));
     CREATE TABLE user_blocks(user_id UUID, blocked_id UUID);`);
   await ensureCommunityChatSchema();
   await ensureNotificationSchema();
@@ -444,4 +444,19 @@ it('combines neighborhood channels with direct messages and counts each unread c
   expect(badge.body.messages).toBe(1);
   await state.db.query('UPDATE community_memberships SET chat_muted=true WHERE community_id=$1',[hood]);
   expect((await request(app).get('/notifications/badge-count').set('x-user',A)).body.messages).toBe(0);
+});
+it('does not give new neighborhood members an old preview or notification badge', async () => {
+  const hood = '99999999-9999-4999-8999-999999999998';
+  await state.db.query("INSERT INTO communities(id,name) VALUES($1,'New neighborhood')", [hood]);
+  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id)
+    VALUES($1,$2,'Before joining',gen_random_uuid())`,[hood,B]);
+  await state.db.query('INSERT INTO community_memberships(community_id,user_id) VALUES($1,$2)',[hood,A]);
+  const inbox = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
+  expect(inbox.body.find(c=>c.communityId===hood)).toMatchObject({lastMessage:null,lastMessageAt:null,unreadCount:0});
+  expect((await request(app).get('/notifications/badge-count').set('x-user',A)).body.messages).toBe(0);
+  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id)
+    VALUES($1,$2,'After joining',gen_random_uuid())`,[hood,B]);
+  const updated = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
+  expect(updated.body.find(c=>c.communityId===hood)).toMatchObject({lastMessage:'After joining',unreadCount:1});
+  expect((await request(app).get('/notifications/badge-count').set('x-user',A)).body.messages).toBe(1);
 });

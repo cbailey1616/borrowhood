@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { withTransaction } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
-import { communityConversations } from '../services/communityChat.js';
+import { communityConversations, communityChatVisibleSql } from '../services/communityChat.js';
 
 const router = Router({ mergeParams: true });
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -16,7 +16,9 @@ function memberRoute(handler) {
     if (!uuid(req.params.id)) return res.status(400).json({ error: 'Invalid neighborhood' });
     try {
       const data = await withTransaction(async db => {
-        const member = await db.query(`SELECT cm.role, cm.chat_muted FROM community_memberships cm
+        // Keep PostgreSQL's full timestamp precision for the cutoff; a JS Date
+        // rounds to milliseconds and can let messages from just before joining in.
+        const member = await db.query(`SELECT cm.role, cm.chat_muted, cm.joined_at::text AS chat_joined_at FROM community_memberships cm
           JOIN communities c ON c.id = cm.community_id WHERE cm.community_id = $1 AND cm.user_id = $2
           AND c.is_active = true FOR UPDATE OF cm`, [req.params.id, req.user.id]);
         if (!member.rows.length) throw Object.assign(new Error('Join this neighborhood to access its chat'), { status: 403 });
@@ -42,7 +44,8 @@ router.get('/', memberRoute(async (req, db, member) => {
   if (parentId && !uuid(parentId)) invalid('Invalid thread');
   if (parentId) {
     const parent = await db.query(`SELECT m.id FROM community_chat_messages m WHERE m.id = $3
-      AND m.community_id = $1 AND m.parent_id IS NULL AND ${blocked}`, [req.params.id, req.user.id, parentId]);
+      AND m.community_id = $1 AND m.parent_id IS NULL AND m.created_at >= $4::timestamptz
+      AND ${blocked}`, [req.params.id, req.user.id, parentId, member.chat_joined_at]);
     if (!parent.rows.length) invalid('This thread is unavailable', 404);
   }
   const watermark = await db.query('SELECT COALESCE(MAX(sequence), 0)::text AS sequence FROM community_chat_messages WHERE community_id = $1', [req.params.id]);
@@ -51,13 +54,15 @@ router.get('/', memberRoute(async (req, db, member) => {
     (m.deleted_at IS NOT NULL) AS deleted, m.sender_id,
     COALESCE(NULLIF(TRIM(u.display_name), ''), u.first_name) AS name, u.profile_photo_url,
     (SELECT COUNT(*) FROM community_chat_messages reply WHERE reply.parent_id = m.id
+      AND reply.created_at >= $6::timestamptz
       AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
         (b.user_id = $2 AND b.blocked_id = reply.sender_id) OR (b.blocked_id = $2 AND b.user_id = reply.sender_id))) AS reply_count
     FROM community_chat_messages m JOIN users u ON u.id = m.sender_id
     WHERE m.community_id = $1 AND ${blocked} AND m.sequence <= $5::bigint
+    AND ${communityChatVisibleSql('m', '$6::timestamptz')}
     AND (($3::uuid IS NULL AND m.parent_id IS NULL) OR m.parent_id = $3 OR m.id = $3)
     AND ($4::bigint IS NULL OR m.sequence < $4)
-    ORDER BY m.sequence DESC LIMIT 51`, [req.params.id, req.user.id, parentId || null, before || null, watermark.rows[0].sequence]);
+    ORDER BY m.sequence DESC LIMIT 51`, [req.params.id, req.user.id, parentId || null, before || null, watermark.rows[0].sequence, member.chat_joined_at]);
   const page = rows.rows.slice(0, 50);
   return { messages: page.map(m => ({ id: m.id, sequence: m.sequence, content: m.content,
     parentId: m.parent_id, createdAt: m.created_at, deleted: m.deleted,
@@ -65,7 +70,7 @@ router.get('/', memberRoute(async (req, db, member) => {
     nextBefore: rows.rows.length > 50 ? page[page.length - 1].sequence : null,
     readSequence: watermark.rows[0].sequence, muted: member.chat_muted, role: member.role };
 }));
-router.post('/', memberRoute(async (req, db) => {
+router.post('/', memberRoute(async (req, db, member) => {
   const { content, parentId, clientRequestId } = req.body;
   if (typeof content !== 'string' || !content.trim() || content.trim().length > 2000 || !uuid(clientRequestId)) invalid('Enter a message up to 2,000 characters');
   if (parentId && !uuid(parentId)) invalid('Invalid thread');
@@ -73,13 +78,15 @@ router.post('/', memberRoute(async (req, db) => {
   await db.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`community-chat:${req.params.id}`]);
   if (parentId) {
     const parent = await db.query(`SELECT m.id FROM community_chat_messages m WHERE m.id = $3
-      AND m.community_id = $1 AND m.parent_id IS NULL AND m.deleted_at IS NULL AND ${blocked}`, [req.params.id, req.user.id, parentId]);
+      AND m.community_id = $1 AND m.parent_id IS NULL AND m.deleted_at IS NULL
+      AND m.created_at >= $4::timestamptz AND ${blocked}`, [req.params.id, req.user.id, parentId, member.chat_joined_at]);
     if (!parent.rows.length) invalid('This thread is unavailable', 404);
   }
-  const previous = await db.query('SELECT * FROM community_chat_messages WHERE sender_id = $1 AND client_request_id = $2', [req.user.id, clientRequestId]);
+  const previous = await db.query(`SELECT *, created_at >= $3::timestamptz AS since_join
+    FROM community_chat_messages WHERE sender_id = $1 AND client_request_id = $2`, [req.user.id, clientRequestId, member.chat_joined_at]);
   if (previous.rows.length) {
     const row = previous.rows[0];
-    if (row.community_id !== req.params.id || row.content !== content.trim() || row.parent_id !== (parentId || null)) invalid('Message retry does not match', 409);
+    if (!row.since_join || row.community_id !== req.params.id || row.content !== content.trim() || row.parent_id !== (parentId || null)) invalid('Message retry does not match', 409);
     return { id: row.id };
   }
   const result = await db.query(`INSERT INTO community_chat_messages(community_id, sender_id, content, parent_id, client_request_id)
@@ -101,9 +108,10 @@ router.patch('/preferences', memberRoute(async (req, db) => {
 }));
 router.delete('/:messageId', memberRoute(async (req, db, member) => {
   if (!uuid(req.params.messageId)) invalid('Invalid message');
-  const result = await db.query(`UPDATE community_chat_messages SET deleted_at = COALESCE(deleted_at, NOW())
-    WHERE community_id = $1 AND id = $2 AND (sender_id = $3 OR $4) RETURNING id`,
-  [req.params.id, req.params.messageId, req.user.id, member.role === 'organizer']);
+  const result = await db.query(`UPDATE community_chat_messages m SET deleted_at = COALESCE(m.deleted_at, NOW())
+    WHERE m.community_id = $1 AND m.id = $2 AND (m.sender_id = $3 OR $4)
+    AND ${communityChatVisibleSql('m', '$5::timestamptz')} RETURNING m.id`,
+  [req.params.id, req.params.messageId, req.user.id, member.role === 'organizer', member.chat_joined_at]);
   if (!result.rows.length) invalid('Message unavailable or removal not permitted', 403);
   return { success: true };
 }));

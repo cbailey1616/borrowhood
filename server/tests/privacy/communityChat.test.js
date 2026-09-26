@@ -5,18 +5,21 @@ import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 const state = vi.hoisted(() => ({ db: null }));
 vi.mock('../../src/utils/db.js', () => ({ query: (s,p) => state.db.query(s,p), withTransaction: fn => state.db.transaction(fn) }));
-vi.mock('../../src/middleware/auth.js', () => ({ authenticate: (req,res,next) => { req.user={id:req.headers['x-user']}; next(); } }));
-import router from '../../src/routes/communityChat.js';
+vi.mock('../../src/middleware/auth.js', () => ({
+ authenticate: (req,res,next) => { req.user={id:req.headers['x-user']}; next(); },
+ requireVerified: (req,res,next) => next(), requireOrganizer: (req,res,next) => next(),
+}));
+import router from '../../src/routes/communities.js';
 import { ensureCommunityChatSchema, communityConversations } from '../../src/services/communityChat.js';
-const app=express();app.use(express.json());app.use('/communities/:id/chat',router);
+const app=express();app.use(express.json());app.use('/communities',router);
 const a=randomUUID(),b=randomUUID(),outsider=randomUUID(),group=randomUUID(),other=randomUUID();
 const url=`/communities/${group}/chat`;
 const send=(user,content,extra={},community=group)=>request(app).post(`/communities/${community}/chat`).set('x-user',user).send({content,clientRequestId:randomUUID(),...extra});
 beforeAll(async()=>{
  state.db=new PGlite();
- await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY,first_name TEXT,display_name TEXT,profile_photo_url TEXT);
- CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,banner_url TEXT,is_active BOOLEAN DEFAULT true,community_type TEXT DEFAULT 'town');
- CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',PRIMARY KEY(community_id,user_id));
+ await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY,first_name TEXT,display_name TEXT,profile_photo_url TEXT,city TEXT);
+ CREATE TABLE communities(id UUID PRIMARY KEY,name TEXT,banner_url TEXT,city TEXT,is_active BOOLEAN DEFAULT true,community_type TEXT DEFAULT 'town');
+ CREATE TABLE community_memberships(community_id UUID REFERENCES communities,user_id UUID REFERENCES users,role TEXT DEFAULT 'member',joined_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(community_id,user_id));
  CREATE TABLE user_blocks(user_id UUID,blocked_id UUID);`);
  await ensureCommunityChatSchema();await ensureCommunityChatSchema();
  await state.db.query("INSERT INTO users(id,first_name) VALUES($1,'Alex'),($2,'Blair'),($3,'Outside')",[a,b,outsider]);
@@ -96,6 +99,69 @@ it('returns a read-only overview preview scoped to that neighborhood',async()=>{
  expect((await request(app).get(`${url}/summary`).set('x-user',b)).body).toMatchObject({lastMessage:null,unreadCount:0});
  await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
  expect((await request(app).get(`${url}/summary`).set('x-user',b)).status).toBe(403);
+});
+it('starts history at joining and preserves that boundary when join is retried',async()=>{
+ await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
+ const old=(await send(a,'Before joining')).body.id;
+ await request(app).post(`/communities/${group}/join`).set('x-user',b).expect(200);
+ const joinedAt=(await state.db.query('SELECT joined_at::text FROM community_memberships WHERE user_id=$1',[b])).rows[0].joined_at;
+ expect((await request(app).get(url).set('x-user',b)).body.messages).toEqual([]);
+ expect((await request(app).get(`${url}/summary`).set('x-user',b)).body).toMatchObject({lastMessage:null,unreadCount:0});
+ const fresh=(await send(a,'After joining')).body.id;
+ await request(app).post(`/communities/${group}/join`).set('x-user',b).expect(200);
+ expect((await state.db.query('SELECT joined_at::text FROM community_memberships WHERE user_id=$1',[b])).rows[0].joined_at).toBe(joinedAt);
+ expect((await request(app).get(url).set('x-user',b)).body.messages.map(m=>m.id)).toEqual([fresh]);
+ expect((await request(app).get(`${url}/summary`).set('x-user',b)).body).toMatchObject({lastMessage:'After joining',unreadCount:1});
+ expect((await request(app).get(url).set('x-user',a)).body.messages.map(m=>m.id)).toEqual([fresh,old]);
+});
+it('keeps the join boundary on every page without rounding away microseconds',async()=>{
+ await state.db.query("UPDATE community_memberships SET joined_at='2026-09-26T12:00:00.123456Z' WHERE user_id=$1",[b]);
+ await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id,created_at)
+ SELECT $1,$2,'Before joining',gen_random_uuid(),'2026-09-26T12:00:00.123455Z'::timestamptz FROM generate_series(1,55)`,[group,a]);
+ await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id,created_at)
+ SELECT $1,$2,'Since joining',gen_random_uuid(),'2026-09-26T12:00:00.123456Z'::timestamptz FROM generate_series(1,55)`,[group,a]);
+ const first=(await request(app).get(url).set('x-user',b)).body;
+ const next=(await request(app).get(`${url}?before=${first.nextBefore}`).set('x-user',b)).body;
+ expect(first.messages).toHaveLength(50);expect(next.messages).toHaveLength(5);
+ expect(next.nextBefore).toBeNull();
+ expect([...first.messages,...next.messages].every(m=>m.content==='Since joining')).toBe(true);
+ expect((await communityConversations(b))[0].unreadCount).toBe(55);
+});
+it('keeps older threads out of history, direct links, previews and unread counts',async()=>{
+ await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
+ const root=(await send(a,'Older thread')).body.id;
+ await request(app).post(`/communities/${group}/join`).set('x-user',b).expect(200);
+ const reply=(await send(a,'Reply in older thread',{parentId:root})).body.id;
+ expect((await request(app).get(url).set('x-user',b)).body.messages).toEqual([]);
+ expect((await request(app).get(`${url}?parentId=${root}`).set('x-user',b)).status).toBe(404);
+ expect((await send(b,'Reply',{parentId:root})).status).toBe(404);
+ expect((await communityConversations(b))[0]).toMatchObject({lastMessage:null,unreadCount:0});
+ await state.db.query("UPDATE community_memberships SET role='organizer' WHERE user_id=$1",[b]);
+ expect((await request(app).delete(`${url}/${root}`).set('x-user',b)).status).toBe(403);
+ expect((await request(app).delete(`${url}/${reply}`).set('x-user',b)).status).toBe(403);
+ const fresh=(await send(a,'New thread')).body.id;
+ expect((await send(b,'New reply',{parentId:fresh})).status).toBe(200);
+ expect((await request(app).get(`${url}?parentId=${fresh}`).set('x-user',b)).body.messages).toHaveLength(2);
+});
+it('starts again after leaving and rejoining without reviving an old send retry',async()=>{
+ const key=randomUUID();await send(b,'Earlier membership',{clientRequestId:key});
+ await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
+ await send(a,'While away');
+ await request(app).post(`/communities/${group}/join`).set('x-user',b).expect(200);
+ expect((await request(app).get(url).set('x-user',b)).body.messages).toEqual([]);
+ expect((await send(b,'Earlier membership',{clientRequestId:key})).status).toBe(409);
+ const fresh=(await send(b,'Joined again')).body.id;
+ expect((await request(app).get(url).set('x-user',b)).body.messages.map(m=>m.id)).toEqual([fresh]);
+});
+it('starts legacy memberships with missing join dates at migration without changing known dates',async()=>{
+ const known=(await state.db.query('SELECT joined_at::text FROM community_memberships WHERE user_id=$1 AND community_id=$2',[a,group])).rows[0].joined_at;
+ await send(a,'Older archive');
+ await state.db.query('UPDATE community_memberships SET joined_at=NULL WHERE user_id=$1',[b]);
+ await ensureCommunityChatSchema();
+ expect((await request(app).get(url).set('x-user',b)).body.messages).toEqual([]);
+ expect((await state.db.query('SELECT joined_at::text FROM community_memberships WHERE user_id=$1 AND community_id=$2',[a,group])).rows[0].joined_at).toBe(known);
+ const fresh=(await send(a,'After migration')).body.id;
+ expect((await request(app).get(url).set('x-user',b)).body.messages.map(m=>m.id)).toEqual([fresh]);
 });
 it('deleting an author cannot prevent account deletion when other members replied',async()=>{
  const root=(await send(b,'root')).body.id;await send(a,'reply',{parentId:root});
