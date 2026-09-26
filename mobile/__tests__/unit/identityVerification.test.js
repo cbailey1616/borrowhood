@@ -65,6 +65,7 @@ it('refreshes status if the webhook completes verification before session creati
 });
 
 it('does not turn a successful Apple payment into verified identity', async () => {
+  require('../../src/utils/config').ENABLE_VERIFICATION_PURCHASES = true; // Future paid build fixture.
   const paid = { ...eligibility, mode: 'apple_iap', paymentRequired: true, canStartVerification: false };
   const entitled = { ...paid, paymentRequired: false, canStartVerification: true, hasVerificationPurchase: true };
   api.getVerificationEligibility.mockResolvedValue(paid);

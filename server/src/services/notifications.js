@@ -178,6 +178,10 @@ const NOTIFICATION_TEMPLATES = {
   },
 
   // Community
+  steward_assigned: {
+    title: 'You’re a neighborhood steward',
+    body: data => `You now look after ${data.communityName || 'your neighborhood'}. Tap to manage members and settings.`,
+  },
   join_request: {
     title: 'New Neighbor',
     body: (data) => data.rejoin

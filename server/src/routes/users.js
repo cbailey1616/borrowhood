@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { endorsementSummary } from '../services/endorsements.js';
 import { friendshipSummary } from '../services/friendshipSummary.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
@@ -16,6 +17,7 @@ import {
 import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
+router.use(screenContent());
 
 // Helper: format public-facing name
 // If display_name is set, use it alone. Otherwise first_name + last initial.

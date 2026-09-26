@@ -7,11 +7,13 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from PIL import Image
 
 app = Path(sys.argv[1]).resolve()
 output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
+source_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
 screens = [('01-home', 'home'), ('02-request-details', 'request-detail'), ('03-giveaway', 'giveaway'),
            ('04-my-posts', 'posts'), ('05-inbox', 'inbox'), ('06-messages', 'chat'), ('07-comments', 'comments'), ('08-friends', 'friends'),
@@ -123,7 +125,8 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
             if digest in hashes and not route.startswith('refresh-'):
                 raise RuntimeError(f'Duplicate screen on {name}; navigation needs inspection')
             hashes.add(digest)
-            manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest})
+            manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest,
+                             'sourceCommit': source_commit, 'capturedAt': datetime.now(timezone.utc).isoformat()})
     finally:
         run('shutdown', udid, check=False)
         if created_device:

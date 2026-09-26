@@ -448,8 +448,8 @@ it('combines neighborhood channels with direct messages and counts each unread c
 it('does not give new neighborhood members an old preview or notification badge', async () => {
   const hood = '99999999-9999-4999-8999-999999999998';
   await state.db.query("INSERT INTO communities(id,name) VALUES($1,'New neighborhood')", [hood]);
-  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id)
-    VALUES($1,$2,'Before joining',gen_random_uuid())`,[hood,B]);
+  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id,created_at)
+    VALUES($1,$2,'Before joining',gen_random_uuid(),NOW()-INTERVAL '1 minute')`,[hood,B]);
   await state.db.query('INSERT INTO community_memberships(community_id,user_id) VALUES($1,$2)',[hood,A]);
   const inbox = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
   expect(inbox.body.find(c=>c.communityId===hood)).toMatchObject({lastMessage:null,lastMessageAt:null,unreadCount:0});

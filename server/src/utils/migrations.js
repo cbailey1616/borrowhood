@@ -1,3 +1,4 @@
+import { ensureAppleSignInSchema } from '../services/appleSignInTokens.js';
 import { ensureCommunityMembershipSchema } from '../services/communityMemberships.js';
 import { ensureFeedWindowSchema } from '../services/feedWindows.js';
 import { ensureCommunityChatSchema } from '../services/communityChat.js';
@@ -714,6 +715,7 @@ export async function runMigrations() {
     await ensureCommunityChatSchema();
     await ensureCommunityMembershipSchema();
     await ensureVerificationPurchaseSchema();
+    await ensureAppleSignInSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

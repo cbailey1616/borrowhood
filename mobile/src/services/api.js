@@ -211,8 +211,11 @@ const startSocialLinkCode = (provider, token) =>
 const completeSocialLinkCode = (provider, token, challengeId, code) =>
   post('/auth/social-link/complete', { provider, ...token, challengeId, code });
 
-const loginWithApple = (identityToken, fullName) =>
-  post('/auth/apple', { identityToken, fullName });
+const loginWithApple = (identityToken, fullName, authorizationCode) =>
+  post('/auth/apple', { identityToken, fullName, authorizationCode });
+
+const reportContent = (type, id, reason) => post(`/safety/content/${type}/${id}/report`, { reason });
+const blockContentAuthor = (type, id) => post(`/safety/content/${type}/${id}/block`, {});
 
 const deleteAccount = () =>
   del('/auth/account');
@@ -268,8 +271,8 @@ const getCommunity = (id) =>
 const joinCommunity = (id) =>
   post(`/communities/${id}/join`);
 
-const leaveCommunity = (id) =>
-  post(`/communities/${id}/leave`);
+const leaveCommunity = (id, options = {}) =>
+  post(`/communities/${id}/leave`, options);
 
 const updateCommunity = (id, data) =>
   patch(`/communities/${id}`, data);
@@ -884,6 +887,8 @@ export default {
   loginWithGoogle,
   loginWithApple,
   deleteAccount,
+  reportContent,
+  blockContentAuthor,
   // Users
   getUser,
   updateProfile,

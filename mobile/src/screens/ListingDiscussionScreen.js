@@ -1,3 +1,4 @@
+import ContentSafetyActions from '../components/ContentSafetyActions';
 import { randomUUID } from 'expo-crypto';
 import MessageComposer from '../components/MessageComposer';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
@@ -41,6 +42,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [actionTarget, setActionTarget] = useState(null);
+  const [safetyTarget, setSafetyTarget] = useState(null);
   const openingChat = useRef(false);
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [pendingDestination, setPendingDestination] = useState(null);
@@ -559,6 +561,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             onPress: () => openThread(actionTarget.parentId || actionTarget.post.id, true),
           },
           ...(actionTarget.post.user.id && !actionTarget.post.isOwn && actionTarget.post.user.id !== user?.id ? [{
+            label: 'Report or block',
+            onPress: () => setSafetyTarget(actionTarget.post.id),
+          }, {
             label: `Message ${actionTarget.post.user.firstName} privately`,
             onPress: () => openPrivateChat(actionTarget.post),
           }] : []),
@@ -569,6 +574,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         ] : []}
       />
 
+      {!!safetyTarget && <ContentSafetyActions key={safetyTarget} type="discussion" id={safetyTarget} open
+        onClose={() => setSafetyTarget(null)} onBlocked={() => navigation.goBack()} />}
       <ActionSheet
         isVisible={deleteSheetVisible}
         onClose={() => setDeleteSheetVisible(false)}

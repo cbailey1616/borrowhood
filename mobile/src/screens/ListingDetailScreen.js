@@ -1,3 +1,4 @@
+import ContentSafetyActions from '../components/ContentSafetyActions';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import { listingAvailability } from '../utils/listingAvailability';
@@ -241,6 +242,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
         {/* Content */}
         <View style={[styles.content, wide && { flex: 1, padding: 0, minWidth: 0 }]}>
+          {!listing.isOwner && <ContentSafetyActions type="listing" id={listing.id} onBlocked={() => navigation.goBack()} />}
           <View style={styles.itemSummary}>
             <View style={[styles.summaryHeading, stackSummary && styles.summaryHeadingStacked]}>
               <View style={styles.titleBlock}>

@@ -1,3 +1,4 @@
+import { saveAppleAuthorization } from './appleSignInTokens.js';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -60,6 +61,7 @@ export async function resolveSocialAccount(client, identity, linkUserId = null) 
     const user = existing.rows[0];
     if (user.status === 'suspended') throw socialError(403, 'Account suspended.');
     if (linkUserId && user.id !== linkUserId) throw socialError(409, 'This sign-in belongs to another Borrowhood account.');
+    await saveAppleAuthorization(client, user.id, identity, verifySocialIdentity);
     return { user, isNewUser: false };
   }
   if (linkUserId) {
@@ -68,6 +70,7 @@ export async function resolveSocialAccount(client, identity, linkUserId = null) 
     if (!user || user.status === 'suspended') throw socialError(403, 'This account is unavailable.');
     if (user[column] && user[column] !== subject) throw socialError(409, 'Another sign-in is already connected.');
     await client.query(`UPDATE users SET ${column} = $1 WHERE id = $2`, [subject, user.id]);
+    await saveAppleAuthorization(client, user.id, identity, verifySocialIdentity);
     return { user, isNewUser: false };
   }
   if (!email) throw socialError(400, 'Please allow Apple to share your email, then try again. Hide My Email works too.');
@@ -81,5 +84,6 @@ export async function resolveSocialAccount(client, identity, linkUserId = null) 
   const user = result.rows[0];
   await client.query('UPDATE users SET referral_code = $1 WHERE id = $2', ['BH-' + user.id.replace(/-/g, '').slice(0, 8), user.id]);
   // No payment setup and no changes to identity verification status.
+  await saveAppleAuthorization(client, user.id, identity, verifySocialIdentity);
   return { user, isNewUser: true };
 }

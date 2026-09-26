@@ -146,15 +146,15 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
           </View>
           {!matches.length && <Text style={styles.noMatch}>No matching neighborhoods. Try another name.</Text>}
           {matches.map(item => <HapticPressable key={item.id} accessibilityRole="radio"
-            accessibilityLabel={`${item.name}, ${item.memberCount || 0} neighbors${item.isMember ? ', joined' : item.rejoinStatus === 'pending' ? ', approval requested' : item.rejoinStatus === 'removed' ? ', moderator approval required' : ''}`}
+            accessibilityLabel={`${item.name}, ${item.memberCount || 0} neighbors${item.isMember ? ', joined' : item.rejoinStatus === 'pending' ? ', approval requested' : item.rejoinStatus === 'removed' ? ', steward approval required' : ''}`}
             accessibilityState={{ checked: item.id === selectedId, disabled: busy }} disabled={busy}
             onPress={() => setSelectedId(item.id)} style={[styles.row, item.id === selectedId && styles.selected]}>
             <View style={styles.rowIcon}><Ionicons name="home" size={32} illustrated /></View>
             <View style={styles.rowContent}><Text style={styles.rowTitle}>{item.name}</Text>
-              <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : item.rejoinStatus === 'pending' ? ' · Approval requested' : item.rejoinStatus === 'removed' ? ' · Moderator approval required' : ''}</Text></View>
+              <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : item.rejoinStatus === 'pending' ? ' · Approval requested' : item.rejoinStatus === 'removed' ? ' · Steward approval required' : ''}</Text></View>
             <Ionicons name={item.id === selectedId ? 'checkmark-circle' : 'ellipse-outline'} size={26} color={COLORS.primary} />
           </HapticPressable>)}
-          {selected?.rejoinStatus === 'pending' && <Text style={styles.detail} accessibilityLiveRegion="polite">Waiting for a neighborhood moderator. You can continue setting up your account.</Text>}
+          {selected?.rejoinStatus === 'pending' && <Text style={styles.detail} accessibilityLiveRegion="polite">Waiting for a neighborhood steward. You can continue setting up your account.</Text>}
           <HapticPressable accessibilityRole="button" disabled={busy} onPress={openCreate} style={styles.linkButton}>
             <Text style={styles.link}>Create a neighborhood</Text>
           </HapticPressable>

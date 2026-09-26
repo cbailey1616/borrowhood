@@ -1,3 +1,4 @@
+import { ENABLE_VERIFICATION_PURCHASES } from '../utils/config';
 import { Platform } from 'react-native';
 import api from './api';
 
@@ -28,10 +29,14 @@ function checkEligibility(value) {
       && (value.productId !== VERIFICATION_PRODUCT_ID || !ACCOUNT_TOKEN.test(value.appAccountToken || ''))) {
     throw failure('VERIFICATION_UNAVAILABLE', 'Verification purchases aren’t available yet. Please try again later.');
   }
+  if (value.paymentRequired && !ENABLE_VERIFICATION_PURCHASES) {
+    throw failure('VERIFICATION_PURCHASE_UNAVAILABLE', 'Verification is temporarily unavailable. Please try again later.');
+  }
   return value;
 }
 
 async function storeConnection() {
+  if (!ENABLE_VERIFICATION_PURCHASES) throw failure('VERIFICATION_PURCHASE_UNAVAILABLE', 'Verification purchases are not available in this version.');
   if (Platform.OS !== 'ios') {
     throw failure('VERIFICATION_STORE_UNAVAILABLE', 'Paid verification is currently available in the iPhone and iPad app.');
   }

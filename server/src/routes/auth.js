@@ -130,6 +130,7 @@ for (const provider of ['google', 'apple']) {
   router.post('/' + provider, async (req, res) => {
     try {
       const identity = await verifySocialIdentity(provider, provider === 'google' ? req.body.idToken : req.body.identityToken, req.body.fullName);
+      identity.authorizationCode = req.body.authorizationCode;
       const { user, isNewUser } = await withTransaction(client => resolveSocialAccount(client, identity));
       res.status(isNewUser ? 201 : 200).json({
         user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name,
@@ -150,6 +151,7 @@ router.post('/social-link/code', async (req, res) => {
   try {
     const { provider, idToken, identityToken } = req.body;
     const identity = await verifySocialIdentity(provider, provider === 'google' ? idToken : identityToken);
+    identity.authorizationCode = req.body.authorizationCode;
     res.json(await startSocialLinkCode(identity));
   } catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not send your sign-in code.' }); }
 });
@@ -159,6 +161,7 @@ router.post('/social-link/complete', body('challengeId').isUUID(), body('code').
   try {
     const { provider, idToken, identityToken, challengeId, code } = req.body;
     const identity = await verifySocialIdentity(provider, provider === 'google' ? idToken : identityToken);
+    identity.authorizationCode = req.body.authorizationCode;
     const result = await completeSocialLinkCode(identity, challengeId, code);
     const user = result.user;
     res.json({ accessToken: result.accessToken, refreshToken: result.refreshToken,
@@ -357,11 +360,11 @@ router.post('/admin/reset-user', async (req, res) => {
 // ============================================
 router.delete('/account', authenticate, async (req, res) => {
   try {
-    await deleteAccount(req.user.id);
-    res.json({ success: true });
+    const appleRevocation = await deleteAccount(req.user.id);
+    res.json({ success: true, appleRevocation });
   } catch (err) {
-    console.error('Delete account error:', err.message, err.detail, err.constraint);
-    res.status(500).json({ error: 'Failed to delete account. Please contact support.' });
+    console.error('Delete account failed', { code: err.code || err.name });
+    res.status(500).json({ error: 'Could not delete your account. Please try again.' });
   }
 });
 
@@ -717,6 +720,7 @@ router.post('/link-account', authenticate, async (req, res) => {
   const { provider, idToken, identityToken } = req.body;
   try {
     const identity = await verifySocialIdentity(provider, provider === 'google' ? idToken : identityToken);
+    identity.authorizationCode = req.body.authorizationCode;
     await withTransaction(client => resolveSocialAccount(client, identity, req.user.id));
     res.json({ message: 'Account connected.' });
   } catch (err) {

@@ -1,3 +1,4 @@
+import { unblockedSql } from './contentPolicy.js';
 import { query } from '../utils/db.js';
 import { canViewListing, canViewRequest } from './listingAccess.js';
 import { sendNotification } from './notifications.js';
@@ -20,16 +21,17 @@ export async function notifyThreadParticipants({ threadId, listingId, requestId,
 
 export async function getDiscussionThread(target, targetId, postId, userId) {
   const column = target === 'request' ? 'request_id' : 'listing_id';
-  const { rows: [post] } = await query(`SELECT root.id, root.content, root.reply_count, root.created_at,
+  const { rows: [post] } = await query(`SELECT root.id, root.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=root.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$3')}) AS reply_count, root.created_at,
     u.id AS user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
     target.id AS target_id, target.parent_id,
-    (SELECT COUNT(*) FROM listing_discussions r WHERE r.parent_id=root.id AND r.is_hidden=false
+    (SELECT COUNT(*) FROM listing_discussions r WHERE r.parent_id=root.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$3')}
       AND (r.created_at, r.id)<=(target.created_at, target.id)) AS reply_position
     FROM listing_discussions target
     JOIN listing_discussions root ON root.id=COALESCE(target.parent_id, target.id)
     JOIN users u ON u.id=root.user_id
     WHERE target.id=$1 AND target.${column}=$2 AND root.${column}=$2
-      AND target.is_hidden=false AND root.is_hidden=false`, [postId, targetId]);
+      AND target.is_hidden=false AND root.is_hidden=false
+      AND ${unblockedSql('target.user_id', '$3')} AND ${unblockedSql('root.user_id', '$3')}`, [postId, targetId, userId]);
   if (!post) return null;
   return {
     post: { id: post.id, content: post.content, replyCount: post.reply_count, createdAt: post.created_at,
