@@ -32,7 +32,7 @@ const send = content => post('chat', moderator).send({ content, clientRequestId:
 beforeAll(async () => {
   state.db = new PGlite();
   await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, first_name TEXT DEFAULT 'Sam', last_name TEXT DEFAULT 'Green', display_name TEXT,
-    profile_photo_url TEXT, city TEXT DEFAULT 'Upton', state TEXT DEFAULT 'MA');
+    profile_photo_url TEXT, city TEXT DEFAULT 'Upton', state TEXT DEFAULT 'MA', status TEXT DEFAULT 'verified', lender_rating NUMERIC DEFAULT 0, lender_rating_count INT DEFAULT 0);
     CREATE TABLE communities(id UUID PRIMARY KEY, name TEXT DEFAULT 'Oak Street', slug TEXT, city TEXT DEFAULT 'Upton', state TEXT DEFAULT 'MA',
       banner_url TEXT, is_active BOOLEAN DEFAULT true, community_type TEXT DEFAULT 'neighborhood');
     CREATE TABLE community_memberships(community_id UUID REFERENCES communities, user_id UUID REFERENCES users, role TEXT DEFAULT 'member',
@@ -48,8 +48,8 @@ beforeAll(async () => {
 afterAll(async () => state.db.close());
 beforeEach(async () => {
   state.failNotice = false;
-  await state.db.exec('TRUNCATE community_memberships, community_member_removals, community_chat_messages, notices RESTART IDENTITY CASCADE');
-  await state.db.exec("UPDATE users SET city='Upton'; UPDATE communities SET is_active=true");
+  await state.db.exec('TRUNCATE community_memberships, community_member_removals, community_chat_messages, notices, listings, borrow_transactions RESTART IDENTITY CASCADE');
+  await state.db.exec("UPDATE users SET city='Upton',status='verified'; UPDATE communities SET is_active=true");
   await state.db.query(`INSERT INTO community_memberships(community_id,user_id,role,joined_at)
     VALUES($1,$2,'organizer',NOW()),($1,$3,'member','2026-01-01'),($1,$4,'member',NOW()),($5,$6,'organizer',NOW())`,
   [group, moderator, neighbor, member, otherGroup, otherModerator]);
@@ -122,4 +122,83 @@ it('rolls back request or approval if its durable notification cannot be queued'
   state.failNotice = true; await review('approve').expect(500);
   expect(await members()).toEqual([]); expect((await removal()).requested_at).not.toBeNull();
   state.failNotice = false; await review('approve').expect(200);
+});
+it('requires the last steward to choose a replacement without changing memberships', async () => {
+  const result = await post('leave', moderator).expect(409);
+  expect(result.body.code).toBe('STEWARD_HANDOFF_REQUIRED');
+  expect((await state.db.query('SELECT role FROM community_memberships WHERE user_id=$1 AND community_id=$2', [moderator, group])).rows[0].role).toBe('organizer');
+  expect((await members())[0].role).toBe('member');
+});
+it('hands over stewardship and leaves atomically, preserving the successor’s chat history', async () => {
+  const joinedAt = (await members())[0].joined_at;
+  await post('leave', moderator).send({ successorId: neighbor }).expect(200);
+  expect((await state.db.query('SELECT * FROM community_memberships WHERE user_id=$1 AND community_id=$2', [moderator, group])).rows).toHaveLength(0);
+  expect((await members())[0]).toMatchObject({ role: 'organizer', joined_at: joinedAt });
+  expect(await notices()).toMatchObject([{ user_id: neighbor, type: 'steward_assigned', data: { communityId: group } }]);
+  await post('leave', moderator).send({ successorId: neighbor }).expect(200);
+  expect(await notices()).toHaveLength(1);
+});
+it('lets a steward leave normally when another steward is staying', async () => {
+  await state.db.query("UPDATE community_memberships SET role='organizer' WHERE user_id=$1 AND community_id=$2", [neighbor, group]);
+  await post('leave', moderator).expect(200);
+  expect((await members())[0].role).toBe('organizer');
+  expect((await state.db.query('SELECT is_active FROM communities WHERE id=$1', [group])).rows[0].is_active).toBe(true);
+  expect(await notices()).toEqual([]);
+});
+it.each(['self', 'uppercase self', 'outsider', 'removed', 'suspended', 'malformed'])('rejects a %s successor without removing the current steward', async kind => {
+  let successorId = neighbor;
+  if (kind === 'self') successorId = moderator;
+  if (kind === 'uppercase self') successorId = moderator.toUpperCase();
+  if (kind === 'outsider') successorId = otherModerator;
+  if (kind === 'removed') await remove().expect(200);
+  if (kind === 'suspended') await state.db.query("UPDATE users SET status='suspended' WHERE id=$1", [neighbor]);
+  if (kind === 'malformed') successorId = {};
+  const response = await post('leave', moderator).send({ successorId });
+  expect([400, 409]).toContain(response.status); expect(response.body.code).toBe('INVALID_STEWARD');
+  expect((await state.db.query('SELECT role FROM community_memberships WHERE user_id=$1 AND community_id=$2', [moderator, group])).rows[0].role).toBe('organizer');
+  expect(await notices()).toEqual([]);
+});
+it('prevents regular members from using leave to promote someone', async () => {
+  await post('leave', neighbor).send({ successorId: member }).expect(403);
+  expect((await members())[0].role).toBe('member');
+});
+it('archives only when the final member leaves and prevents joining the archive', async () => {
+  await state.db.query('DELETE FROM community_memberships WHERE community_id=$1 AND user_id<>$2', [group, moderator]);
+  const response = await post('leave', moderator).expect(200);
+  expect(response.body.archived).toBe(true);
+  expect((await state.db.query('SELECT is_active FROM communities WHERE id=$1', [group])).rows[0].is_active).toBe(false);
+  await post('join').expect(403);
+  const nearby = await request(app).get('/communities').set('x-user', neighbor).expect(200);
+  expect(nearby.body.some(c => c.id === group)).toBe(false);
+  await post('leave', moderator).expect(200);
+});
+it('does not let outsiders archive an empty neighborhood', async () => {
+  await state.db.query('DELETE FROM community_memberships WHERE community_id=$1', [group]);
+  await post('leave', neighbor).expect(200);
+  expect((await state.db.query('SELECT is_active FROM communities WHERE id=$1', [group])).rows[0].is_active).toBe(true);
+});
+it.each(['listing', 'exchange'])('preserves stewardship when an active %s prevents departure', async kind => {
+  const item = randomUUID();
+  await state.db.query('INSERT INTO listings(id,owner_id,community_id,status) VALUES($1,$2,$3,$4)', [item, kind === 'listing' ? moderator : neighbor, group, kind === 'listing' ? 'active' : 'paused']);
+  if (kind === 'exchange') await state.db.query("INSERT INTO borrow_transactions(listing_id,borrower_id,lender_id,status) VALUES($1,$2,$3,'picked_up')", [item, moderator, neighbor]);
+  const response = await post('leave', moderator).send({ successorId: neighbor }).expect(400);
+  expect(response.body.code).toBe(kind === 'listing' ? 'ACTIVE_NEIGHBORHOOD_LISTINGS' : 'ACTIVE_NEIGHBORHOOD_EXCHANGES');
+  expect((await members())[0].role).toBe('member'); expect(await notices()).toEqual([]);
+});
+it('keeps the current steward and roles if the handoff notification cannot be queued', async () => {
+  state.failNotice = true;
+  await post('leave', moderator).send({ successorId: neighbor }).expect(500);
+  expect((await members())[0].role).toBe('member');
+  expect((await state.db.query('SELECT role FROM community_memberships WHERE user_id=$1 AND community_id=$2', [moderator, group])).rows[0].role).toBe('organizer');
+});
+it('offers only eligible neighbors to a steward and supports paging the choices', async () => {
+  const path = `/communities/${group}/members?forSteward=true&limit=1`;
+  await request(app).get(path).set('x-user', neighbor).expect(403);
+  const first = (await request(app).get(path).set('x-user', moderator).expect(200)).body;
+  const second = (await request(app).get(`${path}&page=2`).set('x-user', moderator).expect(200)).body;
+  expect(first).toHaveLength(1); expect(second).toHaveLength(1);
+  expect(new Set([first[0].id, second[0].id])).toEqual(new Set([neighbor, member]));
+  await state.db.query("UPDATE users SET status='suspended' WHERE id=$1", [neighbor]);
+  const available = (await request(app).get(path).set('x-user', moderator).expect(200)).body;
+  expect(available.map(m => m.id)).toEqual([member]);
 });

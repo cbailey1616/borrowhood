@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
-const navigation = { navigate: jest.fn() };
+const navigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn() };
 const mockAlert = jest.fn();
 const mockShowToast = jest.fn();
 const mockShowError = jest.fn();
@@ -15,6 +15,7 @@ beforeEach(() => {
   api.addCommunityAdmin.mockResolvedValue({ success: true });
   api.getCommunityRejoinRequests.mockResolvedValue([]);
   api.reviewCommunityRejoinRequest.mockResolvedValue({ success: true });
+  api.leaveCommunity.mockResolvedValue({ success: true });
 });
 it('recovers a notification with no neighborhood ID without requesting an invalid endpoint', async () => {
   const Screen = require('../../src/screens/CommunityMembersScreen').default;
@@ -103,4 +104,94 @@ it('shows retry when requests fail to load and hides requests from ordinary memb
   await regular.findByText('Neighbors');
   expect(api.getCommunityRejoinRequests).not.toHaveBeenCalled();
   expect(regular.queryByText('Rejoin requests')).toBeNull();
+});
+
+describe('steward handoff', () => {
+  const route = { params: { id: 'hood-1', role: 'organizer', handoff: true } };
+  const renderHandoff = () => {
+    const Screen = require('../../src/screens/CommunityMembersScreen').default;
+    return render(<Screen route={route} navigation={navigation} />);
+  };
+  const confirmation = () => mockAlert.mock.calls.at(-1)[2].find(button => button.text === 'Make steward & leave');
+
+  it('shows eligible neighbors without unrelated member controls and requires confirmation', async () => {
+    const screen = renderHandoff();
+    fireEvent.press(await screen.findByLabelText('Choose Sam as steward'));
+    expect(api.getCommunityMembers).toHaveBeenCalledWith('hood-1', { limit: 100, forSteward: true, page: 1 });
+    expect(navigation.setOptions).toHaveBeenCalledWith({ title: 'Choose a steward' });
+    expect(api.getCommunityRejoinRequests).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Invite neighbors')).toBeNull();
+    expect(screen.queryByLabelText('Manage Sam')).toBeNull();
+    expect(mockAlert).toHaveBeenCalledWith('Make steward & leave?', 'Sam will look after the neighborhood. You’ll leave it.', expect.any(Array));
+    const cancel = mockAlert.mock.calls[0][2].find(button => button.text === 'Cancel');
+    act(() => cancel.onPress?.());
+    expect(api.leaveCommunity).not.toHaveBeenCalled();
+    expect(api.addCommunityAdmin).not.toHaveBeenCalled();
+  });
+
+  it('passes stewardship and leaves in one request, guarding double taps', async () => {
+    let finish;
+    api.leaveCommunity.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const screen = renderHandoff();
+    fireEvent.press(await screen.findByLabelText('Choose Sam as steward'));
+    const confirm = confirmation();
+    act(() => { confirm.onPress(); confirm.onPress(); });
+    expect(api.leaveCommunity).toHaveBeenCalledTimes(1);
+    expect(api.leaveCommunity).toHaveBeenCalledWith('hood-1', { successorId: 'neighbor' });
+    expect(api.addCommunityAdmin).not.toHaveBeenCalled();
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    await act(async () => finish({ success: true }));
+    expect(navigation.navigate).toHaveBeenCalledWith('Main');
+    expect(mockShowToast).toHaveBeenCalledWith('Stewardship passed on. You’ve left the neighborhood.', 'success');
+  });
+
+  it('stays on the picker after failure and allows another attempt', async () => {
+    api.leaveCommunity.mockRejectedValueOnce(new Error('Offline'));
+    const screen = renderHandoff();
+    fireEvent.press(await screen.findByLabelText('Choose Sam as steward'));
+    await act(async () => confirmation().onPress());
+    expect(mockShowError).toHaveBeenCalledWith({ message: 'Offline' });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByLabelText('Choose Sam as steward'));
+    await act(async () => confirmation().onPress());
+    expect(api.leaveCommunity).toHaveBeenCalledTimes(2);
+    expect(navigation.navigate).toHaveBeenCalledWith('Main');
+  });
+
+  it('refreshes unavailable candidates and offers a way back if nobody remains', async () => {
+    api.getCommunityMembers.mockResolvedValueOnce([{ id: 'neighbor', firstName: 'Sam' }]).mockResolvedValue([]);
+    api.leaveCommunity.mockRejectedValueOnce(Object.assign(new Error('Choose another steward'), { code: 'INVALID_STEWARD' }));
+    const screen = renderHandoff();
+    fireEvent.press(await screen.findByLabelText('Choose Sam as steward'));
+    await act(async () => confirmation().onPress());
+    expect(api.getCommunityMembers).toHaveBeenCalledTimes(2);
+    expect(screen.queryByLabelText('Choose Sam as steward')).toBeNull();
+    fireEvent.press(screen.getByText('Back to neighborhood'));
+    expect(navigation.goBack).toHaveBeenCalled();
+    expect(navigation.navigate).not.toHaveBeenCalledWith('Main');
+  });
+
+  it('does not navigate away from another screen when a handoff finishes late', async () => {
+    let finish;
+    api.leaveCommunity.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const screen = renderHandoff();
+    fireEvent.press(await screen.findByLabelText('Choose Sam as steward'));
+    act(() => { confirmation().onPress(); });
+    screen.unmount();
+    await act(async () => finish({ success: true }));
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    expect(mockShowToast).not.toHaveBeenCalled();
+  });
+
+  it('offers every eligible neighbor through paging', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) => ({ id: `neighbor-${i}`, firstName: `Neighbor ${i}` }));
+    api.getCommunityMembers.mockResolvedValueOnce(firstPage).mockResolvedValueOnce([{ id: 'neighbor-100', firstName: 'Last neighbor' }]);
+    const screen = renderHandoff();
+    fireEvent.press(await screen.findByText('More neighbors'));
+    await waitFor(() => expect(api.getCommunityMembers).toHaveBeenCalledWith('hood-1', { limit: 100, forSteward: true, page: 2 }));
+    const list = screen.UNSAFE_getByType(require('react-native').FlatList);
+    await waitFor(() => expect(list.props.data).toHaveLength(101));
+    expect(list.props.data.at(-1).id).toBe('neighbor-100');
+    expect(screen.queryByText('More neighbors')).toBeNull();
+  });
 });

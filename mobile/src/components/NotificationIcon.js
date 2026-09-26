@@ -48,6 +48,7 @@ const APPEARANCE = {
   rank_ready: ['ribbon', 'gold'],
   join_request: ['person-add', 'sage'],
   join_approved: ['people', 'sage'],
+  steward_assigned: ['shield-checkmark', 'sage'],
   request_offer: [listingIcon(), 'clay'],
   new_request: [requestPresentation().icon, 'clay'],
   new_message: ['chatbubble', 'blue'],

@@ -51,6 +51,13 @@ describe('granular push preferences', () => {
     expect(shouldSendPush('friend_request', prefs)).toBe(false);
     expect(shouldSendPush('join_approved', prefs)).toBe(true);
   });
+  it('honors neighborhood and master mutes for a stewardship handoff', () => {
+    expect(shouldSendPush('steward_assigned', {})).toBe(true);
+    expect(shouldSendPush('steward_assigned', { community_updates: false })).toBe(false);
+    expect(shouldSendPush('steward_assigned', { neighborhood_responses: false })).toBe(false);
+    expect(shouldSendPush('steward_assigned', { community_updates: false, neighborhood_responses: true })).toBe(true);
+    expect(shouldSendPush('steward_assigned', { push_enabled: false, neighborhood_responses: true })).toBe(false);
+  });
 });
 
 describe('notification source choices', () => {

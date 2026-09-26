@@ -49,6 +49,7 @@ describe('notification destinations', () => {
   });
 });
 
-it('opens the neighborhood after a moderator approves a return', () => {
-  expect(notificationDestination({ type: 'join_approved', communityId: 'hood-1' })).toEqual({ name: 'MyCommunity', params: { communityId: 'hood-1' } });
+it.each(['join_approved', 'steward_assigned'])('opens the affected neighborhood for %s', type => {
+  expect(notificationDestination({ type, communityId: 'hood-1' })).toEqual({ name: 'MyCommunity', params: { communityId: 'hood-1' } });
+  expect(notificationDestination({ type })).toEqual({ name: 'Main', params: { screen: 'Feed' } });
 });

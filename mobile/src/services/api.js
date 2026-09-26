@@ -268,8 +268,8 @@ const getCommunity = (id) =>
 const joinCommunity = (id) =>
   post(`/communities/${id}/join`);
 
-const leaveCommunity = (id) =>
-  post(`/communities/${id}/leave`);
+const leaveCommunity = (id, options = {}) =>
+  post(`/communities/${id}/leave`, options);
 
 const updateCommunity = (id, data) =>
   patch(`/communities/${id}`, data);

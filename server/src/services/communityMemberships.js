@@ -16,8 +16,8 @@ export async function ensureCommunityMembershipSchema(db = { query }) {
     ON community_member_removals (community_id, requested_at) WHERE requested_at IS NOT NULL`);
 }
 
-function fail(status, message) {
-  throw Object.assign(new Error(message), { status });
+function fail(status, message, code) {
+  throw Object.assign(new Error(message), { status, code });
 }
 
 // All membership mutations take the same lock, including leave and promotion.
@@ -73,6 +73,56 @@ export async function joinCommunity(communityId, userId) {
     await client.query(`INSERT INTO community_memberships (user_id, community_id, joined_at)
       VALUES ($1, $2, clock_timestamp()) ON CONFLICT DO NOTHING`, [userId, communityId]);
     return { success: true };
+  });
+}
+
+export async function leaveCommunity(communityId, userId, successorId) {
+  return withCommunityMembershipLock(communityId, async (client, community) => {
+    const current = await client.query(
+      'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2', [communityId, userId]);
+    // A lost response may be retried. A non-member cannot promote or archive.
+    if (!current.rows.length) return { success: true };
+    const active = await client.query(`SELECT
+      (SELECT COUNT(*) FROM listings WHERE owner_id = $1 AND community_id = $2 AND status = 'active') AS listings,
+      (SELECT COUNT(*) FROM borrow_transactions t JOIN listings l ON t.listing_id = l.id
+        WHERE (t.borrower_id = $1 OR t.lender_id = $1) AND l.community_id = $2
+        AND t.status NOT IN ('completed', 'cancelled')) AS transactions`, [userId, communityId]);
+    if (Number(active.rows[0].listings) > 0) {
+      fail(400, 'Delete or pause your active listings in this neighborhood before leaving.', 'ACTIVE_NEIGHBORHOOD_LISTINGS');
+    }
+    if (Number(active.rows[0].transactions) > 0) {
+      fail(400, 'Finish your active exchanges in this neighborhood before leaving.', 'ACTIVE_NEIGHBORHOOD_EXCHANGES');
+    }
+    const staying = await client.query(`SELECT COUNT(*)::int AS members,
+      COUNT(*) FILTER (WHERE m.role = 'organizer' AND u.status <> 'suspended')::int AS stewards
+      FROM community_memberships m JOIN users u ON u.id = m.user_id
+      WHERE m.community_id = $1 AND m.user_id <> $2`, [communityId, userId]);
+    const isSteward = current.rows[0].role === 'organizer';
+    let promoted = false;
+    if (successorId !== undefined) {
+      if (!isSteward) fail(403, 'Only a neighborhood steward can choose a replacement.');
+      if (typeof successorId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(successorId)
+        || successorId.toLowerCase() === userId.toLowerCase()) fail(400, 'Choose another neighbor as steward.', 'INVALID_STEWARD');
+      const successor = await client.query(`SELECT m.role FROM community_memberships m JOIN users u ON u.id = m.user_id
+        WHERE m.community_id = $1 AND m.user_id = $2 AND u.status <> 'suspended'`, [communityId, successorId]);
+      if (!successor.rows.length) fail(409, 'That neighbor is no longer available. Choose another steward.', 'INVALID_STEWARD');
+      if (successor.rows[0].role !== 'organizer') {
+        const changed = await client.query(`UPDATE community_memberships SET role = 'organizer'
+          WHERE community_id = $1 AND user_id = $2 RETURNING user_id`, [communityId, successorId]);
+        if (!changed.rows.length) fail(409, 'That neighbor is no longer available. Choose another steward.', 'INVALID_STEWARD');
+        promoted = true;
+      }
+    } else if (community.is_active && isSteward && staying.rows[0].members > 0 && staying.rows[0].stewards === 0) {
+      fail(409, 'Choose another steward before leaving this neighborhood.', 'STEWARD_HANDOFF_REQUIRED');
+    }
+    // Preserve any prior removal restriction. Handoff and departure commit together.
+    await client.query('DELETE FROM community_memberships WHERE community_id = $1 AND user_id = $2', [communityId, userId]);
+    const archived = staying.rows[0].members === 0;
+    if (archived) await client.query('UPDATE communities SET is_active = false WHERE id = $1', [communityId]);
+    if (promoted) await sendNotification(successorId, 'steward_assigned', { communityId, communityName: community.name }, {
+      fromUserId: userId, runQuery: client.query.bind(client), throwOnError: true,
+    });
+    return { success: true, archived };
   });
 }
 

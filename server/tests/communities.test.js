@@ -276,6 +276,51 @@ describe('POST /api/communities/:id/leave', () => {
   });
 });
 
+describe('concurrent steward departures', () => {
+  const leave = (id, user, successorId) => request(app)
+    .post(`/api/communities/${id}/leave`)
+    .set('Authorization', `Bearer ${user.token}`)
+    .send(successorId ? { successorId } : {});
+  async function neighborhood(members) {
+    const id = await createTestCommunity({ name: 'Steward handoff test', city: 'CommCity', state: 'CS' });
+    createdCommunityIds.push(id);
+    for (const [user, role] of members) await addCommunityMember(user.userId, id, role);
+    return id;
+  }
+
+  it('keeps a steward when both stewards try to leave a populated neighborhood', async () => {
+    const id = await neighborhood([[userA, 'organizer'], [userB, 'organizer'], [userC, 'member']]);
+    const results = await Promise.all([leave(id, userA), leave(id, userB)]);
+    expect(results.map(result => result.status).sort()).toEqual([200, 409]);
+    expect(results.find(result => result.status === 409).body.code).toBe('STEWARD_HANDOFF_REQUIRED');
+    const remaining = await query('SELECT user_id, role FROM community_memberships WHERE community_id = $1', [id]);
+    expect(remaining.rows).toHaveLength(2);
+    expect(remaining.rows.filter(member => member.role === 'organizer')).toHaveLength(1);
+  });
+
+  it('rechecks the selected successor when that neighbor is also leaving', async () => {
+    const id = await neighborhood([[userA, 'organizer'], [userB, 'member'], [userC, 'member']]);
+    const [handoff, departure] = await Promise.all([leave(id, userA, userB.userId), leave(id, userB)]);
+    expect([handoff.status, departure.status].sort()).toEqual([200, 409]);
+    const remaining = await query('SELECT user_id, role FROM community_memberships WHERE community_id = $1', [id]);
+    expect(remaining.rows).toHaveLength(2);
+    const stewards = remaining.rows.filter(member => member.role === 'organizer');
+    expect(stewards).toHaveLength(1);
+    expect(stewards[0].user_id).toBe(handoff.status === 200 ? userB.userId : userA.userId);
+    expect(handoff.status === 409 ? handoff.body.code : departure.body.code)
+      .toBe(handoff.status === 409 ? 'INVALID_STEWARD' : 'STEWARD_HANDOFF_REQUIRED');
+  });
+
+  it('archives exactly when both final stewards have left', async () => {
+    const id = await neighborhood([[userA, 'organizer'], [userB, 'organizer']]);
+    const results = await Promise.all([leave(id, userA), leave(id, userB)]);
+    expect(results.map(result => result.status)).toEqual([200, 200]);
+    expect(results.filter(result => result.body.archived)).toHaveLength(1);
+    expect((await query('SELECT is_active FROM communities WHERE id = $1', [id])).rows[0].is_active).toBe(false);
+    expect((await query('SELECT user_id FROM community_memberships WHERE community_id = $1', [id])).rows).toHaveLength(0);
+  });
+});
+
 describe('GET /api/communities/:id/members', () => {
   it('should return member list with roles', async () => {
     const res = await request(app)

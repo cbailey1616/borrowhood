@@ -2,17 +2,48 @@
 
 ## Held for the update after 272
 
-The user asked to rename the neighborhood moderator role and hold the change for
-the next update. The user-facing name is **Steward**. Badge labels, promotion
-confirmations, rejoin approval messages, accessibility labels, and neighborhood
-permission errors use the new name. The existing `organizer` role and access
-rules are unchanged.
+The user asked to rename the neighborhood moderator role, then approved a
+handoff policy for leaving neighborhoods. Hold both changes for the next update.
+The user-facing name is **Steward**. Badge labels, promotion confirmations,
+rejoin approval messages, accessibility labels, and neighborhood permission
+errors use the new name. The stored role remains `organizer`.
 
-This wording is queued on `copy/neighborhood-steward-next-update`. Keep it out of
-production and new TestFlight builds until the user requests the next update.
-Validation: 30 existing mobile screen tests and 8 server membership tests passed.
+Leaving a neighborhood now follows these rules:
+
+- If another active steward remains, the steward can leave normally.
+- The last steward must choose a current, non-suspended neighbor before leaving
+  a populated neighborhood. Nothing selects a replacement automatically.
+- The final neighbor sees an archive confirmation. Leaving archives the empty
+  neighborhood, hiding it from discovery and preventing new joins; it does not
+  delete its records.
+- Promotion, departure, and the replacement's notification are one transaction.
+  A failed handoff leaves the original membership and roles intact. Existing
+  active-listing and active-exchange restrictions still apply.
+
+The replacement picker pages through eligible neighbors. Confirmation says
+“Make steward & leave.” An unavailable replacement refreshes the choices, and a
+failed request can be retried. Notification preferences remain respected.
+This policy applies to **Leave Neighborhood**; account deletion and administrator
+account actions are outside this change.
+
+The user approved saving `feature/steward-handoff-next-update` to the existing
+Borrowhood GitHub repository and opening a held draft PR on September 26. This
+includes the earlier `copy/neighborhood-steward-next-update` wording change.
+The release hold remains: keep these changes out of production and new TestFlight
+builds until the user requests the next update.
+Validation: all 1,404 mobile tests across 148 suites and all 499 server privacy
+tests across 39 suites passed. The production iOS JavaScript/asset export and
+changed server JavaScript syntax checks passed. These include the focused 56
+mobile and 43 membership/notification checks. Native PostgreSQL regressions for
+concurrent departures and handoffs run in the PR checks, alongside the full server
+suite, migrations, traffic rehearsal, and backup restoration. Check the draft PR's
+CI results before release.
 Build **1.0.0 (272)** was uploaded September 26 at 18:40 UTC before this change.
 The notes below describe previously released batches.
+
+Before releasing, check on a device: cancel a handoff, finish a selected handoff,
+open the successor's alert, leave while another steward remains, and confirm the
+last-neighbor archive. No new TestFlight binary is requested for this draft.
 
 ## Earlier September 26 release
 

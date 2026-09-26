@@ -1,7 +1,7 @@
 import communityChat from './communityChat.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
-import { joinCommunity, removeCommunityMember, getRejoinRequests, reviewRejoinRequest, withCommunityMembershipLock, requireCommunityModerator } from '../services/communityMemberships.js';
+import { joinCommunity, leaveCommunity, removeCommunityMember, getRejoinRequests, reviewRejoinRequest, withCommunityMembershipLock, requireCommunityModerator } from '../services/communityMemberships.js';
 import { authenticate, requireVerified, requireOrganizer } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 import { originalPhotoUrl } from '../services/privatePhotos.js';
@@ -418,22 +418,7 @@ router.post('/:id/join', authenticate, async (req, res) => {
 // ============================================
 router.post('/:id/leave', authenticate, async (req, res) => {
   try {
-    const result = await withCommunityMembershipLock(req.params.id, async client => {
-      const active = await client.query(`SELECT
-        (SELECT COUNT(*) FROM listings WHERE owner_id = $1 AND community_id = $2 AND status = 'active') as listings,
-        (SELECT COUNT(*) FROM borrow_transactions t JOIN listings l ON t.listing_id = l.id
-          WHERE (t.borrower_id = $1 OR t.lender_id = $1) AND l.community_id = $2
-          AND t.status NOT IN ('completed', 'cancelled')) as transactions`, [req.user.id, req.params.id]);
-      const counts = active.rows[0];
-      if (Number(counts.listings) > 0 || Number(counts.transactions) > 0) return {
-        error: 'Cannot leave community with active listings or transactions',
-        activeListings: Number(counts.listings), activeTransactions: Number(counts.transactions),
-      };
-      // Leaving never clears a prior moderator removal.
-      await client.query('DELETE FROM community_memberships WHERE user_id = $1 AND community_id = $2', [req.user.id, req.params.id]);
-      return { success: true };
-    });
-    res.status(result.error ? 400 : 200).json(result);
+    res.json(await leaveCommunity(req.params.id, req.user.id, req.body?.successorId));
   } catch (err) {
     membershipError(res, err, 'Failed to leave community');
   }
@@ -444,7 +429,7 @@ router.post('/:id/leave', authenticate, async (req, res) => {
 // Remove a member (neighborhood moderator only; creators are moderators)
 // ============================================
 function membershipError(res, err, fallback) {
-  if (err.status) return res.status(err.status).json({ error: err.message });
+  if (err.status) return res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
   console.error(fallback, err);
   return res.status(500).json({ error: fallback });
 }
@@ -480,10 +465,13 @@ for (const decision of ['approve', 'decline']) {
 // Get community members
 // ============================================
 router.get('/:id/members', authenticate, async (req, res) => {
-  const { page = 1, limit = 50 } = req.query;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+  const forSteward = req.query.forSteward === 'true';
   const offset = (page - 1) * limit;
 
   try {
+    if (forSteward) await requireCommunityModerator({ query }, req.params.id, req.user.id);
     const result = await query(
       `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
               u.lender_rating as rating, u.lender_rating_count as rating_count,
@@ -491,9 +479,10 @@ router.get('/:id/members', authenticate, async (req, res) => {
        FROM community_memberships m
        JOIN users u ON m.user_id = u.id
        WHERE m.community_id = $1
-       ORDER BY m.role DESC, m.joined_at
+       ${forSteward ? "AND m.user_id <> $4 AND u.status <> 'suspended'" : ''}
+       ORDER BY m.role DESC, m.joined_at, m.user_id
        LIMIT $2 OFFSET $3`,
-      [req.params.id, limit, offset]
+      [req.params.id, limit, offset, ...(forSteward ? [req.user.id] : [])]
     );
 
     res.json(result.rows.map(m => ({
@@ -507,8 +496,7 @@ router.get('/:id/members', authenticate, async (req, res) => {
       joinedAt: m.joined_at,
     })));
   } catch (err) {
-    console.error('Get members error:', err);
-    res.status(500).json({ error: 'Failed to get members' });
+    membershipError(res, err, 'Failed to get members');
   }
 });
 
