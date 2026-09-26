@@ -60,6 +60,7 @@ import { startScheduler } from './services/scheduler.js';
 import { healthCheck } from './services/health.js';
 import { observeRequest, startPoolMonitoring } from './services/observability.js';
 import { closeDatabase } from './utils/db.js';
+import { IDENTITY_RETURN_PATH, serveIdentityReturn } from './services/identityReturn.js';
 
 const app = express();
 
@@ -153,31 +154,8 @@ app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/privacy.html'));
 });
 
-// Stripe verification return — user taps Done in Safari to return to app
-app.get('/verification-complete', (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Verification Submitted — Borrowhood</title>
-<style>
-  body{font-family:-apple-system,system-ui,sans-serif;background:#0D1F12;color:#E8E4DC;
-  display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}
-  .card{max-width:360px}
-  h1{font-size:24px;margin:0 0 8px}
-  p{color:#9CA38F;line-height:1.5;margin:0 0 24px}
-  .icon{font-size:64px;margin-bottom:16px}
-  .sub{color:#6B7A5E;font-size:13px}
-</style>
-</head><body>
-<div class="card">
-  <div class="icon">&#x2705;</div>
-  <h1>Verification Submitted</h1>
-  <p>Your identity verification has been submitted. Tap <strong>Done</strong> in the top corner to return to Borrowhood.</p>
-  <p class="sub">Your verification status will update automatically.</p>
-</div>
-</body></html>`);
-});
+// Stripe accepts the HTTPS page; it resumes the app's existing auth callback.
+app.get(IDENTITY_RETURN_PATH, serveIdentityReturn);
 
 // Stripe Connect return — user taps Done in Safari to return to app
 app.get('/connect/return', (req, res) => {

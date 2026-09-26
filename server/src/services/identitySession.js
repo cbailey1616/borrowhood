@@ -2,6 +2,7 @@ import { withTransaction } from '../utils/db.js';
 import { stripe, getIdentityVerificationSession } from './stripe.js';
 import { requireVerificationEligibility } from './verificationPurchases.js';
 import { purchaseError } from './appleVerification.js';
+import { IDENTITY_RETURN_URL } from './identityReturn.js';
 
 // Hosted and legacy native clients share the same lock, eligibility check and
 // Stripe idempotency keys. An interrupted request cannot create two paid checks.
@@ -31,7 +32,7 @@ export async function startIdentitySession(userId, { native = false } = {}) {
     if (!session || session.status === 'canceled') {
       session = await stripe.identity.verificationSessions.create({
         type: 'document', metadata: { customer_id: customerId, userId },
-        return_url: 'borrowhood://verification-complete',
+        return_url: IDENTITY_RETURN_URL,
         options: { document: { require_id_number: false, require_live_capture: true,
           require_matching_selfie: true, allowed_types: ['driving_license', 'id_card', 'passport'] } },
       }, { idempotencyKey: `identity-${userId}-${user.identity_session_revision || 0}-${previousId || 'initial'}` });
