@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
-import ActionSheet from '../../components/ActionSheet';
 import SocialSignInButtons from '../../components/SocialSignInButtons';
 import SocialAccountLink from '../../components/SocialAccountLink';
 import { useAuth } from '../../context/AuthContext';
@@ -35,7 +34,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
     isLoading: biometricsLoading,
     authenticate,
     getStoredCredentials,
-    enableBiometrics,
     hasStoredCredentials,
   } = useBiometrics();
 
@@ -47,8 +45,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(null);
   const [canUseBiometrics, setCanUseBiometrics] = useState(false);
-  const [biometricSheetVisible, setBiometricSheetVisible] = useState(false);
-  const [pendingCredentials, setPendingCredentials] = useState(null);
   const [focusedField, setFocusedField] = useState(null);
   const [socialBusy, setSocialBusy] = useState(false);
   const [pendingLink, setPendingLink] = useState(null);
@@ -104,10 +100,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
     if (link) await login(loginEmail, loginPassword, link);
     else await login(loginEmail, loginPassword);
     haptics.success();
-    if (isBiometricsAvailable && !isBiometricsEnabled) {
-      setPendingCredentials({ email: loginEmail, password: loginPassword });
-      setTimeout(() => { setBiometricSheetVisible(true); }, 500);
-    }
   };
 
   const handleLogin = async () => {
@@ -304,24 +296,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <ActionSheet
-        isVisible={biometricSheetVisible}
-        onClose={() => setBiometricSheetVisible(false)}
-        title={`Enable ${biometricType || 'Biometrics'}?`}
-        message={`Would you like to use ${biometricType || 'biometrics'} for faster sign in next time?`}
-        actions={[
-          {
-            label: 'Enable',
-            onPress: async () => {
-              if (pendingCredentials) {
-                await enableBiometrics(pendingCredentials.email, pendingCredentials.password);
-                setPendingCredentials(null);
-              }
-            },
-          },
-        ]}
-        cancelLabel="Not Now"
-      />
     </SafeAreaView>
   );
 }
