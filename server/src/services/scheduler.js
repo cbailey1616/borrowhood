@@ -1,4 +1,5 @@
-import { query, withTransaction } from '../utils/db.js';
+import { cleanupFeedHistory } from './feedWindows.js';
+import { query, withTransaction, withBackgroundDatabase } from '../utils/db.js';
 import { sendNotification } from './notifications.js';
 import logger from '../utils/logger.js';
 import { checkRankChanges } from './rankNotifications.js';
@@ -230,25 +231,38 @@ async function expireStaleGiveawayRequests() {
  * Start the scheduler — runs checks every hour.
  */
 export function startScheduler() {
-  processPushDeliveries();
-  setInterval(processPushDeliveries, 5000);
-  checkRankChanges();
-  setInterval(checkRankChanges, 60 * 1000);
-  // Run immediately on startup
-  sendReturnReminders();
-  autoAdvanceDisputes();
-  autoReleaseDeposits();
-  checkVerificationGraceExpiry();
-  expireStaleGiveawayRequests();
-  sendPickupFollowups();
-
-  // Then run every hour
-  setInterval(sendReturnReminders, 60 * 60 * 1000);
-  setInterval(autoAdvanceDisputes, 60 * 60 * 1000);
-  setInterval(autoReleaseDeposits, 60 * 60 * 1000);
-  setInterval(checkVerificationGraceExpiry, 60 * 60 * 1000);
-  setInterval(expireStaleGiveawayRequests, 60 * 60 * 1000);
-  setInterval(sendPickupFollowups, 60 * 60 * 1000);
-
-  logger.info('Scheduler started: return reminders, dispute auto-advance, deposit auto-release, verification grace expiry, pending-request expiry and pickup follow-ups every hour');
+  const timers = new Set();
+  const active = new Set();
+  let stopped = false;
+  const schedule = (name, work, interval) => {
+    const run = () => {
+      if (stopped) return;
+      const started = Date.now();
+      const task = withBackgroundDatabase(work).catch(error => {
+        logger.error('Background job failed', { job: name, code: error.code || error.name });
+      }).finally(() => {
+        active.delete(task);
+        logger.info('Background job finished', { job: name, durationMs: Date.now() - started });
+        if (!stopped) {
+          const timer = setTimeout(() => { timers.delete(timer); run(); }, interval);
+          timers.add(timer);
+        }
+      });
+      active.add(task);
+    };
+    run();
+  };
+  schedule('push', processPushDeliveries, 5000);
+  schedule('ranks', checkRankChanges, 60000);
+  schedule('feed retention', cleanupFeedHistory, 5 * 60 * 1000);
+  schedule('hourly', async () => {
+    // Avoid a startup burst of six maintenance jobs competing for connections.
+    for (const job of [sendReturnReminders, autoAdvanceDisputes, autoReleaseDeposits,
+      checkVerificationGraceExpiry, expireStaleGiveawayRequests, sendPickupFollowups]) await job();
+  }, 60 * 60 * 1000);
+  return async () => {
+    stopped = true;
+    for (const timer of timers) clearTimeout(timer);
+    await Promise.allSettled([...active]);
+  };
 }

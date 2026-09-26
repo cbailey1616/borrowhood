@@ -668,6 +668,25 @@ it('keeps loaded posts and offers retry when loading the next page fails', async
   expect(screen.getByText('One item')).toBeTruthy();
 });
 
+it('starts a fresh session when the saved feed expires while loading more', async () => {
+  const item = title => ({ id: title, type: 'listing', title, user: { firstName: 'Sam' } });
+  api.getFeed.mockResolvedValueOnce({ items: [item('Earlier post')], hasMore: true })
+    .mockRejectedValueOnce(Object.assign(new Error('Refresh the feed to continue.'), { status: 409 }))
+    .mockResolvedValue({ items: [item('Latest post')], hasMore: false });
+  const Screen = require('../../src/screens/FeedScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} />);
+  await screen.findByText('Earlier post');
+  const originalSession = api.getFeed.mock.calls[0][0].session;
+  fireEvent(screen.getByTestId('Feed.list'), 'endReached');
+  await screen.findByText('Refresh to see the latest posts.');
+  expect(screen.getByText('Earlier post')).toBeTruthy();
+  fireEvent.press(screen.getByText('Refresh posts'));
+  await screen.findByText('Latest post');
+  expect(screen.queryByText('Earlier post')).toBeNull();
+  expect(api.getFeed.mock.calls.at(-1)[0]).toEqual(expect.objectContaining({ page: 1 }));
+  expect(api.getFeed.mock.calls.at(-1)[0].session).not.toBe(originalSession);
+});
+
 it('Browse items opens the default All feed on first mount', async () => {
   const Screen = require('../../src/screens/FeedScreen').default;
   render(<Screen navigation={mockNavigation} route={{ params: { browseItems: 'first' } }} />);

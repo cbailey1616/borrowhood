@@ -1,5 +1,4 @@
-import { requestPresentation } from '../utils/requestPresentation';
-import { listingIcon } from '../utils/listingPresentation';
+import NotificationIcon from '../components/NotificationIcon';
 import { notificationDestination } from '../utils/notificationDestination';
 import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +9,6 @@ import {
   FlatList,
   RefreshControl,
 } from 'react-native';
-import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
@@ -20,33 +18,7 @@ import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
-const NOTIFICATION_ICONS = {
-  borrow_request: listingIcon(),
-  request_approved: 'checkmark-circle',
-  request_declined: 'close-circle',
-  borrow_cancelled: 'close-circle',
-  payment_confirmed: 'card',
-  pickup_confirmed: listingIcon(),
-  return_confirmed: 'checkbox',
-  return_reminder: 'alarm',
-  dispute_opened: 'warning',
-  dispute_resolved: 'checkmark-done',
-  new_rating: 'star',
-  rating_received: 'star',
-  rank_up: 'trophy',
-  rank_down: 'ribbon',
-  rank_ready: 'ribbon',
-  join_approved: 'people',
-  request_offer: listingIcon(),
-  new_request: requestPresentation().icon,
-  new_message: 'chatbubble',
-  discussion_reply: 'chatbubble-ellipses',
-  listing_comment: 'chatbubble-ellipses',
-  request_comment: 'chatbubble-ellipses',
-  friend_request: 'person-add',
-  friend_accepted: 'people',
-  default: 'notifications',
-};
+
 
 export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
@@ -139,13 +111,7 @@ export default function NotificationsScreen({ navigation }) {
         onPress={() => handleNotificationPress(item)}
         haptic={null}
       >
-        <View style={[styles.iconContainer, !item.isRead && styles.iconContainerUnread]}>
-          <Ionicons
-            name={NOTIFICATION_ICONS[item.type] || NOTIFICATION_ICONS.default}
-            size={20}
-            color={!item.isRead ? COLORS.primary : COLORS.gray[400]}
-          />
-        </View>
+        <NotificationIcon notification={item} size={40} />
         <View style={styles.cardContent}>
           <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
             {item.title}
@@ -252,17 +218,6 @@ const styles = StyleSheet.create({
   cardUnread: {
     backgroundColor: COLORS.primary + '08',
     borderColor: COLORS.primary + '20',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconContainerUnread: {
-    backgroundColor: COLORS.primary + '20',
   },
   cardContent: {
     flex: 1,

@@ -2,37 +2,19 @@ import React from 'react';
 import { render, within } from '@testing-library/react-native';
 import VerificationComparison from '../../../src/components/VerificationComparison';
 const ReactNative = require('react-native');
-
-const available = [
-  'Borrow from friends',
-  'Borrow in your neighborhood',
-  'Buy items or claim giveaways',
-  'Post in Wanted',
-];
-const townLabel = 'Borrow across town. Not verified: not available. Verified: available.';
-
-beforeEach(() => {
-  jest.spyOn(ReactNative, 'useWindowDimensions').mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
-});
+beforeEach(() => jest.spyOn(ReactNative, 'useWindowDimensions').mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 }));
 afterEach(() => jest.restoreAllMocks());
-
-it('clearly identifies Town borrowing as requiring identity verification', () => {
+it('distinguishes Town previews from borrowing while keeping friends and neighborhood access', () => {
   const screen = render(<VerificationComparison />);
-  expect(screen.getByText('Not verified')).toBeTruthy();
-  expect(screen.getByText('Verified')).toBeTruthy();
-  available.forEach(label => {
-    expect(screen.getByLabelText(`${label}. Not verified: available. Verified: available.`)).toBeTruthy();
-  });
-  expect(screen.getByLabelText(townLabel)).toBeTruthy();
+  expect(screen.getByLabelText('Borrow from friends and neighbors. Not verified: Yes. Verified: Yes.')).toBeTruthy();
+  expect(screen.getByLabelText('Browse Town borrowing. Not verified: Preview. Verified: Yes.')).toBeTruthy();
+  expect(screen.getByLabelText('Borrow across Town. Not verified: No. Verified: Yes.')).toBeTruthy();
+  expect(screen.getByLabelText('Have a verified badge. Not verified: No. Verified: Yes.')).toBeTruthy();
 });
-
-it('keeps availability next to each capability with large text', () => {
+it('keeps labels and availability together with large text', () => {
   ReactNative.useWindowDimensions.mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1.8 });
   const screen = render(<VerificationComparison />);
   expect(screen.queryByText('Not verified')).toBeNull();
-  expect(within(screen.getByLabelText(townLabel)).getByText('Not verified: No\nVerified: Yes')).toBeTruthy();
-  available.forEach(label => {
-    const row = screen.getByLabelText(`${label}. Not verified: available. Verified: available.`);
-    expect(within(row).getByText('Not verified: Yes\nVerified: Yes')).toBeTruthy();
-  });
+  const row = screen.getByLabelText('Browse Town borrowing. Not verified: Preview. Verified: Yes.');
+  expect(within(row).getByText('Not verified: Preview\nVerified: Yes')).toBeTruthy();
 });

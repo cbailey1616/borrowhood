@@ -10,6 +10,12 @@ const scenes = {
   sharing: () => object('basket', 55, 29, 84) + object('leaf', 139, 64, 31) + ground,
   messages: () => object('chatbubble', 47, 28, 83) + object('mail', 123, 68, 43) + ground,
   caughtUp: () => object('notifications', 62, 19, 76) + object('leaf', 139, 68, 28) + ground,
+  onboardingShare: () => object('home', 22, 26, 66) + object('basket', 99, 44, 67) + object('leaf', 161, 69, 25) + ground,
+  onboardingAudience: () => object('people', 20, 32, 68) + object('home', 112, 28, 66) +
+    '<path d="M91 63h14m-7-5v10" fill="none" stroke="#DFB66F" stroke-width="2.5" stroke-linecap="round"/>' + ground,
+  onboardingTown: () => object('home', 29, 30, 64) + object('location', 109, 22, 71) + ground,
+  onboardingVerify: () => object('identity-seal', 58, 13, 86) +
+    '<path d="M40 48l-7-8m8 23l-10-2m127-13l7-8m-6 23l10-2" fill="none" stroke="#A6B69B" stroke-width="2.5" stroke-linecap="round"/>' + ground,
 };
 
 export function illustrationSvg(scene = 'neighborhood') {

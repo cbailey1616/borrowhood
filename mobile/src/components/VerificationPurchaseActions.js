@@ -4,7 +4,7 @@ import StripeVerificationButton from './StripeVerificationButton';
 import ActionButton from './ActionButton';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function VerificationPurchaseActions({ purchase, onVerify, testID, disabled = false }) {
+export default function VerificationPurchaseActions({ purchase, onVerify, testID, disabled = false, branded = false, hideFreeNote = false }) {
   const { offer, loading, error, busy, notice, refreshOffer, restore } = purchase;
   const eligibility = offer?.eligibility;
   const paidMode = eligibility?.mode === 'apple_iap';
@@ -14,11 +14,11 @@ export default function VerificationPurchaseActions({ purchase, onVerify, testID
   const ready = !!eligibility && !error
     && (eligibility.canStartVerification || (paidMode && requiresPayment && !!price));
   const label = purchased ? 'Continue verification'
-    : paidMode && requiresPayment && price ? `Verify · ${price}` : 'Verify now';
+    : paidMode && requiresPayment && price ? `Verify · ${price}` : branded ? 'Verify through Stripe' : 'Verify now';
 
   return (
     <View>
-      {!loading && !error && eligibility && (
+      {!loading && !error && eligibility && (!hideFreeNote || purchased || requiresPayment) && (
         <Text style={styles.note}>
           {purchased ? 'Verification already purchased.' : requiresPayment
             ? 'One-time payment through Apple.' : 'No payment required.'}

@@ -25,10 +25,10 @@ const postRequest = (id, userId, fullAccess = true) => ({ id, user_id: userId, f
 function serveRows(listings, requests) {
   const keys = [...listings.map(row => `listing:${row.id}`), ...requests.map(row => `request:${row.id}`)];
   query.mockImplementation(async (sql, params) => {
-    if (sql.includes('MAX(')) return { rows: [{ latest_post_at: createdAt }] };
+    if (sql.includes('AS latest_post_at')) return { rows: [{ latest_post_at: createdAt }] };
     if (sql.includes('FROM listings l')) return { rows: listings };
     if (sql.includes('FROM item_requests r')) return { rows: requests };
-    if (sql.includes('FROM feed_sessions')) return { rows: [{ item_keys: keys }] };
+    if (sql.includes('FROM feed_windows')) return { rows: [{ window_number: 0, snapshot_at: createdAt, item_keys: JSON.parse(params[2])[4] ? keys.filter(key => key.startsWith('listing:')) : keys, request_keys: keys.filter(key => key.startsWith('request:')).slice(0,8), request_count: requests.length, has_more: false, latest_post_at: createdAt }] };
     if (sql.includes('unnest($1::uuid[])')) return { rows: params[0].filter(id => id === author).map(id => ({
       member_id: id, completed: 6, total: 2, positive: 2, activity: 4,
     })) };

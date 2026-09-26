@@ -1,3 +1,4 @@
+import { ensureFeedWindowSchema } from '../services/feedWindows.js';
 import { ensureCommunityChatSchema } from '../services/communityChat.js';
 import { repairCommunityCoverReferences } from '../services/privatePhotos.js';
 import { ensureReturnRecoverySchema } from '../services/returnRecovery.js';
@@ -53,6 +54,7 @@ export async function runMigrations() {
       user_id UUID REFERENCES users(id) ON DELETE CASCADE, token UUID NOT NULL,
       filter_key TEXT NOT NULL, item_keys JSONB NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(user_id, token))`);
+    await ensureFeedWindowSchema();
     // Retain approval history for aggregate conversion measurements.
     await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ');
 

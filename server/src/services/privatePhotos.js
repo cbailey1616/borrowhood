@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import { townPreviewSql } from './townPreview.js';
 import { S3Client, GetObjectCommand, GetPublicAccessBlockCommand } from '@aws-sdk/client-s3';
 import { query } from '../utils/db.js';
+import logger from '../utils/logger.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -148,13 +149,26 @@ export function protectMediaResponses(req, res, next) {
 }
 
 export async function servePrivatePhoto(req, res) {
+  let stage = 'token';
+  let imageId;
+  const deny = (reason, status = 404) => {
+    logger.info('Private photo unavailable', { reason, status, imageId, requestId: res.getHeader('X-Request-Id') });
+    if (!res.headersSent) {
+      res.set('Cache-Control', 'private, no-store');
+      if (status === 503) res.set('Retry-After', '5');
+      res.sendStatus(status);
+    }
+  };
   try {
     const data = jwt.verify(req.params.token, process.env.JWT_SECRET, { algorithms: ['HS256'], audience: 'listing-photo' });
-    if (req.query.photo && req.query.photo !== data.photoCacheKey) return res.sendStatus(404);
+    if (req.query.photo && req.query.photo !== data.photoCacheKey) return deny('cache_key_mismatch');
     data.src = decryptSource(data);
+    imageId = createHash('sha256').update(data.src).digest('hex').slice(0,16);
+    stage = 'viewer';
     const viewer = await query(`SELECT id FROM users WHERE id = $1 AND status != 'suspended'
       AND (token_invalidated_at IS NULL OR token_invalidated_at <= to_timestamp($2))`, [data.sub, data.iat]);
-    if (!viewer.rows.length) return res.sendStatus(404);
+    if (!viewer.rows.length) return deny('viewer_revoked');
+    stage = 'access';
     const reference = await query('SELECT 1 FROM listing_photos WHERE url = $1 LIMIT 1', [data.src]);
     const allowed = reference.rows.length ? await query(`SELECT 1 FROM listing_photos p JOIN listings l ON l.id = p.listing_id
       JOIN users viewer ON viewer.id = $2 WHERE p.url = $1 AND viewer.status != 'suspended'
@@ -182,24 +196,39 @@ export async function servePrivatePhoto(req, res) {
         AND NOT EXISTS (SELECT 1 FROM bundle_items bi JOIN listings l ON l.id = bi.listing_id
           WHERE bi.bundle_id = b.id AND NOT ${listingAccessSql('l', '$2', { discovery: true })})))
       LIMIT 1`, [data.src, data.sub]);
-    if (!allowed.rows.length) return res.sendStatus(404);
+    if (!allowed.rows.length) return deny('access_denied');
     res.set('Cache-Control', 'private, no-store');
     const url = new URL(data.src);
     if (url.hostname === `${bucket}.s3.${region}.amazonaws.com`) {
-      const object = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: decodeURIComponent(url.pathname.slice(1)) }));
+      stage = 'storage';
+      const object = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: decodeURIComponent(url.pathname.slice(1)) }),
+        { abortSignal: AbortSignal.timeout(10000) });
       res.type(object.ContentType || 'image/jpeg');
-      object.Body.on('error', () => res.destroy());
+      object.Body.on('error', () => {
+        logger.error('Private photo stream failed', { reason: 'storage_stream' });
+        res.destroy();
+      });
+      res.once('close', () => { if (!res.writableFinished) object.Body.destroy(); });
       return object.Body.pipe(res);
     }
     if (url.origin === new URL(origin()).origin && url.pathname.startsWith('/uploads/')) {
       const relative = decodeURIComponent(url.pathname.slice('/uploads/'.length));
       const file = path.resolve(localRoot, relative);
-      if (!file.startsWith(localRoot + path.sep)) return res.sendStatus(404);
-      return res.sendFile(file, { cacheControl: false });
+      if (!file.startsWith(localRoot + path.sep)) return deny('invalid_path');
+      return res.sendFile(file, { cacheControl: false }, error => {
+        if (!error) return;
+        if (res.headersSent) return res.destroy();
+        deny(error.code === 'ENOENT' ? 'object_missing' : 'local_storage', error.code === 'ENOENT' ? 404 : 503);
+      });
     }
     // Never fetch arbitrary external URLs: that would make this an SSRF proxy.
-    return res.sendStatus(404);
-  } catch { if (!res.headersSent) res.sendStatus(404); }
+    return deny('unmanaged_source');
+  } catch (error) {
+    if (stage === 'token') return deny(error.name === 'TokenExpiredError' ? 'token_expired' : 'invalid_token');
+    if (stage === 'storage' && (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404)) return deny('object_missing');
+    logger.error('Private photo dependency failed', { dependency: stage === 'storage' ? 'storage' : 'database' });
+    return deny(stage === 'storage' ? 'storage_unavailable' : 'database_unavailable', 503);
+  }
 }
 
 // Existing local listing URLs must not bypass the authenticated photo route.

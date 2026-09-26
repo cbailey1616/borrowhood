@@ -1,4 +1,12 @@
-# Next build after 217 — pending release
+# Release notes — September 26, 2026
+
+The user authorized pushing the complete queued batch and creating a TestFlight
+build on September 26. The earlier build hold is lifted. The cloud workflow
+selects an unused build number from EAS history; the latest confirmed earlier
+submission was build 269. See [the current release manifest](release-2026-09-26.md)
+for this batch. The build-217 notes below are retained as historical context.
+
+## Historical batch after build 217
 
 ## Town posting without identity verification
 
@@ -30,4 +38,24 @@ New Robin Hood hat and honey feather on parchment, plus matching launch-screen a
 4. Confirm a private item and a post from another town do not become visible.
 5. Check the new home-screen icon, cold-launch mark, and verification-sheet branding.
 
-This batch is prepared separately from released build 217. It has not been submitted to TestFlight.
+These notes describe the historical batch originally prepared after build 217;
+they are not the status of the current TestFlight submission.
+
+## Onboarding and neighborhood promotion — September 26
+
+Onboarding now follows town/name, optional neighborhood join/create, and optional
+Stripe verification. It includes themed illustrations, a three-part progress
+indicator without numbers, retryable errors, and resumable progress. Town entry
+retains manual entry, the native state picker, and optional location permission.
+The promotional screenshot setup now includes My Neighborhood and consistent
+fictional member portraits.
+See [the onboarding review](onboarding-refresh-2026-09-26.md) for validation and
+the remaining native visual checks. This work is approved for the release.
+
+## Sign-in layout — September 26
+
+The main sign-in screen now follows the user's GitHub reference: visible email/password fields, password recovery beside the label, a green Sign in button, then Google and native Apple controls below a divider. Borrowhood's hat logo and parchment palette remain, with a compact Face ID option for returning members. Registration and password recovery return to this same layout. See [the sign-in review](sign-in-layout-2026-09-26.md) for the 32 passing checks and remaining device visual checks. Approved for this release.
+
+## Launch reliability work — September 26
+
+Bounded feed paging, isolated background database work, incremental rank updates, database-aware health checks, private-photo diagnostics, and expired-feed recovery are approved for this release. See [the launch readiness review](launch-readiness-2026-09-26.md) for executed tests and remaining staging, backup, and alert checks. CI must pass before merge and the signed build.

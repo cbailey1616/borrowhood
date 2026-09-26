@@ -28,8 +28,11 @@ describe('private-first onboarding', () => {
   it('explains friends, neighborhoods, town and identity verification', () => {
     const { getByLabelText, getByText } = render(<Screen navigation={navigation} />);
     fireEvent.press(getByLabelText('Continue'));
-    expect(getByText('Friends.\nNeighborhood. Town.')).toBeTruthy();
-    expect(getByText('Verified neighbors. More confidence.')).toBeTruthy();
+    expect(getByText('Your things.\nYour choice.')).toBeTruthy();
+    expect(getByText('Friends')).toBeTruthy();
+    expect(getByText('Neighborhood')).toBeTruthy();
+    expect(getByText('Town')).toBeTruthy();
+    expect(getByText('Look for the verified badge')).toBeTruthy();
     expect(api.updateOnboardingStep).not.toHaveBeenCalled();
   });
   it('keeps the user on the screen with a retryable error if saving fails', async () => {

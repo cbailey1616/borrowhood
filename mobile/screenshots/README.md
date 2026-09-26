@@ -4,8 +4,8 @@ This capture target uses the actual native app screens with fictional posts,
 neighbors, and messages. It runs separately from the TestFlight entry point.
 It has no production API fallback, sign-in, or live database seeding.
 
-The App Store set contains eight portrait PNGs per device: Home, Request Details,
-Giveaway, My Posts, Inbox, Messages, Public Comments, and Friends. Screens are captured at native size:
+The App Store set contains nine portrait PNGs per device: Home, Request Details,
+Giveaway, My Posts, Inbox, Messages, Public Comments, Friends, and My Neighborhood. Screens are captured at native size:
 
 - iPhone 13 Pro Max: 1284 × 2778 pixels (the requested 6.5-inch upload size).
 - iPad Pro 13-inch (M4): 2064 × 2752 pixels.
@@ -14,14 +14,20 @@ The capture script exports RGB PNGs without transparency or resizing.
 The `ui-review` folders also contain notification settings, your account profile,
 another member’s profile, and the actual exchange feedback component in a preview
 screen on iPhone Pro Max and iPhone SE. These review images are separate
-from the eight-image App Store set and include both on and off switch states.
-Every run first publishes the eight-image App Store set for both iPhone and iPad
+from the nine-image App Store set and include both on and off switch states.
+Every run first publishes the nine-image App Store set for both iPhone and iPad
 as `borrowhood-app-store-screenshots`, then captures the separate UI review set
 on the two iPhones. The upload-ready set can be downloaded while reviews finish.
+The neighborhood scene shows the existing chat, shared-items, and announcement
+sections with an offline sample membership. A separate Neighbors review capture
+uses the same four fictional portraits. This setup does not start a capture or
+create a new build by itself.
 They also show the same compact request carousel with a photo request and
 a short service request in front, to check spacing and consistent height.
-Review every image before uploading to App Store Connect. Sample listing photos use Unsplash except the cordless drill, which is original
-AI-generated sample imagery from the built-in image-generation tool. Sources are in
+Review every image before uploading to App Store Connect. Sample listing photos use Unsplash except the cordless drill. The drill and
+the four fictional neighbor portraits are original AI-generated sample imagery
+from the built-in image-generation tool. Member photos are bundled locally and
+shared consistently across Friends, messages, profiles, and posts. Sources are in
 `assets.json`; the drill and its creation notes are in `source-assets/`.
 
 Usability review captures include Home with an item due back tomorrow and a

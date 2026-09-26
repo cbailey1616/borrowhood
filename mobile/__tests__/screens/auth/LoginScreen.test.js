@@ -47,7 +47,7 @@ describe('LoginScreen', () => {
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'MyPassword1');
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByText('Sign in'));
     });
     expect(mockLogin).toHaveBeenCalledWith('test@test.com', 'MyPassword1');
   });
@@ -59,7 +59,7 @@ describe('LoginScreen', () => {
     );
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'MyPassword1');
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByText('Sign in'));
     });
     // LoginScreen uses inline error state (setLoginError), not useError().showError
     expect(queryByText('Please enter your email and password.')).toBeTruthy();
@@ -73,7 +73,7 @@ describe('LoginScreen', () => {
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByText('Sign in'));
     });
     // LoginScreen uses inline error state (setLoginError), not useError().showError
     expect(queryByText('Please enter your email and password.')).toBeTruthy();
@@ -89,7 +89,7 @@ describe('LoginScreen', () => {
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'wrong');
     await act(async () => {
-      fireEvent.press(getByText('Sign In'));
+      fireEvent.press(getByText('Sign in'));
     });
     // LoginScreen shows the server's error message inline
     expect(await findByText('Invalid credentials')).toBeTruthy();
@@ -100,7 +100,7 @@ describe('LoginScreen', () => {
     const { getByText } = render(
       <LoginScreen navigation={mockNavigation} />
     );
-    expect(getByText('Forgot your password?')).toBeTruthy();
+    expect(getByText('Forgot password?')).toBeTruthy();
   });
 
   it('forgot password navigates to ForgotPassword', () => {
@@ -108,7 +108,16 @@ describe('LoginScreen', () => {
     const { getByText } = render(
       <LoginScreen navigation={mockNavigation} />
     );
-    fireEvent.press(getByText('Forgot your password?'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
+    fireEvent.press(getByText('Forgot password?'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword', { email: '' });
+  });
+
+  it('keeps back and account recovery navigation available', () => {
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
+    const screen = render(<LoginScreen navigation={mockNavigation} />);
+    fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Can't find your account?"));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FindAccount');
   });
 });

@@ -9,7 +9,7 @@ export const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console({
-      format: winston.format.combine(
+      format: process.env.NODE_ENV === 'production' ? winston.format.json() : winston.format.combine(
         winston.format.colorize(),
         winston.format.simple()
       ),

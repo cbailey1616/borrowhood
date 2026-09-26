@@ -47,6 +47,21 @@ jobs:
         env:
           PRIVACY_PG_BIN: /usr/lib/postgresql/16/bin
         run: npm test
+      - name: Rehearse concurrent traffic and native backup restoration
+        id: launch-rehearsal
+        working-directory: server
+        env:
+          PRIVACY_PG_BIN: /usr/lib/postgresql/16/bin
+        run: |
+          rm -f ../docs/qa/launch-load-results.json
+          npm run test:launch:local
+      - name: Save launch rehearsal results
+        if: always() && (steps.launch-rehearsal.outcome == 'success' || steps.launch-rehearsal.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-rehearsal-results
+          path: docs/qa/launch-load-results.json
+          if-no-files-found: ignore
 
   mobile:
     name: Mobile regression and iOS bundle

@@ -1,371 +1,101 @@
-import { ScrollView } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Text, ActivityIndicator, StyleSheet } from 'react-native';
 import useNavigationTask from '../../hooks/useNavigationTask';
 import useVerificationOffer from '../../hooks/useVerificationOffer';
 import VerificationPurchaseActions from '../../components/VerificationPurchaseActions';
-import { Ionicons } from '../../components/Icon';
-import VerifiedBadge from '../../components/VerifiedBadge';
+import VerificationBenefits from '../../components/VerificationBenefits';
+import OnboardingLayout from '../../components/OnboardingLayout';
 import HapticPressable from '../../components/HapticPressable';
-import OnboardingProgressBar from '../../components/OnboardingProgressBar';
 import { useAuth } from '../../context/AuthContext';
-import { useError } from '../../context/ErrorContext';
-import { haptics } from '../../utils/haptics';
 import api from '../../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { COLORS, TYPOGRAPHY } from '../../utils/config';
 import { isUserVerified } from '../../utils/auth';
 
 export default function OnboardingVerifyScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
-  const startNavigationTask = useNavigationTask(navigation, user?.id);
-  const purchase = useVerificationOffer(navigation, startNavigationTask, user?.id);
-  const insets = useSafeAreaInsets();
-  const { showError } = useError();
-  const [isChecking, setIsChecking] = useState(true);
-  const [alreadyVerified, setAlreadyVerified] = useState(false);
-
+  const startTask = useNavigationTask(navigation, user?.id);
+  const purchase = useVerificationOffer(navigation, startTask, user?.id);
+  const action = useRef(false);
+  const statusVersion = useRef(0);
+  const [checking, setChecking] = useState(true);
+  const [status, setStatus] = useState('none');
+  const [finishing, setFinishing] = useState(false);
+  const [error, setError] = useState('');
+  const [statusError, setStatusError] = useState('');
   const checkStatus = useCallback(async () => {
-    const isCurrent = startNavigationTask();
+    const isCurrent = startTask();
+    const version = ++statusVersion.current;
+    setChecking(true); setStatusError('');
     try {
       const result = await api.getVerificationStatus();
-      if (!isCurrent()) return;
-      setAlreadyVerified(isUserVerified(result));
-    } catch (e) {
-      // Non-blocking — just show the verify screen
+      if (isCurrent() && version === statusVersion.current) setStatus(isUserVerified(result) ? 'verified' : result.status || 'none');
+    } catch {
+      if (isCurrent() && version === statusVersion.current) setStatusError('Could not check verification status. Try again or finish later.');
     } finally {
-      if (isCurrent()) setIsChecking(false);
+      if (isCurrent() && version === statusVersion.current) setChecking(false);
     }
-  }, [startNavigationTask, user?.id]);
-
+  }, [startTask]);
   useEffect(() => {
     checkStatus();
     const unsubscribe = navigation?.addListener?.('focus', checkStatus);
     return () => unsubscribe?.();
   }, [checkStatus, navigation]);
 
-  const handleVerify = async () => {
-    const isCurrent = startNavigationTask();
+  const complete = async isCurrent => {
+    if (!isCurrent()) return;
+    setFinishing(true);
+    await api.completeOnboarding();
+    if (isCurrent()) await refreshUser();
+    // RootNavigator switches to the feed only after refreshed server state.
+  };
+  const finish = async () => {
+    if (action.current || purchase.busy) return;
+    const isCurrent = startTask();
+    action.current = true; setError('');
+    try { await complete(isCurrent); }
+    catch { if (isCurrent()) setError('Could not finish setup. Please try again.'); }
+    finally { action.current = false; if (isCurrent()) setFinishing(false); }
+  };
+  const verify = async () => {
+    if (action.current) return;
+    const isCurrent = startTask();
+    action.current = true; setError('');
     try {
       const result = await purchase.verify(isCurrent);
       if (!result || !isCurrent()) return;
-      haptics.success();
-      await refreshUser();
-      if (isCurrent()) goToComplete();
+      // A browser dismissal never completes setup. Processing is not verified.
+      if (!isUserVerified(result) && !['processing', 'submitted'].includes(result.status)) return;
+      setStatus(isUserVerified(result) ? 'verified' : 'processing');
+      await complete(isCurrent);
     } catch (err) {
-      if (!isCurrent()) return;
-      haptics.error();
-      showError({
-        message: err.message || 'Couldn\'t start verification. Please check your connection and try again.',
-        type: 'network',
-      });
-    }
+      if (isCurrent()) setError(err.message || 'Could not start verification. Please try again.');
+    } finally { action.current = false; if (isCurrent()) setFinishing(false); }
   };
-
-  const goToComplete = useCallback(async () => {
-    const isCurrent = startNavigationTask();
-    haptics.medium();
-    try { await api.updateOnboardingStep(4); } catch (e) {}
-    if (isCurrent()) navigation.navigate('OnboardingComplete');
-  }, [navigation, startNavigationTask]);
-
-  if (isChecking) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
-        <OnboardingProgressBar step={4} total={4} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.spinner} />
-        </View>
-      </View>
-    );
-  }
-
-  // If already verified, auto-advance
-  if (alreadyVerified) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
-        <OnboardingProgressBar step={4} total={4} />
-        <HapticPressable
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          haptic="light"
-        >
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </HapticPressable>
-
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
-          <View style={styles.successCircle}>
-            <VerifiedBadge size={84} glow />
-          </View>
-          <Text style={styles.title}>Already Verified</Text>
-          <Text style={styles.subtitle}>
-            Your identity has been verified. You can now see who’s lending in Town borrow listings, and your profile has a verified badge. Private inventories stay private.
-          </Text>
-        </ScrollView>
-
-        <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-          <HapticPressable onPress={goToComplete} haptic="medium">
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </LinearGradient>
-          </HapticPressable>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
-      <OnboardingProgressBar step={4} total={4} />
-
-      <HapticPressable
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-        haptic="light"
-      >
-        <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-      </HapticPressable>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
-        <View style={styles.iconContainer}>
-          <VerifiedBadge size={76} glow />
-        </View>
-
-        <Text style={styles.title}>Build town trust. Get verified.</Text>
-        <Text style={styles.subtitle}>See who’s lending in Town borrow listings and let neighbors know your identity has been checked.</Text>
-        <Text style={styles.subtitle}>Powered by Stripe Identity · A quick ID and selfie check</Text>
-        <View style={[styles.tierCard, styles.tierCardHighlight]}>
-          <Text style={styles.tierDescription}>Names and profiles are already visible on Town requests, giveaways, and sale posts.</Text>
-        </View>
-
-        <View style={styles.trustRow}>
-          <Ionicons name="lock-closed" size={14} color={COLORS.textMuted} />
-          <Text style={styles.trustText}>
-            Stripe handles your ID images. Borrowhood receives verification results and identity details; your ID images are not shown to neighbors.
-          </Text>
-        </View>
-      </ScrollView>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-        <VerificationPurchaseActions purchase={purchase} onVerify={handleVerify} testID="OnboardingVerification.button.verify" />
-
-        <HapticPressable
-          style={styles.skipButton}
-          onPress={goToComplete}
-          haptic="light"
-        >
-          <Text style={styles.skipButtonText}>Explore first</Text>
-        </HapticPressable>
-      </View>
-    </View>
-  );
+  const verified = status === 'verified';
+  const processing = ['submitted', 'processing'].includes(status);
+  const readyToFinish = verified || processing;
+  const busy = finishing || purchase.busy;
+  return <OnboardingLayout step={3} compact scene="onboardingVerify"
+    title={verified ? 'You’re verified' : processing ? 'We’re checking your ID' : 'Get verified.'}
+    description={verified ? 'You’re ready to borrow across Town.' : processing
+      ? 'Your badge will appear once verification is complete.' : 'Let neighbors know it’s really you.'}
+    onBack={() => navigation.navigate('OnboardingNeighborhood')} backDisabled={busy} busy={finishing}
+    error={error || statusError}
+    buttonLabel={readyToFinish ? 'Continue to Borrowhood' : undefined} onContinue={finish}
+    primaryAction={!readyToFinish ? <VerificationPurchaseActions purchase={purchase} onVerify={verify}
+      disabled={finishing || checking} branded hideFreeNote testID="OnboardingVerification.button.verify" /> : undefined}
+    secondaryActions={!readyToFinish && <HapticPressable accessibilityRole="button" disabled={busy}
+      accessibilityState={{ disabled: busy }} onPress={finish} style={styles.linkButton}><Text style={styles.link}>Not now</Text></HapticPressable>}>
+    {checking && <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Checking verification" style={styles.loading} />}
+    {!readyToFinish && <VerificationBenefits />}
+    {status === 'requires_input' && <Text style={styles.notice}>Your ID check needs another try.</Text>}
+    {!!statusError && <HapticPressable accessibilityRole="button" onPress={checkStatus} disabled={busy || checking} style={styles.linkButton}>
+      <Text style={styles.link}>Check status again</Text></HapticPressable>}
+  </OnboardingLayout>;
 }
-
-function UnlockItem({ text }) {
-  return (
-    <View style={styles.unlockRow}>
-      <Ionicons name="checkmark" size={16} color={COLORS.primary} />
-      <Text style={styles.unlockText}>{text}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 56,
-    left: SPACING.lg,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xl,
-  },
-  successCircle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xl,
-  },
-  title: {
-    ...TYPOGRAPHY.h1,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: SPACING.xxl,
-    maxWidth: 280,
-  },
-  tierCard: {
-    width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  tierCardHighlight: {
-    backgroundColor: COLORS.primaryMuted,
-    borderColor: COLORS.borderGreen,
-  },
-  tierHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  tierEmoji: {
-    fontSize: 22,
-  },
-  tierHeaderText: {
-    flex: 1,
-  },
-  tierTitle: {
-    ...TYPOGRAPHY.headline,
-    color: COLORS.text,
-    fontSize: 15,
-  },
-  tierScope: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-    marginTop: 1,
-  },
-  freeBadge: {
-    backgroundColor: COLORS.surfaceElevated,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  freeBadgeText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    fontSize: 10,
-  },
-  verifiedBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary + '25',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tierDescription: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.sm,
-    lineHeight: 18,
-  },
-  unlocksList: {
-    marginTop: SPACING.sm,
-    gap: SPACING.sm,
-  },
-  unlockRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  unlockText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.primary,
-    flex: 1,
-  },
-  trustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.lg,
-  },
-  trustText: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
-    flex: 1,
-  },
-  footer: {
-    paddingHorizontal: SPACING.xl,
-    gap: SPACING.sm,
-  },
-  verifyButton: {
-    paddingVertical: 17,
-    borderRadius: RADIUS.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  verifyButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    paddingVertical: 17,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
-  },
-  skipButton: {
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
-  },
-  skipButtonText: {
-    color: COLORS.textMuted,
-    ...TYPOGRAPHY.footnote,
-  },
+  linkButton: { minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center' },
+  link: { ...TYPOGRAPHY.body, color: COLORS.primary, textDecorationLine: 'underline', textAlign: 'center' },
+  loading: { marginBottom: 16 },
+  notice: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 16 },
 });

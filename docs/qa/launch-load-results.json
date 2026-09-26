@@ -1,0 +1,169 @@
+{
+  "createdAt": "2026-09-26T13:13:10.369Z",
+  "environment": "isolated local PGlite (single connection)",
+  "limitation": "Exercises real route SQL and HTTP concurrency using synthetic data. Excludes hosting, network, native database pool concurrency, S3 and Expo capacity. These timings do not establish production capacity.",
+  "fixtures": {
+    "members": 150,
+    "listings": 10000,
+    "requests": 1000,
+    "feedEvents": 100000,
+    "messages": 10000,
+    "notifications": 5000,
+    "exchanges": 1000,
+    "endorsements": 1000,
+    "pushDeliveries": 5000
+  },
+  "runs": [
+    {
+      "clients": 10,
+      "requests": 50,
+      "errors": 0,
+      "durationMs": 2167,
+      "medianMs": 78,
+      "p95Ms": 1298,
+      "maxMs": 1299,
+      "byRoute": {
+        "feed first page": {
+          "requests": 10,
+          "medianMs": 1297,
+          "p95Ms": 1299
+        },
+        "feed next page": {
+          "requests": 10,
+          "medianMs": 682,
+          "p95Ms": 682
+        },
+        "chat": {
+          "requests": 10,
+          "medianMs": 51,
+          "p95Ms": 52
+        },
+        "notifications": {
+          "requests": 10,
+          "medianMs": 78,
+          "p95Ms": 78
+        },
+        "feed summary": {
+          "requests": 10,
+          "medianMs": 57,
+          "p95Ms": 60
+        }
+      }
+    },
+    {
+      "clients": 25,
+      "requests": 125,
+      "errors": 0,
+      "durationMs": 5217,
+      "medianMs": 184,
+      "p95Ms": 3091,
+      "maxMs": 3099,
+      "byRoute": {
+        "feed first page": {
+          "requests": 25,
+          "medianMs": 3087,
+          "p95Ms": 3098
+        },
+        "feed next page": {
+          "requests": 25,
+          "medianMs": 1715,
+          "p95Ms": 1728
+        },
+        "chat": {
+          "requests": 25,
+          "medianMs": 108,
+          "p95Ms": 110
+        },
+        "notifications": {
+          "requests": 25,
+          "medianMs": 184,
+          "p95Ms": 184
+        },
+        "feed summary": {
+          "requests": 25,
+          "medianMs": 118,
+          "p95Ms": 120
+        }
+      }
+    },
+    {
+      "clients": 50,
+      "requests": 250,
+      "errors": 0,
+      "durationMs": 10363,
+      "medianMs": 359,
+      "p95Ms": 6150,
+      "maxMs": 6155,
+      "byRoute": {
+        "feed first page": {
+          "requests": 50,
+          "medianMs": 6141,
+          "p95Ms": 6154
+        },
+        "feed next page": {
+          "requests": 50,
+          "medianMs": 3395,
+          "p95Ms": 3396
+        },
+        "chat": {
+          "requests": 50,
+          "medianMs": 217,
+          "p95Ms": 219
+        },
+        "notifications": {
+          "requests": 50,
+          "medianMs": 359,
+          "p95Ms": 361
+        },
+        "feed summary": {
+          "requests": 50,
+          "medianMs": 248,
+          "p95Ms": 255
+        }
+      }
+    },
+    {
+      "clients": 100,
+      "requests": 500,
+      "errors": 0,
+      "durationMs": 21281,
+      "medianMs": 681,
+      "p95Ms": 12759,
+      "maxMs": 12768,
+      "byRoute": {
+        "feed first page": {
+          "requests": 100,
+          "medianMs": 12748,
+          "p95Ms": 12767
+        },
+        "feed next page": {
+          "requests": 100,
+          "medianMs": 7027,
+          "p95Ms": 7032
+        },
+        "chat": {
+          "requests": 100,
+          "medianMs": 398,
+          "p95Ms": 408
+        },
+        "notifications": {
+          "requests": 100,
+          "medianMs": 681,
+          "p95Ms": 684
+        },
+        "feed summary": {
+          "requests": 100,
+          "medianMs": 425,
+          "p95Ms": 435
+        }
+      }
+    }
+  ],
+  "messageRetries": {
+    "requests": 100,
+    "persistedMessages": 50,
+    "queuedDeliveries": 50
+  },
+  "restore": "Passed synthetic PGlite export/restore with row counts and full-row digests across nine tables. Railway backup/restore remains unverified.",
+  "maxFeedCandidateRows": 201
+}

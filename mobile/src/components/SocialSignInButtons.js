@@ -53,21 +53,21 @@ export default function SocialSignInButtons({ disabled = false, onBusyChange, on
   return (
     <View style={styles.container}>
       <View pointerEvents={disabled || busy ? 'none' : 'auto'} style={{ opacity: disabled || busy ? 0.55 : 1 }}>
-        {appleAvailable && <AppleAuthentication.AppleAuthenticationButton
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-          cornerRadius={26}
-          style={styles.button}
-          onPress={() => signIn('apple')}
-          testID="Auth.apple"
-          accessibilityLabel="Continue with Apple"
-        />}
         <HapticPressable style={[styles.button, styles.googleButton]} disabled={disabled || !!busy}
           onPress={() => signIn('google')} testID="Auth.google" accessibilityRole="button"
           accessibilityLabel="Continue with Google" accessibilityState={{ disabled: disabled || !!busy }}>
           <Image source={require('../../assets/brand/google-g.png')} style={styles.googleLogo} accessible={false} />
           <Text style={styles.googleText}>Continue with Google</Text>
         </HapticPressable>
+        {appleAvailable && <AppleAuthentication.AppleAuthenticationButton
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+          cornerRadius={8}
+          style={[styles.button, styles.appleButton]}
+          onPress={() => signIn('apple')}
+          testID="Auth.apple"
+          accessibilityLabel="Continue with Apple"
+        />}
       </View>
       {!!busy && <View style={styles.progress} accessibilityLiveRegion="polite">
         <ActivityIndicator color={COLORS.spinner} /><Text style={styles.note}>Signing you in…</Text>
@@ -78,9 +78,10 @@ export default function SocialSignInButtons({ disabled = false, onBusyChange, on
 }
 const styles = StyleSheet.create({
   container: { width: '100%' },
-  button: { width: '100%', height: 52, marginBottom: 12 },
+  button: { width: '100%', height: 48 },
+  appleButton: { marginTop: 12 },
   // Google-approved light styling; keep the provider mark in its original colors.
-  googleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 26, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#747775' },
+  googleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#747775' },
   googleLogo: { width: 20, height: 20, resizeMode: 'contain' },
   googleText: { fontFamily: 'GoogleSansMedium', fontSize: 17, lineHeight: 24, color: '#1F1F1F', includeFontPadding: false },
   progress: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 8 },
