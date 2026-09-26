@@ -22,3 +22,14 @@ it('does not claim a report succeeded when the server rejects it',async()=>{
   fireEvent.press(screen.getByText('Report content'));fireEvent.press(screen.getByText('Harassment'));
   await screen.findByText('Please try again');expect(screen.queryByText('Report received')).toBeNull();
 });
+
+it('keeps staged dialogs open and closes the parent only when the final feedback is dismissed', async () => {
+  const closed=jest.fn(); const screen=render(<ContentSafetyActions type="discussion" id="comment" open onClose={closed} />);
+  fireEvent.press(screen.getByText('Report content'));
+  expect(closed).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText('Harassment'));
+  await screen.findByText('Report received');
+  expect(closed).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText('Done'));
+  expect(closed).toHaveBeenCalledTimes(1);
+});

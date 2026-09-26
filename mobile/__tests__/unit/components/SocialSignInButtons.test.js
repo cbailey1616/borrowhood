@@ -59,3 +59,11 @@ it('prevents duplicate taps from starting overlapping sign-ins', async () => {
   expect(GoogleSignin.signIn).toHaveBeenCalledTimes(1);
   await act(async () => complete({ type: 'cancelled' }));
 });
+
+it('does not establish a new Apple session without the authorization code needed for deletion', async () => {
+  AppleAuthentication.signInAsync.mockImplementationOnce(async ({state}) => ({state,identityToken:'apple-token',authorizationCode:null}));
+  const screen=render(<SocialSignInButtons />);
+  fireEvent.press(await screen.findByTestId('Auth.apple'));
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  expect(mockApple).not.toHaveBeenCalled();
+});
