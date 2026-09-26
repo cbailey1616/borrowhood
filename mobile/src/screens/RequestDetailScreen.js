@@ -1,3 +1,4 @@
+import ContentSafetyActions from '../components/ContentSafetyActions';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -218,6 +219,7 @@ export default function RequestDetailScreen({ route, navigation }) {
               {request.isExpired && request.isOwner ? 'Renew from My Posts.' : 'No longer accepting offers.'}
             </Text>}
           </View>
+          {!request.isOwner && <ContentSafetyActions type="request" id={request.id} onBlocked={() => navigation.goBack()} />}
           {!!request.photoUrl && <HapticPressable style={styles.photoFrame} onPress={() => setShowPhoto(true)}
             accessibilityRole="button" accessibilityLabel="View full wanted photo" testID="Request.photo">
             <ShimmerImage source={{ uri: request.photoUrl }} contentFit="cover" contentPosition="center"

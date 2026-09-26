@@ -319,7 +319,7 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 
 jest.mock('expo-apple-authentication', () => ({
   isAvailableAsync: jest.fn().mockResolvedValue(true),
-  signInAsync: jest.fn().mockImplementation(async options => ({ identityToken: 'apple-token', state: options.state, fullName: { givenName: 'Chris' } })),
+  signInAsync: jest.fn().mockImplementation(async options => ({ identityToken: 'apple-token', authorizationCode: 'apple-code', state: options.state, fullName: { givenName: 'Chris' } })),
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
   AppleAuthenticationButtonType: { CONTINUE: 2 },
   AppleAuthenticationButtonStyle: { BLACK: 0, WHITE_OUTLINE: 2 },
@@ -462,6 +462,8 @@ jest.mock('./src/services/api', () => ({
     getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),
     blockUser: jest.fn().mockResolvedValue({ blocked: true }),
     unblockUser: jest.fn().mockResolvedValue({ blocked: false }),
+    reportContent: jest.fn().mockResolvedValue({ ok: true }),
+    blockContentAuthor: jest.fn().mockResolvedValue({ ok: true }),
     reportUser: jest.fn().mockResolvedValue({ ok: true }),
     // Categories
     getCategories: jest.fn().mockResolvedValue([]),

@@ -1,3 +1,4 @@
+import { screenContent, unblockedSql } from '../services/contentPolicy.js';
 import { publishOnce } from '../services/publicationReceipts.js';
 import { canViewRequest } from '../services/listingAccess.js';
 import { Router } from 'express';
@@ -8,6 +9,7 @@ import { sendNotification } from '../services/notifications.js';
 import { notifyThreadParticipants, getDiscussionThread } from '../services/discussionNotifications.js';
 
 const router = Router();
+router.use(screenContent());
 
 router.get('/:requestId/discussions/:postId', authenticate, async (req, res) => {
   try {
@@ -29,20 +31,20 @@ router.get('/:requestId/discussions', authenticate, async (req, res) => {
   try {
     if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
-      `SELECT d.id, d.content, d.reply_count, d.created_at, d.updated_at,
+      `SELECT d.id, d.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=d.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$4')}) AS reply_count, d.created_at, d.updated_at,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
-       WHERE d.request_id = $1 AND d.parent_id IS NULL AND d.is_hidden = false
+       WHERE d.request_id = $1 AND d.parent_id IS NULL AND d.is_hidden = false AND ${unblockedSql('d.user_id', '$4')}
        ORDER BY d.created_at DESC
        LIMIT $2 OFFSET $3`,
-      [req.params.requestId, limit, offset]
+      [req.params.requestId, limit, offset, req.user.id]
     );
 
     const countResult = await query(
-      `SELECT COUNT(*) FROM listing_discussions
-       WHERE request_id = $1 AND parent_id IS NULL AND is_hidden = false`,
-      [req.params.requestId]
+      `SELECT COUNT(*) FROM listing_discussions d
+       WHERE request_id = $1 AND parent_id IS NULL AND is_hidden = false AND ${unblockedSql('d.user_id', '$2')}`,
+      [req.params.requestId, req.user.id]
     );
 
     res.json({
@@ -86,10 +88,10 @@ router.get('/:requestId/discussions/:postId/replies', authenticate, async (req, 
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
        WHERE d.parent_id = $1 AND d.is_hidden = false AND d.request_id=$4
-         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false)
+         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false AND ${unblockedSql('root.user_id', '$5')}) AND ${unblockedSql('d.user_id', '$5')}
        ORDER BY d.created_at ASC, d.id ASC
        LIMIT $2 OFFSET $3`,
-      [req.params.postId, limit, offset, req.params.requestId]
+      [req.params.postId, limit, offset, req.params.requestId, req.user.id]
     );
 
     res.json({
@@ -159,6 +161,8 @@ router.post('/:requestId/discussions', authenticate,
           return res.status(400).json({ error: 'Parent post does not belong to this request' });
         }
       }
+
+      if (parentId && !await getDiscussionThread('request', requestId, parentId, req.user.id)) return res.status(404).json({ error: 'Comment no longer available' });
 
       // Get poster's name for notifications
       const posterResult = await query(

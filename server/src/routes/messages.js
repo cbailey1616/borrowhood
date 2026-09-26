@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { communityConversations } from '../services/communityChat.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { canViewListing } from '../services/listingAccess.js';
@@ -9,6 +10,7 @@ import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
+router.use(screenContent());
 
 router.get('/capabilities', authenticate, async (req, res) => {
   try {

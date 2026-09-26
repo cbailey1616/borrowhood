@@ -207,7 +207,7 @@ describe('ListingDiscussionScreen', () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     fireEvent(await screen.findByTestId('Comments.message.post-1'), 'longPress');
-    expect(visibleMenu(screen).props.actions.map(action => action.label)).toEqual(['Reply in thread', 'Message Alice privately']);
+    expect(visibleMenu(screen).props.actions.map(action => action.label)).toEqual(['Reply in thread', 'Report or block', 'Message Alice privately']);
     await chooseAction(screen, 'Reply in thread');
     expect(screen.getByPlaceholderText('Reply in thread…')).toBeTruthy();
     expect(screen.getByText(post.content)).toBeTruthy();
@@ -428,8 +428,8 @@ describe('focused comment threads', () => {
 
   it.each([
     { isOwner: false, post: makePost('own', 'Test', { user: { id: 'user-1', firstName: 'Test' }, isOwn: false }), actions: ['Reply in thread', 'Delete comment'] },
-    { isOwner: false, post: makePost('other', 'Alice'), actions: ['Reply in thread', 'Message Alice privately'] },
-    { isOwner: true, post: makePost('other', 'Alice'), actions: ['Reply in thread', 'Message Alice privately', 'Delete comment'] },
+    { isOwner: false, post: makePost('other', 'Alice'), actions: ['Reply in thread', 'Report or block', 'Message Alice privately'] },
+    { isOwner: true, post: makePost('other', 'Alice'), actions: ['Reply in thread', 'Report or block', 'Message Alice privately', 'Delete comment'] },
   ])('keeps comment menu permissions for $post.id with owner=$isOwner', async ({ isOwner, post, actions }) => {
     api.getDiscussions.mockResolvedValue({ posts: [post] });
     const screen = renderScreen({ params: { ...route.params, listing: { ...route.params.listing, isOwner } } });

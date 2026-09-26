@@ -34,10 +34,10 @@ it('does not call the API without a Google ID token', async () => {
 it('checks Apple state and passes first-sign-in name information', async () => {
   const screen = render(<SocialSignInButtons />);
   fireEvent.press(await screen.findByTestId('Auth.apple'));
-  await waitFor(() => expect(mockApple).toHaveBeenCalledWith('apple-token', { givenName: 'Chris' }));
+  await waitFor(() => expect(mockApple).toHaveBeenCalledWith('apple-token', { givenName: 'Chris' }, 'apple-code'));
 });
 it('rejects a mismatched Apple response', async () => {
-  AppleAuthentication.signInAsync.mockResolvedValueOnce({ identityToken: 'apple-token', state: 'different' });
+  AppleAuthentication.signInAsync.mockResolvedValueOnce({ identityToken: 'apple-token', authorizationCode: 'apple-code', state: 'different' });
   const screen = render(<SocialSignInButtons />);
   fireEvent.press(await screen.findByTestId('Auth.apple'));
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());

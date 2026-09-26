@@ -179,9 +179,9 @@ describe('AuthContext', () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => { expect(result.current.isLoading).toBe(false); });
     await act(async () => {
-      await result.current.loginWithApple('apple-identity-token', { givenName: 'Test' });
+      await result.current.loginWithApple('apple-identity-token', { givenName: 'Test' }, 'apple-authorization-code');
     });
-    expect(api.loginWithApple).toHaveBeenCalledWith('apple-identity-token', { givenName: 'Test' });
+    expect(api.loginWithApple).toHaveBeenCalledWith('apple-identity-token', { givenName: 'Test' }, 'apple-authorization-code');
     expect(result.current.isAuthenticated).toBe(true);
   });
 

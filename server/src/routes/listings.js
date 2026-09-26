@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { publishOnce } from '../services/publicationReceipts.js';
 import { endorsementSummary } from '../services/endorsements.js';
 import { listingAvailabilitySql } from '../utils/listingAvailability.js';
@@ -16,6 +17,7 @@ import { sendNotification } from '../services/notifications.js';
 import { analyzeItemImage } from '../services/imageAnalysis.js';
 
 const router = Router();
+router.use(screenContent());
 
 // ============================================
 // GET /api/listings
@@ -520,7 +522,7 @@ router.patch('/:id', authenticate, freeListingOnly,
       }
       // Verify ownership
       const listing = await query(
-        'SELECT owner_id, community_id, listing_type, direct_fee FROM listings WHERE id = $1',
+        'SELECT owner_id, community_id, listing_type, direct_fee, moderation_removed_at FROM listings WHERE id = $1',
         [req.params.id]
       );
 
@@ -531,6 +533,8 @@ router.patch('/:id', authenticate, freeListingOnly,
       if (listing.rows[0].owner_id !== req.user.id) {
         return res.status(403).json({ error: 'Not authorized' });
       }
+
+      if (listing.rows[0].moderation_removed_at) return res.status(403).json({ error: 'This post was removed by Borrowhood. Contact chris@borrowhood.net to appeal.' });
 
       if (req.body.directFee !== undefined) {
         try { req.body.directFee = normalizeDirectFee(req.body.directFee, listing.rows[0].listing_type); }
@@ -627,7 +631,8 @@ router.patch('/:id', authenticate, freeListingOnly,
       }
 
       await withTransaction(async client => {
-        await client.query('SELECT id FROM listings WHERE id = $1 FOR UPDATE', [req.params.id]);
+        const current = (await client.query('SELECT id, moderation_removed_at FROM listings WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+        if (current?.moderation_removed_at) throw Object.assign(new Error('This post was removed by Borrowhood.'), { status: 403 });
         if (updates.length > 0) {
           values.push(req.params.id);
           await client.query(
@@ -652,7 +657,7 @@ router.patch('/:id', authenticate, freeListingOnly,
       res.json({ success: true });
     } catch (err) {
       console.error('Update listing error:', err);
-      res.status(500).json({ error: 'Failed to update listing' });
+      res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to update listing' });
     }
   }
 );

@@ -1,3 +1,4 @@
+import { removeReportedContent } from './contentReports.js';
 import { query, withTransaction } from '../utils/db.js';
 
 export async function ensureSafetyReviewSchema() {
@@ -5,7 +6,10 @@ export async function ensureSafetyReviewSchema() {
     await db.query(`ALTER TABLE safety_reports
       ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open',
       ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ`);
+      ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS content_type TEXT,
+      ADD COLUMN IF NOT EXISTS content_id UUID,
+      ADD COLUMN IF NOT EXISTS content_snapshot JSONB`);
     // Reports survive account deletion without preventing the deletion itself.
     await db.query(`ALTER TABLE safety_reports
       DROP CONSTRAINT IF EXISTS safety_reports_reporter_id_fkey,
@@ -20,8 +24,13 @@ export async function ensureSafetyReviewSchema() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       report_id UUID NOT NULL REFERENCES safety_reports(id) ON DELETE CASCADE,
       admin_id UUID REFERENCES users(id) ON DELETE SET NULL,
-      action TEXT NOT NULL CHECK (action IN ('dismiss','reopen','suspend','restore')),
+      action TEXT NOT NULL CHECK (action IN ('dismiss','reopen','suspend','restore','remove_content')),
       note TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await db.query('ALTER TABLE safety_review_actions DROP CONSTRAINT IF EXISTS safety_review_actions_action_check');
+    await db.query(`ALTER TABLE safety_review_actions ADD CONSTRAINT safety_review_actions_action_check
+      CHECK (action IN ('dismiss','reopen','suspend','restore','remove_content'))`);
+    await db.query('ALTER TABLE IF EXISTS listings ADD COLUMN IF NOT EXISTS moderation_removed_at TIMESTAMPTZ');
+    await db.query('ALTER TABLE IF EXISTS item_requests ADD COLUMN IF NOT EXISTS moderation_removed_at TIMESTAMPTZ');
     await db.query('CREATE INDEX IF NOT EXISTS safety_reports_queue_idx ON safety_reports(status, created_at DESC)');
     await db.query('CREATE INDEX IF NOT EXISTS safety_reports_person_idx ON safety_reports(reported_id)');
     await db.query('CREATE INDEX IF NOT EXISTS safety_review_actions_report_idx ON safety_review_actions(report_id, created_at)');
@@ -33,6 +42,7 @@ const personName = alias => `COALESCE(NULLIF(${alias}.display_name,''), NULLIF(T
 
 export async function listSafetyReports(status, page) {
   const result = await query(`SELECT r.id, r.reason, r.status, r.version, r.created_at AS "createdAt",
+    r.content_type AS "contentType", r.content_id AS "contentId", r.content_snapshot AS "contentSnapshot",
     r.reviewed_at AS "reviewedAt", r.reporter_id AS "reporterId", r.reported_id AS "reportedId",
     ${personName('reporter')} AS "reporterName", ${personName('reported')} AS "reportedName",
     reported.status AS "accountStatus", reported.is_admin AS "reportedIsAdmin",
@@ -60,6 +70,7 @@ export async function reviewSafetyReport(adminId, reportId, { action, note, vers
     const report = (await db.query('SELECT * FROM safety_reports WHERE id=$1 FOR UPDATE', [reportId])).rows[0];
     if (!report) throw failure(404, 'Report not found.');
     if (report.version !== version) throw failure(409, 'This report changed. Refresh it before making a decision.');
+    if (action === 'remove_content') await removeReportedContent(db, report, adminId);
     if (['suspend','restore'].includes(action)) {
       const account = (await db.query('SELECT * FROM users WHERE id=$1 FOR UPDATE', [report.reported_id])).rows[0];
       if (!account || account.email?.endsWith('@deleted.borrowhood.com')) throw failure(409, 'This account has been deleted.');

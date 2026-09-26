@@ -1,9 +1,11 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { Router } from 'express';
 import { withTransaction } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { communityConversations, communityChatVisibleSql } from '../services/communityChat.js';
 
 const router = Router({ mergeParams: true });
+router.use(screenContent());
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const sequence = value => typeof value === 'string' && /^\d{1,18}$/.test(value);
 const blocked = `NOT EXISTS (SELECT 1 FROM user_blocks b WHERE

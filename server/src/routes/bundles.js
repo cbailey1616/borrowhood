@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
@@ -5,6 +6,7 @@ import { authenticate } from '../middleware/auth.js';
 import { body, validationResult } from 'express-validator';
 
 const router = Router();
+router.use(screenContent());
 
 // ============================================
 // GET /api/bundles

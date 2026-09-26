@@ -165,7 +165,7 @@ export async function servePrivatePhoto(req, res) {
     data.src = decryptSource(data);
     imageId = createHash('sha256').update(data.src).digest('hex').slice(0,16);
     stage = 'viewer';
-    const viewer = await query(`SELECT id FROM users WHERE id = $1 AND status != 'suspended'
+    const viewer = await query(`SELECT id, is_admin FROM users WHERE id = $1 AND status != 'suspended'
       AND (token_invalidated_at IS NULL OR token_invalidated_at <= to_timestamp($2))`, [data.sub, data.iat]);
     if (!viewer.rows.length) return deny('viewer_revoked');
     stage = 'access';
@@ -196,7 +196,11 @@ export async function servePrivatePhoto(req, res) {
         AND NOT EXISTS (SELECT 1 FROM bundle_items bi JOIN listings l ON l.id = bi.listing_id
           WHERE bi.bundle_id = b.id AND NOT ${listingAccessSql('l', '$2', { discovery: true })})))
       LIMIT 1`, [data.src, data.sub]);
-    if (!allowed.rows.length) return deny('access_denied');
+    if (!allowed.rows.length) {
+      const evidence = viewer.rows[0].is_admin && await query(`SELECT 1 FROM safety_reports
+        WHERE content_snapshot->'photos' ? $1 LIMIT 1`, [data.src]);
+      if (!evidence?.rows.length) return deny('access_denied');
+    }
     res.set('Cache-Control', 'private, no-store');
     const url = new URL(data.src);
     if (url.hostname === `${bucket}.s3.${region}.amazonaws.com`) {

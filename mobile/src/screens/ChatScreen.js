@@ -1,3 +1,4 @@
+import ContentSafetyActions from '../components/ContentSafetyActions';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import ConversationsScreen from './ConversationsScreen';
@@ -94,6 +95,7 @@ function ChatConversation({ route, navigation }) {
   const [isSending, setIsSending] = useState(false);
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [safetyTarget, setSafetyTarget] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [photoMenuVisible, setPhotoMenuVisible] = useState(false);
   const [attachment, setAttachment] = useState(null);
@@ -419,6 +421,7 @@ function ChatConversation({ route, navigation }) {
         onPress: () => handleDeleteMessage(message.id),
       });
     }
+    if (!message.isOwnMessage && !message.isDeleted) actions.push({ label: 'Report or block', onPress: () => setSafetyTarget(message.id) });
     if (!message.isOwnMessage && profileId) {
       actions.push({
         label: 'View profile',
@@ -665,6 +668,8 @@ function ChatConversation({ route, navigation }) {
       </Modal>
 
       {/* Message Actions */}
+      {!!safetyTarget && <ContentSafetyActions key={safetyTarget} type="message" id={safetyTarget} open
+        onClose={() => setSafetyTarget(null)} onBlocked={() => setMessagesBlocked(true)} />}
       <ActionSheet
         isVisible={actionSheetVisible}
         onClose={() => {

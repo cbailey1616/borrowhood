@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import communityChat from './communityChat.js';
 import { Router } from 'express';
 import { query } from '../utils/db.js';
@@ -7,6 +8,7 @@ import { body, validationResult } from 'express-validator';
 import { originalPhotoUrl } from '../services/privatePhotos.js';
 
 const router = Router();
+router.use(screenContent());
 router.use('/:id/chat', communityChat);
 
 // ============================================

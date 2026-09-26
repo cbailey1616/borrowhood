@@ -1,3 +1,4 @@
+import { processAppleRevocations } from './appleSignInTokens.js';
 import { cleanupFeedHistory } from './feedWindows.js';
 import { query, withTransaction, withBackgroundDatabase } from '../utils/db.js';
 import { sendNotification } from './notifications.js';
@@ -253,6 +254,7 @@ export function startScheduler() {
     run();
   };
   schedule('push', processPushDeliveries, 5000);
+  schedule('Apple revocations', () => processAppleRevocations(), 60 * 1000);
   schedule('ranks', checkRankChanges, 60000);
   schedule('feed retention', cleanupFeedHistory, 5 * 60 * 1000);
   schedule('hourly', async () => {

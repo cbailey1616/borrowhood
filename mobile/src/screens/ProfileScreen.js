@@ -9,6 +9,7 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Application from 'expo-application';
@@ -134,9 +135,15 @@ export default function ProfileScreen({ navigation, route }) {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      await api.deleteAccount();
+      const result = await api.deleteAccount();
       haptics.success();
       await logout({ sessionExpired: true });
+      if (result?.appleRevocation?.status === 'manual') {
+        Alert.alert('Account deleted', 'Your Borrowhood account has been deleted. To also disconnect your earlier Apple sign-in, open Settings → your name → Sign in with Apple → Borrowhood → Delete.', [
+          { text: 'Done', style: 'cancel' },
+          { text: 'Apple instructions', onPress: () => Linking.openURL('https://support.apple.com/102571').catch(() => {}) },
+        ]);
+      }
     } catch (err) {
       showError({
         message: err.message || 'Failed to delete account. Please try again or contact support.',

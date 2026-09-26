@@ -1,3 +1,4 @@
+import ContentSafetyActions from './ContentSafetyActions';
 import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, FlatList, ScrollView, Image, StyleSheet, ActivityIndicator, AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,6 +28,7 @@ export default function CommunityChat({ community, navigation, header }) {
   const [muted, setMuted] = useState(false);
   const [role, setRole] = useState(community.role);
   const [menu, setMenu] = useState(null);
+  const [safetyTarget, setSafetyTarget] = useState(null);
   const alive = useRef(false);
   const generation = useRef(0);
   const sendLock = useRef(false);
@@ -103,6 +105,7 @@ export default function CommunityChat({ community, navigation, header }) {
     { label: muted ? 'Unmute chat' : 'Mute chat', onPress: toggleMute },
     { label: 'Neighborhood settings', onPress: () => navigation.navigate('CommunitySettings', { id }) },
   ] : menu ? [
+    ...(!menu.deleted && menu.sender.id !== user?.id ? [{ label: 'Report or block', onPress: () => setSafetyTarget(menu.id) }] : []),
     ...(!menu.deleted ? [{ label: 'Reply', onPress: () => changeThread(menu.parentId ? thread : menu) }] : []),
     ...(role === 'organizer' || menu.sender.id === user?.id ? [{ label: 'Remove message', destructive: true, onPress: () => remove(menu) }] : []),
   ] : [];
@@ -140,12 +143,14 @@ export default function CommunityChat({ community, navigation, header }) {
           {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
             <Text style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text>
           </HapticPressable>}
-          {(role === 'organizer' || item.sender.id === user?.id) && !item.deleted && <HapticPressable onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} /></HapticPressable>}
+          {!item.deleted && <HapticPressable onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} /></HapticPressable>}
         </View>
       </View>}
     />}
     <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}><MessageComposer value={text} onChangeText={setText} onSend={send}
       placeholder={thread ? 'Write a reply…' : 'Message your neighbors…'} disabled={!text.trim() || loading} editable={!sending} loading={sending} /></View>
+    {!!safetyTarget && <ContentSafetyActions key={safetyTarget} type="community_message" id={safetyTarget} open
+      onClose={() => setSafetyTarget(null)} onBlocked={() => { setMessages([]); changeThread(null); refresh(); }} />}
     <ActionSheet isVisible={!!menu} onClose={() => setMenu(null)} actions={options} />
   </ComposerKeyboardView>;
 }

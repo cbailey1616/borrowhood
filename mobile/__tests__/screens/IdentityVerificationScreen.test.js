@@ -23,6 +23,7 @@ jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mock
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: mockShowError, showToast: jest.fn() }) }));
 beforeEach(() => {
   jest.clearAllMocks();
+  require('../../src/utils/config').ENABLE_VERIFICATION_PURCHASES = true; // Paid UI is exercised only as a future build fixture.
   mockUser.id = 'user-1';
   api.startIdentityVerification.mockResolvedValue({ verificationUrl: 'https://verify.stripe.com/start/test_session' });
   api.getVerificationStatus.mockResolvedValue({ status: 'none' });
@@ -223,4 +224,14 @@ describe('IdentityVerificationScreen', () => {
     expect(mockRefreshUser).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Verify now' })).toBeEnabled();
   });
+});
+
+it('keeps this free release from opening StoreKit when the service unexpectedly requires payment', async () => {
+  require('../../src/utils/config').ENABLE_VERIFICATION_PURCHASES = false;
+  api.getVerificationEligibility.mockResolvedValue(paidEligibility());
+  const Screen = require('../../src/screens/IdentityVerificationScreen').default;
+  const screen = render(<Screen navigation={mockNavigation} route={{ params: { source: 'generic' } }} />);
+  await screen.findByText('Verification is temporarily unavailable. Please try again later.');
+  expect(store.requestPurchase).not.toHaveBeenCalled();
+  expect(store.fetchProducts).not.toHaveBeenCalled();
 });

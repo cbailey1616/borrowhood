@@ -18,6 +18,7 @@ beforeEach(() => {
   store = require('expo-iap');
   platform = require('react-native').Platform;
   platform.OS = 'ios';
+  require('../../src/utils/config').ENABLE_VERIFICATION_PURCHASES = true; // Exercise the future, separately reviewed paid build.
   service = require('../../src/services/verificationPurchases');
   api.getVerificationEligibility.mockResolvedValue(paid);
   api.confirmAppleVerificationPurchase.mockResolvedValue(entitled);
@@ -297,4 +298,11 @@ it('fails closed on malformed eligibility instead of assuming verification is fr
   api.getVerificationEligibility.mockResolvedValue({ mode: 'free_launch' });
   await expect(service.ensureVerificationAccess()).rejects.toMatchObject({ code: 'VERIFICATION_UNAVAILABLE' });
   expect(store.initConnection).not.toHaveBeenCalled();
+});
+
+it('cannot activate purchases in the free release through a server flag', async () => {
+  require('../../src/utils/config').ENABLE_VERIFICATION_PURCHASES = false;
+  await expect(service.getVerificationOffer()).rejects.toMatchObject({ code: 'VERIFICATION_PURCHASE_UNAVAILABLE' });
+  expect(store.initConnection).not.toHaveBeenCalled();
+  expect(store.requestPurchase).not.toHaveBeenCalled();
 });

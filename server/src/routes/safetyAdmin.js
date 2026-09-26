@@ -16,7 +16,7 @@ router.post('/:id/review', async (req, res) => {
   const { action, version } = req.body;
   const note = typeof req.body.note === 'string' ? req.body.note.trim() : '';
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id) ||
-      !['dismiss','reopen','suspend','restore'].includes(action) || !Number.isInteger(version) || version < 0 || note.length < 3 || note.length > 2000)
+      !['dismiss','reopen','suspend','restore','remove_content'].includes(action) || !Number.isInteger(version) || version < 0 || note.length < 3 || note.length > 2000)
     return res.status(400).json({ error: 'Choose an action and add a review note (3–2,000 characters).' });
   try { res.json(await reviewSafetyReport(req.user.id, req.params.id, { action, note, version })); }
   catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not save this decision. Please try again.' }); }

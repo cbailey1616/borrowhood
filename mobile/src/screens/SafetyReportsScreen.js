@@ -1,3 +1,4 @@
+import ShimmerImage from '../components/ShimmerImage';
 import TextInput from '../components/AppTextInput';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, StyleSheet, Keyboard } from 'react-native';
@@ -12,8 +13,9 @@ import SegmentedControl from '../components/SegmentedControl';
 import { Ionicons } from '../components/Icon';
 import { COLORS, RADIUS } from '../utils/config';
 
-const labels = { dismiss: 'Dismiss report', reopen: 'Reopen report', suspend: 'Suspend account', restore: 'Restore account' };
+const labels = { remove_content: 'Remove content', dismiss: 'Dismiss report', reopen: 'Reopen report', suspend: 'Suspend account', restore: 'Restore account' };
 const explanations = {
+  remove_content: 'Remove the reported post or message and its public replies. Exchange records remain available. This cannot be undone here.',
   dismiss: 'Close this report without changing account access.',
   reopen: 'Return this report to the open queue.',
   suspend: 'This person will lose access to Borrowhood. Existing exchange records stay available for follow-up.',
@@ -84,6 +86,12 @@ export default function SafetyReportsScreen({ navigation }) {
           <Ionicons name={selected?.id === report.id ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
         </HapticPressable>
         {selected?.id === report.id && <View style={styles.detail}>
+          {!!report.contentSnapshot && <View style={styles.history}>
+            <Text style={styles.reason}>{report.contentSnapshot.title}</Text>
+            <Text style={styles.body}>{report.contentSnapshot.content}</Text>
+            {report.contentSnapshot.photos?.map((uri, index) => <ShimmerImage key={index} source={{ uri }}
+              accessibilityLabel="Reported photo" style={{ width: '100%', height: 260, borderRadius: 12, marginTop: 12 }} resizeMode="contain" />)}
+          </View>}
           <Text style={styles.body}>Reported by {report.reporterName}</Text>
           <Text style={styles.body}>Account: {report.accountStatus || 'Deleted'} · {report.reportCount} total reports</Text>
           <Text style={styles.body}>{report.activeExchanges} active exchanges</Text>
@@ -93,6 +101,7 @@ export default function SafetyReportsScreen({ navigation }) {
           <TextInput accessibilityLabel="Review note" multiline value={note} onChangeText={setNote} maxLength={2000} editable={!saving}
             placeholder="Explain your decision. Visible only to administrators." placeholderTextColor={COLORS.textSecondary} style={styles.input} />
           <Text style={styles.caption}>Every decision is saved with the reviewer and time. A report alone does not suspend an account.</Text>
+          {report.contentId && <ActionButton label="Remove content" destructive disabled={saving} icon="trash-outline" onPress={() => choose('remove_content')} />}
           {saving ? <ActivityIndicator color={COLORS.spinner} /> : <>
             {report.reportedId && !report.reportedIsAdmin && report.reportedId !== user.id && report.accountStatus !== 'suspended' &&
               <ActionButton label="Suspend account" variant="primary" destructive icon="ban-outline" onPress={() => choose('suspend')} />}
@@ -105,7 +114,7 @@ export default function SafetyReportsScreen({ navigation }) {
     </ScrollView>
     {!!decision && <ActionSheet isVisible variant="confirmation" title={`${labels[decision]}?`} message={explanations[decision]}
       icon={<Ionicons name="shield-outline" size={24} color={COLORS.primary} />} onClose={() => setDecision(null)}
-      actions={[{ label: labels[decision], destructive: decision === 'suspend', primary: decision !== 'suspend', onPress: () => submit(decision) }]} />}
+      actions={[{ label: labels[decision], destructive: ['suspend','remove_content'].includes(decision), primary: !['suspend','remove_content'].includes(decision), onPress: () => submit(decision) }]} />}
   </View>;
 }
 const styles = StyleSheet.create({

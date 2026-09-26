@@ -107,9 +107,9 @@ export function AuthProvider({ children, navigationRef }) {
     return acceptSession(response, revision);
   };
 
-  const loginWithApple = async (identityToken, fullName) => {
+  const loginWithApple = async (identityToken, fullName, authorizationCode) => {
     const revision = ++sessionRevision.current;
-    const response = await api.loginWithApple(identityToken, fullName);
+    const response = await api.loginWithApple(identityToken, fullName, authorizationCode);
     return acceptSession(response, revision);
   };
 

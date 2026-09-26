@@ -1,3 +1,4 @@
+import { queueAppleRevocation, processAppleRevocations } from './appleSignInTokens.js';
 import { withTransaction } from '../utils/db.js';
 import { cancelPaymentIntent } from './stripe.js';
 import { sendNotification } from './notifications.js';
@@ -5,10 +6,12 @@ import { sendNotification } from './notifications.js';
 // Keep deletion and inventory changes atomic. Other participants retain records
 // for exchanges that need a return, dispute resolution, or legacy settlement.
 export async function deleteAccount(userId) {
-  const notices = await withTransaction(async client => {
+  const { notices, revocation } = await withTransaction(async client => {
     const query = client.query.bind(client);
     const notifications = [];
-    await query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    const user = (await query('SELECT * FROM users WHERE id = $1 FOR UPDATE', [userId])).rows[0];
+    if (!user) throw new Error('Account no longer exists');
+    const revocation = await queueAppleRevocation(client, user);
     const activeTxns = await query(`SELECT bt.id, bt.status, bt.stripe_payment_intent_id,
       bt.actual_pickup_at, bt.listing_id, bt.borrower_id, bt.lender_id, l.title AS item_title
       FROM borrow_transactions bt JOIN listings l ON l.id = bt.listing_id
@@ -88,6 +91,9 @@ export async function deleteAccount(userId) {
     await query('DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user1_id = $1 OR user2_id = $1)', [userId]);
     await query('DELETE FROM conversations WHERE user1_id = $1 OR user2_id = $1', [userId]);
     // 6. Remaining user-referenced tables
+    await query('UPDATE safety_reports SET content_snapshot=NULL WHERE reported_id=$1', [userId]);
+    await query('DELETE FROM push_devices WHERE user_id=$1', [userId]);
+    await query('DELETE FROM social_link_codes WHERE user_id=$1', [userId]);
     await query('DELETE FROM friendships WHERE user_id = $1 OR friend_id = $1', [userId]);
     await query('DELETE FROM community_memberships WHERE user_id = $1', [userId]);
     await query('DELETE FROM user_badges WHERE user_id = $1', [userId]);
@@ -117,7 +123,9 @@ export async function deleteAccount(userId) {
           profile_photo_url = NULL, status = 'suspended',
           stripe_customer_id = NULL, stripe_connect_account_id = NULL,
           stripe_identity_session_id = NULL, date_of_birth = NULL,
-          address_line1 = NULL
+          address_line1 = NULL, address_line2 = NULL, is_verified = false, verified_at = NULL, city = NULL, state = NULL, zip_code = NULL,
+          location = NULL, push_token = NULL, apple_id = NULL, google_id = NULL,
+          apple_refresh_token_ciphertext = NULL, token_invalidated_at = NOW()
         WHERE id = $1`,
         [userId]
       );
@@ -125,11 +133,17 @@ export async function deleteAccount(userId) {
       await query('DELETE FROM users WHERE id = $1', [userId]);
     }
 
-    return notifications;
+    return { notices: notifications, revocation };
   });
   // Delivery failures cannot undo deletion or tell a neighbor it happened before commit.
   for (const notice of notices) {
     try { await sendNotification(...notice); }
     catch { console.error('Account deletion notification failed'); }
   }
+  if (revocation.id) {
+    try { if (await processAppleRevocations(revocation.id)) revocation.status = 'complete'; }
+    catch { /* The durable job remains queued. */ }
+    delete revocation.id;
+  }
+  return revocation;
 }
