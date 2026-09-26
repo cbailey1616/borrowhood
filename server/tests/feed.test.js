@@ -174,7 +174,7 @@ describe('GET /api/feed', () => {
   it('skips hidden pages in an existing session without shifting or repeating the remaining posts', async () => {
     const token = randomUUID();
     const keys = [createdListingIds[0], ownListing, ownListing, createdListingIds[1], ownListing].map(id => `listing:${id}`);
-    await query('INSERT INTO feed_windows(user_id,token,filter_key,item_keys,window_number,snapshot_at,request_keys,has_more) VALUES($1,$2,$3,$4,0,NOW(),'[]',false)',
+    await query("INSERT INTO feed_windows(user_id,token,filter_key,item_keys,window_number,snapshot_at,request_keys,has_more) VALUES($1,$2,$3,$4,0,NOW(),'[]',false)",
       [freeUser.userId, token, JSON.stringify(['', '', '', '', true, '', 1]), JSON.stringify(keys)]);
     const getPage = page => request(app).get(`/api/feed?layout=sections&session=${token}&limit=1&page=${page}`)
       .set('Authorization', `Bearer ${freeUser.token}`);
