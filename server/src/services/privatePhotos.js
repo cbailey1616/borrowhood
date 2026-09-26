@@ -199,7 +199,7 @@ export async function servePrivatePhoto(req, res) {
     if (!allowed.rows.length) {
       const evidence = viewer.rows[0].is_admin && await query(`SELECT 1 FROM safety_reports
         WHERE content_snapshot->'photos' ? $1 LIMIT 1`, [data.src]);
-      if (!evidence?.rows.length) return deny('access_denied');
+      if (!evidence?.rows?.length) return deny('access_denied');
     }
     res.set('Cache-Control', 'private, no-store');
     const url = new URL(data.src);

@@ -136,6 +136,7 @@ export default function ProfileScreen({ navigation, route }) {
     setIsDeleting(true);
     try {
       const result = await api.deleteAccount();
+      await disableBiometrics();
       haptics.success();
       await logout({ sessionExpired: true });
       if (result?.appleRevocation?.status === 'manual') {
