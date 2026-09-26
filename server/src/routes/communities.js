@@ -337,7 +337,7 @@ router.patch('/:id', authenticate, async (req, res) => {
     const isOrganizer = membership.rows.length > 0 && membership.rows[0].role === 'organizer';
 
     if (!isOrganizer && !req.user.is_admin) {
-      return res.status(403).json({ error: 'Only organizers or admins can edit neighborhood details' });
+      return res.status(403).json({ error: 'Only neighborhood stewards or app admins can edit neighborhood details' });
     }
 
     const updates = [];
@@ -404,7 +404,7 @@ router.post('/:id/join', authenticate, async (req, res) => {
     const result = await joinCommunity(req.params.id, req.user.id);
     if (result.approvalRequired) return res.status(403).json({
       code: 'REJOIN_APPROVAL_REQUIRED', rejoinStatus: 'pending',
-      error: 'Request sent. A neighborhood moderator must approve your return.',
+      error: 'Request sent. A neighborhood steward must approve your return.',
     });
     res.json(result);
   } catch (err) {
@@ -644,7 +644,7 @@ router.post('/:id/add-admin', authenticate, async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
-    membershipError(res, err, 'Failed to add admin');
+    membershipError(res, err, 'Failed to make this neighbor a steward');
   }
 });
 

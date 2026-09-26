@@ -359,7 +359,7 @@ describe('DELETE /api/communities/:id/members/:userId', () => {
       .set('Authorization', `Bearer ${userC.token}`);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toContain('moderators');
+    expect(res.body.error).toContain('stewards');
   });
 
   it('should not let a moderator remove themselves or another moderator', async () => {
@@ -372,7 +372,7 @@ describe('DELETE /api/communities/:id/members/:userId', () => {
       .delete(`/api/communities/${communityId}/members/${userB.userId}`)
       .set('Authorization', `Bearer ${userA.token}`);
     expect(otherModerator.status).toBe(400);
-    expect(otherModerator.body.error).toContain('another moderator');
+    expect(otherModerator.body.error).toContain('another steward');
   });
 });
 

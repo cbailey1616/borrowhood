@@ -28,7 +28,7 @@ it('keeps organizer controls away from regular members', async () => {
   const screen = render(<Screen route={{ params: { id: 'hood-1' } }} navigation={navigation} />);
   fireEvent.press(await screen.findByText('Sam G'));
   expect(navigation.navigate).toHaveBeenCalledWith('UserProfile', { id: 'neighbor' });
-  expect(screen.queryByLabelText('Make Sam a moderator')).toBeNull();
+  expect(screen.queryByLabelText('Make Sam a steward')).toBeNull();
   expect(screen.queryByLabelText('Remove Sam')).toBeNull();
 });
 it('lets a neighborhood moderator remove a regular member', async () => {
@@ -41,7 +41,7 @@ it('lets a neighborhood moderator remove a regular member', async () => {
   fireEvent.press(await screen.findByLabelText('Manage Sam'));
   const Sheet = require('../../src/components/ActionSheet').default;
   act(() => screen.UNSAFE_getByType(Sheet).props.actions.find(action => action.label === 'Remove from neighborhood').onPress());
-  expect(mockAlert).toHaveBeenCalledWith('Remove Member', 'Remove Sam from this neighborhood? They’ll need a moderator’s approval to rejoin.', expect.any(Array));
+  expect(mockAlert).toHaveBeenCalledWith('Remove Member', 'Remove Sam from this neighborhood? They’ll need a steward’s approval to rejoin.', expect.any(Array));
   const remove = mockAlert.mock.calls[0][2].find(button => button.text === 'Remove');
   await act(async () => remove.onPress());
   expect(api.removeCommunityMember).toHaveBeenCalledWith('hood-1', 'neighbor');
@@ -55,7 +55,7 @@ it('labels organizers as moderators and protects them from member controls', asy
   ]);
   const Screen = require('../../src/screens/CommunityMembersScreen').default;
   const screen = render(<Screen route={{ params: { id: 'hood-1', role: 'organizer' } }} navigation={navigation} />);
-  expect((await screen.findAllByText('Moderator'))).toHaveLength(2);
+  expect((await screen.findAllByText('Steward'))).toHaveLength(2);
   expect(screen.queryByLabelText('Remove Alex')).toBeNull();
 });
 it('offers retry instead of claiming a failed load has no members', async () => {

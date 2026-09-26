@@ -1,5 +1,21 @@
 # Release notes — September 26, 2026
 
+## Held for the update after 272
+
+The user asked to rename the neighborhood moderator role and hold the change for
+the next update. The user-facing name is **Steward**. Badge labels, promotion
+confirmations, rejoin approval messages, accessibility labels, and neighborhood
+permission errors use the new name. The existing `organizer` role and access
+rules are unchanged.
+
+This wording is queued on `copy/neighborhood-steward-next-update`. Keep it out of
+production and new TestFlight builds until the user requests the next update.
+Validation: 30 existing mobile screen tests and 8 server membership tests passed.
+Build **1.0.0 (272)** was uploaded September 26 at 18:40 UTC before this change.
+The notes below describe previously released batches.
+
+## Earlier September 26 release
+
 The user authorized pushing the complete queued batch and creating a TestFlight
 build on September 26. The earlier build hold is lifted. The cloud workflow
 selects an unused build number from EAS history; the latest confirmed earlier

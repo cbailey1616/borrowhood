@@ -33,7 +33,7 @@ export async function withCommunityMembershipLock(communityId, action) {
 export async function requireCommunityModerator(client, communityId, userId) {
   const result = await client.query(
     'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2', [communityId, userId]);
-  if (result.rows[0]?.role !== 'organizer') fail(403, 'Only neighborhood moderators can review requests or manage members');
+  if (result.rows[0]?.role !== 'organizer') fail(403, 'Only neighborhood stewards can review requests or manage members');
 }
 
 async function checkJoinLocation(client, community, userId) {
@@ -83,7 +83,7 @@ export async function removeCommunityMember(communityId, userId, moderatorId) {
     const target = await client.query(
       'SELECT role FROM community_memberships WHERE community_id = $1 AND user_id = $2', [communityId, userId]);
     if (!target.rows.length) fail(404, 'Member not found');
-    if (target.rows[0].role === 'organizer') fail(400, 'Moderators cannot remove another moderator');
+    if (target.rows[0].role === 'organizer') fail(400, 'Stewards cannot remove another steward');
     await client.query(`INSERT INTO community_member_removals (community_id, user_id, removed_by)
       VALUES ($1, $2, $3) ON CONFLICT (community_id, user_id) DO UPDATE
       SET removed_by = EXCLUDED.removed_by, removed_at = clock_timestamp(), requested_at = NULL`,

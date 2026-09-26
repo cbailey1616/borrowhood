@@ -74,21 +74,21 @@ export default function CommunityMembersScreen({ route, navigation }) {
 
   const handlePromote = (member) => {
     Alert.alert(
-      'Make Moderator',
-      `Make ${member.firstName} a moderator?`,
+      'Make Steward',
+      `Make ${member.firstName} a steward?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Make Moderator',
+          text: 'Make Steward',
           onPress: async () => {
             try {
               await api.addCommunityAdmin(communityId, member.id);
               haptics.success();
-              showToast(`${member.firstName} is now a moderator`, 'success');
+              showToast(`${member.firstName} is now a steward`, 'success');
               fetchMembers();
             } catch (err) {
               haptics.error();
-              showError({ message: err.message || 'Could not make this member a moderator' });
+              showError({ message: err.message || 'Could not make this member a steward' });
             }
           },
         },
@@ -99,7 +99,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
   const handleRemove = (member) => {
     Alert.alert(
       'Remove Member',
-      `Remove ${member.firstName} from this neighborhood? They’ll need a moderator’s approval to rejoin.`,
+      `Remove ${member.firstName} from this neighborhood? They’ll need a steward’s approval to rejoin.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -158,7 +158,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
           {item.role === 'organizer' && (
             <View style={styles.adminBadge}>
               <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
-              <Text style={styles.adminBadgeText}>Moderator</Text>
+              <Text style={styles.adminBadgeText}>Steward</Text>
             </View>
           )}
         </View>
@@ -244,7 +244,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
       />
       <ActionSheet isVisible={!!actionMember} onClose={() => setActionMember(null)} title={actionMember?.firstName}
         actions={actionMember ? [
-          { label: 'Make moderator', onPress: () => handlePromote(actionMember) },
+          { label: 'Make steward', onPress: () => handlePromote(actionMember) },
           { label: 'Remove from neighborhood', destructive: true, onPress: () => handleRemove(actionMember) },
         ] : []} />
     </View>
