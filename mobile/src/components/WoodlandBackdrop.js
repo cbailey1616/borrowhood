@@ -10,7 +10,9 @@ import { feedWoodlandSvg, getFeedWoodlandScene } from '../assets/feed-woodland-s
 // Read the session's selection; mounting another screen never advances it.
 export default function WoodlandBackdrop({ fullScreen = false }) {
   const { width } = useWindowDimensions();
-  const { feedWoodlandScene = 0 } = useAuth();
+  let feedWoodlandScene = 0;
+  try { feedWoodlandScene = useAuth().feedWoodlandScene ?? 0; }
+  catch { /* Pre-auth onboarding can render without AuthProvider. */ }
   const scene = getFeedWoodlandScene(feedWoodlandScene);
   const source = useMemo(() => {
     // Extend the canvas above the trees so the sun is never cut off at an edge.
