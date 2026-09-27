@@ -16,7 +16,7 @@ import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
-  Saved: { active: 'heart', inactive: 'heart' },
+  Saved: { active: 'heart-outline', inactive: 'heart-outline' },
   MyItems: { active: 'basket', inactive: 'basket-outline' },
   Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
@@ -51,7 +51,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
   const iconName = isFocused ? icons.active : icons.inactive;
   const label = TAB_LABELS[route.name] || route.name;
   const isSaved = route.name === 'Saved';
-  const iconColor = isSaved ? COLORS.saved : isFocused ? COLORS.primary : COLORS.textSecondary;
+  const iconColor = isSaved ? COLORS.savedOutline : isFocused ? COLORS.primary : COLORS.textSecondary;
 
   return (
     <HapticPressable
@@ -77,7 +77,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
           name={iconName}
           size={26}
           illustrated={!isSaved}
-          selected={isSaved || isFocused}
+          selected={isSaved ? false : isFocused}
           color={iconColor}
         />
         {hasUpdate && (route.name === 'Activity'

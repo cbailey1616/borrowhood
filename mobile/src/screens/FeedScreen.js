@@ -14,6 +14,7 @@ import * as Notifications from 'expo-notifications';
 import { randomUUID } from 'expo-crypto';
 import { Image } from 'expo-image';
 import FeedWoodlandBackdrop, { FEED_HEADER_BACKGROUND } from '../components/FeedWoodlandBackdrop';
+import FeedHeaderTextFade from '../components/FeedHeaderTextFade';
 import { getFeedWoodlandScene } from '../assets/feed-woodland-scenes';
 import {
   View,
@@ -609,6 +610,7 @@ export default function FeedScreen({ navigation, route }) {
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
           <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} />
+          <FeedHeaderTextFade width={feedWidth} />
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
