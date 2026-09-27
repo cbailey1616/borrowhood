@@ -133,7 +133,8 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   segmentTextActive: {
-    color: COLORS.primary,
+    color: COLORS.primaryDark,
+    fontFamily: 'DMSans_600SemiBold',
     fontWeight: '400',
   },
 });

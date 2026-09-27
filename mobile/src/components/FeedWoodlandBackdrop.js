@@ -9,15 +9,15 @@ export const FEED_HEADER_BACKGROUND = getFeedWoodlandScene(0).sky;
 
 // Decorative SVG stays light and sharp at every screen width. It never receives
 // touches or enters the accessibility tree, so feed controls keep their behavior.
-export default function FeedWoodlandBackdrop({ width = 402, sceneIndex = 0 }) {
+export default function FeedWoodlandBackdrop({ width = 402, sceneIndex = 0, height = 176 }) {
   const scene = getFeedWoodlandScene(sceneIndex);
   const source = useMemo(() => ({
     uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(feedWoodlandSvg(sceneIndex, width))}`,
   }), [width, sceneIndex]);
 
   return <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
-    <LinearGradient colors={[scene.sky, COLORS.background]} style={styles.landscape} />
-    <Image source={source} contentFit="fill" transition={0} accessible={false} style={styles.landscape} />
+    <LinearGradient colors={[scene.sky, COLORS.background]} style={[styles.landscape, { height }]} />
+    <Image source={source} contentFit="fill" transition={0} accessible={false} style={[styles.landscape, { height }]} />
   </View>;
 }
 

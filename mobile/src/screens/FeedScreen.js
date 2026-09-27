@@ -609,7 +609,7 @@ export default function FeedScreen({ navigation, route }) {
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
-          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} />
+          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192} />
           <FeedHeaderTextFade width={feedWidth} />
           <NativeHeader
             includeTopInset={false}
@@ -933,7 +933,7 @@ const styles = StyleSheet.create({
   addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '400' },
   feedTitle: { fontSize: 28, lineHeight: 36, fontFamily: 'Fraunces_600SemiBold', fontWeight: '400', letterSpacing: -0.8, color: COLORS.primaryDark },
   feedTitleCompact: { fontSize: 24, lineHeight: 32 },
-  feedTitleRow: { marginBottom: 28 },
+  feedTitleRow: { marginBottom: 44 },
   brandMark: { width: 36, height: 36, flexShrink: 0 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
   typeRibbonCompact: { marginHorizontal: -SPACING.lg },

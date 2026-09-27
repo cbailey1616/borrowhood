@@ -278,8 +278,10 @@ export default function MyItemsScreen({ navigation }) {
             <View style={styles.requestContent}>
               <View style={styles.requestHeader}>
                 <View style={styles.requestTitleRow}>
-                  <RequestTypeIcon type={item.type} size={28} />
-                  <Text style={[styles.requestTitle, { fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
+                  <View style={styles.requestIconPanel}>
+                    <RequestTypeIcon type={item.type} size={28} />
+                  </View>
+                  <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
                 </View>
                 <View style={styles.requestBadges}>
                   {item.type === 'service' && (
@@ -323,19 +325,24 @@ export default function MyItemsScreen({ navigation }) {
               )}
 
               <View style={styles.requestFooter}>
-                <Text style={styles.requestDate}>
-                  {!item.neededFrom && !item.neededUntil ? 'Flexible' : ''}
-                </Text>
+                <View style={styles.requestTiming}>
+                  {!item.neededFrom && !item.neededUntil && <>
+                    <Ionicons name="time-outline" size={16} illustrated={false} color={COLORS.textSecondary} />
+                    <Text style={styles.requestDate}>Flexible</Text>
+                  </>}
+                </View>
                 {item.isExpired && item.status === 'open' && (
                   <HapticPressable
                     style={styles.renewButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Renew ${item.title}`}
                     onPress={(e) => {
                       e.stopPropagation?.();
                       handleRenew(item.id);
                     }}
                     haptic="medium"
                   >
-                    <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                    <Ionicons name="refresh" size={16} color={COLORS.surface} />
                     <Text style={styles.renewButtonText}>Renew</Text>
                   </HapticPressable>
                 )}
@@ -598,25 +605,32 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    gap: SPACING.sm,
     marginBottom: SPACING.sm,
   },
   requestTitleRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-    marginRight: SPACING.md,
+    gap: 12,
+  },
+  requestIconPanel: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: COLORS.primaryMuted,
+    alignItems: 'center', justifyContent: 'center',
   },
   requestTitle: {
     flex: 1,
     ...TYPOGRAPHY.headline,
-    color: COLORS.text,
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: 20,
+    lineHeight: 26,
+    color: COLORS.primaryDark,
   },
   requestBadges: {
+    marginLeft: 56,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: SPACING.xs,
   },
@@ -624,7 +638,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '20',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.full,
   },
   serviceBadgeText: {
     ...TYPOGRAPHY.caption1,
@@ -634,7 +648,7 @@ const styles = StyleSheet.create({
   requestStatusBadge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
@@ -658,30 +672,34 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   requestFooter: {
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.borderLight,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   requestDate: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
   },
+  requestTiming: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   renewButton: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryMuted,
+    backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
     gap: SPACING.xs,
   },
   renewButtonText: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.footnote,
+    fontFamily: 'DMSans_500Medium',
     fontWeight: '400',
-    color: COLORS.primary,
+    color: COLORS.surface,
   },
   emptyContainer: {
     backgroundColor: COLORS.surface,

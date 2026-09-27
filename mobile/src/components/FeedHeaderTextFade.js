@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '../utils/config';
 
@@ -14,8 +15,10 @@ export default function FeedHeaderTextFade({ width = 402 }) {
     uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(createFadeSvg(width))}`,
   }), [width]);
 
-  return <Image source={source} contentFit="fill" transition={0} accessible={false} pointerEvents="none"
-    importantForAccessibility="no" style={styles.overlay} />;
+  return <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
+    style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
+    <Image source={source} contentFit="fill" transition={0} accessible={false} style={styles.overlay} />
+  </View>;
 }
 
 const styles = {
