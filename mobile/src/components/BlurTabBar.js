@@ -16,7 +16,7 @@ import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
-  Saved: { active: 'heart-outline', inactive: 'heart-outline' },
+  Saved: { active: 'heart', inactive: 'heart' },
   MyItems: { active: 'basket', inactive: 'basket-outline' },
   Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
@@ -77,8 +77,9 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
           name={iconName}
           size={26}
           illustrated={!isSaved}
-          selected={isSaved ? false : isFocused}
+          selected={isSaved || isFocused}
           color={iconColor}
+          fillColor={isSaved ? COLORS.saved : undefined}
         />
         {hasUpdate && (route.name === 'Activity'
           ? <View testID="TabBar.Activity.badge" style={styles.unreadBadge}>

@@ -14,14 +14,14 @@ export function usesWarmIllustration(name, color = '#42594C') {
 // Keep the existing API so every screen gets the same Borrowhood drawings.
 // SVG decoding is already included in expo-image in the development build.
 const FriendlyIcon = memo(function FriendlyIcon({
-  name = 'pricetag', size = 24, color, style, illustrated,
+  name = 'pricetag', size = 24, color, fillColor, style, illustrated,
   selected = !String(name).endsWith('-outline'), accessibilityLabel, ...props
 }) {
   const ink = color || StyleSheet.flatten(style)?.color || '#42594C';
   const warm = illustrated ?? usesWarmIllustration(name, ink);
   const source = useMemo(() => ({
-    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg(name, { color: ink, illustrated: warm, selected }))}`,
-  }), [name, ink, warm, selected]);
+    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg(name, { color: ink, fillColor, illustrated: warm, selected }))}`,
+  }), [name, ink, fillColor, warm, selected]);
 
   return (
     <Image

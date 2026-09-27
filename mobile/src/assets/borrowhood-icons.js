@@ -254,14 +254,15 @@ export function hasBorrowhoodIcon(name) {
   return Boolean(DRAWINGS[ALIASES[base] || base]);
 }
 
-export function iconSvg(name, { color = '#42594C', illustrated = false, selected = false } = {}) {
+export function iconSvg(name, { color = '#42594C', fillColor, illustrated = false, selected = false } = {}) {
   const base = resolveIconName(name);
   // Only color values belong in attributes; never interpolate names or markup.
   const safeColor = String(color).replace(/[<>"'&]/g, '') || '#42594C';
+  const safeFill = fillColor == null ? null : String(fillColor).replace(/[<>"'&]/g, '');
   const palette = PALETTES[base] || ['#C3CFB2', '#DDB89B'];
   const c = {
     stroke: illustrated ? '#42594C' : safeColor,
-    fill: illustrated ? palette[0] : safeColor,
+    fill: safeFill || (illustrated ? palette[0] : safeColor),
     accent: illustrated ? palette[1] : safeColor,
     opacity: base === 'heart' && !selected ? 0 : illustrated ? 1 : selected ? (['heart', 'bookmark', 'star', 'ellipse'].includes(base) ? 1 : 0.2) : 0,
   };
