@@ -19,7 +19,7 @@ import MemberSummary from '../components/MemberSummary';
 import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import { GroupedListSection, GroupedListItem } from '../components/GroupedList';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandHeader from '../components/WoodlandHeader';
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -156,7 +156,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Profile" />
+      <WoodlandHeader title="Profile" />
 
       <ScrollView
         style={styles.scrollView}
