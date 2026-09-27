@@ -10,6 +10,7 @@ import LayeredCard from '../components/LayeredCard';
 import ShimmerImage from '../components/ShimmerImage';
 import HeroIcon from '../components/HeroIcon';
 import { SkeletonCard } from '../components/SkeletonLoader';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { exchangeIsActive, isBorrower } from '../utils/homeAction';
@@ -144,6 +145,8 @@ export default function TransactionHistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View style={{ paddingTop: 20, overflow: 'hidden' }}>
+        <WoodlandBackdrop />
       <View style={styles.controls}>
         <SegmentedControl variant="underline" segments={ROLE_SEGMENTS}
           selectedIndex={selectedIndex} onIndexChange={setSelectedIndex} testID="History.tabs" />
@@ -155,6 +158,8 @@ export default function TransactionHistoryScreen({ navigation }) {
             <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
           </HapticPressable>
         </View>
+      </View>
+
       </View>
 
       {loadError && <View style={styles.errorRow}>

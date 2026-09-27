@@ -1,6 +1,7 @@
 import { View, Text, Image, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from './HapticPressable';
+import WoodlandBackdrop from './WoodlandBackdrop';
 import WoodlandIllustration from './WoodlandIllustration';
 import Icon from './Icon';
 import { COLORS, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -35,6 +36,7 @@ export default function OnboardingLayout({
   return (
     <KeyboardAvoidingView style={styles.page} enabled={keyboardAvoiding}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <WoodlandBackdrop fullScreen />
       <ScrollView key={step} style={styles.scroll} keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
         <View style={styles.sheet}>
@@ -75,11 +77,11 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24, alignItems: 'center' },
-  sheet: { width: '100%', maxWidth: 520 },
+  sheet: { width: '100%', maxWidth: 520, backgroundColor: COLORS.surface, borderRadius: 24, padding: 16 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9, flexShrink: 1 },
   logo: { width: 32, height: 32, resizeMode: 'contain' },
-  wordmark: { ...TYPOGRAPHY.title3, color: COLORS.primary, flexShrink: 1 },
+  wordmark: { ...TYPOGRAPHY.title3, fontFamily: 'Fraunces_600SemiBold', color: COLORS.primary, flexShrink: 1 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
   progress: { flexDirection: 'row', gap: 7, marginTop: 18 },
   segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: COLORS.border },
@@ -88,7 +90,7 @@ const styles = StyleSheet.create({
   compactHero: { paddingTop: 18, paddingBottom: 18 },
   scene: { width: '100%', borderRadius: 24, alignItems: 'center', paddingVertical: 12 },
   compactScene: { borderRadius: 24, paddingVertical: 8 },
-  title: { ...TYPOGRAPHY.largeTitle, fontSize: 32, lineHeight: 38, color: COLORS.primaryDark, textAlign: 'center' },
+  title: { ...TYPOGRAPHY.largeTitle, fontFamily: 'Fraunces_600SemiBold', fontSize: 32, lineHeight: 38, color: COLORS.primaryDark, textAlign: 'center' },
   description: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', maxWidth: 420 },
   footer: { width: '100%', backgroundColor: COLORS.background, paddingHorizontal: 24, paddingTop: 14 },
   footerInner: { width: '100%', maxWidth: 520, alignSelf: 'center' },

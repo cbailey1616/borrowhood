@@ -17,6 +17,7 @@ import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import SocialSignInButtons from '../../components/SocialSignInButtons';
 import SocialAccountLink from '../../components/SocialAccountLink';
+import WoodlandBackdrop from '../../components/WoodlandBackdrop';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import useBiometrics from '../../hooks/useBiometrics';
@@ -130,6 +131,7 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <WoodlandBackdrop fullScreen />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -342,6 +344,7 @@ const styles = StyleSheet.create({
   logo: { width: 62, height: 62, resizeMode: 'contain' },
   wordmark: {
     ...TYPOGRAPHY.largeTitle,
+    fontFamily: 'Fraunces_600SemiBold',
     fontSize: 36,
     lineHeight: 44,
     letterSpacing: -1,
@@ -359,6 +362,9 @@ const styles = StyleSheet.create({
     marginRight: SPACING.xs,
   },
   form: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 16,
     gap: SPACING.md,
   },
   inputContainer: {

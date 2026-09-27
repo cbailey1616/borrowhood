@@ -1,3 +1,4 @@
+import WoodlandBackdrop from '../../components/WoodlandBackdrop';
 import { ScrollView } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -68,6 +69,7 @@ export default function OnboardingCompleteScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
+      <WoodlandBackdrop fullScreen />
       <ConfettiCannon
         ref={confettiRef}
         count={80}

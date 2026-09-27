@@ -122,6 +122,9 @@ const DRAWINGS = {
   brush: c => p('M9 26C5 21 5 12 9 7L16 3L19 11L28 14L23 20C18 24 15 26 9 26Z', panel(c)) + p('M9 26L6 29M12 10L17 16M18 8L23 14'),
   sparkles: c => p('M16 11C8-1 23-1 16 11C28 3 33 16 21 17C32 27 18 33 16 22C9 34-1 24 11 17C-2 13 6 2 16 11Z', panel(c)) + circle(16, 16, 4, accent(c)),
   pricetag: tag,
+  'money-bag': c => p('M12 10L9 4Q16 7 23 4L20 10Z', accent(c))
+    + p('M12 10C10 14 5 17 5 23C5 28 9 29 16 29S27 28 27 23C27 17 22 14 20 10Z', panel(c))
+    + p('M11 11H21M18.5 17.5C17 16 13 16 13 19C13 22 19 20 19 23C19 26 15 26 13 24.5M16 15V27'),
   ribbon: c => circle(16, 12, 9, panel(c)) + p('M10 20L7 30L14 27L16 22M22 20L25 30L18 27L16 22') + circle(16, 12, 4),
   trophy: c => p('M9 4H23V12C23 24 9 24 9 12Z', panel(c)) + p('M9 7H3V11C3 16 6 18 11 18M23 7H29V11C29 16 26 18 21 18M16 21V28M10 29H22'),
   flag: c => p('M6 29V4M6 5C14 0 20 12 28 7V21C20 26 14 14 6 19', panel(c)),
@@ -233,6 +236,7 @@ const PALETTES = {
   time: ['#E9CA92', '#DEA088'],
   calendar: ['#B8C4DA', '#D6DDE9'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
+  'money-bag': ['#E9CA92', '#A7BF98'],
   gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
   notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'],
   bonfire: ['#E4A080', '#E9CA92'], football: ['#CDA182', '#E1BE9F'],

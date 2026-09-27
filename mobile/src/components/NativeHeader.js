@@ -20,6 +20,7 @@ export default function NativeHeader({
   leftElement,
   style,
   children,
+  backdrop,
   includeTopInset = true,
 }) {
   const insets = useSafeAreaInsets();
@@ -62,6 +63,7 @@ export default function NativeHeader({
   return (
     <View>
       <Animated.View style={[styles.headerWrapper, { paddingTop: topInset + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, style, wrapperStyle]}>
+        {backdrop}
         <Animated.View style={largeTitleStyle}>
           {(title || leftElement || rightElement) && (
             <View style={[styles.titleRow, titleRowStyle]}>

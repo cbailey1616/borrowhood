@@ -25,7 +25,8 @@ import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
+import WoodlandHeader from '../components/WoodlandHeader';
 import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
 import { useAuth } from '../context/AuthContext';
@@ -403,7 +404,8 @@ export default function MyItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={activeTab !== 2 &&
+      {!isLoading && !loadError && visibleItems.length === 0 && <WoodlandBackdrop fullScreen />}
+      <WoodlandHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={activeTab !== 2 &&
         <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
           onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
           <Ionicons name="add" size={20} color={COLORS.surface} />
@@ -419,7 +421,7 @@ export default function MyItemsScreen({ navigation }) {
           style={styles.segmented}
         />
 
-      </NativeHeader>
+      </WoodlandHeader>
 
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
@@ -682,10 +684,11 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   emptyContainer: {
-    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 64,
+    paddingVertical: 32,
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,
