@@ -5,5 +5,5 @@ import WoodlandBackdrop from './WoodlandBackdrop';
 export default function WoodlandHeader({ titleStyle, titleRowStyle, ...props }) {
   return <NativeHeader {...props} backdrop={<WoodlandBackdrop />}
     titleStyle={[{ fontFamily: 'Fraunces_600SemiBold' }, titleStyle]}
-    titleRowStyle={[{ marginBottom: 28 }, titleRowStyle]} />;
+    titleRowStyle={[{ marginBottom: props.children ? 12 : 28 }, titleRowStyle]} />;
 }

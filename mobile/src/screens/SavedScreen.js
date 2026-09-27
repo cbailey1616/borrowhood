@@ -21,7 +21,8 @@ import Animated, {
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
+import WoodlandHeader from '../components/WoodlandHeader';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
@@ -144,7 +145,8 @@ export default function SavedScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Saved" />
+      {!isLoading && listings.length === 0 && <WoodlandBackdrop fullScreen />}
+      <WoodlandHeader title="Saved" />
 
       <FlatList
         data={listings}
@@ -279,6 +281,9 @@ const styles = StyleSheet.create({
   // Empty state
   emptyContainer: {
     flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    margin: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 64,

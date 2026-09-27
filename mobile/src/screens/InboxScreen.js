@@ -26,7 +26,8 @@ import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import LayeredCard from '../components/LayeredCard';
 import SegmentedControl from '../components/SegmentedControl';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
+import WoodlandHeader from '../components/WoodlandHeader';
 import ActionButton from '../components/ActionButton';
 import ActionSheet from '../components/ActionSheet';
 import { SkeletonListItem } from '../components/SkeletonLoader';
@@ -348,7 +349,8 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Inbox" rightElement={
+      {!isLoading && (activeTab === 1 ? (unreadOnly ? notifications.filter(item => !item.isRead) : notifications) : (unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations)).length === 0 && <WoodlandBackdrop fullScreen />}
+      <WoodlandHeader title="Inbox" rightElement={
         <View style={styles.headerActions}>
           {unreadOnly && <HapticPressable style={styles.activeFilter}
             accessibilityLabel="Show all inbox items" onPress={() => selectUnreadOnly(false)}>
@@ -375,7 +377,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
           onIndexChange={index => { tabChosen.current = true; setActiveTab(index === 0 ? 1 : 0); }}
           style={styles.segmented}
         />
-      </NativeHeader>
+      </WoodlandHeader>
 
       {isLoading ? (
         <View style={styles.skeletonContainer}>
@@ -612,6 +614,9 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    margin: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
