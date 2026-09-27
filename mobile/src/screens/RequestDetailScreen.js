@@ -219,7 +219,6 @@ export default function RequestDetailScreen({ route, navigation }) {
               {request.isExpired && request.isOwner ? 'Renew from My Posts.' : 'No longer accepting offers.'}
             </Text>}
           </View>
-          {!request.isOwner && <ContentSafetyActions type="request" id={request.id} onBlocked={() => navigation.goBack()} />}
           {!!request.photoUrl && <HapticPressable style={styles.photoFrame} onPress={() => setShowPhoto(true)}
             accessibilityRole="button" accessibilityLabel="View full wanted photo" testID="Request.photo">
             <ShimmerImage source={{ uri: request.photoUrl }} contentFit="cover" contentPosition="center"
@@ -305,6 +304,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         </HapticPressable>)}
         {acceptingOffers && <ActionButton label="Add a comment" onPress={() => openComments(true)} />}
       </View></LayeredCard>}
+      {!request.isOwner && <ContentSafetyActions type="request" id={request.id} variant="subtle" onBlocked={() => navigation.goBack()} />}
     </ScrollView>
 
     {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}
