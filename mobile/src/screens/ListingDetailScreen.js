@@ -242,7 +242,6 @@ export default function ListingDetailScreen({ route, navigation }) {
 
         {/* Content */}
         <View style={[styles.content, wide && { flex: 1, padding: 0, minWidth: 0 }]}>
-          {!listing.isOwner && <ContentSafetyActions type="listing" id={listing.id} onBlocked={() => navigation.goBack()} />}
           <View style={styles.itemSummary}>
             <View style={[styles.summaryHeading, stackSummary && styles.summaryHeadingStacked]}>
               <View style={styles.titleBlock}>
@@ -354,6 +353,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               </LayeredCard>
             </>
           )}
+          {!listing.isOwner && <ContentSafetyActions type="listing" id={listing.id} variant="subtle" onBlocked={() => navigation.goBack()} />}
         </View>
       </ScrollView>
 

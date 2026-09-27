@@ -5,6 +5,7 @@ import api from '../services/api';
 import usePushNotifications, { resetPushSession } from '../hooks/usePushNotifications';
 import { revokePushRegistration } from '../utils/pushRegistration';
 import BiometricEnrollmentPrompt from '../components/BiometricEnrollmentPrompt';
+import useFeedWoodlandScene from '../hooks/useFeedWoodlandScene';
 
 const AuthContext = createContext(null);
 
@@ -12,6 +13,7 @@ export function AuthProvider({ children, navigationRef }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const feedWoodlandScene = useFeedWoodlandScene(user?.id, isAuthenticated);
   const [biometricEnrollment, setBiometricEnrollment] = useState(null);
   const sessionRevision = useRef(0);
   const credentialWrites = useRef(Promise.resolve());
@@ -178,6 +180,7 @@ export function AuthProvider({ children, navigationRef }) {
     user,
     isLoading,
     isAuthenticated,
+    feedWoodlandScene,
     isGracePeriodActive,
     login,
     loginWithGoogle,

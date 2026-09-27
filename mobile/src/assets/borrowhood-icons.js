@@ -67,6 +67,8 @@ const DRAWINGS = {
     + p('M17 18L26 7', 'stroke-width="1.4"')
     + p('M6.5 23C11 19 17 20 23 22L25.5 23.5C20 26.5 12 26.5 6.5 23Z', panel(c)),
   home: c => p('M7 14V26C7 28 9 29 11 29H23C25 29 26 28 26 26V14', panel(c)) + p('M3 15L14 5C15 4 17 4 18 5L29 15', accent(c)) + p('M13 29V21C13 18 20 18 20 21V29M22 8V4H26V11'),
+  grid: c => rect(4, 4, 10, 10, 3, panel(c)) + rect(18, 4, 10, 10, 3, accent(c))
+    + rect(4, 18, 10, 10, 3, accent(c)) + rect(18, 18, 10, 10, 3, panel(c)),
   heart,
   basket,
   cube: c => p('M5 11L16 5L27 11V23L16 29L5 23Z', panel(c)) + p('M5 11L16 17L27 11M16 17V29M10 8L21 14'),
@@ -213,6 +215,7 @@ const PALETTES = {
   'rank-robin': ['#D1AB50', '#E7CC7A'],
   tree: ['#9DBB90', '#D0A27A'],
   heart: ['#E6A392', '#D48976'], home: ['#B8CBB0', '#DCA083'],
+  grid: ['#B8CBB0', '#E7C590'],
   handshake: ['#ABC5B8', '#E7C590'],
   'thumbs-up': ['#ABC5B8', '#E7C590'],
   'balance-scale': ['#B8CBA8', '#C3A66C'],

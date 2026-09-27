@@ -37,6 +37,7 @@ export default function App() {
     DMSans_500Medium,
     DMSans_600SemiBold,
     DMSans_700Bold,
+    Fraunces_600SemiBold: require('./assets/fonts/Fraunces_600SemiBold.ttf'),
     GoogleSansMedium: require('./assets/brand/GoogleSans-Medium.ttf'),
   });
 

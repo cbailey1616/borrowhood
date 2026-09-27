@@ -325,7 +325,7 @@ router.get('/', authenticate, async (req, res) => {
       const listingIds = rankingCandidates.filter(item => item.type === 'listing').map(item => item.id);
       const requestIds = rankingCandidates.filter(item => item.type === 'request').map(item => item.id);
       const events = rankingCandidates.length ? await query(`SELECT item_type, item_id,
-        BOOL_OR(user_id=$1 AND seen_at > NOW()-INTERVAL '30 days') AS seen,
+        MAX(seen_at) FILTER(WHERE user_id=$1) AS last_seen_at,
         COUNT(*) FILTER(WHERE user_id != $1 AND clicked_at > NOW()-INTERVAL '14 days') AS clicks
         FROM feed_events WHERE (item_type='listing' AND item_id=ANY($2::uuid[])
           OR item_type='request' AND item_id=ANY($3::uuid[]))

@@ -12,6 +12,9 @@ import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { randomUUID } from 'expo-crypto';
+import { Image } from 'expo-image';
+import FeedWoodlandBackdrop, { FEED_HEADER_BACKGROUND } from '../components/FeedWoodlandBackdrop';
+import { getFeedWoodlandScene } from '../assets/feed-woodland-scenes';
 import {
   View,
   Text,
@@ -52,11 +55,11 @@ import { ENABLE_PAID_TIERS } from '../utils/config';
 
 
 const FILTER_OPTIONS = [
-  { key: 'all', label: 'All' },
-  { key: 'listings', label: 'Borrow' },
-  { key: 'giveaway', label: 'Giveaways' },
-  { key: 'sell', label: 'For sale' },
-  { key: 'requests', label: 'Wanted' },
+  { key: 'all', label: 'All', icon: 'grid' },
+  { key: 'listings', label: 'Borrow', icon: listingIcon() },
+  { key: 'giveaway', label: 'Giveaways', icon: listingIcon({ listingType: 'giveaway' }) },
+  { key: 'sell', label: 'For sale', icon: listingIcon({ listingType: 'sell' }) },
+  { key: 'requests', label: 'Wanted', icon: requestPresentation().icon },
 ];
 
 const VISIBILITY_OPTIONS = [
@@ -83,7 +86,7 @@ export default function FeedScreen({ navigation, route }) {
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
-  const { user, refreshUser, isGracePeriodActive } = useAuth();
+  const { user, refreshUser, isGracePeriodActive, feedWoodlandScene = 0 } = useAuth();
   const { showToast, showError } = useError();
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
   const [feed, setFeed] = useState([]);
@@ -601,15 +604,21 @@ export default function FeedScreen({ navigation, route }) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: tabBarHeight }]}>
+      <View pointerEvents="none" accessible={false} style={[styles.statusBarTint, { height: insets.top, backgroundColor: getFeedWoodlandScene(feedWoodlandScene).sky }]} />
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
+          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} />
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
-            titleStyle={styles.feedTitle}
+            style={[styles.feedHeaderSurface, width < 375 && styles.feedHeaderSurfaceCompact]}
+            titleStyle={[styles.feedTitle, width < 375 && styles.feedTitleCompact]}
+            titleRowStyle={styles.feedTitleRow}
+            leftElement={<Image source={require('../../assets/logo.png')} contentFit="contain" transition={0}
+              style={styles.brandMark} accessible={false} />}
             rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
-              <Ionicons name="add" size={20} color={COLORS.surface} />
+              <Ionicons name="add" size={18} color={COLORS.surface} />
               <Text style={styles.addButtonText}>Post</Text>
             </HapticPressable>}
           >
@@ -626,13 +635,15 @@ export default function FeedScreen({ navigation, route }) {
                 <Text style={styles.neighborhoodFilterText} numberOfLines={1}>{neighborhood.name || 'Neighborhood'}</Text>
                 <Ionicons name="close" size={18} color={COLORS.primary} />
               </HapticPressable>}
-              <ScrollView horizontal style={styles.typeRibbon} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ScrollView horizontal style={[styles.typeRibbon, width < 375 && styles.typeRibbonCompact]} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
                     const label = option.key === 'all' && neighborhood ? 'All items' : option.label;
-                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
-                      <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{label}</Text>
+                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
+                      <Ionicons name={option.icon} size={26} illustrated color={COLORS.primary} accessible={false} />
+                      <Text numberOfLines={1} style={[styles.typeTabText, width < 400 && styles.typeTabTextCompact, selected && styles.typeTabTextActive]}>{label}</Text>
+                      {selected && <View accessible={false} style={styles.typeTabIndicator} />}
                     </HapticPressable>;
                   })}
                 </View>
@@ -917,15 +928,22 @@ const styles = StyleSheet.create({
   ribbonAuthorButton: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
   ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
   ribbonRepliesText: { flex: 0 },
-  addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '400' },
-  feedTitle: { fontSize: 28, lineHeight: 36 },
+  addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '400' },
+  feedTitle: { fontSize: 28, lineHeight: 36, fontFamily: 'Fraunces_600SemiBold', fontWeight: '400', letterSpacing: -0.8, color: COLORS.primaryDark },
+  feedTitleCompact: { fontSize: 24, lineHeight: 32 },
+  feedTitleRow: { marginBottom: 64 },
+  brandMark: { width: 36, height: 36, flexShrink: 0 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
+  typeRibbonCompact: { marginHorizontal: -SPACING.lg },
   typeRibbonContent: { flexGrow: 1 },
-  typeTabs: { flexGrow: 1, flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator },
-  typeTab: { minHeight: 44, minWidth: 44, flexShrink: 0, paddingHorizontal: SPACING.xs, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  typeTabActive: { borderBottomColor: COLORS.primary },
-  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 14, fontWeight: '400', color: COLORS.textSecondary },
-  typeTabTextActive: { color: COLORS.primary },
+  typeTabs: { flex: 1, flexDirection: 'row', alignItems: 'stretch',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.borderGreen },
+  typeTab: { flex: 1, minWidth: 44, minHeight: 72, paddingTop: 6, paddingBottom: SPACING.md, gap: 6,
+    alignItems: 'center', justifyContent: 'center' },
+  typeTabIndicator: { position: 'absolute', bottom: 0, width: 28, height: 3, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 13, lineHeight: 20, fontWeight: '400', color: COLORS.textSecondary },
+  typeTabTextCompact: { fontSize: 12 },
+  typeTabTextActive: { fontFamily: 'DMSans_600SemiBold', color: COLORS.primaryDark },
   sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
   requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   requestTitle: { fontSize: 22, lineHeight: 29 },
@@ -939,25 +957,30 @@ const styles = StyleSheet.create({
   },
   feedViewport: { flex: 1, overflow: 'hidden' },
   feedHeader: { position: 'absolute', top: 0, zIndex: 1, backgroundColor: FEED.bg },
+  statusBarTint: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: FEED_HEADER_BACKGROUND },
+  feedHeaderSurface: { backgroundColor: 'transparent', paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
+  feedHeaderSurfaceCompact: { paddingHorizontal: SPACING.lg },
   skeletonContainer: {
     padding: SPACING.lg,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.surface, borderRadius: RADIUS.full,
+    paddingRight: SPACING.xs, paddingVertical: 2, marginBottom: SPACING.md, ...SHADOWS.md,
   },
   headerSearchBar: {
-    flex: 1, backgroundColor: COLORS.surface, borderWidth: 0, borderRadius: RADIUS.md,
+    flex: 1, minWidth: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: RADIUS.full,
   },
-  filtersButton: { width: 48, height: 48, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
+  filtersButton: { width: 44, height: 44, flexShrink: 0, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.primaryMuted },
   neighborhoodFilter: { minHeight: 44, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: RADIUS.full,
     alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryMuted },
   neighborhoodFilterText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
   filtersButtonActive: { backgroundColor: COLORS.primary },
   addButton: {
     flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+    ...SHADOWS.md,
   },
   filtersSection: {
     paddingBottom: SPACING.md,

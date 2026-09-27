@@ -1,11 +1,15 @@
 import React, { useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import ActionButton from './ActionButton';
 import ActionSheet from './ActionSheet';
+import HapticPressable from './HapticPressable';
+import { Ionicons } from './Icon';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 
 // Content IDs, not author IDs, let unverified neighbors report/block a masked
 // Town post without learning the author's identity.
-export default function ContentSafetyActions({ type, id, onBlocked, open = false, onClose, label = 'Report or block' }) {
+export default function ContentSafetyActions({ type, id, onBlocked, open = false, onClose, label = 'Report or block', variant = 'button' }) {
   const [sheet, setSheet] = useState(open ? 'menu' : null);
   const currentSheet = useRef(open ? 'menu' : null);
   const showSheet = value => { currentSheet.current = value; setSheet(value); };
@@ -43,10 +47,26 @@ export default function ContentSafetyActions({ type, id, onBlocked, open = false
   } : { ...feedback, actions: [{ label: 'Done' }] };
   if (!id) return null;
   return <>
-    {!open && <ActionButton label={label} icon="flag-outline" loading={busy} onPress={() => showSheet('menu')} />}
+    {!open && (variant === 'subtle' ? <HapticPressable
+      accessibilityLabel={label} accessibilityState={{ disabled: busy, busy }}
+      disabled={busy} onPress={() => showSheet('menu')} style={styles.subtleAction}
+    >
+      {busy ? <ActivityIndicator size="small" color={COLORS.textSecondary} />
+        : <Ionicons name="flag-outline" size={16} color={COLORS.textSecondary} illustrated={false} />}
+      <Text style={styles.subtleLabel}>{label}</Text>
+    </HapticPressable> : <ActionButton label={label} icon="flag-outline" loading={busy} onPress={() => showSheet('menu')} />)}
     {!!sheet && <ActionSheet key={sheet} isVisible {...dialog} onClose={() => {
       if (inFlight.current || currentSheet.current !== sheet) return;
       showSheet(null); onClose?.();
     }} />}
   </>;
 }
+
+const styles = StyleSheet.create({
+  subtleAction: {
+    minHeight: 44, maxWidth: '100%', alignSelf: 'center', marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm,
+  },
+  subtleLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1, textAlign: 'center' },
+});
