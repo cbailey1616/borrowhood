@@ -615,7 +615,7 @@ export default function FeedScreen({ navigation, route }) {
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
-          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} artworkOffset={insets.top} />
+          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} />
           <FeedHeaderTextFade width={feedWidth} topOffset={insets.top} />
           <NativeHeader
             includeTopInset={false}
@@ -676,7 +676,6 @@ export default function FeedScreen({ navigation, route }) {
           automaticallyAdjustKeyboardInsets
           bounces
           removeClippedSubviews={false}
-          style={{ backgroundColor: FEED.bg }}
           refreshing={isRefreshing}
           progressViewOffset={feedHeader.height}
           onRefresh={onRefresh}

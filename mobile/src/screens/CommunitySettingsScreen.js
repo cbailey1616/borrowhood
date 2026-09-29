@@ -353,7 +353,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           onPress={() => navigation.navigate('CommunityMembers', { id, role: community?.role })}
           haptic="light"
         >
-          <Ionicons name={canManageMembers ? 'shield-checkmark-outline' : 'people-outline'} size={20} color={COLORS.primary} />
+          <Ionicons name="neighbors-manage-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
@@ -363,7 +363,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           onPress={() => navigation.navigate('InviteMembers', { communityId: id })}
           haptic="light"
         >
-          <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+          <Ionicons name="neighbor-invite-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Invite Neighbors</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>

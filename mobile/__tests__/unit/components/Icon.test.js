@@ -2,6 +2,20 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 
 describe('Icon', () => {
+  it('uses dedicated woodland history and invitation drawings even through older icon names', () => {
+    const { hasBorrowhoodIcon, resolveIconName, iconSvg } = require('../../../src/assets/borrowhood-icons');
+    for (const name of ['history-ledger-outline', 'neighbor-invite-outline', 'neighbors-manage-outline']) {
+      expect(hasBorrowhoodIcon(name)).toBe(true);
+    }
+    expect(resolveIconName('receipt-outline')).toBe('history-ledger');
+    expect(resolveIconName('person-add-outline')).toBe('neighbor-invite');
+    const invitation = iconSvg('neighbor-invite', { illustrated: true });
+    expect(invitation).toContain('#E7C590');
+    expect(invitation).toContain('#ABC5B8');
+    expect(invitation).not.toEqual(iconSvg('person', { illustrated: true }));
+    expect(iconSvg('neighbors-manage', { illustrated: true })).not.toEqual(iconSvg('shield-checkmark', { illustrated: true }));
+  });
+
   it('draws distinct thumbs and the notification off control instead of fallback tags', () => {
     const { hasBorrowhoodIcon, resolveIconName, iconSvg } = require('../../../src/assets/borrowhood-icons');
     for (const name of ['thumbs-up-outline', 'thumbs-down-outline', 'remove']) {

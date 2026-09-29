@@ -75,7 +75,16 @@ const DRAWINGS = {
   notifications: bell,
   'notifications-off': c => bell(c) + p('M4 4L28 28'),
   person,
-  'person-add': c => `<g transform="translate(-3 0) scale(.85 1)">${person(c)}</g>` + p('M24 12V22M19 17H29'),
+  'neighbor-invite': c => p('M3 13L16 5L29 13V26C29 28 27 29 25 29H7C5 29 3 28 3 26Z', accent(c))
+    + rect(7, 3, 18, 20, 2, panel(c)) + p('M16 7V13M13 10H19')
+    + p('M3 13L16 22L29 13V26C29 28 27 29 25 29H7C5 29 3 28 3 26Z', accent(c))
+    + p('M3 27L11 20M29 27L21 20')
+    + p('M15 25C12 21 15 19 19 19C20 23 18 26 15 25Z', `${panel(c)} stroke-width="1.3"`)
+    + p('M14 26L18 21', 'stroke-width="1.3"'),
+  'neighbors-manage': c => p('M5 14V26C5 28 7 29 9 29H23C25 29 27 28 27 26V14Z', panel(c))
+    + p('M2 14L14 4C15 3 17 3 18 4L30 14L27 17L16 7L5 17Z', accent(c))
+    + circle(11, 17, 2.5, accent(c)) + circle(21, 17, 2.5, accent(c))
+    + p('M7 28V26C7 20 15 20 15 26V28M17 28V26C17 20 25 20 25 26V28'),
   'person-remove': c => `<g transform="translate(-3 0) scale(.85 1)">${person(c)}</g>` + p('M20 17H29'),
   people: c => circle(12, 10, 4, panel(c)) + circle(23, 11, 3, accent(c)) + p('M3 27V24C3 15 21 15 21 24V27Z', panel(c)) + p('M23 18C27 18 30 21 30 25V27H25'),
   chatbubble: chat,
@@ -148,7 +157,11 @@ const DRAWINGS = {
   'stats-chart': c => rect(4, 17, 5, 12, 2, panel(c)) + rect(14, 10, 5, 19, 2, accent(c)) + rect(24, 3, 5, 26, 2, panel(c)),
   'trending-up': () => p('M3 25L12 16L18 20L29 7M21 7H29V15'),
   'document-text': book,
-  receipt: c => p('M7 3H25V29L20 26L16 29L12 26L7 29Z', panel(c)) + p('M11 9H21M11 15H21M11 21H17'),
+  'history-ledger': c => p('M9 4H25V23C25 26 23 28 20 28H8C11 28 12 25 12 23V8C12 6 11 4 9 4Z', panel(c))
+    + p('M9 4H7C3 4 3 9 7 9H12', accent(c))
+    + p('M12 23H5C1 23 1 28 5 28H20', panel(c))
+    + p('M16 10H21M16 15H21')
+    + circle(24, 23, 6, accent(c)) + p('M24 20V23L27 24'),
   card: c => rect(3, 6, 26, 22, 4, panel(c)) + p('M3 13H29M8 22H14'),
   cash: c => rect(3, 7, 26, 19, 3, panel(c)) + circle(16, 16.5, 4.5) + p('M3 12C7 12 8 10 8 7M24 7C24 10 26 12 29 12M3 21C7 21 8 23 8 26M24 26C24 23 26 21 29 21'),
   wallet: c => p('M27 9H7C3 9 3 4 7 4H24V9M5 8V25C5 28 8 29 11 29H27V9', panel(c)) + rect(20, 16, 10, 7, 2, accent(c)) + dot(24, 19.5, c),
@@ -213,10 +226,14 @@ const ALIASES = {
   chatbubbles: 'chatbubble', alert: 'alert-circle', help: 'help-circle',
   repeat: 'swap-horizontal', flame: 'bonfire', rocket: 'rank-archer', library: 'document-text',
   'checkmark-shield': 'shield-checkmark',
+  receipt: 'history-ledger', 'person-add': 'neighbor-invite',
   options: 'filter',
 };
 const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
+  'history-ledger': ['#E7C590', '#ABC5B8'],
+  'neighbor-invite': ['#E7C590', '#ABC5B8'],
+  'neighbors-manage': ['#ABC5B8', '#E7C590'],
   pencil: ['#DFB66F', '#DEA088'],
   'neighbor-sprout': ['#B8CBA8', '#98B68B'],
   'rank-jester': ['#B8CBA8', '#E7C590'],

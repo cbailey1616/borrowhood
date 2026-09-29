@@ -87,6 +87,22 @@ it('lets the native control trigger and finish refreshing without a timer or scr
   expect(scrollToOffset).not.toHaveBeenCalled();
 });
 
+it('keeps the hat behind the feed and hides it as the content snaps back while still refreshing', async () => {
+  const screen = render(<BorrowhoodRefreshList {...listProps} refreshing onRefresh={jest.fn()} progressViewOffset={210} />);
+  await ready();
+  expect(screen.toJSON().children[0].props.testID).toBe('BorrowhoodRefresh.indicator');
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  scroll(screen, -80);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(1);
+  const pulledPosition = value(style(screen, 'BorrowhoodRefresh.indicator').transform[0].translateY);
+  scroll(screen, -5);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBeLessThan(1);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').transform[0].translateY)).toBeLessThan(pulledPosition);
+  scroll(screen, 0);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+});
+
 it('uses an existing native scroll animation value without stealing its handler', async () => {
   const scrollY = new Animated.Value(0);
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false });

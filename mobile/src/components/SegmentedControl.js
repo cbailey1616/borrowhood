@@ -60,7 +60,7 @@ export default function SegmentedControl({
           accessibilityLabel={segment} accessibilityRole="tab"
           accessibilityState={{ selected: selectedIndex === index }}
           style={[styles.tab, selectedIndex === index && styles.tabSelected]}>
-          <Text style={[styles.segmentText, selectedIndex === index && styles.segmentTextActive]}>{segment}</Text>
+          <Text style={[styles.segmentText, styles.tabText, selectedIndex === index && styles.segmentTextActive]}>{segment}</Text>
         </HapticPressable>
       ))}
     </View>
@@ -99,6 +99,7 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border },
   tab: { flex: 1, minWidth: 0, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm, borderBottomWidth: 3, borderBottomColor: 'transparent' },
   tabSelected: { borderBottomColor: COLORS.primary },
+  tabText: { color: COLORS.primary },
   container: {
     flexDirection: 'row',
     backgroundColor: COLORS.surfaceElevated,

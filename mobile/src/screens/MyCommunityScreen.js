@@ -5,7 +5,6 @@ import { randomUUID } from 'expo-crypto';
 import { useAuth } from '../context/AuthContext';
 import HapticPressable from '../components/HapticPressable';
 import LayeredCard from '../components/LayeredCard';
-import WoodlandBackdrop from '../components/WoodlandBackdrop';
 import BackHeader from '../components/BackHeader';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
@@ -85,7 +84,7 @@ export default function MyCommunityScreen({ navigation, route }) {
 
   if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading your neighborhood" /></View>;
 
-  if (!community) return <View style={styles.page}><WoodlandBackdrop fullScreen /><ScrollView contentContainerStyle={styles.stateContent}>
+  if (!community) return <View style={styles.page}><ScrollView contentContainerStyle={styles.stateContent}>
     <LayeredCard style={styles.stateCard} radius={RADIUS.xl}>
       <View style={styles.stateIcon}><Ionicons name="home" size={44} illustrated color={COLORS.primary} /></View>
       <Text style={styles.stateTitle} accessibilityRole="header">{error ? 'Couldn’t load your neighborhood' : 'Meet your neighbors'}</Text>
@@ -110,7 +109,6 @@ export default function MyCommunityScreen({ navigation, route }) {
       </HapticPressable>)}
     </ScrollView>}
     <View style={styles.hero}>
-      <WoodlandBackdrop />
       <View style={styles.heroContent}>
       {community.bannerUrl && failedCover !== coverKey
         ? <Image source={{ uri: community.bannerUrl }} style={styles.cover} resizeMode="cover"

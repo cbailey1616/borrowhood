@@ -15,10 +15,7 @@ export default function WoodlandBackdrop({ fullScreen = false }) {
   catch { /* Pre-auth onboarding can render without AuthProvider. */ }
   const scene = getFeedWoodlandScene(feedWoodlandScene);
   const source = useMemo(() => {
-    // Extend the canvas above the trees so the sun is never cut off at an edge.
-    const svg = feedWoodlandSvg(feedWoodlandScene, width)
-      .replace('height="176"', 'height="264"')
-      .replace(`viewBox="0 0 ${width} 176"`, `viewBox="0 -88 ${width} 264"`);
+    const svg = feedWoodlandSvg(feedWoodlandScene, width, 264);
     return { uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` };
   }, [feedWoodlandScene, width]);
   if (!fullScreen) return <FeedWoodlandBackdrop width={width} sceneIndex={feedWoodlandScene} />;

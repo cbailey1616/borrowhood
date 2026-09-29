@@ -61,9 +61,11 @@ export const FEED_WOODLAND_SCENES = [
 
 export const getFeedWoodlandScene = index => FEED_WOODLAND_SCENES[index] || FEED_WOODLAND_SCENES[0];
 
-export function feedWoodlandSvg(index, width = 402) {
+export function feedWoodlandSvg(index, width = 402, height = 176) {
   const w = Number.isFinite(width) ? Math.max(1, width) : 402;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="176" viewBox="0 0 ${w} 176">
+  const h = Number.isFinite(height) ? Math.max(176, height) : 176;
+  // Extend the sky above the landscape instead of stretching its geometry.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 ${176 - h} ${w} ${h}">
     ${getFeedWoodlandScene(index).draw(w)}
     <path d="M0 161Q${w * 0.22} 150 ${w * 0.47} 163T${w} 145V176H0Z" fill="${COLORS.background}"/>
   </svg>`;

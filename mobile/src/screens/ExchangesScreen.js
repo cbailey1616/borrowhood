@@ -100,7 +100,7 @@ export default function ExchangesScreen({ navigation }) {
     <View style={styles.topRow}>
       <Text style={styles.summary}>{loading || !snapshot.hasTransactions || snapshot.userId !== user?.id ? ' ' : `${exchanges.length} active`}</Text>
       <HapticPressable onPress={() => navigation.navigate('TransactionHistory')} style={styles.history} accessibilityRole="button" accessibilityLabel="Exchange history">
-        <Ionicons name="receipt-outline" illustrated size={20} color={COLORS.primary} />
+        <Ionicons name="history-ledger-outline" illustrated size={20} color={COLORS.primary} />
         <Text style={styles.action}>History</Text>
       </HapticPressable>
     </View>

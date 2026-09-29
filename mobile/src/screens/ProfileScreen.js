@@ -156,7 +156,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <WoodlandHeader title="Profile" />
+      <WoodlandHeader title="Profile" artwork={false} />
 
       <ScrollView
         style={styles.scrollView}
@@ -234,7 +234,7 @@ export default function ProfileScreen({ navigation, route }) {
             onPress={() => navigation.navigate('MyCommunity')}
           />
           <GroupedListItem
-            icon="receipt-outline"
+            icon="history-ledger-outline"
             title="History"
             onPress={() => navigation.navigate('TransactionHistory')}
           />

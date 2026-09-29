@@ -47,7 +47,6 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
 
   const motion = useMemo(() => ({
     opacity: scrollY.interpolate({ inputRange: [-20, 0], outputRange: [1, 0], extrapolate: 'clamp' }),
-    loadingOpacity: scrollY.interpolate({ inputRange: [0, 24], outputRange: [1, 0], extrapolate: 'clamp' }),
     position: scrollY.interpolate({ inputRange: [-200, 0], outputRange: [100, 0], extrapolate: 'clamp' }),
     scaleX: scrollY.interpolate({ inputRange: [-200, -48, 0], outputRange: [0.78, 1, 0.6], extrapolate: 'clamp' }),
     scaleY: scrollY.interpolate({ inputRange: [-200, -48, 0], outputRange: [1.65, 1, 0.6], extrapolate: 'clamp' }),
@@ -68,8 +67,8 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
       importantForAccessibility={refreshing ? 'yes' : 'no-hide-descendants'}
       style={[styles.indicator, {
         top: top - LOGO_SIZE / 2,
-        opacity: refreshing ? motion.loadingOpacity : motion.opacity,
-        transform: [{ translateY: refreshing ? 32 : motion.position }],
+        opacity: motion.opacity,
+        transform: [{ translateY: motion.position }],
       }]}
     >
       <Animated.Image
@@ -108,6 +107,7 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
 
   return (
     <View style={styles.viewport}>
+      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={refreshing} top={progressViewOffset} />}
       <Animated.FlatList
         {...props}
         ref={ref}
@@ -123,7 +123,6 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
           />
         }
       />
-      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={refreshing} top={progressViewOffset} />}
     </View>
   );
 });

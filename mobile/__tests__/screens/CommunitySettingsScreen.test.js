@@ -19,6 +19,20 @@ describe('CommunitySettingsScreen', () => {
   const coverRoute = { params: { id: 'comm-1', editCover: true } };
   const editableCommunity = { id: 'comm-1', name: 'Test Hood', description: 'A neighborhood', role: 'organizer', bannerUrl: 'https://example.com/old.jpg' };
 
+  it('keeps themed member and invitation controls linked to their existing flows', async () => {
+    api.getCommunity.mockResolvedValue(editableCommunity);
+    const Screen = require('../../src/screens/CommunitySettingsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'comm-1' } }} />);
+    const Icon = require('../../src/components/Icon').default;
+    await screen.findByText('Manage Members');
+    const names = screen.UNSAFE_getAllByType(Icon.type).map(icon => icon.props.name);
+    expect(names).toEqual(expect.arrayContaining(['neighbors-manage-outline', 'neighbor-invite-outline']));
+    fireEvent.press(screen.getByText('Manage Members'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', expect.objectContaining({ id: 'comm-1' }));
+    fireEvent.press(screen.getByText('Invite Neighbors'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('InviteMembers', { communityId: 'comm-1' });
+  });
+
   it.each([[null, 'Cleanup on Saturday'], ['Cleanup on Saturday', '']])('saves a posted or cleared announcement (%s)', async (before, after) => {
     api.getCommunity.mockResolvedValue({ ...editableCommunity, announcement: before });
     const Screen = require('../../src/screens/CommunitySettingsScreen').default;
