@@ -34,6 +34,11 @@ it('groups incoming requests and opens their queue directly', () => {
   expect(nextHomeAction(pending.slice(0, 1), [], 'me', now).title).toBe('Someone wants Ladder');
 });
 
+it('preserves API calendar deadlines and rejects invalid rolled dates', () => {
+  expect(action({ endDate: '2026-09-16T00:00:00.000Z' }).title).toBe('Ladder due back today');
+  expect(action({ endDate: '2026-02-30' })).toBeNull();
+});
+
 it('keeps return confirmation available until completion even without unread updates', () => {
   expect(action({ isBorrower: false, status: 'returned', paymentStatus: 'authorized' })).toMatchObject({ title: 'Was Ladder returned?', label: 'Confirm return' });
   expect(action({ isBorrower: false, status: 'return_pending' }).label).toBe('Confirm return');

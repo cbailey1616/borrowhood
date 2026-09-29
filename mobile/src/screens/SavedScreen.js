@@ -6,8 +6,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  RefreshControl,
   useWindowDimensions,
   InteractionManager,
 } from 'react-native';
@@ -23,6 +21,7 @@ import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import WoodlandBackdrop from '../components/WoodlandBackdrop';
 import WoodlandHeader from '../components/WoodlandHeader';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
@@ -148,21 +147,15 @@ export default function SavedScreen({ navigation }) {
       {!isLoading && listings.length === 0 && <WoodlandBackdrop fullScreen />}
       <WoodlandHeader title="Saved" />
 
-      <FlatList
+      <BorrowhoodRefreshList
         data={listings}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         key={`saved-${columns}`}
         numColumns={columns}
         contentContainerStyle={[styles.listContent, { maxWidth: gridWidth }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.spinner}
-            colors={[COLORS.spinner]}
-          />
-        }
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>

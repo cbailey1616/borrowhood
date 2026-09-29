@@ -107,6 +107,9 @@ const DRAWINGS = {
   bulb: c => p('M10 21C10 17 6 17 6 11C6-1 26-1 26 11C26 17 22 17 22 21Z', panel(c)) + p('M11 25H21M13 29H19M16 21V15M12 12L16 15L20 12'),
   'happy': c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M10 20C13 25 19 25 22 20'),
   sad: c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M11 23C13 19 19 19 21 23'),
+  laugh: c => circle(16, 16, 13, panel(c)) + p('M8 12C10 9 12 9 14 12M18 12C20 9 22 9 24 12')
+    + p('M9 18H23C23 28 9 28 9 18Z', accent(c)),
+  surprised: c => circle(16, 16, 13, panel(c)) + dot(11, 12, c, 1.3) + dot(21, 12, c, 1.3) + circle(16, 22, 3.5, accent(c)),
   hammer: c => p('M6 4H16L22 10L17 15L11 10H6Z', panel(c)) + p('M17 14L25 23C28 26 24 30 21 27L13 17Z', accent(c)),
   handshake: c => p('M7 10L11 8L15 9L21 8L26 12L24 19L19 25C18 26 16 26 15 25L8 19L6 15Z', panel(c))
     + p('M15 9L12 12C10 14 12 17 14 15L17 13L25 19L22 23L18 26L10 20', accent(c))
@@ -162,7 +165,12 @@ const DRAWINGS = {
   link: () => p('M13 21L10 24C7 27 3 25 3 22C3 20 4 19 5 18L11 12C14 9 17 9 20 12M19 11L22 8C25 5 29 7 29 10C29 12 28 13 27 14L21 20C18 23 15 23 12 20M12 20L20 12'),
   eye: c => p('M2 16C9 3 23 3 30 16C23 29 9 29 2 16Z', panel(c)) + circle(16, 16, 4),
   'finger-print': () => p('M6 18V14C6 0 26 0 26 14V19M10 22V14C10 6 22 6 22 14V22M14 26V14C14 12 18 12 18 14V24L16 29M5 23L7 27M25 24L23 29'),
+  faceid: c => p('M3 10V5C3 3 5 3 10 3M22 3H27C29 3 29 5 29 10M29 22V27C29 29 27 29 22 29M10 29H5C3 29 3 27 3 22')
+    + p('M10 11V14M22 11V14M16 12V18L14 19M10 22C13 26 19 26 22 22'),
   scan: () => p('M3 11V4H10M22 4H29V11M29 22V29H22M10 29H3V22M3 16H29'),
+  expand: () => p('M12 4H4V12M4 4L13 13M20 4H28V12M28 4L19 13M4 20V28H12M4 28L13 19M28 20V28H20M28 28L19 19'),
+  ban: c => shield(c) + p('M9 10L23 24'),
+  'return-down-back': c => rect(13, 3, 15, 13, 3, panel(c)) + p('M18 3V8H23V3M24 20V24C24 27 21 28 18 28H5M10 23L5 28L10 31'),
   hourglass: c => p('M7 3H25V7C25 12 21 13 18 16C21 19 25 20 25 25V29H7V25C7 20 11 19 14 16C11 13 7 12 7 7Z', panel(c)) + p('M7 3H25M7 29H25M11 7H21'),
   flash: c => p('M18 2L5 19H15L13 30L28 12H18Z', panel(c)),
   bug: c => rect(10, 8, 12, 21, 6, panel(c)) + p('M12 8L9 3M20 8L23 3M10 14H4M22 14H28M10 21H3M22 21H29M10 26L5 30M22 26L27 30M16 14V29'),
@@ -205,6 +213,7 @@ const ALIASES = {
   chatbubbles: 'chatbubble', alert: 'alert-circle', help: 'help-circle',
   repeat: 'swap-horizontal', flame: 'bonfire', rocket: 'rank-archer', library: 'document-text',
   'checkmark-shield': 'shield-checkmark',
+  options: 'filter',
 };
 const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
@@ -223,6 +232,7 @@ const PALETTES = {
   'thumbs-up': ['#ABC5B8', '#E7C590'],
   'balance-scale': ['#B8CBA8', '#C3A66C'],
   'thumbs-down': ['#DEA088', '#E7C590'],
+  laugh: ['#E9CA92', '#DEA088'], surprised: ['#B8CAD7', '#E9CA92'], sad: ['#B8CAD7', '#D8E5DA'],
   basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
   'mail-unread': ['#E7C590', '#DEA088'],

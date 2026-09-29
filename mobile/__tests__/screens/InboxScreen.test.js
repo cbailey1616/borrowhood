@@ -60,6 +60,13 @@ const chooseAction = (screen, label) => {
 };
 
 describe('InboxScreen', () => {
+  it('opens the full exchange tracker from activity without changing message navigation', async () => {
+    const Screen = require('../../src/screens/InboxScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { tab: 'activity' } }} />);
+    const overview = await screen.findByTestId('Inbox.exchanges');
+    fireEvent.press(overview);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Exchanges');
+  });
   it('keeps the private message list focused on people and the latest message', async () => {
     api.getConversations.mockResolvedValue([{ id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice' }, listing: { title: 'Old ladder' },
       lastMessage: 'About item: “Garden chairs”\n\nAre these available?', lastMessageAt: new Date().toISOString(), unreadCount: 1 }]);

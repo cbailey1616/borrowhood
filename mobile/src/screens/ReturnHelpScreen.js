@@ -182,7 +182,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     {!loading&&!error&&!transactionId&&!admin&&<View style={styles.returnStatus}>
       <Text style={styles.statusTitle}>Need help with a return?</Text>
       <Text style={styles.body}>Choose an exchange to arrange a return, agree on more time, or report a missing item.</Text>
-      <ActionButton label="View my exchanges" icon="swap-horizontal-outline" variant="primary" onPress={()=>navigation.navigate('Main',{screen:'Activity',params:{tab:'activity'}})}/>
+      <ActionButton label="View my exchanges" icon="swap-horizontal-outline" variant="primary" onPress={()=>navigation.navigate('Exchanges')}/>
     </View>}
     {renderForm()}
     {!editingDate&&(admin||data.reports.length>0||!!data.restriction)&&<>

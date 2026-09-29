@@ -59,6 +59,7 @@ import DamageClaimScreen from '../screens/DamageClaimScreen';
 import ReportIssueScreen from '../screens/ReportIssueScreen';
 import RespondToDisputeScreen from '../screens/RespondToDisputeScreen';
 import TransactionHistoryScreen from '../screens/TransactionHistoryScreen';
+import ExchangesScreen from '../screens/ExchangesScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
@@ -325,6 +326,11 @@ export default function RootNavigator({ navigationRef }) {
             options={({ route }) => modalScreenOptions(
               route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim'
             )}
+          />
+          <Stack.Screen
+            name="Exchanges"
+            component={ExchangesScreen}
+            options={{ ...sharedScreenOptions, title: 'Your exchanges' }}
           />
           <Stack.Screen
             name="TransactionHistory"

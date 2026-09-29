@@ -21,6 +21,14 @@ export const listings = [
   { id: 'preview-books', title: 'A few good reads', description: 'Finished these and would love to pass them along.', categoryId: 'other', icon: 'document-text', listingType: 'giveaway', user: { ...neighbor, firstName: 'Taylor', totalTransactions: 82 } },
 ].map(item => ({ type: 'listing', listingType: 'lend', isFree: true, isAvailable: true, condition: 'good', visibility: 'neighborhood', createdAt: new Date().toISOString(), ...item, owner: item.user, ownerId: item.user.id, photoUrl: artwork(item.icon), photos: [artwork(item.icon)] }));
 export const conversation = { id: 'preview-chat', otherUser: neighbor, listing: listings[0], lastMessage: 'Perfect, see you then!', lastMessageAt: new Date().toISOString(), unreadCount: 0 };
+const returnDate = new Date();
+returnDate.setDate(returnDate.getDate() + 4);
+export const previewExchanges = [
+  { id: 'preview-return', status: 'return_pending', isBorrower: false, listing: listings[0], borrower: neighbor, lender: previewUser },
+  { id: 'preview-pickup', status: 'approved', isBorrower: true, listing: listings[2], borrower: previewUser, lender: listings[2].user },
+  { id: 'preview-loan', status: 'picked_up', isBorrower: true, listing: listings[1], borrower: previewUser, lender: listings[1].user,
+    endDate: returnDate.toLocaleDateString('sv-SE') },
+].map(exchange => ({ listingType: exchange.listing.listingType, createdAt: new Date().toISOString(), ...exchange }));
 export const messages = [
   { id: 'preview-message-1', content: 'About item: “Cordless drill & bits”\n\nHi Jamie! Could I borrow this on Saturday?', senderId: previewUser.id, isOwnMessage: true },
   { id: 'preview-message-2', content: 'Of course! A little weekend project?', senderId: neighbor.id, isOwnMessage: false },

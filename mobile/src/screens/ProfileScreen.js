@@ -239,6 +239,11 @@ export default function ProfileScreen({ navigation, route }) {
             onPress={() => navigation.navigate('TransactionHistory')}
           />
           <GroupedListItem
+            icon="handshake-outline"
+            title="Your exchanges"
+            onPress={() => navigation.navigate('Exchanges')}
+          />
+          <GroupedListItem
             icon="people-outline"
             title="Friends"
             onPress={() => navigation.navigate('Friends')}
@@ -282,7 +287,6 @@ export default function ProfileScreen({ navigation, route }) {
             title="Notifications"
             onPress={() => navigation.navigate('NotificationSettings')}
           />
-          <GroupedListItem icon="time-outline" title="Return help" onPress={() => navigation.navigate('ReturnHelp')} />
           <GroupedListItem
             icon="shield-checkmark-outline"
             title="Privacy & safety"

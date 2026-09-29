@@ -13,16 +13,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { randomUUID } from 'expo-crypto';
 import { Image } from 'expo-image';
-import FeedWoodlandBackdrop, { FEED_HEADER_BACKGROUND } from '../components/FeedWoodlandBackdrop';
+import FeedWoodlandBackdrop from '../components/FeedWoodlandBackdrop';
 import FeedHeaderTextFade from '../components/FeedHeaderTextFade';
-import { getFeedWoodlandScene } from '../assets/feed-woodland-scenes';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   ScrollView,
-  RefreshControl,
   Animated,
   ActivityIndicator,
   AppState,
@@ -37,6 +36,8 @@ import NeighborRankBadge from '../components/NeighborRankBadge';
 import RankInfoSheet from '../components/RankInfoSheet';
 import { memberReputation } from '../utils/reputation';
 import { nextHomeAction } from '../utils/homeAction';
+import { trackedExchanges } from '../utils/exchangeTracking';
+import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import useSavedListings from '../hooks/useSavedListings';
 import useFeedHeader from '../hooks/useFeedHeader';
 import { useError } from '../context/ErrorContext';
@@ -341,6 +342,7 @@ export default function FeedScreen({ navigation, route }) {
   };
 
   const homeAction = nextHomeAction(activeExchanges, activeDisputes, user?.id);
+  const exchanges = trackedExchanges(activeExchanges, user?.id, new Date(), activeDisputes);
 
   const onEndReached = () => {
     if (!feedInFlight.current && !feedError && hasMore) {
@@ -546,20 +548,25 @@ export default function FeedScreen({ navigation, route }) {
     </LayeredCard>
   );
 
-  const renderBanners = () => homeAction ? (
-    <LayeredCard style={{ marginBottom: SPACING.md }}>
-      <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
-        accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
-        onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
-        style={styles.exchangeCard}>
-        <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
-        <View style={styles.exchangeContent}>
-          <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
-          <Text style={styles.exchangeActionText}>{homeAction.label}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
-      </HapticPressable>
-    </LayeredCard>
+  const renderBanners = () => homeAction || exchanges.length ? (
+    <View>
+      <ExchangeOverviewLink testID="Feed.exchanges.overview" count={exchanges.length || undefined}
+        needsYou={exchanges.filter(exchange => exchange.section === 'needs-you').length}
+        onPress={() => navigation.navigate('Exchanges')} />
+      {!!homeAction && <LayeredCard style={{ marginBottom: SPACING.md }}>
+        <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
+          accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
+          onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
+          style={styles.exchangeCard}>
+          <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
+          <View style={styles.exchangeContent}>
+            <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
+            <Text style={styles.exchangeActionText}>{homeAction.label}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+        </HapticPressable>
+      </LayeredCard>}
+    </View>
   ) : null;
 
   const carouselRequests = !search.trim() && activeFilters.length === 0
@@ -567,7 +574,7 @@ export default function FeedScreen({ navigation, route }) {
   const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
   const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
-    ...(homeAction && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
+    ...((homeAction || exchanges.length) && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
@@ -604,17 +611,16 @@ export default function FeedScreen({ navigation, route }) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: tabBarHeight }]}>
-      <View pointerEvents="none" accessible={false} style={[styles.statusBarTint, { height: insets.top, backgroundColor: getFeedWoodlandScene(feedWoodlandScene).sky }]} />
+    <View style={[styles.container, { paddingBottom: tabBarHeight }]}>
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
-          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192} />
-          <FeedHeaderTextFade width={feedWidth} />
+          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} artworkOffset={insets.top} />
+          <FeedHeaderTextFade width={feedWidth} topOffset={insets.top} />
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
-            style={[styles.feedHeaderSurface, width < 375 && styles.feedHeaderSurfaceCompact]}
+            style={[styles.feedHeaderSurface, { paddingTop: insets.top + SPACING.sm }, width < 375 && styles.feedHeaderSurfaceCompact]}
             titleStyle={[styles.feedTitle, width < 375 && styles.feedTitleCompact]}
             titleRowStyle={styles.feedTitleRow}
             leftElement={<Image source={require('../../assets/logo.png')} contentFit="contain" transition={0}
@@ -653,7 +659,7 @@ export default function FeedScreen({ navigation, route }) {
             </>}
           </NativeHeader>
         </Animated.View>
-        <Animated.FlatList
+        <BorrowhoodRefreshList
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
           ref={listRef}
@@ -671,15 +677,10 @@ export default function FeedScreen({ navigation, route }) {
           bounces
           removeClippedSubviews={false}
           style={{ backgroundColor: FEED.bg }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              progressViewOffset={feedHeader.height}
-              onRefresh={onRefresh}
-              tintColor={COLORS.spinner}
-              colors={[COLORS.spinner]}
-            />
-          }
+          refreshing={isRefreshing}
+          progressViewOffset={feedHeader.height}
+          onRefresh={onRefresh}
+          scrollY={feedHeader.scrollY}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
           ListHeaderComponent={
@@ -715,7 +716,7 @@ export default function FeedScreen({ navigation, route }) {
               </View>
             ) : null
           }
-          ListEmptyComponent={<View>{renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.spinner} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
+          ListEmptyComponent={<View>{(columns === 1 || !displayFeed.some(item => item.type === 'feed-banners')) && renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.spinner} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
             <View style={styles.welcomeContainer}>
               <HeroIcon icon="home-outline" size={88} />
               <Text style={styles.emptyTitle}>What would you like to do?</Text>
@@ -931,7 +932,7 @@ const styles = StyleSheet.create({
   ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
   ribbonRepliesText: { flex: 0 },
   addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '400' },
-  feedTitle: { fontSize: 28, lineHeight: 36, fontFamily: 'Fraunces_600SemiBold', fontWeight: '400', letterSpacing: -0.8, color: COLORS.primaryDark },
+  feedTitle: { fontSize: 28, lineHeight: 36, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0, color: COLORS.primaryDark },
   feedTitleCompact: { fontSize: 24, lineHeight: 32 },
   feedTitleRow: { marginBottom: 44 },
   brandMark: { width: 36, height: 36, flexShrink: 0 },
@@ -959,7 +960,6 @@ const styles = StyleSheet.create({
   },
   feedViewport: { flex: 1, overflow: 'hidden' },
   feedHeader: { position: 'absolute', top: 0, zIndex: 1, backgroundColor: FEED.bg },
-  statusBarTint: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: FEED_HEADER_BACKGROUND },
   feedHeaderSurface: { backgroundColor: 'transparent', paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
   feedHeaderSurfaceCompact: { paddingHorizontal: SPACING.lg },
   skeletonContainer: {

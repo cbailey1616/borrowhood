@@ -11,8 +11,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  RefreshControl,
   Image,
   InteractionManager,
   Linking,
@@ -28,6 +26,8 @@ import LayeredCard from '../components/LayeredCard';
 import SegmentedControl from '../components/SegmentedControl';
 import WoodlandBackdrop from '../components/WoodlandBackdrop';
 import WoodlandHeader from '../components/WoodlandHeader';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
+import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import ActionButton from '../components/ActionButton';
 import ActionSheet from '../components/ActionSheet';
 import { SkeletonListItem } from '../components/SkeletonLoader';
@@ -387,21 +387,16 @@ export default function InboxScreen({ navigation, route, onRead }) {
           <SkeletonListItem />
         </View>
       ) : activeTab === 1 ? (
-        <FlatList
+        <BorrowhoodRefreshList
           data={unreadOnly ? notifications.filter(item => !item.isRead) : notifications}
           renderItem={renderNotification}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.spinner}
-              colors={[COLORS.spinner]}
-            />
-          }
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={
             <>
+              <ExchangeOverviewLink testID="Inbox.exchanges" onPress={() => navigation.navigate('Exchanges')} />
               {(loadError.activity || loadError.exchanges) && renderRetry(loadError.activity && loadError.exchanges ? 'Couldn’t refresh activity and exchanges.' : loadError.activity ? 'Couldn’t refresh activity.' : 'Couldn’t refresh exchanges.')}
               {notifsDenied && (
                 <HapticPressable
@@ -436,19 +431,13 @@ export default function InboxScreen({ navigation, route, onRead }) {
           }
         />
       ) : (
-        <FlatList
+        <BorrowhoodRefreshList
           data={unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.spinner}
-              colors={[COLORS.spinner]}
-            />
-          }
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={loadError.messages ? renderRetry('Couldn’t refresh messages.') : null}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

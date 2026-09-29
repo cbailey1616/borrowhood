@@ -6,14 +6,13 @@ import { randomUUID } from 'expo-crypto';
 import { listingAvailability } from '../utils/listingAvailability';
 import { isTransferListing } from '../utils/directFee';
 import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
+import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   useWindowDimensions,
-  RefreshControl,
   Animated as RNAnimated,
   InteractionManager,
 } from 'react-native';
@@ -27,6 +26,7 @@ import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
 import WoodlandBackdrop from '../components/WoodlandBackdrop';
 import WoodlandHeader from '../components/WoodlandHeader';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
 import { useAuth } from '../context/AuthContext';
@@ -406,7 +406,6 @@ export default function MyItemsScreen({ navigation }) {
       </HapticPressable>
     </View>
   ) : null;
-  const refreshControl = <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />;
   const contentContainerStyle = [styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }];
 
   return (
@@ -432,7 +431,7 @@ export default function MyItemsScreen({ navigation }) {
 
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
-      <FlatList
+      <BorrowhoodRefreshList
         key={`posts-${activeTab}-${columns}`}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
@@ -442,8 +441,10 @@ export default function MyItemsScreen({ navigation }) {
         </View>}
         keyExtractor={(item) => item.id}
         contentContainerStyle={contentContainerStyle}
-        refreshControl={refreshControl}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={emptyContent}
+        ListHeaderComponent={<ExchangeOverviewLink testID="MyItems.exchanges" onPress={() => navigation.navigate('Exchanges')} />}
       />
       <ActionSheet
         isVisible={!!pendingDelete}

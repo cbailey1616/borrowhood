@@ -9,7 +9,7 @@ jest.mock('../../src/context/AuthContext',()=>({useAuth:()=>({user:mockUser})}))
 const navigation={navigate:jest.fn(),goBack:jest.fn()};
 const report={id:'report',transaction_id:'exchange',title:'Ladder',owner_name:'Owner',borrower_name:'Borrower',borrower_id:'borrower',status:'open',version:3,detail:'The ladder is missing.',response_due_at:'2026-09-20T12:00:00Z',history:[]};
 beforeEach(()=>{
- jest.clearAllMocks();jest.useFakeTimers();jest.setSystemTime(new Date('2026-09-25T16:00:00Z'));
+ jest.clearAllMocks();jest.useFakeTimers();jest.setSystemTime(new Date(2026,8,25,12));
  useFocusEffect.mockImplementation(callback=>React.useEffect(callback,[callback]));
  mockUser.id='borrower';mockUser.isAdmin=false;
  api.getConversations.mockResolvedValue([]);
@@ -200,11 +200,11 @@ it('does not reopen chat after leaving the screen during a lookup',async()=>{
  expect(navigation.navigate).not.toHaveBeenCalled();
 });
 
-it('offers an exchange destination from the profile entry point',async()=>{
+it('opens the exchange tracker when return help has no specific exchange',async()=>{
  api.getReturnHelp.mockResolvedValue(noReports);
  const s=render(<Screen route={{params:{}}} navigation={navigation}/>);
  fireEvent.press(await s.findByRole('button',{name:'View my exchanges'}));
- expect(navigation.navigate).toHaveBeenCalledWith('Main',{screen:'Activity',params:{tab:'activity'}});
+ expect(navigation.navigate).toHaveBeenCalledWith('Exchanges');
 });
 
 it('shows a retry instead of claiming there are no reports when loading fails',async()=>{

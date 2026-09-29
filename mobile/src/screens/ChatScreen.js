@@ -38,6 +38,7 @@ import ActionSheet from '../components/ActionSheet';
 import ShimmerImage from '../components/ShimmerImage';
 import { ThemedAlert as Alert } from '../components/ThemedAlert';
 import EmojiReactionPicker from '../components/EmojiReactionPicker';
+import ReactionIcon, { reactionOption } from '../components/ReactionIcon';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -451,10 +452,13 @@ function ChatConversation({ route, navigation }) {
             <HapticPressable
               key={emoji}
               onPress={() => handleToggleReaction(item, emoji)}
+              accessibilityRole="button"
+              accessibilityLabel={`${reactionOption(emoji)?.label || emoji} reaction, ${userIds.length}`}
+              accessibilityState={{ selected: isOwn }}
               haptic="light"
               style={[styles.reactionPill, isOwn && styles.reactionPillOwn]}
             >
-              <Text style={styles.reactionEmoji}>{emoji}</Text>
+              <ReactionIcon emoji={emoji} size={18} />
               {userIds.length > 1 && (
                 <Text style={styles.reactionCount}>{userIds.length}</Text>
               )}
@@ -890,9 +894,6 @@ const styles = StyleSheet.create({
   reactionPillOwn: {
     borderWidth: 1,
     borderColor: COLORS.primary,
-  },
-  reactionEmoji: {
-    fontSize: 14,
   },
   reactionCount: {
     ...TYPOGRAPHY.caption1,

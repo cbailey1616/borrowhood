@@ -1,6 +1,6 @@
 // The browser target is a local design preview. It never imports the live API.
 // Native iOS/Android continue resolving api.js.
-import { emptyPreview, previewUser, previewRequest, listings, conversation, messages, neighbor, comments, commentReplies } from '../preview/fixtures';
+import { emptyPreview, previewUser, previewRequest, previewExchanges, listings, conversation, messages, neighbor, comments, commentReplies } from '../preview/fixtures';
 
 let saved = emptyPreview ? [] : [listings[0]];
 let chat = emptyPreview ? [] : [...messages];
@@ -28,7 +28,8 @@ const api = {
   getCommunities: async () => [{ id: 'preview-town', name: 'Maplewood' }],
   getMyListings: async () => available.slice(1),
   getMyRequests: async () => [],
-  getTransactions: async () => [],
+  getTransactions: async (params = {}) => emptyPreview ? [] : previewExchanges.filter(exchange => !params.role
+    || (params.role === 'borrower' ? exchange.isBorrower : !exchange.isBorrower)),
   getDisputes: async () => [],
   getSavedListings: async () => [...saved],
   checkSaved: async id => ({ isSaved: saved.some(item => item.id === id) }),
