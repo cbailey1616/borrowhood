@@ -67,7 +67,7 @@ describe('ListingDiscussionScreen', () => {
     api.getDiscussions.mockResolvedValue({ posts: [makePost('alice-root', 'Alice')] });
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByLabelText('Reply to Alice'));
+    fireEvent.press(await screen.findByLabelText('Reply to Alice', {}, { timeout: 5000 }));
     await screen.findByLabelText('Post reply');
     expect(usePreventRemove).toHaveBeenLastCalledWith(true, expect.any(Function));
     fireEvent.press(screen.getByLabelText('View Alice’s profile'));

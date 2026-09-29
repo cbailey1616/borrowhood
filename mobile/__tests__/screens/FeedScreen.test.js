@@ -55,8 +55,8 @@ describe('FeedScreen', () => {
         user: { id: 'sam', firstName: 'Sam' } }], hasMore: false });
       const Screen = require('../../src/screens/FeedScreen').default;
       const screen = render(<Screen navigation={mockNavigation} />);
-      await screen.findByText('Drill wanted');
-      await screen.findByTestId('Feed.exchanges.overview');
+      await screen.findByText('Drill wanted', {}, { timeout: 5000 });
+      await screen.findByTestId('Feed.exchanges.overview', {}, { timeout: 5000 });
       expect(screen.getAllByTestId('Feed.exchanges.overview')).toHaveLength(1);
       screen.unmount();
     } finally {

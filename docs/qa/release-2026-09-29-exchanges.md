@@ -35,6 +35,11 @@ This release does not submit the app for production App Store review.
   return-request, pickup-review, date-extension, and return-case notification
   destinations, plus tracker app-resume and hidden-screen behavior.
 - Production iOS JavaScript and assets export successfully.
+- Native PostgreSQL/API/migration and concurrent-traffic/backup checks passed
+  in the initial release run. CI exposed a cold-render timeout in the first feed
+  assertion; it now uses the existing five-second asynchronous render allowance,
+  without changing its content or duplicate-overview assertions. The first
+  discussion-screen assertion uses the same allowance.
 - The earlier browser verification checked the actual exchange screen at widths
   320, 393, 768, and 1180, navigation from the feed to exchanges and history,
   and the empty-state route back to the feed.
