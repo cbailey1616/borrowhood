@@ -1,3 +1,4 @@
+import { ensureDiscussionReactionSchema } from '../../src/services/publicReactions.js';
 import { beforeAll, afterAll, beforeEach, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import express from 'express';
@@ -38,6 +39,7 @@ beforeAll(async () => {
       reply_count INT DEFAULT 0,created_at TIMESTAMPTZ DEFAULT NOW(),updated_at TIMESTAMPTZ DEFAULT NOW(),is_hidden BOOLEAN DEFAULT false,hidden_by UUID,hidden_at TIMESTAMPTZ);
     CREATE TABLE safety_reports(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),reporter_id UUID REFERENCES users(id),reported_id UUID REFERENCES users(id),reason TEXT,created_at TIMESTAMPTZ DEFAULT NOW());`);
   await ensureSafetyReviewSchema();
+  await ensureDiscussionReactionSchema();
 },20000);
 afterAll(async()=>state.db.close());
 beforeEach(async()=>{
@@ -113,4 +115,30 @@ it('screens edits and profile text as well as new posts, without treating passwo
   await request(local).patch('/').send({description:'go kill yourself'}).expect(422);
   await request(local).patch('/').send({bio:'child pornography'}).expect(422);
   await request(local).patch('/').send({password:'go kill yourself'}).expect(200);
+});
+
+it.each(['listing','request'])('persists, changes and removes reactions on %s roots and replies without crossing visibility',async kind=>{
+ await state.db.query('UPDATE users SET is_verified=true WHERE id=$1',[viewer]);
+ const col=kind==='listing'?'listing_id':'request_id',id=kind==='listing'?item:wanted,base=`/${kind==='listing'?'listings':'requests'}/${id}/discussions`;
+ await state.db.query(`INSERT INTO listing_discussions(id,${col},user_id,parent_id) VALUES($1,$2,$3,NULL),($4,$2,$3,$1)`,[root,id,owner,reply]);
+ for(const post of [root,reply]) {
+  await call('post',`${base}/${post}/react`).send({emoji:'👍'}).expect(200);
+  await call('post',`${base}/${post}/react`).send({emoji:'❤️'}).expect(200);
+ }
+ expect((await call('get',base)).body.posts[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
+ expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
+ expect((await call('get',`${base}/${reply}`)).body.post.reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
+ await call('post',`${base}/${reply}/react`).send({emoji:'invalid'}).expect(400);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,blocked]);
+ await call('post',`${base}/${reply}/react`,blocked).send({emoji:'❤️'}).expect(404);
+ await state.db.exec('DELETE FROM user_blocks');
+ await call('delete',`${base}/${reply}/react`).expect(200);
+ expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual([]);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[viewer,owner]);
+ await call('post',`${base}/${root}/react`).send({emoji:'👍'}).expect(404);
+ await state.db.exec('DELETE FROM user_blocks');
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,viewer]);
+ expect((await call('get',base,owner)).body.posts[0].reactions).toEqual([]);
+ await state.db.query('UPDATE listing_discussions SET is_hidden=true WHERE id=$1',[root]);
+ await call('post',`${base}/${reply}/react`,owner).send({emoji:'👍'}).expect(404);
 });

@@ -169,10 +169,10 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
           <View style={creating?styles.builder:undefined}>
           {creating&&<View style={styles.nameField}><Text style={styles.label}>Plan name</Text><TextInput accessibilityLabel="Plan name" value={planName} onChangeText={setPlanName} maxLength={80} placeholder="e.g. Backyard cookout" placeholderTextColor={COLORS.textMuted} style={styles.input}/></View>}
           <View style={creating?styles.builderHeading:styles.summary}>
-            <View style={styles.progressRow}><Text style={styles.headingText}>{creating?'What you’ll need':'Your checklist'}</Text>
-              {!!data.items.length&&<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={editing?'Finish editing checklist':'Edit checklist'} onPress={()=>setEditing(!editing)} style={styles.editControl}><Text style={styles.editText}>{editing?'Done':'Edit list'}</Text></HapticPressable>}
+            <View style={styles.summaryHeading}><Text style={[styles.headingText,{flex:1}]}>{creating?'What you’ll need':'Your checklist'}</Text>
+              {!!data.items.length&&<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={editing?'Finish editing checklist':'Edit checklist'} onPress={()=>setEditing(!editing)} style={styles.editControl}><Icon name={editing?'selection-check':'pencil'} size={17}/><Text style={styles.editText}>{editing?'Done':'Edit list'}</Text></HapticPressable>}
             </View>
-            {!data.items.length?<Text style={styles.body}>Add what you need for this plan.</Text>:id&&<>
+            {!data.items.length?<Text style={styles.body}>Add what you need for this plan.</Text>:<>
             <View style={styles.progressRow}><Text style={styles.body}>{progress.covered} ready{progress.waiting?` · ${progress.waiting} waiting`:''} · {progress.total-progress.covered-progress.waiting} to find</Text><Text style={styles.hint}>{progress.covered} of {progress.total}</Text></View>
             <View accessibilityRole="progressbar" accessibilityValue={{min:0,max:progress.total,now:progress.covered}} style={styles.track}>
               <View style={[styles.fill,{width:`${progress.total?progress.covered/progress.total*100:0}%`}]}/>
@@ -192,31 +192,31 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
                     <ActionButton label="Save item" variant="primary" disabled={busy||!editedLabel.trim()} onPress={saveItem} style={styles.editorButton}/>
                   </View>
                 </View>:<>
-                <View style={[styles.row,compact&&styles.compactRow]}>
+                <View style={styles.row}>
                   <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Options for ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemPicture}><ProjectItemIllustration label={item.label} icon={item.icon} size={66}/></HapticPressable>
                   <View style={styles.itemText}>
                     <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Edit or remove ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemName}>
-                      <Text style={[styles.label,{flex:1}]}>{item.label}</Text><Icon name="ellipsis-horizontal" size={18}/>
+                      <Text style={[styles.label,{flex:1}]}>{item.label}</Text><View style={styles.itemEditIcon}><Icon name="pencil" size={17}/></View>
                     </HapticPressable>
                     {!creating&&<Text style={[styles.body,state.covered&&styles.readyText]}>{state.label}</Text>}
                     {item.endDate&&['approved','paid','picked_up'].includes(item.transactionStatus)&&<Text style={styles.hint}>Return by {formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}</Text>}
                     {hasExchange&&<HapticPressable accessibilityRole="button" accessibilityLabel={`View exchange for ${item.label}`}
                       onPress={()=>navigation.navigate('TransactionDetail',{id:item.transactionId})}><Text style={styles.textLink}>View exchange</Text></HapticPressable>}
-                    {!creating&&!editing&&!hasExchange&&!item.owned&&<HapticPressable disabled={busy} accessibilityRole="checkbox"
-                      accessibilityState={{checked:false}} accessibilityLabel={`I have ${item.label}`}
-                      onPress={()=>setOwned(item,true)} style={styles.haveOption}>
-                      <Icon name="selection-check-empty" size={16} illustrated={false}/><Text style={styles.hint}>Already have this</Text>
-                    </HapticPressable>}
                   </View>
-                  {editing?<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Remove ${item.label}`} style={styles.checkControl}
-                    onPress={()=>requestRemoveItem(item)}><Icon name="trash" size={24}/></HapticPressable>:hasExchange?<Icon name={state.covered?'selection-check':'time'} size={26}/>:item.owned?
-                    <HapticPressable disabled={busy} accessibilityRole="checkbox" accessibilityState={{checked:true}}
-                      accessibilityLabel={`I have ${item.label}`} onPress={()=>setOwned(item,false)} style={styles.checkControl}>
-                      <Icon name="selection-check" size={26}/>
-                    </HapticPressable>:
-                    !creating&&<ActionButton label={item.matches.length?'Find':'Ask'} accessibilityLabel={`Find ${item.label}`} onPress={()=>openMatches(item)} style={styles.findButton}/>
-                  }
+                  {editing&&<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Remove ${item.label}`} style={styles.checkControl}
+                    onPress={()=>requestRemoveItem(item)}><Icon name="trash" size={24}/></HapticPressable>}
+                  {hasExchange&&<Icon name={state.covered?'selection-check':'time'} size={24}/>}
                 </View>
+                {!creating&&!editing&&!hasExchange&&<View style={[styles.itemActions,compact&&styles.compactActions]}>
+                  {!item.owned&&<ActionButton label={item.matches.length?'Browse nearby':'Ask neighbors'} icon={item.matches.length?'search':'chatbubble'}
+                    accessibilityLabel={item.matches.length?`Find ${item.label}`:`Ask neighbors for ${item.label}`} disabled={busy} onPress={()=>openMatches(item)} style={styles.findButton}/>}
+                  <HapticPressable disabled={busy} accessibilityRole="checkbox" accessibilityState={{checked:!!item.owned}}
+                    accessibilityLabel={`I have ${item.label}`} onPress={()=>setOwned(item,!item.owned)} style={[styles.haveOption,item.owned&&styles.haveOptionSelected]}>
+                    <Icon name={item.owned?'selection-check':'selection-check-empty'} size={20} illustrated={false}/>
+                    <Text style={styles.haveText}>I have this</Text>
+                  </HapticPressable>
+                </View>}
+
                 {!editing&&state.ended&&<HapticPressable disabled={busy} accessibilityRole="button" style={styles.retryItem}
                   onPress={()=>mutate(()=>api.resetProjectItem(id,item.id))}><Text style={styles.textLink}>Find another</Text></HapticPressable>}
                 </>}
@@ -256,7 +256,7 @@ const styles=StyleSheet.create({
   ideas:{gap:14},
   idea:{paddingVertical:14,paddingHorizontal:16,borderRadius:22,backgroundColor:COLORS.surface,flexDirection:'row',gap:6,alignItems:'center',minHeight:148,borderWidth:1,borderColor:COLORS.borderLight},
   ideaText:{flex:1,gap:7},
-  editControl:{minHeight:44,justifyContent:'center',paddingHorizontal:6},
+  editControl:{flexDirection:'row',alignItems:'center',gap:5,minHeight:44,justifyContent:'center',paddingHorizontal:6},
   editText:{...TYPOGRAPHY.footnote,color:COLORS.primary,fontFamily:'DMSans_600SemiBold'},
   saved:{padding:16,borderRadius:18,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:12},
   summary:{padding:18,gap:10,borderRadius:20,backgroundColor:COLORS.surface,borderWidth:1,borderColor:COLORS.borderLight},
@@ -264,23 +264,29 @@ const styles=StyleSheet.create({
   nameField:{gap:10,paddingBottom:20,borderBottomWidth:1,borderBottomColor:COLORS.borderLight},
   builderHeading:{gap:8,paddingTop:16},
   builderAdd:{gap:10,paddingTop:16},
-  progressRow:{flexDirection:'row',justifyContent:'space-between',gap:8,flexWrap:'wrap'},
+  summaryHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
+  progressRow:{alignItems:'center',flexDirection:'row',justifyContent:'space-between',gap:8,flexWrap:'wrap'},
   track:{height:9,backgroundColor:'#E8E4D6',borderRadius:5,overflow:'hidden'},
   fill:{height:9,backgroundColor:'#82977C',borderRadius:5},
-  checklist:{paddingTop:2},
-  item:{paddingVertical:16,borderBottomWidth:1,borderBottomColor:COLORS.borderLight,gap:8},
+  checklist:{paddingTop:12,gap:12},
+  item:{padding:14,borderRadius:20,borderWidth:1,borderColor:COLORS.borderLight,backgroundColor:COLORS.surface,gap:12},
   row:{width:'100%',minWidth:0,flexDirection:'row',alignItems:'center',gap:12},
   compactRow:{flexWrap:'wrap'},
   itemPicture:{width:66,height:72,borderRadius:16,backgroundColor:'#EAE5D6',alignItems:'center',justifyContent:'center'},
   itemText:{flex:1,minWidth:0,gap:4},
-  itemName:{minWidth:0,paddingRight:6,flexDirection:'row',alignItems:'center',gap:4,minHeight:32},
+  itemName:{minWidth:0,flexDirection:'row',alignItems:'center',gap:8,minHeight:36},
+  itemEditIcon:{width:30,height:30,borderRadius:15,backgroundColor:COLORS.background,alignItems:'center',justifyContent:'center'},
   itemEditor:{gap:10},
   editorActions:{flexDirection:'row',gap:10},
   editorButton:{flex:1},
-  haveOption:{minHeight:32,flexDirection:'row',alignItems:'center',gap:6,marginTop:2},
+  itemActions:{flexDirection:'row',gap:10},
+  compactActions:{flexDirection:'column'},
+  haveOption:{flex:1,minHeight:46,paddingHorizontal:10,paddingVertical:10,borderRadius:12,backgroundColor:COLORS.background,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},
+  haveOptionSelected:{backgroundColor:COLORS.primaryMuted},
+  haveText:{...TYPOGRAPHY.footnote,color:COLORS.primary,fontFamily:'DMSans_600SemiBold',flexShrink:1},
   checkControl:{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'},
   readyText:{color:COLORS.primary,fontFamily:'DMSans_600SemiBold'},
-  findButton:{minHeight:44,paddingHorizontal:12,borderRadius:12},
+  findButton:{flex:1,minHeight:46,paddingHorizontal:10,borderRadius:12},
   textLink:{...TYPOGRAPHY.footnote,color:COLORS.primary,textDecorationLine:'underline',paddingVertical:4},
   retryItem:{alignSelf:'flex-start',marginLeft:78,minHeight:40,justifyContent:'center'},
   addButton:{borderWidth:0,backgroundColor:'#E8E4D6',borderRadius:16,minHeight:50},

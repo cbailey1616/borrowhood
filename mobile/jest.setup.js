@@ -489,6 +489,12 @@ jest.mock('./src/services/api', () => ({
     respondToDispute: jest.fn().mockResolvedValue({ success: true, status: 'underReview' }),
     resolveDispute: jest.fn().mockResolvedValue({ success: true }),
     // Discussions
+    reactToDiscussion: jest.fn().mockResolvedValue({}),
+    removeDiscussionReaction: jest.fn().mockResolvedValue({}),
+    reactToRequestDiscussion: jest.fn().mockResolvedValue({}),
+    removeRequestDiscussionReaction: jest.fn().mockResolvedValue({}),
+    reactToCommunityMessage: jest.fn().mockResolvedValue({}),
+    removeCommunityReaction: jest.fn().mockResolvedValue({}),
     getDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
     getRequestDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
     // Referrals

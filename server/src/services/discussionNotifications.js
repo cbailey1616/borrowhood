@@ -21,7 +21,7 @@ export async function notifyThreadParticipants({ threadId, listingId, requestId,
 
 export async function getDiscussionThread(target, targetId, postId, userId) {
   const column = target === 'request' ? 'request_id' : 'listing_id';
-  const { rows: [post] } = await query(`SELECT root.id, root.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=root.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$3')}) AS reply_count, root.created_at,
+  const { rows: [post] } = await query(`SELECT root.id, root.content, COALESCE((SELECT json_agg(json_build_object('userId',rx.user_id,'emoji',rx.emoji)) FROM discussion_reactions rx WHERE rx.discussion_id=root.id AND ${unblockedSql('rx.user_id', '$3')}),'[]'::json) AS reactions, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=root.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$3')}) AS reply_count, root.created_at,
     u.id AS user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url,
     target.id AS target_id, target.parent_id,
     (SELECT COUNT(*) FROM listing_discussions r WHERE r.parent_id=root.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$3')}
@@ -34,7 +34,7 @@ export async function getDiscussionThread(target, targetId, postId, userId) {
       AND ${unblockedSql('target.user_id', '$3')} AND ${unblockedSql('root.user_id', '$3')}`, [postId, targetId, userId]);
   if (!post) return null;
   return {
-    post: { id: post.id, content: post.content, replyCount: post.reply_count, createdAt: post.created_at,
+    post: { id: post.id, content: post.content, reactions: post.reactions || [], replyCount: post.reply_count, createdAt: post.created_at,
       isOwn: post.user_id === userId, user: { id: post.user_id,
         firstName: post.display_name || post.first_name,
         lastName: post.display_name ? '' : post.last_name ? `${post.last_name[0]}.` : '', profilePhotoUrl: post.profile_photo_url } },

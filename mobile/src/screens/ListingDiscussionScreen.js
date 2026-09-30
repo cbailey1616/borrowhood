@@ -1,3 +1,6 @@
+import * as Clipboard from 'expo-clipboard';
+import MessageReactionMenu from '../components/MessageReactionMenu';
+import MessageReactions from '../components/MessageReactions';
 import ContentSafetyActions from '../components/ContentSafetyActions';
 import { randomUUID } from 'expo-crypto';
 import MessageComposer from '../components/MessageComposer';
@@ -41,6 +44,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const isOwner = target?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [reactionTarget, setReactionTarget] = useState(null);
+  const reacting = useRef(false);
   const [actionTarget, setActionTarget] = useState(null);
   const [safetyTarget, setSafetyTarget] = useState(null);
   const openingChat = useRef(false);
@@ -106,6 +111,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     clearTimeout(scrollRetry.current);
     scrollTarget.current = null;
     scrollAttempts.current = 0;
+    setReactionTarget(null); setActionTarget(null);
     setPosts([]); setReplies({}); setReplyErrors({}); setLoadingReplies({}); setHasMoreReplies({}); setActiveThreadId(null);
     setDrafts({}); setIsLoading(true); setThreadError(''); setSendErrors({}); setIsSubmitting(false);
     fetchPosts();
@@ -379,6 +385,28 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     } finally { openingChat.current = false; }
   };
 
+  const openReactions = (post, parentId, event) => {
+    setReactionTarget({ post, parentId, position: event?.nativeEvent?.pageY ? { y: event.nativeEvent.pageY } : undefined });
+  };
+  const react = async (post, emoji) => {
+    if (reacting.current) return;
+    reacting.current = true;
+    setReactionTarget(null);
+    const generation = threadGeneration.current;
+    const own = (post.reactions || []).find(r => r.userId === user.id);
+    const removing = own?.emoji === emoji;
+    try {
+      if (isRequest) await (removing ? api.removeRequestDiscussionReaction(requestId,post.id) : api.reactToRequestDiscussion(requestId,post.id,emoji));
+      else await (removing ? api.removeDiscussionReaction(listingId,post.id) : api.reactToDiscussion(listingId,post.id,emoji));
+      if (generation !== threadGeneration.current) return;
+      const update = p => p.id !== post.id ? p : { ...p, reactions: [...(p.reactions || []).filter(r => r.userId !== user.id), ...(removing ? [] : [{ userId: user.id, emoji }])] };
+      setPosts(prev => prev.map(update));
+      setReplies(prev => Object.fromEntries(Object.entries(prev).map(([id,items]) => [id,items.map(update)])));
+      haptics.success();
+    } catch { if (generation === threadGeneration.current) setThreadError('Couldn’t update reaction. Try again.'); }
+    finally { reacting.current = false; }
+  };
+
   const renderComment = (post, parentId = null) => {
     const name = [post.user.firstName, post.user.lastName].filter(Boolean).join(' ') || 'Neighbor';
     const identity = <>
@@ -389,7 +417,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       </View>
     </>;
     return (
-      <HapticPressable style={styles.comment} onLongPress={() => setActionTarget({ post, parentId })}
+      <HapticPressable style={styles.comment} onLongPress={event => openReactions(post, parentId, event)}
         accessible={false} accessibilityRole={undefined} haptic={false} scaleDown={1}
         testID={`Comments.message.${post.id}`}>
         <View style={styles.commentHeader}>
@@ -403,6 +431,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           </HapticPressable>
         </View>
         <Text style={styles.postContent}>{post.content}</Text>
+        <MessageReactions reactions={post.reactions} userId={user.id} onToggle={emoji => react(post,emoji)}
+          onAdd={event => openReactions(post,parentId,event)} />
         {!activeThreadId && (
           <View style={styles.postActions}>
             <HapticPressable style={styles.replyButton} onPress={() => openThread(post.id, true)}
@@ -551,11 +581,15 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       {/* Input Bar */}
       {renderInputBar()}
 
+      <MessageReactionMenu visible={!!reactionTarget} position={reactionTarget?.position} onClose={() => setReactionTarget(null)}
+        onSelect={emoji => react(reactionTarget.post,emoji)} onMore={() => { setActionTarget(reactionTarget); setReactionTarget(null); }} />
       <ActionSheet
         isVisible={!!actionTarget}
         onClose={() => setActionTarget(null)}
         title={actionTarget ? `${actionTarget.post.user.firstName}’s comment` : 'Comment'}
         actions={actionTarget ? [
+          { label: 'Add reaction', onPress: () => openReactions(actionTarget.post,actionTarget.parentId) },
+          { label: 'Copy Text', onPress: () => Clipboard.setStringAsync(actionTarget.post.content) },
           {
             label: 'Reply in thread',
             onPress: () => openThread(actionTarget.parentId || actionTarget.post.id, true),

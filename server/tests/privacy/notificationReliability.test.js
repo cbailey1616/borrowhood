@@ -1,3 +1,4 @@
+import { ensureDiscussionReactionSchema } from '../../src/services/publicReactions.js';
 import { ensureCommunityChatSchema } from '../../src/services/communityChat.js';
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
@@ -63,6 +64,7 @@ beforeAll(async () => {
   await ensurePublicationSchema();
   app = express(); app.use(express.json()); app.use('/notifications', notificationRoutes);
   app.use('/listings', discussionRoutes); app.use('/requests', requestDiscussionRoutes); app.use('/messages', messageRoutes);
+  await ensureDiscussionReactionSchema();
 }, 20000);
 beforeEach(async () => {
   state.allowed = true;

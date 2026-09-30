@@ -71,6 +71,8 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   useEffect(() => {
     requestVersion.current += 1;
+    tabChosen.current = !!route?.params?.tab;
+    setActiveTab(route?.params?.tab === 'messages' ? 0 : 1);
     knownTransactions.current = [];
     activityRecords.current = [];
     pageCount.current = 1;
@@ -158,7 +160,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
         onRead?.();
       });
       const timer = setInterval(fetchData, 10000);
-      return () => { task.cancel(); clearInterval(timer); requestVersion.current += 1; tabChosen.current = false; };
+      return () => { task.cancel(); clearInterval(timer); requestVersion.current += 1; };
     }, [fetchData, checkNotifPermission, onRead])
   );
 

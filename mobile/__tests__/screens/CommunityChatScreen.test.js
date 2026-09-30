@@ -46,3 +46,16 @@ it.each(['channel','account'])('clears the draft when the %s changes',async kind
  await screen.findByText('Say hello to your neighbors.');
  expect(screen.getByLabelText('Message').props.value).toBe('');
 });
+
+it('reacts to both a neighborhood thread root and its reply through long press',async()=>{
+ const root={id:'root',sequence:'1',content:'Bring a spare chair?',sender:{id:'neighbor',name:'Sam'},createdAt:'2026-09-18',replyCount:1};
+ const child={id:'reply',sequence:'2',parentId:'root',content:'I have two',sender:{id:'neighbor',name:'Sam'},createdAt:'2026-09-18'};
+ api.getCommunityChat.mockImplementation((_id,params)=>Promise.resolve({messages:params.parentId?[child]:[root],parent:params.parentId?root:null,readSequence:'2',role:'member'}));
+ const screen=render(<Screen navigation={navigation} route={route}/>);
+ fireEvent(await screen.findByText(root.content),'longPress');fireEvent.press(screen.getByLabelText('React: Love'));
+ await waitFor(()=>expect(api.reactToCommunityMessage).toHaveBeenCalledWith('hood','root','❤️'));
+ fireEvent.press(await screen.findByLabelText('Reply to Sam'));
+ fireEvent(await screen.findByText(child.content),'longPress');fireEvent.press(screen.getByLabelText('React: Like'));
+ await waitFor(()=>expect(api.reactToCommunityMessage).toHaveBeenCalledWith('hood','reply','👍'));
+ fireEvent(screen.getByText(root.content),'longPress');expect(screen.getByLabelText('React: Love')).toBeTruthy();
+});

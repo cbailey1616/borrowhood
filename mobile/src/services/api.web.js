@@ -15,6 +15,8 @@ let requestOffers = emptyPreview ? [] : [{ id: listings[0].id, title: 'Cordless 
 const noop = async () => ({});
 let projects = [];
 const projectIdeas = () => seasonalProjects(new Date(),previewUser).sort((a,b)=>b.seasonPriority-a.seasonPriority).map(p=>({...p,items:p.items.map(i=>({...i,matches:available.filter(l=>matchesProjectItem(l.title,i.terms))}))}));
+const setDemoReaction = (collection,id,emoji) => collection.map(m => m.id !== id ? m : {...m,reactions:[...(m.reactions||[]).filter(r=>r.userId!==previewUser.id),...(emoji?[{userId:previewUser.id,emoji}]:[])]});
+const reactDemoComment = (id,emoji) => { discussion=setDemoReaction(discussion,id,emoji);replies=setDemoReaction(replies,id,emoji); };
 const api = {
   getProjectIdeas: async () => projectIdeas(),
   getProjects: async () => projects,
@@ -57,6 +59,12 @@ const api = {
   }),
   getRequestOffers: async () => [...requestOffers],
   withdrawOffer: async (_requestId, listingId) => { requestOffers = requestOffers.filter(offer => offer.id !== listingId); },
+  reactToMessage: async (id,emoji) => {chat=setDemoReaction(chat,id,emoji);},
+  removeReaction: async id => {chat=setDemoReaction(chat,id,null);},
+  reactToDiscussion: async (_target,id,emoji) => reactDemoComment(id,emoji),
+  removeDiscussionReaction: async (_target,id) => reactDemoComment(id,null),
+  reactToRequestDiscussion: async (_target,id,emoji) => reactDemoComment(id,emoji),
+  removeRequestDiscussionReaction: async (_target,id) => reactDemoComment(id,null),
   getDiscussions: async () => ({ posts: [...discussion], total: discussion.length }),
   getDiscussionReplies: async () => ({ replies: [...replies] }),
   createDiscussionPost: async (_listingId, { content, parentId }) => {
