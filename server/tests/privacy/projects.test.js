@@ -110,3 +110,17 @@ it('only deletes the owner’s checklist item and never cancels its exchange',as
  expect((await request(app).delete(`/projects/${p.id}/items/not-a-uuid`)).status).toBe(400);
  await request(app).post(`/projects/${p.id}/items`).send({label:'Picnic blanket'});const after=(await request(app).get(`/projects/${p.id}`)).body.items;expect(after.at(-1).label).toBe('Picnic blanket');
 });
+it('renames checklist items with private ownership, valid names and updated matching terms',async()=>{
+ const p=await create(),item=p.items[0],url=`/projects/${p.id}/items/${item.id}`;
+ state.user=owner;expect((await request(app).patch(url).send({label:'Picnic blanket'})).status).toBe(404);
+ state.user=me;expect((await request(app).patch(url).send({label:'Picnic blanket'})).status).toBe(200);
+ const after=(await request(app).get(`/projects/${p.id}`)).body.items.find(i=>i.id===item.id);
+ expect(after).toMatchObject({label:'Picnic blanket',terms:['picnic blanket'],owned:false});
+ expect((await request(app).patch(url).send({label:' '})).status).toBe(400);
+ expect((await request(app).patch(url).send({label:'x'.repeat(61)})).status).toBe(400);
+ expect((await request(app).patch(url).send({label:p.items[1].label.toUpperCase()})).status).toBe(409);
+ const {rows:[t]}=await state.db.query("INSERT INTO borrow_transactions(borrower_id,status) VALUES($1,'pending') RETURNING id",[me]);
+ await state.db.query('UPDATE borrow_project_items SET transaction_id=$1 WHERE id=$2',[t.id,item.id]);
+ expect((await request(app).patch(url).send({label:'Tent'})).status).toBe(409);
+ expect((await state.db.query('SELECT status FROM borrow_transactions WHERE id=$1',[t.id])).rows[0].status).toBe('pending');
+});

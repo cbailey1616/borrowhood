@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, Keyboard, Platform, useWindowDimensions } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import TextInput from '../components/AppTextInput';
@@ -28,10 +29,12 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   const {user,feedWoodlandScene=0}=useAuth();
   const {showError}=useError();
   const insets=useSafeAreaInsets();
+  const tabBarHeight=useContext(BottomTabBarHeightContext) || 0;
   const {width,fontScale}=useWindowDimensions();
   const [adding,setAdding]=useState(false);
   const [editing,setEditing]=useState(false);
   const [planName,setPlanName]=useState('');
+  const [editedItem,setEditedItem]=useState(null),[editedLabel,setEditedLabel]=useState('');
   const startNavigationTask=useNavigationTask(navigation,`${user?.id}:${id || templateId || (newCustom?'custom':'ideas')}`);
   const [data,setData]=useState(null),[error,setError]=useState(false),[busy,setBusy]=useState(false),[refreshing,setRefreshing]=useState(false);
   const [sheet,setSheet]=useState(null),[custom,setCustom]=useState('');
@@ -49,7 +52,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
     } catch {if(current===generation.current)setError(true);}
     finally {if(current===generation.current)setRefreshing(false);}
   },[id,templateId,newCustom,user?.id]);
-  useEffect(()=>{setData(null);setSheet(null);setEditing(false);setAdding(false);load();const off=navigation.addListener('focus',load);return()=>{generation.current++;off?.();};},[load,navigation]);
+  useEffect(()=>{setData(null);setSheet(null);setEditing(false);setAdding(false);setEditedItem(null);load();const off=navigation.addListener('focus',load);return()=>{generation.current++;off?.();};},[load,navigation]);
   const mutate=async task=> {
     if(mutating.current)return;
     mutating.current=true;setBusy(true);
@@ -60,6 +63,14 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   const setOwned=(item,owned)=>id?mutate(()=>api.updateProjectItem(id,item.id,{owned})):setData(p=>({...p,items:p.items.map(i=>i.id===item.id?{...i,owned}:i)}));
   const removeItem=item=>id?mutate(()=>api.deleteProjectItem(id,item.id)):setData(p=>({...p,items:p.items.filter(i=>i.id!==item.id)}));
   const requestRemoveItem=item=>item.transactionId?setSheet({type:'removeItem',item}):removeItem(item);
+  const editItem=item=>{setEditedItem(item.id);setEditedLabel(item.label);};
+  const saveItem=()=>{
+    const label=editedLabel.trim();
+    if(!label)return;
+    if(data.items.some(i=>i.id!==editedItem&&i.label.toLowerCase()===label.toLowerCase()))return showError({message:'That item is already on your list.'});
+    const finish=()=>{Keyboard.dismiss();setEditedItem(null);};
+    return id?mutate(async()=>{await api.updateProjectItem(id,editedItem,{label});finish();}):(setData(p=>({...p,items:p.items.map(i=>i.id===editedItem?{...i,label,icon:'basket',matches:[]}:i)})),finish());
+  };
   const addItem=()=>{
     const label=custom.trim();
     if(data.items.length>=20)return showError({message:'A plan can have up to 20 items.'});
@@ -74,7 +85,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
     ? setSheet({type:'matches',item})
     : navigation.navigate('CreateRequest',{initialTitle:item.label,projectItemId:item.id});
   return <>
-    <KeyboardAwareScrollView style={styles.page} contentContainerStyle={{paddingBottom:insets.bottom+24}}
+    <KeyboardAwareScrollView testID="Projects.scroll" style={styles.page} contentContainerStyle={{paddingBottom:Math.max(embedded?tabBarHeight:0,insets.bottom)+24}}
       keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" enableOnAndroid extraScrollHeight={Platform.OS==='ios'?32:16}
       refreshControl={<RefreshControl refreshing={refreshing} tintColor={COLORS.spinner} onRefresh={()=>{setRefreshing(true);load();}}/>}>
       {!embedded&&<View style={[styles.hero,{height:insets.top+88}]}>
@@ -88,7 +99,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
         {error&&<ActionButton label="Couldn’t refresh. Try again" onPress={load}/>}
         {!embedded&&<Text accessibilityRole="header" style={styles.title}>{isPlan?data.name:'Ideas'}</Text>}
         {!isPlan?<>
-          <Text style={styles.subtitle}>What are you planning?</Text>
+          <Text style={styles.subtitle}>Make a plan. Borrow from neighbors.</Text>
           <ActionButton label="Create your own plan" icon="history-ledger" onPress={()=>navigation.push('Projects',{custom:true})}/>
           {data[1].length>0&&<>
             <Text style={styles.heading}>Your plans</Text>
@@ -132,11 +143,21 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
             {data.items.map(item=> {
               const state=projectItemState(item);
               const hasExchange=!!item.transactionId;
-              return <PlanSwipeRow key={item.id} label={item.label} disabled={busy} onRemove={()=>requestRemoveItem(item)}><View style={styles.item}>
+              return <PlanSwipeRow key={item.id} label={item.label} disabled={busy||editedItem===item.id} onRemove={()=>requestRemoveItem(item)}><View style={styles.item}>
+                {editedItem===item.id?<View style={styles.itemEditor}>
+                  <Text style={styles.label}>Item name</Text>
+                  <TextInput accessibilityLabel="Checklist item name" value={editedLabel} onChangeText={setEditedLabel} maxLength={60} autoFocus style={styles.input}/>
+                  <View style={styles.editorActions}>
+                    <ActionButton label="Cancel" disabled={busy} onPress={()=>{Keyboard.dismiss();setEditedItem(null);}} style={styles.editorButton}/>
+                    <ActionButton label="Save item" variant="primary" disabled={busy||!editedLabel.trim()} onPress={saveItem} style={styles.editorButton}/>
+                  </View>
+                </View>:<>
                 <View style={[styles.row,compact&&styles.compactRow]}>
-                  <View style={styles.itemPicture}><ProjectItemIllustration label={item.label} icon={item.icon} size={66}/></View>
+                  <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Options for ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemPicture}><ProjectItemIllustration label={item.label} icon={item.icon} size={66}/></HapticPressable>
                   <View style={styles.itemText}>
-                    <Text style={styles.label}>{item.label}</Text>
+                    <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Edit or remove ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemName}>
+                      <Text style={[styles.label,{flex:1}]}>{item.label}</Text><Icon name="ellipsis-horizontal" size={18}/>
+                    </HapticPressable>
                     <Text style={[styles.body,state.covered&&styles.readyText]}>{state.label}</Text>
                     {item.endDate&&['approved','paid','picked_up'].includes(item.transactionStatus)&&<Text style={styles.hint}>Return by {formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}</Text>}
                     {hasExchange&&<HapticPressable accessibilityRole="button" accessibilityLabel={`View exchange for ${item.label}`}
@@ -158,6 +179,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
                 </View>
                 {!editing&&state.ended&&<HapticPressable disabled={busy} accessibilityRole="button" style={styles.retryItem}
                   onPress={()=>mutate(()=>api.resetProjectItem(id,item.id))}><Text style={styles.textLink}>Find another</Text></HapticPressable>}
+                </>}
               </View></PlanSwipeRow>;
             })}
           </View>
@@ -172,8 +194,8 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
         </>}
       </View>
     </KeyboardAwareScrollView>
-    <ActionSheet isVisible={!!sheet} onClose={()=>setSheet(null)} title={sheet?.type==='matches'?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
-      actions={sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...(id?{projectItemId:sheet.item.id}:{})})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
+    <ActionSheet isVisible={!!sheet} onClose={()=>setSheet(null)} title={['matches','item'].includes(sheet?.type)?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='item'&&sheet.item.transactionId?'Removing this item keeps its request or exchange active in Your exchanges.':sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
+      actions={sheet?.type==='item'?[...(sheet.item.transactionId?[{label:'View exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:sheet.item.transactionId})}]:[{label:'Edit item',icon:<Icon name="pencil" size={24}/>,onPress:()=>editItem(sheet.item)}]),{label:'Remove item',destructive:true,icon:<Icon name="trash" size={24}/>,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...(id?{projectItemId:sheet.item.id}:{})})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
   </>;
 }
 const styles=StyleSheet.create({
@@ -205,6 +227,10 @@ const styles=StyleSheet.create({
   compactRow:{flexWrap:'wrap'},
   itemPicture:{width:66,height:72,borderRadius:16,backgroundColor:'#EAE5D6',alignItems:'center',justifyContent:'center'},
   itemText:{flex:1,minWidth:100,gap:4},
+  itemName:{flexDirection:'row',alignItems:'center',gap:4,minHeight:32},
+  itemEditor:{gap:10},
+  editorActions:{flexDirection:'row',gap:10},
+  editorButton:{flex:1},
   haveOption:{minHeight:32,flexDirection:'row',alignItems:'center',gap:6,marginTop:2},
   checkControl:{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'},
   readyText:{color:COLORS.primary,fontFamily:'DMSans_600SemiBold'},

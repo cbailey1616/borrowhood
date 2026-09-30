@@ -86,6 +86,22 @@ router.post('/:id/items', wrap(async(req,res)=> {
   res.status(201).json(result.rows[0]);
 }));
 router.patch('/:id/items/:itemId', wrap(async(req,res)=> {
+  if(req.body.label!==undefined) {
+    const label=typeof req.body.label==='string'?req.body.label.trim():'';
+    if(!UUID.test(req.params.itemId)||!label||label.length>60||req.body.owned!==undefined)return res.status(400).json({error:'Use an item name between 1 and 60 characters.'});
+    const known=PROJECTS.flatMap(p=>p.items).find(i=>i.label.toLowerCase()===label.toLowerCase());
+    await withTransaction(async client=> {
+      const {rows:[project]}=await client.query('SELECT id FROM borrow_projects WHERE id=$1 AND user_id=$2 FOR UPDATE',[req.params.id,req.user.id]);
+      if(!project)throw Object.assign(new Error('Project not found'),{status:404});
+      const {rows:[item]}=await client.query('SELECT id,transaction_id FROM borrow_project_items WHERE id=$1 AND project_id=$2 FOR UPDATE',[req.params.itemId,project.id]);
+      if(!item)throw Object.assign(new Error('Checklist item not found'),{status:404});
+      if(item.transaction_id)throw Object.assign(new Error('This item has an exchange. Add a new checklist item instead.'),{status:409});
+      const {rows:[duplicate]}=await client.query('SELECT id FROM borrow_project_items WHERE project_id=$1 AND id!=$2 AND LOWER(label)=LOWER($3)',[project.id,item.id,label]);
+      if(duplicate)throw Object.assign(new Error('That item is already on your list.'),{status:409});
+      await client.query('UPDATE borrow_project_items SET label=$2,icon=$3,terms=$4 WHERE id=$1',[item.id,label,known?.icon||'basket',JSON.stringify(known?.terms||[label.toLowerCase()])]);
+    });
+    return res.json({success:true});
+  }
   if(!UUID.test(req.params.itemId) || typeof req.body.owned!=='boolean') return res.status(400).json({error:'Invalid checklist update'});
   const {rows}=await query(`UPDATE borrow_project_items i SET owned=$3 FROM borrow_projects p
     WHERE i.id=$1 AND p.id=i.project_id AND p.id=$4 AND p.user_id=$2 AND i.transaction_id IS NULL RETURNING i.id`,[req.params.itemId,req.user.id,req.body.owned,req.params.id]);

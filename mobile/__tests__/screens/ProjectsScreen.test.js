@@ -1,4 +1,5 @@
 import React from 'react';
+import {BottomTabBarHeightContext} from '@react-navigation/bottom-tabs';
 import {render,fireEvent,waitFor} from '@testing-library/react-native';
 import api from '../../src/services/api';
 import ProjectsScreen from '../../src/screens/ProjectsScreen';
@@ -38,4 +39,42 @@ it('keeps an active exchange intact when its checklist row is removed',async()=>
  expect(await s.findByText(/Its request or exchange stays active/)).toBeTruthy();
  fireEvent.press(s.getByText('Remove from checklist'));
  await waitFor(()=>expect(api.deleteProjectItem).toHaveBeenCalledWith('project','slot'));
+});
+it('keeps the end of Ideas above the measured bottom ribbon',async()=>{
+ const s=render(<BottomTabBarHeightContext.Provider value={110}><ProjectsScreen route={{}} navigation={navigation} embedded/></BottomTabBarHeightContext.Provider>);
+ await s.findByText('Make a plan. Borrow from neighbors.');
+ expect(s.getByTestId('Projects.scroll').props.contentContainerStyle.paddingBottom).toBe(134);
+});
+it('removes an item through its tap menu without swiping',async()=>{
+ const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
+ fireEvent.press(await s.findByText('Remove item'));
+ await waitFor(()=>expect(api.deleteProjectItem).toHaveBeenCalledWith('project','slot'));
+});
+it('edits a saved item through its tap menu',async()=>{
+ const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
+ fireEvent.press(await s.findByText('Edit item'));
+ fireEvent.changeText(await s.findByLabelText('Checklist item name'),'Picnic blanket');
+ fireEvent.press(s.getByText('Save item'));
+ await waitFor(()=>expect(api.updateProjectItem).toHaveBeenCalledWith('project','slot',{label:'Picnic blanket'}));
+});
+it('keeps preview item edits local until saving the plan',async()=>{
+ const s=render(<ProjectsScreen route={{params:{templateId:'party'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('Options for Folding table'));
+ fireEvent.press(await s.findByText('Edit item'));
+ fireEvent.changeText(await s.findByLabelText('Checklist item name'),'Picnic blanket');
+ fireEvent.press(s.getByText('Save item'));
+ expect(await s.findByText('Picnic blanket')).toBeTruthy();
+ expect(api.updateProjectItem).not.toHaveBeenCalled();
+});
+it('keeps linked exchanges intact and prevents relabeling their checklist slots',async()=>{
+ api.getProject.mockResolvedValue({id:'project',name:'Party',items:[{...item,transactionId:'exchange',transactionStatus:'pending'}]});
+ const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
+ expect(s.queryByText('Edit item')).toBeNull();
+ expect(s.getByText(/Removing this item keeps its request or exchange active/)).toBeTruthy();
+ fireEvent.press(s.getByText('Remove item'));
+ await waitFor(()=>expect(api.deleteProjectItem).toHaveBeenCalledWith('project','slot'));
+ expect(api.updateProjectItem).not.toHaveBeenCalled();
 });
