@@ -26,7 +26,8 @@ export default function ActionSheet({
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const confirmation = variant === 'confirmation';
-  const options = variant === 'options';
+  const itemMenu = variant === 'item';
+  const options = variant === 'options' || itemMenu;
   const [closing, setClosing] = useState(false);
   const pending = useRef(null);
   const finishDismiss = useCallback(() => {
@@ -128,6 +129,8 @@ export default function ActionSheet({
                       confirmation && !action.primary && !action.destructive && styles.secondaryButton,
                       options && styles.optionButton,
                       options && action.selected && styles.selectedOption,
+                      itemMenu && styles.itemButton,
+                      itemMenu && action.destructive && styles.itemDestructiveButton,
                     ]}
                   >
                     {action.icon ? (
@@ -141,6 +144,7 @@ export default function ActionSheet({
                         confirmation && styles.confirmationActionText,
                         confirmation && !action.primary && !action.destructive && styles.secondaryText,
                         options && styles.optionText,
+                        itemMenu && action.destructive && styles.itemDestructiveText,
                       ]}
                     >
                       {action.label}
@@ -165,6 +169,9 @@ export default function ActionSheet({
 }
 
 const styles = StyleSheet.create({
+  itemButton: { minHeight: 56, marginTop: 0, justifyContent: 'flex-start', backgroundColor: COLORS.surface },
+  itemDestructiveButton: { backgroundColor: COLORS.surface, borderColor: COLORS.separator },
+  itemDestructiveText: { color: COLORS.danger },
   optionsCard: { paddingVertical: SPACING.md },
   optionsActions: { gap: SPACING.sm, marginBottom: 0 },
   optionButton: { minHeight: 64, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderBottomWidth: 1, borderColor: COLORS.separator, borderRadius: RADIUS.md, backgroundColor: COLORS.background },

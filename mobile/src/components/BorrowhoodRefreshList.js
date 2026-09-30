@@ -3,8 +3,10 @@ import { AccessibilityInfo, Animated, Easing, Platform, RefreshControl, StyleShe
 import { COLORS } from '../utils/config';
 import { haptics } from '../utils/haptics';
 
-const LOGO_SIZE = 44;
-export const MIN_REFRESH_MS = 1400;
+const LOGO_SIZE = 56;
+export const REBOUND_MS = 200;
+export const SPIN_MS = 1000;
+export const MIN_REFRESH_MS = 1800;
 
 export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
   const bounce = useRef(new Animated.Value(0)).current;
@@ -37,8 +39,8 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
     spin.setValue(0);
     const options = { useNativeDriver: true, isInteraction: false };
     const animation = Animated.sequence([
-      Animated.spring(bounce, { ...options, toValue: 0, stiffness: 180, damping: 12, mass: 0.8 }),
-      Animated.loop(Animated.timing(spin, { ...options, toValue: 1, duration: 1000, easing: Easing.linear })),
+      Animated.timing(bounce, { ...options, toValue: 0, duration: REBOUND_MS, easing: Easing.out(Easing.quad) }),
+      Animated.loop(Animated.timing(spin, { ...options, toValue: 1, duration: SPIN_MS, easing: Easing.linear })),
     ]);
     animation.start();
     return () => {
@@ -91,6 +93,8 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
   );
 }
 
+// The iOS logo belongs in the native pull gap, not below the feed header.
+// progressViewOffset is retained for the native Android indicator.
 // Native bounce creates the reveal gap. Keep that gap open for one visible
 // rebound and turn on iOS; Android retains its native indicator.
 const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
@@ -158,7 +162,7 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
 
   return (
     <View style={styles.viewport}>
-      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} top={progressViewOffset} />}
+      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} />}
       <Animated.FlatList
         {...props}
         ref={ref}

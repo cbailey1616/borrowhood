@@ -183,7 +183,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
             {data.items.map(item=> {
               const state=projectItemState(item);
               const hasExchange=!!item.transactionId;
-              return <PlanSwipeRow key={item.id} label={item.label} disabled={busy||editedItem===item.id} onRemove={()=>requestRemoveItem(item)}><View style={styles.item}>
+              return <PlanSwipeRow key={item.id} label={item.label} backgroundColor={creating?COLORS.surface:COLORS.background} disabled={busy||editedItem===item.id} onRemove={()=>requestRemoveItem(item)}><View style={styles.item}>
                 {editedItem===item.id?<View style={styles.itemEditor}>
                   <Text style={styles.label}>Item name</Text>
                   <TextInput accessibilityLabel="Checklist item name" value={editedLabel} onChangeText={setEditedLabel} maxLength={60} autoFocus style={styles.input}/>
@@ -236,7 +236,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
         </>}
       </View>
     </KeyboardAwareScrollView>
-    <ActionSheet key={sheet?.type||'closed'} isVisible={!!sheet} onClose={()=>setSheet(null)} title={['matches','item','exchanges'].includes(sheet?.type)?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='exchanges'?sheet.exchanges.length?'Choose the borrow for this checklist item.':'No active borrows yet.':sheet?.type==='item'&&sheet.item.transactionId?'Removing this item keeps its request or exchange active in Your exchanges.':sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
+    <ActionSheet key={sheet?.type||'closed'} variant={sheet?.type==='item'?'item':'menu'} isVisible={!!sheet} onClose={()=>setSheet(null)} title={['matches','item','exchanges'].includes(sheet?.type)?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='exchanges'?sheet.exchanges.length?'Choose the borrow for this checklist item.':'No active borrows yet.':sheet?.type==='item'&&sheet.item.transactionId?'Removing this item keeps its request or exchange active in Your exchanges.':sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
       actions={sheet?.type==='item'?[...(sheet.item.transactionId?[{label:'View exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:sheet.item.transactionId})}]:[{label:'Edit item',icon:<Icon name="pencil" size={24}/>,onPress:()=>editItem(sheet.item)},...(!sheet.item.owned?[{label:'Use an existing exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>openExchanges(sheet.item)}]:[])]),{label:'Remove item',destructive:true,icon:<Icon name="trash" size={24}/>,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='exchanges'?sheet.exchanges.map(exchange=>({label:`${exchange.listing.title} · ${projectItemState({transactionId:exchange.id,transactionStatus:exchange.status}).label}`,icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>linkExchange(sheet.item,exchange)})):sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...planContext(sheet.item)})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
   </>;
 }
@@ -269,11 +269,11 @@ const styles=StyleSheet.create({
   fill:{height:9,backgroundColor:'#82977C',borderRadius:5},
   checklist:{paddingTop:2},
   item:{paddingVertical:16,borderBottomWidth:1,borderBottomColor:COLORS.borderLight,gap:8},
-  row:{flexDirection:'row',alignItems:'center',gap:12},
+  row:{width:'100%',minWidth:0,flexDirection:'row',alignItems:'center',gap:12},
   compactRow:{flexWrap:'wrap'},
   itemPicture:{width:66,height:72,borderRadius:16,backgroundColor:'#EAE5D6',alignItems:'center',justifyContent:'center'},
-  itemText:{flex:1,minWidth:100,gap:4},
-  itemName:{flexDirection:'row',alignItems:'center',gap:4,minHeight:32},
+  itemText:{flex:1,minWidth:0,gap:4},
+  itemName:{minWidth:0,paddingRight:6,flexDirection:'row',alignItems:'center',gap:4,minHeight:32},
   itemEditor:{gap:10},
   editorActions:{flexDirection:'row',gap:10},
   editorButton:{flex:1},

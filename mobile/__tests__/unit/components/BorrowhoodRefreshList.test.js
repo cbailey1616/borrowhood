@@ -1,7 +1,7 @@
 import React from 'react';
 import { AccessibilityInfo, Animated, FlatList, Platform, RefreshControl, StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import BorrowhoodRefreshList, {MIN_REFRESH_MS} from '../../../src/components/BorrowhoodRefreshList';
+import BorrowhoodRefreshList, {MIN_REFRESH_MS, REBOUND_MS, SPIN_MS} from '../../../src/components/BorrowhoodRefreshList';
 import { COLORS } from '../../../src/utils/config';
 import {haptics} from '../../../src/utils/haptics';
 jest.mock('../../../src/utils/haptics',()=>({haptics:{light:jest.fn()}}));
@@ -48,7 +48,7 @@ it('stretches the existing hat with the pull, caps it, and hides when released o
   const onRefresh = jest.fn();
   const screen = render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={onRefresh} progressViewOffset={210} />);
   await ready(screen);
-  expect(style(screen, 'BorrowhoodRefresh.indicator').top).toBe(188);
+  expect(style(screen, 'BorrowhoodRefresh.indicator').top).toBe(-28);
   expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
   scroll(screen, -120);
   expect(transform(screen, 'scaleY')).toBeGreaterThan(1);
@@ -192,4 +192,18 @@ it('preserves the native Android indicator and refresh gesture', () => {
   expect(screen.queryByTestId('BorrowhoodRefresh.indicator')).toBeNull();
   fireEvent(nativeControl, 'refresh');
   expect(onRefresh).toHaveBeenCalledTimes(1);
+});
+
+it('allows a complete 360 degree spin after the rebound on fast responses', async () => {
+  const timing = jest.spyOn(Animated, 'timing');
+  const screen = render(<BorrowhoodRefreshList {...listProps} refreshing onRefresh={jest.fn()} />);
+  await ready();
+  expect(timing.mock.calls.some(([, config]) => config.duration === REBOUND_MS)).toBe(true);
+  expect(timing.mock.calls.some(([, config]) => config.duration === SPIN_MS && config.toValue === 1)).toBe(true);
+  expect(MIN_REFRESH_MS).toBeGreaterThan(REBOUND_MS + SPIN_MS);
+  expect(style(screen, 'BorrowhoodRefresh.logo').width).toBe(56);
+  scroll(screen, -80);
+  const indicator = style(screen, 'BorrowhoodRefresh.indicator');
+  expect(indicator.top + value(indicator.transform[0].translateY)).toBeGreaterThanOrEqual(0);
+  expect(indicator.top + value(indicator.transform[0].translateY) + indicator.height).toBeLessThanOrEqual(80);
 });
