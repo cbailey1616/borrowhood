@@ -393,13 +393,13 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     reacting.current = true;
     setReactionTarget(null);
     const generation = threadGeneration.current;
-    const own = (post.reactions || []).find(r => r.userId === user.id);
+    const own = (post.reactions || []).find(r => r.userId === user.id && r.emoji === emoji);
     const removing = own?.emoji === emoji;
     try {
-      if (isRequest) await (removing ? api.removeRequestDiscussionReaction(requestId,post.id) : api.reactToRequestDiscussion(requestId,post.id,emoji));
-      else await (removing ? api.removeDiscussionReaction(listingId,post.id) : api.reactToDiscussion(listingId,post.id,emoji));
+      if (isRequest) await (removing ? api.removeRequestDiscussionReaction(requestId,post.id,emoji) : api.reactToRequestDiscussion(requestId,post.id,emoji));
+      else await (removing ? api.removeDiscussionReaction(listingId,post.id,emoji) : api.reactToDiscussion(listingId,post.id,emoji));
       if (generation !== threadGeneration.current) return;
-      const update = p => p.id !== post.id ? p : { ...p, reactions: [...(p.reactions || []).filter(r => r.userId !== user.id), ...(removing ? [] : [{ userId: user.id, emoji }])] };
+      const update = p => p.id !== post.id ? p : { ...p, reactions: [...(p.reactions || []).filter(r => r.userId !== user.id || r.emoji !== emoji), ...(removing ? [] : [{ userId: user.id, emoji }])] };
       setPosts(prev => prev.map(update));
       setReplies(prev => Object.fromEntries(Object.entries(prev).map(([id,items]) => [id,items.map(update)])));
       haptics.success();

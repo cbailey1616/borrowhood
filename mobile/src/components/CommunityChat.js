@@ -117,9 +117,9 @@ export default function CommunityChat({ community, navigation, header }) {
     const token = generation.current;
     const removing = (message.reactions || []).some(r => r.userId === user.id && r.emoji === emoji);
     try {
-      await (removing ? api.removeCommunityReaction(id,message.id) : api.reactToCommunityMessage(id,message.id,emoji));
+      await (removing ? api.removeCommunityReaction(id,message.id,emoji) : api.reactToCommunityMessage(id,message.id,emoji));
       if (!alive.current || token !== generation.current) return;
-      const update = m => !m || m.id !== message.id ? m : {...m,reactions:[...(m.reactions || []).filter(r => r.userId !== user.id),...(removing?[]:[{userId:user.id,emoji}])]};
+      const update = m => !m || m.id !== message.id ? m : {...m,reactions:[...(m.reactions || []).filter(r => r.userId !== user.id || r.emoji !== emoji),...(removing?[]:[{userId:user.id,emoji}])]};
       setMessages(old => old.map(update));setThread(update);
     } catch { if (alive.current && token === generation.current) setError('Couldn’t update reaction. Try again.'); }
     finally { reacting.current = false; }

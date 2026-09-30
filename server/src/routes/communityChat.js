@@ -113,9 +113,9 @@ const react = memberRoute(async (req, db, member) => {
         (b.user_id=$2 AND b.blocked_id=root.sender_id) OR (b.blocked_id=$2 AND b.user_id=root.sender_id))))`,
     [req.params.id,req.user.id,req.params.messageId,member.chat_joined_at]);
   if (!available.rows.length) invalid('Message no longer available',404);
-  if (req.method === 'DELETE') await db.query('DELETE FROM community_chat_reactions WHERE message_id=$1 AND user_id=$2',[req.params.messageId,req.user.id]);
+  if (req.method === 'DELETE') await db.query('DELETE FROM community_chat_reactions WHERE message_id=$1 AND user_id=$2 AND ($3::text IS NULL OR emoji=$3)',[req.params.messageId,req.user.id,req.query.emoji || null]);
   else await db.query(`INSERT INTO community_chat_reactions(message_id,user_id,emoji) VALUES($1,$2,$3)
-    ON CONFLICT(message_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji`,[req.params.messageId,req.user.id,req.body.emoji]);
+    ON CONFLICT(message_id,user_id,emoji) DO NOTHING`,[req.params.messageId,req.user.id,req.body.emoji]);
   return {success:true};
 });
 router.post('/:messageId/react', react);

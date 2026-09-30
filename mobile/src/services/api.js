@@ -489,8 +489,8 @@ const deleteMessage = (id) =>
 const reactToMessage = (id, emoji) =>
   post(`/messages/${id}/react`, { emoji });
 
-const removeReaction = (id) =>
-  del(`/messages/${id}/react`);
+const removeReaction = (id, emoji) =>
+  del(`/messages/${id}/react${emoji ? `?emoji=${encodeURIComponent(emoji)}` : ''}`);
 
 // ============================================
 // Payment Methods
@@ -1011,11 +1011,11 @@ export default {
   createConnectAccount,
   getConnectOnboardingLink,
   reactToDiscussion: (listingId,postId,emoji) => post(`/listings/${listingId}/discussions/${postId}/react`,{emoji}),
-  removeDiscussionReaction: (listingId,postId) => del(`/listings/${listingId}/discussions/${postId}/react`),
+  removeDiscussionReaction: (listingId,postId,emoji) => del(`/listings/${listingId}/discussions/${postId}/react${emoji ? `?emoji=${encodeURIComponent(emoji)}` : ''}`),
   reactToRequestDiscussion: (requestId,postId,emoji) => post(`/requests/${requestId}/discussions/${postId}/react`,{emoji}),
-  removeRequestDiscussionReaction: (requestId,postId) => del(`/requests/${requestId}/discussions/${postId}/react`),
+  removeRequestDiscussionReaction: (requestId,postId,emoji) => del(`/requests/${requestId}/discussions/${postId}/react${emoji ? `?emoji=${encodeURIComponent(emoji)}` : ''}`),
   reactToCommunityMessage: (id,messageId,emoji) => post(`/communities/${id}/chat/${messageId}/react`,{emoji}),
-  removeCommunityReaction: (id,messageId) => del(`/communities/${id}/chat/${messageId}/react`),
+  removeCommunityReaction: (id,messageId,emoji) => del(`/communities/${id}/chat/${messageId}/react${emoji ? `?emoji=${encodeURIComponent(emoji)}` : ''}`),
   // Discussions
   getDiscussions,
   getDiscussionReplies,

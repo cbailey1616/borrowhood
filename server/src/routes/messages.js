@@ -401,12 +401,12 @@ router.post('/:id/react', authenticate,
         return res.status(404).json({ error: 'Message not found' });
       }
 
-      // Upsert reaction (one per user per message)
+      // Each user can add each emoji once.
       await query(
         `INSERT INTO message_reactions (message_id, user_id, emoji)
          VALUES ($1, $2, $3)
-         ON CONFLICT (message_id, user_id)
-         DO UPDATE SET emoji = $3`,
+         ON CONFLICT (message_id, user_id, emoji)
+         DO NOTHING`,
         [req.params.id, req.user.id, req.body.emoji]
       );
 
@@ -425,8 +425,8 @@ router.post('/:id/react', authenticate,
 router.delete('/:id/react', authenticate, async (req, res) => {
   try {
     await query(
-      'DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2',
-      [req.params.id, req.user.id]
+      'DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND ($3::text IS NULL OR emoji = $3)',
+      [req.params.id, req.user.id, req.query.emoji || null]
     );
 
     res.json({ success: true });

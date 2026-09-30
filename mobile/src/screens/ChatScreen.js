@@ -399,11 +399,11 @@ function ChatConversation({ route, navigation }) {
     }
   };
 
-  const updateMessageReactions = useCallback((messageId, emoji) => {
+  const updateMessageReactions = useCallback((messageId, emoji, removing = false) => {
     const update = message => {
       if (message.id !== messageId) return message;
-      const reactions = (message.reactions || []).filter(reaction => reaction.userId !== user.id);
-      return { ...message, reactions: emoji ? [...reactions, { userId: user.id, emoji }] : reactions };
+      const reactions = (message.reactions || []).filter(reaction => reaction.userId !== user.id || reaction.emoji !== emoji);
+      return { ...message, reactions: removing ? reactions : [...reactions, { userId: user.id, emoji }] };
     };
     setMessages(previous => previous.map(update));
     setThreadMessages(previous => previous.map(update));
@@ -423,8 +423,8 @@ function ChatConversation({ route, navigation }) {
 
     try {
       if (existingReaction) {
-        await api.removeReaction(message.id);
-        updateMessageReactions(message.id, null);
+        await api.removeReaction(message.id, emoji);
+        updateMessageReactions(message.id, emoji, true);
       } else {
         await api.reactToMessage(message.id, emoji);
         updateMessageReactions(message.id, emoji);
@@ -442,8 +442,8 @@ function ChatConversation({ route, navigation }) {
 
     try {
       if (existingReaction) {
-        await api.removeReaction(message.id);
-        updateMessageReactions(message.id, null);
+        await api.removeReaction(message.id, emoji);
+        updateMessageReactions(message.id, emoji, true);
       } else {
         await api.reactToMessage(message.id, emoji);
         updateMessageReactions(message.id, emoji);

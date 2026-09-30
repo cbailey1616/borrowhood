@@ -1,3 +1,4 @@
+import { ensureMultipleReactions } from '../services/multipleReactions.js';
 import { ensureDiscussionReactionSchema } from '../services/publicReactions.js';
 import { ensureProjectSchema } from '../services/projects.js';
 import { ensureAppleSignInSchema } from '../services/appleSignInTokens.js';
@@ -323,11 +324,13 @@ export async function runMigrations() {
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         emoji VARCHAR(10) NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(message_id, user_id)
+        UNIQUE(message_id, user_id, emoji)
       )`);
       await query('CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id)');
       logger.info('Migration complete: message_reactions table created');
     }
+
+    await ensureMultipleReactions({ query }, 'message_reactions', 'message_id');
 
     // Migration: Add borrower_service_fee column to borrow_transactions
     const hasBorrowerServiceFee = await query(`

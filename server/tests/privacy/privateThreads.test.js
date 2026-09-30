@@ -1,4 +1,5 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
+import { ensureMultipleReactions } from '../../src/services/multipleReactions.js';
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -30,6 +31,7 @@ beforeAll(async () => {
       client_request_id uuid,client_request_hash text,created_at timestamptz DEFAULT now(),deleted_at timestamptz,is_read boolean DEFAULT false);
     CREATE TABLE message_reactions(message_id uuid,user_id uuid,emoji text);
     CREATE UNIQUE INDEX idx_messages_client_request ON messages(sender_id,client_request_id) WHERE client_request_id IS NOT NULL;`);
+  await ensureMultipleReactions(state.db,'message_reactions','message_id');
   const migration = await readFile(new URL('../../migrations/023_private_message_threads.sql', import.meta.url), 'utf8');
   await state.db.exec(migration);
   await state.db.exec(migration); // Repeat upgrades must keep existing links.
@@ -65,6 +67,17 @@ describe('private message threads against isolated PostgreSQL', () => {
     await state.db.query('INSERT INTO message_reactions(message_id,user_id,emoji) VALUES($1,$2,$3)',[root,b,'👍']);
     const response = await read(a,{ threadId:root });
     expect(response.body.thread.reactions).toEqual([{ userId:b,emoji:'👍' }]);
+  });
+  it('keeps multiple emoji on roots and replies and removes only the selected emoji', async () => {
+    const child = (await send(a,b,{content:'Reaction test',parentId:root})).body.id;
+    for (const message of [root,child]) {
+      for (const emoji of ['❤️','😂','❤️']) await request(app).post(`/api/messages/${message}/react`).set('test-user',b).send({emoji}).expect(200);
+      const rows = (await state.db.query('SELECT emoji FROM message_reactions WHERE message_id=$1 AND user_id=$2',[message,b])).rows;
+      expect(rows.filter(r=>r.emoji==='❤️')).toHaveLength(1);
+      expect(rows).toEqual(expect.arrayContaining([{emoji:'❤️'},{emoji:'😂'}]));
+      await request(app).delete(`/api/messages/${message}/react`).set('test-user',b).query({emoji:'❤️'}).expect(200);
+      expect((await state.db.query('SELECT emoji FROM message_reactions WHERE message_id=$1 AND user_id=$2',[message,b])).rows).toEqual(expect.arrayContaining([{emoji:'😂'}]));
+    }
   });
   it('keeps a reply to a reply in the original thread', async () => {
     const parent = await send(a,b,{ content: 'Bring the bits too?', parentId: root });
