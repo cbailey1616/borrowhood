@@ -3,6 +3,7 @@ import { query, withTransaction } from '../utils/db.js';
 import { authenticate } from '../middleware/auth.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { PROJECTS, matchesProjectItem, seasonalProjects } from '../data/projects.js';
+import { reconcileProjectExchanges } from '../services/projects.js';
 const router = Router();
 router.use(authenticate);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -66,6 +67,7 @@ router.param('id',(req,res,next,id)=>UUID.test(id)?next():res.status(400).json({
 router.get('/:id', wrap(async(req,res)=> {
   const {rows:[project]}=await query('SELECT id,name,template_id AS "templateId",target_date::text AS "targetDate" FROM borrow_projects WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);
   if(!project) return res.status(404).json({error:'Project not found'});
+  await withTransaction(client => reconcileProjectExchanges(client, project.id, req.user.id));
   const {rows:items}=await query(`SELECT i.id,i.label,i.icon,i.terms,i.owned,i.optional,i.transaction_id AS "transactionId",
     t.status AS "transactionStatus",t.requested_end_date AS "endDate",l.title AS "listingTitle"
     FROM borrow_project_items i LEFT JOIN borrow_transactions t ON t.id=i.transaction_id AND t.borrower_id=$2

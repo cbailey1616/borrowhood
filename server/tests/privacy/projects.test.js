@@ -145,3 +145,39 @@ it('rejects someone else’s exchanges and settled exchanges without changing th
  expect((await request(app).post(url).send({transactionId:'bad'})).status).toBe(400);
  expect((await request(app).get(`/projects/${p.id}`)).body.items[0].transactionId).toBeNull();
 });
+
+it.each(['pending','approved','paid','picked_up','return_pending'])('recovers an unlinked %s leaf blower borrow when the plan opens',async status=>{
+ const created=await request(app).post('/projects').send({templateId:'yard'});
+ const {rows:[listing]}=await state.db.query("INSERT INTO listings(owner_id,title,is_available) VALUES($1,'Cordless leaf blower',false) RETURNING id",[owner]);
+ const {rows:[exchange]}=await state.db.query('INSERT INTO borrow_transactions(listing_id,borrower_id,status) VALUES($1,$2,$3) RETURNING id',[listing.id,me,status]);
+ const response=await request(app).get(`/projects/${created.body.id}`);
+ expect(response.status).toBe(200);
+ const leaf=response.body.items.find(item=>item.label==='Leaf blower');
+ expect(leaf).toMatchObject({transactionId:exchange.id,transactionStatus:status,nearbyCount:0,matches:[]});
+ expect((await state.db.query('SELECT transaction_id FROM borrow_project_items WHERE id=$1',[leaf.id])).rows[0].transaction_id).toBe(exchange.id);
+ // Reopening preserves the association rather than creating another request.
+ expect((await request(app).get(`/projects/${created.body.id}`)).body.items.find(item=>item.id===leaf.id).transactionId).toBe(exchange.id);
+ expect((await state.db.query('SELECT count(*)::int AS count FROM borrow_transactions')).rows[0].count).toBe(1);
+});
+
+it('leaves multiple matching borrows for the user to choose',async()=>{
+ const p=await create();
+ for(const title of ['Folding table one','Folding table two']) {
+  const {rows:[listing]}=await state.db.query('INSERT INTO listings(owner_id,title) VALUES($1,$2) RETURNING id',[owner,title]);
+  await state.db.query("INSERT INTO borrow_transactions(listing_id,borrower_id,status) VALUES($1,$2,'approved')",[listing.id,me]);
+ }
+ expect((await request(app).get(`/projects/${p.id}`)).body.items[0].transactionId).toBeNull();
+});
+
+it('does not assign one exchange to two matching checklist slots or overwrite owned items',async()=>{
+ const p=await create();
+ await state.db.query('UPDATE borrow_project_items SET terms=$1 WHERE project_id=$2 AND id=ANY($3::uuid[])',[JSON.stringify(['leaf blower']),p.id,[p.items[0].id,p.items[1].id]]);
+ const {rows:[listing]}=await state.db.query("INSERT INTO listings(owner_id,title) VALUES($1,'Leaf blower') RETURNING id",[owner]);
+ const {rows:[exchange]}=await state.db.query("INSERT INTO borrow_transactions(listing_id,borrower_id,status) VALUES($1,$2,'approved') RETURNING id",[listing.id,me]);
+ let after=(await request(app).get(`/projects/${p.id}`)).body;
+ expect(after.items.filter(item=>item.transactionId)).toHaveLength(0);
+ await state.db.query('UPDATE borrow_project_items SET owned=true WHERE id=$1',[p.items[1].id]);
+ after=(await request(app).get(`/projects/${p.id}`)).body;
+ expect(after.items[0].transactionId).toBe(exchange.id);
+ expect(after.items[1]).toMatchObject({owned:true,transactionId:null});
+});
