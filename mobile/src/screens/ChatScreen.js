@@ -503,7 +503,7 @@ function ChatConversation({ route, navigation }) {
     }
 
     return (
-      <View style={[styles.reactionPillsRow, item.isOwnMessage ? styles.ownReactionPills : styles.otherReactionPills]}>
+      <View style={styles.reactionPillsRow}>
         {Object.entries(grouped).map(([emoji, userIds]) => {
           const isOwn = userIds.includes(user.id);
           return (
@@ -528,11 +528,12 @@ function ChatConversation({ route, navigation }) {
   };
 
   const renderMessage = ({ item, index, isRoot = false }) => {
-    const showDate = !isRoot && (index === 0 ||
+    const showDate = !isRoot && !activeThreadId && (index === 0 ||
       formatDate(visibleMessages[index - 1]?.createdAt || item.createdAt) !== formatDate(item.createdAt));
-    const next = isRoot ? null : visibleMessages[index + 1];
-    const continuesGroup = next && !next.isDeleted && !item.isDeleted && next.isOwnMessage === item.isOwnMessage &&
-      new Date(next.createdAt) - new Date(item.createdAt) < 5 * 60000 && formatDate(next.createdAt) === formatDate(item.createdAt);
+    const previous = isRoot ? null : visibleMessages[index - 1];
+    const startsGroup = isRoot || !previous || previous.isOwnMessage !== item.isOwnMessage ||
+      new Date(item.createdAt) - new Date(previous.createdAt) >= 5 * 60000 ||
+      formatDate(previous.createdAt) !== formatDate(item.createdAt);
     const { text, context } = messagePresentation(item.content);
 
     return (
@@ -544,22 +545,24 @@ function ChatConversation({ route, navigation }) {
             </View>
           </View>
         )}
-        <View style={styles.messageContainer}>
+        <View style={[styles.messageContainer, styles.compactContainer]}>
           <Animated.View
             ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
-            entering={FadeInUp.delay(50).duration(200)}
-            style={[
-              styles.messageRow,
-              item.isOwnMessage ? styles.ownMessageRow : styles.otherMessageRow
-            ]}
+            entering={FadeInUp.duration(160)}
+            style={styles.compactRow}
           >
-            {!item.isOwnMessage && (continuesGroup ? <View style={styles.avatarSlot} /> :
-              <HapticPressable onPress={openProfile} disabled={!profileId} style={styles.avatarSlot}
-                accessibilityLabel={`View ${profileName}’s profile`} testID={`Chat.avatar.${item.id}`}>
-                <ShimmerImage source={{ uri: otherUser?.profilePhotoUrl || null }} placeholderIcon="person" style={styles.messageAvatar} />
-              </HapticPressable>)}
+            {startsGroup ? <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId}
+              style={styles.compactAvatarSlot} accessibilityLabel={item.isOwnMessage ? 'Your profile photo' : `View ${profileName}’s profile`}
+              testID={item.isOwnMessage ? undefined : `Chat.avatar.${item.id}`}>
+              <ShimmerImage source={{ uri: (item.isOwnMessage ? user?.profilePhotoUrl : otherUser?.profilePhotoUrl) || null }} placeholderIcon="person" style={styles.compactAvatar}/>
+            </HapticPressable> : <View style={styles.compactAvatarSlot}/>}
+            <View style={styles.compactBody}>
+              {startsGroup && <View style={styles.compactMeta}>
+                <Text style={styles.compactName}>{item.isOwnMessage ? user?.firstName || 'You' : profileName}</Text>
+                <Text style={styles.compactTime}>{formatTime(item.createdAt)}</Text>
+              </View>}
             {item.isDeleted ? (
-              <View style={[styles.messageBubble, styles.deletedMessage]}>
+              <View style={styles.compactDeleted}>
                 <Text style={styles.deletedMessageText}>This message was deleted</Text>
               </View>
             ) : (
@@ -568,7 +571,7 @@ function ChatConversation({ route, navigation }) {
                 haptic="medium"
                 accessible={false}
                 accessibilityRole={undefined}
-                style={[styles.messageBubble, item.isOwnMessage ? styles.ownMessage : styles.otherMessage, item.imageUrl && styles.imageBubble]}
+                style={styles.compactMessage}
               >
                 {context && <View style={styles.messageContext}>
                   <View style={styles.messageContextTitle}>
@@ -583,23 +586,19 @@ function ChatConversation({ route, navigation }) {
                   </HapticPressable>
                 )}
                 {text ? (
-                  <Text style={[styles.messageText, item.isOwnMessage ? styles.ownMessageText : styles.otherMessageText, item.imageUrl && styles.imageCaption]}>
+                  <Text style={styles.compactText}>
                     {text}
                   </Text>
                 ) : null}
-                <View style={styles.ownMessageMeta}>
-                  <Text style={[styles.messageTime, styles.ownMessageTime]}>
-                    {formatTime(item.createdAt)}
-                  </Text>
-                </View>
               </HapticPressable>
             )}
+            </View>
           </Animated.View>
-          {renderReactionPills(item)}
-          {safeThreads && !activeThreadId && (!item.isDeleted || item.replyCount > 0) && <HapticPressable
+          <View style={styles.compactReactions}>{renderReactionPills(item)}</View>
+          {safeThreads && !activeThreadId && item.replyCount > 0 && <HapticPressable
             accessibilityLabel={item.replyCount ? `View ${item.replyCount} replies to message` : 'Reply to message'}
             disabled={isSending || isUploading || !!composer.pending || !draft.ready}
-            onPress={() => openThread(item)} style={[styles.threadLink, item.isOwnMessage && styles.ownThreadLink]}>
+            onPress={() => openThread(item)} style={styles.threadLink}>
             <Ionicons name="chat-reply" size={18}/>
             <Text style={styles.threadLinkText}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text>
             {!!item.unreadReplyCount && <View style={styles.threadUnread}><Text style={styles.threadUnreadText}>{item.unreadReplyCount} new</Text></View>}
@@ -627,7 +626,7 @@ function ChatConversation({ route, navigation }) {
     >
       {safeThreads && activeThreadId && <View style={styles.threadBar}>
         <HapticPressable accessibilityLabel="Back to conversation" onPress={closeThread} disabled={isSending || isUploading || !!composer.pending} style={styles.threadBack}>
-          <Ionicons name="chevron-back" size={22}/><Text style={styles.threadTitle}>Replies</Text>
+          <Ionicons name="chevron-back" size={22}/><Text style={styles.threadTitle}>Thread</Text>
         </HapticPressable>
         {threadLoading && <ActivityIndicator color={COLORS.spinner}/>}
       </View>}
@@ -648,8 +647,8 @@ function ChatConversation({ route, navigation }) {
         ListHeaderComponent={<>
           {hasEarlier && <HapticPressable accessibilityLabel="Load earlier messages" onPress={()=>{ nearBottom.current = false; fetchMessages(threadPage + 1); }} style={styles.earlier}><Text style={styles.threadLinkText}>Earlier messages</Text></HapticPressable>}
           {safeThreads && activeThreadId && threadRoot && <View style={styles.threadParent}>
-            <Text style={styles.threadParentName}>{threadRoot.isOwnMessage ? 'Your message' : profileName}</Text>
             {renderMessage({ item: threadRoot, index: 0, isRoot: true })}
+            <View style={styles.replyDivider}><Text style={styles.replyDividerText}>{threadMessages.length} {threadMessages.length === 1 ? 'reply' : 'replies'}</Text><View style={styles.replyDividerLine}/></View>
           </View>}
         </>}
         ListEmptyComponent={
@@ -667,7 +666,7 @@ function ChatConversation({ route, navigation }) {
       {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>New messages ↓</Text></HapticPressable>}
       {!!chatError && <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 14, lineHeight: 20 }}>{chatError}</Text>
-        {!!conversationId && <ActionButton onPress={fetchMessages} label="Refresh conversation" style={{ marginTop: 8 }} />}
+        {!!conversationId && <ActionButton onPress={() => fetchMessages()} label="Refresh conversation" style={{ marginTop: 8 }} />}
       </View>}
       {!!composer.pending && !isSending && <View style={{ paddingHorizontal: 16, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, fontSize: 13, paddingTop: 8 }}>Unconfirmed {composer.pending.payload.imageUrl ? 'photo' : 'message'}{composer.pending.payload.content ? `: ${composer.pending.payload.content.slice(0, 90)}` : ''}</Text>
@@ -774,11 +773,26 @@ function ChatConversation({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  compactContainer: { marginBottom: 5 },
+  compactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  compactAvatarSlot: { width: 34, minHeight: 28 },
+  compactAvatar: { width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted },
+  compactBody: { flex: 1, minWidth: 0 },
+  compactMeta: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 3 },
+  compactName: { fontFamily: 'DMSans_700Bold', fontSize: 15, color: COLORS.text, flexShrink: 1 },
+  compactTime: { fontSize: 11, color: COLORS.textMuted },
+  compactMessage: { paddingBottom: 4 },
+  compactText: { fontFamily: 'DMSans_400Regular', fontSize: 16, lineHeight: 23, color: COLORS.text },
+  compactDeleted: { paddingVertical: 4 },
+  compactReactions: { marginLeft: 44, alignItems: 'flex-start' },
+  replyDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 16 },
+  replyDividerText: { fontSize: 12, color: COLORS.textMuted },
+  replyDividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator },
   threadMessagesContent: { justifyContent: 'flex-start' },
   threadBar: { paddingHorizontal: 16, paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: COLORS.separator },
   threadBack: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
   threadTitle: { fontFamily: 'DMSans_700Bold', fontSize: 19, color: COLORS.text },
-  threadParent: { padding: 12, borderLeftWidth: 3, borderColor: COLORS.primaryLight, backgroundColor: COLORS.surface, borderRadius: 16, marginBottom: 20 },
+  threadParent: { marginBottom: 4 },
   threadParentName: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', color: COLORS.primary, marginBottom: 6 },
   threadLink: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 38, alignSelf: 'flex-start', marginLeft: 42, paddingHorizontal: 4 },
   ownThreadLink: { alignSelf: 'flex-end', marginLeft: 0, marginRight: 4 },
@@ -792,7 +806,7 @@ const styles = StyleSheet.create({
   removeAttachment: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
   },
   loadingContainer: {
     flex: 1,
@@ -803,7 +817,7 @@ const styles = StyleSheet.create({
   messagesContent: {
     padding: SPACING.lg,
     flexGrow: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
   },
   dateHeader: {
     alignItems: 'center',
