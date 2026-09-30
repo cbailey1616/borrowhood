@@ -14,6 +14,16 @@ it('opens an idea as a preview without saving it',async()=>{const s=render(<Proj
 it('opens a real listing with its project slot without sending a request',async()=>{const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);expect(await s.findByText('1 nearby')).toBeTruthy();fireEvent.press(await s.findByLabelText('Find Folding table'));fireEvent.press(await s.findByText('Folding table nearby'));await waitFor(()=>expect(navigation.navigate).toHaveBeenCalledWith('ListingDetail',{id:'table',projectId:'project',projectItemId:'slot'}));expect(api.createTransaction).not.toHaveBeenCalled();});
 it('marks an owned item and refreshes its server state',async()=>{const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByLabelText('I have Folding table'));await waitFor(()=>expect(api.updateProjectItem).toHaveBeenCalledWith('project','slot',{owned:true}));});
 it('does not count pending, cancelled or returned requests as ready',()=>{const rows=['pending','approved','picked_up','cancelled','returned'].map(transactionStatus=>({transactionId:'t',transactionStatus}));expect(projectProgress(rows)).toEqual({covered:2,waiting:1,total:5});expect(projectItemState(rows[4]).label).toBe('Returned');});
+it('shows an approved reserved leaf blower as ready for pickup instead of unavailable',async()=>{
+ api.getProject.mockResolvedValue({id:'project',name:'Garden or yard overhaul',items:[{...item,label:'Leaf blower',matches:[],nearbyCount:0,transactionId:'blower-borrow',transactionStatus:'approved'}]});
+ const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);
+ expect(await s.findByText('Waiting for pickup')).toBeTruthy();
+ expect(s.getByText('1 ready · 0 to find')).toBeTruthy();
+ expect(s.queryByText('No nearby items yet')).toBeNull();
+ expect(s.queryByText('Ask neighbors')).toBeNull();
+ fireEvent.press(s.getByLabelText('View exchange for Leaf blower'));
+ expect(navigation.navigate).toHaveBeenCalledWith('TransactionDetail',{id:'blower-borrow'});
+});
 it('offers recovery for a failed load',async()=>{api.getProject.mockRejectedValueOnce(new Error('offline'));const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByText('Try again'));expect(await s.findByText('Folding table')).toBeTruthy();});
 
 it('counts every item on the user’s checklist',()=>{expect(projectProgress([{owned:true},{owned:false},{optional:true,owned:false}])).toEqual({covered:1,waiting:0,total:3});});
@@ -98,7 +108,7 @@ it('refreshes a preview into its saved plan after requesting an item',async()=>{
  api.getProjects.mockResolvedValue([{id:'saved',templateId:'party',name:'Backyard party'}]);
  api.getProject.mockResolvedValue({id:'saved',templateId:'party',name:'Backyard party',items:[{...item,matches:[],nearbyCount:0,transactionId:'exchange',transactionStatus:'approved'}]});
  await act(async()=>{await navigation.addListener.mock.calls.find(([name])=>name==='focus')[1]();});
- expect(await s.findByText('Ready for pickup')).toBeTruthy();
+ expect(await s.findByText('Waiting for pickup')).toBeTruthy();
  expect(s.queryByText('Save plan')).toBeNull();
  expect(s.getByText('1 ready · 0 to find')).toBeTruthy();
 });
@@ -108,9 +118,9 @@ it('links an existing approved borrow and shows it as ready even with no nearby 
  fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
  fireEvent.press(await s.findByText('Use an existing exchange'));
  api.getProject.mockResolvedValue({id:'project',name:'Party',items:[{...item,matches:[],nearbyCount:0,transactionId:'exchange',transactionStatus:'approved'}]});
- fireEvent.press(await s.findByText('Folding table · Ready for pickup'));
+ fireEvent.press(await s.findByText('Folding table · Waiting for pickup'));
  await waitFor(()=>expect(api.linkProjectExchange).toHaveBeenCalledWith('project','slot','exchange'));
- expect(await s.findByText('Ready for pickup')).toBeTruthy();
+ expect(await s.findByText('Waiting for pickup')).toBeTruthy();
  expect(s.queryByText('No nearby items yet')).toBeNull();
 });
 it('promotes an unsaved custom plan after linking without a stale preview overwriting it',async()=>{
@@ -125,8 +135,8 @@ it('promotes an unsaved custom plan after linking without a stale preview overwr
  fireEvent.press(s.getByText('Add item'));
  fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
  fireEvent.press(await s.findByText('Use an existing exchange'));
- fireEvent.press(await s.findByText('Folding table · Ready for pickup'));
- expect(await s.findByText('Ready for pickup')).toBeTruthy();
+ fireEvent.press(await s.findByText('Folding table · Waiting for pickup'));
+ expect(await s.findByText('Waiting for pickup')).toBeTruthy();
  await act(async()=>{});
  expect(s.getByText('Dinner party')).toBeTruthy();
  expect(s.getByText('1 ready · 0 to find')).toBeTruthy();

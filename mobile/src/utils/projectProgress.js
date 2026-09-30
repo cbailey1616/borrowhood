@@ -1,4 +1,4 @@
-const LABELS = {pending:'Waiting for approval',approved:'Ready for pickup',paid:'Ready for pickup',picked_up:'Borrowing now',return_pending:'Return awaiting confirmation',returned:'Returned',completed:'Exchange complete',cancelled:'Request cancelled',declined:'Request declined',expired:'Request expired',disputed:'Issue under review'};
+const LABELS = {pending:'Waiting for approval',approved:'Waiting for pickup',paid:'Waiting for pickup',picked_up:'Borrowing now',return_pending:'Return awaiting confirmation',returned:'Returned',completed:'Exchange complete',cancelled:'Request cancelled',declined:'Request declined',expired:'Request expired',disputed:'Issue under review'};
 export function projectItemState(item) {
   const status=item.transactionStatus;
   if(item.transactionId) return {label:LABELS[status] || 'View exchange', covered:['approved','paid','picked_up'].includes(status), waiting:status==='pending', ended:['cancelled','declined','expired','returned','completed'].includes(status)};

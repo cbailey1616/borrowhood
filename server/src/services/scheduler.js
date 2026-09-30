@@ -6,6 +6,7 @@ import logger from '../utils/logger.js';
 import { checkRankChanges } from './rankNotifications.js';
 import { processPushDeliveries } from './pushDelivery.js';
 import { sendPickupFollowups } from './pickupFollowup.js';
+import { autoCloseReturns } from './autoCloseReturns.js';
 
 /**
  * Check for rentals due back tomorrow or today and send reminders.
@@ -257,6 +258,7 @@ export function startScheduler() {
   schedule('Apple revocations', () => processAppleRevocations(), 60 * 1000);
   schedule('ranks', checkRankChanges, 60000);
   schedule('feed retention', cleanupFeedHistory, 5 * 60 * 1000);
+  schedule('pending returns', autoCloseReturns, 5 * 60 * 1000);
   schedule('hourly', async () => {
     // Avoid a startup burst of six maintenance jobs competing for connections.
     for (const job of [sendReturnReminders, autoAdvanceDisputes, autoReleaseDeposits,

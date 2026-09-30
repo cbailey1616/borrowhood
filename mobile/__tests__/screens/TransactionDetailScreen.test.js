@@ -26,6 +26,20 @@ beforeEach(() => { jest.clearAllMocks(); api.getTransaction.mockResolvedValue(mo
 
 describe('TransactionDetailScreen', () => {
   const route = { params: { id: 'txn-1' } };
+  it('keeps a borrower’s pending return and message action on the exchange without redundant Return help', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status:'return_pending', actualPickupAt:'2026-09-25T12:00:00Z' });
+    const Screen=require('../../src/screens/TransactionDetailScreen').default;
+    const screen=render(<Screen navigation={mockNavigation} route={route}/>);
+    expect(await screen.findByTestId('Transaction.button.message')).toBeTruthy();
+    expect(screen.queryByTestId('Transaction.button.returnHelp')).toBeNull();
+  });
+  it('keeps real return options for the owner of an item still out on loan', async () => {
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status:'picked_up', isBorrower:false, isLender:true, actualPickupAt:'2026-09-25T12:00:00Z' });
+    const Screen=require('../../src/screens/TransactionDetailScreen').default;
+    const screen=render(<Screen navigation={mockNavigation} route={route}/>);
+    fireEvent.press(await screen.findByTestId('Transaction.button.returnHelp'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ReturnHelp',{transaction:expect.objectContaining({id:'txn-1'})});
+  });
 
   it('gives more time only after confirmation and keeps the exchange open', async () => {
     let exchange = { ...mockTransaction, status: 'paid', isBorrower: false, isLender: true,

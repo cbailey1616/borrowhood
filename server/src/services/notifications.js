@@ -78,7 +78,7 @@ const NOTIFICATION_TEMPLATES = {
   return_case_updated: { title: 'Return help update', body: () => 'There is an update to your return report. Open Return help to see the response or decision.' },
   return_confirmed: {
     title: 'Return Complete',
-    body: returnCompleteBody,
+    body: data => data.autoClosed ? 'Return closed after 48 hours without a reported issue. Tap to view your exchange.' : returnCompleteBody(data),
   },
   deposit_released: {
     title: 'Deposit Refunded',

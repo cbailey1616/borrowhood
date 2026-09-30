@@ -1,4 +1,29 @@
 import { query } from '../utils/db.js';
+import { matchesProjectItem } from '../data/projects.js';
+
+// Borrows started from the feed/Wanted can predate or bypass a checklist.
+// Recover only an unambiguous match, and preserve every explicit association.
+export async function reconcileProjectExchanges(client, projectId, userId) {
+  const { rows: [project] } = await client.query('SELECT id FROM borrow_projects WHERE id=$1 AND user_id=$2 FOR UPDATE', [projectId, userId]);
+  if (!project) return;
+  const { rows: items } = await client.query('SELECT id,terms,owned,transaction_id FROM borrow_project_items WHERE project_id=$1 FOR UPDATE', [projectId]);
+  const open = items.filter(item => !item.owned && !item.transaction_id);
+  if (!open.length) return;
+  const { rows: exchanges } = await client.query(`SELECT t.id,l.title FROM borrow_transactions t
+    JOIN listings l ON l.id=t.listing_id WHERE t.borrower_id=$1
+      AND t.status IN ('pending','approved','paid','picked_up','return_pending')
+      AND COALESCE(l.listing_type,'lend')='lend' AND l.is_free=true
+      AND COALESCE(l.price_per_day,0)=0 AND COALESCE(l.deposit_amount,0)=0
+    FOR SHARE OF t`, [userId]);
+  const used = new Set(items.map(item => item.transaction_id).filter(Boolean));
+  const matches = open.map(item => ({ item, exchanges: exchanges.filter(exchange => !used.has(exchange.id) && matchesProjectItem(exchange.title, item.terms)) }));
+  for (const match of matches) {
+    if (match.exchanges.length !== 1) continue;
+    const exchange = match.exchanges[0];
+    if (matches.filter(other => other.exchanges.some(candidate => candidate.id === exchange.id)).length !== 1) continue;
+    await client.query('UPDATE borrow_project_items SET transaction_id=$2 WHERE id=$1', [match.item.id, exchange.id]);
+  }
+}
 export async function ensureProjectSchema(execute = query) {
   await execute(`CREATE TABLE IF NOT EXISTS borrow_projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

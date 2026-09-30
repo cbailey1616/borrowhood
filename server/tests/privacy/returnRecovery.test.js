@@ -26,7 +26,7 @@ beforeAll(async()=>{
  state.db=new PGlite();await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY,is_admin BOOLEAN DEFAULT false,display_name TEXT,first_name TEXT DEFAULT 'Neighbor');
  CREATE TABLE listings(id UUID PRIMARY KEY,listing_type TEXT DEFAULT 'lend',title TEXT DEFAULT 'Ladder',status TEXT DEFAULT 'active',is_available BOOLEAN DEFAULT false,times_borrowed INTEGER DEFAULT 0);
  CREATE TABLE borrow_transactions(id UUID PRIMARY KEY,listing_id UUID REFERENCES listings(id),lender_id UUID REFERENCES users(id),borrower_id UUID REFERENCES users(id),status TEXT,
- actual_pickup_at TIMESTAMPTZ,actual_return_at TIMESTAMPTZ,requested_end_date DATE,condition_at_pickup TEXT DEFAULT 'good',condition_at_return TEXT,condition_notes TEXT,payment_status TEXT,stripe_payment_intent_id TEXT,
+ actual_pickup_at TIMESTAMPTZ,actual_return_at TIMESTAMPTZ,return_requested_at TIMESTAMPTZ,requested_end_date DATE,condition_at_pickup TEXT DEFAULT 'good',condition_at_return TEXT,condition_notes TEXT,payment_status TEXT,stripe_payment_intent_id TEXT,
  reminder_day_before_sent BOOLEAN DEFAULT true,reminder_day_of_sent BOOLEAN DEFAULT true);
  CREATE TABLE notices(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID,type TEXT,transaction_id UUID,key TEXT UNIQUE);`);
  await ensureReturnRecoverySchema();await ensureReturnRecoverySchema();

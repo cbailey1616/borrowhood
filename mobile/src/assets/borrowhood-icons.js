@@ -105,6 +105,11 @@ const DRAWINGS = {
   chatbubble: chat,
   'chat-question': c => chatPanel(c) + p('M12 11C12 6 21 7 20 12C19 15 16 14 16 17') + dot(16, 20, c, 1.1),
   'chat-reply': c => chatPanel(c) + p('M13 10L8 14L13 18M9 14H19C23 14 25 17 25 20'),
+  'reaction-add': c => p('M18.5 6.8A10.5 10.5 0 1 0 24.7 14.5', 'stroke-width="2.1"')
+    + circle(10.5, 15.5, 1.2, `fill="${c.stroke}" stroke="none"`)
+    + circle(18.5, 15.5, 1.2, `fill="${c.stroke}" stroke="none"`)
+    + p('M9.5 20Q14.5 25 19.5 20', 'stroke-width="2.1"')
+    + p('M25 3.5V11.5M21 7.5H29', 'stroke-width="2.1"'),
   mail: c => rect(3, 7, 26, 20, 4, panel(c)) + p('M4 9L14 17C15 18 17 18 18 17L28 9M4 25L11 19M28 25L21 19'),
   'mail-unread': c => rect(3, 9, 26, 18, 4, panel(c))
     + p('M4 11L14 18C15 19 17 19 18 18L28 11')

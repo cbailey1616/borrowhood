@@ -26,6 +26,7 @@ function serveRows(listings, requests) {
   const keys = [...listings.map(row => `listing:${row.id}`), ...requests.map(row => `request:${row.id}`)];
   query.mockImplementation(async (sql, params) => {
     if (sql.includes('AS latest_post_at')) return { rows: [{ latest_post_at: createdAt }] };
+    if (sql.includes('FROM listing_discussions d')) return { rows: [] };
     if (sql.includes('FROM listings l')) return { rows: listings };
     if (sql.includes('FROM item_requests r')) return { rows: requests };
     if (sql.includes('FROM feed_windows')) return { rows: [{ window_number: 0, snapshot_at: createdAt, item_keys: JSON.parse(params[2])[4] ? keys.filter(key => key.startsWith('listing:')) : keys, request_keys: keys.filter(key => key.startsWith('request:')).slice(0,8), request_count: requests.length, has_more: false, latest_post_at: createdAt }] };

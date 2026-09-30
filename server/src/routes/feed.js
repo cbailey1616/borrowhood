@@ -10,6 +10,7 @@ import { canViewListing, canViewRequest } from '../services/listingAccess.js';
 import { requestActiveSql } from '../utils/requestState.js';
 import { WINDOW_PAGES, loadFeedWindow, saveFeedWindow, boundFeedQuery } from '../services/feedWindows.js';
 import { endorsementSummaries } from '../services/endorsements.js';
+import { attachFeedCommentCounts } from '../services/feedCommentCounts.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -365,6 +366,7 @@ router.get('/', authenticate, async (req, res) => {
     const visibleAuthors = [...feed, ...visibleRequests].filter(item => !item.ownerMasked && !item.previewOnly && item.user?.id);
     const ranks = await endorsementSummaries(visibleAuthors.map(item => item.user.id));
     for (const item of visibleAuthors) item.user.endorsement = ranks.get(item.user.id);
+    await attachFeedCommentCounts([...feed, ...(sections ? visibleRequests : [])], req.user.id);
 
     res.json({
       items: feed,

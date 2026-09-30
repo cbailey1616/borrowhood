@@ -652,6 +652,7 @@ export async function runMigrations() {
         // Numbered migration replay can install these before the legacy enum
         // conversion. Restore them in this same transaction after conversion.
         await client.query('DROP INDEX IF EXISTS pending_pickup_reviews');
+        await client.query('DROP INDEX IF EXISTS borrow_pending_return_timer');
         await client.query('DROP TRIGGER IF EXISTS schedule_pickup_review ON borrow_transactions');
         await client.query('DROP TRIGGER IF EXISTS resolve_pickup_review_notice ON borrow_transactions');
         await client.query('ALTER TABLE borrow_transactions ALTER COLUMN status DROP DEFAULT');
@@ -661,6 +662,7 @@ export async function runMigrations() {
           ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
         await client.query(`CREATE INDEX idx_transactions_due
           ON borrow_transactions(requested_end_date) WHERE status = 'picked_up'`);
+        await client.query("CREATE INDEX IF NOT EXISTS borrow_pending_return_timer ON borrow_transactions(return_requested_at) WHERE status='return_pending'");
         await ensurePickupFollowupSchema(client);
       });
       logger.info('Migration complete: borrow_transactions.status is now varchar');
