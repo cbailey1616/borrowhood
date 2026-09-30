@@ -15,7 +15,7 @@ export async function completeFreeReturn(id, userId, condition, notes) {
     if (!['picked_up', 'return_pending'].includes(borrow.status)) return { status: 409, error: 'This item is not currently borrowed. Refresh to see its latest status.' };
     if (borrow.borrower_id === userId) {
       if (borrow.status === 'return_pending') return { alreadyConfirmed: true, pendingOwner: true };
-      await client.query("UPDATE borrow_transactions SET status='return_pending', condition_notes=$2 WHERE id=$1", [id, notes]);
+      await client.query("UPDATE borrow_transactions SET status='return_pending', return_requested_at=NOW(), condition_notes=$2 WHERE id=$1", [id, notes]);
       return { borrow, pendingOwner: true };
     }
     const order = ['like_new', 'good', 'fair', 'worn'];
