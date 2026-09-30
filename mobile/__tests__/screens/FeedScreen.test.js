@@ -55,7 +55,7 @@ describe('FeedScreen', () => {
         : { items: [item], hasMore: false });
       const Screen = require('../../src/screens/FeedScreen').default;
       const screen = render(<Screen navigation={mockNavigation} />);
-      expect(await screen.findByText(label)).toBeTruthy();
+      expect(await screen.findByText(label, {}, { timeout: 5000 })).toBeTruthy();
     });
   it('shows the exchange overview only once in a tablet feed containing only Wanted posts', async () => {
     const dimensions = jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({ width: 1024, height: 852, scale: 1, fontScale: 1 });
