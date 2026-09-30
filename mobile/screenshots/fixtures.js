@@ -63,6 +63,12 @@ export const messages = [
   { content: 'That works for me. Happy to help with the project!', senderId: jamie.id, isOwnMessage: false },
   { content: 'Perfect! Also, are your garden chairs still available?', senderId: user.id, isOwnMessage: true },
 ].map((message, index) => ({ id: `demo-message-${index}`, ...message, reactions: [], createdAt: new Date(messageClock.getTime() - (6 - index) * 60000).toISOString() }));
+export const threadReplies = [
+  { id:'demo-reply-1',content:'Could I collect it at 10? I’m putting up shelves.',senderId:user.id,isOwnMessage:true },
+  { id:'demo-reply-2',content:'Absolutely! I’ll leave the drill and bits by the garage.',senderId:jamie.id,isOwnMessage:false },
+  { id:'demo-reply-3',content:'Perfect. Thank you for making the project easier!',senderId:user.id,isOwnMessage:true },
+].map((message,index)=>({...message,parentId:'demo-message-1',reactions:index===1?[{userId:user.id,emoji:'❤️'}]:[],createdAt:new Date(messageClock.getTime()-(3-index)*60000).toISOString()}));
+
 
 export const friends = [jamie, sam, taylor];
 // Offline sample neighborhood for the promotional capture. No live membership.
