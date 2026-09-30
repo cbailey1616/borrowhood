@@ -121,9 +121,8 @@ it('promotes an unsaved custom plan after linking without a stale preview overwr
  api.linkProjectExchange.mockImplementation(async()=>{linked=true;});
  const s=render(<ProjectsScreen route={{params:{custom:true}}} navigation={navigation}/>);
  fireEvent.changeText(await s.findByLabelText('Plan name'),'Dinner party');
- fireEvent.press(s.getByText('Add something else'));
  fireEvent.changeText(await s.findByLabelText('Add a checklist item'),'Folding table');
- fireEvent.press(s.getByText('Add to checklist'));
+ fireEvent.press(s.getByText('Add item'));
  fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
  fireEvent.press(await s.findByText('Use an existing exchange'));
  fireEvent.press(await s.findByText('Folding table · Ready for pickup'));
@@ -133,4 +132,31 @@ it('promotes an unsaved custom plan after linking without a stale preview overwr
  expect(s.getByText('1 ready · 0 to find')).toBeTruthy();
  expect(s.queryByText('Save plan')).toBeNull();
  expect(api.linkProjectExchange).toHaveBeenCalledWith('saved','slot','exchange');
+});
+it('starts a custom plan with a visible item input and shows borrowing controls after saving',async()=>{
+ const s=render(<ProjectsScreen route={{params:{custom:true}}} navigation={navigation}/>);
+ expect(await s.findByText('New plan')).toBeTruthy();
+ expect(s.getByLabelText('Add a checklist item')).toBeTruthy();
+ expect(s.queryByLabelText('Edit checklist')).toBeNull();
+ expect(s.getByLabelText('Save plan').props.accessibilityState.disabled).toBe(true);
+ fireEvent.changeText(s.getByLabelText('Plan name'),'Cookout');
+ fireEvent.changeText(s.getByLabelText('Add a checklist item'),'Cooler');
+ fireEvent.press(s.getByText('Add item'));
+ expect(await s.findByText('Cooler')).toBeTruthy();
+ expect(s.queryByText('Ask')).toBeNull();
+ expect(s.queryByText('No match right now')).toBeNull();
+ expect(s.queryByRole('progressbar')).toBeNull();
+ api.getProject.mockResolvedValue({id:'saved',name:'Cookout',items:[{...item,label:'Cooler',matches:[]}]});
+ s.rerender(<ProjectsScreen route={{params:{id:'saved'}}} navigation={navigation}/>);
+ expect(await s.findByText('Ask')).toBeTruthy();
+ expect(s.getByText('0 ready · 1 to find')).toBeTruthy();
+});
+it('saves the item being typed along with the rest of a custom checklist',async()=>{
+ api.createProject.mockResolvedValue({id:'saved'});
+ const s=render(<ProjectsScreen route={{params:{custom:true}}} navigation={navigation}/>);
+ fireEvent.changeText(await s.findByLabelText('Plan name'),'Cookout');
+ fireEvent.changeText(s.getByLabelText('Add a checklist item'),'Cooler');
+ fireEvent.press(s.getByText('Save plan'));
+ await waitFor(()=>expect(api.createProject).toHaveBeenCalledWith({templateId:'custom',name:'Cookout',items:[{label:'Cooler',owned:false}]}));
+ expect(navigation.replace).toHaveBeenCalledWith('Projects',{id:'saved'});
 });

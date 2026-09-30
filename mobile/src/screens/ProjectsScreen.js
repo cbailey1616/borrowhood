@@ -27,6 +27,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   const id=route.params?.id || promotedId;
   const templateId=route.params?.templateId;
   const newCustom=!!route.params?.custom;
+  const creating=newCustom&&!id;
   const isPlan=!!(id||templateId||newCustom);
   const {user,feedWoodlandScene=0}=useAuth();
   const {showError}=useError();
@@ -67,7 +68,17 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
     try {await task();await load();} catch(e){showError({message:e.message || 'Couldn’t update your plan. Try again.'});}
     finally {mutating.current=false;setBusy(false);}
   };
-  const save=()=>{const isCurrent=startNavigationTask();return mutate(async()=>{const project=await api.createProject({templateId:newCustom?'custom':templateId,...(newCustom?{name:planName.trim()}:{}),items:data.items.map(({label,owned})=>({label,owned:!!owned}))});if(isCurrent())navigation.replace('Projects',{id:project.id});});};
+  const save=()=>{
+    const items=data.items.map(({label,owned})=>({label,owned:!!owned}));
+    const pending=custom.trim();
+    if(pending){
+      if(items.length>=20)return showError({message:'A plan can have up to 20 items.'});
+      if(items.some(i=>i.label.toLowerCase()===pending.toLowerCase()))return showError({message:'That item is already on your list.'});
+      items.push({label:pending,owned:false});
+    }
+    const isCurrent=startNavigationTask();
+    return mutate(async()=>{const project=await api.createProject({templateId:newCustom?'custom':templateId,...(newCustom?{name:planName.trim()}:{}),items});if(isCurrent())navigation.replace('Projects',{id:project.id});});
+  };
   const setOwned=(item,owned)=>id?mutate(()=>api.updateProjectItem(id,item.id,{owned})):setData(p=>({...p,items:p.items.map(i=>i.id===item.id?{...i,owned}:i)}));
   const removeItem=item=>id?mutate(()=>api.deleteProjectItem(id,item.id)):setData(p=>({...p,items:p.items.filter(i=>i.id!==item.id)}));
   const requestRemoveItem=item=>item.transactionId?setSheet({type:'removeItem',item}):removeItem(item);
@@ -117,8 +128,8 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
     <KeyboardAwareScrollView testID="Projects.scroll" style={styles.page} contentContainerStyle={{paddingBottom:Math.max(embedded?tabBarHeight:0,insets.bottom)+24}}
       keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" enableOnAndroid extraScrollHeight={Platform.OS==='ios'?32:16}
       refreshControl={<RefreshControl refreshing={refreshing} tintColor={COLORS.spinner} onRefresh={()=>{setRefreshing(true);load();}}/>}>
-      {!embedded&&<View style={[styles.hero,{height:insets.top+88}]}>
-        <FeedWoodlandBackdrop width={width} height={Math.max(176,insets.top+130)} topOffset={-32} sceneIndex={feedWoodlandScene}/>
+      {!embedded&&<View style={[styles.hero,{height:insets.top+(creating?64:88)}]}>
+        <FeedWoodlandBackdrop width={width} height={Math.max(creating?136:176,insets.top+(creating?84:130))} topOffset={-32} sceneIndex={feedWoodlandScene}/>
         <HapticPressable accessibilityRole="button" accessibilityLabel="Back" style={[styles.back,{top:insets.top+8}]}
           onPress={()=>navigation.canGoBack?.() !== false ? navigation.goBack() : navigation.navigate('Main')}>
           <Icon name="chevron-back" size={24}/>
@@ -126,7 +137,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
       </View>}
       <View style={styles.content}>
         {error&&<ActionButton label="Couldn’t refresh. Try again" onPress={load}/>}
-        {!embedded&&<Text accessibilityRole="header" style={styles.title}>{isPlan?data.name:'Ideas'}</Text>}
+        {!embedded&&<Text accessibilityRole="header" style={styles.title}>{creating?'New plan':isPlan?data.name:'Ideas'}</Text>}
         {!isPlan?<>
           <Text style={styles.subtitle}>Make a plan. Borrow from neighbors.</Text>
           <ActionButton label="Create your own plan" icon="history-ledger" onPress={()=>navigation.push('Projects',{custom:true})}/>
@@ -155,18 +166,18 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
             })}
           </View>
         </>:<>
-          {newCustom&&!id&&<View style={styles.summary}><Text style={styles.label}>Plan name</Text><TextInput accessibilityLabel="Plan name" value={planName} onChangeText={setPlanName} maxLength={80} placeholder="e.g. Build a garden bed" placeholderTextColor={COLORS.textMuted} style={styles.input}/></View>}
-          <View style={styles.summary}>
-            <View style={styles.progressRow}><Text style={styles.headingText}>Your checklist</Text>
-              <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={editing?'Finish editing checklist':'Edit checklist'} onPress={()=>setEditing(!editing)} style={styles.editControl}><Text style={styles.editText}>{editing?'Done':'Edit list'}</Text></HapticPressable>
+          <View style={creating?styles.builder:undefined}>
+          {creating&&<View style={styles.nameField}><Text style={styles.label}>Plan name</Text><TextInput accessibilityLabel="Plan name" value={planName} onChangeText={setPlanName} maxLength={80} placeholder="e.g. Backyard cookout" placeholderTextColor={COLORS.textMuted} style={styles.input}/></View>}
+          <View style={creating?styles.builderHeading:styles.summary}>
+            <View style={styles.progressRow}><Text style={styles.headingText}>{creating?'What you’ll need':'Your checklist'}</Text>
+              {!!data.items.length&&<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={editing?'Finish editing checklist':'Edit checklist'} onPress={()=>setEditing(!editing)} style={styles.editControl}><Text style={styles.editText}>{editing?'Done':'Edit list'}</Text></HapticPressable>}
             </View>
-            {!data.items.length?<Text style={styles.body}>Add what you need for this plan.</Text>:<>
+            {!data.items.length?<Text style={styles.body}>Add what you need for this plan.</Text>:id&&<>
             <View style={styles.progressRow}><Text style={styles.body}>{progress.covered} ready{progress.waiting?` · ${progress.waiting} waiting`:''} · {progress.total-progress.covered-progress.waiting} to find</Text><Text style={styles.hint}>{progress.covered} of {progress.total}</Text></View>
             <View accessibilityRole="progressbar" accessibilityValue={{min:0,max:progress.total,now:progress.covered}} style={styles.track}>
               <View style={[styles.fill,{width:`${progress.total?progress.covered/progress.total*100:0}%`}]}/>
             </View>
             </>}
-            {!id&&<ActionButton disabled={busy||(newCustom&&!planName.trim())} label="Save plan" variant="primary" onPress={save}/>}
           </View>
           <View style={styles.checklist}>
             {data.items.map(item=> {
@@ -187,11 +198,11 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
                     <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Edit or remove ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemName}>
                       <Text style={[styles.label,{flex:1}]}>{item.label}</Text><Icon name="ellipsis-horizontal" size={18}/>
                     </HapticPressable>
-                    <Text style={[styles.body,state.covered&&styles.readyText]}>{state.label}</Text>
+                    {!creating&&<Text style={[styles.body,state.covered&&styles.readyText]}>{state.label}</Text>}
                     {item.endDate&&['approved','paid','picked_up'].includes(item.transactionStatus)&&<Text style={styles.hint}>Return by {formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}</Text>}
                     {hasExchange&&<HapticPressable accessibilityRole="button" accessibilityLabel={`View exchange for ${item.label}`}
                       onPress={()=>navigation.navigate('TransactionDetail',{id:item.transactionId})}><Text style={styles.textLink}>View exchange</Text></HapticPressable>}
-                    {!editing&&!hasExchange&&!item.owned&&<HapticPressable disabled={busy} accessibilityRole="checkbox"
+                    {!creating&&!editing&&!hasExchange&&!item.owned&&<HapticPressable disabled={busy} accessibilityRole="checkbox"
                       accessibilityState={{checked:false}} accessibilityLabel={`I have ${item.label}`}
                       onPress={()=>setOwned(item,true)} style={styles.haveOption}>
                       <Icon name="selection-check-empty" size={16} illustrated={false}/><Text style={styles.hint}>Already have this</Text>
@@ -203,7 +214,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
                       accessibilityLabel={`I have ${item.label}`} onPress={()=>setOwned(item,false)} style={styles.checkControl}>
                       <Icon name="selection-check" size={26}/>
                     </HapticPressable>:
-                    <ActionButton label={item.matches.length?'Find':'Ask'} accessibilityLabel={`Find ${item.label}`} onPress={()=>openMatches(item)} style={styles.findButton}/>
+                    !creating&&<ActionButton label={item.matches.length?'Find':'Ask'} accessibilityLabel={`Find ${item.label}`} onPress={()=>openMatches(item)} style={styles.findButton}/>
                   }
                 </View>
                 {!editing&&state.ended&&<HapticPressable disabled={busy} accessibilityRole="button" style={styles.retryItem}
@@ -212,12 +223,14 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
               </View></PlanSwipeRow>;
             })}
           </View>
-          {!adding?<ActionButton label="Add something else" icon="add" style={styles.addButton} onPress={()=>setAdding(true)}/>:<View style={styles.summary}>
-            <Text style={styles.label}>Anything else?</Text>
-            <TextInput accessibilityLabel="Add a checklist item" placeholder="e.g. Picnic blanket" placeholderTextColor={COLORS.textMuted}
-              value={custom} onChangeText={setCustom} maxLength={60} style={styles.input}/>
-            <ActionButton disabled={busy||!custom.trim()} label="Add to checklist" onPress={addItem}/>
+          {!creating&&!adding?<ActionButton label="Add item" icon="add" style={styles.addButton} onPress={()=>setAdding(true)}/>:<View style={creating?styles.builderAdd:styles.summary}>
+            {!creating&&<Text style={styles.label}>Add an item</Text>}
+            <TextInput accessibilityLabel="Add a checklist item" placeholder="e.g. Folding chairs" placeholderTextColor={COLORS.textMuted}
+              value={custom} onChangeText={setCustom} maxLength={60} returnKeyType="done" onSubmitEditing={()=>!busy&&custom.trim()&&addItem()} style={styles.input}/>
+            <ActionButton disabled={busy||!custom.trim()} label="Add item" icon="add" onPress={addItem}/>
           </View>}
+          </View>
+          {!id&&<ActionButton testID="Projects.savePlan" disabled={busy||(newCustom&&!planName.trim())} loading={busy} label="Save plan" variant="primary" style={styles.planButton} onPress={save}/>}
           {id&&<><ActionButton label="View pickup & return plan" variant="primary" style={styles.planButton} onPress={()=>setSheet({type:'plan'})}/>
           <HapticPressable accessibilityRole="button" style={styles.remove} onPress={()=>setSheet({type:'remove'})}><Text style={styles.hint}>Remove plan</Text></HapticPressable></>}
         </>}
@@ -247,6 +260,10 @@ const styles=StyleSheet.create({
   editText:{...TYPOGRAPHY.footnote,color:COLORS.primary,fontFamily:'DMSans_600SemiBold'},
   saved:{padding:16,borderRadius:18,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:12},
   summary:{padding:18,gap:10,borderRadius:20,backgroundColor:COLORS.surface,borderWidth:1,borderColor:COLORS.borderLight},
+  builder:{padding:18,borderRadius:20,backgroundColor:COLORS.surface,borderWidth:1,borderColor:COLORS.borderLight},
+  nameField:{gap:10,paddingBottom:20,borderBottomWidth:1,borderBottomColor:COLORS.borderLight},
+  builderHeading:{gap:8,paddingTop:16},
+  builderAdd:{gap:10,paddingTop:16},
   progressRow:{flexDirection:'row',justifyContent:'space-between',gap:8,flexWrap:'wrap'},
   track:{height:9,backgroundColor:'#E8E4D6',borderRadius:5,overflow:'hidden'},
   fill:{height:9,backgroundColor:'#82977C',borderRadius:5},
