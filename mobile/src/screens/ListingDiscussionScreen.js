@@ -431,13 +431,14 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           </HapticPressable>
         </View>
         <Text style={styles.postContent}>{post.content}</Text>
-        <MessageReactions reactions={post.reactions} userId={user.id} onToggle={emoji => react(post,emoji)}
-          onAdd={event => openReactions(post,parentId,event)} />
+        {!!activeThreadId && <MessageReactions reactions={post.reactions} userId={user.id} onToggle={emoji => react(post,emoji)}
+          onAdd={event => openReactions(post,parentId,event)} />}
         {!activeThreadId && (
           <View style={styles.postActions}>
+            <MessageReactions inline reactions={post.reactions} userId={user.id} onToggle={emoji => react(post,emoji)}
+              onAdd={event => openReactions(post,parentId,event)} />
             <HapticPressable style={styles.replyButton} onPress={() => openThread(post.id, true)}
               accessibilityLabel={`Reply to ${post.user.firstName}`}>
-              <Ionicons name="chatbubble-outline" size={16} color={COLORS.primary} />
               <Text style={styles.actionText}>Reply</Text>
             </HapticPressable>
             {post.replyCount > 0 && <HapticPressable style={styles.replyCountButton} onPress={() => openThread(post.id)}
