@@ -1,3 +1,4 @@
+import { ensureProjectSchema } from '../services/projects.js';
 import { ensureAppleSignInSchema } from '../services/appleSignInTokens.js';
 import { ensureCommunityMembershipSchema } from '../services/communityMemberships.js';
 import { ensureFeedWindowSchema } from '../services/feedWindows.js';
@@ -715,6 +716,7 @@ export async function runMigrations() {
     await ensureCommunityChatSchema();
     await ensureCommunityMembershipSchema();
     await ensureVerificationPurchaseSchema();
+    await ensureProjectSchema();
     await ensureAppleSignInSchema();
     logger.info('Migrations check complete');
   } catch (err) {

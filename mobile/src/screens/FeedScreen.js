@@ -1,3 +1,4 @@
+import ProjectIdeasCard from '../components/ProjectIdeasCard';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingAvailability } from '../utils/listingAvailability';
@@ -408,7 +409,7 @@ export default function FeedScreen({ navigation, route }) {
       : `${visibilityFilters.length} Areas`;
 
   const categoryChipLabel = categoryFilters.length === 0
-    ? 'Categories'
+    ? 'All'
     : categoryFilters.length === 1
       ? categories.find(c => c.id === categoryFilters[0])?.name || 'Category'
       : `${categoryFilters.length} Categories`;
@@ -615,7 +616,7 @@ export default function FeedScreen({ navigation, route }) {
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
-          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} />
+          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} topOffset={-28} />
           <FeedHeaderTextFade width={feedWidth} topOffset={insets.top} />
           <NativeHeader
             includeTopInset={false}
@@ -685,6 +686,7 @@ export default function FeedScreen({ navigation, route }) {
           ListHeaderComponent={
             <>
             <View style={{ height: feedHeader.height }} />
+            {!search.trim() && activeFilters.length === 0 && !isInitialLoad && <ProjectIdeasCard navigation={navigation} />}
             {columns > 1 && <View style={{ paddingHorizontal: SPACING.lg }}>{displayFeed.filter(item => ['feed-banners', 'request-carousel', 'listing-heading'].includes(item.type)).map(item => <View key={item.id}>{renderItem({ item })}</View>)}</View>}
             </>
           }
@@ -773,8 +775,8 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setShowFiltersSheet(false)}
         title="Filter posts"
         actions={[
-          { label: `Visibility · ${visibilityChipLabel}`, accessibilityLabel: 'Filter by visibility', icon: <Ionicons name="people-outline" size={22} />, onPress: () => setActiveDropdown('visibility') },
-          ...(categories.length ? [{ label: `Category · ${categoryChipLabel}`, accessibilityLabel: 'Filter by category', icon: <Ionicons name="pricetag-outline" size={22} />, onPress: () => setActiveDropdown('category') }] : []),
+          { label: `Visibility · ${visibilityChipLabel}`, accessibilityLabel: 'Filter by visibility', icon: <Ionicons name="neighbors-manage-outline" size={26} />, onPress: () => setActiveDropdown('visibility') },
+          ...(categories.length ? [{ label: `Category · ${categoryChipLabel}`, accessibilityLabel: 'Filter by category', icon: <Ionicons name="grid-outline" size={26} />, onPress: () => setActiveDropdown('category') }] : []),
           ...(extraFilterCount ? [{ label: 'Clear filters', onPress: () => { setVisibilityFilters([]); setCategoryFilters([]); setNeighborhood(null); } }] : []),
         ]}
       />
@@ -792,15 +794,15 @@ export default function FeedScreen({ navigation, route }) {
           {
             label: 'Everyone',
             icon: visibilityFilters.length === 0
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
+              : <Ionicons name="selection-check-empty" size={26} illustrated={false} color={COLORS.textMuted} />,
             onPress: () => { setVisibilityFilters([]); setNeighborhood(null); },
           },
           ...VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
             label: opt.label,
             icon: visibilityFilters.includes(opt.key)
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
+              : <Ionicons name="selection-check-empty" size={26} illustrated={false} color={COLORS.textMuted} />,
             onPress: opt.key === 'town'
               ? handleTownToggle
               : () => { setNeighborhood(null); toggleFilter(opt.key, visibilityKeys, setVisibilityFilters); },
@@ -819,16 +821,16 @@ export default function FeedScreen({ navigation, route }) {
         multiSelect
         actions={[
           {
-            label: 'All Categories',
+            label: 'All',
             icon: categoryFilters.length === 0
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
+              : <Ionicons name="selection-check-empty" size={26} illustrated={false} color={COLORS.textMuted} />,
             onPress: () => setCategoryFilters([]),
           },
           ...categories.map(cat => ({
             label: cat.name,
             icon: categoryFilters.includes(cat.id)
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
               : <CategoryIcon icon={cat.icon || 'pricetag-outline'} size={26} />,
             onPress: () => {
               const allCatIds = categories.map(c => c.id);

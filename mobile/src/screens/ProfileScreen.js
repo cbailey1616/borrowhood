@@ -156,7 +156,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <WoodlandHeader title="Profile" artwork={false} />
+      <WoodlandHeader title="Profile" />
 
       <ScrollView
         style={styles.scrollView}

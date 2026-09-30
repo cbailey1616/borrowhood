@@ -457,6 +457,10 @@ jest.mock('./src/services/api', () => ({
     unsaveListing: jest.fn(),
     checkSaved: jest.fn().mockResolvedValue({ saved: false }),
     // Feed
+    getProjectIdeas: jest.fn().mockResolvedValue([]),
+    getProjects: jest.fn().mockResolvedValue([]),
+    getProject: jest.fn(), createProject: jest.fn(), updateProjectItem: jest.fn(),
+    resetProjectItem: jest.fn(), addProjectItem: jest.fn(), deleteProject: jest.fn(),
     getFeed: jest.fn().mockResolvedValue({ items: [], hasMore: false }),
     recordFeedEvents: jest.fn().mockResolvedValue({ ok: true }),
     getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),

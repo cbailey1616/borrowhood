@@ -164,6 +164,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
     try {
       const result = await api.createTransaction({
         listingId: listing.id,
+        ...(route.params.projectItemId ? { projectItemId: route.params.projectItemId } : {}),
         salePrice: isSaleListing(listing) ? Number(listing.directFee.amount) : undefined,
         ...(isGiveaway ? {} : {
           startDate: startDate.toISOString(),

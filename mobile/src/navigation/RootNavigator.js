@@ -1,3 +1,4 @@
+import ProjectsScreen from '../screens/ProjectsScreen';
 import ReturnHelpScreen from '../screens/ReturnHelpScreen';
 import TextInput from '../components/AppTextInput';
 import RequestQueueScreen from '../screens/RequestQueueScreen';
@@ -327,6 +328,7 @@ export default function RootNavigator({ navigationRef }) {
               route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim'
             )}
           />
+          <Stack.Screen name="Projects" component={ProjectsScreen} options={{ ...sharedScreenOptions, title: 'Make a little happen', headerShown: false }} />
           <Stack.Screen
             name="Exchanges"
             component={ExchangesScreen}

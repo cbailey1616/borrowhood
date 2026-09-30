@@ -1,3 +1,4 @@
+import ProjectsScreen from './src/screens/ProjectsScreen';
 // A browser review surface using the actual app screens and local sample data.
 // App.js remains the native entry point; api.web.js has no live backend access.
 import { useState } from 'react';
@@ -30,7 +31,7 @@ import { COLORS, TYPOGRAPHY } from './src/utils/config';
 
 const Stack = createNativeStackNavigator();
 const query = new URLSearchParams(window.location.search);
-const choices = [['Main', 'App screens'], ['Exchanges', 'Your exchanges'], ['RequestDetail', 'Request details'], ['Chat', 'Messages'], ['ListingDiscussion', 'Public comments'], ['PrivacySafety', 'Privacy & safety'], ['Ranks', 'Woodland ranks'], ['Artwork', 'Woodland artwork'], ['Icons', 'All icons']];
+const choices = [['Projects', 'Project ideas'], ['Main', 'App screens'], ['Exchanges', 'Your exchanges'], ['RequestDetail', 'Request details'], ['Chat', 'Messages'], ['ListingDiscussion', 'Public comments'], ['PrivacySafety', 'Privacy & safety'], ['Ranks', 'Woodland ranks'], ['Artwork', 'Woodland artwork'], ['Icons', 'All icons']];
 
 function Artwork() {
   return <ScrollView style={{ backgroundColor: COLORS.background }} contentContainerStyle={{ padding: 24, gap: 24 }}>
@@ -80,7 +81,8 @@ function PreviewApp() {
           <Stack.Screen name="ListingDiscussion" component={ListingDiscussionScreen} initialParams={{ listingId: 'preview-drill' }} options={{ title: 'Comments' }} />
           <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Profile' }} />
           <Stack.Screen name="PrivacySafety" component={PrivacySafetyScreen} options={{ title: 'Privacy & safety' }} />
-          <Stack.Screen name="Exchanges" component={ExchangesScreen} options={{ title: 'Your exchanges' }} />
+          <Stack.Screen name="Projects" component={ProjectsScreen} options={{ title: 'Make a little happen', headerShown: false }} />
+        <Stack.Screen name="Exchanges" component={ExchangesScreen} options={{ title: 'Your exchanges' }} />
           <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} options={{ title: 'Past exchanges' }} />
           <Stack.Screen name="Ranks" component={Ranks} options={{ title: 'Borrowhood ranks' }} />
           <Stack.Screen name="Artwork" component={Artwork} options={{ title: 'Woodland artwork' }} />

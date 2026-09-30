@@ -418,7 +418,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : isTransferListing(listing) ? 'Claim this item' : 'Request to borrow'}
                 accessibilityRole="button"
                 style={styles.borrowButton}
-                onPress={() => navigation.navigate('BorrowRequest', { listing })}
+                onPress={() => navigation.navigate('BorrowRequest', { listing, ...(route.params.projectItemId ? { projectItemId: route.params.projectItemId } : {}) })}
                 haptic="medium"
               >
                 <Text style={styles.borrowButtonText}>

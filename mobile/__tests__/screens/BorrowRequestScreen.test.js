@@ -71,6 +71,13 @@ describe('BorrowRequestScreen', () => {
     fireEvent.changeText(input, 'Need it for a trip!');
   });
 
+  it('links an explicit project slot through request creation', async () => {
+    const Screen = require('../../src/screens/BorrowRequestScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{params:{listing,projectItemId:'slot'}}}/>);
+    fireEvent.press(await screen.findByText('Send Request'));
+    await waitFor(()=>expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({projectItemId:'slot'})));
+  });
+
   it('send request calls api.createTransaction', async () => {
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;
     const { findByPlaceholderText, getByText } = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);

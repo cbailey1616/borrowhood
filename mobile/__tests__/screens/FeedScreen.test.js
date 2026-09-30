@@ -188,6 +188,7 @@ describe('FeedScreen', () => {
     await screen.findByText('Drill', {}, { timeout: 5000 });
     fireEvent.press(screen.getByTestId('Feed.type.sell'));
     fireEvent.press(screen.getByLabelText('Filter posts'));
+    expect(await screen.findByText('Category · All')).toBeTruthy();
     fireEvent.press(await screen.findByLabelText('Filter by category'));
     fireEvent.press(await screen.findByLabelText('Tools'));
     await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'sell', categoryId: 'cat-1' })));

@@ -1,3 +1,4 @@
+import { PROJECTS, matchesProjectItem, seasonalProjects } from '../preview/projectIdeas';
 // The browser target is a local design preview. It never imports the live API.
 // Native iOS/Android continue resolving api.js.
 import { emptyPreview, previewUser, previewRequest, previewExchanges, listings, conversation, messages, neighbor, comments, commentReplies } from '../preview/fixtures';
@@ -7,11 +8,22 @@ let chat = emptyPreview ? [] : [...messages];
 let discussion = emptyPreview ? [] : [...comments];
 let replies = emptyPreview ? [] : [...commentReplies];
 let profileBlocked = false;
-const available = emptyPreview ? [] : listings;
+const projectExamples = ['Folding table', 'Folding chairs', 'Cooler'].map((title,n)=>({...listings[0],id:`preview-project-${n}`,title,description:'Sample item for the project preview.',photoUrl:null,photos:[],listingType:'lend',isFree:true}));
+const available = emptyPreview ? [] : [...listings,...projectExamples];
 const requestQuery = new URLSearchParams(window.location.search);
 let requestOffers = emptyPreview ? [] : [{ id: listings[0].id, title: 'Cordless drill with a full set of bits and a spare battery', photoUrl: listings[0].photoUrl, isOwn: true }];
 const noop = async () => ({});
+let projects = [];
+const projectIdeas = () => seasonalProjects(new Date(),previewUser).sort((a,b)=>b.seasonPriority-a.seasonPriority).map(p=>({...p,items:p.items.map(i=>({...i,matches:available.filter(l=>matchesProjectItem(l.title,i.terms))}))}));
 const api = {
+  getProjectIdeas: async () => projectIdeas(),
+  getProjects: async () => projects,
+  getProject: async id => projects.find(p=>p.id===id),
+  createProject: async ({templateId}) => { const template=projectIdeas().find(p=>p.id===templateId);const p={...template,id:`project-${Date.now()}`,items:template.items.map((i,n)=>({...i,id:`item-${n}`,owned:false}))};projects=[p,...projects];return p; },
+  updateProjectItem: async (id,itemId,data) => {const p=projects.find(p=>p.id===id);p.items=p.items.map(i=>i.id===itemId?{...i,...data}:i);},
+  resetProjectItem: async (id,itemId) => {const p=projects.find(p=>p.id===id);p.items=p.items.map(i=>i.id===itemId?{...i,transactionId:null,transactionStatus:null}:i);},
+  addProjectItem: async (id,{label}) => {projects.find(p=>p.id===id).items.push({id:`item-${Date.now()}`,label,icon:'basket',matches:[],owned:false});},
+  deleteProject: async id => {projects=projects.filter(p=>p.id!==id);},
   getMe: async () => previewUser,
   getUser: async id => id === previewUser.id ? previewUser : { ...(comments.find(post => post.user.id === id)?.user || neighbor), friendship: { status: 'none' } },
   getUserSafety: async () => ({ blocked: profileBlocked }),
@@ -35,7 +47,7 @@ const api = {
   checkSaved: async id => ({ isSaved: saved.some(item => item.id === id) }),
   saveListing: async id => { if (!saved.some(item => item.id === id)) saved = [...saved, listings.find(item => item.id === id)].filter(Boolean); },
   unsaveListing: async id => { saved = saved.filter(item => item.id !== id); },
-  getListing: async id => listings.find(item => item.id === id),
+  getListing: async id => available.find(item => item.id === id),
   getRequest: async () => ({ ...previewRequest,
     status: requestQuery.get('requestState') === 'closed' ? 'closed' : 'open',
     isExpired: requestQuery.get('requestState') === 'expired',

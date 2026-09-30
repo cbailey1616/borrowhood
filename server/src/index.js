@@ -1,3 +1,4 @@
+import projectRoutes from './routes/projects.js';
 import returnRecoveryRoutes from './routes/returnRecovery.js';
 import { protectMediaResponses, servePrivatePhoto, blockPublicListingPhoto, assertPrivatePhotoStorage } from './services/privatePhotos.js';
 import insightsRoutes from './routes/insights.js';
@@ -224,6 +225,7 @@ app.use('/api/admin/safety-reports', safetyAdminRoutes);
 app.use('/api/return-help', returnRecoveryRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/projects', projectRoutes);
 app.use('/api/sustainability', sustainabilityRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/bundles', bundleRoutes);

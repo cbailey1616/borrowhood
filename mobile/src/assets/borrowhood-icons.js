@@ -29,6 +29,21 @@ const laurelSprig = c => p('M7 29C3 26 2 22 3 18')
   + p('M3 21C1 19 2 17 3 16C5 18 5 20 3 21Z', panel(c));
 
 const DRAWINGS = {
+  'project-beach': c => p('M3 15C3 1 29 1 29 15C25 11 20 11 16 15C12 11 7 11 3 15Z',panel(c)) + p('M16 15V26C16 31 24 31 24 26M16 4C11 7 10 10 10 13M16 4C21 7 22 10 22 13'),
+  'project-diy': c => p('M4 7H22V17H4Z',panel(c)) + p('M22 10H29M22 14H29') + p('M9 17L8 27H17L15 17Z',accent(c)) + p('M6 5H15'),
+  'project-snow': c => p('M8 2C4 3 4 7 6 11L19 29L23 26L10 7C8 5 9 3 8 2Z',panel(c)) + p('M24 2C28 3 28 7 26 11L13 29L9 26L22 7C24 5 23 3 24 2Z',accent(c)),
+  'project-guests': c => rect(3,14,26,11,3,panel(c)) + rect(5,8,9,6,2,accent(c)) + p('M3 8V29M29 19V29M3 23H29'),
+  'project-paddle': c => p('M16 2C30 13 26 28 16 30C6 28 2 13 16 2Z',panel(c)) + p('M16 8C23 15 22 21 16 24C10 21 9 15 16 8Z',accent(c)) + p('M4 28L28 4M3 26L6 29M26 3L29 6'),
+  'folding-table': c => rect(3,7,26,6,2,panel(c)) + p('M7 13L24 29M25 13L8 29'),
+  'folding-chair': c => rect(8,3,16,11,3,panel(c)) + p('M8 14L6 21H26L24 14M8 21L24 29M24 21L8 29'),
+  cooler: c => rect(4,9,24,20,4,panel(c)) + rect(3,5,26,6,2,accent(c)) + p('M4 14H1V22H4M28 14H31V22H28M12 13H20'),
+  car: c => p('M5 13L8 5H24L27 13V26H23V23H9V26H5Z',panel(c)) + p('M5 13H27M10 8H22') + circle(10,18,2,accent(c)) + circle(22,18,2,accent(c)),
+  'musical-notes': c => rect(6,3,20,26,4,panel(c)) + circle(16,20,6,accent(c)) + circle(16,8,2),
+  'project-party': c => p('M3 14H29V19H3Z', panel(c)) + p('M6 19V29M26 19V29M3 3Q16 10 29 3') + circle(9,7,2,accent(c)) + circle(23,7,2,accent(c)) + p('M14 14V11H18V14'),
+  'project-movie': c => rect(3,4,26,18,3,panel(c)) + p('M16 22V29M9 29H23') + p('M13 9L21 13L13 18Z',accent(c)),
+  'project-paint': c => rect(3,3,21,8,3,panel(c)) + p('M24 7H28V16H16V20') + rect(13,20,6,10,2,accent(c)),
+  'project-garden': c => p('M3 10H25L21 21H9Z',panel(c)) + p('M25 10L28 5H31M9 21L6 27M21 21L26 28') + circle(16,26,4,accent(c)) + p('M10 10L8 3M15 10V2M20 10L23 3'),
+  'project-camp': c => p('M2 27L16 5L30 27Z',panel(c)) + p('M16 5V27M10 27L16 16L22 27',accent(c)) + p('M13 2L19 8M19 2L13 8'),
   // A woodland progression drawn for Borrowhood, rather than generic medals.
   'neighbor-sprout': c => p('M16 18C9 19 5 15 5 9C12 8 17 12 16 18Z', panel(c))
     + p('M16 14C15 7 20 3 27 4C28 11 23 15 16 14Z', accent(c))
@@ -157,11 +172,13 @@ const DRAWINGS = {
   'stats-chart': c => rect(4, 17, 5, 12, 2, panel(c)) + rect(14, 10, 5, 19, 2, accent(c)) + rect(24, 3, 5, 26, 2, panel(c)),
   'trending-up': () => p('M3 25L12 16L18 20L29 7M21 7H29V15'),
   'document-text': book,
-  'history-ledger': c => p('M9 4H25V23C25 26 23 28 20 28H8C11 28 12 25 12 23V8C12 6 11 4 9 4Z', panel(c))
-    + p('M9 4H7C3 4 3 9 7 9H12', accent(c))
-    + p('M12 23H5C1 23 1 28 5 28H20', panel(c))
-    + p('M16 10H21M16 15H21')
-    + circle(24, 23, 6, accent(c)) + p('M24 20V23L27 24'),
+  'history-ledger': c => p('M7 6H25V26H7Z', panel(c))
+    + rect(4, 3, 24, 6, 3, panel(c))
+    + rect(4, 23, 24, 6, 3, panel(c))
+    + p('M10 14H22M10 18H19M8 3V9M24 23V29'),
+  'selection-check': c => rect(4, 4, 24, 24, 7, panel(c))
+    + p('M10 16L14 20L22 11'),
+  'selection-check-empty': c => rect(4, 4, 24, 24, 7),
   card: c => rect(3, 6, 26, 22, 4, panel(c)) + p('M3 13H29M8 22H14'),
   cash: c => rect(3, 7, 26, 19, 3, panel(c)) + circle(16, 16.5, 4.5) + p('M3 12C7 12 8 10 8 7M24 7C24 10 26 12 29 12M3 21C7 21 8 23 8 26M24 26C24 23 26 21 29 21'),
   wallet: c => p('M27 9H7C3 9 3 4 7 4H24V9M5 8V25C5 28 8 29 11 29H27V9', panel(c)) + rect(20, 16, 10, 7, 2, accent(c)) + dot(24, 19.5, c),
@@ -232,6 +249,7 @@ const ALIASES = {
 const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
   'history-ledger': ['#E7C590', '#ABC5B8'],
+  'selection-check': ['#B8CBA8', '#ABC5B8'],
   'neighbor-invite': ['#E7C590', '#ABC5B8'],
   'neighbors-manage': ['#ABC5B8', '#E7C590'],
   pencil: ['#DFB66F', '#DEA088'],
