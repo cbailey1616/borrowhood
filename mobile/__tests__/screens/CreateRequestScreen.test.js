@@ -172,3 +172,15 @@ it('retries a wanted post with its original submission ID after a lost response'
   expect(api.createRequest.mock.calls[1][0]).toEqual(attempt);
   expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
 });
+
+
+it('opens Ask with the item prefilled instead of an unrelated saved wanted draft',async()=>{
+ readDraft.mockImplementation(async scope=>scope==='user-1.request.new'?{title:'Unrelated old draft',description:'Old details'}:null);
+ const Screen=require('../../src/screens/CreateRequestScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params:{initialTitle:'Life jackets',projectItemId:'slot-1'}}}/>);
+ await screen.findByDisplayValue('Life jackets');
+ expect(readDraft).toHaveBeenCalledWith('user-1.request.project.slot-1');
+ expect(screen.queryByDisplayValue('Unrelated old draft')).toBeNull();
+ fireEvent.press(screen.getByText('Add details'));
+ expect(screen.queryByText('Discard draft and start fresh')).toBeNull();
+});

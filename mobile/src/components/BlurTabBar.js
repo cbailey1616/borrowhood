@@ -16,7 +16,7 @@ import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
-  Saved: { active: 'heart', inactive: 'heart' },
+  Ideas: { active: 'ideas-bulb', inactive: 'ideas-bulb' },
   MyItems: { active: 'basket', inactive: 'basket-outline' },
   Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
@@ -24,8 +24,8 @@ const TAB_ICONS = {
 
 const TAB_LABELS = {
   Feed: 'Home',
-  Saved: 'Saved',
-  MyItems: 'My Posts',
+  Ideas: 'Ideas',
+  MyItems: 'My items',
   Activity: 'Inbox',
   Profile: 'Profile',
 };

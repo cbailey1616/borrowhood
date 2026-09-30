@@ -1,4 +1,3 @@
-import ProjectIdeasCard from '../components/ProjectIdeasCard';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingAvailability } from '../utils/listingAvailability';
@@ -686,7 +685,6 @@ export default function FeedScreen({ navigation, route }) {
           ListHeaderComponent={
             <>
             <View style={{ height: feedHeader.height }} />
-            {!search.trim() && activeFilters.length === 0 && !isInitialLoad && <ProjectIdeasCard navigation={navigation} />}
             {columns > 1 && <View style={{ paddingHorizontal: SPACING.lg }}>{displayFeed.filter(item => ['feed-banners', 'request-carousel', 'listing-heading'].includes(item.type)).map(item => <View key={item.id}>{renderItem({ item })}</View>)}</View>}
             </>
           }

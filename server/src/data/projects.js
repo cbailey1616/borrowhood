@@ -9,7 +9,7 @@ export const PROJECTS = [
   { id: 'move', name: 'Moving house', description: 'Make the heavy lifting lighter', icon: 'cube', items: [
     item('Dolly','construct','dolly','hand truck'), item('Moving blankets','document-text','moving blanket'),
     item('Tie-down straps','construct','tie down','ratchet strap','moving strap'), item('Boxes','cube','moving box','cardboard box','packing box'),
-    { ...item('Truck or trailer','car','moving truck','pickup truck','utility trailer','cargo trailer','moving trailer'), optional: true },
+    item('Truck or trailer','car','moving truck','pickup truck','utility trailer','cargo trailer','moving trailer'),
   ] },
   { id: 'party', name: 'Party or BBQ', description: 'Good food, good company', icon: 'project-party', items: [
     item('Folding tables','folding-table','folding table','party table'), item('Folding chairs','folding-chair','folding chair','party chair'),
@@ -34,7 +34,7 @@ export const PROJECTS = [
     item('Kayak','project-paddle','kayak'), item('Paddles','project-paddle','kayak paddle','paddle'),
     item('Life jackets','project-paddle','life jacket','life vest','personal flotation device','pfd'),
     item('Dry bags','document-text','dry bag'),
-    { ...item('Roof rack or carrier','car','kayak rack','kayak carrier','roof rack'), optional: true },
+    item('Roof rack or carrier','car','kayak rack','kayak carrier','roof rack'),
   ] },
   { id: 'snow', name: 'Ski or snowboard trip', description: 'Gear up for a snowy escape', icon: 'project-snow', items: [
     item('Skis or snowboard','project-snow','skis','ski set','snowboard'), item('Boots','project-snow','ski boot','snowboard boot'),
@@ -44,7 +44,7 @@ export const PROJECTS = [
   { id: 'guests', name: 'Overnight guests', description: 'Make a little room for loved ones', icon: 'project-guests', items: [
     item('Air mattress','project-guests','air mattress','air bed','inflatable mattress'),
     item('Extra bedding','document-text','bedding','bed sheet','duvet','comforter'), item('Towels','document-text','towel'),
-    { ...item('Pack-n-play','project-guests','pack n play','pack and play','travel crib','travel cot','playard'), optional: true },
+    item('Pack-n-play','project-guests','pack n play','pack and play','travel crib','travel cot','playard'),
   ] },
   { id: 'yard', name: 'Garden or yard overhaul', description: 'A fresh start for your outdoor space', icon: 'project-garden', items: [
     item('Tiller','construct','tiller','cultivator'), item('Hedge trimmer','construct','hedge trimmer'),

@@ -129,6 +129,7 @@ const DRAWINGS = {
   'lock-closed': c => rect(5, 14, 22, 15, 4, panel(c)) + p('M10 14V9C10 1 22 1 22 9V14') + circle(16, 21, 1.5) + p('M16 22V25'),
   star: c => p('M16 3L20 11L29 13L22 20L24 29L16 25L8 29L10 20L3 13L12 11Z', panel(c)),
   bulb: c => p('M10 21C10 17 6 17 6 11C6-1 26-1 26 11C26 17 22 17 22 21Z', panel(c)) + p('M11 25H21M13 29H19M16 21V15M12 12L16 15L20 12'),
+  'ideas-bulb': c => p('M10 21C10 17 6 16 6 11C6 0 26 0 26 11C26 16 22 17 22 21Z', panel(c)) + p('M11 24H21M12 27H20M14 30H18M16 21V15M12 12L16 15L20 12M2 11H0M30 11H32M5 3L3 1M27 3L29 1','stroke-width="1.6"'),
   'happy': c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M10 20C13 25 19 25 22 20'),
   sad: c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M11 23C13 19 19 19 21 23'),
   laugh: c => circle(16, 16, 13, panel(c)) + p('M8 12C10 9 12 9 14 12M18 12C20 9 22 9 24 12')
@@ -283,7 +284,7 @@ const PALETTES = {
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
   'money-bag': ['#E9CA92', '#A7BF98'],
   gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
-  notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'],
+  notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'], 'ideas-bulb': ['#E9CA92', '#D9AD75'],
   bonfire: ['#E4A080', '#E9CA92'], football: ['#CDA182', '#E1BE9F'],
   hammer: ['#B9C4C3', '#DAAF8A'], construct: ['#B9C4C3', '#DAAF8A'],
 };

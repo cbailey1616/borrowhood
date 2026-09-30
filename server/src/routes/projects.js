@@ -29,7 +29,7 @@ router.get('/ideas', wrap(async (req,res) => {
   const templates = seasonalProjects(new Date(), location || {});
   const inventory = await candidates(req.user.id, [...new Set(templates.flatMap(p=>p.items.flatMap(i=>i.terms)))]);
   const ideas = templates.map(project => ({...project, items:project.items.map(item=>nearbyMatches(item, inventory))}));
-  res.json(ideas.sort((a,b)=>b.seasonPriority-a.seasonPriority || b.items.filter(i=>!i.optional&&i.matches.length).length/b.items.filter(i=>!i.optional).length-a.items.filter(i=>!i.optional&&i.matches.length).length/a.items.filter(i=>!i.optional).length));
+  res.json(ideas.sort((a,b)=>b.seasonPriority-a.seasonPriority || b.items.filter(i=>i.matches.length).length/b.items.length-a.items.filter(i=>i.matches.length).length/a.items.length));
 }));
 router.get('/', wrap(async(req,res)=> {
   const {rows}=await query(`SELECT p.id,p.name,p.template_id AS "templateId",p.target_date::text AS "targetDate"
@@ -38,13 +38,26 @@ router.get('/', wrap(async(req,res)=> {
 }));
 router.post('/', wrap(async(req,res)=> {
   const template=PROJECTS.find(p=>p.id===req.body.templateId);
-  if(!template) return res.status(400).json({error:'Choose a project idea'});
+  const custom=req.body.templateId===undefined||req.body.templateId==='custom';
+  const name=template?.name||(typeof req.body.name==='string'?req.body.name.trim():'');
+  if(!template&&!custom) return res.status(400).json({error:'Choose a project idea'});
+  if(!name||name.length>80)return res.status(400).json({error:'Give your plan a name between 1 and 80 characters.'});
+  const choices=template?.items||PROJECTS.flatMap(p=>p.items);
+  let items=template?.items||[];
+  if(req.body.items!==undefined) {
+    if(!Array.isArray(req.body.items)||req.body.items.length>20) return res.status(400).json({error:'A plan can have up to 20 items.'});
+    if(req.body.items.some(i=>!i||typeof i.label!=='string'||!i.label.trim()||i.label.trim().length>60||typeof i.owned!=='boolean')||new Set(req.body.items.map(i=>i.label.trim().toLowerCase())).size!==req.body.items.length) return res.status(400).json({error:'Use distinct item names between 1 and 60 characters.'});
+    items=req.body.items.map(i=>{const known=choices.find(t=>t.label.toLowerCase()===i.label.trim().toLowerCase());return {...known,label:i.label.trim(),owned:i.owned,icon:known?.icon||'basket',terms:known?.terms||[i.label.trim().toLowerCase()]};});
+  }
   const id=await withTransaction(async client=> {
     await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);
+    const templateId=template?.id||'custom';
+    const {rows:[existing]}=await client.query("SELECT id FROM borrow_projects WHERE user_id=$1 AND template_id=$2 AND ($2!='custom' OR LOWER(name)=LOWER($3)) ORDER BY created_at DESC LIMIT 1",[req.user.id,templateId,name]);
+    if(existing)return existing.id;
     const {rows:[count]}=await client.query('SELECT count(*)::integer AS count FROM borrow_projects WHERE user_id=$1',[req.user.id]);
     if(count.count>=50) throw Object.assign(new Error('Remove an old project before starting another.'),{status:409});
-    const {rows:[project]}=await client.query('INSERT INTO borrow_projects(user_id,template_id,name) VALUES($1,$2,$3) RETURNING id',[req.user.id,template.id,template.name]);
-    for(const [order,item] of template.items.entries()) await client.query('INSERT INTO borrow_project_items(project_id,label,icon,terms,sort_order,optional) VALUES($1,$2,$3,$4,$5,$6)',[project.id,item.label,item.icon,JSON.stringify(item.terms),order,!!item.optional]);
+    const {rows:[project]}=await client.query('INSERT INTO borrow_projects(user_id,template_id,name) VALUES($1,$2,$3) RETURNING id',[req.user.id,templateId,name]);
+    for(const [order,item] of items.entries()) await client.query('INSERT INTO borrow_project_items(project_id,label,icon,terms,sort_order,owned) VALUES($1,$2,$3,$4,$5,$6)',[project.id,item.label,item.icon,JSON.stringify(item.terms),order,!!item.owned]);
     return project.id;
   });
   res.status(201).json({id});
@@ -66,9 +79,9 @@ router.post('/:id/items', wrap(async(req,res)=> {
   const result=await withTransaction(async client=> {
     const {rows:[project]}=await client.query('SELECT id FROM borrow_projects WHERE id=$1 AND user_id=$2 FOR UPDATE',[req.params.id,req.user.id]);
     if(!project) throw Object.assign(new Error('Project not found'),{status:404});
-    const {rows:[count]}=await client.query('SELECT count(*)::integer AS count FROM borrow_project_items WHERE project_id=$1',[project.id]);
+    const {rows:[count]}=await client.query('SELECT count(*)::integer AS count, COALESCE(MAX(sort_order),-1)+1 AS "nextOrder" FROM borrow_project_items WHERE project_id=$1',[project.id]);
     if(count.count>=20) throw Object.assign(new Error('A project can have up to 20 items.'),{status:400});
-    return client.query("INSERT INTO borrow_project_items(project_id,label,icon,terms,sort_order) VALUES($1,$2,'basket',$3,$4) RETURNING id",[project.id,label,JSON.stringify([label.toLowerCase()]),count.count]);
+    return client.query("INSERT INTO borrow_project_items(project_id,label,icon,terms,sort_order) VALUES($1,$2,'basket',$3,$4) RETURNING id",[project.id,label,JSON.stringify([label.toLowerCase()]),count.nextOrder]);
   });
   res.status(201).json(result.rows[0]);
 }));
@@ -86,6 +99,13 @@ router.post('/:id/items/:itemId/reset', wrap(async(req,res)=> {
     AND t.status IN ('cancelled','declined','expired','returned','completed') RETURNING i.id`,[req.params.itemId,req.user.id,req.params.id]);
   if(!rows.length) return res.status(409).json({error:'Finish or cancel the exchange before finding another item.'});
   res.json({success:true});
+}));
+router.delete('/:id/items/:itemId', wrap(async(req,res)=> {
+  if(!UUID.test(req.params.itemId)) return res.status(400).json({error:'Invalid checklist item'});
+  const {rows}=await query(`DELETE FROM borrow_project_items i USING borrow_projects p
+    WHERE i.id=$1 AND i.project_id=p.id AND p.id=$2 AND p.user_id=$3 RETURNING i.id`,[req.params.itemId,req.params.id,req.user.id]);
+  if(!rows.length) return res.status(404).json({error:'Checklist item not found'});
+  res.json({success:true}); // Removing a slot leaves its request/exchange intact.
 }));
 router.delete('/:id', wrap(async(req,res)=> {
   await query('DELETE FROM borrow_projects WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);

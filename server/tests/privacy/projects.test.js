@@ -84,8 +84,29 @@ it('swaps snow trips and kayaking by season and location while keeping ten core 
   expect(summer.map(p=>p.id)).toContain('paddle');expect(summer.map(p=>p.id)).not.toContain('snow');
   expect(summer).toHaveLength(10);expect(seasonalProjects(january,{state:'MA'})).toHaveLength(10);
 });
-it('persists optional checklist items without requiring them for plan completion',async()=>{
+it('creates a plain editable list without optional labels',async()=>{
  const res=await request(app).post('/projects').send({templateId:'move'});
  const detail=await request(app).get(`/projects/${res.body.id}`);
- expect(detail.body.items.find(i=>i.label==='Truck or trailer').optional).toBe(true);
+ expect(detail.body.items.find(i=>i.label==='Truck or trailer').optional).toBe(false);
+});
+it('reuses an existing saved idea instead of creating duplicates',async()=>{
+ const p=await create();const again=await request(app).post('/projects').send({templateId:'party'});
+ expect(again.body.id).toBe(p.id);expect((await request(app).get('/projects')).body).toHaveLength(1);
+});
+it('saves edited previews and named custom plans, rejecting invalid input',async()=>{
+ const saved=await request(app).post('/projects').send({templateId:'party',items:[{label:'Folding chairs',owned:true},{label:'Picnic blanket',owned:false}]});
+ const detail=await request(app).get(`/projects/${saved.body.id}`);expect(detail.body.items.map(i=>i.label)).toEqual(['Folding chairs','Picnic blanket']);expect(detail.body.items[0].owned).toBe(true);
+ const own=await request(app).post('/projects').send({name:'Garden bed',items:[]});expect(own.status).toBe(201);expect((await request(app).get(`/projects/${own.body.id}`)).body).toMatchObject({name:'Garden bed',items:[]});
+ expect((await request(app).post('/projects').send({name:' ',items:[]})).status).toBe(400);
+ expect((await request(app).post('/projects').send({name:'Plan',items:[{label:'Tent',owned:false},{label:'tent',owned:false}]})).status).toBe(400);
+});
+it('only deletes the owner’s checklist item and never cancels its exchange',async()=>{
+ const p=await create(),item=p.items[0];
+ const {rows:[t]}=await state.db.query("INSERT INTO borrow_transactions(borrower_id,status) VALUES($1,'pending') RETURNING id",[me]);await state.db.query('UPDATE borrow_project_items SET transaction_id=$1 WHERE id=$2',[t.id,item.id]);
+ state.user=owner;expect((await request(app).delete(`/projects/${p.id}/items/${item.id}`)).status).toBe(404);
+ state.user=me;expect((await request(app).delete(`/projects/${p.id}/items/${item.id}`)).status).toBe(200);
+ expect((await state.db.query('SELECT status FROM borrow_transactions WHERE id=$1',[t.id])).rows[0].status).toBe('pending');
+ expect((await request(app).get(`/projects/${p.id}`)).body.items).toHaveLength(5);
+ expect((await request(app).delete(`/projects/${p.id}/items/not-a-uuid`)).status).toBe(400);
+ await request(app).post(`/projects/${p.id}/items`).send({label:'Picnic blanket'});const after=(await request(app).get(`/projects/${p.id}`)).body.items;expect(after.at(-1).label).toBe('Picnic blanket');
 });

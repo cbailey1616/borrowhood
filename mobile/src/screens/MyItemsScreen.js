@@ -24,6 +24,7 @@ import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
+import SavedScreen from './SavedScreen';
 import WoodlandBackdrop from '../components/WoodlandBackdrop';
 import WoodlandHeader from '../components/WoodlandHeader';
 import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
@@ -64,6 +65,7 @@ export default function MyItemsScreen({ navigation }) {
   const fetchData = useCallback(async () => {
     const currentFetch = ++fetchId.current;
     setLoadError(false);
+    if(activeTab===3){setIsLoading(false);setIsRefreshing(false);return;}
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
@@ -410,8 +412,8 @@ export default function MyItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {!isLoading && !loadError && visibleItems.length === 0 && <WoodlandBackdrop fullScreen />}
-      <WoodlandHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={activeTab !== 2 &&
+      {activeTab!==3 && !isLoading && !loadError && visibleItems.length === 0 && <WoodlandBackdrop fullScreen />}
+      <WoodlandHeader title="My items" titleStyle={{ flexShrink: 1 }} rightElement={activeTab < 2 &&
         <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
           onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
           <Ionicons name="add" size={20} color={COLORS.surface} />
@@ -421,7 +423,7 @@ export default function MyItemsScreen({ navigation }) {
         <SegmentedControl
           testID="MyItems.segment"
           variant="underline"
-          segments={['Items', 'Wanted', 'My requests']}
+          segments={['Items', 'Wanted', 'Requests', {label:'Saved',icon:'heart',color:COLORS.savedOutline,fillColor:COLORS.saved}]}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
@@ -429,6 +431,7 @@ export default function MyItemsScreen({ navigation }) {
 
       </WoodlandHeader>
 
+      {activeTab===3?<SavedScreen navigation={navigation} embedded/>:<>
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
       <BorrowhoodRefreshList
@@ -446,6 +449,7 @@ export default function MyItemsScreen({ navigation }) {
         ListEmptyComponent={emptyContent}
         ListHeaderComponent={<ExchangeOverviewLink testID="MyItems.exchanges" onPress={() => navigation.navigate('Exchanges')} />}
       />
+      </>}
       <ActionSheet
         isVisible={!!pendingDelete}
         onClose={() => setPendingDelete(null)}

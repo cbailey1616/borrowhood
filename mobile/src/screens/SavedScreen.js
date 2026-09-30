@@ -54,7 +54,7 @@ function HeartButton({ onUnsave, title }) {
   );
 }
 
-export default function SavedScreen({ navigation }) {
+export default function SavedScreen({ navigation, embedded = false }) {
   const { width } = useWindowDimensions();
   const columns = width >= 1100 ? 4 : width >= 768 ? 3 : 2;
   const gridWidth = Math.min(width, 1440);
@@ -144,8 +144,8 @@ export default function SavedScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {!isLoading && listings.length === 0 && <WoodlandBackdrop fullScreen />}
-      <WoodlandHeader title="Saved" />
+      {!embedded && !isLoading && listings.length === 0 && <WoodlandBackdrop fullScreen />}
+      {!embedded && <WoodlandHeader title="Saved" />}
 
       <BorrowhoodRefreshList
         data={listings}

@@ -364,3 +364,13 @@ describe('MyItemsScreen', () => {
     await screen.findByText(failed === 'sent' ? 'Need a ladder' : 'Cabinet glue');
   });
 });
+
+it('shows saved items under My items and keeps their heart pink',async()=>{
+ api.getSavedListings.mockResolvedValue([{id:'saved',title:'Saved cooler',isAvailable:true,listingType:'lend',isFree:true,owner:{firstName:'Kate'}}]);
+ const Screen=require('../../src/screens/MyItemsScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ fireEvent.press(screen.getByTestId('MyItems.segment.3'));
+ expect(await screen.findByText('Saved cooler')).toBeTruthy();
+ expect(screen.getByText('My items')).toBeTruthy();
+ expect(screen.getByTestId('MyItems.segment.3').props.accessibilityState.selected).toBe(true);
+});

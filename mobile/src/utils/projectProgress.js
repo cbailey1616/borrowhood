@@ -7,7 +7,6 @@ export function projectItemState(item) {
   return {label:item.owned?'Already have it':count?`${count}${more ? '+' : ''} nearby`:'No match right now',covered:!!item.owned,waiting:false};
 }
 export function projectProgress(items=[]) {
-  const required=items.filter(item=>!item.optional);
-  const states=required.map(projectItemState);
-  return {covered:states.filter(i=>i.covered).length,waiting:states.filter(i=>i.waiting).length,total:required.length};
+  const states=items.map(projectItemState);
+  return {covered:states.filter(i=>i.covered).length,waiting:states.filter(i=>i.waiting).length,total:items.length};
 }
