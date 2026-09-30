@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import ContentSafetyActions from '../components/ContentSafetyActions';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import RequestTypeIcon from '../components/RequestTypeIcon';
@@ -157,10 +158,11 @@ function ChatConversation({ route, navigation }) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerShown: !(safeThreads && activeThreadId),
       title: profileName === 'neighbor' ? 'Messages' : profileName,
       header: () => <ConversationHeader navigation={navigation} person={otherUser} userId={profileId} />,
     });
-  }, [otherUser, profileId, profileName, navigation]);
+  }, [otherUser, profileId, profileName, navigation, safeThreads, activeThreadId]);
 
   // Recheck when returning from a profile, where blocking is managed.
   useEffect(() => {
@@ -514,11 +516,11 @@ function ChatConversation({ route, navigation }) {
               accessibilityLabel={`${reactionOption(emoji)?.label || emoji} reaction, ${userIds.length}`}
               accessibilityState={{ selected: isOwn }}
               haptic="light"
-              style={[styles.reactionPill, isOwn && styles.reactionPillOwn]}
+              style={[styles.reactionPill, isOwn && styles.reactionPillOwn, activeThreadId && styles.darkReactionPill]}
             >
               <ReactionIcon emoji={emoji} size={18} />
               {userIds.length > 1 && (
-                <Text style={styles.reactionCount}>{userIds.length}</Text>
+                <Text style={[styles.reactionCount, activeThreadId && styles.darkText]}>{userIds.length}</Text>
               )}
             </HapticPressable>
           );
@@ -546,20 +548,27 @@ function ChatConversation({ route, navigation }) {
           </View>
         )}
         <View style={[styles.messageContainer, styles.compactContainer]}>
+          {isRoot && <View style={styles.rootAuthor}>
+            <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId} accessibilityLabel={item.isOwnMessage ? 'Your profile photo' : `View ${profileName}’s profile`}>
+              <ShimmerImage source={{ uri: (item.isOwnMessage ? user?.profilePhotoUrl : otherUser?.profilePhotoUrl) || null }} placeholderIcon="person" style={styles.compactAvatar}/>
+            </HapticPressable>
+            <View style={{ flex: 1 }}><Text style={[styles.compactName, activeThreadId && styles.darkText]}>{item.isOwnMessage ? user?.firstName || 'You' : profileName}</Text>
+              <Text style={styles.darkTime}>{new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at {formatTime(item.createdAt)}</Text></View>
+          </View>}
           <Animated.View
             ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
             entering={FadeInUp.duration(160)}
             style={styles.compactRow}
           >
-            {startsGroup ? <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId}
+            {!isRoot && (startsGroup ? <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId}
               style={styles.compactAvatarSlot} accessibilityLabel={item.isOwnMessage ? 'Your profile photo' : `View ${profileName}’s profile`}
               testID={item.isOwnMessage ? undefined : `Chat.avatar.${item.id}`}>
               <ShimmerImage source={{ uri: (item.isOwnMessage ? user?.profilePhotoUrl : otherUser?.profilePhotoUrl) || null }} placeholderIcon="person" style={styles.compactAvatar}/>
-            </HapticPressable> : <View style={styles.compactAvatarSlot}/>}
+            </HapticPressable> : <View style={styles.compactAvatarSlot}/>)}
             <View style={styles.compactBody}>
-              {startsGroup && <View style={styles.compactMeta}>
-                <Text style={styles.compactName}>{item.isOwnMessage ? user?.firstName || 'You' : profileName}</Text>
-                <Text style={styles.compactTime}>{formatTime(item.createdAt)}</Text>
+              {startsGroup && !isRoot && <View style={styles.compactMeta}>
+                <Text style={[styles.compactName, activeThreadId && styles.darkText]}>{item.isOwnMessage ? user?.firstName || 'You' : profileName}</Text>
+                <Text style={[styles.compactTime, activeThreadId && styles.darkTime]}>{formatTime(item.createdAt)}</Text>
               </View>}
             {item.isDeleted ? (
               <View style={styles.compactDeleted}>
@@ -582,11 +591,11 @@ function ChatConversation({ route, navigation }) {
                 </View>}
                 {item.imageUrl && (
                   <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
-                    <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
+                    <ShimmerImage source={{ uri: item.imageUrl }} style={[styles.messageImage, isRoot && { width: '100%', height: 210 }]} accessibilityLabel="Chat photo" />
                   </HapticPressable>
                 )}
                 {text ? (
-                  <Text style={styles.compactText}>
+                  <Text style={[styles.compactText, activeThreadId && styles.darkText]}>
                     {text}
                   </Text>
                 ) : null}
@@ -594,7 +603,10 @@ function ChatConversation({ route, navigation }) {
             )}
             </View>
           </Animated.View>
-          <View style={styles.compactReactions}>{renderReactionPills(item)}</View>
+          <View style={[styles.compactReactions, isRoot && { marginLeft: 0 }, activeThreadId && styles.darkReactionRow]}>
+            {renderReactionPills(item)}
+            {!!activeThreadId && !item.isDeleted && <HapticPressable accessibilityLabel="Add reaction" onPress={() => handleMessageLongPress(item)} style={styles.addReaction}><Ionicons name="laugh" size={21} color="#BFC1C5" illustrated={false}/><View style={styles.reactionAddMark}><Ionicons name="add" size={11} color="#F1F1F2"/></View></HapticPressable>}
+          </View>
           {safeThreads && !activeThreadId && item.replyCount > 0 && <HapticPressable
             accessibilityLabel={item.replyCount ? `View ${item.replyCount} replies to message` : 'Reply to message'}
             disabled={isSending || isUploading || !!composer.pending || !draft.ready}
@@ -621,13 +633,18 @@ function ChatConversation({ route, navigation }) {
   return (
     <ComposerKeyboardView
       testID="Chat.keyboardLayout"
-      style={styles.container}
+      style={[styles.container, activeThreadId && styles.darkSurface]}
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
-      {safeThreads && activeThreadId && <View style={styles.threadBar}>
+      <StatusBar style={activeThreadId ? 'light' : 'dark'}/>
+      {safeThreads && activeThreadId && <View style={[styles.threadBar, { paddingTop: insets.top + 8 }]}>
         <HapticPressable accessibilityLabel="Back to conversation" onPress={closeThread} disabled={isSending || isUploading || !!composer.pending} style={styles.threadBack}>
-          <Ionicons name="chevron-back" size={22}/><Text style={styles.threadTitle}>Thread</Text>
+          <Ionicons name="chevron-back" size={25} color="#F1F1F2"/>
         </HapticPressable>
+        <HapticPressable accessibilityLabel="View conversation profile" onPress={openProfile} style={styles.threadHeading}>
+          <Text style={styles.threadTitle}>Thread</Text><Text style={styles.threadSubtitle} numberOfLines={1}>{profileName}</Text>
+        </HapticPressable>
+        <HapticPressable accessibilityLabel="Thread options" disabled={!threadRoot} onPress={() => { setSelectedMessage(threadRoot); setActionSheetVisible(true); }} style={styles.threadBack}><Ionicons name="ellipsis-horizontal" size={23} color="#F1F1F2"/></HapticPressable>
         {threadLoading && <ActivityIndicator color={COLORS.spinner}/>}
       </View>}
       {/* Messages List */}
@@ -684,7 +701,7 @@ function ChatConversation({ route, navigation }) {
           <Ionicons name="close" size={22} color={COLORS.primary} />
         </HapticPressable>
       </View>}
-      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
+      <View testID="Chat.composerDock" style={[styles.inputContainer, activeThreadId && styles.darkDock, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
         {!!contextPrefix && !composer.pending && <View testID="Chat.postReference" style={styles.postReference}>
           <HapticPressable style={styles.postReferenceLink} accessibilityLabel={`View ${activeContext.title}`}
             onPress={() => navigation.navigate(activeContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: activeContext.id })}>
@@ -701,10 +718,11 @@ function ChatConversation({ route, navigation }) {
         </View>}
         <MessageComposer
           testID="Chat.composer"
+          dark={!!activeThreadId}
           value={newMessage}
           onChangeText={setNewMessage}
           onSend={handleSend}
-          placeholder={safeThreads && activeThreadId ? 'Reply in thread…' : 'Message…'}
+          placeholder={safeThreads && activeThreadId ? 'Add a reply…' : 'Message…'}
           inputAccessibilityLabel={safeThreads && activeThreadId ? 'Thread reply' : 'Message'}
           sendAccessibilityLabel={safeThreads && activeThreadId ? 'Send reply' : 'Send message'}
           resetKey={activeThreadId}
@@ -714,8 +732,8 @@ function ChatConversation({ route, navigation }) {
           editable={!messagesBlocked}
           disabled={(safeThreads && activeThreadId && !threadRoot) || (!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready || messagesBlocked}
           leadingAction={
-            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
-              {isUploading ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
+            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={[styles.attachPhotoButton, activeThreadId && styles.darkAttach]} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
+              {isUploading ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="add" size={26} color={activeThreadId ? '#BFC1C5' : COLORS.primary} />}
             </HapticPressable>
           }
         />
@@ -773,6 +791,16 @@ function ChatConversation({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  darkSurface: { backgroundColor: '#1B1D21' },
+  darkText: { color: '#F1F1F2' },
+  darkTime: { color: '#9A9DA3', fontSize: 12 },
+  darkDock: { backgroundColor: '#1B1D21', borderTopWidth: 0, paddingHorizontal: 14 },
+  darkAttach: { backgroundColor: '#484C52', borderRadius: 24 },
+  rootAuthor: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  darkReactionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 10 },
+  darkReactionPill: { backgroundColor: '#272A2F', borderColor: '#484C52' },
+  reactionAddMark: { position: 'absolute', top: 2, right: 3, backgroundColor: '#272A2F', borderRadius: 8 },
+  addReaction: { width: 36, height: 30, borderRadius: 18, backgroundColor: '#272A2F', alignItems: 'center', justifyContent: 'center' },
   compactContainer: { marginBottom: 5 },
   compactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   compactAvatarSlot: { width: 34, minHeight: 28 },
@@ -786,12 +814,14 @@ const styles = StyleSheet.create({
   compactDeleted: { paddingVertical: 4 },
   compactReactions: { marginLeft: 44, alignItems: 'flex-start' },
   replyDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 16 },
-  replyDividerText: { fontSize: 12, color: COLORS.textMuted },
-  replyDividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator },
-  threadMessagesContent: { justifyContent: 'flex-start' },
-  threadBar: { paddingHorizontal: 16, paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: COLORS.separator },
-  threadBack: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
-  threadTitle: { fontFamily: 'DMSans_700Bold', fontSize: 19, color: COLORS.text },
+  replyDividerText: { fontSize: 14, color: '#A8AAAD', fontFamily: 'DMSans_600SemiBold' },
+  replyDividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#33363B' },
+  threadMessagesContent: { justifyContent: 'flex-start', paddingHorizontal: 12 },
+  threadBar: { paddingHorizontal: 12, paddingBottom: 8, gap: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1B1D21' },
+  threadBack: { width: 44, height: 44, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: '#35383E', borderWidth: 1, borderColor: '#4E5158' },
+  threadHeading: { flex: 1, minHeight: 44, paddingHorizontal: 16, paddingVertical: 5, backgroundColor: '#35383E', borderRadius: 24, borderWidth: 1, borderColor: '#4E5158' },
+  threadSubtitle: { fontSize: 13, color: '#A8AAAD', marginTop: 1 },
+  threadTitle: { fontFamily: 'DMSans_700Bold', fontSize: 17, color: '#F1F1F2' },
   threadParent: { marginBottom: 4 },
   threadParentName: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', color: COLORS.primary, marginBottom: 6 },
   threadLink: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 38, alignSelf: 'flex-start', marginLeft: 42, paddingHorizontal: 4 },
