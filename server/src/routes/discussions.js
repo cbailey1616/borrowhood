@@ -1,3 +1,4 @@
+import { discussionReaction, publicReactionSql } from '../services/publicReactions.js';
 import { screenContent, unblockedSql } from '../services/contentPolicy.js';
 import { publishOnce } from '../services/publicationReceipts.js';
 import { canViewListing } from '../services/listingAccess.js';
@@ -9,6 +10,8 @@ import { sendNotification } from '../services/notifications.js';
 import { notifyThreadParticipants, getDiscussionThread } from '../services/discussionNotifications.js';
 
 const router = Router();
+router.post('/:listingId/discussions/:postId/react', authenticate, discussionReaction('listing'));
+router.delete('/:listingId/discussions/:postId/react', authenticate, discussionReaction('listing'));
 router.use(screenContent());
 
 router.get('/:listingId/discussions/:postId', authenticate, async (req, res) => {
@@ -40,7 +43,7 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
     if (!hasAccess) return;
 
     const result = await query(
-      `SELECT d.id, d.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=d.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$4')}) AS reply_count, d.created_at, d.updated_at,
+      `SELECT d.id, d.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=d.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$4')}) AS reply_count, d.created_at, d.updated_at, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$4')} AS reactions,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
@@ -61,6 +64,7 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
       posts: result.rows.map(d => ({
         id: d.id,
         content: d.content,
+        reactions: d.reactions || [],
         replyCount: d.reply_count,
         createdAt: d.created_at,
         updatedAt: d.updated_at,
@@ -95,7 +99,7 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
     if (!hasAccess) return;
 
     const result = await query(
-      `SELECT d.id, d.content, d.created_at, d.updated_at,
+      `SELECT d.id, d.content, d.created_at, d.updated_at, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$5')} AS reactions,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
@@ -110,6 +114,7 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
       replies: result.rows.map(d => ({
         id: d.id,
         content: d.content,
+        reactions: d.reactions || [],
         createdAt: d.created_at,
         updatedAt: d.updated_at,
         user: {

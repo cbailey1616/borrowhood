@@ -519,3 +519,19 @@ it('opens the same neighborhood channel from Messages', async () => {
   fireEvent.press(await screen.findByText('Maple Grove'));
   expect(mockParentNavigate).toHaveBeenCalledWith('CommunityChat',{communityId:'hood',communityName:'Maple Grove'});
 });
+
+it('stays on Messages when focus resumes after opening a conversation', async () => {
+  api.getConversations.mockResolvedValue([{id:'chat',otherUser:{id:'neighbor',firstName:'Jamie'},lastMessage:'See you soon',unreadCount:1}]);
+  const Screen = require('../../src/screens/InboxScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} onRead={()=>{}} />);
+  await screen.findByText('See you soon');
+  fireEvent.press(screen.getByRole('tab',{name:/Messages/}));
+  fireEvent.press(screen.getByText('See you soon'));
+  expect(mockParentNavigate).toHaveBeenCalledWith('Chat', expect.objectContaining({conversationId:'chat'}));
+  api.getConversations.mockResolvedValue([{id:'chat',otherUser:{id:'neighbor',firstName:'Jamie'},lastMessage:'See you soon',unreadCount:0}]);
+  api.getNotifications.mockResolvedValue({notifications:[],unreadCount:1});
+  // Navigation runs focus cleanup and setup again when the message screen closes.
+  screen.rerender(<Screen navigation={mockNavigation} onRead={()=>{}} />);
+  await waitFor(()=>expect(screen.getByRole('tab',{name:'Messages'}).props.accessibilityState.selected).toBe(true));
+  expect(screen.getByText('See you soon')).toBeTruthy();
+});

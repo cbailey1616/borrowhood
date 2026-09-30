@@ -207,7 +207,9 @@ describe('ListingDiscussionScreen', () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     fireEvent(await screen.findByTestId('Comments.message.post-1'), 'longPress');
-    expect(visibleMenu(screen).props.actions.map(action => action.label)).toEqual(['Reply in thread', 'Report or block', 'Message Alice privately']);
+    fireEvent.press(screen.getByLabelText('More message actions'));
+    fireEvent(screen.UNSAFE_getByType(require('../../src/components/MessageReactionMenu').default).findByType(require('react-native').Modal), 'dismiss');
+    expect(visibleMenu(screen).props.actions.map(action => action.label)).toEqual(['Add reaction', 'Copy Text', 'Reply in thread', 'Report or block', 'Message Alice privately']);
     await chooseAction(screen, 'Reply in thread');
     expect(screen.getByPlaceholderText('Reply in thread…')).toBeTruthy();
     expect(screen.getByText(post.content)).toBeTruthy();
@@ -350,6 +352,8 @@ describe('focused comment threads', () => {
     fireEvent.press(screen.getByLabelText('View 1 reply to Alice'));
     expect(screen.getByLabelText('Comment').props.value).toBe('My Alice thread draft');
     fireEvent(screen.getByTestId('Comments.message.child-root-alice'), 'longPress');
+    fireEvent.press(screen.getByLabelText('More message actions'));
+    fireEvent(screen.UNSAFE_getByType(require('../../src/components/MessageReactionMenu').default).findByType(require('react-native').Modal), 'dismiss');
     await chooseAction(screen, 'Reply in thread');
     fireEvent.press(screen.getByLabelText('Post reply'));
     await waitFor(() => expect(api.createDiscussionPost).toHaveBeenCalledWith('listing-1', {
@@ -434,7 +438,7 @@ describe('focused comment threads', () => {
     api.getDiscussions.mockResolvedValue({ posts: [post] });
     const screen = renderScreen({ params: { ...route.params, listing: { ...route.params.listing, isOwner } } });
     fireEvent.press(await screen.findByLabelText(`Comment options for ${post.user.firstName}`));
-    expect(visibleMenu(screen).props.actions.map(action => action.label)).toEqual(actions);
+    expect(visibleMenu(screen).props.actions.map(action => action.label)).toEqual(['Add reaction','Copy Text',...actions]);
     if (actions.includes('Delete comment')) {
       await chooseAction(screen, 'Delete comment');
       expect(api.deleteDiscussionPost).not.toHaveBeenCalled();
@@ -490,4 +494,25 @@ it('keeps a pending comment locked and ignores repeated Send taps', async () => 
   await act(async () => finish({id:'first',content:'First comment'}));
   expect(screen.getByLabelText('Comment').props.editable).toBe(true);
   expect(screen.getByLabelText('Comment').props.value).toBe('');
+});
+
+it.each([false,true])('uses the same reaction toolbar on original comments and replies (request=%s)',async isRequest=>{
+ const root=makePost('root-react','Alice',{replyCount:1});const child=makePost('reply-react','Jamie');
+ api.getDiscussions.mockResolvedValue({posts:[root]});
+ api.getRequestDiscussions.mockResolvedValue({posts:[root]});
+ api.getDiscussionReplies.mockResolvedValue({replies:[child]});
+ api.getRequestDiscussionReplies.mockResolvedValue({replies:[child]});
+ const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params:isRequest?{requestId:'target',request:{title:'Drill'}}:{listingId:'target',listing:{title:'Drill'}}}}/>);
+ fireEvent(await screen.findByTestId('Comments.message.root-react'),'longPress');
+ fireEvent.press(screen.getByLabelText('React: Love'));
+ await waitFor(()=>expect(isRequest?api.reactToRequestDiscussion:api.reactToDiscussion).toHaveBeenCalledWith('target','root-react','❤️'));
+ await screen.findByLabelText('Love reaction, 1');
+ fireEvent.press(screen.getByLabelText('Reply to Alice'));
+ fireEvent(await screen.findByTestId('Comments.message.reply-react'),'longPress');
+ fireEvent.press(screen.getByLabelText('React: Like'));
+ await waitFor(()=>expect(isRequest?api.reactToRequestDiscussion:api.reactToDiscussion).toHaveBeenCalledWith('target','reply-react','👍'));
+ fireEvent.press(await screen.findByLabelText('Like reaction, 1'));
+ await waitFor(()=>expect(isRequest?api.removeRequestDiscussionReaction:api.removeDiscussionReaction).toHaveBeenCalledWith('target','reply-react'));
+ expect(screen.getByLabelText('Love reaction, 1')).toBeTruthy();
 });

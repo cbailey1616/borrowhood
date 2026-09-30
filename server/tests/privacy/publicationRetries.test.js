@@ -1,3 +1,4 @@
+import { ensureDiscussionReactionSchema } from '../../src/services/publicReactions.js';
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import express from 'express';
@@ -52,6 +53,7 @@ beforeAll(async () => {
       user_id UUID, parent_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());`);
   await ensurePublicationSchema();
   await ensurePublicationSchema();
+  await ensureDiscussionReactionSchema();
 }, 20000);
 afterAll(async () => state.db.close());
 beforeEach(async () => {

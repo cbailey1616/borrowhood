@@ -1,3 +1,4 @@
+import { REACTION_EMOJIS, publicReactionSql } from '../services/publicReactions.js';
 import { screenContent } from '../services/contentPolicy.js';
 import { Router } from 'express';
 import { withTransaction } from '../utils/db.js';
@@ -46,7 +47,7 @@ router.get('/', memberRoute(async (req, db, member) => {
   if (parentId && !uuid(parentId)) invalid('Invalid thread');
   let parentMessage = null;
   if (parentId) {
-    const parent = await db.query(`SELECT m.id, m.sequence::text, m.created_at,
+    const parent = await db.query(`SELECT m.id, m.sequence::text, m.created_at, ${publicReactionSql('community_chat_reactions','message_id','m','$2')} AS reactions,
       CASE WHEN m.deleted_at IS NULL THEN m.content ELSE 'Message removed' END AS content,
       (m.deleted_at IS NOT NULL) AS deleted, m.sender_id,
       COALESCE(NULLIF(TRIM(u.display_name), ''), u.first_name) AS name, u.profile_photo_url
@@ -55,10 +56,10 @@ router.get('/', memberRoute(async (req, db, member) => {
       AND ${blocked}`, [req.params.id, req.user.id, parentId, member.chat_joined_at]);
     if (!parent.rows.length) invalid('This thread is unavailable', 404);
     const row = parent.rows[0];
-    parentMessage = { id: row.id, content: row.content, createdAt: row.created_at, deleted: row.deleted, sender: { id: row.sender_id, name: row.name, photoUrl: row.profile_photo_url } };
+    parentMessage = { id: row.id, content: row.content, reactions: row.deleted ? [] : row.reactions || [], createdAt: row.created_at, deleted: row.deleted, sender: { id: row.sender_id, name: row.name, photoUrl: row.profile_photo_url } };
   }
   const watermark = await db.query('SELECT COALESCE(MAX(sequence), 0)::text AS sequence FROM community_chat_messages WHERE community_id = $1', [req.params.id]);
-  const rows = await db.query(`SELECT m.id, m.sequence::text, m.parent_id, m.created_at,
+  const rows = await db.query(`SELECT m.id, m.sequence::text, m.parent_id, m.created_at, ${publicReactionSql('community_chat_reactions','message_id','m','$2')} AS reactions,
     CASE WHEN m.deleted_at IS NULL THEN m.content ELSE 'Message removed' END AS content,
     (m.deleted_at IS NOT NULL) AS deleted, m.sender_id,
     COALESCE(NULLIF(TRIM(u.display_name), ''), u.first_name) AS name, u.profile_photo_url,
@@ -73,7 +74,7 @@ router.get('/', memberRoute(async (req, db, member) => {
     AND ($4::bigint IS NULL OR m.sequence < $4)
     ORDER BY m.sequence DESC LIMIT 51`, [req.params.id, req.user.id, parentId || null, before || null, watermark.rows[0].sequence, member.chat_joined_at]);
   const page = rows.rows.slice(0, 50);
-  return { parent: parentMessage, messages: page.map(m => ({ id: m.id, sequence: m.sequence, content: m.content,
+  return { parent: parentMessage, messages: page.map(m => ({ id: m.id, sequence: m.sequence, content: m.content, reactions: m.deleted ? [] : m.reactions || [],
     parentId: m.parent_id, createdAt: m.created_at, deleted: m.deleted,
     sender: { id: m.sender_id, name: m.name, photoUrl: m.profile_photo_url }, replyCount: Number(m.reply_count) })),
     nextBefore: rows.rows.length > 50 ? page[page.length - 1].sequence : null,
@@ -102,6 +103,23 @@ router.post('/', memberRoute(async (req, db, member) => {
     VALUES ($1,$2,$3,$4,$5) RETURNING id`, [req.params.id, req.user.id, content.trim(), parentId || null, clientRequestId]);
   return result.rows[0];
 }));
+const react = memberRoute(async (req, db, member) => {
+  if (!uuid(req.params.messageId)) invalid('Invalid message');
+  if (req.method !== 'DELETE' && !REACTION_EMOJIS.includes(req.body.emoji)) invalid('Choose a supported reaction');
+  const available = await db.query(`SELECT m.id FROM community_chat_messages m WHERE m.community_id=$1 AND m.id=$3
+    AND m.deleted_at IS NULL AND ${blocked} AND ${communityChatVisibleSql('m','$4::timestamptz')}
+    AND (m.parent_id IS NULL OR EXISTS (SELECT 1 FROM community_chat_messages root WHERE root.id=m.parent_id
+      AND root.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE
+        (b.user_id=$2 AND b.blocked_id=root.sender_id) OR (b.blocked_id=$2 AND b.user_id=root.sender_id))))`,
+    [req.params.id,req.user.id,req.params.messageId,member.chat_joined_at]);
+  if (!available.rows.length) invalid('Message no longer available',404);
+  if (req.method === 'DELETE') await db.query('DELETE FROM community_chat_reactions WHERE message_id=$1 AND user_id=$2',[req.params.messageId,req.user.id]);
+  else await db.query(`INSERT INTO community_chat_reactions(message_id,user_id,emoji) VALUES($1,$2,$3)
+    ON CONFLICT(message_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji`,[req.params.messageId,req.user.id,req.body.emoji]);
+  return {success:true};
+});
+router.post('/:messageId/react', react);
+router.delete('/:messageId/react', react);
 router.post('/read', memberRoute(async (req, db) => {
   if (!sequence(req.body.sequence)) invalid('Invalid read position');
   // Mark only the snapshot the client actually loaded, never a later arrival.

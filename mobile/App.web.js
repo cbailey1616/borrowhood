@@ -81,7 +81,7 @@ function PreviewApp() {
           <Stack.Screen name="ListingDiscussion" component={ListingDiscussionScreen} initialParams={{ listingId: 'preview-drill' }} options={{ title: 'Comments' }} />
           <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Profile' }} />
           <Stack.Screen name="PrivacySafety" component={PrivacySafetyScreen} options={{ title: 'Privacy & safety' }} />
-          <Stack.Screen name="Projects" component={ProjectsScreen} options={{ title: 'Make a little happen', headerShown: false }} />
+          <Stack.Screen name="Projects" component={ProjectsScreen} initialParams={query.get('templateId') ? { templateId: query.get('templateId') } : undefined} options={{ title: 'Make a little happen', headerShown: false }} />
         <Stack.Screen name="Exchanges" component={ExchangesScreen} options={{ title: 'Your exchanges' }} />
           <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} options={{ title: 'Past exchanges' }} />
           <Stack.Screen name="Ranks" component={Ranks} options={{ title: 'Borrowhood ranks' }} />

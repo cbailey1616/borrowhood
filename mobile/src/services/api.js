@@ -1010,6 +1010,12 @@ export default {
   getConnectStatus,
   createConnectAccount,
   getConnectOnboardingLink,
+  reactToDiscussion: (listingId,postId,emoji) => post(`/listings/${listingId}/discussions/${postId}/react`,{emoji}),
+  removeDiscussionReaction: (listingId,postId) => del(`/listings/${listingId}/discussions/${postId}/react`),
+  reactToRequestDiscussion: (requestId,postId,emoji) => post(`/requests/${requestId}/discussions/${postId}/react`,{emoji}),
+  removeRequestDiscussionReaction: (requestId,postId) => del(`/requests/${requestId}/discussions/${postId}/react`),
+  reactToCommunityMessage: (id,messageId,emoji) => post(`/communities/${id}/chat/${messageId}/react`,{emoji}),
+  removeCommunityReaction: (id,messageId) => del(`/communities/${id}/chat/${messageId}/react`),
   // Discussions
   getDiscussions,
   getDiscussionReplies,

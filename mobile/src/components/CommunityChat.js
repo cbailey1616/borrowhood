@@ -1,3 +1,6 @@
+import * as Clipboard from 'expo-clipboard';
+import MessageReactionMenu from './MessageReactionMenu';
+import MessageReactions from './MessageReactions';
 import ContentSafetyActions from './ContentSafetyActions';
 import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, FlatList, ScrollView, Image, StyleSheet, ActivityIndicator, AppState } from 'react-native';
@@ -27,6 +30,8 @@ export default function CommunityChat({ community, navigation, header }) {
   const [nextBefore, setNextBefore] = useState(null);
   const [muted, setMuted] = useState(false);
   const [role, setRole] = useState(community.role);
+  const [reactionTarget, setReactionTarget] = useState(null);
+  const reacting = useRef(false);
   const [menu, setMenu] = useState(null);
   const [safetyTarget, setSafetyTarget] = useState(null);
   const alive = useRef(false);
@@ -102,12 +107,29 @@ export default function CommunityChat({ community, navigation, header }) {
     try { const result = await api.setCommunityChatMuted(id, !muted); setMuted(result.muted); }
     catch (err) { setError(err.message || 'Could not update mute setting.'); }
   };
+  const openReactions = (message,event) => {
+    if (message.deleted) return;
+    setReactionTarget({ message, position: event?.nativeEvent?.pageY ? { y: event.nativeEvent.pageY } : undefined });
+  };
+  const react = async (message,emoji) => {
+    if (reacting.current) return;
+    reacting.current = true; setReactionTarget(null);
+    const token = generation.current;
+    const removing = (message.reactions || []).some(r => r.userId === user.id && r.emoji === emoji);
+    try {
+      await (removing ? api.removeCommunityReaction(id,message.id) : api.reactToCommunityMessage(id,message.id,emoji));
+      if (!alive.current || token !== generation.current) return;
+      const update = m => !m || m.id !== message.id ? m : {...m,reactions:[...(m.reactions || []).filter(r => r.userId !== user.id),...(removing?[]:[{userId:user.id,emoji}])]};
+      setMessages(old => old.map(update));setThread(update);
+    } catch { if (alive.current && token === generation.current) setError('Couldn’t update reaction. Try again.'); }
+    finally { reacting.current = false; }
+  };
   const options = menu === 'channel' ? [
     { label: muted ? 'Unmute chat' : 'Mute chat', onPress: toggleMute },
     { label: 'Neighborhood settings', onPress: () => navigation.navigate('CommunitySettings', { id }) },
   ] : menu ? [
     ...(!menu.deleted && menu.sender.id !== user?.id ? [{ label: 'Report or block', onPress: () => setSafetyTarget(menu.id) }] : []),
-    ...(!menu.deleted ? [{ label: 'Reply', onPress: () => changeThread(menu.parentId ? thread : menu) }] : []),
+    ...(!menu.deleted ? [{ label: 'Add reaction', onPress: () => openReactions(menu) }, { label: 'Copy Text', onPress: () => Clipboard.setStringAsync(menu.content) }, { label: 'Reply in thread', onPress: () => changeThread(menu.parentId ? thread : menu) }] : []),
     ...(role === 'organizer' || menu.sender.id === user?.id ? [{ label: 'Remove message', destructive: true, onPress: () => remove(menu) }] : []),
   ] : [];
 
@@ -124,7 +146,8 @@ export default function CommunityChat({ community, navigation, header }) {
     {!!error && <HapticPressable onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
     {thread && <View style={styles.threadParent}>
       <Text style={styles.threadSender}>{thread.sender.name}</Text>
-      <Text style={styles.body}>{thread.deleted ? 'Message removed' : thread.content}</Text>
+      <HapticPressable onLongPress={event => openReactions(thread,event)}><Text style={styles.body}>{thread.deleted ? 'Message removed' : thread.content}</Text></HapticPressable>
+      {!thread.deleted && <MessageReactions reactions={thread.reactions} userId={user.id} onToggle={emoji => react(thread,emoji)} onAdd={event => openReactions(thread,event)} />}
     </View>}
     {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.spinner} /> : !messages.length ? <ScrollView
       style={styles.conversation} contentContainerStyle={styles.emptyConversation} keyboardShouldPersistTaps="handled">
@@ -144,7 +167,8 @@ export default function CommunityChat({ community, navigation, header }) {
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.messageHeader}><HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })}><Text style={styles.name}>{item.sender.name}</Text></HapticPressable>
             <Text style={styles.time}>{new Date(item.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text></View>
-          <HapticPressable onLongPress={() => setMenu(item)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
+          <HapticPressable onLongPress={event => openReactions(item,event)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
+          {!item.deleted && <MessageReactions reactions={item.reactions} userId={user.id} onToggle={emoji => react(item,emoji)} onAdd={event => openReactions(item,event)} />}
           {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
             <Ionicons name="chat-reply" size={18}/><Text style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={14}/>
           </HapticPressable>}
@@ -156,6 +180,8 @@ export default function CommunityChat({ community, navigation, header }) {
       placeholder={thread ? 'Write a reply…' : 'Message your neighbors…'} disabled={!text.trim() || loading} editable={!sending} loading={sending} /></View>
     {!!safetyTarget && <ContentSafetyActions key={safetyTarget} type="community_message" id={safetyTarget} open
       onClose={() => setSafetyTarget(null)} onBlocked={() => { setMessages([]); changeThread(null); refresh(); }} />}
+    <MessageReactionMenu visible={!!reactionTarget} position={reactionTarget?.position} onClose={() => setReactionTarget(null)}
+      onSelect={emoji => react(reactionTarget.message,emoji)} onMore={() => {setMenu(reactionTarget.message);setReactionTarget(null);}} />
     <ActionSheet variant="item" title={menu === 'channel' ? 'Chat options' : 'Message'} isVisible={!!menu} onClose={() => setMenu(null)} actions={options} />
   </ComposerKeyboardView>;
 }

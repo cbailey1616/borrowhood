@@ -19,7 +19,7 @@ it('offers recovery for a failed load',async()=>{api.getProject.mockRejectedValu
 it('counts every item on the user’s checklist',()=>{expect(projectProgress([{owned:true},{owned:false},{optional:true,owned:false}])).toEqual({covered:1,waiting:0,total:3});});
 it('saves a preview only after explicit saving and keeps its edits',async()=>{api.createProject.mockResolvedValue({id:'new'});const s=render(<ProjectsScreen route={{params:{templateId:'party'}}} navigation={navigation}/>);fireEvent.press(await s.findByLabelText('I have Folding table'));expect(api.updateProjectItem).not.toHaveBeenCalled();fireEvent.press(s.getByText('Save plan'));await waitFor(()=>expect(api.createProject).toHaveBeenCalledWith({templateId:'party',items:[{label:'Folding table',owned:true}]}));expect(navigation.replace).toHaveBeenCalledWith('Projects',{id:'new'});});
 it('removes the last checklist item and shows an empty editable list',async()=>{const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByLabelText('Edit checklist'));api.getProject.mockResolvedValue({id:'project',name:'Backyard party',items:[]});fireEvent.press(s.getByLabelText('Remove Folding table'));await waitFor(()=>expect(api.deleteProjectItem).toHaveBeenCalledWith('project','slot'));expect(await s.findByText('Add what you need for this plan.')).toBeTruthy();});
-it('prefills Ask with the selected item and keeps its draft separate',async()=>{api.getProject.mockResolvedValue({id:'project',name:'Backyard party',items:[{...item,matches:[]}]});const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByText('Ask'));expect(navigation.navigate).toHaveBeenCalledWith('CreateRequest',{initialTitle:'Folding table',projectItemId:'slot'});});
+it('prefills Ask with the selected item and keeps its draft separate',async()=>{api.getProject.mockResolvedValue({id:'project',name:'Backyard party',items:[{...item,matches:[]}]});const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByText('Ask neighbors'));expect(navigation.navigate).toHaveBeenCalledWith('CreateRequest',{initialTitle:'Folding table',projectItemId:'slot'});});
 it('lets a user create a named blank plan',async()=>{api.createProject.mockResolvedValue({id:'own'});const s=render(<ProjectsScreen route={{params:{custom:true}}} navigation={navigation}/>);fireEvent.changeText(await s.findByLabelText('Plan name'),'Build a garden bed');fireEvent.press(s.getByText('Save plan'));await waitFor(()=>expect(api.createProject).toHaveBeenCalledWith({templateId:'custom',name:'Build a garden bed',items:[]}));});
 
 it('offers swipe removal for saved plans without creating or deleting anything on open',async()=>{
@@ -111,7 +111,7 @@ it('links an existing approved borrow and shows it as ready even with no nearby 
  fireEvent.press(await s.findByText('Folding table · Ready for pickup'));
  await waitFor(()=>expect(api.linkProjectExchange).toHaveBeenCalledWith('project','slot','exchange'));
  expect(await s.findByText('Ready for pickup')).toBeTruthy();
- expect(s.queryByText('No match right now')).toBeNull();
+ expect(s.queryByText('No nearby items yet')).toBeNull();
 });
 it('promotes an unsaved custom plan after linking without a stale preview overwriting it',async()=>{
  api.getTransactions.mockResolvedValue([{id:'exchange',isBorrower:true,status:'approved',listing:{title:'Folding table'}}]);
@@ -143,12 +143,12 @@ it('starts a custom plan with a visible item input and shows borrowing controls 
  fireEvent.changeText(s.getByLabelText('Add a checklist item'),'Cooler');
  fireEvent.press(s.getByText('Add item'));
  expect(await s.findByText('Cooler')).toBeTruthy();
- expect(s.queryByText('Ask')).toBeNull();
- expect(s.queryByText('No match right now')).toBeNull();
+ expect(s.queryByText('Ask neighbors')).toBeNull();
+ expect(s.queryByText('No nearby items yet')).toBeNull();
  expect(s.queryByRole('progressbar')).toBeNull();
  api.getProject.mockResolvedValue({id:'saved',name:'Cookout',items:[{...item,label:'Cooler',matches:[]}]});
  s.rerender(<ProjectsScreen route={{params:{id:'saved'}}} navigation={navigation}/>);
- expect(await s.findByText('Ask')).toBeTruthy();
+ expect(await s.findByText('Ask neighbors')).toBeTruthy();
  expect(s.getByText('0 ready · 1 to find')).toBeTruthy();
 });
 it('saves the item being typed along with the rest of a custom checklist',async()=>{

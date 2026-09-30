@@ -1,3 +1,4 @@
+import { ensureDiscussionReactionSchema } from '../services/publicReactions.js';
 import { ensureProjectSchema } from '../services/projects.js';
 import { ensureAppleSignInSchema } from '../services/appleSignInTokens.js';
 import { ensureCommunityMembershipSchema } from '../services/communityMemberships.js';
@@ -718,6 +719,7 @@ export async function runMigrations() {
     await ensureNotificationSchema();
     await ensurePickupFollowupSchema();
     await ensureReturnRecoverySchema();
+    await ensureDiscussionReactionSchema();
     await ensureCommunityChatSchema();
     await ensureCommunityMembershipSchema();
     await ensureVerificationPurchaseSchema();

@@ -28,6 +28,7 @@ beforeAll(async()=>{
  await state.db.query("INSERT INTO communities(id,name) VALUES($1,'Maple'),($2,'Other')",[group,other]);
 },20000);
 beforeEach(async()=>{
+ await state.db.query("INSERT INTO users(id,first_name) VALUES($1,'Blair') ON CONFLICT(id) DO NOTHING",[b]);
  await state.db.exec('TRUNCATE community_chat_messages,community_memberships,user_blocks RESTART IDENTITY CASCADE');
  await state.db.exec("UPDATE communities SET community_type='town', is_active=true");
  await state.db.query("INSERT INTO community_memberships(community_id,user_id,role) VALUES($1,$2,'organizer'),($1,$3,'member'),($4,$2,'organizer')",[group,a,b,other]);
@@ -170,4 +171,23 @@ it('deleting an author cannot prevent account deletion when other members replie
  await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);
  await state.db.query('DELETE FROM users WHERE id=$1',[b]);
  expect((await request(app).get(url).set('x-user',a)).status).toBe(200);
+});
+
+it('keeps neighborhood reactions scoped to visible messages, replies and current membership',async()=>{
+ const root=(await send(a,'Root')).body.id;const reply=(await send(a,'Reply',{parentId:root})).body.id;
+ const react=(user,id,emoji='❤️')=>request(app).post(`${url}/${id}/react`).set('x-user',user).send({emoji});
+ expect((await react(b,root)).status).toBe(200);expect((await react(b,reply)).status).toBe(200);
+ expect((await react(b,reply,'👍')).status).toBe(200);
+ expect((await request(app).get(url).set('x-user',a)).body.messages[0].reactions).toEqual([{userId:b,emoji:'❤️'}]);
+ const thread=(await request(app).get(`${url}?parentId=${root}`).set('x-user',a)).body;
+ expect(thread.parent.reactions).toEqual([{userId:b,emoji:'❤️'}]);expect(thread.messages.find(m=>m.id===reply).reactions).toEqual([{userId:b,emoji:'👍'}]);
+ expect((await react(outsider,root)).status).toBe(403);
+ expect((await request(app).post(`/communities/${other}/chat/${root}/react`).set('x-user',a).send({emoji:'❤️'})).status).toBe(404);
+ expect((await request(app).delete(`${url}/${reply}/react`).set('x-user',b)).status).toBe(200);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[a,b]);
+ expect((await request(app).get(url).set('x-user',a)).body.messages[0].reactions).toEqual([]);
+ expect((await react(b,root)).status).toBe(404);
+ await state.db.exec('DELETE FROM user_blocks');await state.db.query('UPDATE community_memberships SET joined_at=NOW()+INTERVAL \'1 second\' WHERE user_id=$1',[b]);
+ expect((await react(b,reply)).status).toBe(404);
+ await state.db.query('DELETE FROM community_memberships WHERE user_id=$1',[b]);expect((await react(b,root)).status).toBe(403);
 });

@@ -38,8 +38,8 @@ import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import ShimmerImage from '../components/ShimmerImage';
 import { ThemedAlert as Alert } from '../components/ThemedAlert';
-import EmojiReactionPicker from '../components/EmojiReactionPicker';
-import ReactionIcon, { reactionOption } from '../components/ReactionIcon';
+import MessageReactionMenu from '../components/MessageReactionMenu';
+import MessageReactions from '../components/MessageReactions';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -466,6 +466,7 @@ function ChatConversation({ route, navigation }) {
 
   const getMessageActions = useCallback((message) => {
     const actions = [];
+    if (!message.isDeleted) actions.push({label: 'Add reaction', onPress: () => handleMessageLongPress(message)});
     if (safeThreads && !activeThreadId && !message.isDeleted) actions.push({ label: 'Reply in thread', icon: <Ionicons name="chat-reply" size={24}/>, onPress: () => openThread(message) });
     if (message.content && !message.isDeleted) {
       actions.push({
@@ -493,41 +494,7 @@ function ChatConversation({ route, navigation }) {
     return actions;
   }, [handleCopyMessage, handleDeleteMessage, profileId, navigation, safeThreads, activeThreadId, composer.pending, draft.ready, isUploading]);
 
-  const renderReactionPills = (item) => {
-    const reactions = item.reactions || [];
-    if (reactions.length === 0) return null;
-
-    // Group reactions by emoji
-    const grouped = {};
-    for (const r of reactions) {
-      if (!grouped[r.emoji]) grouped[r.emoji] = [];
-      grouped[r.emoji].push(r.userId);
-    }
-
-    return (
-      <View style={styles.reactionPillsRow}>
-        {Object.entries(grouped).map(([emoji, userIds]) => {
-          const isOwn = userIds.includes(user.id);
-          return (
-            <HapticPressable
-              key={emoji}
-              onPress={() => handleToggleReaction(item, emoji)}
-              accessibilityRole="button"
-              accessibilityLabel={`${reactionOption(emoji)?.label || emoji} reaction, ${userIds.length}`}
-              accessibilityState={{ selected: isOwn }}
-              haptic="light"
-              style={[styles.reactionPill, isOwn && styles.reactionPillOwn, activeThreadId && styles.threadReactionPill]}
-            >
-              <ReactionIcon emoji={emoji} size={18} />
-              {userIds.length > 1 && (
-                <Text style={[styles.reactionCount, activeThreadId && styles.threadText]}>{userIds.length}</Text>
-              )}
-            </HapticPressable>
-          );
-        })}
-      </View>
-    );
-  };
+  const renderReactionPills = item => <MessageReactions reactions={item.reactions} userId={user.id} onToggle={emoji => handleToggleReaction(item, emoji)} onAdd={item.isDeleted ? undefined : () => handleMessageLongPress(item)} />;
 
   const renderMessage = ({ item, index, isRoot = false }) => {
     const showDate = !isRoot && !activeThreadId && (index === 0 ||
@@ -605,7 +572,6 @@ function ChatConversation({ route, navigation }) {
           </Animated.View>
           <View style={[styles.compactReactions, isRoot && { marginLeft: 0 }, activeThreadId && styles.threadReactionRow]}>
             {renderReactionPills(item)}
-            {!!activeThreadId && !item.isDeleted && <HapticPressable accessibilityLabel="Add reaction" onPress={() => handleMessageLongPress(item)} style={styles.addReaction}><Ionicons name="laugh" size={21} color={COLORS.primary} illustrated={false}/><View style={styles.reactionAddMark}><Ionicons name="add" size={11} color={COLORS.text}/></View></HapticPressable>}
           </View>
           {safeThreads && !activeThreadId && item.replyCount > 0 && <HapticPressable
             accessibilityLabel={item.replyCount ? `View ${item.replyCount} replies to message` : 'Reply to message'}
@@ -741,21 +707,9 @@ function ChatConversation({ route, navigation }) {
         { label: 'Take a photo', icon: <Ionicons name="camera-outline" size={24} color={COLORS.primary} />, onPress: () => handlePickImage(true) },
         { label: 'Choose from library', icon: <Ionicons name="images-outline" size={24} color={COLORS.primary} />, onPress: () => handlePickImage(false) },
       ]} />
-      {/* Emoji Reaction Picker Overlay */}
-      {emojiPickerMessage && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEmojiPickerMessage(null)} />
-          <EmojiReactionPicker
-            onSelect={handleEmojiSelect}
-            onMore={handleEmojiMore}
-            style={[
-              styles.emojiPickerOverlay,
-              emojiPickerPos && { top: emojiPickerPos.top },
-              emojiPickerPos?.isOwnMessage ? styles.emojiPickerRight : styles.emojiPickerLeft,
-            ]}
-          />
-        </View>
-      )}
+      <MessageReactionMenu visible={!!emojiPickerMessage} onClose={() => setEmojiPickerMessage(null)}
+        position={emojiPickerPos ? { y: emojiPickerPos.top + 52 } : undefined}
+        onSelect={handleEmojiSelect} onMore={handleEmojiMore} />
 
       {/* Fullscreen Image Modal */}
       <Modal
