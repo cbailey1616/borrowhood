@@ -21,7 +21,7 @@ import { COLORS, TYPOGRAPHY } from '../src/utils/config';
 import { memberReputation } from '../src/utils/reputation';
 
 const navigation = createNavigationContainerRef();
-const tabs = ['Feed', 'Saved', 'MyItems', 'Activity', 'Profile'];
+const tabs = ['Feed', 'Ideas', 'MyItems', 'Activity', 'Profile'];
 const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: COLORS.primary, background: COLORS.background, card: COLORS.surface, text: COLORS.text, border: COLORS.border, notification: COLORS.danger } };
 const requested = Settings.get('BorrowhoodCaptureScreen') || 'home';
 const ReviewStack = createNativeStackNavigator();
@@ -71,12 +71,14 @@ function KeyboardCapture() {
 }
 function openCapture() {
   if (!navigation.isReady() || ['feedback', 'keyboard', 'keyboard-number', 'refresh-control', 'refresh-remount'].includes(requested)) return;
-  const selected = { saved: 'Saved', posts: 'MyItems', inbox: 'Activity', 'inbox-messages': 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
+  const selected = { ideas: 'Ideas', saved: 'MyItems', posts: 'MyItems', inbox: 'Activity', 'inbox-messages': 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
     giveaway: { name: 'ListingDetail', params: { id: 'demo-books' } },
     sell: { name: 'ListingDetail', params: { id: 'demo-bike' } },
     'request-detail': { name: 'RequestDetail', params: { id: 'demo-request-detail' } },
+    plan: { name: 'Projects', params: { id: 'demo-plan' } },
+    thread: { name: 'Chat', params: { conversationId: 'demo-chat', threadId: 'demo-message-1' } },
     chat: { name: 'Chat', params: { conversationId: 'demo-chat' } },
     comments: { name: 'ListingDiscussion', params: { listingId: 'demo-drill' } },
     friends: { name: 'Friends' },

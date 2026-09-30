@@ -1,4 +1,5 @@
-import { friends, comments, user, listings, requests, conversation, messages, reviewExchanges, neighborhood, neighborhoodChatSummary, neighborhoodMembers } from './fixtures';
+import { seasonalProjects, matchesProjectItem } from '../src/preview/projectIdeas';
+import { friends, comments, user, listings, requests, conversation, messages, threadReplies, reviewExchanges, neighborhood, neighborhoodChatSummary, neighborhoodMembers } from './fixtures';
 import { Settings } from 'react-native';
 const noop = async () => ({});
 let feedback = { canRate: true };
@@ -56,7 +57,7 @@ const dateFromToday = offset => {
 const requestDetail = {
   ...photoRequest,
   id: 'demo-request-detail',
-  status: 'closed',
+  status: 'open',
   isOwner: false,
   isExpired: false,
   category: 'Tools & hardware',
@@ -65,7 +66,14 @@ const requestDetail = {
   createdAt: dateFromToday(-2),
   requester: { ...listings[0].owner, endorsement: { count: 20, percent: 100, score: 95 } },
 };
+const ideas = () => seasonalProjects(new Date(), user).sort((a,b)=>b.seasonPriority-a.seasonPriority).map(project=>({...project,items:project.items.map(item=>({...item,matches:listings.filter(listing=>matchesProjectItem(listing.title,item.terms))}))}));
+const plan = () => ({ ...ideas().find(project=>project.id==='diy'), id:'demo-plan', templateId:'diy', name:'A little home refresh', items:ideas().find(project=>project.id==='diy').items.map((item,index)=>({...item,id:`demo-plan-item-${index}`,owned:index===2,
+  ...(index===0?{transactionId:reviewExchanges[0].id,transactionStatus:'picked_up',endDate:reviewExchanges[0].endDate}:{}),
+})) });
 const api = {
+  getProjectIdeas: async () => ideas(),
+  getProjects: async () => [plan()],
+  getProject: async () => plan(),
   getMe: async () => user,
   getUser: async id => id === user.id ? user : listings.find(item => item.owner.id === id)?.owner,
   getFriends: async () => friends,
@@ -131,14 +139,14 @@ const api = {
     return { notifications: visible.slice((page - 1) * limit, page * limit), unreadCount: all.filter(item => !item.isRead).length };
   },
   getConversations: async () => [fixtureConversation()],
-  getMessageCapabilities: async () => ({ idempotentMessages: false }),
-  getConversation: async () => captureScreen === 'inbox-messages' ? {
+  getMessageCapabilities: async () => ({ idempotentMessages: false, threadedMessages: true }),
+  getConversation: async (_id, params = {}) => params.threadId ? { conversation, thread: messages.find(message=>message.id===params.threadId), messages: threadReplies } : captureScreen === 'inbox-messages' ? {
     conversation: fixtureConversation(), messages: [...messages, {
       id: 'demo-unread-message', content: fixtureConversation().lastMessage,
       senderId: conversation.otherUser.id, isOwnMessage: false, isRead: conversationRead,
       reactions: [], createdAt: conversation.lastMessageAt,
     }],
-  } : { conversation, messages },
+  } : { conversation, messages: messages.map(message=>({...message,replyCount:message.id==='demo-message-1'?threadReplies.length:0})) },
   markConversationRead: async () => { conversationRead = true; return { success: true }; },
   markAllNotificationsRead: async () => { notices.forEach(item => readNoticeIds.add(item.id)); return { success: true }; },
   markNotificationRead: async (id, notificationIds) => { (notificationIds || [id]).forEach(value => readNoticeIds.add(value)); return { success: true }; },
