@@ -2,6 +2,7 @@ import React from 'react';
 import { AccessibilityInfo, Animated, FlatList, Platform, RefreshControl, StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import BorrowhoodRefreshList, {MIN_REFRESH_MS, REBOUND_MS, SPIN_MS} from '../../../src/components/BorrowhoodRefreshList';
+import BorrowhoodRefreshScrollView from '../../../src/components/BorrowhoodRefreshScrollView';
 import { COLORS } from '../../../src/utils/config';
 import {haptics} from '../../../src/utils/haptics';
 jest.mock('../../../src/utils/haptics',()=>({haptics:{light:jest.fn()}}));
@@ -192,6 +193,40 @@ it('preserves the native Android indicator and refresh gesture', () => {
   expect(screen.queryByTestId('BorrowhoodRefresh.indicator')).toBeNull();
   fireEvent(nativeControl, 'refresh');
   expect(onRefresh).toHaveBeenCalledTimes(1);
+});
+
+it('reveals the Feed hat below its pinned ribbon and above its first tile', async () => {
+  const headerHeight = 240;
+  const screen = render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={jest.fn()} indicatorTop={headerHeight} />);
+  await ready();
+  scroll(screen, -80);
+  const indicator = style(screen, 'BorrowhoodRefresh.indicator');
+  const hatTop = indicator.top + value(indicator.transform[0].translateY);
+  expect(hatTop).toBeGreaterThanOrEqual(headerHeight);
+  expect(hatTop + indicator.height).toBeLessThanOrEqual(headerHeight + 80);
+  scroll(screen, 0);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+});
+
+it('gives Ideas the same stretch, full-turn hold and haptics while retaining its keyboard scroll view', async () => {
+  const onRefresh = jest.fn();
+  const screen = render(<BorrowhoodRefreshScrollView testID="Refresh.list" refreshing={false} onRefresh={onRefresh}
+    extraScrollHeight={32} keyboardShouldPersistTaps="handled"><Text>Existing plan</Text></BorrowhoodRefreshScrollView>);
+  await ready();
+  scroll(screen, -80);
+  expect(transform(screen, 'scaleY')).toBeGreaterThan(1);
+  expect(haptics.light).toHaveBeenCalledTimes(1);
+  fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
+  expect(onRefresh).toHaveBeenCalledTimes(1);
+  expect(startAnimation).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('Refresh.list').props.extraScrollHeight).toBe(32);
+  expect(screen.getByTestId('Refresh.list').props.keyboardShouldPersistTaps).toBe('handled');
+  act(() => jest.advanceTimersByTime(MIN_REFRESH_MS - 1));
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+  act(() => jest.advanceTimersByTime(1));
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  expect(haptics.light).toHaveBeenCalledTimes(2);
+  expect(screen.getByText('Existing plan')).toBeTruthy();
 });
 
 it('allows a complete 360 degree spin after the rebound on fast responses', async () => {

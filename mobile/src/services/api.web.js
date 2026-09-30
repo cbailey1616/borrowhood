@@ -73,10 +73,14 @@ const api = {
   getBadgeCount: async () => ({ messages: 0, notifications: emptyPreview ? 0 : 1, actions: 0, total: emptyPreview ? 0 : 1 }),
   getNotifications: async () => ({ notifications: emptyPreview ? [] : [{ id: 'preview-notification', type: 'new_message', title: 'Jamie sent you a message', body: 'Saturday morning works for the drill.', createdAt: new Date().toISOString(), conversationId: conversation.id, isRead: false }], unreadCount: emptyPreview ? 0 : 1 }),
   getConversations: async () => emptyPreview ? [] : [conversation],
-  getMessageCapabilities: async () => ({ idempotentMessages: false }),
-  getConversation: async () => ({ conversation, messages: [...chat] }),
-  sendMessage: async ({ content }) => {
-    const message = { id: `preview-message-${Date.now()}`, conversationId: conversation.id, content, senderId: previewUser.id, isOwnMessage: true, createdAt: new Date().toISOString(), reactions: [] };
+  getMessageCapabilities: async () => ({ idempotentMessages: false, threadedMessages: true }),
+  getConversation: async (_id, params = {}) => {
+    const rows = chat.map(message => ({ ...message, replyCount: chat.filter(reply => reply.parentId === message.id).length }));
+    return { conversation, hasMore: false, thread: params.threadId ? rows.find(message => message.id === params.threadId) : null,
+      messages: params.threadId ? rows.filter(message => message.parentId === params.threadId) : params.threaded ? rows.filter(message => !message.parentId) : rows };
+  },
+  sendMessage: async ({ content, parentId }) => {
+    const message = { id: `preview-message-${Date.now()}`, parentId: parentId || null, conversationId: conversation.id, content, senderId: previewUser.id, isOwnMessage: true, createdAt: new Date().toISOString(), reactions: [] };
     chat = [...chat, message];
     return message;
   },

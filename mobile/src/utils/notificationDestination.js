@@ -13,7 +13,7 @@ export function notificationDestination(item = {}) {
     return { name: 'RequestQueue', params: { listingId: item.queueListingId || item.listingId } };
   }
   if (item.type === 'new_message') return item.conversationId
-    ? { name: 'Chat', params: { conversationId: item.conversationId } } : inbox('messages');
+    ? { name: 'Chat', params: { conversationId: item.conversationId, ...(item.threadId ? { threadId: item.threadId } : {}) } } : inbox('messages');
   if (['new_request', 'request_offer'].includes(item.type) && item.requestId) {
     return { name: 'RequestDetail', params: { id: item.requestId } };
   }

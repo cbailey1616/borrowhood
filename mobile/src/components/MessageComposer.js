@@ -10,7 +10,7 @@ const MessageComposer = forwardRef(function MessageComposer({
   value, onChangeText, onSend, placeholder = 'Write a message…',
   inputAccessibilityLabel = 'Message', sendAccessibilityLabel = 'Send message',
   inputTestID, sendTestID, testID, maxLength = 2000, editable = true,
-  disabled = false, loading = false, leadingAction, style, resetKey,
+  disabled = false, loading = false, leadingAction, style, resetKey, dark = false,
 }, ref) {
   const [inputHeight, setInputHeight] = useState(48);
   useEffect(() => { setInputHeight(48); }, [resetKey]);
@@ -18,11 +18,11 @@ const MessageComposer = forwardRef(function MessageComposer({
   const unavailable = disabled || loading;
 
   return (
-    <View testID={testID} style={[styles.container, style]}>
+    <View testID={testID} style={[styles.container, dark && styles.darkContainer, style]}>
       {leadingAction}
       <AppTextInput
         ref={ref}
-        style={[styles.input, { height: inputHeight }]}
+        style={[styles.input, { height: inputHeight }, dark && styles.darkInput]}
         value={value}
         onChangeText={onChangeText}
         onContentSizeChange={event => {
@@ -30,7 +30,7 @@ const MessageComposer = forwardRef(function MessageComposer({
           if (Number.isFinite(height)) setInputHeight(Math.max(48, Math.min(112, Math.ceil(height))));
         }}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textMuted}
+        placeholderTextColor={dark ? '#A8AAAD' : COLORS.textMuted}
         accessibilityLabel={inputAccessibilityLabel}
         testID={inputTestID}
         multiline
@@ -40,7 +40,7 @@ const MessageComposer = forwardRef(function MessageComposer({
         autoCorrect
         spellCheck
         showDoneAccessory={false}
-        keyboardAppearance="light"
+        keyboardAppearance={dark ? 'dark' : 'light'}
       />
       <HapticPressable
         haptic="medium"
@@ -48,12 +48,12 @@ const MessageComposer = forwardRef(function MessageComposer({
         accessibilityLabel={sendAccessibilityLabel}
         accessibilityState={{ disabled: unavailable, busy: loading }}
         testID={sendTestID}
-        style={[styles.sendButton, unavailable && styles.sendUnavailable]}
+        style={[styles.sendButton, unavailable && styles.sendUnavailable, dark && styles.darkSend]}
         disabled={unavailable}
         onPress={() => { if (!unavailable) onSend?.(); }}
       >
         {loading ? <ActivityIndicator size="small" color={COLORS.spinner} />
-          : <Ionicons name="arrow-up" size={23} color={unavailable ? COLORS.textMuted : COLORS.surface} />}
+          : <Ionicons name="arrow-up" size={23} color={dark ? unavailable ? '#A8AAAD' : '#FFFFFF' : unavailable ? COLORS.textMuted : COLORS.surface} />}
       </HapticPressable>
     </View>
   );
@@ -62,6 +62,9 @@ const MessageComposer = forwardRef(function MessageComposer({
 export default MessageComposer;
 
 const styles = StyleSheet.create({
+  darkContainer: { backgroundColor: '#34373D', borderColor: '#565A61', borderRadius: 30 },
+  darkInput: { backgroundColor: 'transparent', color: '#F1F1F2' },
+  darkSend: { backgroundColor: '#484C52' },
   container: {
     padding: 4,
     flexDirection: 'row',

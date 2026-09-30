@@ -54,3 +54,9 @@ it.each(['join_approved', 'steward_assigned'])('opens the affected neighborhood 
   expect(notificationDestination({ type, communityId: 'hood-1' })).toEqual({ name: 'MyCommunity', params: { communityId: 'hood-1' } });
   expect(notificationDestination({ type })).toEqual({ name: 'Main', params: { screen: 'Feed' } });
 });
+
+
+it('opens private reply notifications in their thread', () => {
+  expect(notificationDestination({ type: 'new_message', conversationId: 'conversation', threadId: 'root' }))
+    .toEqual({ name: 'Chat', params: { conversationId: 'conversation', threadId: 'root' } });
+});

@@ -708,6 +708,11 @@ export async function runMigrations() {
     await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_request
       ON messages (sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
 
+    // Private replies belong to one root message in the same conversation.
+    await query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES messages(id) ON DELETE CASCADE');
+    await query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL');
+    await query('CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages (conversation_id, parent_id, created_at, id)');
+
     await ensureEndorsementSchema();
     await ensureRankNotificationSchema();
     await ensureNotificationSchema();

@@ -45,9 +45,10 @@ export default function CommunityChat({ community, navigation, header }) {
     try {
       const result = await api.getCommunityChat(id, { ...(thread ? { parentId: thread.id } : {}), ...(before ? { before } : {}) });
       if (!alive.current || token !== generation.current || request !== requestNumber.current) return;
+      if (thread && result.parent) setThread(previous => previous?.id === result.parent.id ? { ...previous, ...result.parent } : previous);
       setMessages(old => {
         const merged = new Map((before ? old : []).map(m => [m.id, m]));
-        result.messages.forEach(m => merged.set(m.id, m));
+        result.messages.filter(m => !thread || m.id !== thread.id).forEach(m => merged.set(m.id, m));
         return [...merged.values()].sort((a, b) => Number(b.sequence) - Number(a.sequence));
       });
       setNextBefore(result.nextBefore); setMuted(result.muted); setRole(result.role); setError('');
@@ -121,6 +122,10 @@ export default function CommunityChat({ community, navigation, header }) {
       </HapticPressable>
     </View>
     {!!error && <HapticPressable onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
+    {thread && <View style={styles.threadParent}>
+      <Text style={styles.threadSender}>{thread.sender.name}</Text>
+      <Text style={styles.body}>{thread.deleted ? 'Message removed' : thread.content}</Text>
+    </View>}
     {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.spinner} /> : !messages.length ? <ScrollView
       style={styles.conversation} contentContainerStyle={styles.emptyConversation} keyboardShouldPersistTaps="handled">
       {!error && <View style={styles.welcome}>
@@ -141,7 +146,7 @@ export default function CommunityChat({ community, navigation, header }) {
             <Text style={styles.time}>{new Date(item.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text></View>
           <HapticPressable onLongPress={() => setMenu(item)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
           {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
-            <Text style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text>
+            <Ionicons name="chat-reply" size={18}/><Text style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={14}/>
           </HapticPressable>}
           {!item.deleted && <HapticPressable onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} /></HapticPressable>}
         </View>
@@ -151,10 +156,12 @@ export default function CommunityChat({ community, navigation, header }) {
       placeholder={thread ? 'Write a reply…' : 'Message your neighbors…'} disabled={!text.trim() || loading} editable={!sending} loading={sending} /></View>
     {!!safetyTarget && <ContentSafetyActions key={safetyTarget} type="community_message" id={safetyTarget} open
       onClose={() => setSafetyTarget(null)} onBlocked={() => { setMessages([]); changeThread(null); refresh(); }} />}
-    <ActionSheet isVisible={!!menu} onClose={() => setMenu(null)} actions={options} />
+    <ActionSheet variant="item" title={menu === 'channel' ? 'Chat options' : 'Message'} isVisible={!!menu} onClose={() => setMenu(null)} actions={options} />
   </ComposerKeyboardView>;
 }
 const styles = StyleSheet.create({
+  threadParent: { marginHorizontal: 16, marginVertical: 12, padding: 16, borderRadius: 16, backgroundColor: COLORS.surface, borderLeftWidth: 3, borderColor: COLORS.primaryLight },
+  threadSender: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', color: COLORS.primary },
   container: { flex: 1, backgroundColor: COLORS.background },
   chatHeading: { paddingHorizontal: SPACING.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heading: { ...TYPOGRAPHY.headline, color: COLORS.primary }, back: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
@@ -167,7 +174,7 @@ const styles = StyleSheet.create({
   own: { backgroundColor: COLORS.primaryMuted }, avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
   messageHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, name: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   time: { ...TYPOGRAPHY.caption1, color: COLORS.textMuted }, body: { ...TYPOGRAPHY.body, color: COLORS.text, marginTop: 5 },
-  reply: { minHeight: 36, justifyContent: 'center', alignSelf: 'flex-start' }, link: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  reply: { minHeight: 40, flexDirection: 'row', gap: 7, alignItems: 'center', alignSelf: 'flex-start' }, link: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   messageOptions: { position: 'absolute', bottom: -4, right: 0, padding: 10 },
   dock: { paddingHorizontal: SPACING.md, paddingTop: 8 }, empty: { ...TYPOGRAPHY.body, textAlign: 'center', color: COLORS.text },
   error: { padding: 12 }, errorText: { ...TYPOGRAPHY.footnote, color: COLORS.danger },
