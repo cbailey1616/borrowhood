@@ -85,7 +85,7 @@ jobs:
           "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/app-store-screenshots"
           cp screenshots/README.md "$RUNNER_TEMP/app-store-screenshots/README.md"
           cp screenshots/assets.json "$RUNNER_TEMP/app-store-screenshots/photo-sources.json"
-      - name: Save upload-ready App Store screenshots
+      - name: Save native source captures
         uses: actions/upload-artifact@v4
         with:
           name: borrowhood-app-store-screenshots

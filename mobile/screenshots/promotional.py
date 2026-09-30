@@ -13,10 +13,10 @@ slides = [
  ('01-nearby','More nearby.\nLess to buy.','Borrow, find giveaways, or buy from neighbors.',['01-home']),
  ('02-ideas','Make a little\nhappen.','Friendly ideas for projects, outings, and everyday life.',['02-ideas']),
  ('03-plans','Your idea.\nYour checklist.','Create a plan, add what you need, and find it nearby.',['03-plan']),
- ('04-exchanges','Know what\nhappens next.','Track requests, pickups, and returns in one place.',['04-exchange']),
+ ('04-exchanges','Know what\nhappens next.','Track requests, pickups, and returns in one place.',['04-exchange','06-inbox']),
  ('05-items','Your things,\nall together.','Manage items, wanted posts, requests, and saved finds.',['05-my-items']),
  ('06-messages','Keep the details\nin the thread.','Arrange the handoff with replies, photos, and reactions.',['07-thread']),
- ('07-wanted','Need something?\nAsk around.','Post a wanted request and hear from neighbors.',['08-request']),
+ ('07-wanted','Need something?\nAsk around.','Post a wanted request and hear from neighbors.',['08-request','15-comments']),
  ('08-community','A neighborhood\nthat shares.','Find your neighborhood, chat, and connect with friends.',['09-neighborhood','10-friends']),
  ('09-trust','Get to know\nyour neighbors.','Identity verification, endorsements, and community ranks.',['11-profile','12-ranks']),
  ('10-give-sell','Pass it on.\nMake room.','Give things a new home or list them for sale.',['13-giveaway','14-sale']),
@@ -82,5 +82,5 @@ for index,(slug,*_) in enumerate(slides):
     thumb=Image.open(output/'iphone-pro-max'/(slug+'.png'));thumb.thumbnail((thumbw,thumbh));board.paste(thumb,((index%5)*thumbw,(index//5)*thumbh))
 board.save(output/'Borrowhood-App-Store-Overview.jpg',quality=94)
 (output/'promotional-manifest.json').write_text(json.dumps({'nativeCaptureManifest':json.loads((source/'capture-manifest.json').read_text()),'promotionalFiles':manifest},indent=2)+'\n')
-(output/'README.txt').write_text('Ten promotional pages per device. iPhone: 1284 x 2778. iPad: 2064 x 2752. Built from current native app captures with fictional sample data. Review both device sets before upload.\n')
+(output/'README.txt').write_text('Borrowhood App Store promotional pictures\n\nTen pages per device, in upload order.\niPhone: 1284 x 2778 PNG. iPad: 2064 x 2752 PNG.\nBuilt from current native app captures with fictional sample data.\nThe two folders are separate device sets; upload the matching set for each device.\n\n' + '\n'.join(f'{slug}.png: {title.replace(chr(10), chr(32))} — {subtitle}' for slug,title,subtitle,_ in slides) + '\n\nThe overview is for review and is not an App Store screenshot.\nThe manifest records native capture sources and image hashes.\nReview both device sets before upload.\n')
 print(f'Created {len(manifest)} promotional PNGs and overview.')

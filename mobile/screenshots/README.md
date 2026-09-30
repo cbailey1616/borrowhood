@@ -20,7 +20,7 @@ screen on iPhone Pro Max and iPhone SE. These review images are separate
 from the native source set and include both on and off switch states.
 Every run first publishes the native source set for both iPhone and iPad
 as `borrowhood-app-store-screenshots`, then captures the separate UI review set
-on the two iPhones. The upload-ready set can be downloaded while reviews finish.
+on the two iPhones. The ten-page promotional set can be downloaded while UI reviews finish. The fifteen raw native screens are source material; select at most ten if uploading raw screens directly.
 The neighborhood scene shows the existing chat, shared-items, and announcement
 sections with an offline sample membership. A separate Neighbors review capture
 uses the same four fictional portraits. This setup does not start a capture or
