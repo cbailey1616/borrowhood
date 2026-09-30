@@ -93,19 +93,8 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
   );
 }
 
-// The iOS logo belongs in the native pull gap, not below the feed header.
-// progressViewOffset is retained for the native Android indicator.
-// Native bounce creates the reveal gap. Keep that gap open for one visible
-// rebound and turn on iOS; Android retains its native indicator.
-const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
-  refreshing,
-  onRefresh,
-  progressViewOffset = 0,
-  scrollY: suppliedScrollY,
-  onScroll,
-  scrollEventThrottle = 16,
-  ...props
-}, ref) {
+// Share gesture timing and feedback across lists and keyboard-aware plan pages.
+export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, nativeScroll = true }) {
   const localScrollY = useRef(new Animated.Value(0)).current;
   const scrollY = suppliedScrollY ?? localScrollY;
   const branded = Platform.OS === 'ios';
@@ -156,13 +145,29 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
   };
   const scrollHandler = useMemo(() => Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: true },
-  ), [scrollY]);
+    { useNativeDriver: nativeScroll },
+  ), [scrollY, nativeScroll]);
   const visibleRefreshing = refreshing || (branded && holding);
 
+  return { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler };
+}
+
+// Feed's pinned ribbon sits above its list. indicatorTop puts the hat in the
+// gap BELOW that ribbon; pages with a separate header use the viewport's top.
+const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
+  refreshing,
+  onRefresh,
+  progressViewOffset = 0,
+  indicatorTop = 0,
+  scrollY: suppliedScrollY,
+  onScroll,
+  scrollEventThrottle = 16,
+  ...props
+}, ref) {
+  const { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler } = useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY });
   return (
     <View style={styles.viewport}>
-      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} />}
+      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} top={indicatorTop} />}
       <Animated.FlatList
         {...props}
         ref={ref}

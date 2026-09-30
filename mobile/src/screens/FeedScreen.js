@@ -678,6 +678,7 @@ export default function FeedScreen({ navigation, route }) {
           removeClippedSubviews={false}
           refreshing={isRefreshing}
           progressViewOffset={feedHeader.height}
+          indicatorTop={feedHeader.height}
           onRefresh={onRefresh}
           scrollY={feedHeader.scrollY}
           onEndReached={onEndReached}
