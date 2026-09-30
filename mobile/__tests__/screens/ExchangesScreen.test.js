@@ -89,6 +89,8 @@ it('keeps the refresh animation busy until both status requests settle', async (
   fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
   expect(screen.getByLabelText('Refreshing')).toBeTruthy();
   await act(async () => response.resolve([]));
+  expect(screen.getByLabelText('Refreshing')).toBeTruthy();
+  await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
   expect(screen.queryByLabelText('Refreshing')).toBeNull();
 });
 

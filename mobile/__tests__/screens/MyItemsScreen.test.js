@@ -176,6 +176,7 @@ describe('MyItemsScreen', () => {
     expect(screen.getByTestId('native-photo').props.source).toBe(source);
     await act(async () => finishRefresh([{ ...listing, title: 'Updated ladder' }]));
     await screen.findByText('Updated ladder');
+    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
 
     api.getMyListings.mockResolvedValue([{ ...listing }]);
     const interact = jest.spyOn(InteractionManager, 'runAfterInteractions').mockImplementation(callback => {
