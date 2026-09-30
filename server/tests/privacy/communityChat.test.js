@@ -180,10 +180,11 @@ it('keeps neighborhood reactions scoped to visible messages, replies and current
  expect((await react(b,reply,'👍')).status).toBe(200);
  expect((await request(app).get(url).set('x-user',a)).body.messages[0].reactions).toEqual([{userId:b,emoji:'❤️'}]);
  const thread=(await request(app).get(`${url}?parentId=${root}`).set('x-user',a)).body;
- expect(thread.parent.reactions).toEqual([{userId:b,emoji:'❤️'}]);expect(thread.messages.find(m=>m.id===reply).reactions).toEqual([{userId:b,emoji:'👍'}]);
+ expect(thread.parent.reactions).toEqual([{userId:b,emoji:'❤️'}]);expect(thread.messages.find(m=>m.id===reply).reactions).toEqual(expect.arrayContaining([{userId:b,emoji:'👍'},{userId:b,emoji:'❤️'}]));
  expect((await react(outsider,root)).status).toBe(403);
  expect((await request(app).post(`/communities/${other}/chat/${root}/react`).set('x-user',a).send({emoji:'❤️'})).status).toBe(404);
- expect((await request(app).delete(`${url}/${reply}/react`).set('x-user',b)).status).toBe(200);
+ expect((await request(app).delete(`${url}/${reply}/react`).query({emoji:'👍'}).set('x-user',b)).status).toBe(200);
+ expect((await request(app).get(`${url}?parentId=${root}`).set('x-user',a)).body.messages.find(m=>m.id===reply).reactions).toEqual([{userId:b,emoji:'❤️'}]);
  await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[a,b]);
  expect((await request(app).get(url).set('x-user',a)).body.messages[0].reactions).toEqual([]);
  expect((await react(b,root)).status).toBe(404);

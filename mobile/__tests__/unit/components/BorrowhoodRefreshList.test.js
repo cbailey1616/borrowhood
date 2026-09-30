@@ -7,12 +7,15 @@ import { COLORS } from '../../../src/utils/config';
 import {haptics} from '../../../src/utils/haptics';
 jest.mock('../../../src/utils/haptics',()=>({haptics:{light:jest.fn()}}));
 
+let mockFocused = true;
+jest.mock('@react-navigation/native',()=>({useIsFocused:()=>mockFocused}));
 let removeListener;
 let motionChanged;
 let startAnimation;
 let stopAnimation;
 
 beforeEach(() => {
+  mockFocused = true;
   jest.useFakeTimers();
   jest.clearAllMocks();
   jest.replaceProperty(Platform, 'OS', 'ios');
@@ -40,9 +43,9 @@ const listProps = {
 const value = node => typeof node === 'number' ? node : node.__getValue();
 const style = (screen, id) => StyleSheet.flatten(screen.getByTestId(id, { includeHiddenElements: true }).props.style);
 const transform = (screen, name) => value(style(screen, 'BorrowhoodRefresh.logo').transform.find(entry => name in entry)[name]);
-const scroll = (screen, y) => fireEvent.scroll(screen.getByTestId('Refresh.list'), { nativeEvent: {
+const scroll = (screen, y) => { fireEvent(screen.getByTestId('Refresh.list'), 'scrollBeginDrag'); return fireEvent.scroll(screen.getByTestId('Refresh.list'), { nativeEvent: {
   contentOffset: { x: 0, y }, contentSize: { width: 390, height: 1000 }, layoutMeasurement: { width: 390, height: 700 },
-} });
+} }); };
 const ready = async () => { await act(async () => {}); };
 
 it('stretches the existing hat with the pull, caps it, and hides when released or browsing', async () => {
@@ -241,4 +244,34 @@ it('allows a complete 360 degree spin after the rebound on fast responses', asyn
   const indicator = style(screen, 'BorrowhoodRefresh.indicator');
   expect(indicator.top + value(indicator.transform[0].translateY)).toBeGreaterThanOrEqual(0);
   expect(indicator.top + value(indicator.transform[0].translateY) + indicator.height).toBeLessThanOrEqual(80);
+});
+
+it('hides a stale negative offset after release and when mounted without a pull', async () => {
+  const scrollY = new Animated.Value(-40);
+  const screen = render(<BorrowhoodRefreshList {...listProps} scrollY={scrollY} refreshing={false} onRefresh={jest.fn()} />);
+  await ready();
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  scroll(screen,-90);
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(1);
+  fireEvent(screen.getByTestId('Refresh.list'),'scrollEndDrag',{nativeEvent:{contentOffset:{x:0,y:-90},velocity:{x:0,y:0}}});
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  act(()=>scrollY.setValue(-30));
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  expect(scrollY.__getValue()).toBe(-30);
+});
+
+it('clears a partial pull when leaving Home and keeps it hidden on return', async () => {
+  const scrollY = new Animated.Value(0);
+  const props = {...listProps,scrollY,refreshing:false,onRefresh:jest.fn()};
+  const screen = render(<BorrowhoodRefreshList {...props} />);
+  await ready();
+  scroll(screen,-40);
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(1);
+  mockFocused=false; screen.rerender(<BorrowhoodRefreshList {...props} />);
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  mockFocused=true; screen.rerender(<BorrowhoodRefreshList {...props} />);
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+  expect(scrollY.__getValue()).toBe(-40);
+  scroll(screen,-80);
+  expect(value(style(screen,'BorrowhoodRefresh.indicator').opacity)).toBe(1);
 });

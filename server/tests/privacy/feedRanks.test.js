@@ -46,7 +46,7 @@ it('includes the same author summary on listings and request ribbons with one qu
   expect(response.status).toBe(200);
   expect(response.body.items.map(item => item.id)).toEqual(['visible']);
   expect(response.body.hasMore).toBe(true);
-  const expected = { completedCount: 6, score: 85, count: 2, percent: 100 };
+  const expected = { completedCount: 6, score: 80, count: 2, percent: 100 };
   expect(response.body.items[0].user.endorsement).toEqual(expected);
   expect(response.body.requests[0].user.endorsement).toEqual(expected);
   expect(response.body.requests[1].user.endorsement).toEqual({ completedCount: 0, score: null, count: 0, percent: null });
@@ -58,7 +58,7 @@ it('includes ranks in the request-only feed', async () => {
   serveRows([], [postRequest('request', author)]);
   const response = await request(app).get(`/feed?type=requests&session=${session}`);
   expect(response.status).toBe(200);
-  expect(response.body.items[0].user.endorsement).toMatchObject({ score: 85, completedCount: 6 });
+  expect(response.body.items[0].user.endorsement).toMatchObject({ score: 80, completedCount: 6 });
 });
 
 it('does not look up authors beyond the eight visible request cards', async () => {

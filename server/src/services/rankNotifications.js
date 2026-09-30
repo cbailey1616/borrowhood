@@ -35,6 +35,18 @@ export async function ensureRankNotificationSchema() {
         await client.query('INSERT INTO neighbor_rank_notifications(user_id,tier) VALUES($1,$2)', [id, rankTier(score)]);
       }
     }
+    // Rebaseline once when the earning pace changes, without announcing a
+    // downgrade caused by new rules rather than a neighbor's behavior.
+    await client.query('CREATE TABLE IF NOT EXISTS neighbor_rank_rules (id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL)');
+    await client.query('INSERT INTO neighbor_rank_rules(id,version) VALUES(1,1) ON CONFLICT DO NOTHING');
+    const { rows: [rules] } = await client.query('SELECT version FROM neighbor_rank_rules WHERE id=1 FOR UPDATE');
+    if (rules.version < 2) {
+      const { rows: members } = await client.query('SELECT id FROM users');
+      const summaries = await endorsementSummaries(members.map(member => member.id),client.query.bind(client));
+      for (const {id} of members) await client.query(`INSERT INTO neighbor_rank_notifications(user_id,tier) VALUES($1,$2)
+        ON CONFLICT(user_id) DO UPDATE SET tier=EXCLUDED.tier`,[id,rankTier(summaries.get(id).score)]);
+      await client.query('UPDATE neighbor_rank_rules SET version=2 WHERE id=1');
+    }
     const { rows: [queue] } = await client.query("SELECT to_regclass('neighbor_rank_pending') AS name");
     await client.query(`CREATE TABLE IF NOT EXISTS neighbor_rank_pending (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

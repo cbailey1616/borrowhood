@@ -536,7 +536,7 @@ describe('private message threads', () => {
     const Screen = require('../../src/screens/ChatScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { conversationId: 'conv-1', threadId: root.id } }} />);
     fireEvent.press(await screen.findByLabelText('Like reaction, 1'));
-    await waitFor(() => expect(api.removeReaction).toHaveBeenCalledWith(child.id));
+    await waitFor(() => expect(api.removeReaction).toHaveBeenCalledWith(child.id, '👍'));
     await waitFor(() => expect(screen.queryByLabelText('Like reaction, 1')).toBeNull());
   });
   it('opens the affected thread directly from a notification', async () => {

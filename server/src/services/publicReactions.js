@@ -1,3 +1,4 @@
+import { ensureMultipleReactions } from './multipleReactions.js';
 import { query } from '../utils/db.js';
 import { unblockedSql } from './contentPolicy.js';
 import { canViewListing, canViewRequest } from './listingAccess.js';
@@ -9,7 +10,8 @@ export async function ensureDiscussionReactionSchema(db = { query }) {
     discussion_id UUID NOT NULL REFERENCES listing_discussions(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     emoji TEXT NOT NULL CHECK (emoji IN ('👍','❤️','😂','😮','😢','👎')),
-    PRIMARY KEY(discussion_id, user_id))`);
+    PRIMARY KEY(discussion_id, user_id, emoji))`);
+  await ensureMultipleReactions(db, 'discussion_reactions', 'discussion_id');
 }
 // Internal identifiers only. Blocked neighbors' reactions never expose identity.
 export function publicReactionSql(table, column, alias, viewer) {
@@ -24,9 +26,9 @@ export function discussionReaction(target) {
     try {
       const allowed = target === 'listing' ? await canViewListing(targetId, req.user.id) : await canViewRequest(targetId, req.user.id);
       if (!allowed || !await getDiscussionThread(target, targetId, req.params.postId, req.user.id)) return res.status(404).json({ error: 'Comment no longer available' });
-      if (req.method === 'DELETE') await query('DELETE FROM discussion_reactions WHERE discussion_id=$1 AND user_id=$2', [req.params.postId, req.user.id]);
+      if (req.method === 'DELETE') await query('DELETE FROM discussion_reactions WHERE discussion_id=$1 AND user_id=$2 AND ($3::text IS NULL OR emoji=$3)', [req.params.postId, req.user.id, req.query.emoji || null]);
       else await query(`INSERT INTO discussion_reactions(discussion_id,user_id,emoji) VALUES($1,$2,$3)
-        ON CONFLICT(discussion_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji`, [req.params.postId, req.user.id, req.body.emoji]);
+        ON CONFLICT(discussion_id,user_id,emoji) DO NOTHING`, [req.params.postId, req.user.id, req.body.emoji]);
       res.json({ success: true });
     } catch { res.status(500).json({ error: 'Could not update reaction' }); }
   };

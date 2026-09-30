@@ -1,3 +1,4 @@
+import { ensureMultipleReactions } from './multipleReactions.js';
 import { query } from '../utils/db.js';
 
 export async function ensureCommunityChatSchema(db = { query }) {
@@ -9,7 +10,8 @@ export async function ensureCommunityChatSchema(db = { query }) {
     parent_id UUID REFERENCES community_chat_messages(id) ON DELETE SET NULL,
     client_request_id UUID NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ, UNIQUE(sender_id, client_request_id))`);
-  await db.query(`CREATE TABLE IF NOT EXISTS community_chat_reactions (message_id UUID NOT NULL REFERENCES community_chat_messages(id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, emoji TEXT NOT NULL CHECK (emoji IN ('👍','❤️','😂','😮','😢','👎')), PRIMARY KEY(message_id,user_id))`);
+  await db.query(`CREATE TABLE IF NOT EXISTS community_chat_reactions (message_id UUID NOT NULL REFERENCES community_chat_messages(id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, emoji TEXT NOT NULL CHECK (emoji IN ('👍','❤️','😂','😮','😢','👎')), PRIMARY KEY(message_id,user_id,emoji))`);
+  await ensureMultipleReactions(db, 'community_chat_reactions', 'message_id');
   await db.query('CREATE INDEX IF NOT EXISTS community_chat_timeline ON community_chat_messages(community_id, sequence DESC)');
   await db.query('CREATE INDEX IF NOT EXISTS community_chat_since_join ON community_chat_messages(community_id, created_at, sequence DESC)');
   await db.query(`ALTER TABLE community_memberships

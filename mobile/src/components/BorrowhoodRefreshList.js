@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, RefreshControl, StyleSheet, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { COLORS } from '../utils/config';
 import { haptics } from '../utils/haptics';
 
@@ -8,7 +9,7 @@ export const REBOUND_MS = 200;
 export const SPIN_MS = 1000;
 export const MIN_REFRESH_MS = 1800;
 
-export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
+export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0, visible = true }) {
   const bounce = useRef(new Animated.Value(0)).current;
   const spin = useRef(new Animated.Value(0)).current;
   const [reduceMotion, setReduceMotion] = useState(true);
@@ -65,15 +66,15 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
     <Animated.View
       testID="BorrowhoodRefresh.indicator"
       pointerEvents="none"
-      accessible={refreshing}
+      accessible={visible && refreshing}
       accessibilityRole="progressbar"
       accessibilityLabel="Refreshing"
       accessibilityState={{ busy: refreshing }}
-      accessibilityElementsHidden={!refreshing}
-      importantForAccessibility={refreshing ? 'yes' : 'no-hide-descendants'}
+      accessibilityElementsHidden={!visible || !refreshing}
+      importantForAccessibility={visible && refreshing ? 'yes' : 'no-hide-descendants'}
       style={[styles.indicator, {
         top: top - LOGO_SIZE / 2,
-        opacity: motion.opacity,
+        opacity: visible ? motion.opacity : 0,
         transform: [{ translateY: motion.position }],
       }]}
     >
@@ -98,6 +99,12 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
   const localScrollY = useRef(new Animated.Value(0)).current;
   const scrollY = suppliedScrollY ?? localScrollY;
   const branded = Platform.OS === 'ios';
+  const focused = useIsFocused();
+  const pulling = useRef(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const endPull = () => { pulling.current = false; setIsPulling(false); };
+  const beginPull = () => { if (focused) { pulling.current = true; setIsPulling(true); } };
+  useEffect(() => { if (!focused) { pulling.current = false; setIsPulling(false); armed.current = false; } }, [focused]);
   const [holding, setHolding] = useState(refreshing);
   const [cycle, setCycle] = useState(0);
   const started = useRef(refreshing ? Date.now() : null);
@@ -106,7 +113,7 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
   useEffect(() => {
     if (!branded) return;
     const listener = scrollY.addListener(({ value }) => {
-      if (value <= -72 && !armed.current && !active.current) {
+      if (pulling.current && value <= -72 && !armed.current && !active.current) {
         armed.current = true;
         haptics.light();
       }
@@ -149,7 +156,7 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
   ), [scrollY, nativeScroll]);
   const visibleRefreshing = refreshing || (branded && holding);
 
-  return { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler };
+  return { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler, beginPull, endPull, indicatorVisible: focused && (isPulling || visibleRefreshing) };
 }
 
 // Feed's pinned ribbon sits above its list. indicatorTop puts the hat in the
@@ -161,17 +168,21 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
   indicatorTop = 0,
   scrollY: suppliedScrollY,
   onScroll,
+  onScrollBeginDrag,
+  onScrollEndDrag,
   scrollEventThrottle = 16,
   ...props
 }, ref) {
-  const { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler } = useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY });
+  const { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler, beginPull, endPull, indicatorVisible } = useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY });
   return (
     <View style={styles.viewport}>
-      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} top={indicatorTop} />}
+      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} visible={indicatorVisible} top={indicatorTop} />}
       <Animated.FlatList
         {...props}
         ref={ref}
         onScroll={onScroll ?? scrollHandler}
+        onScrollBeginDrag={event => { beginPull(); onScrollBeginDrag?.(event); }}
+        onScrollEndDrag={event => { endPull(); onScrollEndDrag?.(event); }}
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={
           <RefreshControl

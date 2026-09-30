@@ -125,14 +125,16 @@ it.each(['listing','request'])('persists, changes and removes reactions on %s ro
   await call('post',`${base}/${post}/react`).send({emoji:'👍'}).expect(200);
   await call('post',`${base}/${post}/react`).send({emoji:'❤️'}).expect(200);
  }
- expect((await call('get',base)).body.posts[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
- expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
- expect((await call('get',`${base}/${reply}`)).body.post.reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
+ expect((await call('get',base)).body.posts[0].reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'👍'},{userId:viewer,emoji:'❤️'}]));
+ expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'👍'},{userId:viewer,emoji:'❤️'}]));
+ expect((await call('get',`${base}/${reply}`)).body.post.reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'👍'},{userId:viewer,emoji:'❤️'}]));
  await call('post',`${base}/${reply}/react`).send({emoji:'invalid'}).expect(400);
  await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,blocked]);
  await call('post',`${base}/${reply}/react`,blocked).send({emoji:'❤️'}).expect(404);
  await state.db.exec('DELETE FROM user_blocks');
- await call('delete',`${base}/${reply}/react`).expect(200);
+ await call('delete',`${base}/${reply}/react`).query({emoji:'👍'}).expect(200);
+ expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
+ await call('delete',`${base}/${reply}/react`).query({emoji:'❤️'}).expect(200);
  expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual([]);
  await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[viewer,owner]);
  await call('post',`${base}/${root}/react`).send({emoji:'👍'}).expect(404);

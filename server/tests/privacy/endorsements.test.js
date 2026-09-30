@@ -68,7 +68,7 @@ it('records neutral feedback without changing either side of the percentage', as
   expect(await endorsementSummary(borrower)).toEqual(before);
   expect(await endorsementState(id,borrower)).toMatchObject({submitted:true,positive:null});
 });
-it.each([[2,0,null],[3,0,84],[5,0,90],[8,0,99],[9,0,100],[3,3,75],[0,3,66],[0,5,60],[0,6,57],[0,30,0]])('scores %i positive and %i negative exchanges as %s',async(positive,negative,score)=>{
+it.each([[2,0,null],[3,0,79.5],[5,0,82.5],[8,0,87],[10,0,90],[15,0,97.5],[17,0,100],[3,3,70.5],[0,3,66],[0,5,60],[0,6,57],[0,30,0]])('scores %i positive and %i negative exchanges as %s',async(positive,negative,score)=>{
   const member=randomUUID();
   await state.db.query('INSERT INTO users(id) VALUES($1)',[member]);
   await state.db.query(`WITH exchanges AS (
@@ -88,23 +88,23 @@ async function completedHistory(count, role = 'borrower') {
   return { member, ids: rows.map(row => row.id) };
 }
 
-it.each([[0,null],[1,null],[2,null],[3,78],[4,79],[14,89],[40,89]])
+it.each([[0,null],[1,null],[2,null],[3,76.5],[4,77],[14,82],[28,89],[40,89]])
   ('unlocks after three completed exchanges and caps %i unrated exchanges at Good', async (count, score) => {
     const { member } = await completedHistory(count);
     expect(await endorsementSummary(member)).toEqual({ percent: null, count: 0, score, completedCount: count });
   });
 
-it.each(['borrower','lender'])('replaces the initial activity point with +3 or -3 for the %s', async role => {
+it.each(['borrower','lender'])('replaces the initial activity point with +1.5 or -3 for the %s', async role => {
   const { member, ids } = await completedHistory(3, role);
-  expect((await endorsementSummary(member)).score).toBe(78);
+  expect((await endorsementSummary(member)).score).toBe(76.5);
   expect(await submitEndorsement(ids[0], owner, true)).toEqual({ success: true });
-  expect((await endorsementSummary(member)).score).toBe(80);
+  expect((await endorsementSummary(member)).score).toBe(77.5);
   expect(await submitEndorsement(ids[1], owner, false)).toEqual({ success: true });
-  expect((await endorsementSummary(member)).score).toBe(76);
+  expect((await endorsementSummary(member)).score).toBe(74);
   expect(await submitEndorsement(ids[2], owner, null)).toEqual({ success: true });
-  expect((await endorsementSummary(member)).score).toBe(76);
+  expect((await endorsementSummary(member)).score).toBe(74);
   expect(await submitEndorsement(ids[1], owner, false)).toEqual({ success: true });
-  expect((await endorsementSummary(member)).score).toBe(76);
+  expect((await endorsementSummary(member)).score).toBe(74);
 });
 
 it('does not award extra points for the other participant submitting feedback', async () => {
@@ -125,20 +125,20 @@ it('counts returned and completed once, never pending, disputed, cancelled, or p
   await state.db.query("UPDATE borrow_transactions SET status='returned',payment_status='authorized' WHERE id=$1", [id]);
   expect(await endorsementSummary(member)).toMatchObject({ score: null, completedCount: 2 });
   await state.db.query('UPDATE borrow_transactions SET payment_status=NULL WHERE id=$1', [id]);
-  expect(await endorsementSummary(member)).toMatchObject({ score: 78, completedCount: 3 });
+  expect(await endorsementSummary(member)).toMatchObject({ score: 76.5, completedCount: 3 });
   await state.db.query("UPDATE borrow_transactions SET status='completed' WHERE id=$1", [id]);
-  expect(await endorsementSummary(member)).toMatchObject({ score: 78, completedCount: 3 });
+  expect(await endorsementSummary(member)).toMatchObject({ score: 76.5, completedCount: 3 });
   await submitEndorsement(ids[0], owner, true);
-  expect(await endorsementSummary(member)).toMatchObject({ score: 80, completedCount: 3 });
+  expect(await endorsementSummary(member)).toMatchObject({ score: 77.5, completedCount: 3 });
 });
 
 it('preserves accepted-cancellation feedback without awarding completion points or advancing graduation', async () => {
   const { member } = await completedHistory(3);
   const id = randomUUID();
   await state.db.query("INSERT INTO borrow_transactions(id,borrower_id,lender_id,status,accepted_at,endorsement_started_at) VALUES($1,$2,$3,'cancelled',NOW(),NOW())", [id, member, owner]);
-  expect(await endorsementSummary(member)).toMatchObject({ score: 78, completedCount: 3 });
+  expect(await endorsementSummary(member)).toMatchObject({ score: 76.5, completedCount: 3 });
   await submitEndorsement(id, owner, false);
-  expect(await endorsementSummary(member)).toMatchObject({ score: 75, completedCount: 3 });
+  expect(await endorsementSummary(member)).toMatchObject({ score: 73.5, completedCount: 3 });
 });
 
 it('never rewards an exchange with oneself or a vote from a nonparticipant', async () => {
@@ -162,8 +162,8 @@ it('batches distinct feed authors and matches their profile summaries, including
   const summaries = await endorsementSummaries([first.member, second.member, first.member, newcomer], runQuery);
   expect(runQuery).toHaveBeenCalledTimes(1);
   expect(summaries.size).toBe(3);
-  expect(summaries.get(first.member)).toEqual({ percent: 0, count: 1, score: 75, completedCount: 4 });
-  expect(summaries.get(second.member)).toEqual({ percent: 100, count: 1, score: 80, completedCount: 3 });
+  expect(summaries.get(first.member)).toEqual({ percent: 0, count: 1, score: 73.5, completedCount: 4 });
+  expect(summaries.get(second.member)).toEqual({ percent: 100, count: 1, score: 77.5, completedCount: 3 });
   expect(summaries.get(newcomer)).toEqual({ percent: null, count: 0, score: null, completedCount: 0 });
   for (const [id, summary] of summaries) expect(summary).toEqual(await endorsementSummary(id));
 });
