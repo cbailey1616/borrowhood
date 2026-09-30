@@ -48,3 +48,8 @@ CREATE TABLE message_reactions(message_id UUID,user_id UUID,emoji TEXT);
 CREATE TABLE disputes(id UUID PRIMARY KEY,transaction_id UUID,created_at TIMESTAMPTZ,photo_urls TEXT[],response_photo_urls TEXT[],evidence_urls TEXT[],claimant_user_id UUID,respondent_user_id UUID);
 CREATE TABLE bundles(id UUID PRIMARY KEY,owner_id UUID,photo_url TEXT);
 CREATE TABLE bundle_items(bundle_id UUID,listing_id UUID);
+
+CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),listing_id UUID,request_id UUID,
+ user_id UUID,parent_id UUID,is_hidden BOOLEAN NOT NULL DEFAULT false);
+CREATE INDEX launch_discussions_listing ON listing_discussions(listing_id);
+CREATE INDEX launch_discussions_request ON listing_discussions(request_id);
