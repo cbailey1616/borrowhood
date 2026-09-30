@@ -38,10 +38,10 @@ function summaryFromCounts(row) {
   const total = Number(row?.total) || 0;
   const positive = Number(row?.positive) || 0;
   const completedCount = Number(row?.completed) || 0;
-  // Each exchange contributes once: +3 positive, -3 negative, or +1 completed without a vote.
+  // Each exchange contributes once: +1.5 positive, -3 negative, or +0.5 completed without a vote.
   // Activity alone stops at Good; feedback replaces that exchange's initial activity point.
-  const activityPoints = Math.min(Number(row?.activity) || 0, 14);
-  const points = 75 + activityPoints + 3 * positive - 3 * (total - positive);
+  const activityPoints = Math.min((Number(row?.activity) || 0) * 0.5, 14);
+  const points = 75 + activityPoints + 1.5 * positive - 3 * (total - positive);
   const score = completedCount >= 3 ? Math.max(0, Math.min(100, points)) : null;
   return { percent: total ? Math.round(positive / total * 100) : null, count: total, score, completedCount };
 }

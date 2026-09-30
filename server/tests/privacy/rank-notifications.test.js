@@ -62,7 +62,7 @@ it('baselines existing members, announces graduation once, and persists only tie
   expect(rows).toHaveLength(2);
   expect(rows[1]).toMatchObject({ type: 'rank_down', from_user_id: null, transaction_id: null });
   expect(rows[1].body).toContain('Fair');
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 16; i++) {
     const id = randomUUID();
     await state.db.query("INSERT INTO borrow_transactions(id,borrower_id,lender_id,status) VALUES($1,$2,$3,'completed')", [id, borrower, owner]);
     await state.db.query('INSERT INTO exchange_endorsements(transaction_id,rater_id,ratee_id,positive) VALUES($1,$2,$3,true)', [id, owner, borrower]);
@@ -98,4 +98,15 @@ it('coalesces member changes and does no rank scan when the durable queue is emp
   state.queries=[];
   await checkRankChanges();
   expect(state.queries.some(sql=>String(sql).includes('borrow_transactions'))).toBe(false);
+});
+
+it('rebaselines changed earning rules once without sending rank-down notices',async()=>{
+ await state.db.query('UPDATE neighbor_rank_rules SET version=1 WHERE id=1');
+ await state.db.query('UPDATE neighbor_rank_notifications SET tier=4');
+ const before=(await state.db.query('SELECT COUNT(*)::int AS count FROM notifications')).rows[0].count;
+ await ensureRankNotificationSchema();
+ await checkRankChanges();
+ await ensureRankNotificationSchema();
+ expect((await state.db.query('SELECT version FROM neighbor_rank_rules WHERE id=1')).rows[0].version).toBe(2);
+ expect((await state.db.query('SELECT COUNT(*)::int AS count FROM notifications')).rows[0].count).toBe(before);
 });

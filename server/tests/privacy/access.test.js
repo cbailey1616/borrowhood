@@ -98,7 +98,7 @@ describe('direct API access fails closed before returning content', () => {
       .mockResolvedValueOnce({ rows: [{ member_id: item, completed: 6, total: 2, positive: 2, activity: 4 }] });
     const response = await request(app).get(`/requests/${requestId}`);
     expect(response.status).toBe(200);
-    expect(response.body.requester.endorsement).toEqual({ completedCount: 6, score: 85, count: 2, percent: 100 });
+    expect(response.body.requester.endorsement).toEqual({ completedCount: 6, score: 80, count: 2, percent: 100 });
   });
   it('returns a thumbnail only for offers permitted by the existing listing access policy', async () => {
     query.mockResolvedValueOnce({ rows: [{ id: requestId }] })
