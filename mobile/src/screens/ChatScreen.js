@@ -72,24 +72,37 @@ function ChatConversation({ route, navigation }) {
   const profileName = [otherUser?.firstName, otherUser?.lastName].filter(Boolean).join(' ') || 'neighbor';
   const [messagesBlocked, setMessagesBlocked] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [activeThreadId, setActiveThreadId] = useState(route.params?.threadId || null);
+  const [threadRoot, setThreadRoot] = useState(null);
+  const [threadMessages, setThreadMessages] = useState([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [threadPage, setThreadPage] = useState(1);
+  const pageRef = useRef(1);
+  const [hasEarlier, setHasEarlier] = useState(false);
+  const [safeThreads, setSafeThreads] = useState(false);
+  const scope = `${conversationId || ''}:${activeThreadId || ''}`;
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
+  const visibleMessages = safeThreads && activeThreadId ? threadMessages : messages.filter(message => !safeThreads || !message.parentId);
+
   const contextId = threadContext?.id || listingId;
   const contextTitle = passedListing?.title || (listingId && conversation?.listing?.id === listingId ? conversation.listing.title : null);
   const routeContext = threadContext || (listingId && contextTitle ? { id: listingId, type: 'listing', title: contextTitle } : null);
   const contextKey = routeContext ? JSON.stringify([profileId, routeContext.type, routeContext.id, routeContext.title, routeContext.replyText]) : null;
   const [usedContextKey, setUsedContextKey] = useState(null);
-  const activeContext = contextKey !== usedContextKey ? routeContext : null;
+  const activeContext = !activeThreadId && contextKey !== usedContextKey ? routeContext : null;
   const contextPrefix = privateMessagePrefix(activeContext);
   // A fresh visit from a post can introduce that subject again. Sending or
   // removing it consumes only this reference, never the whole conversation.
   useEffect(() => { setUsedContextKey(null); }, [threadContext, listingId, passedListing]);
   const draftTarget = recipientId || conversation?.otherUser?.id;
-  const [composer, setComposer, draft] = useFormDraft(user?.id && draftTarget ? `${user.id}.chat.${draftTarget}${contextId ? `.${threadContext?.type || 'listing'}.${contextId}` : ''}` : null, { text: '', pending: null });
+  const [composer, setComposer, draft] = useFormDraft(user?.id && draftTarget ? `${user.id}.chat.${draftTarget}${contextId ? `.${threadContext?.type || 'listing'}.${contextId}` : ''}${activeThreadId ? `.thread.${activeThreadId}` : ''}` : null, { text: '', pending: null });
   const newMessage = composer.text;
   const setNewMessage = text => setComposer(current => ({ ...current, text }));
   const [safeRetries, setSafeRetries] = useState(false);
   useEffect(() => {
     let active = true;
-    api.getMessageCapabilities().then(data => { if (active) setSafeRetries(data.idempotentMessages === true); }).catch(() => {});
+    api.getMessageCapabilities().then(data => { if (active) { setSafeRetries(data.idempotentMessages === true); setSafeThreads(data.threadedMessages === true); } }).catch(() => {});
     return () => { active = false; };
   }, []);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,19 +121,17 @@ function ChatConversation({ route, navigation }) {
   const messageRefs = useRef({});
   const knownMessageIds = useRef(new Set());
   const [showNewMessages, setShowNewMessages] = useState(false);
-  useEffect(() => { knownMessageIds.current = new Set(messages.map(message => message.id)); }, [messages]);
+  useEffect(() => { knownMessageIds.current = new Set(visibleMessages.map(message => message.id)); }, [messages, threadMessages, activeThreadId, safeThreads]);
 
   useEffect(() => {
     if (!isFocused) return;
     if (conversationId) {
+      if (activeThreadId && safeThreads) setThreadLoading(true);
       fetchMessages();
       // Poll for new messages every 5 seconds
       const interval = setInterval(() => {
         if (conversationId) {
-          api.getConversation(conversationId).then(data => {
-            if (!nearBottom.current && (data.messages || []).some(message => !knownMessageIds.current.has(message.id))) setShowNewMessages(true);
-            setMessages(prev => mergeMessages(prev, data.messages || []));
-          }).catch(() => {});
+          fetchMessages();
         }
       }, 5000);
       return () => clearInterval(interval);
@@ -142,7 +153,7 @@ function ChatConversation({ route, navigation }) {
         return () => { current = false; };
       }
     }
-  }, [conversationId, recipientId, isFocused]);
+  }, [conversationId, recipientId, isFocused, safeThreads, activeThreadId]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -165,17 +176,54 @@ function ChatConversation({ route, navigation }) {
     if (profileId) navigation.navigate('UserProfile', { id: profileId });
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (page = 1) => {
+    const requestScope = scope;
     try {
-      const data = await api.getConversation(conversationId);
+      const data = safeThreads
+        ? await api.getConversation(conversationId, { threaded: true, ...(activeThreadId ? { threadId: activeThreadId } : {}), page })
+        : await api.getConversation(conversationId);
+      if (currentScope.current !== requestScope) return;
       setConversation(data.conversation);
-      setMessages(prev => mergeMessages(prev, data.messages || []));
+      if (page === 1 && !nearBottom.current && (data.messages || []).some(message => !knownMessageIds.current.has(message.id))) setShowNewMessages(true);
+      if (safeThreads && activeThreadId) {
+        setThreadRoot(data.thread);
+        setThreadMessages(previous => mergeMessages(previous, data.messages || []));
+      } else {
+        setMessages(previous => mergeMessages(previous, data.messages || []));
+      }
+      // Refreshing the newest page must not reset pagination for older replies.
+      if (page === 1 && pageRef.current === 1 || page > 1) { setHasEarlier(data.hasMore === true); pageRef.current = page; setThreadPage(page); }
       setChatError('');
     } catch (error) {
-      setChatError('Couldn’t refresh messages. Check your connection and try again.');
+      if (currentScope.current === requestScope) setChatError('Couldn’t refresh messages. Check your connection and try again.');
     } finally {
-      setIsLoading(false);
+      if (currentScope.current === requestScope) { setIsLoading(false); setThreadLoading(false); }
     }
+  };
+
+  const openThread = message => {
+    if (sending.current || composer.pending || isUploading || !draft.ready) return;
+    setEmojiPickerMessage(null);
+    setThreadRoot(message.parentId ? threadRoot : message);
+    setThreadMessages([]);
+    pageRef.current = 1;
+    setThreadPage(1);
+    setHasEarlier(false);
+    setAttachment(null);
+    setActiveThreadId(message.parentId || message.id);
+    setShowNewMessages(false);
+    nearBottom.current = true;
+  };
+  const closeThread = () => {
+    if (sending.current || composer.pending || isUploading) return;
+    setActiveThreadId(null);
+    setThreadMessages([]);
+    pageRef.current = 1;
+    setThreadPage(1);
+    setHasEarlier(false);
+    setAttachment(null);
+    setShowNewMessages(false);
+    nearBottom.current = true;
   };
 
   const deliver = async pending => {
@@ -208,8 +256,11 @@ function ChatConversation({ route, navigation }) {
         imageUrl: result.imageUrl || pending.payload.imageUrl,
         isOwnMessage: true,
         createdAt: result.createdAt || new Date().toISOString(),
+        parentId: result.parentId || pending.payload.parentId || null,
+        replyToId: result.replyToId || pending.payload.parentId || null,
       };
-      setMessages(prev => mergeMessages(prev, [newMsg]));
+      if (newMsg.parentId) setThreadMessages(prev => mergeMessages(prev, [newMsg]));
+      else setMessages(prev => mergeMessages(prev, [newMsg]));
       if (pending.attachmentUri) setAttachment(current => current?.uri === pending.attachmentUri ? null : current);
 
       // Scroll to bottom
@@ -248,6 +299,7 @@ function ChatConversation({ route, navigation }) {
         recipientId: recipient, ...(text || contextPrefix ? { content: (contextPrefix + text).trim() } : {}),
         ...(imageUrl ? { imageUrl } : {}),
         ...(activeContext?.type === 'listing' ? { listingId: activeContext.id } : {}),
+        ...(safeThreads && activeThreadId ? { parentId: activeThreadId } : {}),
         ...(safeRetries ? { clientRequestId: Crypto.randomUUID() } : {}),
       } });
     } catch {
@@ -258,6 +310,15 @@ function ChatConversation({ route, navigation }) {
       setIsUploading(false);
     }
   };
+
+  useEffect(() => {
+    const notifiedThread = route.params?.threadId;
+    if (!notifiedThread || notifiedThread === activeThreadId) return;
+    if (sending.current || composer.pending) { setChatError('Finish your current send before opening the reply.'); return; }
+    setThreadRoot(null); setThreadMessages([]); setAttachment(null);
+    pageRef.current = 1; setThreadPage(1); setHasEarlier(false);
+    setActiveThreadId(notifiedThread);
+  }, [route.params?.threadId]);
 
   const dismissPending = () => Alert.alert('Stop tracking this send?', 'This does not unsend anything. Check the conversation first: the message may already have arrived.', [
     { text: 'Keep it here', style: 'cancel' },
@@ -298,9 +359,10 @@ function ChatConversation({ route, navigation }) {
   const handleDeleteMessage = useCallback(async (messageId) => {
     try {
       await api.deleteMessage(messageId);
-      setMessages(prev => prev.map(m =>
-        m.id === messageId ? { ...m, isDeleted: true, content: null } : m
-      ));
+      const deleted = m => m.id === messageId ? { ...m, isDeleted: true, content: null, imageUrl: null } : m;
+      setMessages(prev => prev.map(deleted));
+      setThreadMessages(prev => prev.map(deleted));
+      setThreadRoot(prev => prev ? deleted(prev) : prev);
     } catch (error) {
       console.error('Failed to delete message:', error);
       haptics.error();
@@ -335,6 +397,17 @@ function ChatConversation({ route, navigation }) {
     }
   };
 
+  const updateMessageReactions = useCallback((messageId, emoji) => {
+    const update = message => {
+      if (message.id !== messageId) return message;
+      const reactions = (message.reactions || []).filter(reaction => reaction.userId !== user.id);
+      return { ...message, reactions: emoji ? [...reactions, { userId: user.id, emoji }] : reactions };
+    };
+    setMessages(previous => previous.map(update));
+    setThreadMessages(previous => previous.map(update));
+    setThreadRoot(previous => previous ? update(previous) : previous);
+  }, [user.id]);
+
   const handleEmojiSelect = useCallback(async (emoji) => {
     const message = emojiPickerMessage;
     if (!message) return;
@@ -349,24 +422,16 @@ function ChatConversation({ route, navigation }) {
     try {
       if (existingReaction) {
         await api.removeReaction(message.id);
-        setMessages(prev => prev.map(m =>
-          m.id === message.id
-            ? { ...m, reactions: (m.reactions || []).filter(r => r.userId !== user.id) }
-            : m
-        ));
+        updateMessageReactions(message.id, null);
       } else {
         await api.reactToMessage(message.id, emoji);
-        setMessages(prev => prev.map(m => {
-          if (m.id !== message.id) return m;
-          const reactions = (m.reactions || []).filter(r => r.userId !== user.id);
-          return { ...m, reactions: [...reactions, { userId: user.id, emoji }] };
-        }));
+        updateMessageReactions(message.id, emoji);
       }
     } catch (error) {
       console.error('Failed to react:', error);
       haptics.error();
     }
-  }, [emojiPickerMessage, user.id]);
+  }, [emojiPickerMessage, user.id, updateMessageReactions]);
 
   const handleToggleReaction = useCallback(async (message, emoji) => {
     const existingReaction = (message.reactions || []).find(
@@ -376,24 +441,16 @@ function ChatConversation({ route, navigation }) {
     try {
       if (existingReaction) {
         await api.removeReaction(message.id);
-        setMessages(prev => prev.map(m =>
-          m.id === message.id
-            ? { ...m, reactions: (m.reactions || []).filter(r => r.userId !== user.id) }
-            : m
-        ));
+        updateMessageReactions(message.id, null);
       } else {
         await api.reactToMessage(message.id, emoji);
-        setMessages(prev => prev.map(m => {
-          if (m.id !== message.id) return m;
-          const reactions = (m.reactions || []).filter(r => r.userId !== user.id);
-          return { ...m, reactions: [...reactions, { userId: user.id, emoji }] };
-        }));
+        updateMessageReactions(message.id, emoji);
       }
     } catch (error) {
       console.error('Failed to toggle reaction:', error);
       haptics.error();
     }
-  }, [user.id]);
+  }, [user.id, updateMessageReactions]);
 
   const handleEmojiMore = useCallback(() => {
     const message = emojiPickerMessage;
@@ -407,6 +464,7 @@ function ChatConversation({ route, navigation }) {
 
   const getMessageActions = useCallback((message) => {
     const actions = [];
+    if (safeThreads && !activeThreadId && !message.isDeleted) actions.push({ label: 'Reply in thread', icon: <Ionicons name="chat-reply" size={24}/>, onPress: () => openThread(message) });
     if (message.content && !message.isDeleted) {
       actions.push({
         label: 'Copy Text',
@@ -431,7 +489,7 @@ function ChatConversation({ route, navigation }) {
       });
     }
     return actions;
-  }, [handleCopyMessage, handleDeleteMessage, profileId, navigation]);
+  }, [handleCopyMessage, handleDeleteMessage, profileId, navigation, safeThreads, activeThreadId, composer.pending, draft.ready, isUploading]);
 
   const renderReactionPills = (item) => {
     const reactions = item.reactions || [];
@@ -469,10 +527,10 @@ function ChatConversation({ route, navigation }) {
     );
   };
 
-  const renderMessage = ({ item, index }) => {
-    const showDate = index === 0 ||
-      formatDate(messages[index - 1].createdAt) !== formatDate(item.createdAt);
-    const next = messages[index + 1];
+  const renderMessage = ({ item, index, isRoot = false }) => {
+    const showDate = !isRoot && (index === 0 ||
+      formatDate(visibleMessages[index - 1]?.createdAt || item.createdAt) !== formatDate(item.createdAt));
+    const next = isRoot ? null : visibleMessages[index + 1];
     const continuesGroup = next && !next.isDeleted && !item.isDeleted && next.isOwnMessage === item.isOwnMessage &&
       new Date(next.createdAt) - new Date(item.createdAt) < 5 * 60000 && formatDate(next.createdAt) === formatDate(item.createdAt);
     const { text, context } = messagePresentation(item.content);
@@ -538,6 +596,16 @@ function ChatConversation({ route, navigation }) {
             )}
           </Animated.View>
           {renderReactionPills(item)}
+          {safeThreads && !activeThreadId && (!item.isDeleted || item.replyCount > 0) && <HapticPressable
+            accessibilityLabel={item.replyCount ? `View ${item.replyCount} replies to message` : 'Reply to message'}
+            disabled={isSending || isUploading || !!composer.pending || !draft.ready}
+            onPress={() => openThread(item)} style={[styles.threadLink, item.isOwnMessage && styles.ownThreadLink]}>
+            <Ionicons name="chat-reply" size={18}/>
+            <Text style={styles.threadLinkText}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text>
+            {!!item.unreadReplyCount && <View style={styles.threadUnread}><Text style={styles.threadUnreadText}>{item.unreadReplyCount} new</Text></View>}
+            <Ionicons name="chevron-forward" size={14}/>
+          </HapticPressable>}
+
         </View>
       </View>
     );
@@ -557,23 +625,37 @@ function ChatConversation({ route, navigation }) {
       style={styles.container}
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
+      {safeThreads && activeThreadId && <View style={styles.threadBar}>
+        <HapticPressable accessibilityLabel="Back to conversation" onPress={closeThread} disabled={isSending || isUploading || !!composer.pending} style={styles.threadBack}>
+          <Ionicons name="chevron-back" size={22}/><Text style={styles.threadTitle}>Replies</Text>
+        </HapticPressable>
+        {threadLoading && <ActivityIndicator color={COLORS.spinner}/>}
+      </View>}
       {/* Messages List */}
       <FlatList
         ref={flatListRef}
-        data={messages}
+        data={visibleMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messagesContent}
+        contentContainerStyle={[styles.messagesContent, safeThreads && activeThreadId && styles.threadMessagesContent]}
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={() => { setEmojiPickerMessage(null); setEmojiPickerPos(null); }}
         onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => { nearBottom.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 100; }}
         scrollEventThrottle={100}
         onContentSizeChange={() => { if (nearBottom.current) flatListRef.current?.scrollToEnd({ animated: false }); }}
+        ListHeaderComponent={<>
+          {hasEarlier && <HapticPressable accessibilityLabel="Load earlier messages" onPress={()=>{ nearBottom.current = false; fetchMessages(threadPage + 1); }} style={styles.earlier}><Text style={styles.threadLinkText}>Earlier messages</Text></HapticPressable>}
+          {safeThreads && activeThreadId && threadRoot && <View style={styles.threadParent}>
+            <Text style={styles.threadParentName}>{threadRoot.isOwnMessage ? 'Your message' : profileName}</Text>
+            {renderMessage({ item: threadRoot, index: 0, isRoot: true })}
+          </View>}
+        </>}
         ListEmptyComponent={
           <View style={styles.emptyMessages}>
             <HeroIcon icon="chatbubble-outline" size={80} />
-<Text style={styles.emptyText}>Say hello and arrange the details here.</Text>
+<Text style={styles.emptyText}>{activeThreadId ? 'Start the conversation here.' : 'Say hello and arrange the details here.'}</Text>
           </View>
         }
       />
@@ -623,12 +705,15 @@ function ChatConversation({ route, navigation }) {
           value={newMessage}
           onChangeText={setNewMessage}
           onSend={handleSend}
-          placeholder="Message…"
+          placeholder={safeThreads && activeThreadId ? 'Reply in thread…' : 'Message…'}
+          inputAccessibilityLabel={safeThreads && activeThreadId ? 'Thread reply' : 'Message'}
+          sendAccessibilityLabel={safeThreads && activeThreadId ? 'Send reply' : 'Send message'}
+          resetKey={activeThreadId}
           inputTestID="Chat.input.message"
           maxLength={2000 - contextPrefix.length}
           loading={isSending || isUploading}
           editable={!messagesBlocked}
-          disabled={(!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready || messagesBlocked}
+          disabled={(safeThreads && activeThreadId && !threadRoot) || (!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready || messagesBlocked}
           leadingAction={
             <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
               {isUploading ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
@@ -681,6 +766,7 @@ function ChatConversation({ route, navigation }) {
           setSelectedMessage(null);
         }}
         title="Message"
+        variant="item"
         actions={selectedMessage ? getMessageActions(selectedMessage) : []}
       />
     </ComposerKeyboardView>
@@ -688,6 +774,18 @@ function ChatConversation({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  threadMessagesContent: { justifyContent: 'flex-start' },
+  threadBar: { paddingHorizontal: 16, paddingVertical: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: COLORS.separator },
+  threadBack: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
+  threadTitle: { fontFamily: 'DMSans_700Bold', fontSize: 19, color: COLORS.text },
+  threadParent: { padding: 12, borderLeftWidth: 3, borderColor: COLORS.primaryLight, backgroundColor: COLORS.surface, borderRadius: 16, marginBottom: 20 },
+  threadParentName: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', color: COLORS.primary, marginBottom: 6 },
+  threadLink: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 38, alignSelf: 'flex-start', marginLeft: 42, paddingHorizontal: 4 },
+  ownThreadLink: { alignSelf: 'flex-end', marginLeft: 0, marginRight: 4 },
+  threadLinkText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', color: COLORS.primary },
+  threadUnread: { backgroundColor: COLORS.primaryMuted, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  threadUnreadText: { ...TYPOGRAPHY.caption2, color: COLORS.primaryDark },
+  earlier: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   attachmentPreview: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: COLORS.surface },
   attachmentThumbnail: { width: 72, height: 72, borderRadius: RADIUS.md },
   attachmentLabel: { flex: 1, color: COLORS.primary, fontSize: 14 },

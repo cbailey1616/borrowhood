@@ -44,11 +44,18 @@ router.get('/', memberRoute(async (req, db, member) => {
   const { before, parentId } = req.query;
   if (before && !sequence(before)) invalid('Invalid page');
   if (parentId && !uuid(parentId)) invalid('Invalid thread');
+  let parentMessage = null;
   if (parentId) {
-    const parent = await db.query(`SELECT m.id FROM community_chat_messages m WHERE m.id = $3
+    const parent = await db.query(`SELECT m.id, m.sequence::text, m.created_at,
+      CASE WHEN m.deleted_at IS NULL THEN m.content ELSE 'Message removed' END AS content,
+      (m.deleted_at IS NOT NULL) AS deleted, m.sender_id,
+      COALESCE(NULLIF(TRIM(u.display_name), ''), u.first_name) AS name, u.profile_photo_url
+      FROM community_chat_messages m JOIN users u ON u.id=m.sender_id WHERE m.id = $3
       AND m.community_id = $1 AND m.parent_id IS NULL AND m.created_at >= $4::timestamptz
       AND ${blocked}`, [req.params.id, req.user.id, parentId, member.chat_joined_at]);
     if (!parent.rows.length) invalid('This thread is unavailable', 404);
+    const row = parent.rows[0];
+    parentMessage = { id: row.id, content: row.content, createdAt: row.created_at, deleted: row.deleted, sender: { id: row.sender_id, name: row.name, photoUrl: row.profile_photo_url } };
   }
   const watermark = await db.query('SELECT COALESCE(MAX(sequence), 0)::text AS sequence FROM community_chat_messages WHERE community_id = $1', [req.params.id]);
   const rows = await db.query(`SELECT m.id, m.sequence::text, m.parent_id, m.created_at,
@@ -66,7 +73,7 @@ router.get('/', memberRoute(async (req, db, member) => {
     AND ($4::bigint IS NULL OR m.sequence < $4)
     ORDER BY m.sequence DESC LIMIT 51`, [req.params.id, req.user.id, parentId || null, before || null, watermark.rows[0].sequence, member.chat_joined_at]);
   const page = rows.rows.slice(0, 50);
-  return { messages: page.map(m => ({ id: m.id, sequence: m.sequence, content: m.content,
+  return { parent: parentMessage, messages: page.map(m => ({ id: m.id, sequence: m.sequence, content: m.content,
     parentId: m.parent_id, createdAt: m.created_at, deleted: m.deleted,
     sender: { id: m.sender_id, name: m.name, photoUrl: m.profile_photo_url }, replyCount: Number(m.reply_count) })),
     nextBefore: rows.rows.length > 50 ? page[page.length - 1].sequence : null,

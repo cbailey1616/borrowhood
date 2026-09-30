@@ -50,7 +50,7 @@ beforeAll(async () => {
       is_read BOOLEAN DEFAULT false, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), push_sent BOOLEAN DEFAULT false);
     CREATE TABLE conversations(id UUID PRIMARY KEY, user1_id UUID, user2_id UUID, listing_id UUID, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), conversation_id UUID, sender_id UUID, content TEXT,
-      image_url TEXT, deleted_at TIMESTAMPTZ, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
+      image_url TEXT, parent_id UUID, reply_to_id UUID, deleted_at TIMESTAMPTZ, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE message_reactions(message_id UUID, user_id UUID, emoji TEXT);
     CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), listing_id UUID, request_id UUID, parent_id UUID,
       user_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, reply_count INT DEFAULT 0,

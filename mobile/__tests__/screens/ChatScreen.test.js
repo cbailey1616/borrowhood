@@ -479,3 +479,71 @@ describe('ChatScreen', () => {
     expect(screen.queryByText('Sam Rivera')).toBeNull();
     expect(screen.getByTestId('Chat.input.message')).toBeTruthy();
   });
+
+
+describe('private message threads', () => {
+  const conversation = { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' } };
+  const root = { id: 'root-1', content: 'Can we arrange pickup?', isOwnMessage: false, createdAt: new Date().toISOString(), replyCount: 2 };
+  const child = { id: 'reply-1', parentId: root.id, content: 'Meet by the garage.', isOwnMessage: false, createdAt: new Date().toISOString() };
+  beforeEach(() => {
+    api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false, threadedMessages: true });
+    api.getConversation.mockImplementation(async (_id, params) => params?.threadId
+      ? { conversation, thread: root, messages: [child], hasMore: false }
+      : { conversation, messages: [root], hasMore: false });
+  });
+  it('opens replies with their original message and sends inside the thread', async () => {
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { conversationId: 'conv-1' } }} />);
+    const replies = await screen.findByLabelText('View 2 replies to message');
+    expect(screen.queryByText(child.content)).toBeNull();
+    fireEvent.press(replies);
+    await screen.findByText(child.content);
+    expect(screen.getByText(root.content)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('Thread reply'), 'See you at ten');
+    await waitFor(() => expect(screen.getByLabelText('Send reply')).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText('Send reply'));
+    await waitFor(() => expect(api.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ recipientId: 'user-2', parentId: root.id, content: 'See you at ten' })));
+    await screen.findByText('See you at ten');
+    fireEvent.press(screen.getByLabelText('Back to conversation'));
+    await screen.findByLabelText('View 2 replies to message');
+    expect(screen.queryByText(child.content)).toBeNull();
+  });
+  it('keeps conversation and thread drafts separate when switching', async () => {
+    const stored = new Map();
+    SecureStore.getItemAsync.mockImplementation(async key => stored.get(key) || null);
+    SecureStore.setItemAsync.mockImplementation(async (key, value) => stored.set(key, value));
+    SecureStore.deleteItemAsync.mockImplementation(async key => stored.delete(key));
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { conversationId: 'conv-1' } }} />);
+    await screen.findByLabelText('View 2 replies to message');
+    fireEvent.changeText(screen.getByTestId('Chat.input.message'), 'Main conversation draft');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText('View 2 replies to message'));
+    await screen.findByText(child.content);
+    await waitFor(() => expect(screen.getByLabelText('Thread reply').props.value).toBe(''));
+    fireEvent.changeText(screen.getByLabelText('Thread reply'), 'Thread draft');
+    await waitFor(() => expect(screen.getByLabelText('Send reply')).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText('Back to conversation'));
+    await waitFor(() => expect(screen.getByTestId('Chat.input.message').props.value).toBe('Main conversation draft'));
+    fireEvent.press(screen.getByLabelText('View 2 replies to message'));
+    await waitFor(() => expect(screen.getByLabelText('Thread reply').props.value).toBe('Thread draft'));
+  });
+  it('updates reactions on thread replies without waiting for a refresh', async () => {
+    api.removeReaction = jest.fn().mockResolvedValue({});
+    api.getConversation.mockImplementation(async (_id, params) => params?.threadId
+      ? { conversation, thread: root, messages: [{ ...child, reactions: [{ userId: 'user-1', emoji: '👍' }] }] }
+      : { conversation, messages: [root] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { conversationId: 'conv-1', threadId: root.id } }} />);
+    fireEvent.press(await screen.findByLabelText('Like reaction, 1'));
+    await waitFor(() => expect(api.removeReaction).toHaveBeenCalledWith(child.id));
+    await waitFor(() => expect(screen.queryByLabelText('Like reaction, 1')).toBeNull());
+  });
+  it('opens the affected thread directly from a notification', async () => {
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { conversationId: 'conv-1', threadId: root.id } }} />);
+    await screen.findByText(child.content);
+    expect(screen.getByText(root.content)).toBeTruthy();
+    expect(api.getConversation).toHaveBeenCalledWith('conv-1', expect.objectContaining({ threaded: true, threadId: root.id }));
+  });
+});
