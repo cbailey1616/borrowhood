@@ -1,5 +1,5 @@
 import ListingTypeIcon from '../components/ListingTypeIcon';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -48,6 +48,14 @@ export default function ReturnHelpScreen({route,navigation}) {
     setTransaction(null);setData({reports:[],restriction:null,page:1,hasMore:false});load();
     return()=>{generation.current++;};
   },[load]));
+  const routineReturn = !admin && !loading && !error && transaction?.isBorrower
+    && transaction.status==='return_pending' && !transaction.hasDispute
+    && !data.restriction && !data.reports.length;
+  useEffect(()=>{
+    if(!routineReturn)return;
+    if(navigation.replace)navigation.replace('TransactionDetail',{id:transactionId});
+    else navigation.navigate('TransactionDetail',{id:transactionId});
+  },[routineReturn,navigation,transactionId]);
   const begin=(kind,report=null)=>{setForm({kind,report});setPicker(false);setNote('');setError('');setSuccess('');
     if(kind==='extend')setDate(returnExtensionDates(transaction.endDate).initialDate);};
   const submit=async(action=null)=>{
@@ -134,6 +142,7 @@ export default function ReturnHelpScreen({route,navigation}) {
       :action(form.kind==='report'?'Send report':form.kind==='appeal'?'Send appeal':'Send response',()=>setDecision(form.kind),form.kind==='report',true)}
     {action('Cancel',()=>{setForm(null);setPicker(false);setError('');})}
   </LayeredCard>;
+  if(routineReturn)return null;
   return <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
     refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} enabled={!busy&&!form} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
     {transaction?.listing ? <LayeredCard radius={RADIUS.xl}>
