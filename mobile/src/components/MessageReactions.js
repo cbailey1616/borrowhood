@@ -18,8 +18,8 @@ export default function MessageReactions({ reactions = [], userId, onToggle, onA
     </HapticPressable>)}
     {!!onAdd && <HapticPressable disabled={disabled} accessibilityRole="button" accessibilityLabel="Add reaction"
       onPress={onAdd} style={styles.add}>
-      <Ionicons name="laugh" size={21} color={COLORS.primary} illustrated={false} />
-      <View style={styles.plus}><Ionicons name="add" size={11} color={COLORS.primary}/></View>
+      <Ionicons name="sparkles" size={18} color={COLORS.primary} illustrated />
+      <Text style={styles.addLabel}>React</Text>
     </HapticPressable>}
   </View>;
 }
@@ -29,6 +29,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight, backgroundColor: COLORS.surfaceElevated, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   selected: { borderColor: COLORS.primaryLight, backgroundColor: COLORS.primaryMuted },
   count: { ...TYPOGRAPHY.caption1, color: COLORS.primary },
-  add: { width: 40, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
-  plus: { position: 'absolute', right: 4, top: 2, backgroundColor: COLORS.surfaceElevated, borderRadius: 7 },
+  add: { minHeight: 36, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  addLabel: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
 });
