@@ -116,6 +116,26 @@ router.post('/:id/items/:itemId/reset', wrap(async(req,res)=> {
   if(!rows.length) return res.status(409).json({error:'Finish or cancel the exchange before finding another item.'});
   res.json({success:true});
 }));
+router.post('/:id/items/:itemId/exchange', wrap(async(req,res)=> {
+  if(!UUID.test(req.params.itemId)||!UUID.test(req.body.transactionId||''))return res.status(400).json({error:'Choose an exchange for this checklist item.'});
+  await withTransaction(async client=> {
+    const {rows:[project]}=await client.query('SELECT id FROM borrow_projects WHERE id=$1 AND user_id=$2 FOR UPDATE',[req.params.id,req.user.id]);
+    if(!project)throw Object.assign(new Error('Project not found'),{status:404});
+    const {rows:[item]}=await client.query('SELECT id,owned,transaction_id FROM borrow_project_items WHERE id=$1 AND project_id=$2 FOR UPDATE',[req.params.itemId,project.id]);
+    if(!item)throw Object.assign(new Error('Checklist item not found'),{status:404});
+    if(item.transaction_id===req.body.transactionId)return;
+    if(item.owned||item.transaction_id)throw Object.assign(new Error('This item is already covered. Refresh your plan.'),{status:409});
+    const {rows:[exchange]}=await client.query(`SELECT t.id FROM borrow_transactions t JOIN listings l ON l.id=t.listing_id
+      WHERE t.id=$1 AND t.borrower_id=$2 AND t.status IN ('pending','approved','paid','picked_up','return_pending')
+      AND COALESCE(l.listing_type,'lend')='lend' AND l.is_free=true
+      AND COALESCE(l.price_per_day,0)=0 AND COALESCE(l.deposit_amount,0)=0 FOR SHARE OF t`,[req.body.transactionId,req.user.id]);
+    if(!exchange)throw Object.assign(new Error('Active borrow not found'),{status:404});
+    const {rows:[duplicate]}=await client.query('SELECT id FROM borrow_project_items WHERE project_id=$1 AND transaction_id=$2',[project.id,exchange.id]);
+    if(duplicate)throw Object.assign(new Error('That exchange is already on this plan.'),{status:409});
+    await client.query('UPDATE borrow_project_items SET transaction_id=$2 WHERE id=$1',[item.id,exchange.id]);
+  });
+  res.json({success:true});
+}));
 router.delete('/:id/items/:itemId', wrap(async(req,res)=> {
   if(!UUID.test(req.params.itemId)) return res.status(400).json({error:'Invalid checklist item'});
   const {rows}=await query(`DELETE FROM borrow_project_items i USING borrow_projects p

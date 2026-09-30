@@ -1,11 +1,14 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
 
 const LOGO_SIZE = 44;
+export const MIN_REFRESH_MS = 1400;
 
 export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
   const bounce = useRef(new Animated.Value(0)).current;
+  const spin = useRef(new Animated.Value(0)).current;
   const [reduceMotion, setReduceMotion] = useState(true);
 
   useEffect(() => {
@@ -27,23 +30,23 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
   useEffect(() => {
     if (!refreshing || reduceMotion) {
       bounce.setValue(0);
+      spin.setValue(0);
       return;
     }
     bounce.setValue(1.8);
+    spin.setValue(0);
     const options = { useNativeDriver: true, isInteraction: false };
     const animation = Animated.sequence([
       Animated.spring(bounce, { ...options, toValue: 0, stiffness: 180, damping: 12, mass: 0.8 }),
-      Animated.loop(Animated.sequence([
-        Animated.timing(bounce, { ...options, toValue: 1, duration: 460, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(bounce, { ...options, toValue: 0, duration: 460, easing: Easing.inOut(Easing.sin) }),
-      ])),
+      Animated.loop(Animated.timing(spin, { ...options, toValue: 1, duration: 1000, easing: Easing.linear })),
     ]);
     animation.start();
     return () => {
       animation.stop();
       bounce.setValue(0);
+      spin.setValue(0);
     };
-  }, [bounce, refreshing, reduceMotion]);
+  }, [bounce, spin, refreshing, reduceMotion]);
 
   const motion = useMemo(() => ({
     opacity: scrollY.interpolate({ inputRange: [-20, 0], outputRange: [1, 0], extrapolate: 'clamp' }),
@@ -53,7 +56,8 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
     bounceX: bounce.interpolate({ inputRange: [0, 1, 1.8], outputRange: [1, 0.94, 0.84], extrapolate: 'clamp' }),
     bounceY: bounce.interpolate({ inputRange: [0, 1, 1.8], outputRange: [1, 1.12, 1.4], extrapolate: 'clamp' }),
     lift: bounce.interpolate({ inputRange: [0, 1, 1.8], outputRange: [0, -3, 0], extrapolate: 'clamp' }),
-  }), [bounce, scrollY]);
+    rotation: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
+  }), [bounce, spin, scrollY]);
 
   return (
     <Animated.View
@@ -80,14 +84,15 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
           { translateY: refreshing && !reduceMotion ? motion.lift : 0 },
           { scaleX: reduceMotion ? 1 : refreshing ? motion.bounceX : motion.scaleX },
           { scaleY: reduceMotion ? 1 : refreshing ? motion.bounceY : motion.scaleY },
+          { rotate: reduceMotion ? '0deg' : motion.rotation },
         ] }]}
       />
     </Animated.View>
   );
 }
 
-// Preserve native refresh thresholds, bounce, and completion. The logo only
-// replaces the visual on iOS; Android keeps its native swipe indicator.
+// Native bounce creates the reveal gap. Keep that gap open for one visible
+// rebound and turn on iOS; Android retains its native indicator.
 const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
   refreshing,
   onRefresh,
@@ -99,15 +104,61 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
 }, ref) {
   const localScrollY = useRef(new Animated.Value(0)).current;
   const scrollY = suppliedScrollY ?? localScrollY;
+  const branded = Platform.OS === 'ios';
+  const [holding, setHolding] = useState(refreshing);
+  const [cycle, setCycle] = useState(0);
+  const started = useRef(refreshing ? Date.now() : null);
+  const armed = useRef(false);
+  const active = useRef(refreshing);
+  useEffect(() => {
+    if (!branded) return;
+    const listener = scrollY.addListener(({ value }) => {
+      if (value <= -72 && !armed.current && !active.current) {
+        armed.current = true;
+        haptics.light();
+      }
+      if (value >= -12 && !active.current) armed.current = false;
+    });
+    return () => scrollY.removeListener(listener);
+  }, [branded, scrollY]);
+  useEffect(() => {
+    if (refreshing) {
+      active.current = true;
+      if (started.current === null) started.current = Date.now();
+      setHolding(true);
+      return;
+    }
+    if (started.current === null) return;
+    const remaining = branded ? Math.max(0, MIN_REFRESH_MS - (Date.now() - started.current)) : 0;
+    const timer = setTimeout(() => {
+      started.current = null;
+      active.current = false;
+      armed.current = false;
+      setHolding(false);
+      if (branded) haptics.light();
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [refreshing, cycle, branded]);
+  const handleRefresh = () => {
+    if (active.current) return;
+    active.current = true;
+    started.current = Date.now();
+    if (branded) {
+      if (!armed.current) haptics.light();
+      setHolding(true);
+    }
+    setCycle(c => c + 1);
+    onRefresh?.();
+  };
   const scrollHandler = useMemo(() => Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     { useNativeDriver: true },
   ), [scrollY]);
-  const branded = Platform.OS === 'ios';
+  const visibleRefreshing = refreshing || (branded && holding);
 
   return (
     <View style={styles.viewport}>
-      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={refreshing} top={progressViewOffset} />}
+      {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} top={progressViewOffset} />}
       <Animated.FlatList
         {...props}
         ref={ref}
@@ -115,8 +166,8 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
         scrollEventThrottle={scrollEventThrottle}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
+            refreshing={visibleRefreshing}
+            onRefresh={handleRefresh}
             progressViewOffset={progressViewOffset}
             tintColor={branded ? 'transparent' : COLORS.spinner}
             colors={[COLORS.spinner]}

@@ -23,6 +23,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import api from '../services/api';
+import { resolveProjectSlot } from '../utils/projectRequest';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
@@ -162,9 +163,11 @@ export default function BorrowRequestScreen({ route, navigation }) {
     setIsSubmitting(true);
     const isCurrent = startNavigationTask();
     try {
+      const slot = await resolveProjectSlot(api, route.params);
+      if (!isCurrent()) return;
       const result = await api.createTransaction({
         listingId: listing.id,
-        ...(route.params.projectItemId ? { projectItemId: route.params.projectItemId } : {}),
+        ...(slot ? { projectItemId: slot.itemId } : {}),
         salePrice: isSaleListing(listing) ? Number(listing.directFee.amount) : undefined,
         ...(isGiveaway ? {} : {
           startDate: startDate.toISOString(),

@@ -25,6 +25,14 @@ beforeEach(() => {
 
 describe('ListingDetailScreen', () => {
   const route = { params: { id: 'listing-1' } };
+  it('passes an unsaved plan to the borrow form without saving during browsing',async()=>{
+    const Screen=require('../../src/screens/ListingDetailScreen').default;
+    const projectDraft={templateId:'camp',label:'Tent',items:[{label:'Tent',owned:false}]};
+    const s=render(<Screen navigation={mockNavigation} route={{params:{id:'listing-1',projectDraft}}}/>);
+    fireEvent.press(await s.findByTestId('ListingDetail.button.borrow'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('BorrowRequest',expect.objectContaining({projectDraft}));
+    expect(api.createProject).not.toHaveBeenCalled();
+  });
 
   it('fetches listing via api.getListing(id)', async () => {
     const ListingDetailScreen = require('../../src/screens/ListingDetailScreen').default;

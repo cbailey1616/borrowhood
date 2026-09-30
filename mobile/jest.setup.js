@@ -459,7 +459,7 @@ jest.mock('./src/services/api', () => ({
     // Feed
     getProjectIdeas: jest.fn().mockResolvedValue([]),
     getProjects: jest.fn().mockResolvedValue([]),
-    getProject: jest.fn(), createProject: jest.fn(), updateProjectItem: jest.fn(),
+    getProject: jest.fn(), createProject: jest.fn(), updateProjectItem: jest.fn(), linkProjectExchange: jest.fn(),
     resetProjectItem: jest.fn(), addProjectItem: jest.fn(), deleteProjectItem: jest.fn(), deleteProject: jest.fn(),
     getFeed: jest.fn().mockResolvedValue({ items: [], hasMore: false }),
     recordFeedEvents: jest.fn().mockResolvedValue({ ok: true }),

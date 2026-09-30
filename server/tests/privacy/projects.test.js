@@ -124,3 +124,24 @@ it('renames checklist items with private ownership, valid names and updated matc
  expect((await request(app).patch(url).send({label:'Tent'})).status).toBe(409);
  expect((await state.db.query('SELECT status FROM borrow_transactions WHERE id=$1',[t.id])).rows[0].status).toBe('pending');
 });
+it('links the borrower’s existing approved exchange even when its inventory is reserved',async()=>{
+ const p=await create(),item=p.items[0],url=`/projects/${p.id}/items/${item.id}/exchange`;
+ const {rows:[listing]}=await state.db.query("INSERT INTO listings(owner_id,title,is_available) VALUES($1,'Folding table',false) RETURNING id",[owner]);
+ const {rows:[exchange]}=await state.db.query("INSERT INTO borrow_transactions(listing_id,borrower_id,status) VALUES($1,$2,'approved') RETURNING id",[listing.id,me]);
+ state.user=owner;expect((await request(app).post(url).send({transactionId:exchange.id})).status).toBe(404);
+ state.user=me;expect((await request(app).post(url).send({transactionId:exchange.id})).status).toBe(200);
+ expect((await request(app).post(url).send({transactionId:exchange.id})).status).toBe(200);
+ const after=(await request(app).get(`/projects/${p.id}`)).body.items.find(i=>i.id===item.id);
+ expect(after).toMatchObject({transactionId:exchange.id,transactionStatus:'approved',nearbyCount:0,matches:[]});
+ expect((await request(app).post(`/projects/${p.id}/items/${p.items[1].id}/exchange`).send({transactionId:exchange.id})).status).toBe(409);
+});
+it('rejects someone else’s exchanges and settled exchanges without changing the checklist',async()=>{
+ const p=await create(),url=`/projects/${p.id}/items/${p.items[0].id}/exchange`;
+ const {rows:[listing]}=await state.db.query("INSERT INTO listings(owner_id,title) VALUES($1,'Folding table') RETURNING id",[owner]);
+ const {rows:[foreign]}=await state.db.query("INSERT INTO borrow_transactions(listing_id,borrower_id,status) VALUES($1,$2,'approved') RETURNING id",[listing.id,owner]);
+ expect((await request(app).post(url).send({transactionId:foreign.id})).status).toBe(404);
+ const {rows:[settled]}=await state.db.query("INSERT INTO borrow_transactions(listing_id,borrower_id,status) VALUES($1,$2,'returned') RETURNING id",[listing.id,me]);
+ expect((await request(app).post(url).send({transactionId:settled.id})).status).toBe(404);
+ expect((await request(app).post(url).send({transactionId:'bad'})).status).toBe(400);
+ expect((await request(app).get(`/projects/${p.id}`)).body.items[0].transactionId).toBeNull();
+});

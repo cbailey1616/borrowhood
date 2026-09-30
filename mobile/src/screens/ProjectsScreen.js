@@ -19,10 +19,12 @@ import ActionSheet from '../components/ActionSheet';
 import ShimmerImage from '../components/ShimmerImage';
 import { formatCalendarDate } from '../utils/calendarDate';
 import { projectProgress, projectItemState } from '../utils/projectProgress';
+import { resolveProjectSlot } from '../utils/projectRequest';
 import { COLORS, TYPOGRAPHY } from '../utils/config';
 
 export default function ProjectsScreen({route,navigation,embedded=false}) {
-  const id=route.params?.id;
+  const [promotedId,setPromotedId]=useState(null);
+  const id=route.params?.id || promotedId;
   const templateId=route.params?.templateId;
   const newCustom=!!route.params?.custom;
   const isPlan=!!(id||templateId||newCustom);
@@ -42,13 +44,19 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   const load=useCallback(async()=> {
     const current=++generation.current;
     try {
-      let result=id?await api.getProject(id):newCustom?{name:'Create your own plan',templateId:'custom',items:[]}:await Promise.all([api.getProjectIdeas(),api.getProjects()]);
+      let result=id?await api.getProject(id):newCustom?{name:'Create your own plan',templateId:'custom',preview:true,items:[]}:await Promise.all([api.getProjectIdeas(),api.getProjects()]);
       if(templateId&&!id) {
-        const idea=result[0].find(p=>p.id===templateId);
-        if(!idea)throw new Error('Idea not found');
-        result={...idea,templateId,items:idea.items.map((item,index)=>({...item,id:`preview-${templateId}-${index}`,owned:false}))};
+        const saved=result[1].find(p=>p.templateId===templateId);
+        if(saved) {
+          result=await api.getProject(saved.id);
+          if(current===generation.current)setPromotedId(saved.id);
+        } else {
+          const idea=result[0].find(p=>p.id===templateId);
+          if(!idea)throw new Error('Idea not found');
+          result={...idea,templateId,preview:true,items:idea.items.map((item,index)=>({...item,id:`preview-${templateId}-${index}`,owned:false}))};
+        }
       }
-      if(current===generation.current){setData(previous=>!id&&(templateId||newCustom)&&previous?.templateId===result.templateId?previous:result);setError(false);}
+      if(current===generation.current){setData(previous=>!id&&result.preview&&previous?.templateId===result.templateId?previous:result);setError(false);}
     } catch {if(current===generation.current)setError(true);}
     finally {if(current===generation.current)setRefreshing(false);}
   },[id,templateId,newCustom,user?.id]);
@@ -63,6 +71,27 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   const setOwned=(item,owned)=>id?mutate(()=>api.updateProjectItem(id,item.id,{owned})):setData(p=>({...p,items:p.items.map(i=>i.id===item.id?{...i,owned}:i)}));
   const removeItem=item=>id?mutate(()=>api.deleteProjectItem(id,item.id)):setData(p=>({...p,items:p.items.filter(i=>i.id!==item.id)}));
   const requestRemoveItem=item=>item.transactionId?setSheet({type:'removeItem',item}):removeItem(item);
+  const planContext=item=>id?{projectId:id,projectItemId:item.id}:{projectDraft:{templateId:newCustom?'custom':templateId,...(newCustom?{name:planName.trim()}:{}),items:data.items.map(({label,owned})=>({label,owned:!!owned})),label:item.label}};
+  const openExchanges=async item=>{
+    if(mutating.current)return;
+    mutating.current=true;setBusy(true);
+    const current=generation.current;
+    try {
+      const exchanges=(await api.getTransactions({role:'borrower'})).filter(t=>t.isBorrower&&(!t.listingType||t.listingType==='lend')&&['pending','approved','paid','picked_up','return_pending'].includes(t.status)&&!Number(t.rentalFee)&&!Number(t.depositAmount));
+      if(current===generation.current)setSheet({type:'exchanges',item,exchanges});
+    } catch(e){showError({message:e.message||'Couldn’t load your exchanges. Try again.'});}
+    finally {mutating.current=false;setBusy(false);}
+  };
+  const linkExchange=async(item,exchange)=>{
+    const isCurrent=startNavigationTask();
+    let linkedProjectId;
+    await mutate(async()=>{
+      const slot=await resolveProjectSlot(api,planContext(item));
+      await api.linkProjectExchange(slot.projectId,slot.itemId,exchange.id);
+      linkedProjectId=slot.projectId;
+    });
+    if(!id&&linkedProjectId&&isCurrent())setPromotedId(linkedProjectId);
+  };
   const editItem=item=>{setEditedItem(item.id);setEditedLabel(item.label);};
   const saveItem=()=>{
     const label=editedLabel.trim();
@@ -194,8 +223,8 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
         </>}
       </View>
     </KeyboardAwareScrollView>
-    <ActionSheet isVisible={!!sheet} onClose={()=>setSheet(null)} title={['matches','item'].includes(sheet?.type)?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='item'&&sheet.item.transactionId?'Removing this item keeps its request or exchange active in Your exchanges.':sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
-      actions={sheet?.type==='item'?[...(sheet.item.transactionId?[{label:'View exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:sheet.item.transactionId})}]:[{label:'Edit item',icon:<Icon name="pencil" size={24}/>,onPress:()=>editItem(sheet.item)}]),{label:'Remove item',destructive:true,icon:<Icon name="trash" size={24}/>,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...(id?{projectItemId:sheet.item.id}:{})})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
+    <ActionSheet key={sheet?.type||'closed'} isVisible={!!sheet} onClose={()=>setSheet(null)} title={['matches','item','exchanges'].includes(sheet?.type)?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='exchanges'?sheet.exchanges.length?'Choose the borrow for this checklist item.':'No active borrows yet.':sheet?.type==='item'&&sheet.item.transactionId?'Removing this item keeps its request or exchange active in Your exchanges.':sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
+      actions={sheet?.type==='item'?[...(sheet.item.transactionId?[{label:'View exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:sheet.item.transactionId})}]:[{label:'Edit item',icon:<Icon name="pencil" size={24}/>,onPress:()=>editItem(sheet.item)},...(!sheet.item.owned?[{label:'Use an existing exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>openExchanges(sheet.item)}]:[])]),{label:'Remove item',destructive:true,icon:<Icon name="trash" size={24}/>,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='exchanges'?sheet.exchanges.map(exchange=>({label:`${exchange.listing.title} · ${projectItemState({transactionId:exchange.id,transactionStatus:exchange.status}).label}`,icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>linkExchange(sheet.item,exchange)})):sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...planContext(sheet.item)})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
   </>;
 }
 const styles=StyleSheet.create({

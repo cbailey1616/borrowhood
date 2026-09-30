@@ -77,6 +77,35 @@ describe('BorrowRequestScreen', () => {
     fireEvent.press(await screen.findByText('Send Request'));
     await waitFor(()=>expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({projectItemId:'slot'})));
   });
+  it('saves an unsaved plan when sending and links the resulting real checklist slot', async () => {
+    api.createProject.mockResolvedValue({id:'saved-plan'});
+    api.getProject.mockResolvedValue({id:'saved-plan',items:[{id:'real-slot',label:'Tent',owned:false}]});
+    const projectDraft={templateId:'camp',label:'Tent',items:[{label:'Tent',owned:false}]};
+    const Screen=require('../../src/screens/BorrowRequestScreen').default;
+    const s=render(<Screen navigation={mockNavigation} route={{params:{listing,projectDraft}}}/>);
+    await s.findByText('Send Request');
+    expect(api.createProject).not.toHaveBeenCalled();
+    fireEvent.press(s.getByText('Send Request'));
+    await waitFor(()=>expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({projectItemId:'real-slot'})));
+    expect(api.createProject).toHaveBeenCalledWith({templateId:'camp',items:[{label:'Tent',owned:false}]});
+  });
+  it('does not send an unlinked request if saving the plan fails', async () => {
+    api.createProject.mockRejectedValueOnce(new Error('Could not save plan'));
+    const Screen=require('../../src/screens/BorrowRequestScreen').default;
+    const s=render(<Screen navigation={mockNavigation} route={{params:{listing,projectDraft:{templateId:'camp',label:'Tent',items:[{label:'Tent',owned:false}]}}}}/>);
+    fireEvent.press(await s.findByText('Send Request'));
+    await waitFor(()=>expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({message:'Could not save plan'})));
+    expect(api.createTransaction).not.toHaveBeenCalled();
+  });
+  it('does not send another request for a preview item already linked on the saved plan',async()=>{
+    api.createProject.mockResolvedValue({id:'existing'});
+    api.getProject.mockResolvedValue({id:'existing',items:[{id:'slot',label:'Tent',transactionId:'approved-exchange'}]});
+    const Screen=require('../../src/screens/BorrowRequestScreen').default;
+    const s=render(<Screen navigation={mockNavigation} route={{params:{listing,projectDraft:{templateId:'camp',label:'Tent',items:[{label:'Tent',owned:false}]}}}}/>);
+    fireEvent.press(await s.findByText('Send Request'));
+    await waitFor(()=>expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({message:'This item is already covered. Reopen your plan to see its status.'})));
+    expect(api.createTransaction).not.toHaveBeenCalled();
+  });
 
   it('send request calls api.createTransaction', async () => {
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;

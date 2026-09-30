@@ -604,7 +604,8 @@ it.each(['success', 'failure'])('keeps native refresh in control through a delay
   await act(async () => outcome === 'success'
     ? finish({ items: [{ id: 'two', type: 'listing', title: 'New item', user: { firstName: 'Sam' } }], hasMore: false })
     : fail(new Error('offline')));
-  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+  await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
   expect(screen.queryByLabelText('Refreshing')).toBeNull();
   expect(screen.getByText(outcome === 'success' ? 'New item' : 'One item')).toBeTruthy();
   expect(scroll).not.toHaveBeenCalled();

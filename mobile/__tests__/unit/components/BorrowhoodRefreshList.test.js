@@ -1,8 +1,10 @@
 import React from 'react';
 import { AccessibilityInfo, Animated, FlatList, Platform, RefreshControl, StyleSheet, Text } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import BorrowhoodRefreshList from '../../../src/components/BorrowhoodRefreshList';
+import BorrowhoodRefreshList, {MIN_REFRESH_MS} from '../../../src/components/BorrowhoodRefreshList';
 import { COLORS } from '../../../src/utils/config';
+import {haptics} from '../../../src/utils/haptics';
+jest.mock('../../../src/utils/haptics',()=>({haptics:{light:jest.fn()}}));
 
 let removeListener;
 let motionChanged;
@@ -10,6 +12,8 @@ let startAnimation;
 let stopAnimation;
 
 beforeEach(() => {
+  jest.useFakeTimers();
+  jest.clearAllMocks();
   jest.replaceProperty(Platform, 'OS', 'ios');
   removeListener = jest.fn();
   startAnimation = jest.fn();
@@ -24,7 +28,7 @@ beforeEach(() => {
   jest.spyOn(Animated, 'event').mockImplementation((mapping, config) => event(mapping, { ...config, useNativeDriver: false }));
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {jest.restoreAllMocks();jest.useRealTimers();});
 
 const listProps = {
   testID: 'Refresh.list',
@@ -60,7 +64,7 @@ it('stretches the existing hat with the pull, caps it, and hides when released o
   expect(startAnimation).not.toHaveBeenCalled();
 });
 
-it('lets the native control trigger and finish refreshing without a timer or scroll reset', async () => {
+it('keeps a fast native refresh visible for the rebound and spin without resetting scroll', async () => {
   const onRefresh = jest.fn();
   const scrollToOffset = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
   const props = { ...listProps, onRefresh, progressViewOffset: 210 };
@@ -80,11 +84,37 @@ it('lets the native control trigger and finish refreshing without a timer or scr
   expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
   scroll(screen, 0);
   screen.rerender(<BorrowhoodRefreshList {...props} refreshing={false} />);
+  expect(nativeControl().props.refreshing).toBe(true);
+  act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS-1));
+  expect(nativeControl().props.refreshing).toBe(true);
+  act(()=>jest.advanceTimersByTime(1));
   expect(nativeControl().props.refreshing).toBe(false);
   expect(screen.queryByLabelText('Refreshing')).toBeNull();
   expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
   expect(stopAnimation).toHaveBeenCalledTimes(1);
   expect(scrollToOffset).not.toHaveBeenCalled();
+  expect(haptics.light).toHaveBeenCalledTimes(2);
+});
+it('gives one threshold haptic per pull and avoids a second trigger tap',async()=>{
+ const onRefresh=jest.fn();
+ const screen=render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={onRefresh}/>);
+ await ready();
+ scroll(screen,-80);scroll(screen,-100);scroll(screen,-90);
+ expect(haptics.light).toHaveBeenCalledTimes(1);
+ fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
+ expect(haptics.light).toHaveBeenCalledTimes(1);
+ fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
+ expect(onRefresh).toHaveBeenCalledTimes(1);
+ act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS));
+ expect(haptics.light).toHaveBeenCalledTimes(2);
+});
+it('does not give a completion haptic after leaving the page',async()=>{
+ const screen=render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={jest.fn()}/>);
+ await ready();
+ fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
+ screen.unmount();
+ act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS));
+ expect(haptics.light).toHaveBeenCalledTimes(1);
 });
 
 it('keeps the hat behind the feed and hides it as the content snaps back while still refreshing', async () => {

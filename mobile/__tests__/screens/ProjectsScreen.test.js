@@ -1,6 +1,6 @@
 import React from 'react';
 import {BottomTabBarHeightContext} from '@react-navigation/bottom-tabs';
-import {render,fireEvent,waitFor} from '@testing-library/react-native';
+import {render,fireEvent,waitFor,act} from '@testing-library/react-native';
 import api from '../../src/services/api';
 import ProjectsScreen from '../../src/screens/ProjectsScreen';
 import {projectItemState,projectProgress} from '../../src/utils/projectProgress';
@@ -11,7 +11,7 @@ const navigation={navigate:jest.fn(),push:jest.fn(),replace:jest.fn(),goBack:jes
 const item={id:'slot',label:'Folding table',icon:'basket',owned:false,matches:[{id:'table',title:'Folding table nearby'}]};
 beforeEach(()=>{jest.clearAllMocks();api.getProjectIdeas.mockResolvedValue([{id:'party',name:'Backyard party',description:'Tables and chairs',icon:'project-party',items:[item]}]);api.getProjects.mockResolvedValue([]);api.getProject.mockResolvedValue({id:'project',name:'Backyard party',items:[item]});});
 it('opens an idea as a preview without saving it',async()=>{const s=render(<ProjectsScreen route={{}} navigation={navigation}/>);await s.findByText('Backyard party');fireEvent.press(s.getByLabelText('View Backyard party'));expect(navigation.push).toHaveBeenCalledWith('Projects',{templateId:'party'});expect(api.createProject).not.toHaveBeenCalled();});
-it('opens a real listing with its project slot without sending a request',async()=>{const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);expect(await s.findByText('1 nearby')).toBeTruthy();fireEvent.press(await s.findByLabelText('Find Folding table'));fireEvent.press(await s.findByText('Folding table nearby'));await waitFor(()=>expect(navigation.navigate).toHaveBeenCalledWith('ListingDetail',{id:'table',projectItemId:'slot'}));expect(api.createTransaction).not.toHaveBeenCalled();});
+it('opens a real listing with its project slot without sending a request',async()=>{const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);expect(await s.findByText('1 nearby')).toBeTruthy();fireEvent.press(await s.findByLabelText('Find Folding table'));fireEvent.press(await s.findByText('Folding table nearby'));await waitFor(()=>expect(navigation.navigate).toHaveBeenCalledWith('ListingDetail',{id:'table',projectId:'project',projectItemId:'slot'}));expect(api.createTransaction).not.toHaveBeenCalled();});
 it('marks an owned item and refreshes its server state',async()=>{const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByLabelText('I have Folding table'));await waitFor(()=>expect(api.updateProjectItem).toHaveBeenCalledWith('project','slot',{owned:true}));});
 it('does not count pending, cancelled or returned requests as ready',()=>{const rows=['pending','approved','picked_up','cancelled','returned'].map(transactionStatus=>({transactionId:'t',transactionStatus}));expect(projectProgress(rows)).toEqual({covered:2,waiting:1,total:5});expect(projectItemState(rows[4]).label).toBe('Returned');});
 it('offers recovery for a failed load',async()=>{api.getProject.mockRejectedValueOnce(new Error('offline'));const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);fireEvent.press(await s.findByText('Try again'));expect(await s.findByText('Folding table')).toBeTruthy();});
@@ -77,4 +77,60 @@ it('keeps linked exchanges intact and prevents relabeling their checklist slots'
  fireEvent.press(s.getByText('Remove item'));
  await waitFor(()=>expect(api.deleteProjectItem).toHaveBeenCalledWith('project','slot'));
  expect(api.updateProjectItem).not.toHaveBeenCalled();
+});
+it('carries an unsaved checklist into listing browsing without saving it',async()=>{
+ const s=render(<ProjectsScreen route={{params:{templateId:'party'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('Find Folding table'));
+ fireEvent.press(await s.findByText('Folding table nearby'));
+ await waitFor(()=>expect(navigation.navigate).toHaveBeenCalledWith('ListingDetail',{id:'table',projectDraft:{templateId:'party',label:'Folding table',items:[{label:'Folding table',owned:false}]}}));
+ expect(api.createProject).not.toHaveBeenCalled();
+});
+it('keeps unsaved checklist edits when returning from browsing',async()=>{
+ const s=render(<ProjectsScreen route={{params:{templateId:'party'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('I have Folding table'));
+ await act(async()=>{await navigation.addListener.mock.calls.find(([name])=>name==='focus')[1]();});
+ expect(await s.findByText('Already have it')).toBeTruthy();
+ expect(api.createProject).not.toHaveBeenCalled();
+});
+it('refreshes a preview into its saved plan after requesting an item',async()=>{
+ const s=render(<ProjectsScreen route={{params:{templateId:'party'}}} navigation={navigation}/>);
+ await s.findByText('Save plan');
+ api.getProjects.mockResolvedValue([{id:'saved',templateId:'party',name:'Backyard party'}]);
+ api.getProject.mockResolvedValue({id:'saved',templateId:'party',name:'Backyard party',items:[{...item,matches:[],nearbyCount:0,transactionId:'exchange',transactionStatus:'approved'}]});
+ await act(async()=>{await navigation.addListener.mock.calls.find(([name])=>name==='focus')[1]();});
+ expect(await s.findByText('Ready for pickup')).toBeTruthy();
+ expect(s.queryByText('Save plan')).toBeNull();
+ expect(s.getByText('1 ready · 0 to find')).toBeTruthy();
+});
+it('links an existing approved borrow and shows it as ready even with no nearby inventory',async()=>{
+ api.getTransactions.mockResolvedValue([{id:'exchange',isBorrower:true,status:'approved',listing:{title:'Folding table'}}]);
+ const s=render(<ProjectsScreen route={{params:{id:'project'}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
+ fireEvent.press(await s.findByText('Use an existing exchange'));
+ api.getProject.mockResolvedValue({id:'project',name:'Party',items:[{...item,matches:[],nearbyCount:0,transactionId:'exchange',transactionStatus:'approved'}]});
+ fireEvent.press(await s.findByText('Folding table · Ready for pickup'));
+ await waitFor(()=>expect(api.linkProjectExchange).toHaveBeenCalledWith('project','slot','exchange'));
+ expect(await s.findByText('Ready for pickup')).toBeTruthy();
+ expect(s.queryByText('No match right now')).toBeNull();
+});
+it('promotes an unsaved custom plan after linking without a stale preview overwriting it',async()=>{
+ api.getTransactions.mockResolvedValue([{id:'exchange',isBorrower:true,status:'approved',listing:{title:'Folding table'}}]);
+ api.createProject.mockResolvedValue({id:'saved'});
+ let linked=false;
+ api.getProject.mockImplementation(async()=>({id:'saved',templateId:'custom',name:'Dinner party',items:[{...item,matches:[],...(linked?{transactionId:'exchange',transactionStatus:'approved'}:{})}]}));
+ api.linkProjectExchange.mockImplementation(async()=>{linked=true;});
+ const s=render(<ProjectsScreen route={{params:{custom:true}}} navigation={navigation}/>);
+ fireEvent.changeText(await s.findByLabelText('Plan name'),'Dinner party');
+ fireEvent.press(s.getByText('Add something else'));
+ fireEvent.changeText(await s.findByLabelText('Add a checklist item'),'Folding table');
+ fireEvent.press(s.getByText('Add to checklist'));
+ fireEvent.press(await s.findByLabelText('Edit or remove Folding table'));
+ fireEvent.press(await s.findByText('Use an existing exchange'));
+ fireEvent.press(await s.findByText('Folding table · Ready for pickup'));
+ expect(await s.findByText('Ready for pickup')).toBeTruthy();
+ await act(async()=>{});
+ expect(s.getByText('Dinner party')).toBeTruthy();
+ expect(s.getByText('1 ready · 0 to find')).toBeTruthy();
+ expect(s.queryByText('Save plan')).toBeNull();
+ expect(api.linkProjectExchange).toHaveBeenCalledWith('saved','slot','exchange');
 });

@@ -334,6 +334,7 @@ const getProject = id => get(`/projects/${id}`);
 const createProject = data => post('/projects', data);
 const updateProjectItem = (id, itemId, data) => patch(`/projects/${id}/items/${itemId}`, data);
 const resetProjectItem = (id, itemId) => post(`/projects/${id}/items/${itemId}/reset`);
+const linkProjectExchange = (id, itemId, transactionId) => post(`/projects/${id}/items/${itemId}/exchange`, {transactionId});
 const addProjectItem = (id, data) => post(`/projects/${id}/items`, data);
 const deleteProjectItem = (id, itemId) => del(`/projects/${id}/items/${itemId}`);
 const deleteProject = id => del(`/projects/${id}`);
@@ -936,7 +937,7 @@ export default {
   getCategories,
   // Feed
   getFeed,
-  getProjectIdeas, getProjects, getProject, createProject, updateProjectItem, resetProjectItem, addProjectItem, deleteProjectItem, deleteProject,
+  getProjectIdeas, getProjects, getProject, createProject, updateProjectItem, resetProjectItem, linkProjectExchange, addProjectItem, deleteProjectItem, deleteProject,
   getUserSafety: id => get(`/safety/${id}`),
   blockUser: id => post(`/safety/${id}/block`),
   unblockUser: id => del(`/safety/${id}/block`),

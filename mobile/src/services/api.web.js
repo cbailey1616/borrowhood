@@ -22,6 +22,7 @@ const api = {
   createProject: async ({templateId='custom',name,items}) => { const existing=projects.find(p=>p.templateId===templateId&&(templateId!=='custom'||p.name.toLowerCase()===name.toLowerCase()));if(existing)return existing;const template=projectIdeas().find(p=>p.id===templateId)||{name,items:[]};const p={...template,templateId,id:`project-${Date.now()}`,items:(items||template.items).map((i,n)=>({...template.items.find(t=>t.label===i.label),...i,id:`item-${Date.now()}-${n}`,icon:i.icon||'basket',matches:template.items.find(t=>t.label===i.label)?.matches||[],owned:!!i.owned}))};projects=[p,...projects];return p; },
   updateProjectItem: async (id,itemId,data) => {const p=projects.find(p=>p.id===id);p.items=p.items.map(i=>i.id===itemId?{...i,...data}:i);},
   resetProjectItem: async (id,itemId) => {const p=projects.find(p=>p.id===id);p.items=p.items.map(i=>i.id===itemId?{...i,transactionId:null,transactionStatus:null}:i);},
+  linkProjectExchange: async (id,itemId,transactionId) => {const exchange=previewExchanges.find(t=>t.id===transactionId);const p=projects.find(p=>p.id===id);p.items=p.items.map(i=>i.id===itemId?{...i,transactionId,transactionStatus:exchange.status,endDate:exchange.endDate}:i);},
   addProjectItem: async (id,{label}) => {projects.find(p=>p.id===id).items.push({id:`item-${Date.now()}`,label,icon:'basket',matches:[],owned:false});},
   deleteProject: async id => {projects=projects.filter(p=>p.id!==id);},
   deleteProjectItem: async (id,itemId) => {const p=projects.find(p=>p.id===id);p.items=p.items.filter(i=>i.id!==itemId);},
