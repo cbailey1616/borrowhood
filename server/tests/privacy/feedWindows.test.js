@@ -22,6 +22,7 @@ beforeAll(async()=>{
   token=jwt.sign({userId:viewer},process.env.JWT_SECRET);
   state.db=new PGlite();
   await state.db.exec(await readFile(new URL('../helpers/launch-schema.sql',import.meta.url),'utf8'));
+  await state.db.exec('CREATE TABLE listing_discussions(id UUID PRIMARY KEY, listing_id UUID, request_id UUID, parent_id UUID, user_id UUID, is_hidden BOOLEAN DEFAULT false)');
   await state.db.exec(await readFile(new URL('../../migrations/020_exchange_endorsements.sql',import.meta.url),'utf8'));
   await ensureFeedWindowSchema();
   await state.db.query('INSERT INTO users(id) VALUES($1),($2)',[owner,viewer]);

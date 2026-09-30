@@ -459,7 +459,9 @@ export default function FeedScreen({ navigation, route }) {
       style={[styles.publicReplies, compact && styles.ribbonReplies]}
     >
       <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
-      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>Comments</Text>
+      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>
+        {Number.isInteger(item.commentCount) ? `${item.commentCount} ${item.commentCount === 1 ? 'comment' : 'comments'}` : 'Comments'}
+      </Text>
       {!compact && <Text style={styles.publicRepliesAction}>View</Text>}
     </HapticPressable>
   );

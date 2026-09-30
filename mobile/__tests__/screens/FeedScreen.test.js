@@ -46,6 +46,17 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it.each([['listing', 8, '8 comments'], ['request', 1, '1 comment'], ['ribbon', 0, '0 comments']])(
+    'shows the discussion count on a %s tile', async (surface, commentCount, label) => {
+      const item = { id: 'counted-post', type: surface === 'listing' ? 'listing' : 'request',
+        title: 'Garden tools', commentCount, user: { firstName: 'Sam' } };
+      api.getFeed.mockResolvedValue(surface === 'ribbon'
+        ? { items: [], requests: [item], hasMore: false }
+        : { items: [item], hasMore: false });
+      const Screen = require('../../src/screens/FeedScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} />);
+      expect(await screen.findByText(label)).toBeTruthy();
+    });
   it('shows the exchange overview only once in a tablet feed containing only Wanted posts', async () => {
     const dimensions = jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({ width: 1024, height: 852, scale: 1, fontScale: 1 });
     try {
