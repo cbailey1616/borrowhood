@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import HapticPressable from './HapticPressable';
 import ReactionIcon, { reactionOption } from './ReactionIcon';
+import Icon from './Icon';
 import { COLORS, TYPOGRAPHY } from '../utils/config';
 
 export default function MessageReactions({ reactions = [], userId, onToggle, onAdd, disabled = false, inline = false }) {
@@ -17,7 +18,7 @@ export default function MessageReactions({ reactions = [], userId, onToggle, onA
     </HapticPressable>)}
     {!!onAdd && <HapticPressable disabled={disabled} accessibilityRole="button" accessibilityLabel="Add reaction"
       onPress={onAdd} style={styles.add}>
-      <Text style={styles.addLabel}>React</Text>
+      <View style={styles.addDisc}><Icon name="reaction-add" size={25} color={COLORS.surface} illustrated={false} /></View>
     </HapticPressable>}
   </View>;
 }
@@ -28,6 +29,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight, backgroundColor: COLORS.surfaceElevated, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   selected: { borderColor: COLORS.primaryLight, backgroundColor: COLORS.primaryMuted },
   count: { ...TYPOGRAPHY.caption1, color: COLORS.primary },
-  add: { minHeight: 44, paddingHorizontal: 6, justifyContent: 'center' },
-  addLabel: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  add: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  addDisc: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
 });
