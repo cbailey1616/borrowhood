@@ -417,7 +417,7 @@ it.each([['listing',false],['listing',true],['request',false],['request',true]])
     IF NEW.user_id='${isReply ? B : A}' THEN RAISE EXCEPTION 'injected activity failure'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
     CREATE TRIGGER fail_notice BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION fail_notice()`);
   const path = `/${kind === 'listing' ? 'listings' : 'requests'}/${item}/discussions`;
-  const payload = {content:'Tomorrow works',clientRequestId:phone,...(isReply ? {parentId:root} : {})};
+  const payload = {content:'Tomorrow works',clientRequestId:phone,...(isReply ? {parentId:root,replyToId:reply} : {})};
   await request(app).post(path).set('x-user',C).send(payload).expect(500);
   expect(await count('listing_discussions')).toBe(2);
   expect(await count('publication_receipts')).toBe(0);
@@ -427,6 +427,11 @@ it.each([['listing',false],['listing',true],['request',false],['request',true]])
   const first=await request(app).post(path).set('x-user',C).send(payload).expect(201);
   const repeat=await request(app).post(path).set('x-user',C).send(payload).expect(201);
   expect(repeat.body.id).toBe(first.body.id);
+  if (isReply) {
+    expect(first.body).toMatchObject({parentId:root,replyToId:reply,score:1,viewerVote:1});
+    expect((await rows('SELECT parent_id,reply_to_id FROM listing_discussions WHERE id=$1',[first.body.id]))[0]).toEqual({parent_id:root,reply_to_id:reply});
+  }
+  expect(await count('discussion_votes')).toBe(1);
   expect(await count('listing_discussions')).toBe(3);
   expect(await count('publication_receipts')).toBe(1);
   expect(await count('notifications')).toBe(isReply ? 2 : 1);

@@ -1,3 +1,4 @@
+import { visibleDiscussionSql } from './discussionControls.js';
 import { query } from '../utils/db.js';
 import { listingAccessSql, requestAccessSql } from '../utils/sharingPolicy.js';
 import { townPreviewSql } from './townPreview.js';
@@ -17,7 +18,7 @@ export async function resolveReportContent(type, id, viewer, db = { query }) {
     AND (${requestAccessSql('r', '$2')} OR ${townPreviewSql('r', 'user_id', '$2')})`;
   if (type === 'discussion') sql = `SELECT d.user_id AS author, 'Comment' AS title, d.content, ARRAY[]::text[] AS photos
     FROM listing_discussions d JOIN listing_discussions root ON root.id=COALESCE(d.parent_id,d.id)
-    WHERE d.id=$1 AND d.is_hidden=false AND root.is_hidden=false
+    WHERE d.id=$1 AND d.is_hidden=false AND root.is_hidden=false AND ${visibleDiscussionSql('d', '$2')}
     AND ${unblockedSql('d.user_id', '$2')} AND ${unblockedSql('root.user_id', '$2')}
     AND (EXISTS (SELECT 1 FROM listings l WHERE l.id=d.listing_id AND ${listingAccessSql('l', '$2')})
       OR EXISTS (SELECT 1 FROM item_requests r WHERE r.id=d.request_id AND ${requestAccessSql('r', '$2')}))`;

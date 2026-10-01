@@ -10,6 +10,7 @@ vi.mock('../../src/middleware/auth.js', () => ({ authenticate: (req,res,next) =>
   if (!req.headers['x-user']) return res.sendStatus(401); req.user={ id:req.headers['x-user'] }; next();
 } }));
 vi.mock('../../src/services/notifications.js', () => ({ sendNotification: vi.fn() }));
+import { resolveReportContent } from '../../src/services/contentReports.js';
 import safety from '../../src/routes/safety.js';
 import discussions from '../../src/routes/discussions.js';
 import requestDiscussions from '../../src/routes/requestDiscussions.js';
@@ -125,10 +126,15 @@ it.each(['listing','request'])('persists, changes and removes reactions on %s ro
   await call('post',`${base}/${post}/react`).send({emoji:'👍'}).expect(200);
   await call('post',`${base}/${post}/react`).send({emoji:'❤️'}).expect(200);
  }
- expect((await call('get',base)).body.posts[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
- expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
- expect((await call('get',`${base}/${reply}`)).body.post.reactions).toEqual([{userId:viewer,emoji:'❤️'}]);
+ expect((await call('get',base)).body.posts[0].reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'❤️'},{userId:viewer,emoji:'👍'}]));
+ expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'❤️'},{userId:viewer,emoji:'👍'}]));
+ expect((await call('get',`${base}/${reply}`)).body.post.reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'❤️'},{userId:viewer,emoji:'👍'}]));
  await call('post',`${base}/${reply}/react`).send({emoji:'invalid'}).expect(400);
+ await call('post',`${base}/${reply}/react`).send({emoji:'🔥'}).expect(200);
+ await call('post',`${base}/${reply}/react`).send({emoji:'🔥'}).expect(200);
+ await call('delete',`${base}/${reply}/react?emoji=${encodeURIComponent('👍')}`).expect(200);
+ expect((await call('get',`${base}/${root}/replies`)).body.replies[0].reactions).toEqual(expect.arrayContaining([{userId:viewer,emoji:'❤️'},{userId:viewer,emoji:'🔥'}]));
+ expect((await state.db.query('SELECT emoji FROM discussion_reactions WHERE discussion_id=$1',[reply])).rows).toHaveLength(2);
  await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,blocked]);
  await call('post',`${base}/${reply}/react`,blocked).send({emoji:'❤️'}).expect(404);
  await state.db.exec('DELETE FROM user_blocks');
@@ -141,4 +147,49 @@ it.each(['listing','request'])('persists, changes and removes reactions on %s ro
  expect((await call('get',base,owner)).body.posts[0].reactions).toEqual([]);
  await state.db.query('UPDATE listing_discussions SET is_hidden=true WHERE id=$1',[root]);
  await call('post',`${base}/${reply}/react`,owner).send({emoji:'👍'}).expect(404);
+});
+
+// Exercise both public comment surfaces against a real PostgreSQL engine.
+it.each(['listing','request'])('sets votes idempotently and hides nested ancestry on %s',async kind=>{
+ await state.db.query('UPDATE users SET is_verified=true WHERE id=$1',[viewer]);
+ const col=kind==='listing'?'listing_id':'request_id',id=kind==='listing'?item:wanted;
+ const base=`/${kind==='listing'?'listings':'requests'}/${id}/discussions`;
+ const child=randomUUID(),grandchild=randomUUID(),other=randomUUID();
+ await state.db.query(`INSERT INTO listing_discussions(id,${col},user_id,parent_id,reply_to_id)
+   VALUES($1,$2,$3,NULL,NULL),($4,$2,$3,$1,$1),($5,$2,$3,$1,$4),($6,$2,$3,NULL,NULL)`,[root,id,owner,child,grandchild,other]);
+ for(const value of [1,1,-1,0]) {
+  const res=await call('post',`${base}/${grandchild}/vote`).send({value}).expect(200);
+  expect(res.body).toEqual({score:value,viewerVote:value});
+ }
+ for(const value of [2,'1',null]) await call('post',`${base}/${root}/vote`).send({value}).expect(400);
+ await call('post',`${base}/${root}/vote`).send({value:1}).expect(200);
+ expect((await call('get',`${base}?sort=top`)).body.posts[0].id).toBe(root);
+ await call('post',base).send({content:'Wrong thread',parentId:other,replyToId:grandchild}).expect(404);
+ await state.db.query('UPDATE listing_discussions SET is_hidden=true WHERE id=$1',[child]);
+ expect((await call('get',`${base}/${root}/replies`)).body.replies).toHaveLength(0);
+ expect((await call('get',base)).body.posts.find(p=>p.id===root).replyCount).toBe(0);
+ for(const suffix of ['', '/vote', '/react']) {
+  if(!suffix) await call('get',`${base}/${grandchild}`).expect(404);
+  else await call('post',`${base}/${grandchild}${suffix}`).send(suffix==='/vote'?{value:1}:{emoji:'🔥'}).expect(404);
+ }
+ await call('post',base).send({content:'Hidden reply',parentId:root,replyToId:grandchild}).expect(404);
+ await expect(resolveReportContent('discussion',grandchild,viewer)).rejects.toMatchObject({status:404});
+ await state.db.query('UPDATE listing_discussions SET is_hidden=false WHERE id=$1',[child]);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,viewer]);
+ await call('post',`${base}/${grandchild}/vote`).send({value:1}).expect(404);
+});
+
+it('upgrades existing reactions without losing data and can rerun safely',async()=>{
+ const db=new PGlite();
+ try {
+  await db.exec(`CREATE TABLE users(id UUID PRIMARY KEY);CREATE TABLE listing_discussions(id UUID PRIMARY KEY,parent_id UUID);
+    CREATE TABLE discussion_reactions(discussion_id UUID REFERENCES listing_discussions(id),user_id UUID REFERENCES users(id),
+      emoji TEXT CHECK(emoji IN ('👍','❤️','😂','😮','😢','👎')),PRIMARY KEY(discussion_id,user_id));`);
+  await db.query('INSERT INTO users VALUES($1)',[viewer]);await db.query('INSERT INTO listing_discussions(id) VALUES($1)',[root]);
+  await db.query("INSERT INTO discussion_reactions VALUES($1,$2,'👍')",[root,viewer]);
+  await ensureDiscussionReactionSchema(db);await ensureDiscussionReactionSchema(db);
+  await db.query("INSERT INTO discussion_reactions VALUES($1,$2,'🔥')",[root,viewer]);
+  expect((await db.query('SELECT emoji FROM discussion_reactions ORDER BY emoji')).rows).toHaveLength(2);
+  expect((await db.query('SELECT * FROM discussion_votes')).rows).toHaveLength(0);
+ } finally {await db.close();}
 });

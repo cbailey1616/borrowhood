@@ -23,6 +23,7 @@ beforeAll(async()=>{
   state.db=new PGlite();
   await state.db.exec(await readFile(new URL('../helpers/launch-schema.sql',import.meta.url),'utf8'));
   await state.db.exec(await readFile(new URL('../../migrations/020_exchange_endorsements.sql',import.meta.url),'utf8'));
+  await state.db.exec(await readFile(new URL('../../migrations/025_discussion_thread_controls.sql',import.meta.url),'utf8'));
   await ensureFeedWindowSchema();
   await state.db.query('INSERT INTO users(id) VALUES($1),($2)',[owner,viewer]);
   // Equal microsecond timestamps expose skipped/duplicated keyset boundaries.

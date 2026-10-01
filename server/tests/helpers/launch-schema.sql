@@ -50,6 +50,6 @@ CREATE TABLE bundles(id UUID PRIMARY KEY,owner_id UUID,photo_url TEXT);
 CREATE TABLE bundle_items(bundle_id UUID,listing_id UUID);
 
 CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),listing_id UUID,request_id UUID,
- user_id UUID,parent_id UUID,is_hidden BOOLEAN NOT NULL DEFAULT false);
+ user_id UUID,parent_id UUID,reply_to_id UUID,is_hidden BOOLEAN NOT NULL DEFAULT false);
 CREATE INDEX launch_discussions_listing ON listing_discussions(listing_id);
 CREATE INDEX launch_discussions_request ON listing_discussions(request_id);

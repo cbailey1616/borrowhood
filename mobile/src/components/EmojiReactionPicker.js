@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import BlurCard from './BlurCard';
 import HapticPressable from './HapticPressable';
@@ -12,7 +12,7 @@ const EMOJI_OPTIONS = REACTION_OPTIONS;
 
 export { EMOJI_OPTIONS };
 
-export default function EmojiReactionPicker({ onSelect, onMore, style }) {
+export default function EmojiReactionPicker({ onSelect, onMore, style, options, colors = COLORS }) {
   const { width } = useWindowDimensions();
   const handleSelect = useCallback((emoji) => {
     haptics.light();
@@ -23,6 +23,19 @@ export default function EmojiReactionPicker({ onSelect, onMore, style }) {
     haptics.light();
     onMore?.();
   }, [onMore]);
+
+  if (options) return <Animated.View entering={FadeIn.duration(150)} style={[styles.container,style]}>
+    <View style={{width:Math.min(340,width-32),borderRadius:18,padding:12,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.borderLight}}>
+      <View style={{flexDirection:'row',flexWrap:'wrap'}}>
+        {options.map(item => <HapticPressable key={item.key} accessibilityLabel={`React: ${item.label}`}
+          style={{width:'16.666%',minHeight:44,alignItems:'center',justifyContent:'center'}} onPress={() => handleSelect(item.emoji)}>
+          <Text style={{fontSize:25}}>{item.emoji}</Text>
+        </HapticPressable>)}
+        {!!onMore && <HapticPressable style={{minHeight:44,width:'100%',alignItems:'center',justifyContent:'center'}}
+          onPress={handleMore} accessibilityLabel="More message actions"><Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted}/></HapticPressable>}
+      </View>
+    </View>
+  </Animated.View>;
 
   return (
     <Animated.View entering={FadeIn.duration(150)} style={[styles.container, style]}>

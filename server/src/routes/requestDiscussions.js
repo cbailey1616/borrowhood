@@ -1,3 +1,4 @@
+import { discussionVote, discussionVoteSql, visibleDiscussionSql } from '../services/discussionControls.js';
 import { discussionReaction, publicReactionSql } from '../services/publicReactions.js';
 import { screenContent, unblockedSql } from '../services/contentPolicy.js';
 import { publishOnce } from '../services/publicationReceipts.js';
@@ -10,6 +11,7 @@ import { sendNotification } from '../services/notifications.js';
 import { notifyThreadParticipants, getDiscussionThread } from '../services/discussionNotifications.js';
 
 const router = Router();
+router.post('/:requestId/discussions/:postId/vote', authenticate, discussionVote('request'));
 router.post('/:requestId/discussions/:postId/react', authenticate, discussionReaction('request'));
 router.delete('/:requestId/discussions/:postId/react', authenticate, discussionReaction('request'));
 router.use(screenContent());
@@ -28,18 +30,21 @@ router.get('/:requestId/discussions/:postId', authenticate, async (req, res) => 
 // Get top-level discussion posts for a request
 // ============================================
 router.get('/:requestId/discussions', authenticate, async (req, res) => {
-  const { page = 1, limit = 20 } = req.query;
+  const page = Math.max(1, Math.trunc(Number(req.query.page) || 1));
+  const limit = Math.max(1, Math.min(50, Math.trunc(Number(req.query.limit) || 20)));
+  const order = req.query.sort === 'top' ? 'score DESC, d.created_at DESC, d.id DESC'
+    : req.query.sort === 'oldest' ? 'd.created_at ASC, d.id ASC' : 'd.created_at DESC, d.id DESC';
   const offset = (page - 1) * limit;
 
   try {
     if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
-      `SELECT d.id, d.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=d.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$4')}) AS reply_count, d.created_at, d.updated_at, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$4')} AS reactions,
+      `SELECT d.id, d.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=d.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$4')} AND ${visibleDiscussionSql('r', '$4')}) AS reply_count, d.created_at, d.updated_at, ${discussionVoteSql('d', '$4')}, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$4')} AS reactions,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
        WHERE d.request_id = $1 AND d.parent_id IS NULL AND d.is_hidden = false AND ${unblockedSql('d.user_id', '$4')}
-       ORDER BY d.created_at DESC
+       ORDER BY ${order}
        LIMIT $2 OFFSET $3`,
       [req.params.requestId, limit, offset, req.user.id]
     );
@@ -55,6 +60,8 @@ router.get('/:requestId/discussions', authenticate, async (req, res) => {
         id: d.id,
         content: d.content,
         reactions: d.reactions || [],
+        score: Number(d.score) || 0, viewerVote: Number(d.viewer_vote) || 0,
+        ...(d.parent_id ? { parentId: d.parent_id, replyToId: d.reply_to_id || d.parent_id } : {}),
         replyCount: d.reply_count,
         createdAt: d.created_at,
         updatedAt: d.updated_at,
@@ -87,12 +94,12 @@ router.get('/:requestId/discussions/:postId/replies', authenticate, async (req, 
   try {
     if (!await canViewRequest(req.params.requestId, req.user.id)) return res.status(404).json({ error: 'Request not found' });
     const result = await query(
-      `SELECT d.id, d.content, d.created_at, d.updated_at, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$5')} AS reactions,
+      `SELECT d.id, d.content, d.created_at, d.updated_at, d.parent_id, d.reply_to_id, ${discussionVoteSql('d', '$5')}, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$5')} AS reactions,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
        WHERE d.parent_id = $1 AND d.is_hidden = false AND d.request_id=$4
-         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false AND ${unblockedSql('root.user_id', '$5')}) AND ${unblockedSql('d.user_id', '$5')}
+         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false AND ${unblockedSql('root.user_id', '$5')}) AND ${unblockedSql('d.user_id', '$5')} AND ${visibleDiscussionSql('d', '$5')}
        ORDER BY d.created_at ASC, d.id ASC
        LIMIT $2 OFFSET $3`,
       [req.params.postId, limit, offset, req.params.requestId, req.user.id]
@@ -103,6 +110,8 @@ router.get('/:requestId/discussions/:postId/replies', authenticate, async (req, 
         id: d.id,
         content: d.content,
         reactions: d.reactions || [],
+        score: Number(d.score) || 0, viewerVote: Number(d.viewer_vote) || 0,
+        ...(d.parent_id ? { parentId: d.parent_id, replyToId: d.reply_to_id || d.parent_id } : {}),
         createdAt: d.created_at,
         updatedAt: d.updated_at,
         user: {
@@ -128,13 +137,15 @@ router.post('/:requestId/discussions', authenticate,
   body('clientRequestId').optional().isUUID(),
   body('content').trim().isLength({ min: 1, max: 2000 }),
   body('parentId').optional().isUUID(),
+  body('replyToId').optional().isUUID(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { content, parentId } = req.body;
+    const { content, parentId, replyToId } = req.body;
+    if (replyToId && !parentId) return res.status(400).json({ error: 'Choose a reply thread' });
     const { requestId } = req.params;
 
     try {
@@ -168,6 +179,10 @@ router.post('/:requestId/discussions', authenticate,
       }
 
       if (parentId && !await getDiscussionThread('request', requestId, parentId, req.user.id)) return res.status(404).json({ error: 'Comment no longer available' });
+      if (replyToId) {
+        const replyTarget = await getDiscussionThread('request', requestId, replyToId, req.user.id);
+        if (!replyTarget || replyTarget.post.id !== parentId) return res.status(404).json({ error: 'Reply no longer available' });
+      }
 
       // Get poster's name for notifications
       const posterResult = await query(
@@ -180,13 +195,14 @@ router.post('/:requestId/discussions', authenticate,
 
       const { value: post, replayed } = await publishOnce({ userId: req.user.id, operation: `request-comment:${requestId}`, payload: req.body }, async client => {
         const result = await client.query(
-          `INSERT INTO listing_discussions (request_id, user_id, parent_id, content)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO listing_discussions (request_id, user_id, parent_id, content, reply_to_id)
+           VALUES ($1, $2, $3, $4, $5)
            RETURNING id, created_at`,
-          [requestId, req.user.id, parentId || null, content]
+          [requestId, req.user.id, parentId || null, content, replyToId || parentId || null]
         );
 
         const post = result.rows[0];
+        await client.query('INSERT INTO discussion_votes(discussion_id,user_id,value) VALUES($1,$2,1)', [post.id, req.user.id]);
 
         // Save Activity and durable delivery jobs in the publication transaction.
         if (parentId) {
@@ -220,6 +236,7 @@ router.post('/:requestId/discussions', authenticate,
         replayed,
         content,
         parentId: parentId || null,
+        replyToId: replyToId || parentId || null, score: 1, viewerVote: 1,
         createdAt: post.created_at,
         user: {
           id: req.user.id,
