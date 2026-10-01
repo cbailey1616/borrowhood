@@ -94,7 +94,7 @@ export default function CommunityLibraryScreen({ navigation }) {
           />
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.itemCondition}>Condition: {item.condition}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.itemCondition}>Condition: {item.condition}</Text>
             {item.donatedBy && (
               <Text style={styles.donatedBy}>Donated by {item.donatedBy}</Text>
             )}
@@ -103,7 +103,7 @@ export default function CommunityLibraryScreen({ navigation }) {
                 styles.statusBadge,
                 item.isAvailable ? styles.statusAvailable : styles.statusUnavailable
               ]}>
-                <Text style={[
+                <Text maxFontSizeMultiplier={1.4} style={[
                   styles.statusText,
                   item.isAvailable ? styles.statusTextAvailable : styles.statusTextUnavailable
                 ]}>
@@ -119,7 +119,7 @@ export default function CommunityLibraryScreen({ navigation }) {
               onPress={() => handleCheckout(item)}
               haptic="medium"
             >
-              <Text style={styles.checkoutButtonText}>Check Out</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.checkoutButtonText}>Check Out</Text>
             </HapticPressable>
           ) : item.isCheckedOutByMe ? (
             <HapticPressable
@@ -127,7 +127,7 @@ export default function CommunityLibraryScreen({ navigation }) {
               onPress={() => handleReturn(item)}
               haptic="medium"
             >
-              <Text style={styles.returnButtonText}>Return</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.returnButtonText}>Return</Text>
             </HapticPressable>
           ) : null}
         </View>
@@ -182,7 +182,7 @@ export default function CommunityLibraryScreen({ navigation }) {
             onPress={() => navigation.navigate('Main', { screen: 'MyItems' })}
             haptic="medium"
           >
-            <Text style={styles.donateButtonText}>Donate an Item</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.donateButtonText}>Donate an Item</Text>
           </HapticPressable>
         </View>
       )}
@@ -236,13 +236,15 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.h1,
-    fontSize: 24,
+    fontSize: TYPOGRAPHY.title2.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
   subtitle: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   listContent: {
     padding: SPACING.lg,
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   itemCardPressable: {
     marginBottom: SPACING.md,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   itemCard: {
     flexDirection: 'row',
     borderRadius: RADIUS.md,
@@ -293,13 +295,15 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   statusAvailable: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
   },
   statusUnavailable: {
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: COLORS.tints.warning20,
   },
   statusText: {
     ...TYPOGRAPHY.caption,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   statusTextAvailable: {
     color: COLORS.primary,
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
   },
   checkoutButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.footnote.fontSize,
     color: COLORS.background,
   },
   returnButton: {
@@ -332,7 +336,7 @@ const styles = StyleSheet.create({
   },
   returnButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.footnote.fontSize,
     color: COLORS.text,
   },
   emptyState: {
@@ -374,7 +378,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   infoIcon: {
-    fontSize: 20,
+    ...TYPOGRAPHY.title3,
     marginRight: SPACING.md,
   },
   infoContent: {
@@ -382,9 +386,10 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
   },
   infoText: {
     ...TYPOGRAPHY.footnote,

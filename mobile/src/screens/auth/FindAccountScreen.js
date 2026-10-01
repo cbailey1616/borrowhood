@@ -249,9 +249,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   backButtonText: {
-    fontSize: 36,
+    ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,
-    fontWeight: '300',
   },
   title: {
     ...TYPOGRAPHY.h1,
@@ -289,7 +288,6 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
     color: COLORS.text,
   },
   optionSubtitle: {
@@ -315,15 +313,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   label: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
   },
   input: {
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surfaceElevated,
     color: COLORS.text,
   },

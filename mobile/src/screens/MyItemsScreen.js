@@ -14,8 +14,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   Animated as RNAnimated,
-  InteractionManager,
-} from 'react-native';
+  InteractionManager, } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
 import ListingOffer from '../components/ListingOffer';
@@ -33,7 +32,7 @@ import { useError } from '../context/ErrorContext';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const shortDate = value => {
   if (!value) return '';
@@ -167,8 +166,8 @@ export default function MyItemsScreen({ navigation }) {
         haptic="warning"
       >
         <RNAnimated.View style={{ transform: [{ scale }] }}>
-          <Ionicons name="trash-outline" size={24} color="#fff" />
-          <Text style={styles.deleteActionText}>Delete</Text>
+          <Ionicons name="trash-outline" size={24} color={COLORS.white} />
+          <Text maxFontSizeMultiplier={1.4} style={styles.deleteActionText}>Delete</Text>
         </RNAnimated.View>
       </HapticPressable>
     );
@@ -208,7 +207,7 @@ export default function MyItemsScreen({ navigation }) {
                   availability.state === 'borrowed' && styles.borrowedBadge,
                   availability.state === 'reserved' && styles.reservedBadge,
                 ]}>
-                  <Text style={[
+                  <Text maxFontSizeMultiplier={1.4} style={[
                     styles.statusText,
                     availability.state === 'borrowed' && styles.borrowedText,
                     availability.state === 'reserved' && styles.reservedText,
@@ -288,7 +287,7 @@ export default function MyItemsScreen({ navigation }) {
                 <View style={styles.requestBadges}>
                   {item.type === 'service' && (
                     <View style={styles.serviceBadge}>
-                      <Text style={styles.serviceBadgeText}>Help wanted</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={styles.serviceBadgeText}>Help wanted</Text>
                     </View>
                   )}
                   <View style={[
@@ -297,7 +296,7 @@ export default function MyItemsScreen({ navigation }) {
                       : item.status === 'open' ? { backgroundColor: COLORS.primaryMuted }
                       : { backgroundColor: COLORS.surfaceElevated }
                   ]}>
-                    <Text style={[
+                    <Text maxFontSizeMultiplier={1.4} style={[
                       styles.requestStatusText,
                       item.isExpired ? { color: COLORS.danger }
                         : item.status === 'open' ? { color: COLORS.primary }
@@ -318,7 +317,7 @@ export default function MyItemsScreen({ navigation }) {
               {(item.neededFrom || item.neededUntil) && (
                 <View style={styles.dateRow}>
                   <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-                  <Text style={styles.dateText}>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.dateText}>
                     {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
                     {item.neededFrom && item.neededUntil && ' - '}
                     {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
@@ -330,7 +329,7 @@ export default function MyItemsScreen({ navigation }) {
                 <View style={styles.requestTiming}>
                   {!item.neededFrom && !item.neededUntil && <>
                     <Ionicons name="time-outline" size={16} illustrated={false} color={COLORS.textSecondary} />
-                    <Text style={styles.requestDate}>Flexible</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.requestDate}>Flexible</Text>
                   </>}
                 </View>
                 {item.isExpired && item.status === 'open' && (
@@ -345,7 +344,7 @@ export default function MyItemsScreen({ navigation }) {
                     haptic="medium"
                   >
                     <Ionicons name="refresh" size={16} color={COLORS.surface} />
-                    <Text style={styles.renewButtonText}>Renew</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.renewButtonText}>Renew</Text>
                   </HapticPressable>
                 )}
               </View>
@@ -377,7 +376,7 @@ export default function MyItemsScreen({ navigation }) {
           <View style={styles.sentRequestInfo}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.listing.title}</Text>
             <View style={styles.sentRequestStatus}>
-              <Text style={styles.sentRequestStatusText}>{status}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.sentRequestStatusText}>{status}</Text>
             </View>
             {!!item.lender?.firstName && <Text style={styles.sentRequestMeta} numberOfLines={1}>From {item.lender.firstName}</Text>}
             {!!dates && <Text style={styles.sentRequestMeta}>{dates}</Text>}
@@ -432,7 +431,7 @@ export default function MyItemsScreen({ navigation }) {
       </WoodlandHeader>
 
       {activeTab===3?<SavedScreen navigation={navigation} embedded/>:<>
-      {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
+      {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ ...TYPOGRAPHY.button, color: COLORS.primary }}>Try again</Text></HapticPressable></View>}
 
       <BorrowhoodRefreshList
         key={`posts-${activeTab}-${columns}`}
@@ -507,7 +506,7 @@ const styles = StyleSheet.create({
   exchangeSummary: { marginHorizontal: SPACING.sm, marginBottom: SPACING.sm, padding: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.borderLight, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   exchangeCopy: { flex: 1, gap: SPACING.xs },
   exchangePerson: { ...TYPOGRAPHY.subheadline, color: COLORS.text },
-  attentionText: { color: COLORS.primary, fontWeight: '500' },
+  attentionText: { fontFamily: 'DMSans_500Medium', color: COLORS.primary, fontWeight: '500' },
   overdueText: { color: COLORS.danger },
   detailsUnavailable: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginHorizontal: SPACING.md, marginBottom: SPACING.md },
   card: {
@@ -563,9 +562,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primaryMuted,
   },
-  statusText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  statusText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   borrowedBadge: { backgroundColor: COLORS.warningMuted },
@@ -578,9 +575,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
   },
-  pendingText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  pendingText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   requestCard: {
@@ -628,9 +623,10 @@ const styles = StyleSheet.create({
     flex: 1,
     ...TYPOGRAPHY.headline,
     fontFamily: 'DMSans_600SemiBold',
-    fontSize: 20,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     lineHeight: 26,
     color: COLORS.primaryDark,
+   fontWeight: '600'
   },
   requestBadges: {
     marginLeft: 56,
@@ -640,14 +636,12 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   serviceBadge: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
   },
-  serviceBadgeText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  serviceBadgeText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   requestStatusBadge: {
@@ -657,10 +651,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  requestStatusText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-  },
+  requestStatusText: { ...TYPOGRAPHY.label, },
   requestDescription: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
@@ -700,13 +691,10 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     gap: SPACING.xs,
   },
-  renewButtonText: {
-    ...TYPOGRAPHY.footnote,
-    fontFamily: 'DMSans_500Medium',
-    fontWeight: '400',
+  renewButtonText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.surface,
   },
-  emptyContainer: {
+  emptyContainer: { ...CARD_SURFACE,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     alignItems: 'center',
@@ -736,7 +724,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   addButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.headline,
   },
   sentRequestCard: {
@@ -769,8 +757,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
   },
-  sentRequestStatusText: {
-    ...TYPOGRAPHY.caption1,
+  sentRequestStatusText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   deleteAction: {
@@ -782,9 +769,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
   },
   deleteActionText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
     marginTop: SPACING.xs,
   },
 });

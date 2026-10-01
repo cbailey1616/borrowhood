@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { COLORS } from '../utils/config';
+import { COLORS, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -34,7 +34,7 @@ class ErrorBoundary extends React.Component {
             </Text>
 
             <Pressable style={styles.retryButton} onPress={this.handleRetry}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.retryButtonText}>Try Again</Text>
             </Pressable>
 
             {__DEV__ && this.state.error && (
@@ -70,26 +70,24 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   icon: {
-    fontSize: 48,
+    ...TYPOGRAPHY.largeTitle,
     color: COLORS.warning,
     marginBottom: 16,
-    fontWeight: '400',
     width: 80,
     height: 80,
     lineHeight: 80,
     textAlign: 'center',
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: COLORS.tints.warning20,
     borderRadius: 40,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '400',
+    ...TYPOGRAPHY.title2,
     color: COLORS.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
@@ -102,11 +100,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   retryButtonText: {
-    fontSize: 16,
-    fontWeight: '400',
+    ...TYPOGRAPHY.button,
     color: COLORS.background,
   },
   errorDetails: {
+    ...CARD_SURFACE,
     marginTop: 24,
     padding: 12,
     backgroundColor: COLORS.surface,
@@ -115,18 +113,18 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   errorTitle: {
-    fontSize: 12,
-    fontWeight: '400',
+    ...TYPOGRAPHY.caption1,
+    fontFamily: 'DMSans_500Medium', fontWeight: '500',
     color: COLORS.danger,
     marginBottom: 8,
   },
   errorText: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption2,
     color: COLORS.danger,
     fontFamily: 'monospace',
   },
   errorStack: {
-    fontSize: 10,
+    ...TYPOGRAPHY.caption2,
     color: COLORS.textMuted,
     fontFamily: 'monospace',
     marginTop: 8,

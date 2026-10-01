@@ -77,9 +77,8 @@ const sharedScreenOptions = {
   headerBackTitleVisible: false,
   headerTintColor: COLORS.primary,
   headerTitleStyle: {
-    fontWeight: '400',
+    ...TYPOGRAPHY.headline,
     color: COLORS.primary,
-    fontSize: 17,
   },
   contentStyle: { backgroundColor: COLORS.background },
 };
@@ -357,7 +356,7 @@ function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
     <Modal visible animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={nameStyles.container} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
-        <Text style={nameStyles.title}>What's your name?</Text>
+        <Text maxFontSizeMultiplier={1.4} style={nameStyles.title}>What's your name?</Text>
         <Text style={nameStyles.subtitle}>
           We need your name so neighbors know who they're borrowing from.
         </Text>
@@ -378,7 +377,7 @@ function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
           onChangeText={(v) => setNameInput(prev => ({ ...prev, last: v }))}
           autoCapitalize="words"
         />
-        {!!error && <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.md }}>{error}</Text>}
+        {!!error && <Text accessibilityRole="alert" style={{ ...TYPOGRAPHY.body, color: COLORS.danger, marginBottom: SPACING.md }}>{error}</Text>}
         <HapticPressable
           style={[nameStyles.button, !nameInput.first.trim() && { opacity: 0.5 }]}
           onPress={onSave}
@@ -386,9 +385,9 @@ function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
           haptic="medium"
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={nameStyles.buttonText}>Continue</Text>
+            <Text maxFontSizeMultiplier={1.4} style={nameStyles.buttonText}>Continue</Text>
           )}
         </HapticPressable>
       </ScrollView>
@@ -417,11 +416,11 @@ const nameStyles = StyleSheet.create({
     marginBottom: SPACING.xxl,
   },
   input: {
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
@@ -433,7 +432,7 @@ const nameStyles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   buttonText: {
-    ...TYPOGRAPHY.headline,
-    color: '#fff',
+    ...TYPOGRAPHY.button,
+    color: COLORS.white,
   },
 });

@@ -6,7 +6,7 @@ import PopupLayer from './PopupLayer';
 import SheetDismissArea from './SheetDismissArea';
 import VerificationComparison from './VerificationComparison';
 import Icon from './Icon';
-import { COLORS, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, RADIUS, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 
 export default function VerificationBenefits() {
   const [visible, setVisible] = useState(false);
@@ -22,7 +22,7 @@ export default function VerificationBenefits() {
     </View>
     <HapticPressable accessibilityRole="button" accessibilityHint="Opens a comparison of available features"
       onPress={() => setVisible(true)} style={styles.linkButton}>
-      <Text style={styles.link}>What does verification unlock?</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.link}>What does verification unlock?</Text>
     </HapticPressable>
     <Text style={styles.requirement}>You’ll need a photo ID and a selfie.</Text>
     {visible && <PopupLayer visible onRequestClose={close}>
@@ -36,7 +36,7 @@ export default function VerificationBenefits() {
                   <Icon name="close" size={22} color={COLORS.primary} /></HapticPressable></View>
             </SheetDismissArea>
             <VerificationComparison />
-            <HapticPressable accessibilityRole="button" onPress={close} style={styles.done}><Text style={styles.doneText}>Done</Text></HapticPressable>
+            <HapticPressable accessibilityRole="button" onPress={close} style={styles.done}><Text maxFontSizeMultiplier={1.4} style={styles.doneText}>Done</Text></HapticPressable>
           </ScrollView>
         </View>
       </View>
@@ -44,7 +44,7 @@ export default function VerificationBenefits() {
   </>;
 }
 const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, paddingHorizontal: 18, borderWidth: 1, borderColor: COLORS.borderLight },
+  card: { ...CARD_SURFACE, backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, paddingHorizontal: 18, borderWidth: 1, borderColor: COLORS.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 18 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
   icon: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.md },
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   title: { ...TYPOGRAPHY.headline, color: COLORS.text },
   detail: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   linkButton: { minHeight: 48, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-  link: { ...TYPOGRAPHY.footnote, color: COLORS.primary, textDecorationLine: 'underline', textAlign: 'center' },
+  link: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary, textDecorationLine: 'underline', textAlign: 'center' },
   requirement: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 2 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: COLORS.overlay },
   sheet: { width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: COLORS.background, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl },

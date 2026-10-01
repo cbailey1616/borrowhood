@@ -73,7 +73,7 @@ export default function OnboardingTownScreen({ navigation }) {
       buttonLabel="Continue" onContinue={finish} busy={busy} disabled={locating} error={error}>
       <LayeredCard style={styles.card} radius={RADIUS.xl}>
         <View style={styles.field}>
-          <Text style={styles.label}>Your first name</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.label}>Your first name</Text>
           <TextInput accessibilityLabel="Your first name" value={firstName} onChangeText={setFirstName}
             editable={!locked && !busy && !locating} autoCapitalize="words" autoCorrect={false} textContentType="givenName"
             maxLength={100} onFocus={() => setFocusedField('name')} onBlur={() => setFocusedField(null)}
@@ -90,7 +90,7 @@ export default function OnboardingTownScreen({ navigation }) {
           <View style={styles.rule} /><Text style={styles.orText}>or enter it yourself</Text><View style={styles.rule} />
         </View>}
         <View style={styles.field}>
-          <Text style={styles.label}>Town or city</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.label}>Town or city</Text>
           <TextInput accessibilityLabel="Town or city" value={city} onChangeText={setCity}
             editable={!locked && !busy && !locating} autoCapitalize="words" autoCorrect={false}
             textContentType="addressCity" maxLength={100}
@@ -99,7 +99,7 @@ export default function OnboardingTownScreen({ navigation }) {
             placeholder="Enter your town" placeholderTextColor={COLORS.textMuted} />
         </View>
         <View style={styles.field}>
-          <Text style={styles.label}>State</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.label}>State</Text>
           <HapticPressable accessibilityRole="button" accessibilityLabel="Choose state"
             accessibilityValue={{ text: stateName(state) || 'No state selected' }}
             accessibilityState={{ expanded: statePickerOpen, disabled: locked || busy || locating }}
@@ -130,7 +130,7 @@ export default function OnboardingTownScreen({ navigation }) {
 const styles = StyleSheet.create({
   card: { padding: 18, gap: 16 },
   field: { gap: 8 },
-  label: { ...TYPOGRAPHY.subheadline, color: COLORS.text },
+  label: { ...TYPOGRAPHY.buttonSmall, color: COLORS.text , },
   input: { ...TYPOGRAPHY.headline, minHeight: 52, padding: 14, backgroundColor: COLORS.background,
     borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text },
   focusedInput: { borderColor: COLORS.primary, backgroundColor: COLORS.surface },
@@ -138,12 +138,12 @@ const styles = StyleSheet.create({
   stateText: { ...TYPOGRAPHY.headline, flex: 1, color: COLORS.text },
   pickerCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, overflow: 'hidden' },
   picker: { color: COLORS.text, backgroundColor: COLORS.surface },
-  pickerItem: { color: COLORS.text, fontSize: 20 },
+  pickerItem: { fontWeight: '400', fontFamily: 'DMSans_400Regular', color: COLORS.text, fontSize: TYPOGRAPHY.title3.fontSize },
   pickerDone: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border },
-  link: { ...TYPOGRAPHY.body, color: COLORS.primary },
+  link: { ...TYPOGRAPHY.button, color: COLORS.primary , },
   locationButton: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 9, padding: 12, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryMuted },
-  locationText: { ...TYPOGRAPHY.body, color: COLORS.primary, textAlign: 'center', flexShrink: 1 },
+  locationText: { ...TYPOGRAPHY.button, color: COLORS.primary, textAlign: 'center', flexShrink: 1 , },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   rule: { flex: 1, height: 1, backgroundColor: COLORS.borderLight },
   orText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, flexShrink: 1 },

@@ -17,7 +17,7 @@ import useNavigationTask from '../hooks/useNavigationTask';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 
 export default function CommunityMembersScreen({ route, navigation }) {
   const communityId = route?.params?.id || route?.params?.communityId;
@@ -210,11 +210,11 @@ export default function CommunityMembersScreen({ route, navigation }) {
       />
       <View style={styles.memberInfo}>
         <View style={{ gap: 4, alignItems: 'flex-start' }}>
-          <Text style={styles.memberName}>{item.firstName} {item.lastName}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.memberName}>{item.firstName} {item.lastName}</Text>
           {item.role === 'organizer' && (
             <View style={styles.adminBadge}>
               <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
-              <Text style={styles.adminBadgeText}>Steward</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.adminBadgeText}>Steward</Text>
             </View>
           )}
         </View>
@@ -270,17 +270,17 @@ export default function CommunityMembersScreen({ route, navigation }) {
             {rejoinRequests.map(request => <View key={request.id} style={styles.requestCard}>
               <View style={styles.requestPerson}>
                 <ShimmerImage placeholderIcon="person" source={{ uri: request.profilePhotoUrl || null }} style={styles.avatar} />
-                <Text style={[styles.memberName, { flex: 1 }]}>{request.firstName} {request.lastName}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.memberName, { flex: 1 }]}>{request.firstName} {request.lastName}</Text>
                 {reviewingId === request.id && <ActivityIndicator color={COLORS.spinner} />}
               </View>
               <View style={styles.requestActions}>
                 <HapticPressable accessibilityRole="button" accessibilityLabel={`Approve ${request.firstName}’s return`}
                   disabled={!!reviewingId} onPress={() => reviewRequest(request, 'approve')} style={styles.approveButton}>
-                  <Text style={styles.approveLabel}>Approve</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.approveLabel}>Approve</Text>
                 </HapticPressable>
                 <HapticPressable accessibilityRole="button" accessibilityLabel={`Decline ${request.firstName}’s return`}
                   disabled={!!reviewingId} onPress={() => reviewRequest(request, 'decline')} style={styles.declineButton}>
-                  <Text style={styles.declineLabel}>Decline</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.declineLabel}>Decline</Text>
                 </HapticPressable>
               </View>
             </View>)}
@@ -288,7 +288,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
           <View style={styles.listHeader}>
             <Text style={styles.sectionTitle}>Neighbors</Text>
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{members.length}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.countText}>{members.length}</Text>
             </View>
             {!handoff && <HapticPressable accessibilityLabel="Invite neighbors" onPress={() => navigation.navigate('InviteMembers', { communityId })}
               style={{ marginLeft: 'auto', backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 12 }}><Text style={{ color: COLORS.surface }}>+ Invite</Text></HapticPressable>}
@@ -316,13 +316,13 @@ export default function CommunityMembersScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   requestsSection: { gap: SPACING.sm, marginBottom: SPACING.xl },
   requestDetail: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
-  requestCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.borderBrown, padding: SPACING.md, gap: SPACING.md },
+  requestCard: { ...CARD_SURFACE, backgroundColor: COLORS.surface, borderRadius: RADIUS.md,   padding: SPACING.md, gap: SPACING.md },
   requestPerson: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   requestActions: { flexDirection: 'row', gap: SPACING.sm },
   approveButton: { flex: 1, minHeight: 44, padding: SPACING.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primary, borderRadius: RADIUS.full },
-  approveLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.surface },
+  approveLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.surface, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   declineButton: { flex: 1, minHeight: 44, padding: SPACING.sm, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.borderBrown, borderRadius: RADIUS.full },
-  declineLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.error },
+  declineLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.error, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -359,16 +359,17 @@ const styles = StyleSheet.create({
   countText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   memberRow: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 72,
     padding: SPACING.md,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
     ...SHADOWS.sm,
   },
   avatar: {
@@ -425,7 +426,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surface,
   },
-  promoteButtonText: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: '400', flexShrink: 1 },
+  promoteButtonText: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: '500', flexShrink: 1, fontFamily: 'DMSans_500Medium', },
   removeButton: {
     minHeight: 48,
     justifyContent: 'center',
@@ -441,7 +442,8 @@ const styles = StyleSheet.create({
   removeButtonText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.danger,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   cardGap: {
     height: SPACING.sm,

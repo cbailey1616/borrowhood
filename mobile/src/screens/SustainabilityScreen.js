@@ -49,9 +49,9 @@ export default function SustainabilityScreen() {
     <AnimatedCard index={index} style={styles.statCardWrapper}>
       <View style={[styles.cardBox, styles.statCard]}>
         <Icon name={icon} size={36} illustrated style={styles.statIcon} />
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-        {sublabel && <Text style={styles.statSublabel}>{sublabel}</Text>}
+        <Text maxFontSizeMultiplier={1.4} style={styles.statValue}>{value}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.statLabel}>{label}</Text>
+        {sublabel && <Text maxFontSizeMultiplier={1.4} style={styles.statSublabel}>{sublabel}</Text>}
       </View>
     </AnimatedCard>
   );
@@ -59,10 +59,10 @@ export default function SustainabilityScreen() {
   const ImpactRow = ({ icon, label, value, unit }) => (
     <View style={styles.impactRow}>
       <Icon name={icon} size={24} illustrated style={styles.impactIcon} />
-      <Text style={styles.impactLabel}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.impactLabel}>{label}</Text>
       <View style={styles.impactValueContainer}>
-        <Text style={styles.impactValue}>{value}</Text>
-        <Text style={styles.impactUnit}>{unit}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.impactValue}>{value}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.impactUnit}>{unit}</Text>
       </View>
     </View>
   );
@@ -137,31 +137,31 @@ export default function SustainabilityScreen() {
           <View style={[styles.cardBox, styles.communityCard]}>
             <View style={styles.communityHeader}>
               <Text style={styles.communityName}>{communityStats?.name || 'Your Community'}</Text>
-              <Text style={styles.communityMembers}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.communityMembers}>
                 {communityStats?.memberCount || 0} members
               </Text>
             </View>
 
             <View style={styles.communityStats}>
               <View style={styles.communityStat}>
-                <Text style={styles.communityStatValue}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.communityStatValue}>
                   {communityStats?.totalTransactions || 0}
                 </Text>
-                <Text style={styles.communityStatLabel}>Total Shares</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.communityStatLabel}>Total Shares</Text>
               </View>
               <View style={styles.communityStatDivider} />
               <View style={styles.communityStat}>
-                <Text style={styles.communityStatValue}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.communityStatValue}>
                   ${((communityStats?.totalSavedCents || 0) / 100).toFixed(0)}
                 </Text>
-                <Text style={styles.communityStatLabel}>Community Savings</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.communityStatLabel}>Community Savings</Text>
               </View>
               <View style={styles.communityStatDivider} />
               <View style={styles.communityStat}>
-                <Text style={styles.communityStatValue}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.communityStatValue}>
                   {(communityStats?.totalCo2SavedKg || 0).toFixed(0)}kg
                 </Text>
-                <Text style={styles.communityStatLabel}>CO₂ Saved</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.communityStatLabel}>CO₂ Saved</Text>
               </View>
             </View>
           </View>
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   header: {
     padding: SPACING.xl,
     alignItems: 'center',
@@ -269,12 +269,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   statLabel: {
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   statSublabel: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.label,
     color: COLORS.textMuted,
     marginTop: 2,
   },
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   impactLabel: {
     flex: 1,
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   impactValueContainer: {
@@ -347,12 +347,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.separator,
   },
   communityStatValue: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
+    ...TYPOGRAPHY.title3,
     color: COLORS.primary,
   },
   communityStatLabel: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.label,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
     textAlign: 'center',
@@ -366,8 +365,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   rankTitle: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
+    ...TYPOGRAPHY.title3,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -399,10 +397,11 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   tipCard: {
+    ...CARD_SURFACE,
     margin: SPACING.lg,
     marginTop: SPACING.xl,
     marginBottom: SPACING.xxl,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
     flexDirection: 'row',

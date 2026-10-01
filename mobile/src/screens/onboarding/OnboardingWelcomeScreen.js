@@ -92,9 +92,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     alignItems: 'center',
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
 });

@@ -165,7 +165,7 @@ export default function ReportIssueScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}
             haptic="light"
           >
-            <Text style={styles.primaryButtonText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
         </View>
       </View>
@@ -190,7 +190,7 @@ export default function ReportIssueScreen({ navigation, route }) {
           onLayout={(e) => { fieldPositions.current.type = e.nativeEvent.layout.y; }}
         >
           <View style={styles.cardContent}>
-            <Text style={[styles.cardLabel, fieldErrors.type && styles.fieldErrorLabel]}>Issue Type *</Text>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.type && styles.fieldErrorLabel]}>Issue Type *</Text>
             <Text style={styles.cardHint}>Select the type of issue you want to report</Text>
 
             {filteredTypes.map((issueType, index) => (
@@ -209,7 +209,7 @@ export default function ReportIssueScreen({ navigation, route }) {
                   size={22}
                   color={type === issueType.key ? COLORS.primary : COLORS.textSecondary}
                 />
-                <Text
+                <Text maxFontSizeMultiplier={1.4}
                   style={[
                     styles.typeLabel,
                     type === issueType.key && styles.typeLabelSelected,
@@ -231,7 +231,7 @@ export default function ReportIssueScreen({ navigation, route }) {
           onLayout={(e) => { fieldPositions.current.description = e.nativeEvent.layout.y; }}
         >
           <View style={styles.cardContent}>
-            <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>Description *</Text>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>Description *</Text>
             <Text style={styles.cardHint}>Minimum 10 characters</Text>
             <TextInput
               testID="ReportIssue.input.description"
@@ -248,14 +248,14 @@ export default function ReportIssueScreen({ navigation, route }) {
               autoCorrect={true}
               spellCheck={true}
             />
-            <Text style={styles.charCount}>{description.length}/2000</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.charCount}>{description.length}/2000</Text>
           </View>
         </View>
 
         {/* Evidence photos */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Photos</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Photos</Text>
             <Text style={styles.cardHint}>
               Optional — upload up to 4 photos as evidence
             </Text>
@@ -298,7 +298,7 @@ export default function ReportIssueScreen({ navigation, route }) {
               <View style={styles.depositClaimRow}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
                 <View style={styles.depositClaimInfo}>
-                  <Text style={styles.cardLabel}>Claim Security Deposit</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Claim Security Deposit</Text>
                   <Text style={styles.cardHint}>
                     The full {formatCurrency(depositAmount)} deposit will be claimed. You also keep the {formatCurrency(rentalFee || 0)} rental fee.
                   </Text>
@@ -313,7 +313,7 @@ export default function ReportIssueScreen({ navigation, route }) {
         {(type === 'damagesClaim' || type === 'lateReturn') && maxClaimCents > 0 && (
           <View style={[styles.cardBox, styles.card]}>
             <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Claim Amount</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Claim Amount</Text>
               <Text style={styles.cardHint}>
                 Up to {formatCurrency(maxClaimDollars)} (security deposit). You keep the rental fee separately.
               </Text>
@@ -367,9 +367,9 @@ export default function ReportIssueScreen({ navigation, route }) {
           haptic="medium"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={styles.primaryButtonText}>Submit Report</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Submit Report</Text>
           )}
         </HapticPressable>
       </ScrollView>
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   card: {
     marginBottom: SPACING.lg,
   },
@@ -432,9 +432,8 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   cardLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
-    fontWeight: '400',
     marginBottom: SPACING.xs,
   },
   cardHint: {
@@ -453,13 +452,12 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.separator,
   },
   typeLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
     flex: 1,
   },
   typeLabelSelected: {
     color: COLORS.primary,
-    fontWeight: '400',
   },
   notesInput: {
     backgroundColor: COLORS.surfaceElevated,
@@ -488,7 +486,6 @@ const styles = StyleSheet.create({
   depositClaimAmount: {
     ...TYPOGRAPHY.h2,
     color: COLORS.primary,
-    fontWeight: '400',
   },
   amountInputRow: {
     flexDirection: 'row',
@@ -551,10 +548,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   errorCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.danger + '12',
+    backgroundColor: COLORS.tints.danger12,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
@@ -575,8 +573,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
-    fontSize: 16,
   },
 });

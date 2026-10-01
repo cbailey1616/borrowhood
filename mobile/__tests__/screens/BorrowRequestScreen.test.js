@@ -127,7 +127,7 @@ describe('BorrowRequestScreen', () => {
     fireEvent(input, 'focus');
     fireEvent.changeText(input, 'Tomorrow afternoon?');
     expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
-    expect(input.props.keyboardAppearance).toBe('dark');
+    expect(input.props.keyboardAppearance).toBe('light');
     expect(input.props.inputAccessoryViewID).toBeUndefined();
     const scroll = screen.UNSAFE_getByType(ScrollView);
     expect(scroll.props.keyboardDismissMode).toBe('interactive');
@@ -152,7 +152,7 @@ describe('BorrowRequestScreen', () => {
     fireEvent(input, 'focus');
     expect(screen.UNSAFE_queryByType(DateTimePicker)).toBeNull();
     expect(screen.queryByLabelText('Done, close keyboard')).toBeNull();
-    expect(input.props.keyboardAppearance).toBe('dark');
+    expect(input.props.keyboardAppearance).toBe('light');
     fireEvent.changeText(input, 'Tomorrow afternoon?');
     expect(input.props.value).toBe('Tomorrow afternoon?');
     dismiss.mockRestore();

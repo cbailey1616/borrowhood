@@ -30,8 +30,8 @@ export default function ListingPrice({ listing, compact = false, alignment = 'st
   const price = listingPrice(listing);
   return (
     <View accessible accessibilityLabel={`${price.amount}${price.unit ? ` ${price.unit}` : ''}`} style={[styles.row, alignment === 'end' && styles.end]}>
-      <Text style={[styles.amount, compact && styles.compact, alignment === 'end' && styles.endText]}>{price.amount}</Text>
-      {!!price.unit && <Text style={[styles.unit, alignment === 'end' && styles.endText]}>{price.unit}</Text>}
+      <Text maxFontSizeMultiplier={1.4} style={[styles.amount, compact && styles.compact, alignment === 'end' && styles.endText]}>{price.amount}</Text>
+      {!!price.unit && <Text maxFontSizeMultiplier={1.4} style={[styles.unit, alignment === 'end' && styles.endText]}>{price.unit}</Text>}
     </View>
   );
 }
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: SPACING.sm, rowGap: 2 },
   end: { flexDirection: 'column', alignItems: 'flex-end', flexWrap: 'nowrap' },
   endText: { textAlign: 'right' },
-  amount: { ...TYPOGRAPHY.largeTitle, color: COLORS.primaryDark, fontVariant: ['tabular-nums'], fontWeight: '400', fontFamily: 'DMSans_400Regular' },
-  compact: { fontSize: 25, lineHeight: 32, letterSpacing: -0.5 },
+  amount: { ...TYPOGRAPHY.largeTitle, color: COLORS.primaryDark, fontVariant: ['tabular-nums'] },
+  compact: { fontSize: TYPOGRAPHY.h1.fontSize, lineHeight: 32, letterSpacing: -0.5 },
   unit: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

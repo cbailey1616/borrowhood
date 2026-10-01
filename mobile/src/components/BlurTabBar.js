@@ -10,7 +10,7 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { Ionicons } from './Icon';
-import { COLORS, ANIMATION } from '../utils/config';
+import { COLORS, ANIMATION, TYPOGRAPHY } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
 
@@ -83,14 +83,13 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
         />
         {hasUpdate && (route.name === 'Activity'
           ? <View testID="TabBar.Activity.badge" style={styles.unreadBadge}>
-              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
             </View>
           : <View testID="TabBar.Feed.dot" style={styles.unreadDot} />)}
       </Animated.View>
-      <Text
+      <Text maxFontSizeMultiplier={1.4}
         style={[
           styles.label,
-          isFocused && { fontWeight: '400' },
           { color: isFocused ? COLORS.primary : COLORS.textSecondary },
         ]}
       >
@@ -210,8 +209,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.savedMuted,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '400',
+    ...TYPOGRAPHY.label,
     marginTop: 4,
   },
   unreadDot: {
@@ -225,9 +223,9 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     position: 'absolute', top: -5, right: -2,
-    minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 4,
+    minWidth: 22, minHeight: 22, borderRadius: 11, paddingHorizontal: 4, paddingVertical: 1,
     backgroundColor: COLORS.success, borderWidth: 2, borderColor: COLORS.surface,
     alignItems: 'center', justifyContent: 'center',
   },
-  badgeText: { color: COLORS.surface, fontSize: 11, fontWeight: '400' },
+  badgeText: { color: COLORS.surface, ...TYPOGRAPHY.badge },
 });

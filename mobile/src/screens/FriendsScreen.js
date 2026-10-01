@@ -395,12 +395,12 @@ export default function FriendsScreen({ navigation, route }) {
     <LayeredCard style={styles.card}>
       <FriendAvatar />
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.name} numberOfLines={2}>{item.name}</Text>
         <Text style={styles.subtitle}>Not on Borrowhood yet</Text>
       </View>
       <HapticPressable style={styles.inviteButton} onPress={() => handleInvite(item)}
         accessibilityLabel={`Invite ${item.name}`}>
-        <Text style={styles.inviteButtonText}>Invite</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.inviteButtonText}>Invite</Text>
       </HapticPressable>
     </LayeredCard>
   );
@@ -420,7 +420,7 @@ export default function FriendsScreen({ navigation, route }) {
           {responding?.id === item.requestId && responding.action === 'accept'
             ? <ActivityIndicator size="small" color={COLORS.surface} />
             : <Ionicons name="checkmark" size={18} color={COLORS.surface} />}
-          <Text style={styles.requestActionText}>Accept</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.requestActionText}>Accept</Text>
         </HapticPressable>
         <HapticPressable style={styles.declineButton}
           accessibilityLabel={`Decline request from ${item.firstName}`}
@@ -428,7 +428,7 @@ export default function FriendsScreen({ navigation, route }) {
           {responding?.id === item.requestId && responding.action === 'decline'
             ? <ActivityIndicator size="small" color={COLORS.surface} />
             : <Ionicons name="close" size={18} color={COLORS.surface} />}
-          <Text style={styles.requestActionText}>Decline</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.requestActionText}>Decline</Text>
         </HapticPressable>
       </View>
     </LayeredCard>
@@ -466,7 +466,7 @@ export default function FriendsScreen({ navigation, route }) {
             <SegmentedControl variant="underline" segments={['Friends', friendRequests.length ? `Requests (${friendRequests.length})` : 'Requests']}
               selectedIndex={activeTab === 'requests' ? 1 : 0} onIndexChange={index => switchTab(index === 0 ? 'friends' : 'requests')} testID="Friends.tabs" />
             <View style={styles.toolbar}>
-              {activeTab === 'friends' ? searchField : <Text style={styles.requestCount}>
+              {activeTab === 'friends' ? searchField : <Text maxFontSizeMultiplier={1.4} style={styles.requestCount}>
                 {isLoadingRequests ? 'Loading requests…' : `${friendRequests.length} friend request${friendRequests.length === 1 ? '' : 's'}`}
               </Text>}
               <HapticPressable accessibilityLabel="Add friends" onPress={() => setAddFriendsVisible(true)} style={styles.addFriendsButton}>
@@ -547,7 +547,7 @@ export default function FriendsScreen({ navigation, route }) {
                 Allow access to your contacts to find friends on Borrowhood and invite others
               </Text>
               <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
-                <Text style={styles.settingsButtonText}>Open Settings</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.settingsButtonText}>Open Settings</Text>
               </HapticPressable>
             </View>
           ) : isLoadingContacts || (!contactsFetched && contactsPermission === null) ? (
@@ -583,7 +583,7 @@ export default function FriendsScreen({ navigation, route }) {
               ListFooterComponent={
                 <HapticPressable haptic="light" style={styles.updateAccessButton} onPress={openSettings}>
                   <Ionicons name="settings-outline" size={18} color={COLORS.primary} />
-                  <Text style={styles.updateAccessText}>Not seeing all your contacts? Update access in Settings</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.updateAccessText}>Not seeing all your contacts? Update access in Settings</Text>
                 </HapticPressable>
               }
               ListEmptyComponent={
@@ -594,7 +594,7 @@ export default function FriendsScreen({ navigation, route }) {
                     We couldn't find any contacts with phone numbers. You may need to grant full contacts access in Settings.
                   </Text>
                   <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
-                    <Text style={styles.settingsButtonText}>Open Settings</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.settingsButtonText}>Open Settings</Text>
                   </HapticPressable>
                 </View>
               }
@@ -670,7 +670,7 @@ export default function FriendsScreen({ navigation, route }) {
 function FriendIdentity({ user, subtitle }) {
   return <View style={styles.info}>
     <MemberSummary user={user} showExchangeCount={false} compact>
-      <Text style={styles.name} numberOfLines={2}>{[user.firstName, user.lastName].filter(Boolean).join(' ')}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.name} numberOfLines={2}>{[user.firstName, user.lastName].filter(Boolean).join(' ')}</Text>
       {user.isVerified && <VerifiedBadge size={16} />}
     </MemberSummary>
     {!!subtitle && <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>}
@@ -690,7 +690,7 @@ function FriendAvatar({ uri }) {
 const styles = StyleSheet.create({
   navigationArea: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm, gap: SPACING.md, maxWidth: 760, width: '100%', alignSelf: 'center' },
   toolbar: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  requestCount: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, flex: 1 },
+  requestCount: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, flex: 1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   addFriendsButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, backgroundColor: COLORS.primary, borderRadius: RADIUS.full },
   addFriendsText: { ...TYPOGRAPHY.subheadline, color: COLORS.surface },
   findHeader: { gap: SPACING.md },
@@ -738,10 +738,11 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
     marginTop: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
   },
   card: {
     flexDirection: 'row',
@@ -773,6 +774,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   removeButton: {
     width: 44,
@@ -857,8 +860,9 @@ const styles = StyleSheet.create({
   },
   inviteButtonText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   updateAccessButton: {
     flexDirection: 'row',
@@ -882,7 +886,7 @@ const styles = StyleSheet.create({
   },
   settingsButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
+    color: COLORS.white,
   },
   emptyContainer: {
     flex: 1,
@@ -902,6 +906,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   clearSearch: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm, maxWidth: 760, width: '100%', alignSelf: 'center' },

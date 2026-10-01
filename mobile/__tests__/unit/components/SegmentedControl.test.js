@@ -28,13 +28,14 @@ describe('SegmentedControl', () => {
     expect(getByText('Requests')).toBeTruthy();
   });
 
-  it('uses darker ink for unselected ribbon labels and keeps only the selected tab bold', () => {
+  it('uses medium-weight ribbon labels with darker ink for the selected tab', () => {
     const SegmentedControl = require('../../../src/components/SegmentedControl').default;
     const screen = render(<SegmentedControl variant="underline" segments={['Items', 'Wanted', 'My requests']}
       selectedIndex={2} onIndexChange={jest.fn()} />);
     expect(StyleSheet.flatten(screen.getByText('Items').props.style).color).toBe(COLORS.primary);
-    expect(StyleSheet.flatten(screen.getByText('Items').props.style).fontFamily).toBe('DMSans_400Regular');
-    expect(StyleSheet.flatten(screen.getByText('My requests').props.style).fontFamily).toBe('DMSans_600SemiBold');
+    expect(StyleSheet.flatten(screen.getByText('Items').props.style).fontFamily).toBe('DMSans_500Medium');
+    expect(StyleSheet.flatten(screen.getByText('My requests').props.style).fontFamily).toBe('DMSans_500Medium');
+    expect(StyleSheet.flatten(screen.getByText('My requests').props.style).color).toBe(COLORS.primaryDark);
   });
 
   it('fires onIndexChange when tapping inactive segment', () => {

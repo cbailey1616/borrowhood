@@ -30,7 +30,7 @@ const MessageComposer = forwardRef(function MessageComposer({
           if (Number.isFinite(height)) setInputHeight(Math.max(48, Math.min(112, Math.ceil(height))));
         }}
         placeholder={placeholder}
-        placeholderTextColor={dark ? '#A8AAAD' : COLORS.textMuted}
+        placeholderTextColor={dark ? COLORS.messageDark.secondary : COLORS.textMuted}
         accessibilityLabel={inputAccessibilityLabel}
         testID={inputTestID}
         multiline
@@ -40,7 +40,7 @@ const MessageComposer = forwardRef(function MessageComposer({
         autoCorrect
         spellCheck
         showDoneAccessory={false}
-        keyboardAppearance={dark ? 'dark' : 'light'}
+        keyboardAppearance="light"
       />
       <HapticPressable
         haptic="medium"
@@ -53,7 +53,7 @@ const MessageComposer = forwardRef(function MessageComposer({
         onPress={() => { if (!unavailable) onSend?.(); }}
       >
         {loading ? <ActivityIndicator size="small" color={COLORS.spinner} />
-          : <Ionicons name="arrow-up" size={23} color={dark ? unavailable ? '#A8AAAD' : '#FFFFFF' : unavailable ? COLORS.textMuted : COLORS.surface} />}
+          : <Ionicons name="arrow-up" size={23} color={dark ? unavailable ? COLORS.messageDark.secondary : COLORS.white : unavailable ? COLORS.textMuted : COLORS.surface} />}
       </HapticPressable>
     </View>
   );
@@ -62,9 +62,9 @@ const MessageComposer = forwardRef(function MessageComposer({
 export default MessageComposer;
 
 const styles = StyleSheet.create({
-  darkContainer: { backgroundColor: '#34373D', borderColor: '#565A61', borderRadius: 30 },
-  darkInput: { backgroundColor: 'transparent', color: '#F1F1F2' },
-  darkSend: { backgroundColor: '#484C52' },
+  darkContainer: { backgroundColor: COLORS.messageDark.surface, borderColor: COLORS.messageDark.border, borderRadius: 30 },
+  darkInput: { backgroundColor: 'transparent', color: COLORS.messageDark.text },
+  darkSend: { backgroundColor: COLORS.messageDark.send },
   container: {
     padding: 4,
     flexDirection: 'row',

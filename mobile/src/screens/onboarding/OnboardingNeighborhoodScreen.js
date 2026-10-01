@@ -10,7 +10,7 @@ import { Ionicons } from '../../components/Icon';
 import { useAuth } from '../../context/AuthContext';
 import useNavigationTask from '../../hooks/useNavigationTask';
 import api from '../../services/api';
-import { COLORS, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { CARD_SURFACE, COLORS, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function OnboardingNeighborhoodScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
@@ -128,7 +128,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
         <Text style={styles.link}>Not now</Text>
       </HapticPressable>}>
       <View style={styles.location}><Ionicons name="location" size={18} color={COLORS.primary} />
-        <Text style={styles.locationText}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text></View>
+        <Text maxFontSizeMultiplier={1.4} style={styles.locationText}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text></View>
       {loading ? <ActivityIndicator style={styles.loading} color={COLORS.spinner} accessibilityLabel="Finding neighborhoods" />
         : loadError ? <View style={styles.emptyCard}>
           <Ionicons name="refresh-outline" size={34} color={COLORS.primary} />
@@ -171,16 +171,16 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
                   <Ionicons name="close" size={22} color={COLORS.primary} /></HapticPressable></View>
             </SheetDismissArea>
             <Text style={styles.detail}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text>
-            <Text style={styles.fieldLabel}>Neighborhood name</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Neighborhood name</Text>
             <TextInput accessibilityLabel="Neighborhood name" value={name} onChangeText={setName} editable={!busy}
               maxLength={100} placeholder="e.g. Oak Street" placeholderTextColor={COLORS.textMuted} style={styles.input} autoCapitalize="words" />
-            <Text style={styles.fieldLabel}>Description (optional)</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Description (optional)</Text>
             <TextInput accessibilityLabel="Description (optional)" value={description} onChangeText={setDescription} editable={!busy}
               maxLength={1000} multiline style={[styles.input, styles.description]} placeholder="Tell neighbors about your area" placeholderTextColor={COLORS.textMuted} />
             {!!createError && <Text accessibilityRole="alert" style={styles.error}>{createError}</Text>}
             <HapticPressable accessibilityRole="button" accessibilityLabel="Create neighborhood" disabled={busy}
               accessibilityState={{ disabled: busy, busy }} onPress={create} style={styles.createButton}>
-              {busy ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.createLabel}>Create neighborhood</Text>}
+              {busy ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={styles.createLabel}>Create neighborhood</Text>}
             </HapticPressable>
           </ScrollView>
         </View>
@@ -190,28 +190,28 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
 }
 const styles = StyleSheet.create({
   location: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 16 },
-  locationText: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1 },
+  locationText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.text, flexShrink: 1 , },
   search: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, marginBottom: 12 },
   searchInput: { ...TYPOGRAPHY.body, color: COLORS.text, flex: 1, minHeight: 50 },
   loading: { padding: 40 },
-  emptyCard: { backgroundColor: COLORS.surface, padding: 24, borderRadius: RADIUS.xl, alignItems: 'center', gap: 14 },
+  emptyCard: { ...CARD_SURFACE, backgroundColor: COLORS.surface, padding: 24, borderRadius: RADIUS.xl, alignItems: 'center', gap: 14 },
   emptyTitle: { ...TYPOGRAPHY.title3, color: COLORS.primary, textAlign: 'center' },
   detail: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   noMatch: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, paddingVertical: 24, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.borderLight, backgroundColor: COLORS.surface },
+  row: { ...CARD_SURFACE, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
   selected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryMuted },
   rowIcon: { width: 50, height: 50, borderRadius: RADIUS.md, backgroundColor: COLORS.accentMuted, alignItems: 'center', justifyContent: 'center' },
   rowContent: { flex: 1, gap: 5 },
   rowTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary },
   linkButton: { alignItems: 'center', justifyContent: 'center', minHeight: 48, padding: 10 },
-  link: { ...TYPOGRAPHY.body, color: COLORS.primary, textAlign: 'center', textDecorationLine: 'underline' },
+  link: { ...TYPOGRAPHY.button, color: COLORS.primary, textAlign: 'center', textDecorationLine: 'underline' , },
   overlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
   createSheet: { backgroundColor: COLORS.background, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, width: '100%', maxWidth: 560, alignSelf: 'center' },
   createContent: { padding: 24, gap: 12 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   sheetTitle: { ...TYPOGRAPHY.title2, color: COLORS.primary, flex: 1 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  fieldLabel: { ...TYPOGRAPHY.subheadline, color: COLORS.text, marginTop: 10 },
+  fieldLabel: { ...TYPOGRAPHY.buttonSmall, color: COLORS.text, marginTop: 10 , },
   input: { ...TYPOGRAPHY.body, color: COLORS.text, minHeight: 52, padding: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, borderRadius: RADIUS.md },
   description: { minHeight: 88, textAlignVertical: 'top' },
   error: { ...TYPOGRAPHY.footnote, color: COLORS.danger },

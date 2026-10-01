@@ -69,17 +69,17 @@ export function GroupedListItem({
           </View>
         ) : null}
         <View style={styles.itemContent}>
-          <Text style={[styles.itemTitle, { color: textColor }]} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.itemTitle, { color: textColor }]} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text style={styles.itemSubtitle} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.itemSubtitle} numberOfLines={1}>
               {subtitle}
             </Text>
           ) : null}
         </View>
         {value ? (
-          <Text style={styles.itemValue} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={1.4} style={styles.itemValue} numberOfLines={1}>
             {value}
           </Text>
         ) : null}
@@ -88,7 +88,7 @@ export function GroupedListItem({
             value={switchValue}
             onValueChange={onSwitchChange}
             trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-            thumbColor="#fff"
+            thumbColor={COLORS.white}
             ios_backgroundColor={COLORS.primaryMuted}
           />
         ) : null}
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontFamily: 'DMSans_500Medium', fontWeight: '500',
     color: COLORS.textMuted,
     marginBottom: SPACING.sm,
     marginLeft: SPACING.lg,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     marginRight: SPACING.sm,
   },
   itemTitle: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   itemSubtitle: {

@@ -22,7 +22,7 @@ export default function StripeVerificationButton({ onPress, loading = false, dis
       {loading ? <ActivityIndicator color={COLORS.surface} /> : label === 'Verify through Stripe' ? (
         <>
           <View style={styles.brandLabel} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <Text style={styles.text}>Verify through</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.text}>Verify through</Text>
             <View style={styles.logoBadge}>
               <Image source={require('../../assets/brand/stripe-wordmark-purple.svg')} style={styles.logo} contentFit="contain" transition={0} />
             </View>
@@ -30,7 +30,7 @@ export default function StripeVerificationButton({ onPress, loading = false, dis
           <Icon name="arrow-forward" size={20} color={COLORS.surface} />
         </>
       ) : (
-        <Text style={styles.text}>{label}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.text}>{label}</Text>
       )}
     </HapticPressable>
   );
@@ -39,7 +39,7 @@ export default function StripeVerificationButton({ onPress, loading = false, dis
 const styles = StyleSheet.create({
   button: { minHeight: 54, paddingVertical: 10, paddingHorizontal: 20, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: COLORS.primary, flexDirection: 'row', gap: 12, alignItems: 'center', justifyContent: 'center' },
   brandLabel: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 8, flexShrink: 1 },
-  logoBadge: { paddingHorizontal: 7, paddingVertical: 4, backgroundColor: '#FFFFFF', borderRadius: 8 },
+  logoBadge: { paddingHorizontal: 7, paddingVertical: 4, backgroundColor: COLORS.white, borderRadius: 8 },
   logo: { width: 59, height: 25 },
   text: { ...TYPOGRAPHY.button, color: COLORS.surface, textAlign: 'center', flexShrink: 1 },
   disabled: { opacity: 0.6 },

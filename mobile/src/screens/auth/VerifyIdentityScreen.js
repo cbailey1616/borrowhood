@@ -117,7 +117,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       <View style={styles.readableWidth}>
         <VerificationPurchaseActions purchase={purchase} onVerify={handleStartVerification} disabled={isLoading} />
         <HapticPressable style={styles.skipButton} onPress={handleSkipForNow} haptic="light">
-          <Text style={styles.skipButtonText}>Skip for now</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.skipButtonText}>Skip for now</Text>
         </HapticPressable>
       </View>
     </View>
@@ -134,7 +134,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
             disabled={isLoading || purchase.busy}
             haptic="light"
           >
-            <Text style={styles.secondaryButtonText}>I've already verified</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.secondaryButtonText}>I've already verified</Text>
           </HapticPressable>
         </View>
         {inlineActions && actions}
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   readableWidth: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   actionFooter: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.md, backgroundColor: COLORS.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.borderLight },
   secondaryButton: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, minHeight: 44, padding: SPACING.md, marginTop: SPACING.lg, alignItems: 'center', justifyContent: 'center' },
-  secondaryButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  secondaryButtonText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary },
   skipButton: { minHeight: 44, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingVertical: SPACING.sm, marginTop: SPACING.sm, alignItems: 'center', justifyContent: 'center' },
-  skipButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  skipButtonText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary },
 });

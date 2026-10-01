@@ -120,7 +120,7 @@ export default function ReferralScreen() {
                   <Ionicons name="checkmark" size={14} color={COLORS.background} />
                 )}
               </View>
-              <Text style={styles.milestoneLabel}>Friend {i}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.milestoneLabel}>Friend {i}</Text>
             </View>
           ))}
         </View>
@@ -128,7 +128,7 @@ export default function ReferralScreen() {
 
       {/* Referral Code */}
       <View style={[styles.cardBox, styles.codeCard]}>
-        <Text style={styles.codeLabel}>Your Referral Code</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.codeLabel}>Your Referral Code</Text>
         <View style={styles.codeRow}>
           <Text style={styles.codeText}>{referralCode}</Text>
           <HapticPressable
@@ -146,7 +146,7 @@ export default function ReferralScreen() {
           haptic="medium"
         >
           <Ionicons name="share-outline" size={20} color={COLORS.background} />
-          <Text style={styles.shareButtonText}>Share with Friends</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.shareButtonText}>Share with Friends</Text>
         </HapticPressable>
       </View>
 
@@ -167,7 +167,7 @@ export default function ReferralScreen() {
             {isClaiming ? (
               <ActivityIndicator color={COLORS.background} />
             ) : (
-              <Text style={styles.claimButtonText}>Claim Free Plus</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.claimButtonText}>Claim Free Plus</Text>
             )}
           </HapticPressable>
         </View>
@@ -194,7 +194,7 @@ export default function ReferralScreen() {
                 <Text style={styles.friendName}>
                   {friend.firstName} {friend.lastName}
                 </Text>
-                <Text style={styles.friendDate}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.friendDate}>
                   Joined {new Date(friend.joinedAt).toLocaleDateString()}
                 </Text>
               </View>
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   // Hero
   heroCard: {
     alignItems: 'center',
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   milestoneLabel: {
-    ...TYPOGRAPHY.caption2,
+    ...TYPOGRAPHY.badge,
     color: COLORS.textMuted,
   },
   // Code
@@ -294,9 +294,8 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   codeLabel: {
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
-    fontWeight: '400',
   },
   codeRow: {
     flexDirection: 'row',
@@ -312,7 +311,6 @@ const styles = StyleSheet.create({
   codeText: {
     ...TYPOGRAPHY.title3,
     color: COLORS.text,
-    fontWeight: '400',
     letterSpacing: 1,
   },
   copyButton: {
@@ -392,7 +390,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   friendName: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
   },
   friendDate: {

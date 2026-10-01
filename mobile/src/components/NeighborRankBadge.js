@@ -13,7 +13,7 @@ export default function NeighborRankBadge({ rank, size = 16, showName = false, o
     onPress={event => { event?.stopPropagation?.(); onPress?.(); }}
   >
     <Ionicons name={rank.icon} size={size} illustrated color={COLORS.primary} />
-    {showName && <Text style={styles.name}>{rank.label}</Text>}
+    {showName && <Text maxFontSizeMultiplier={1.4} style={styles.name}>{rank.label}</Text>}
   </HapticPressable>;
 }
 
@@ -21,5 +21,5 @@ const styles = StyleSheet.create({
   // Keep the icon next to the identity marks; retain the full tap area to its right.
   button: { width: 44, minHeight: 44, flexShrink: 0, alignItems: 'flex-start', justifyContent: 'center' },
   namedButton: { alignItems: 'center', width: 'auto', maxWidth: '45%', minHeight: 44, flexDirection: 'row', gap: SPACING.xs, paddingVertical: SPACING.xs },
-  name: { ...TYPOGRAPHY.caption1, fontWeight: '400', color: COLORS.primary, flexShrink: 1 },
+  name: { ...TYPOGRAPHY.label, color: COLORS.primary, flexShrink: 1 },
 });

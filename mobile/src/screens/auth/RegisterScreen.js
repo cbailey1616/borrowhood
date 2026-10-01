@@ -101,7 +101,7 @@ export default function RegisterScreen({ navigation }) {
             onPress={() => navigation.goBack()}
             haptic="light"
           >
-            <Text style={styles.backButtonText}>{'\u2039'}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.backButtonText}>{'\u2039'}</Text>
           </HapticPressable>
 
           <Text style={styles.title}>Create account</Text>
@@ -188,7 +188,7 @@ export default function RegisterScreen({ navigation }) {
                     style={styles.eyeButton}
                     haptic="light"
                   >
-                    <Text style={styles.eyeButtonText}>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.eyeButtonText}>
                       {showPassword ? 'Hide' : 'Show'}
                     </Text>
                   </HapticPressable>
@@ -240,17 +240,17 @@ export default function RegisterScreen({ navigation }) {
                 {isLoading ? (
                   <ActivityIndicator color={COLORS.background} />
                 ) : (
-                  <Text style={styles.registerButtonText}>Create Account</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.registerButtonText}>Create Account</Text>
                 )}
               </HapticPressable>
 
               <Text style={styles.terms}>
                 By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>
                   Terms of Service
                 </Text>
                 {' '}and{' '}
-                <Text style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>
                   Privacy Policy
                 </Text>
               </Text>
@@ -260,7 +260,7 @@ export default function RegisterScreen({ navigation }) {
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
             <HapticPressable onPress={() => navigation.navigate('Login')} haptic="light">
-              <Text style={styles.footerLink}>Sign in</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.footerLink}>Sign in</Text>
             </HapticPressable>
           </View>
         </ScrollView>
@@ -287,9 +287,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   backButtonText: {
-    fontSize: 36,
+    ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,
-    fontWeight: '300',
   },
   title: {
     ...TYPOGRAPHY.h1,
@@ -315,15 +314,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   label: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
   },
   input: {
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -341,7 +339,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   eyeButton: {
@@ -350,8 +348,7 @@ const styles = StyleSheet.create({
   },
   eyeButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
   },
   registerButton: {
     backgroundColor: COLORS.primary,
@@ -374,8 +371,9 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     color: COLORS.primary,
-    fontWeight: '400',
     textDecorationLine: 'underline',
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
@@ -388,7 +386,6 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
   },
 });

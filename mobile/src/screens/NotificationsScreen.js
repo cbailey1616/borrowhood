@@ -7,11 +7,10 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
-} from 'react-native';
+  RefreshControl, } from 'react-native';
 import HeroIcon from '../components/HeroIcon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION  } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
@@ -117,7 +116,7 @@ export default function NotificationsScreen({ navigation }) {
             {item.title}
           </Text>
           <Text style={[styles.body, !item.isRead && styles.bodyUnread]} numberOfLines={2}>{item.body}</Text>
-          <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
       </HapticPressable>
@@ -128,7 +127,7 @@ export default function NotificationsScreen({ navigation }) {
     <View style={styles.container}>
       {unreadCount > 0 && (
         <View style={styles.header}>
-          <Text style={styles.unreadLabel}>{unreadCount} unread</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.unreadLabel}>{unreadCount} unread</Text>
           <HapticPressable
             onPress={handleMarkAllRead}
             haptic="light"
@@ -191,20 +190,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.separator,
   },
-  unreadLabel: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+  unreadLabel: { ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
     color: COLORS.text,
+   fontFamily: 'DMSans_500Medium'
   },
-  markAllRead: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+  markAllRead: { ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
     color: COLORS.primary,
+   fontFamily: 'DMSans_500Medium'
   },
   listContent: {
     padding: SPACING.lg,
   },
-  card: {
+  card: { ...CARD_SURFACE,
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
@@ -212,24 +211,24 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     alignItems: 'flex-start',
     gap: SPACING.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.separator,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardUnread: {
-    backgroundColor: COLORS.primary + '08',
-    borderColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary08,
+    borderColor: COLORS.tints.primary20,
   },
   cardContent: {
     flex: 1,
   },
-  title: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+  title: { ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+   fontFamily: 'DMSans_500Medium'
   },
-  titleUnread: {
-    fontWeight: '400',
+  titleUnread: { fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
     color: COLORS.text,
   },
   body: {
@@ -237,7 +236,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
   },
-  bodyUnread: {
+  bodyUnread: { fontFamily: 'DMSans_400Regular',
     fontWeight: '400',
     color: COLORS.text,
   },

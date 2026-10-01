@@ -225,7 +225,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         {isEditing ? (
           <View style={[styles.cardBox, styles.editCardContent]}>
             {/* Banner Photo */}
-            <Text style={styles.fieldLabel}>Cover Photo</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Cover Photo</Text>
             {(selectedBannerPhoto || editBannerUrl) ? (
               <View style={styles.bannerPreviewContainer}>
                 {coverFailed ? <View style={[styles.bannerPreview, styles.coverFallback]}>
@@ -254,7 +254,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               </View>
             )}
 
-            <Text style={styles.fieldLabel}>Name</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Name</Text>
             <TextInput
               style={styles.input}
               value={editName}
@@ -266,7 +266,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               autoCorrect={true}
               spellCheck={true}
             />
-            <Text style={styles.fieldLabel}>Description</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={editDescription}
@@ -281,7 +281,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               spellCheck={true}
             />
 
-            <Text style={styles.fieldLabel}>Announcement · Optional</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Announcement · Optional</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={editAnnouncement}
@@ -296,7 +296,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
             <View style={styles.editActions}>
               <HapticPressable style={styles.cancelButton} onPress={handleCancelEdit} haptic="light" disabled={isSaving}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
               <HapticPressable
                 style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
@@ -305,16 +305,16 @@ export default function CommunitySettingsScreen({ route, navigation }) {
                 haptic="medium"
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={COLORS.white} />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.saveButtonText}>Save</Text>
                 )}
               </HapticPressable>
             </View>
           </View>
         ) : (
           <View style={[styles.cardBox, styles.infoCardContent]}>
-            <Text style={styles.communityName}>{community?.name || 'My Neighborhood'}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.communityName}>{community?.name || 'My Neighborhood'}</Text>
             {community?.description ? (
               <Text style={styles.communityDescription}>{community.description}</Text>
             ) : canEdit ? (
@@ -323,7 +323,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             {canEdit && (
               <HapticPressable style={styles.editButton} onPress={() => setIsEditing(true)} haptic="light">
                 <Ionicons name="pencil" size={15} color={COLORS.primary} />
-                <Text style={styles.editButtonText}>Edit Details</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.editButtonText}>Edit Details</Text>
               </HapticPressable>
             )}
           </View>
@@ -334,7 +334,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
         <Text style={styles.sectionTitle}>Your preferences</Text>
         <HapticPressable style={styles.actionButton} onPress={() => navigation.navigate('NotificationSettings')}>
           <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>Notification settings</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Notification settings</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
         </HapticPressable>
         <Text style={styles.settingDescription}>Choose which updates you receive across Borrowhood.</Text>
@@ -354,7 +354,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           haptic="light"
         >
           <Ionicons name="neighbors-manage-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
 
@@ -364,7 +364,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           haptic="light"
         >
           <Ionicons name="neighbor-invite-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.actionButtonText}>Invite Neighbors</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Invite Neighbors</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
       </View>
@@ -378,7 +378,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           haptic="medium"
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-          {isLeaving ? <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Checking neighborhood" /> : <Text style={[styles.actionButtonText, styles.leaveText]}>Leave Neighborhood</Text>}
+          {isLeaving ? <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Checking neighborhood" /> : <Text maxFontSizeMultiplier={1.4} style={[styles.actionButtonText, styles.leaveText]}>Leave Neighborhood</Text>}
         </HapticPressable>
       </View>
 
@@ -431,12 +431,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.caption,
-    fontSize: 13,
-    fontWeight: '400',
+    fontSize: TYPOGRAPHY.footnote.fontSize,
+    fontWeight: '500',
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: SPACING.md,
+    fontFamily: 'DMSans_500Medium',
   },
   infoCardContent: {
     padding: SPACING.lg,
@@ -450,7 +451,7 @@ const styles = StyleSheet.create({
   },
   communityDescription: {
     ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
@@ -469,9 +470,10 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     ...TYPOGRAPHY.body,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.primary,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   communityDescriptionEmpty: {
     ...TYPOGRAPHY.footnote,
@@ -482,9 +484,10 @@ const styles = StyleSheet.create({
   fieldLabel: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
-    fontWeight: '400',
+    fontWeight: '500',
     marginBottom: SPACING.xs,
     marginTop: SPACING.sm,
+    fontFamily: 'DMSans_500Medium',
   },
   input: {
     borderWidth: 1,
@@ -531,7 +534,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
+    color: COLORS.white,
   },
   settingCard: {
     marginBottom: SPACING.sm,
@@ -548,8 +551,9 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   settingDescription: {
     ...TYPOGRAPHY.footnote,
@@ -571,15 +575,17 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     flex: 1,
     color: COLORS.text,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   leaveButton: {
-    backgroundColor: COLORS.danger + '10',
-    borderColor: COLORS.danger + '30',
+    backgroundColor: COLORS.tints.danger10,
+    borderColor: COLORS.tints.danger30,
   },
   leaveText: {
     color: COLORS.danger,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   bannerPreviewContainer: {
     position: 'relative',
     marginBottom: SPACING.md,

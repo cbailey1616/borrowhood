@@ -1,3 +1,4 @@
+import { COLORS } from '../utils/config';
 import React, { memo, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -5,9 +6,10 @@ import { hasBorrowhoodIcon, iconSvg, resolveIconName } from '../assets/borrowhoo
 
 // Navigation and status marks stay clear; objects get our warm illustrated fills.
 const CONTROL_ICONS = /^(close|add|remove|checkmark|chevron|arrow|ellipsis|search|send|eye|ellipse|alert|information|help)/;
-export function usesWarmIllustration(name, color = '#42594C') {
+export function usesWarmIllustration(name, color = COLORS.primary) {
   const ink = String(color).toLowerCase();
-  return ['#42594c', '#32483c', '#688566', '#343e35', '#5d6659', '#636c5b'].includes(ink)
+  return [COLORS.primary, COLORS.primaryDark, COLORS.primaryLight, COLORS.text, COLORS.textSecondary, COLORS.textMuted]
+    .map(value => value.toLowerCase()).includes(ink)
     && !CONTROL_ICONS.test(resolveIconName(name));
 }
 
@@ -17,7 +19,7 @@ const FriendlyIcon = memo(function FriendlyIcon({
   name = 'pricetag', size = 24, color, fillColor, style, illustrated,
   selected = !String(name).endsWith('-outline'), accessibilityLabel, ...props
 }) {
-  const ink = color || StyleSheet.flatten(style)?.color || '#42594C';
+  const ink = color || StyleSheet.flatten(style)?.color || COLORS.primary;
   const warm = illustrated ?? usesWarmIllustration(name, ink);
   const source = useMemo(() => ({
     uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg(name, { color: ink, fillColor, illustrated: warm, selected }))}`,

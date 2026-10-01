@@ -7,8 +7,7 @@ import {
   Switch,
   ActivityIndicator,
   Linking,
-  AppState,
-} from 'react-native';
+  AppState, } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -122,7 +121,7 @@ export default function NotificationSettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {loadError ? <View style={{ gap: SPACING.md }}><Text accessibilityRole="alert" style={styles.settingLabel}>Couldn’t load settings.</Text>
+      {loadError ? <View style={{ gap: SPACING.md }}><Text maxFontSizeMultiplier={1.4} accessibilityRole="alert" style={styles.settingLabel}>Couldn’t load settings.</Text>
         <ActionButton label="Try again" icon="refresh-outline" onPress={fetchPreferences} />
       </View> : null}
       {notifsDenied && (
@@ -144,14 +143,14 @@ export default function NotificationSettingsScreen() {
         <View style={styles.section}>
           <View style={[styles.cardBox, styles.settingsGroup]}>
             {PHONE_SETTINGS.map((setting, index) => <View key={setting.key} style={[styles.settingRow, index < PHONE_SETTINGS.length - 1 && styles.settingRowBorder]}>
-              <Text style={[styles.settingLabel, styles.settingInfo]}>{setting.label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.settingLabel, styles.settingInfo]}>{setting.label}</Text>
               <Switch accessibilityLabel={setting.label}
                 accessibilityState={{ disabled: setting.key === 'push_enabled' ? isSaving : childDisabled }}
                 disabled={setting.key === 'push_enabled' ? isSaving : childDisabled}
                 value={preferences[setting.key] ?? true}
                 onValueChange={value => handleChange({ [setting.key]: value })}
                 trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-                thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+                thumbColor={COLORS.white} ios_backgroundColor={COLORS.primaryMuted} />
             </View>)}
           </View>
           {saveError === 'phone' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
@@ -167,13 +166,13 @@ export default function NotificationSettingsScreen() {
                   <Text accessibilityRole="header" style={styles.requestTitle}>{setting.label}</Text>
                 </View>
                 {SOURCES.map((source, index) => <View key={source.key} style={[styles.settingRow, index < SOURCES.length - 1 && styles.settingRowBorder]}>
-                  <Text style={[styles.settingLabel, styles.settingInfo]}>{source.label}</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={[styles.settingLabel, styles.settingInfo]}>{source.label}</Text>
                   <Switch accessibilityLabel={`${setting.label}: ${source.label}`}
                     accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
                     value={sourceEnabled(setting.key, source.key)}
                     onValueChange={value => toggleSource(setting.key, source.key, value)}
                     trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
-                    thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+                    thumbColor={COLORS.white} ios_backgroundColor={COLORS.primaryMuted} />
                 </View>)}
               </View>
               {saveError === setting.key && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
@@ -184,10 +183,10 @@ export default function NotificationSettingsScreen() {
           <Text accessibilityRole="header" style={styles.heading}>Your activity</Text>
           <View style={[styles.cardBox, styles.settingsGroup]}>
             {ACTIVITY_SETTINGS.map((setting, index) => <View key={setting.key} style={[styles.settingRow, index < ACTIVITY_SETTINGS.length - 1 && styles.settingRowBorder]}>
-              <Text style={[styles.settingLabel, styles.settingInfo]}>{setting.label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.settingLabel, styles.settingInfo]}>{setting.label}</Text>
               <Switch accessibilityLabel={setting.label} accessibilityState={{ disabled: childDisabled }} disabled={childDisabled}
                 value={preferences[setting.key] ?? true} onValueChange={value => handleChange({ [setting.key]: value }, 'activity')}
-                trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }} thumbColor="#fff" ios_backgroundColor={COLORS.primaryMuted} />
+                trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }} thumbColor={COLORS.white} ios_backgroundColor={COLORS.primaryMuted} />
             </View>)}
           </View>
           {saveError === 'activity' && <Text accessibilityRole="alert" style={styles.settingDescription}>Couldn’t save that change. Please try again.</Text>}
@@ -202,13 +201,13 @@ export default function NotificationSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  heading: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.sm },
+  heading: { ...TYPOGRAPHY.headline, color: COLORS.primary, marginBottom: SPACING.sm , },
   requestGroups: { gap: SPACING.md },
   requestHeading: {
     flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
     paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm,
   },
-  requestTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 },
+  requestTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 , },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -218,7 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm,
     paddingBottom: SPACING.xxl, gap: SPACING.xl,
   },
-  cardBox: { ...CARD_SURFACE, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -261,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warningMuted,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.warning + '30',
+    borderColor: COLORS.tints.warning30,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     gap: SPACING.sm,

@@ -202,13 +202,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
         <Text style={styles.errorTitle}>Exchange unavailable</Text>
         <Text style={styles.errorSubtext}>{fetchError || 'This exchange may have been removed or is no longer accessible.'}</Text>
         <HapticPressable accessibilityRole="button" style={styles.errorButton} onPress={fetchTransaction}>
-          <Text style={styles.errorButtonText}>Try again</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.errorButtonText}>Try again</Text>
         </HapticPressable>
         <HapticPressable
           style={styles.errorButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.errorButtonText}>Go Back</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.errorButtonText}>Go Back</Text>
         </HapticPressable>
       </View>
     );
@@ -306,7 +306,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               {transaction.listing.photos?.[0] ? <Image source={{ uri: transaction.listing.photos[0] }} style={styles.itemPhoto} />
                 : <View style={[styles.itemPhoto, styles.imagePlaceholder]}><ListingTypeIcon listing={transaction} size={46} /></View>}
               <View style={{ flex: 1 }}>
-                <Text style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : transaction.isLender ? 'Lending' : 'Borrowing'}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : transaction.isLender ? 'Lending' : 'Borrowing'}</Text>
                 <Text style={styles.itemName}>{transaction.listing.title}</Text>
                 <Text style={styles.detailText}>{CONDITION_LABELS[transaction.listing.condition]}</Text>
               </View>
@@ -322,10 +322,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
             <Text style={styles.detailText}>Could not refresh this exchange.</Text>
             <ActionButton label="Try again" onPress={fetchTransaction} />
           </View>}
-          {!allDone && <Text style={styles.cardEyebrow}>What happens next</Text>}
+          {!allDone && <Text maxFontSizeMultiplier={1.4} style={styles.cardEyebrow}>What happens next</Text>}
           {activeReturn && !!returnDue && <View style={styles.dueBadge}>
             <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.dueText}>Due {returnDue}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dueText}>Due {returnDue}</Text>
           </View>}
           {showEndorsement ? <>
             {transaction.hasDispute && <>
@@ -356,7 +356,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
             disabled={actionLoading || !!fetchError} style={styles.outlinedAction} onPress={() => setMoreTimeSheetVisible(true)} />}
           {canCancel && <HapticPressable accessibilityRole="button" accessibilityLabel={cancelLabel} testID="Transaction.button.cancel"
             style={[styles.outlinedAction, styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
-            <Text style={styles.cancelActionText}>{cancelLabel}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cancelActionText}>{cancelLabel}</Text>
           </HapticPressable>}
           {needsPickupReview && <ActionButton label={`Message ${otherPerson.firstName}`} accessibilityLabel={`Message ${otherPerson.firstName} privately`}
             disabled={actionLoading} style={styles.outlinedAction} onPress={messageNeighbor} />}
@@ -374,13 +374,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {!isGiveaway && <LayeredCard radius={RADIUS.xl}><View style={styles.detailCard}>
           <View style={styles.borrowDates}>
             <View style={styles.borrowDate}>
-              <Text style={styles.smallLabel}>Pickup</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>Pickup</Text>
               <Text style={styles.borrowDateValue}>{formatCalendarDate(transaction.startDate, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
               <Text style={styles.detailText}>{parseCalendarDate(transaction.startDate)?.getFullYear()}</Text>
             </View>
             <Ionicons name="arrow-forward" size={22} color={COLORS.primary} />
             <View style={styles.borrowDate}>
-              <Text style={styles.smallLabel}>Return by</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>Return by</Text>
               <Text style={styles.borrowDateValue}>{returnDue}</Text>
               <Text style={styles.detailText}>{parseCalendarDate(transaction.endDate)?.getFullYear()}</Text>
             </View>
@@ -420,22 +420,22 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </HapticPressable>
           {detailsExpanded && <View style={styles.detailsBody} testID="Transaction.detailsBody">
             {detailRows.map(([label, value]) => <View key={label} style={styles.factRow}>
-              <Text style={styles.factLabel}>{label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.factLabel}>{label}</Text>
               <Text style={styles.factValue}>{value}</Text>
             </View>)}
             {(transaction.borrowerMessage || transaction.lenderResponse) && <View style={styles.notesSection}>
-              <Text style={styles.smallLabel}>Request notes</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>Request notes</Text>
               {!!transaction.borrowerMessage && <View style={styles.noteQuote}>
-                <Text style={styles.smallLabel}>{transaction.isBorrower ? 'You wrote' : `${transaction.borrower.firstName} wrote`}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>{transaction.isBorrower ? 'You wrote' : `${transaction.borrower.firstName} wrote`}</Text>
                 <Text style={styles.noteText}>{transaction.borrowerMessage}</Text>
               </View>}
               {!!transaction.lenderResponse && <View style={styles.noteQuote}>
-                <Text style={styles.smallLabel}>{transaction.isLender ? 'You replied' : `${transaction.lender.firstName} replied`}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>{transaction.isLender ? 'You replied' : `${transaction.lender.firstName} replied`}</Text>
                 <Text style={styles.noteText}>{transaction.lenderResponse}</Text>
               </View>}
             </View>}
             {!!transaction.conditionNotes && <View style={styles.notesSection}>
-              <Text style={styles.smallLabel}>Condition notes</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>Condition notes</Text>
               <Text style={styles.noteText}>{transaction.conditionNotes}</Text>
             </View>}
           </View>}
@@ -504,9 +504,9 @@ const styles = StyleSheet.create({
   decisionRow: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
   outlinedAction: { minHeight: 50, paddingVertical: 14, paddingHorizontal: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   cancelAction: { borderColor: COLORS.danger, backgroundColor: COLORS.danger },
-  cancelActionText: { fontSize: 15, fontWeight: '400', color: COLORS.surface },
+  cancelActionText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.surface },
   nextStepCard: { backgroundColor: COLORS.requestSurface, borderRadius: 24, padding: 20, gap: 14 },
-  completedEndorsement: { paddingHorizontal: 8, gap: SPACING.sm, backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 },
+  completedEndorsement: { paddingHorizontal: 8, gap: SPACING.sm, backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0 },
   dueBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: SPACING.sm, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full },
   dueText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
   returnNeighbor: { ...TYPOGRAPHY.headline, color: COLORS.text },
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12 },
   detailsBody: { padding: SPACING.lg, paddingTop: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, gap: SPACING.md },
   factRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: SPACING.md },
-  factLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flex: 1 },
+  factLabel: { ...TYPOGRAPHY.buttonCaption, color: COLORS.textSecondary, flex: 1 },
   factValue: { ...TYPOGRAPHY.footnote, color: COLORS.text, textAlign: 'right', flex: 1.5 },
   notesSection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, paddingTop: SPACING.md, gap: SPACING.sm },
   completedMessage: { marginTop: SPACING.lg, flexDirection: 'row', gap: SPACING.sm },
@@ -524,27 +524,27 @@ const styles = StyleSheet.create({
   statusHero: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: COLORS.primaryMuted, borderRadius: 24, padding: 20 },
   heroIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   heroTitle: { ...TYPOGRAPHY.h2, lineHeight: 28, color: COLORS.primary },
-  heroDescription: { fontSize: 14, lineHeight: 21, color: COLORS.textSecondary },
+  heroDescription: { ...TYPOGRAPHY.bodySmall, lineHeight: 21, color: COLORS.textSecondary },
   detailCard: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 18 },
   itemSummary: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   itemPhoto: { width: 74, height: 82, borderRadius: 17, backgroundColor: COLORS.primaryMuted },
-  itemName: { color: COLORS.text, fontSize: 22, lineHeight: 27, fontWeight: '400', marginVertical: 4 },
-  smallLabel: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 17, fontWeight: '400' },
-  detailText: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20 },
+  itemName: { color: COLORS.text, ...TYPOGRAPHY.title2, lineHeight: 27, marginVertical: 4 },
+  smallLabel: { color: COLORS.textSecondary, ...TYPOGRAPHY.label, lineHeight: 17 },
+  detailText: { color: COLORS.textSecondary, ...TYPOGRAPHY.footnote, lineHeight: 20 },
   cardDivider: { height: 1, backgroundColor: COLORS.border, marginVertical: 18 },
   borrowDates: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   borrowDate: { flex: 1 },
-  borrowDateValue: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '400', marginTop: 6 },
-  durationNote: { color: COLORS.primary, fontSize: 12, textAlign: 'center', marginTop: 12 },
+  borrowDateValue: { color: COLORS.text, ...TYPOGRAPHY.headline, lineHeight: 23, marginTop: 6 },
+  durationNote: { color: COLORS.primary, ...TYPOGRAPHY.caption1, textAlign: 'center', marginTop: 12 },
   cardEyebrow: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   neighborRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   neighborAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.primaryMuted },
-  neighborName: { color: COLORS.text, fontSize: 17, lineHeight: 23, fontWeight: '400' },
+  neighborName: { color: COLORS.text, ...TYPOGRAPHY.headline, lineHeight: 23 },
   neighborMessage: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, backgroundColor: COLORS.primaryMuted, padding: 14, marginTop: 18 },
-  neighborMessageTitle: { fontSize: 15, fontWeight: '400', color: COLORS.primary, flexShrink: 1 },
-  neighborMessageHint: { fontSize: 12, lineHeight: 17, color: COLORS.textSecondary, marginTop: 3 },
+  neighborMessageTitle: { ...TYPOGRAPHY.buttonSmall, color: COLORS.primary, flexShrink: 1 },
+  neighborMessageHint: { ...TYPOGRAPHY.caption1, lineHeight: 17, color: COLORS.textSecondary, marginTop: 3 },
   noteQuote: { borderLeftWidth: 3, borderLeftColor: COLORS.primaryMuted, paddingLeft: 12, marginBottom: 12 },
-  noteText: { fontSize: 15, lineHeight: 22, color: COLORS.text, marginTop: 6 },
+  noteText: { ...TYPOGRAPHY.subheadline, lineHeight: 22, color: COLORS.text, marginTop: 6 },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.warning + '15',
+    backgroundColor: COLORS.tints.warning15,
     padding: SPACING.lg,
     marginTop: SPACING.md,
   },
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.sm,
-    backgroundColor: COLORS.secondary + '15',
+    backgroundColor: COLORS.tints.secondary15,
     padding: SPACING.lg,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
@@ -575,7 +575,6 @@ const styles = StyleSheet.create({
   },
   overdueText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
     color: COLORS.warning,
   },
   loadingContainer: {
@@ -609,9 +608,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   errorButtonText: {
-    ...TYPOGRAPHY.body,
-    color: '#FFFFFF',
-    fontWeight: '400',
+    ...TYPOGRAPHY.button,
+    color: COLORS.white,
   },
   listingCard: {
     flexDirection: 'row',
@@ -633,8 +631,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listingTitle: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   listingCondition: {
@@ -657,7 +654,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
   },
   personCard: {
     flexDirection: 'row',
@@ -684,21 +680,20 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   personName: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   messageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: COLORS.tints.primary10,
     padding: SPACING.md,
     marginTop: SPACING.sm,
     borderRadius: RADIUS.md,
   },
   messageButtonText: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.label,
     color: COLORS.primary,
     flex: 1,
   },
@@ -712,7 +707,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
@@ -725,12 +719,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateLabel: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.label,
     color: COLORS.textSecondary,
   },
   dateValue: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
     marginTop: SPACING.xs,
   },
@@ -750,6 +743,8 @@ const styles = StyleSheet.create({
   priceLabel: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   priceValue: {
     ...TYPOGRAPHY.bodySmall,
@@ -762,14 +757,11 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.separator,
   },
   totalLabel: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   totalValue: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 16,
-    fontWeight: '400',
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
   },
   messageText: {
@@ -807,7 +799,7 @@ const styles = StyleSheet.create({
   },
   approveButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
+    color: COLORS.white,
   },
   reportIssueButton: {
     flex: 1,
@@ -818,8 +810,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.sm,
     borderWidth: 1,
-    borderColor: COLORS.danger + '40',
-    backgroundColor: COLORS.danger + '10',
+    borderColor: COLORS.tints.danger40,
+    backgroundColor: COLORS.tints.danger10,
   },
   reportIssueText: {
     ...TYPOGRAPHY.button,
@@ -835,7 +827,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.danger + '15',
+    backgroundColor: COLORS.tints.danger15,
     padding: SPACING.lg,
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.md,
@@ -846,7 +838,6 @@ const styles = StyleSheet.create({
   },
   disputeBannerTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
     color: COLORS.danger,
   },
   disputeBannerSubtitle: {

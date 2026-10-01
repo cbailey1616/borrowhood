@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from '../components/HapticPressable';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function OfferItemScreen({ route, navigation }) {
   const { request } = route.params;
@@ -75,7 +75,8 @@ const styles = StyleSheet.create({
   heading: { ...TYPOGRAPHY.h2, color: COLORS.text },
   hint: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary },
   itemTitle: { ...TYPOGRAPHY.headline, flex: 1, color: COLORS.text },
-  row: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 64, padding: SPACING.md,
-    borderRadius: RADIUS.md, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.sm },
+  row: { ...CARD_SURFACE, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 64, padding: SPACING.md,
+    borderRadius: RADIUS.md, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.sm
+  },
 });
 import { ThemedAlert as Alert } from "../components/ThemedAlert";

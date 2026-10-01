@@ -18,8 +18,7 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Keyboard,
-} from 'react-native';
+  Keyboard, } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 
@@ -342,11 +341,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             createdAt: result.createdAt,
             score: result.score ?? 1, viewerVote: result.viewerVote ?? 1, replyToId: result.replyToId || data.replyToId || parentId,
             user: {
-              id: user.id,
-              firstName: result.user?.firstName ?? (user.displayName || user.firstName),
-              lastName: result.user?.lastName ?? (user.displayName ? '' : (user.lastName ? `${user.lastName.charAt(0)}.` : '')),
-              profilePhotoUrl: user.profilePhotoUrl,
-            },
+            id: user.id,
+            firstName: result.user?.firstName ?? (user.displayName || user.firstName),
+            lastName: result.user?.lastName ?? (user.displayName ? '' : (user.lastName ? `${user.lastName.charAt(0)}.` : '')),
+            profilePhotoUrl: user.profilePhotoUrl,
+          },
             isOwn: true,
           }],
         }));
@@ -509,11 +508,11 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         ? <ShimmerImage placeholderIcon="person" source={{uri:post.user.profilePhotoUrl}} style={styles.postAvatar}
           onError={() => setFailedAvatars(previous => new Set([...previous,post.user.profilePhotoUrl]))}/>
         : <View style={[styles.postAvatar,styles.fallbackAvatar]} accessibilityLabel={`${name} avatar`}>
-          <Text style={styles.avatarInitials}>{discussionInitials(post.user)}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.avatarInitials}>{discussionInitials(post.user)}</Text>
         </View>}
       <View style={styles.commentMeta}>
-        <Text style={styles.postAuthor}>{name}</Text>
-        <Text style={styles.postDate}>{formatDiscussionTime(post.createdAt)}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.postAuthor}>{name}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.postDate}>{formatDiscussionTime(post.createdAt)}</Text>
       </View>
     </>;
     return <HapticPressable style={styles.comment} onLongPress={event => openReactions(post,parentId,event)}
@@ -541,18 +540,18 @@ export default function ListingDiscussionScreen({ route, navigation }) {
               accessibilityState={{selected:post.viewerVote === direction}} onPress={() => vote(post,direction)}>
               <Ionicons name={direction === 1 ? 'arrow-up' : 'arrow-down'} size={17}
                 color={post.viewerVote === direction ? direction === 1 ? colors.primary : colors.danger : colors.textMuted}/>
-              {direction === 1 && <Text accessibilityLabel={`Score: ${post.score || 0}`} style={styles.voteScore}>{post.score || 0}</Text>}
+              {direction === 1 && <Text maxFontSizeMultiplier={1.4} accessibilityLabel={`Score: ${post.score || 0}`} style={styles.voteScore}>{post.score || 0}</Text>}
             </HapticPressable>)}
           </View>
           <HapticPressable style={styles.replyButton} onPress={() => openThread(parentId || post.id,true,post.id)} accessibilityLabel={`Reply to ${post.user.firstName}`}>
-            <Ionicons name="chat-reply" size={16} color={colors.textMuted}/><Text style={styles.actionText}>Reply</Text>
+            <Ionicons name="chat-reply" size={16} color={colors.textMuted}/><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Reply</Text>
           </HapticPressable>
           <HapticPressable style={styles.moreButton} accessibilityLabel="Add reaction" onPress={event => openReactions(post,parentId,event)}>
             <Ionicons name="reaction-add" size={23} color={colors.primary}/>
           </HapticPressable>
           {!parentId && post.replyCount > 0 && <HapticPressable style={styles.replyCountButton} onPress={() => openThread(post.id)}
             accessibilityLabel={`View ${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'} to ${post.user.firstName}`}>
-            <Text style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
           </HapticPressable>}
         </View>
       </View>}
@@ -591,16 +590,16 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     return <View style={styles.threadStatus}>
       {loadingReplies[postId] ? <View style={styles.replyStatus}>
         <ActivityIndicator size="small" color={colors.spinner} />
-        <Text style={styles.statusText}>Loading replies…</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.statusText}>Loading replies…</Text>
       </View> : replyErrors[postId] ? <View style={styles.replyStatus}>
         <Text accessibilityRole="alert" style={styles.replyError}>{replyErrors[postId]}</Text>
         <HapticPressable style={styles.actionButton} accessibilityLabel="Retry loading replies"
           onPress={() => fetchReplies(postId, failedReplyPages.current[postId] || 1)}>
-          <Text style={styles.actionText}>Try again</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Try again</Text>
         </HapticPressable>
       </View> : hasMoreReplies[postId] ? (
         <HapticPressable style={styles.actionButton} onPress={() => fetchReplies(postId, replyPages.current[postId] + 1)}>
-          <Text style={styles.actionText}>Show more replies</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Show more replies</Text>
         </HapticPressable>
       ) : null}
     </View>;
@@ -688,18 +687,18 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
           {renderInputBar(false)}
           <View style={styles.sortToolbar} accessibilityRole="tablist">
-            <Text style={styles.sortLabel}>The conversation</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.sortLabel}>The conversation</Text>
             {['top','newest','oldest'].map(order => <HapticPressable key={order} accessibilityRole="tab"
               accessibilityLabel={`Sort ${order}`} accessibilityState={{selected:sort === order}}
               style={[styles.sortButton,sort === order && styles.sortSelected]} onPress={() => {
                 setSort(order);sortRef.current=order;fetchPosts(1);
-              }}><Text style={styles.actionText}>{order[0].toUpperCase()+order.slice(1)}</Text></HapticPressable>)}
+              }}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>{order[0].toUpperCase()+order.slice(1)}</Text></HapticPressable>)}
           </View>
         </View>}
         ListFooterComponent={<>
           {!!activeThreadId && earliestReplyPage[activeThreadId] > 1 && <HapticPressable style={styles.actionButton}
-            onPress={() => fetchReplies(activeThreadId,earliestReplyPage[activeThreadId]-1)}><Text style={styles.actionText}>Earlier replies</Text></HapticPressable>}
-          {hasMorePosts && <HapticPressable style={styles.actionButton} onPress={() => fetchPosts(postsPage.current+1)}><Text style={styles.actionText}>Older comments</Text></HapticPressable>}
+            onPress={() => fetchReplies(activeThreadId,earliestReplyPage[activeThreadId]-1)}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Earlier replies</Text></HapticPressable>}
+          {hasMorePosts && <HapticPressable style={styles.actionButton} onPress={() => fetchPosts(postsPage.current+1)}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Older comments</Text></HapticPressable>}
         </>}
         ListEmptyComponent={activeThreadId ? null :
           <View style={styles.emptyContainer}>
@@ -781,9 +780,8 @@ const makeStyles = COLORS => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 80,
   },
-  emptyTitle: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
+  emptyTitle: { ...TYPOGRAPHY.h2,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     color: COLORS.text,
     marginTop: SPACING.lg,
   },
@@ -796,15 +794,18 @@ const makeStyles = COLORS => StyleSheet.create({
   postCard: {
     marginHorizontal: SPACING.lg,
     backgroundColor: COLORS.surface,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: COLORS.border,
   },
-  threadStart: {borderTopLeftRadius:RADIUS.lg,borderTopRightRadius:RADIUS.lg},
-  threadEnd: {borderBottomLeftRadius:RADIUS.lg,borderBottomRightRadius:RADIUS.lg,marginBottom:SPACING.md},
+  threadStart: {borderTopLeftRadius:RADIUS.lg,borderTopRightRadius:RADIUS.lg,borderTopWidth:1},
+  threadEnd: {borderBottomLeftRadius:RADIUS.lg,borderBottomRightRadius:RADIUS.lg,borderBottomWidth:1,marginBottom:SPACING.md},
   commentRow: {padding:SPACING.md},
   threadRail: {position:'absolute',top:0,bottom:0,width:2,backgroundColor:COLORS.primaryLight},
   threadConnector: {position:'absolute',bottom:0,height:SPACING.md,width:2,backgroundColor:COLORS.primaryLight},
   comment: { minWidth: 0 },
   commentBody:{marginLeft:0},
-  mention:{color:COLORS.primary,backgroundColor:COLORS.primaryMuted,fontWeight:'600'},
+  mention:{ fontFamily: 'DMSans_600SemiBold',color:COLORS.primary,backgroundColor:COLORS.primaryMuted,fontWeight:'600'},
   voteControl:{flexDirection:'row',alignItems:'center'},
   voteButton:{minHeight:44,minWidth:34,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,paddingHorizontal:4},
   voteScore:{...TYPOGRAPHY.caption1,color:COLORS.text},
@@ -822,12 +823,12 @@ const makeStyles = COLORS => StyleSheet.create({
     backgroundColor: COLORS.primaryMuted,
   },
   fallbackAvatar: {alignItems:'center',justifyContent:'center',backgroundColor:COLORS.primaryMuted},
-  avatarInitials: {...TYPOGRAPHY.caption1,fontWeight:'600',color:COLORS.primary},
-  postAuthor: {
-    ...TYPOGRAPHY.subheadline,
+  avatarInitials: { ...TYPOGRAPHY.caption1,fontWeight:'600',color:COLORS.primary, fontFamily: 'DMSans_600SemiBold' },
+  postAuthor: { ...TYPOGRAPHY.subheadline,
     fontWeight:'600',
     color: COLORS.text,
     flexShrink: 1,
+   fontFamily: 'DMSans_600SemiBold'
   },
   postDate: {
     ...TYPOGRAPHY.caption1,
@@ -865,15 +866,13 @@ const makeStyles = COLORS => StyleSheet.create({
     paddingVertical: SPACING.sm,
     flexShrink: 1,
   },
-  actionText: {
-    ...TYPOGRAPHY.footnote,
+  actionText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.primary,
-    fontWeight: '400',
     flexShrink: 1,
   },
-  threadStatus: { paddingHorizontal:SPACING.md,paddingBottom:SPACING.md },
+  threadStatus: {paddingHorizontal:SPACING.md,paddingBottom:SPACING.md},
   replyStatus: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.sm },
-  statusText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  statusText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.textSecondary , },
   replyError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, flexShrink: 1 },
   composeContainer: {
     flexShrink: 0,

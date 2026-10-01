@@ -12,8 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
-  Share,
-} from 'react-native';
+  Share, } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -208,12 +207,12 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
           style={styles.friendAvatar}
         />
         <View style={styles.friendInfo}>
-          <Text style={styles.friendName}>{item.firstName} {item.lastName}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.friendName}>{item.firstName} {item.lastName}</Text>
           {item.city && <Text style={styles.friendLocation}>{item.city}, {item.state}</Text>}
         </View>
         {item.isFriend || isFriendOrAdded(item.id) ? (
           <View style={styles.requestedBadge}>
-            <Text style={styles.requestedText}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.requestedText}>
               {item.isFriend ? 'Friends' : 'Requested'}
             </Text>
           </View>
@@ -225,9 +224,9 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
             haptic="light"
           >
             {addingFriendId === item.id ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={COLORS.white} size="small" />
             ) : (
-              <Ionicons name="person-add" size={18} color="#fff" />
+              <Ionicons name="person-add" size={18} color={COLORS.white} />
             )}
           </HapticPressable>
         )}
@@ -238,17 +237,17 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   const renderContactRow = (contact) => (
     <View style={styles.contactRow} key={contact.id}>
       <View style={styles.contactAvatar}>
-        <Text style={styles.contactInitial}>{contact.name.charAt(0).toUpperCase()}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.contactInitial}>{contact.name.charAt(0).toUpperCase()}</Text>
       </View>
       <View style={styles.friendInfo}>
-        <Text style={styles.friendName}>{contact.name}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.friendName}>{contact.name}</Text>
       </View>
       <HapticPressable
         style={styles.inviteButton}
         onPress={() => handleInviteContact(contact)}
         haptic="light"
       >
-        <Text style={styles.inviteButtonText}>Invite</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.inviteButtonText}>Invite</Text>
       </HapticPressable>
     </View>
   );
@@ -301,7 +300,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               ) : (
                 <Ionicons name="call-outline" size={20} color={COLORS.primary} />
               )}
-              <Text style={styles.actionButtonText}>Sync Contacts</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Sync Contacts</Text>
             </HapticPressable>
 
             <HapticPressable
@@ -311,7 +310,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               testID="Onboarding.Friends.invite"
             >
               <Ionicons name="share-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionButtonText}>Invite Friends</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Invite Friends</Text>
             </HapticPressable>
           </View>
         )}
@@ -384,7 +383,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               <Text style={styles.primaryButtonText}>
                 {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
               </Text>
-              {addedFriends.length > 0 && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+              {addedFriends.length > 0 && <Ionicons name="arrow-forward" size={18} color={COLORS.white} />}
             </LinearGradient>
           </HapticPressable>
         </View>
@@ -444,18 +443,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.md,
   },
-  actionButtonText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  actionButtonText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
-  sectionHeader: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  sectionHeader: { ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -468,7 +463,7 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   friendCard: {
     marginBottom: SPACING.sm,
     padding: SPACING.md,
@@ -487,9 +482,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.md,
   },
-  friendName: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+  friendName: { ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
   },
   friendLocation: {
@@ -512,9 +505,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  requestedText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  requestedText: { ...TYPOGRAPHY.label,
     color: COLORS.textSecondary,
   },
   contactRow: {
@@ -538,11 +529,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
   },
-  inviteButtonText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  inviteButtonText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   emptyPrompt: {
@@ -578,9 +567,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
 });

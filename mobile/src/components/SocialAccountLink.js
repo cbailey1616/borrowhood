@@ -121,8 +121,8 @@ export default function SocialAccountLink({ link, navigation, onCancel, onPasswo
             {link.provider === 'google' ? <Image source={require('../../assets/brand/google-g.png')} style={styles.providerLogo} accessible={false}/>
               : <Ionicons name="lock-closed-outline" size={28} color={COLORS.primary}/>}
             <View style={styles.accountCopy}>
-              <Text style={styles.accountLabel}>{codeSent ? 'Code sent to' : `Connect ${provider}`}</Text>
-              <Text style={styles.accountEmail}>{accountEmail || 'Your Borrowhood email'}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.accountLabel}>{codeSent ? 'Code sent to' : `Connect ${provider}`}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.accountEmail}>{accountEmail || 'Your Borrowhood email'}</Text>
             </View>
           </View>
         </LayeredCard>
@@ -130,7 +130,7 @@ export default function SocialAccountLink({ link, navigation, onCancel, onPasswo
         <View style={styles.form}>
           {usingPassword && <>
             <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.label}>Email</Text>
               <TextInput style={styles.input} value={email} onChangeText={value => { setEmail(value); setError(''); }}
                 keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" textContentType="username"
                 returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => passwordInput.current?.focus()}
@@ -138,30 +138,30 @@ export default function SocialAccountLink({ link, navigation, onCancel, onPasswo
                 accessibilityLabel="Email address" testID="Welcome.input.email"/>
             </View>
             <View style={styles.field}>
-              <Text style={styles.label}>Borrowhood password</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.label}>Borrowhood password</Text>
               <View style={styles.passwordField}>
                 <TextInput ref={passwordInput} style={styles.passwordInput} value={password} onChangeText={value => { setPassword(value); setError(''); }}
                   secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} autoComplete="password" textContentType="password"
                   editable={!busy} placeholder="Borrowhood password" placeholderTextColor={COLORS.textMuted}
                   returnKeyType="go" onSubmitEditing={signInWithPassword} accessibilityLabel="Borrowhood password" testID="Welcome.input.password"/>
                 <HapticPressable onPress={() => setShowPassword(!showPassword)} disabled={!!busy} style={styles.showPassword} accessibilityRole="button"
-                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}><Text style={styles.link}>{showPassword ? 'Hide' : 'Show'}</Text></HapticPressable>
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}><Text maxFontSizeMultiplier={1.4} style={styles.link}>{showPassword ? 'Hide' : 'Show'}</Text></HapticPressable>
               </View>
               <HapticPressable onPress={() => navigation.navigate('ForgotPassword', { email })} disabled={!!busy} style={styles.textButton} accessibilityRole="link">
-                <Text style={styles.link}>Forgot your password?</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.link}>Forgot your password?</Text>
               </HapticPressable>
             </View>
           </>}
           {codeSent && <View style={styles.field}>
-            <Text style={styles.label}>Email code</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.label}>Email code</Text>
             <TextInput style={[styles.input, styles.codeInput]} value={code} onChangeText={value => { setCode(value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
               keyboardType="number-pad" textContentType="oneTimeCode" autoComplete={Platform.OS === 'ios' ? 'one-time-code' : 'sms-otp'}
               maxLength={12} autoFocus autoCorrect={false} editable={!busy} placeholder="000000" placeholderTextColor={COLORS.textMuted}
               accessibilityLabel="Six-digit email code" testID="Welcome.input.linkCode"/>
-            <Text style={styles.hint}>Code expires in 10 minutes.</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.hint}>Code expires in 10 minutes.</Text>
           </View>}
           {!!error && <View style={styles.error}><Ionicons name="alert-circle-outline" size={20} color={COLORS.danger}/><Text accessibilityRole="alert" style={styles.errorText}>{error}</Text></View>}
-          {!!notice && <Text accessibilityLiveRegion="polite" style={styles.hint}>{notice}</Text>}
+          {!!notice && <Text maxFontSizeMultiplier={1.4} accessibilityLiveRegion="polite" style={styles.hint}>{notice}</Text>}
           <ActionButton label={primaryLabel} variant="primary" icon={usingPassword ? undefined : codeSent ? 'checkmark-circle-outline' : 'mail-outline'}
             testID="Welcome.button.signIn" accessibilityLabel={usingPassword ? `Connect ${provider} and sign in` : codeSent ? 'Verify code and sign in' : primaryLabel}
             onPress={usingPassword ? signInWithPassword : codeSent ? verifyCode : sendCode}
@@ -169,10 +169,10 @@ export default function SocialAccountLink({ link, navigation, onCancel, onPasswo
             disabled={!!busy || (codeSent ? code.length !== 6 : !usingPassword && remaining > 0)}/>
           {codeSent && <HapticPressable onPress={sendCode} disabled={!!busy || remaining > 0} style={styles.textButton} accessibilityRole="button" accessibilityLabel="Resend code"
             accessibilityState={{ disabled: !!busy || remaining > 0 }}>
-            <Text style={[styles.link, (remaining > 0 || !!busy) && styles.muted]}>{busy === 'send' ? 'Sending code...' : remaining > 0 ? `Resend code in ${remaining}s` : 'Resend code'}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.link, (remaining > 0 || !!busy) && styles.muted]}>{busy === 'send' ? 'Sending code...' : remaining > 0 ? `Resend code in ${remaining}s` : 'Resend code'}</Text>
           </HapticPressable>}
           <ActionButton label={usingPassword ? 'Use email code instead' : 'Use password instead'} disabled={!!busy} onPress={switchMethod}/>
-          <Text style={styles.hint}>{codeSent ? 'Check your spam folder if the email is missing.' : `Next time, just sign in with ${provider}.`}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.hint}>{codeSent ? 'Check your spam folder if the email is missing.' : `Next time, just sign in with ${provider}.`}</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -193,18 +193,18 @@ const styles = StyleSheet.create({
   account: { flexDirection: 'row', alignItems: 'center', padding: SPACING.lg, gap: SPACING.md },
   accountCopy: { flex: 1, minWidth: 0, gap: SPACING.xs },
   providerLogo: { width: 28, height: 28, resizeMode: 'contain' },
-  accountLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
-  accountEmail: { ...TYPOGRAPHY.body, color: COLORS.primary },
+  accountLabel: { ...TYPOGRAPHY.buttonCaption, color: COLORS.textSecondary },
+  accountEmail: { ...TYPOGRAPHY.button, color: COLORS.primary },
   form: { gap: SPACING.md },
   field: { gap: SPACING.sm },
-  label: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  label: { ...TYPOGRAPHY.buttonCaption, color: COLORS.textSecondary },
   input: { ...TYPOGRAPHY.body, minHeight: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text, paddingVertical: 14, paddingHorizontal: SPACING.lg },
   passwordField: { flexDirection: 'row', alignItems: 'center', borderRadius: RADIUS.md, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
   passwordInput: { ...TYPOGRAPHY.body, flex: 1, minWidth: 0, minHeight: 52, padding: SPACING.md, color: COLORS.text },
   showPassword: { minWidth: 52, minHeight: 44, paddingHorizontal: SPACING.md, alignItems: 'center', justifyContent: 'center' },
-  codeInput: { fontSize: 28, lineHeight: 36, textAlign: 'center', letterSpacing: 0 },
+  codeInput: { fontSize: TYPOGRAPHY.h1.fontSize, lineHeight: 36, textAlign: 'center', letterSpacing: 0 },
   textButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.sm },
-  link: { ...TYPOGRAPHY.footnote, color: COLORS.primary, textAlign: 'center' },
+  link: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary, textAlign: 'center' },
   muted: { color: COLORS.textSecondary },
   hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
   error: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.dangerMuted, padding: SPACING.md, borderRadius: RADIUS.md },

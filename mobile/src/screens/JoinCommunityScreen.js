@@ -10,8 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+  Platform, } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -163,13 +162,13 @@ export default function JoinCommunityScreen({ navigation, route }) {
         {item.isMember ? (
           <View style={styles.memberBadge}>
             <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-            <Text style={styles.memberBadgeText}>Joined</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.memberBadgeText}>Joined</Text>
           </View>
         ) : item.rejoinStatus === 'pending' ? (
           <View style={styles.memberBadge}>
             <Ionicons name="time-outline" size={18} color={COLORS.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.memberBadgeText}>Approval requested</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.memberBadgeText}>Approval requested</Text>
               <Text style={styles.neighborhoodStats}>Waiting for a neighborhood steward.</Text>
             </View>
           </View>
@@ -181,7 +180,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
             haptic="medium"
           >
             {joiningId === item.id ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={COLORS.white} />
             ) : (
               <Text style={styles.joinButtonText}>{item.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join Neighborhood'}</Text>
             )}
@@ -285,7 +284,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
               </HapticPressable>
             </View>
 
-            <Text style={styles.inputLabel}>Neighborhood Name *</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.inputLabel}>Neighborhood Name *</Text>
             <TextInput
               style={styles.input}
               value={newName}
@@ -295,7 +294,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
               maxLength={100}
             />
 
-            <Text style={styles.inputLabel}>Description (optional)</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.inputLabel}>Description (optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={newDescription}
@@ -314,7 +313,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
               haptic="medium"
             >
               {isCreating ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
                 <Text style={styles.modalButtonText}>Create & Join</Text>
               )}
@@ -353,12 +352,12 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md + 2,
     paddingHorizontal: SPACING.md,
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
     padding: SPACING.md + 2,
@@ -392,11 +391,11 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     paddingTop: 0,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   neighborhoodCard: {
     marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.separator,
+    borderColor: COLORS.border,
   },
   neighborhoodCardContent: {
     padding: SPACING.lg,
@@ -429,9 +428,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  neighborhoodDescription: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+  neighborhoodDescription: { ...TYPOGRAPHY.footnote,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
     lineHeight: 20,
     marginBottom: SPACING.md,
@@ -442,9 +440,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md - 2,
     alignItems: 'center',
   },
-  joinButtonText: {
-    ...TYPOGRAPHY.button,
-    color: '#fff',
+  joinButtonText: { ...TYPOGRAPHY.button,
+    color: COLORS.white,
   },
   memberBadge: {
     flexDirection: 'row',
@@ -454,8 +451,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
   },
   memberBadgeText: {
-    ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    ...TYPOGRAPHY.button,
     color: COLORS.primary,
   },
   emptyContainer: {
@@ -467,9 +463,8 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginTop: SPACING.lg,
   },
-  emptySubtext: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+  emptySubtext: { ...TYPOGRAPHY.footnote,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
     textAlign: 'center',
@@ -482,14 +477,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md - 2,
     marginTop: SPACING.xl - 4,
   },
-  setLocationButtonText: {
-    ...TYPOGRAPHY.button,
-    color: '#fff',
+  setLocationButtonText: { ...TYPOGRAPHY.button,
+    color: COLORS.white,
   },
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(44, 24, 16, 0.85)',
+    backgroundColor: COLORS.photoCaptionSurface,
     justifyContent: 'flex-start',
     paddingTop: 60,
   },
@@ -505,15 +499,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  modalTitle: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
+  modalTitle: { ...TYPOGRAPHY.h2,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     color: COLORS.text,
   },
-  inputLabel: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
-    fontWeight: '400',
+  inputLabel: { ...TYPOGRAPHY.buttonCaption,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },
@@ -523,7 +514,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md + 2,
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     borderWidth: 1,
     borderColor: COLORS.separator,
@@ -543,15 +534,14 @@ const styles = StyleSheet.create({
   modalButtonDisabled: {
     opacity: 0.7,
   },
-  modalButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
+  modalButtonText: { ...TYPOGRAPHY.button,
+    fontSize: TYPOGRAPHY.body.fontSize,
+    color: COLORS.white,
   },
   // Overlay styles
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(44, 24, 16, 0.85)',
+    backgroundColor: COLORS.photoCaptionSurface,
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,
@@ -570,7 +560,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -594,10 +584,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     alignItems: 'center',
   },
-  overlayButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
+  overlayButtonText: { ...TYPOGRAPHY.button,
+    fontSize: TYPOGRAPHY.body.fontSize,
+    color: COLORS.white,
   },
   overlayDismiss: {
     alignItems: 'center',

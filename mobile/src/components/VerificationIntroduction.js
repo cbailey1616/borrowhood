@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   // Trim the scene's empty canvas vertically while preserving the drawing's size.
   trimmedHero: { height: 124, overflow: 'hidden' },
   illustration: { transform: [{ translateY: -20 }] },
-  title: { ...TYPOGRAPHY.largeTitle, fontSize: 28, lineHeight: 32, color: COLORS.text, textAlign: 'center', maxWidth: 300, alignSelf: 'center' },
+  title: { ...TYPOGRAPHY.largeTitle, fontSize: TYPOGRAPHY.h1.fontSize, lineHeight: 32, color: COLORS.text, textAlign: 'center', maxWidth: 300, alignSelf: 'center' },
   subtitle: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, textAlign: 'center', marginTop: 4, marginBottom: 18, maxWidth: 300, alignSelf: 'center' },
   privacy: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, textAlign: 'center', marginTop: 16, paddingHorizontal: 8 },
 });

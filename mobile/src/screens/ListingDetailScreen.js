@@ -15,14 +15,12 @@ import {
   ScrollView,
   Image,
   Share,
-  useWindowDimensions,
-} from 'react-native';
+  useWindowDimensions, } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withSequence,
-} from 'react-native-reanimated';
+  withSequence, } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -250,7 +248,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   <View style={styles.itemMetadata}>
                     {!listing.ownerMasked && condition && (
                       <View accessible accessibilityLabel={`Condition: ${condition}`} style={styles.conditionBadge}>
-                        <Text style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
+                        <Text maxFontSizeMultiplier={1.4} style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
                       </View>
                     )}
                     {!!location && <View style={styles.locationRow}>
@@ -297,7 +295,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                         isSale={isSaleListing(listing)}
                       />
                       <View style={styles.viewTransactionRow}>
-                        <Text style={styles.viewTransactionText}>View exchange</Text>
+                        <Text maxFontSizeMultiplier={1.4} style={styles.viewTransactionText}>View exchange</Text>
                         <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                       </View>
                     </View>
@@ -379,15 +377,15 @@ export default function ListingDetailScreen({ route, navigation }) {
                     navigation.navigate('Chat', { conversationId: existing.id, recipientId: listing.owner.id, listingId: listing.id, listing });
                   } else {
                     navigation.navigate('Chat', {
-                      recipientId: listing.owner.id,
-                      listingId: listing.id,
-                      listing: {
-                        id: listing.id,
-                        title: listing.title,
-                        photoUrl: listing.photos?.[0],
-                        owner: listing.owner,
-                      }
-                    });
+                    recipientId: listing.owner.id,
+                    listingId: listing.id,
+                    listing: {
+                      id: listing.id,
+                      title: listing.title,
+                      photoUrl: listing.photos?.[0],
+                      owner: listing.owner,
+                    }
+                  });
                   }
                 } catch {
                   if (!isCurrent()) return;
@@ -408,7 +406,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               haptic="light"
             >
               <Ionicons name="chatbubble" size={20} color={COLORS.primary} />
-              <Text style={styles.messageButtonText}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.messageButtonText}>
                 {messageLoading ? 'Opening…' : !listing.isAvailable && !listing.activeTransaction ? 'Message owner' : 'Message'}
               </Text>
             </HapticPressable>
@@ -441,7 +439,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'400'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
+          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{...TYPOGRAPHY.button,color:COLORS.primary}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
           <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
             <HapticPressable
               style={styles.deleteButton}
@@ -529,8 +527,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)' },
-  dotActive: { backgroundColor: '#fff', width: 10, height: 10, borderRadius: 5 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.whiteOverlaySoft },
+  dotActive: { backgroundColor: COLORS.white, width: 10, height: 10, borderRadius: 5 },
   content: { padding: 20 },
   itemSummary: { paddingBottom: SPACING.xl },
   summaryHeading: { flexDirection: 'row', alignItems: 'flex-start', columnGap: SPACING.lg, rowGap: SPACING.sm },
@@ -570,7 +568,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
   },
-  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, marginBottom: SPACING.xs },
+  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, marginBottom: SPACING.xs , },
   availabilityDetail: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
   transactionDepth: { marginBottom: SPACING.lg },
   cardBox: { backgroundColor: COLORS.card, borderRadius: RADIUS.lg },
@@ -585,7 +583,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.separator,
   },
-  viewTransactionText: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.primary },
+  viewTransactionText: { ...TYPOGRAPHY.buttonSmall,  color: COLORS.primary , },
   detailsDepth: { marginBottom: SPACING.sm },
   detailsGroup: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
   detailRow: {
@@ -643,9 +641,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  messageButtonText: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+  messageButtonText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.primary,
     textAlign: 'center',
     flexShrink: 1,
@@ -674,5 +670,5 @@ const styles = StyleSheet.create({
   },
   editButton: { backgroundColor: COLORS.primary },
   editSecondary: { flex: 0, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, paddingHorizontal: 16 },
-  borrowButtonText: { color: '#fff', ...TYPOGRAPHY.headline, textAlign: 'center', flexShrink: 1 },
+  borrowButtonText: { color: COLORS.white, ...TYPOGRAPHY.headline, textAlign: 'center', flexShrink: 1 },
 });

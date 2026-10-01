@@ -29,7 +29,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION, ENABLE_PAID_TIERS } from '../utils/config';
+import { CARD_SURFACE, COLORS, CONDITION_LABELS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION, ENABLE_PAID_TIERS } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -431,7 +431,7 @@ export default function CreateListingScreen({ navigation, route }) {
           <Text style={styles.resumeDraftText}>Resume unfinished item</Text>
         </HapticPressable>}
         {formData.photos.some(uri => failedPhotos[uri]) && <Text accessibilityRole="alert" style={styles.hint}>A photo couldn’t load. Remove it and choose it again.</Text>}
-        <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Up to 10 photos</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
@@ -445,7 +445,7 @@ export default function CreateListingScreen({ navigation, route }) {
                   onPress={() => handleRemovePhoto(index)}
                   haptic="light"
                 >
-                  <Ionicons name="close" size={16} color="#fff" />
+                  <Ionicons name="close" size={16} color={COLORS.white} />
                 </HapticPressable>
               </View>
             ))}
@@ -467,7 +467,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Title */}
       <View onLayout={(e) => { fieldPositions.current.title = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
           testID="CreateListing.input.title"
           accessibilityLabel="Listing title"
@@ -485,7 +485,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Description */}
       <View style={styles.section}>
-        <Text style={styles.label}>Description</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Description</Text>
         <TextInput
           testID="CreateListing.input.description"
           accessibilityLabel="Listing description"
@@ -505,7 +505,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Listing Type */}
       <View style={styles.section}>
-        <Text style={styles.label}>What would you like to do?</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>What would you like to do?</Text>
         <View style={styles.options}>
           {[
             ['lend', 'Lend', 'They return it'],
@@ -544,10 +544,10 @@ export default function CreateListingScreen({ navigation, route }) {
       {/* Duration — hidden for giveaways */}
       {!isGiveaway && showDetails && (
       <View style={styles.section}>
-        <Text style={styles.label}>Borrow duration (days)</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Borrow duration (days)</Text>
         <View style={styles.durationRow}>
           <View style={styles.durationInput}>
-            <Text style={styles.durationLabel}>Min</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.durationLabel}>Min</Text>
             <TextInput
               style={styles.durationField}
               value={formData.minDuration}
@@ -557,7 +557,7 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
           <Text style={styles.durationSeparator}>to</Text>
           <View style={styles.durationInput}>
-            <Text style={styles.durationLabel}>Max</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.durationLabel}>Max</Text>
             <TextInput
               style={styles.durationField}
               value={formData.maxDuration}
@@ -570,14 +570,14 @@ export default function CreateListingScreen({ navigation, route }) {
       )}
 
       <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(value => !value)} style={{ minHeight: 48, paddingVertical: 16 }}>
-        <Text style={styles.label}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Condition: {CONDITION_LABELS[formData.condition]}. Check this matches your item.</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>{showDetails ? 'Hide optional details' : 'Add optional details'}</Text>
+        <Text style={{ color: COLORS.textSecondary, ...TYPOGRAPHY.bodySmall }}>Condition: {CONDITION_LABELS[formData.condition]}. Check this matches your item.</Text>
       </HapticPressable>
       {showDetails && <View>
         {draft.restored && !draft.error && <DraftStatus draft={draft} allowDiscard quiet />}
       {/* Category */}
       <View onLayout={(e) => { fieldPositions.current.categoryId = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category (optional)</Text>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category (optional)</Text>
         {categories.length > 0 ? (
           <HapticPressable
             haptic="light"
@@ -606,7 +606,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
       {/* Condition */}
       <View style={styles.section}>
-        <Text style={styles.label}>Condition</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Condition</Text>
         <View style={styles.options}>
           {CONDITIONS.map((condition) => (
             <HapticPressable
@@ -618,7 +618,7 @@ export default function CreateListingScreen({ navigation, route }) {
               }}
               haptic={null}
             >
-              <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
                 {CONDITION_LABELS[condition]}
               </Text>
             </HapticPressable>
@@ -638,9 +638,9 @@ export default function CreateListingScreen({ navigation, route }) {
         haptic="medium"
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={COLORS.white} />
         ) : (
-          <Text style={styles.submitButtonText}>{requestMatchId ? 'Send private offer' : formData.visibility.includes('private') ? 'Save to my inventory' : 'Save shared item'}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.submitButtonText}>{requestMatchId ? 'Send private offer' : formData.visibility.includes('private') ? 'Save to my inventory' : 'Save shared item'}</Text>
         )}
       </HapticPressable>
 
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.xl,
@@ -834,12 +834,14 @@ const styles = StyleSheet.create({
   },
   categoryPillText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
   },
   categoryPillTextActive: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   options: {
     flexDirection: 'row',
@@ -863,10 +865,13 @@ const styles = StyleSheet.create({
   optionText: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   optionTextActive: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   toggle: {
     flexDirection: 'row',
@@ -878,6 +883,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   toggleText: {
     ...TYPOGRAPHY.body,
@@ -890,10 +897,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   payoutHintCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: COLORS.tints.primary10,
     padding: SPACING.md,
     borderRadius: RADIUS.md,
     marginBottom: SPACING.md,
@@ -926,7 +934,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
   switchKnobActive: {
     alignSelf: 'flex-end',
@@ -955,11 +963,15 @@ const styles = StyleSheet.create({
   priceSuffix: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   priceHint: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     marginTop: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   durationRow: {
     flexDirection: 'row',
@@ -973,6 +985,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   durationField: {
     borderWidth: 1,
@@ -1003,18 +1017,19 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
+    color: COLORS.white,
   },
   // Overlay styles for community join prompt
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(44, 24, 16, 0.85)',
+    backgroundColor: COLORS.photoCaptionSurface,
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 100,
     paddingHorizontal: SPACING.xl,
   },
   overlayCard: {
+    ...CARD_SURFACE,
     width: '100%',
     maxWidth: 340,
     backgroundColor: COLORS.surface,
@@ -1028,7 +1043,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',

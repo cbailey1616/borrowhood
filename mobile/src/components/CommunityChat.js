@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 import HapticPressable from './HapticPressable';
 import MessageComposer from './MessageComposer';
 import ComposerKeyboardView from './ComposerKeyboardView';
@@ -137,15 +137,15 @@ export default function CommunityChat({ community, navigation, header }) {
     {header}
     <View style={styles.chatHeading}>
       {thread ? <HapticPressable onPress={() => changeThread(null)} accessibilityLabel="Back to neighborhood chat" style={styles.back}>
-        <Ionicons name="chevron-back" size={20} color={COLORS.primary} /><Text style={styles.heading}>Replies</Text>
-      </HapticPressable> : <Text style={styles.heading}>Chat{muted ? ' · Muted' : ''}</Text>}
+        <Ionicons name="chevron-back" size={20} color={COLORS.primary} /><Text maxFontSizeMultiplier={1.4} style={styles.heading}>Replies</Text>
+      </HapticPressable> : <Text maxFontSizeMultiplier={1.4} style={styles.heading}>Chat{muted ? ' · Muted' : ''}</Text>}
       <HapticPressable onPress={() => setMenu('channel')} accessibilityLabel="Chat options" style={styles.more}>
         <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.primary} />
       </HapticPressable>
     </View>
     {!!error && <HapticPressable onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
     {thread && <View style={styles.threadParent}>
-      <Text style={styles.threadSender}>{thread.sender.name}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.threadSender}>{thread.sender.name}</Text>
       <HapticPressable onLongPress={event => openReactions(thread,event)}><Text style={styles.body}>{thread.deleted ? 'Message removed' : thread.content}</Text></HapticPressable>
       {!thread.deleted && <MessageReactions reactions={thread.reactions} userId={user.id} onToggle={emoji => react(thread,emoji)} onAdd={event => openReactions(thread,event)} />}
     </View>}
@@ -159,18 +159,18 @@ export default function CommunityChat({ community, navigation, header }) {
       ref={list} style={styles.conversation} inverted data={messages} keyExtractor={item => item.id}
       keyboardShouldPersistTaps="handled" contentContainerStyle={styles.messages}
       onScroll={event => { nearBottom.current = event.nativeEvent.contentOffset.y < 80; }} scrollEventThrottle={100}
-      ListFooterComponent={nextBefore ? <HapticPressable onPress={() => refresh(nextBefore)} style={styles.more}><Text style={styles.link}>Earlier messages</Text></HapticPressable> : null}
+      ListFooterComponent={nextBefore ? <HapticPressable onPress={() => refresh(nextBefore)} style={styles.more}><Text maxFontSizeMultiplier={1.4} style={styles.link}>Earlier messages</Text></HapticPressable> : null}
       renderItem={({ item }) => <View style={[styles.message, item.sender.id === user?.id && styles.own]}>
         <HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })} accessibilityLabel={`View ${item.sender.name}'s profile`}>
           {item.sender.photoUrl ? <Image source={{ uri: item.sender.photoUrl }} style={styles.avatar} /> : <View style={styles.avatar}><Ionicons name="person" size={22} color={COLORS.primary} /></View>}
         </HapticPressable>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={styles.messageHeader}><HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })}><Text style={styles.name}>{item.sender.name}</Text></HapticPressable>
-            <Text style={styles.time}>{new Date(item.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text></View>
+          <View style={styles.messageHeader}><HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })}><Text maxFontSizeMultiplier={1.4} style={styles.name}>{item.sender.name}</Text></HapticPressable>
+            <Text maxFontSizeMultiplier={1.4} style={styles.time}>{new Date(item.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text></View>
           <HapticPressable onLongPress={event => openReactions(item,event)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
           {!item.deleted && <MessageReactions reactions={item.reactions} userId={user.id} onToggle={emoji => react(item,emoji)} onAdd={event => openReactions(item,event)} />}
           {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
-            <Ionicons name="chat-reply" size={18}/><Text style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={14}/>
+            <Ionicons name="chat-reply" size={18}/><Text maxFontSizeMultiplier={1.4} style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={14}/>
           </HapticPressable>}
           {!item.deleted && <HapticPressable onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} /></HapticPressable>}
         </View>
@@ -186,21 +186,21 @@ export default function CommunityChat({ community, navigation, header }) {
   </ComposerKeyboardView>;
 }
 const styles = StyleSheet.create({
-  threadParent: { marginHorizontal: 16, marginVertical: 12, padding: 16, borderRadius: 16, backgroundColor: COLORS.surface, borderLeftWidth: 3, borderColor: COLORS.primaryLight },
-  threadSender: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', color: COLORS.primary },
+  threadParent: { ...CARD_SURFACE, marginHorizontal: 16, marginVertical: 12, padding: 16, borderRadius: 16, backgroundColor: COLORS.surface, borderLeftWidth: 3, borderLeftColor: COLORS.primaryLight },
+  threadSender: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', color: COLORS.primary },
   container: { flex: 1, backgroundColor: COLORS.background },
   chatHeading: { paddingHorizontal: SPACING.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heading: { ...TYPOGRAPHY.headline, color: COLORS.primary }, back: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
   more: { padding: 12, alignItems: 'center' }, messages: { padding: SPACING.md, gap: 10 },
   conversation: { flex: 1 },
   emptyConversation: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
-  welcome: { alignItems: 'center', padding: SPACING.xl, gap: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface },
+  welcome: { ...CARD_SURFACE, alignItems: 'center', padding: SPACING.xl, gap: SPACING.md, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface },
   welcomeIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
-  message: { flexDirection: 'row', gap: 10, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14 },
+  message: { ...CARD_SURFACE, flexDirection: 'row', gap: 10, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14 },
   own: { backgroundColor: COLORS.primaryMuted }, avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
-  messageHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, name: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  messageHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }, name: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary },
   time: { ...TYPOGRAPHY.caption1, color: COLORS.textMuted }, body: { ...TYPOGRAPHY.body, color: COLORS.text, marginTop: 5 },
-  reply: { minHeight: 40, flexDirection: 'row', gap: 7, alignItems: 'center', alignSelf: 'flex-start' }, link: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  reply: { minHeight: 40, flexDirection: 'row', gap: 7, alignItems: 'center', alignSelf: 'flex-start' }, link: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary },
   messageOptions: { position: 'absolute', bottom: -4, right: 0, padding: 10 },
   dock: { paddingHorizontal: SPACING.md, paddingTop: 8 }, empty: { ...TYPOGRAPHY.body, textAlign: 'center', color: COLORS.text },
   error: { padding: 12 }, errorText: { ...TYPOGRAPHY.footnote, color: COLORS.danger },

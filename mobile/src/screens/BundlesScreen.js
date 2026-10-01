@@ -128,8 +128,8 @@ export default function BundlesScreen({ navigation }) {
             ))}
           </View>
           <View style={styles.bundleInfo}>
-            <Text style={styles.bundleName}>{item.name}</Text>
-            <Text style={styles.bundleCount}>{item.listings?.length || 0} items</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.bundleName}>{item.name}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.bundleCount}>{item.listings?.length || 0} items</Text>
             {item.description && (
               <Text style={styles.bundleDescription} numberOfLines={2}>
                 {item.description}
@@ -137,7 +137,7 @@ export default function BundlesScreen({ navigation }) {
             )}
             {item.discountPercent > 0 && (
               <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>{item.discountPercent}% bundle discount</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.discountText}>{item.discountPercent}% bundle discount</Text>
               </View>
             )}
           </View>
@@ -147,7 +147,7 @@ export default function BundlesScreen({ navigation }) {
               onPress={() => handleDeleteBundle(item.id)}
               haptic="medium"
             >
-              <Text style={styles.deleteButtonText}>x</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.deleteButtonText}>x</Text>
             </HapticPressable>
           )}
         </View>
@@ -173,7 +173,7 @@ export default function BundlesScreen({ navigation }) {
           onPress={() => setActiveTab('browse')}
           haptic="light"
         >
-          <Text style={[styles.tabText, activeTab === 'browse' && styles.tabTextActive]}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === 'browse' && styles.tabTextActive]}>
             Browse
           </Text>
         </HapticPressable>
@@ -182,7 +182,7 @@ export default function BundlesScreen({ navigation }) {
           onPress={() => setActiveTab('mine')}
           haptic="light"
         >
-          <Text style={[styles.tabText, activeTab === 'mine' && styles.tabTextActive]}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === 'mine' && styles.tabTextActive]}>
             My Bundles
           </Text>
         </HapticPressable>
@@ -246,7 +246,7 @@ export default function BundlesScreen({ navigation }) {
               multiline
             />
 
-            <Text style={styles.selectLabel}>Select Items ({newBundle.listingIds.length} selected)</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.selectLabel}>Select Items ({newBundle.listingIds.length} selected)</Text>
             <FlatList keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
               data={myListings}
               keyExtractor={(item) => item.id}
@@ -282,7 +282,7 @@ export default function BundlesScreen({ navigation }) {
                 onPress={() => setShowCreateModal(false)}
                 haptic="light"
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
               <HapticPressable
                 style={styles.createButton}
@@ -293,7 +293,7 @@ export default function BundlesScreen({ navigation }) {
                 {creating ? (
                   <ActivityIndicator size="small" color={COLORS.background} />
                 ) : (
-                  <Text style={styles.createButtonText}>Create</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.createButtonText}>Create</Text>
                 )}
               </HapticPressable>
             </View>
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -347,20 +347,21 @@ const styles = StyleSheet.create({
   },
   tabText: {
     ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
   },
   tabTextActive: {
     color: COLORS.primary,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   listContent: {
     padding: SPACING.lg,
   },
   bundleCard: {
+    ...CARD_SURFACE,
     marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.separator,
   },
   bundleCardContent: {
     flexDirection: 'row',
@@ -385,13 +386,15 @@ const styles = StyleSheet.create({
   },
   bundleName: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   bundleCount: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: 2,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   bundleDescription: {
     ...TYPOGRAPHY.footnote,
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   discountBadge: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.md,
@@ -409,20 +412,23 @@ const styles = StyleSheet.create({
   discountText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   deleteButton: {
     width: 28,
     height: 28,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.danger + '20',
+    backgroundColor: COLORS.tints.danger20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteButtonText: {
     ...TYPOGRAPHY.body,
-    fontSize: 18,
+    fontSize: TYPOGRAPHY.h3.fontSize,
     color: COLORS.danger,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   emptyState: {
     flex: 1,
@@ -431,7 +437,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
+    ...TYPOGRAPHY.largeTitle,
     marginBottom: SPACING.lg,
   },
   emptyTitle: {
@@ -441,7 +447,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
@@ -459,9 +465,9 @@ const styles = StyleSheet.create({
     ...SHADOWS.lg,
   },
   fabText: {
-    fontSize: 28,
+    ...TYPOGRAPHY.h1,
     color: COLORS.background,
-    fontWeight: '300',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -477,7 +483,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     ...TYPOGRAPHY.h2,
-    fontSize: 20,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.lg,
   },
@@ -486,7 +492,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: SPACING.md + 2,
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.md,
     borderWidth: 1,
@@ -497,9 +503,10 @@ const styles = StyleSheet.create({
   },
   selectLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: SPACING.sm,
+    fontFamily: 'DMSans_500Medium',
   },
   listingsList: {
     maxHeight: 200,
@@ -514,7 +521,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   listingItemSelected: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     borderWidth: 1,
     borderColor: COLORS.primary,
   },
@@ -527,9 +534,11 @@ const styles = StyleSheet.create({
   listingItemTitle: {
     ...TYPOGRAPHY.footnote,
     flex: 1,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.text,
     marginLeft: SPACING.md - 2,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   validationError: {
     ...TYPOGRAPHY.footnote,
@@ -550,7 +559,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   createButton: {
@@ -562,7 +571,7 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.background,
   },
 });

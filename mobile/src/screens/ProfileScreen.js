@@ -9,8 +9,7 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
-  Alert,
-} from 'react-native';
+  Alert, } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Application from 'expo-application';
 import appConfig from '../../app.json';
@@ -36,8 +35,7 @@ export default function ProfileScreen({ navigation, route }) {
     isBiometricsEnabled,
     biometricType,
     disableBiometrics,
-    refreshBiometrics,
-  } = useBiometrics();
+    refreshBiometrics, } = useBiometrics();
 
   const [biometricToggle, setBiometricToggle] = useState(isBiometricsEnabled);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -165,7 +163,7 @@ export default function ProfileScreen({ navigation, route }) {
       >
         {__DEV__ && (
           <View style={styles.previewBanner} testID="Profile.localPreview">
-            <Text style={styles.previewTitle}>Local preview · UI 05</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.previewTitle}>Local preview · UI 05</Text>
             <Text style={styles.previewDescription}>Private inventory, clearer requests & saved drafts</Text>
           </View>
         )}
@@ -180,11 +178,11 @@ export default function ProfileScreen({ navigation, route }) {
                 />
                 {uploadingPhoto ? (
                   <View style={styles.avatarOverlay}>
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={COLORS.white} />
                   </View>
                 ) : (
                   <View style={styles.avatarBadge}>
-                    <Ionicons name="create-outline" size={14} color="#fff" />
+                    <Ionicons name="create-outline" size={14} color={COLORS.white} />
                   </View>
                 )}
               </View>
@@ -397,7 +395,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
-  previewTitle: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.primaryDark },
+  previewTitle: { ...TYPOGRAPHY.buttonSmall,  color: COLORS.primaryDark , },
   previewDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 2 },
   container: {
     flex: 1,
@@ -431,7 +429,7 @@ const styles = StyleSheet.create({
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: COLORS.photoOverlayMedium,
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
@@ -464,7 +462,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.warningMuted,
     borderWidth: 1,
-    borderColor: 'rgba(184, 134, 11, 0.3)',
+    borderColor: COLORS.goldBorder,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,
@@ -474,17 +472,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(184, 134, 11, 0.15)',
+    backgroundColor: COLORS.goldTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   verifyBannerText: {
     flex: 1,
   },
-  verifyBannerTitle: {
-    ...TYPOGRAPHY.headline,
+  verifyBannerTitle: { ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    fontSize: 15,
+    fontSize: TYPOGRAPHY.subheadline.fontSize,
   },
   verifyBannerSubtitle: {
     ...TYPOGRAPHY.caption1,

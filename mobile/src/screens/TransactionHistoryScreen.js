@@ -140,9 +140,9 @@ export default function TransactionHistoryScreen({ navigation }) {
           <View style={styles.summaryRow}>
             <View style={styles.statusBadge}>
               <Ionicons name={config.icon} size={18} illustrated color={config.complete ? COLORS.primary : COLORS.textSecondary} />
-              <Text style={[styles.statusText, config.complete && styles.completeText]}>{config.label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.statusText, config.complete && styles.completeText]}>{config.label}</Text>
             </View>
-            {!!date && <Text style={styles.date}>{date}</Text>}
+            {!!date && <Text maxFontSizeMultiplier={1.4} style={styles.date}>{date}</Text>}
           </View>
         </HapticPressable>
       </LayeredCard>
@@ -159,7 +159,7 @@ export default function TransactionHistoryScreen({ navigation }) {
           <HapticPressable style={styles.filterButton} onPress={() => setShowFilter(true)}
             accessibilityLabel={`Filter history: ${selectedOutcome.label}`} accessibilityState={{ expanded: showFilter }}>
             <Ionicons name="options-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.filterText}>{selectedOutcome.label}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.filterText}>{selectedOutcome.label}</Text>
             <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
           </HapticPressable>
         </View>
@@ -183,7 +183,7 @@ export default function TransactionHistoryScreen({ navigation }) {
               ? 'Try a different filter to see more.'
               : 'Finished exchanges and closed item requests will appear here.'}</Text>
             {hasFilter && <HapticPressable style={styles.resetButton} onPress={() => { setSelectedIndex(0); setOutcome('all'); }}>
-              <Text style={styles.filterText}>Clear filters</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.filterText}>Clear filters</Text>
             </HapticPressable>}
           </View> : null}
         />
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   controls: { paddingHorizontal: SPACING.lg, width: '100%', maxWidth: 760, alignSelf: 'center' },
   filterRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: SPACING.md },
   filterButton: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
-  filterText: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
+  filterText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.primary },
   listContent: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xl, width: '100%', maxWidth: 760, alignSelf: 'center' },
   skeletonWrap: { padding: SPACING.lg, gap: SPACING.md, width: '100%', maxWidth: 760, alignSelf: 'center' },
   card: { marginBottom: SPACING.md },
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   photo: { width: 76, height: 76, borderRadius: RADIUS.sm },
   cardContent: { flex: 1, minWidth: 0, gap: SPACING.sm },
-  listingTitle: { ...TYPOGRAPHY.headline, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', letterSpacing: 0, color: COLORS.text },
+  listingTitle: { ...TYPOGRAPHY.headline, letterSpacing: 0, color: COLORS.text },
   summaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: SPACING.md, rowGap: SPACING.xs, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.separator },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, maxWidth: '100%' },
   statusText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },

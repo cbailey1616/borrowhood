@@ -136,12 +136,12 @@ export default function CoverPhotoCropper({ photo, onCancel, onComplete }) {
             </View>
           </> : !error && <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Preparing cover photo" />}
         </View>
-        <Text style={styles.hint}>Drag to position · Pinch to zoom</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.hint}>Drag to position · Pinch to zoom</Text>
         <View style={styles.zoomRow}>
           <HapticPressable accessibilityRole="button" accessibilityLabel="Zoom out" disabled={!image || saving || crop.zoom <= 1} onPress={() => zoomBy(-0.25)} style={styles.control}>
             <Ionicons name="remove" size={24} color={COLORS.primary} />
           </HapticPressable>
-          <Text style={styles.hint} accessibilityRole="adjustable" accessibilityLabel="Cover zoom"
+          <Text maxFontSizeMultiplier={1.4} style={styles.hint} accessibilityRole="adjustable" accessibilityLabel="Cover zoom"
             accessibilityValue={{ min: 100, max: 400, now: Math.round(crop.zoom * 100), text: `${Math.round(crop.zoom * 100)} percent` }}
             accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
             onAccessibilityAction={event => zoomBy(event.nativeEvent.actionName === 'increment' ? 0.25 : -0.25)}>{Math.round(crop.zoom * 100)}%</Text>
@@ -151,11 +151,11 @@ export default function CoverPhotoCropper({ photo, onCancel, onComplete }) {
         </View>
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {!image && error && <HapticPressable accessibilityRole="button" onPress={() => setRetry(n => n + 1)} style={styles.control}>
-          <Text style={styles.hint}>Try again</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.hint}>Try again</Text>
         </HapticPressable>}
       </ScrollView>
       <HapticPressable accessibilityRole="button" accessibilityLabel="Use cover photo" onPress={usePhoto} disabled={!image || saving} style={[styles.useButton, (!image || saving) && styles.disabled]}>
-        {saving ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.useText}>Use photo</Text>}
+        {saving ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={styles.useText}>Use photo</Text>}
       </HapticPressable>
     </SafeAreaView>
   </Modal>;
@@ -168,13 +168,13 @@ const styles = StyleSheet.create({
   control: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24, gap: 16 },
   frame: { overflow: 'hidden', backgroundColor: COLORS.text, justifyContent: 'center', alignItems: 'center', borderRadius: RADIUS.md },
-  shade: { position: 'absolute', left: 0, right: 0, backgroundColor: '#00000080' },
-  cropOutline: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#FFFFFF' },
-  grid: { position: 'absolute', backgroundColor: '#FFFFFF88' },
+  shade: { position: 'absolute', left: 0, right: 0, backgroundColor: COLORS.cropOverlay },
+  cropOutline: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.white },
+  grid: { position: 'absolute', backgroundColor: COLORS.whiteScrim },
   hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
   zoomRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   error: { ...TYPOGRAPHY.footnote, color: COLORS.danger, textAlign: 'center', paddingHorizontal: 20 },
   useButton: { minHeight: 52, margin: 20, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  useText: { ...TYPOGRAPHY.body, color: COLORS.surface },
+  useText: { ...TYPOGRAPHY.button, color: COLORS.surface },
   disabled: { opacity: 0.5 },
 });

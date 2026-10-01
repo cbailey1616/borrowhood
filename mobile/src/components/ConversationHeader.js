@@ -24,8 +24,8 @@ export default function ConversationHeader({ navigation, person, userId }) {
         accessibilityLabel={`View ${name}’s profile`} testID="Chat.profileHeader">
         <ShimmerImage source={{ uri: person?.profilePhotoUrl || null }} placeholderIcon="person" style={styles.avatar} />
         <View style={styles.nameColumn}>
-          <Text style={styles.name}>{name}</Text>
-          {!!userId && <Text style={styles.hint}>View profile</Text>}
+          <Text maxFontSizeMultiplier={1.4} style={styles.name}>{name}</Text>
+          {!!userId && <Text maxFontSizeMultiplier={1.4} style={styles.hint}>View profile</Text>}
         </View>
         {!!userId && <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />}
       </HapticPressable>
@@ -40,6 +40,6 @@ const styles = StyleSheet.create({
   identity: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: SPACING.md, opacity: 1 },
   avatar: { width: 42, height: 42, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted },
   nameColumn: { flex: 1, gap: 2 },
-  name: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  name: { ...TYPOGRAPHY.headline, color: COLORS.text, fontFamily: 'DMSans_500Medium', fontWeight: '500' },
   hint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },
 });

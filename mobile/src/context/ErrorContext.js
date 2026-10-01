@@ -23,7 +23,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION, CARD_SURFACE } from '../utils/config';
 
 const ErrorContext = createContext(null);
 
@@ -140,7 +140,7 @@ function Toast({ toast, onRemove }) {
         size={20}
         color={toast.type === 'success' ? COLORS.secondary : COLORS.danger}
       />
-      <Text style={styles.toastText}>{toast.message}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.toastText}>{toast.message}</Text>
       <HapticPressable onPress={() => onRemove(toast.id)} haptic={null} style={styles.toastDismiss}>
         <Ionicons name="close" size={16} color={COLORS.textMuted} />
       </HapticPressable>
@@ -244,6 +244,11 @@ export function ErrorProvider({ children, navigationRef }) {
     if (error?.type === 'subscription') return COLORS.warning;
     return COLORS.danger;
   };
+  const getIconBorderColor = () => {
+    if (error?.type === 'success') return COLORS.tints.secondary30;
+    if (error?.type === 'subscription') return COLORS.tints.warning30;
+    return COLORS.tints.danger30;
+  };
 
   return (
     <ErrorContext.Provider value={{ showError, showToast, dismissError }}>
@@ -263,7 +268,7 @@ export function ErrorProvider({ children, navigationRef }) {
             style={styles.modalContent}
           >
             <ScrollView bounces={false} contentContainerStyle={styles.modalInner}>
-            <View style={[styles.iconContainer, { borderColor: getIconColor() + '30' }]}>
+            <View style={[styles.iconContainer, { borderColor: getIconBorderColor() }]}>
               <Ionicons
                 name={error?.icon || 'warning-outline'}
                 size={28}
@@ -271,7 +276,7 @@ export function ErrorProvider({ children, navigationRef }) {
               />
             </View>
 
-            <Text style={styles.title}>{error?.title}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.title}>{error?.title}</Text>
             <Text style={styles.message}>{error?.message}</Text>
 
             <View style={styles.buttonContainer}>
@@ -281,7 +286,7 @@ export function ErrorProvider({ children, navigationRef }) {
                   onPress={handleSecondaryPress}
                   haptic="light"
                 >
-                  <Text style={styles.secondaryButtonText}>{error.secondaryAction}</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.secondaryButtonText}>{error.secondaryAction}</Text>
                 </HapticPressable>
               )}
 
@@ -294,7 +299,7 @@ export function ErrorProvider({ children, navigationRef }) {
                 onPress={handlePrimaryPress}
                 haptic="medium"
               >
-                <Text style={styles.primaryButtonText}>{error?.primaryAction}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>{error?.primaryAction}</Text>
               </HapticPressable>
             </View>
 
@@ -332,7 +337,7 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
   },
   modalContent: {
-    backgroundColor: COLORS.surface,
+    ...CARD_SURFACE,
     borderRadius: RADIUS.xxl,
     width: '100%',
     maxWidth: 540,
@@ -382,8 +387,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   primaryButtonText: {
-    color: '#fff',
-    ...TYPOGRAPHY.headline,
+    color: COLORS.white,
+    ...TYPOGRAPHY.button,
     textAlign: 'center',
   },
   secondaryButton: {
@@ -397,7 +402,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.headline,
+    ...TYPOGRAPHY.button,
     textAlign: 'center',
   },
   dismissButton: {
@@ -416,29 +421,23 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   toast: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.lg,
     gap: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.danger + '40',
-    shadowColor: COLORS.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderColor: COLORS.tints.danger40,
     width: '100%',
   },
   toastSuccess: {
-    borderColor: COLORS.secondary + '40',
+    borderColor: COLORS.tints.secondary40,
   },
   toastText: {
     color: COLORS.text,
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
     flex: 1,
   },
   toastDismiss: {

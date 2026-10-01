@@ -146,13 +146,13 @@ export default function UserProfileScreen({ route, navigation }) {
             {user.city && user.state && (
               <View style={styles.metaItem}>
                 <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.metaText}>{user.city}, {user.state}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{user.city}, {user.state}</Text>
               </View>
             )}
             {user.memberSince && (
               <View style={styles.metaItem}>
                 <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.metaText}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>
                   Joined {new Date(user.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </Text>
               </View>
@@ -178,16 +178,16 @@ export default function UserProfileScreen({ route, navigation }) {
               disabled={isAddingFriend || requestPending}
             >
               {isAddingFriend ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={COLORS.white} />
               ) : isFriend || requestPending ? (
                 <>
                   <Ionicons name={isFriend ? 'checkmark' : 'time-outline'} size={20} color={COLORS.primary} />
-                  <Text style={styles.friendButtonTextActive}>{friendActionLabel}</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.friendButtonTextActive}>{friendActionLabel}</Text>
                 </>
               ) : (
                 <>
-                  <Ionicons name="person-add-outline" size={20} color="#fff" />
-                  <Text style={styles.friendButtonText}>{friendActionLabel}</Text>
+                  <Ionicons name="person-add-outline" size={20} color={COLORS.white} />
+                  <Text maxFontSizeMultiplier={1.4} style={styles.friendButtonText}>{friendActionLabel}</Text>
                 </>
               )}
             </HapticPressable>
@@ -200,7 +200,7 @@ export default function UserProfileScreen({ route, navigation }) {
               accessibilityState={{ disabled: messagesBlocked }}
             >
               <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.messageButtonText}>{messagesBlocked ? 'Blocked' : 'Message'}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.messageButtonText}>{messagesBlocked ? 'Blocked' : 'Message'}</Text>
             </HapticPressable>
           </View>
         )}
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -262,9 +262,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   name: {
-    ...TYPOGRAPHY.h1,
+    ...TYPOGRAPHY.title2,
     letterSpacing: 0,
-    fontSize: 24,
     textAlign: 'center',
     color: COLORS.text,
   },
@@ -300,6 +299,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   emptyRatings: {
+    ...CARD_SURFACE,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     padding: SPACING.xxl,
@@ -312,6 +312,7 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   listingCard: {
+    ...CARD_SURFACE,
     width: '47%',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
@@ -327,12 +328,12 @@ const styles = StyleSheet.create({
   },
   listingTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   listingPrice: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
     color: COLORS.primary,
     marginTop: SPACING.xs,
   },
@@ -353,8 +354,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   messageButtonText: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonSmall,
     color: COLORS.primary,
   },
   friendButton: {
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   friendButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
+    color: COLORS.white,
   },
   friendButtonTextActive: {
     ...TYPOGRAPHY.button,

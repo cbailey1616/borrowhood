@@ -12,7 +12,7 @@ export default function ListingOffer({ listing, alignment = 'start', showPrice =
   return <View style={[styles.offer, alignment === 'end' && styles.end]}>
     <View accessible accessibilityLabel={label} style={styles.badge}>
       <ListingTypeIcon listing={listing} />
-      <Text style={styles.label}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.label}>{label}</Text>
     </View>
     {showPrice && !free && <ListingPrice listing={listing} compact alignment={alignment} />}
   </View>;
@@ -22,5 +22,5 @@ const styles = StyleSheet.create({
   offer: { gap: SPACING.sm, alignItems: 'flex-start' },
   end: { alignItems: 'flex-end' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full, maxWidth: '100%' },
-  label: { ...TYPOGRAPHY.caption1, fontWeight: '400', color: COLORS.primary, flexShrink: 1 },
+  label: { ...TYPOGRAPHY.label, color: COLORS.primary, flexShrink: 1 },
 });

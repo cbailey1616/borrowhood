@@ -10,7 +10,7 @@ export default function PlanSwipeRow({children,label,onRemove,disabled=false,bac
     containerStyle={{width:'100%',minWidth:0,borderRadius:16}} childrenContainerStyle={{minWidth:0}}
     renderRightActions={()=> <HapticPressable accessibilityRole="button" accessibilityLabel={`Swipe remove ${label}`}
       onPress={()=>{ref.current?.close();onRemove();}} style={{width:88,backgroundColor:COLORS.danger,borderRadius:16,marginVertical:4,alignItems:'center',justifyContent:'center',gap:5}}>
-      <Icon name="trash" size={24} color="#fff" illustrated={false}/><Text style={{...TYPOGRAPHY.footnote,color:'#fff'}}>Remove</Text>
+      <Icon name="trash" size={24} color={COLORS.white} illustrated={false}/><Text maxFontSizeMultiplier={1.4} style={{...TYPOGRAPHY.buttonCaption,color:COLORS.white}}>Remove</Text>
     </HapticPressable>}>
     <View style={{backgroundColor,minWidth:0,width:'100%'}}>{children}</View>
   </Swipeable>;

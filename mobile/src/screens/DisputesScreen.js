@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { badgeTint, CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
 
@@ -110,9 +110,9 @@ export default function DisputesScreen({ navigation }) {
         <Ionicons
           name={config.icon}
           size={14}
-          color={isActive ? '#fff' : COLORS.textSecondary}
+          color={isActive ? COLORS.white : COLORS.textSecondary}
         />
-        <Text style={[styles.typeChipText, isActive && styles.typeChipTextActive]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.typeChipText, isActive && styles.typeChipTextActive]}>
           {config.label}
         </Text>
       </HapticPressable>
@@ -131,12 +131,12 @@ export default function DisputesScreen({ navigation }) {
         <View style={[styles.card, styles.cardBox]}>
           <View style={styles.cardContent}>
             <View style={styles.cardHeader}>
-              <View style={[styles.statusBadge, { backgroundColor: statusConf.color + '20' }]}>
-                <Text style={[styles.statusText, { color: statusConf.color }]}>
+              <View style={[styles.statusBadge, { backgroundColor: badgeTint(statusConf.color) }]}>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.statusText, { color: statusConf.color }]}>
                   {statusConf.label}
                 </Text>
               </View>
-              <Text style={styles.date}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.date}>
                 {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
@@ -159,7 +159,7 @@ export default function DisputesScreen({ navigation }) {
                 )}
               </View>
               {(item.resolvedAmount ?? item.requestedAmount) != null && (
-                <Text style={styles.amountText}>${(item.resolvedAmount ?? item.requestedAmount).toFixed(2)}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.amountText}>${(item.resolvedAmount ?? item.requestedAmount).toFixed(2)}</Text>
               )}
               <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
             </View>
@@ -267,15 +267,17 @@ const styles = StyleSheet.create({
   typeChipText: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   typeChipTextActive: {
-    color: '#fff',
+    color: COLORS.white,
   },
   listContent: {
     padding: SPACING.lg,
     flexGrow: 1,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   card: {
     marginBottom: SPACING.md,
   },
@@ -295,7 +297,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   date: {
     ...TYPOGRAPHY.caption1,
@@ -335,9 +338,10 @@ const styles = StyleSheet.create({
   },
   amountText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
     marginRight: SPACING.sm,
+    fontFamily: 'DMSans_500Medium',
   },
   emptyContainer: {
     flex: 1,
@@ -355,5 +359,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
     textAlign: 'center',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
 });

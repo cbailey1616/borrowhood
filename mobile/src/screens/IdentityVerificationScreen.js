@@ -10,8 +10,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator, } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -158,7 +157,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         )}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
           <View style={styles.iconContainer} testID="Identity.status.submitted" accessibilityLabel="Verification processing" accessibilityRole="image">
-            <View style={[styles.successCircle, { backgroundColor: COLORS.warning + '20' }]}>
+            <View style={[styles.successCircle, { backgroundColor: COLORS.tints.warning20 }]}>
               <Ionicons name="time" size={48} color={COLORS.warning} />
             </View>
           </View>
@@ -218,7 +217,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
           testID="Identity.button.skipForNow"
           accessibilityLabel="Skip for now"
         >
-          <Text style={styles.tertiaryButtonText}>Skip for now</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.tertiaryButtonText}>Skip for now</Text>
         </HapticPressable>
       </View>
     </View>
@@ -267,7 +266,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -299,9 +298,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
   },
   tertiaryButton: {
     minHeight: 44,
@@ -315,6 +314,6 @@ const styles = StyleSheet.create({
   },
   tertiaryButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.buttonCaption,
   },
 });

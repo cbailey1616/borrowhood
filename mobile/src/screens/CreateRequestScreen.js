@@ -26,7 +26,7 @@ import CategoryIcon from '../components/CategoryIcon';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
+import { CARD_SURFACE, COLORS, VISIBILITY_LABELS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -226,7 +226,7 @@ export default function CreateRequestScreen({ navigation, route }) {
 
       {/* Type Toggle */}
       <View style={styles.section}>
-        <Text style={styles.label}>I’m looking for…</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>I’m looking for…</Text>
         <View style={styles.options}>
           {[
             { value: 'item', label: 'Item' },
@@ -254,7 +254,7 @@ export default function CreateRequestScreen({ navigation, route }) {
 
       {/* Title */}
       <View style={styles.section}>
-        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
           What are you looking for? *
         </Text>
         <TextInput
@@ -275,12 +275,12 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Description */}
       <HapticPressable accessibilityRole="button" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(!showDetails)} style={{ minHeight: 56, paddingHorizontal: 16, marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface }}>
         <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
-        <Text style={{ ...TYPOGRAPHY.body, fontWeight: '400', color: COLORS.primary, flex: 1 }}>{showDetails ? 'Hide details' : 'Add details'}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.button, color: COLORS.primary, flex: 1 }}>{showDetails ? 'Hide details' : 'Add details'}</Text>
         <Ionicons name={showDetails ? 'chevron-up' : 'add'} size={20} color={COLORS.primary} />
       </HapticPressable>
       {showDetails && <>
       <View style={styles.section}>
-        <Text style={styles.label}>Details (optional)</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Details (optional)</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={formData.description}
@@ -299,7 +299,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category</Text>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category</Text>
           <HapticPressable
             haptic="light"
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
@@ -326,20 +326,20 @@ export default function CreateRequestScreen({ navigation, route }) {
       {/* Date Range */}
       </>}
       <View style={styles.section}>
-        <Text style={styles.label}>When do you need it?</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>When do you need it?</Text>
         <View style={styles.options}>
-          {[['today', 'Today'], ['weekend', 'This weekend']].map(([key, label]) => <HapticPressable key={key} style={styles.option} onPress={() => setFormData(prev => ({ ...prev, ...requestDatePreset(key) }))}><Text style={styles.optionText}>{label}</Text></HapticPressable>)}
-          <HapticPressable style={styles.option} onPress={() => setRangePicker('neededFrom')}><Text style={styles.optionText}>Choose dates</Text></HapticPressable>
-          <HapticPressable accessibilityRole="button" accessibilityState={{ selected: !formData.neededFrom && !formData.neededUntil }} style={[styles.option, !formData.neededFrom && !formData.neededUntil && styles.optionActive]} onPress={() => { setRangePicker(null); setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' })); }}><Text style={[styles.optionText, !formData.neededFrom && !formData.neededUntil && styles.optionTextActive]}>Flexible</Text></HapticPressable>
+          {[['today', 'Today'], ['weekend', 'This weekend']].map(([key, label]) => <HapticPressable key={key} style={styles.option} onPress={() => setFormData(prev => ({ ...prev, ...requestDatePreset(key) }))}><Text maxFontSizeMultiplier={1.4} style={styles.optionText}>{label}</Text></HapticPressable>)}
+          <HapticPressable style={styles.option} onPress={() => setRangePicker('neededFrom')}><Text maxFontSizeMultiplier={1.4} style={styles.optionText}>Choose dates</Text></HapticPressable>
+          <HapticPressable accessibilityRole="button" accessibilityState={{ selected: !formData.neededFrom && !formData.neededUntil }} style={[styles.option, !formData.neededFrom && !formData.neededUntil && styles.optionActive]} onPress={() => { setRangePicker(null); setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' })); }}><Text maxFontSizeMultiplier={1.4} style={[styles.optionText, !formData.neededFrom && !formData.neededUntil && styles.optionTextActive]}>Flexible</Text></HapticPressable>
         </View>
 
         {(rangePicker || formData.neededFrom || formData.neededUntil) ? <View style={styles.dateRow}>
           <View style={styles.dateInput}>
-            <Text style={styles.dateLabel}>From</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>From</Text>
             <HapticPressable accessibilityRole="button" accessibilityLabel="Choose needed from date" style={styles.input} onPress={() => setRangePicker('neededFrom')}><Text style={{ color: COLORS.text }}>{formData.neededFrom ? new Date(`${formData.neededFrom}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Any day'}</Text></HapticPressable>
           </View>
           <View style={styles.dateInput}>
-            <Text style={styles.dateLabel}>Until</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Until</Text>
             <HapticPressable accessibilityRole="button" accessibilityLabel="Choose needed until date" style={styles.input} onPress={() => setRangePicker('neededUntil')}><Text style={{ color: COLORS.text }}>{formData.neededUntil ? new Date(`${formData.neededUntil}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Flexible'}</Text></HapticPressable>
           </View>
         </View> : null}
@@ -355,14 +355,14 @@ export default function CreateRequestScreen({ navigation, route }) {
             if (date) setFormData(prev => ({ ...prev, [rangePicker]: localDate(date), ...(rangePicker === 'neededFrom' && prev.neededUntil && prev.neededUntil < localDate(date) ? { neededUntil: localDate(date) } : {}) }));
             if (Platform.OS !== 'ios') setRangePicker(null);
           }} />
-          <HapticPressable onPress={() => setRangePicker(null)} style={styles.inlineDateDone}><Text style={styles.inlineDateDoneText}>Done</Text></HapticPressable></View>}
+          <HapticPressable onPress={() => setRangePicker(null)} style={styles.inlineDateDone}><Text maxFontSizeMultiplier={1.4} style={styles.inlineDateDoneText}>Done</Text></HapticPressable></View>}
       </View>
 
       {/* Expires After */}
       <Text style={styles.hint}>{formData.expiresIn === 'never' ? 'Visible until you close it.' : formData.expiresIn === 'custom' ? `Visible until ${customExpiryDate.toLocaleDateString()}.` : `Visible for ${EXPIRATION_OPTIONS.find(opt => opt.value === formData.expiresIn)?.label.toLowerCase() || 'your chosen time'}.`} Change this in optional details.</Text>
       {showDetails &&
       <View style={styles.section}>
-        <Text style={styles.label}>Expires after</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Expires after</Text>
         <Text style={styles.hint}>Your post will be hidden from the feed after this time</Text>
         <View style={styles.options}>
           {EXPIRATION_OPTIONS.map((opt) => {
@@ -383,10 +383,10 @@ export default function CreateRequestScreen({ navigation, route }) {
                 <Ionicons
                   name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                   size={18}
-                  color={isSelected ? "#fff" : COLORS.textSecondary}
+                  color={isSelected ? COLORS.white : COLORS.textSecondary}
                   style={{ marginRight: SPACING.xs + 2 }}
                 />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.optionText, isSelected && styles.optionTextActive]}>
                   {opt.label}
                 </Text>
               </HapticPressable>
@@ -401,7 +401,7 @@ export default function CreateRequestScreen({ navigation, route }) {
               haptic="light"
             >
               <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.customDateText}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.customDateText}>
                 {customExpiryDate.toLocaleDateString()}
               </Text>
               <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
@@ -428,7 +428,7 @@ export default function CreateRequestScreen({ navigation, route }) {
                 onPress={() => setShowDatePicker(false)}
                 haptic="light"
               >
-                <Text style={styles.inlineDateDoneText}>Done</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.inlineDateDoneText}>Done</Text>
               </HapticPressable>
             )}
               </View>
@@ -463,9 +463,9 @@ export default function CreateRequestScreen({ navigation, route }) {
         haptic="medium"
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={COLORS.white} />
         ) : (
-          <Text style={styles.submitButtonText}>Post in Wanted</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.submitButtonText}>Post in Wanted</Text>
         )}
       </HapticPressable>
     </KeyboardAwareScrollView>
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   communityHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     padding: SPACING.lg,
     borderRadius: RADIUS.md,
     gap: SPACING.sm,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   communityHintText: {
     ...TYPOGRAPHY.footnote,
     flex: 1,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.text,
   },
   content: {
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -557,10 +557,9 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   datePickerCard: {
+    ...CARD_SURFACE,
     marginTop: SPACING.md,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.sm,
@@ -591,7 +590,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md + 2,
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
@@ -610,6 +609,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   dropdownButton: {
     flexDirection: 'row',
@@ -653,17 +654,21 @@ const styles = StyleSheet.create({
   },
   optionText: {
     ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   optionTextActive: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   infoCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     padding: SPACING.lg,
     borderRadius: RADIUS.md,
     gap: SPACING.md,
@@ -672,7 +677,7 @@ const styles = StyleSheet.create({
   infoText: {
     ...TYPOGRAPHY.footnote,
     flex: 1,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.text,
     lineHeight: 20,
   },
@@ -688,8 +693,8 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
+    fontSize: TYPOGRAPHY.body.fontSize,
+    color: COLORS.white,
   },
   fieldError: {
     borderColor: COLORS.danger,

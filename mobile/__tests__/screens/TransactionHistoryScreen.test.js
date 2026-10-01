@@ -73,7 +73,7 @@ describe('TransactionHistoryScreen', () => {
     expect(tile).toBe(screen.getByTestId('History.txn-1'));
     fireEvent.press(tile);
     expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
-    expect(screen.getByText('Camera')).toHaveStyle({ fontFamily: 'DMSans_600SemiBold', letterSpacing: 0 });
+    expect(screen.getByText('Camera')).toHaveStyle({ fontFamily: 'DMSans_500Medium', letterSpacing: 0 });
   });
 
   it('shows empty state when no transactions', async () => {

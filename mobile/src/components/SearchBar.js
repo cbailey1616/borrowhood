@@ -22,9 +22,9 @@ export default function SearchBar({
     onChangeText?.('');
   }, [onChangeText]);
 
-  const iconColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
-  const inputColor = dark ? '#fff' : COLORS.text;
-  const placeholderColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
+  const iconColor = dark ? COLORS.whiteOverlay : COLORS.textMuted;
+  const inputColor = dark ? COLORS.white : COLORS.text;
+  const placeholderColor = dark ? COLORS.whiteOverlay : COLORS.textMuted;
 
   return (
     <View style={[styles.container, dark && styles.darkContainer, style]} testID={testID} accessibilityLabel={accessibilityLabel || placeholder} accessibilityRole="search">

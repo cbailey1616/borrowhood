@@ -24,10 +24,9 @@ import WoodlandHeader from '../components/WoodlandHeader';
 import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
 const GRID_GAP = SPACING.md;
-
 
 function HeartButton({ onUnsave, title }) {
   const scale = useSharedValue(1);
@@ -62,7 +61,6 @@ export default function SavedScreen({ navigation, embedded = false }) {
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
 
   const fetchSaved = useCallback(async () => {
     try {
@@ -118,13 +116,13 @@ export default function SavedScreen({ navigation, embedded = false }) {
           <HeartButton title={item.title} onUnsave={() => handleUnsave(item.id)} />
           {item.isAvailable === false && (
             <View style={styles.unavailableBadge}>
-              <Text style={styles.unavailableText}>{item.status === 'given_away' ? item.listingType === 'sell' ? 'Sold' : 'Claimed' : item.listingType === 'sell' || item.listingType === 'giveaway' ? 'Unavailable' : 'Borrowed'}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.unavailableText}>{item.status === 'given_away' ? item.listingType === 'sell' ? 'Sold' : 'Claimed' : item.listingType === 'sell' || item.listingType === 'giveaway' ? 'Unavailable' : 'Borrowed'}</Text>
             </View>
           )}
         </View>
         <View style={styles.cardInfo}>
           <ListingOffer listing={item} />
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           <View style={styles.ownerRow}>
             {item.owner?.profilePhotoUrl ? (
               <ShimmerImage placeholderIcon="person" source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
@@ -133,7 +131,7 @@ export default function SavedScreen({ navigation, embedded = false }) {
                 <Ionicons name="person" size={10} color={COLORS.textMuted} />
               </View>
             )}
-            <Text style={styles.ownerName} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.ownerName} numberOfLines={1}>
               {item.owner?.firstName || 'Unknown'}
             </Text>
           </View>
@@ -169,7 +167,7 @@ export default function SavedScreen({ navigation, embedded = false }) {
                 onPress={() => navigation.navigate('Feed')}
                 haptic="medium"
               >
-                <Text style={styles.browseButtonText}>Browse Items</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.browseButtonText}>Browse Items</Text>
               </HapticPressable>
             </View>
           )
@@ -229,16 +227,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: SPACING.sm,
     left: SPACING.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: COLORS.photoOverlayStrong,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: RADIUS.xs,
   },
   unavailableText: {
-    ...TYPOGRAPHY.caption1,
-    color: '#fff',
-    fontWeight: '400',
-    fontSize: 10,
+    ...TYPOGRAPHY.caption2,
+    color: COLORS.white,
   },
   // Info
   cardInfo: {
@@ -246,9 +242,8 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   cardTitle: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
-    fontWeight: '400',
   },
   ownerRow: {
     flexDirection: 'row',
@@ -273,6 +268,7 @@ const styles = StyleSheet.create({
   },
   // Empty state
   emptyContainer: {
+    ...CARD_SURFACE,
     flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -301,7 +297,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   browseButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.headline,
   },
 });

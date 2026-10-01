@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: SPACING.lg, gap: SPACING.md },
   iconTile: { width: 46, height: 46, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   sectionCopy: { flex: 1, gap: SPACING.xs },
-  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text , },
   sectionSummary: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary },
   details: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg, gap: SPACING.lg },
   detailText: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },

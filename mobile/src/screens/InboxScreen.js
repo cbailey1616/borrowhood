@@ -15,8 +15,7 @@ import {
   InteractionManager,
   Linking,
   Platform,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator, } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '../components/Icon';
@@ -35,7 +34,7 @@ import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 
 
@@ -290,12 +289,12 @@ export default function InboxScreen({ navigation, route, onRead }) {
         </View>
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.name, !item.isRead && styles.nameUnread]} numberOfLines={2}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.name, !item.isRead && styles.nameUnread]} numberOfLines={2}>
               {item.title}
             </Text>
-            <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
           </View>
-          <Text style={[styles.lastMessage, item.queueListingId && {color:COLORS.primary,fontWeight:'400'}]} numberOfLines={3}>{item.body}</Text>
+          <Text style={[styles.lastMessage, item.queueListingId && { fontFamily: 'DMSans_400Regular',color:COLORS.primary,fontWeight:'400'}]} numberOfLines={3}>{item.body}</Text>
           {!!publicReplyRoute(item) && <Text style={styles.listingText}>Comment on a post</Text>}
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
@@ -321,12 +320,12 @@ export default function InboxScreen({ navigation, route, onRead }) {
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <View style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:5}}>
-              <Text style={[styles.name, {flex:undefined,flexShrink:1}, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.name, {flex:undefined,flexShrink:1}, item.unreadCount > 0 && styles.nameUnread]} numberOfLines={1}>
                 {item.kind === 'community' ? item.name : [item.otherUser?.firstName, item.otherUser?.lastName].filter(Boolean).join(' ')}
               </Text>
               {item.otherUser?.isVerified === true && <VerifiedBadge size={16} />}
             </View>
-            <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
           <Text
             style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
@@ -344,7 +343,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
     <View style={styles.retryNotice} accessibilityLiveRegion="polite">
       <Text style={styles.retryText}>{message}</Text>
       <HapticPressable accessibilityRole="button" accessibilityLabel="Retry loading inbox" onPress={onRefresh} style={styles.textButton} disabled={isRefreshing}>
-        <Text style={styles.markAllBtn}>{isRefreshing ? 'Retrying…' : 'Retry'}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.markAllBtn}>{isRefreshing ? 'Retrying…' : 'Retry'}</Text>
       </HapticPressable>
     </View>
   );
@@ -356,7 +355,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
         <View style={styles.headerActions}>
           {unreadOnly && <HapticPressable style={styles.activeFilter}
             accessibilityLabel="Show all inbox items" onPress={() => selectUnreadOnly(false)}>
-            <Text style={styles.activeFilterLabel}>Unread only</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.activeFilterLabel}>Unread only</Text>
             <Ionicons name="close" size={14} color={COLORS.primary} />
           </HapticPressable>}
           <HapticPressable style={styles.optionsButton} accessibilityLabel="Inbox options"
@@ -417,7 +416,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
           }
           ListFooterComponent={hasMore ? (
             <HapticPressable onPress={loadOlder} disabled={isLoadingMore || isRefreshing} style={styles.olderButton} accessibilityRole="button">
-              <Text style={styles.markAllBtn}>{isLoadingMore ? 'Loading…' : 'Show older updates'}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.markAllBtn}>{isLoadingMore ? 'Loading…' : 'Show older updates'}</Text>
             </HapticPressable>
           ) : null}
           ListEmptyComponent={
@@ -498,9 +497,7 @@ const styles = StyleSheet.create({
   retryNotice: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.sm, marginBottom: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceElevated },
   retryText: { ...TYPOGRAPHY.footnote, flex: 1, color: COLORS.textSecondary },
   olderButton: { minHeight: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, marginVertical: SPACING.sm },
-  markAllBtn: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+  markAllBtn: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.primary,
   },
   listContent: {
@@ -556,10 +553,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.surface,
   },
-  unreadBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '400',
+  unreadBadgeText: { fontFamily: 'DMSans_500Medium',
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.caption2.fontSize,
+    fontWeight: '500',
   },
   unreadDot: {
     width: 8,
@@ -575,9 +572,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  name: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+  name: { ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
     flex: 1,
   },
@@ -603,7 +598,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '500',
   },
-  emptyContainer: {
+  emptyContainer: { ...CARD_SURFACE,
     flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -630,7 +625,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warningMuted,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.warning + '30',
+    borderColor: COLORS.tints.warning30,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.md,

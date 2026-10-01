@@ -7,7 +7,7 @@ import { Ionicons } from './Icon';
 import api from '../services/api';
 import { borrowGuidance } from '../utils/borrowStatus';
 import { exchangesWith, exchangeAction } from '../utils/chatExchange';
-import { CARD_SURFACE, COLORS, RADIUS } from '../utils/config';
+import { CARD_SURFACE, COLORS, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ChatExchangeCard({ userId, otherId, listingId, navigation, focused, onActiveChange }) {
   const [exchanges, setExchanges] = useState([]);
@@ -51,29 +51,29 @@ export default function ChatExchangeCard({ userId, otherId, listingId, navigatio
   return <View style={styles.card}>
     <HapticPressable accessibilityRole="button" accessibilityLabel={`Borrow details for ${exchange.listing?.title}`} onPress={details} style={styles.heading}>
       <ListingTypeIcon listing={exchange} size={24} />
-      <View style={{ flex: 1 }}><Text style={styles.title} numberOfLines={1}>{exchange.listing?.title}</Text><Text style={styles.secondary}>{date(exchange.startDate)}{exchange.endDate && !isTransferListing(exchange) ? ` – ${date(exchange.endDate)}` : ''} · {guidance.title}</Text></View>
+      <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.4} style={styles.title} numberOfLines={1}>{exchange.listing?.title}</Text><Text style={styles.secondary}>{date(exchange.startDate)}{exchange.endDate && !isTransferListing(exchange) ? ` – ${date(exchange.endDate)}` : ''} · {guidance.title}</Text></View>
       <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
     </HapticPressable>
     {!!error && <Text accessibilityRole="alert" style={styles.secondary}>{error}</Text>}
     <View style={styles.actions}>
-      <HapticPressable accessibilityRole="button" disabled={busy || !!error} onPress={perform} style={[styles.primary, (busy || error) && { opacity: 0.5 }]}><Text style={styles.primaryText}>{busy ? 'Updating…' : action.label}</Text></HapticPressable>
-      {!!error ? <HapticPressable accessibilityRole="button" onPress={refresh} style={styles.link}><Text style={styles.linkText}>Refresh</Text></HapticPressable>
-        : action.method && <HapticPressable accessibilityRole="button" onPress={details} style={styles.link}><Text style={styles.linkText}>Details</Text></HapticPressable>}
-      {exchanges.length > 1 && <HapticPressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.link}><Text style={styles.linkText}>{exchanges.length} exchanges {expanded ? '↑' : '↓'}</Text></HapticPressable>}
+      <HapticPressable accessibilityRole="button" disabled={busy || !!error} onPress={perform} style={[styles.primary, (busy || error) && { opacity: 0.5 }]}><Text maxFontSizeMultiplier={1.4} style={styles.primaryText}>{busy ? 'Updating…' : action.label}</Text></HapticPressable>
+      {!!error ? <HapticPressable accessibilityRole="button" onPress={refresh} style={styles.link}><Text maxFontSizeMultiplier={1.4} style={styles.linkText}>Refresh</Text></HapticPressable>
+        : action.method && <HapticPressable accessibilityRole="button" onPress={details} style={styles.link}><Text maxFontSizeMultiplier={1.4} style={styles.linkText}>Details</Text></HapticPressable>}
+      {exchanges.length > 1 && <HapticPressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.link}><Text maxFontSizeMultiplier={1.4} style={styles.linkText}>{exchanges.length} exchanges {expanded ? '↑' : '↓'}</Text></HapticPressable>}
     </View>
-    {expanded && exchanges.map(t => <HapticPressable accessibilityRole="button" key={t.id} style={styles.link} onPress={() => { setSelectedId(t.id); setExpanded(false); }}><Text style={styles.linkText}>{t.listing?.title}</Text></HapticPressable>)}
+    {expanded && exchanges.map(t => <HapticPressable accessibilityRole="button" key={t.id} style={styles.link} onPress={() => { setSelectedId(t.id); setExpanded(false); }}><Text maxFontSizeMultiplier={1.4} style={styles.linkText}>{t.listing?.title}</Text></HapticPressable>)}
   </View>;
 }
 const styles = StyleSheet.create({
-  card: { ...CARD_SURFACE, marginHorizontal: 16, marginTop: 8, marginBottom: 4, padding: 12, borderColor: COLORS.borderLight, borderWidth: 1 },
+  card: { ...CARD_SURFACE, marginHorizontal: 16, marginTop: 8, marginBottom: 4, padding: 12 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
-  title: { color: COLORS.text, fontSize: 15, fontWeight: '400' },
-  secondary: { color: COLORS.textSecondary, fontSize: 12, lineHeight: 18 },
+  title: { color: COLORS.text, ...TYPOGRAPHY.buttonSmall },
+  secondary: { color: COLORS.textSecondary, ...TYPOGRAPHY.caption1, lineHeight: 18 },
   actions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   primary: { backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  primaryText: { color: COLORS.surface, fontWeight: '400', fontSize: 13 },
+  primaryText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.surface },
   link: { minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexShrink: 1, marginVertical: 2 },
-  linkText: { color: COLORS.primary, fontSize: 13, fontWeight: '400' },
+  linkText: { color: COLORS.primary, ...TYPOGRAPHY.buttonCaption },
   retry: { padding: 12, minHeight: 48, margin: 16, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
 });
 import { ThemedAlert as Alert } from "./ThemedAlert";

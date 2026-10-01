@@ -47,17 +47,17 @@ export default function OnboardingIntroScreen({ navigation }) {
       note="Get started now. Verify your identity later."
       secondaryActions={page === 1 ? <View style={styles.footerLinks}>
         <HapticPressable accessibilityRole="button" onPress={() => { setPage(0); setError(''); }} disabled={busy} style={styles.linkButton}>
-          <Text style={styles.link}>Back</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.link}>Back</Text>
         </HapticPressable>
         <HapticPressable accessibilityRole="link" onPress={() => Linking.openURL(BASE_URL + '/privacy').catch(() => setError('Could not open the Privacy Policy. Please try again.'))} style={styles.linkButton}>
-          <Text style={styles.link}>Privacy Policy</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.link}>Privacy Policy</Text>
         </HapticPressable>
       </View> : null}>
       {page === 1 && <View style={styles.audiences}>
         {[['people', 'Friends'], ['home', 'Neighborhood'], ['location', 'Town']].map(([icon, label]) => (
           <View key={label} style={styles.audience}>
             <Icon name={icon} size={19} illustrated />
-            <Text style={styles.audienceLabel}>{label}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.audienceLabel}>{label}</Text>
           </View>
         ))}
       </View>}
@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
   audienceLabel: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   footerLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   linkButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  link: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
+  link: { ...TYPOGRAPHY.buttonSmall, color: COLORS.primary , },
 });

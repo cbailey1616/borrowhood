@@ -104,7 +104,7 @@ export default function BrowseScreen({ navigation }) {
           {item.distanceMiles && (
             <View style={styles.distanceRow}>
               <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
-              <Text style={styles.distanceText}>{item.distanceMiles} mi</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.distanceText}>{item.distanceMiles} mi</Text>
             </View>
           )}
 
@@ -114,7 +114,7 @@ export default function BrowseScreen({ navigation }) {
                 <View style={[styles.ownerAvatar, styles.maskedOwnerAvatar]}>
                   <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
                 </View>
-                <Text style={styles.ownerName} numberOfLines={1}>Verified Lender</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.ownerName} numberOfLines={1}>Verified Lender</Text>
               </>
             ) : (
               <>
@@ -125,7 +125,7 @@ export default function BrowseScreen({ navigation }) {
                     <Ionicons name="person" size={12} color={COLORS.gray[400]} />
                   </View>
                 )}
-                <Text style={styles.ownerName} numberOfLines={1}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.ownerName} numberOfLines={1}>
                   {item.owner.firstName} {item.owner.lastName[0]}.
                 </Text>
                 {item.owner.isVerified === true && <VerifiedBadge size={16} interactive />}
@@ -155,12 +155,12 @@ export default function BrowseScreen({ navigation }) {
             )}
             <View style={styles.requesterInfo}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={[styles.requesterName, { flexShrink: 1 }]} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.requesterName, { flexShrink: 1 }]} numberOfLines={1}>
                 {item.requester.firstName} {item.requester.lastName[0]}.
               </Text>
               {item.requester.isVerified === true && <VerifiedBadge size={16} interactive />}
               </View>
-              <Text style={styles.requestTime}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.requestTime}>
                 {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
@@ -170,7 +170,7 @@ export default function BrowseScreen({ navigation }) {
           {!!item.photoUrl && <Image source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" resizeMode="contain" style={{ width: '100%', height: 180, marginBottom: SPACING.md }} />}
           <View style={styles.requestTypeBadge}>
             <RequestTypeIcon type={item.type} size={18} />
-            <Text style={[
+            <Text maxFontSizeMultiplier={1.4} style={[
               styles.requestTypeBadgeText,
               item.type === 'service' && { color: COLORS.primary },
             ]}>
@@ -186,7 +186,7 @@ export default function BrowseScreen({ navigation }) {
           {(item.neededFrom || item.neededUntil) && (
             <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.dateText}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.dateText}>
                 {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
                 {item.neededFrom && item.neededUntil && ' - '}
                 {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
@@ -226,7 +226,7 @@ export default function BrowseScreen({ navigation }) {
             }}
             haptic={null}
           >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
               {tab.label}
             </Text>
           </HapticPressable>
@@ -269,7 +269,7 @@ export default function BrowseScreen({ navigation }) {
                 }}
                 haptic={null}
               >
-                <Text
+                <Text maxFontSizeMultiplier={1.4}
                   style={[
                     styles.filterPillText,
                     distanceFilter === filter.key && styles.filterPillTextActive,
@@ -395,12 +395,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   tabActive: {
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
   },
   tabText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
   },
   tabTextActive: {
     color: COLORS.primary,
@@ -441,13 +442,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.separator,
   },
   filterPillActive: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     borderColor: COLORS.primary,
   },
   filterPillText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
   },
   filterPillTextActive: {
     color: COLORS.primary,
@@ -469,11 +471,10 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   card: {
+    ...CARD_SURFACE,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   cardImage: {
     width: '100%',
@@ -493,9 +494,10 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
   },
   cardCondition: {
     ...TYPOGRAPHY.caption1,
@@ -507,13 +509,15 @@ const styles = StyleSheet.create({
   },
   freeLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   priceLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   distanceRow: {
     flexDirection: 'row',
@@ -539,12 +543,14 @@ const styles = StyleSheet.create({
   maskedOwnerAvatar: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
   },
   ownerName: {
     flex: 1,
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   rating: {
     flexDirection: 'row',
@@ -560,7 +566,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: COLORS.textSecondary,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   // Request card styles
   requestCardOuter: {
     borderColor: COLORS.primary,
@@ -587,8 +593,9 @@ const styles = StyleSheet.create({
   },
   requesterName: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   requestTime: {
     ...TYPOGRAPHY.caption1,
@@ -663,5 +670,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
 });

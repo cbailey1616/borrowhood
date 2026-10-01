@@ -273,7 +273,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       >
         <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} contentContainerStyle={{ paddingBottom: SPACING.xl }}>
         <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
-          <Text style={styles.backButtonText}>{'\u2039'}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.backButtonText}>{'\u2039'}</Text>
         </HapticPressable>
 
         {/* Step dots */}
@@ -336,7 +336,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
               <>
                 <View style={styles.digitRow}>
                   {digits.map((d, i) => (
-                    <TextInput
+                    <TextInput maxFontSizeMultiplier={1.4}
                       key={i}
                       ref={el => digitRefs.current[i] = el}
                       style={[styles.digitBox, d ? styles.digitBoxFilled : null]}
@@ -364,7 +364,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   disabled={resendCooldown > 0 || isLoading}
                   haptic="light"
                 >
-                  <Text style={[styles.resendButtonText, resendCooldown > 0 && styles.resendDisabled]}>
+                  <Text maxFontSizeMultiplier={1.4} style={[styles.resendButtonText, resendCooldown > 0 && styles.resendDisabled]}>
                     {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
                   </Text>
                 </HapticPressable>
@@ -380,7 +380,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     placeholder="Enter current password" secureTextEntry={!showPassword} autoCapitalize="none"
                     autoCorrect={false} autoComplete="current-password" textContentType="password" />
                   <HapticPressable onPress={() => { setRecovering(true); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); animateStep('email'); }} disabled={isLoading} style={styles.resendButton} accessibilityRole="link">
-                    <Text style={styles.resendButtonText}>Forgot your password?</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.resendButtonText}>Forgot your password?</Text>
                   </HapticPressable>
                 </View>}
                 <View style={styles.inputContainer}>
@@ -404,7 +404,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                       style={styles.eyeButton}
                       haptic="light"
                     >
-                      <Text style={styles.eyeButtonText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={styles.eyeButtonText}>{showPassword ? 'Hide' : 'Show'}</Text>
                     </HapticPressable>
                   </View>
                   {/* Strength indicator */}
@@ -413,7 +413,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                       <View style={styles.strengthBar}>
                         <View style={[styles.strengthFill, { width: `${strength.width * 100}%`, backgroundColor: strength.color }]} />
                       </View>
-                      <Text style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
                     </View>
                   )}
                 </View>
@@ -472,9 +472,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   backButtonText: {
-    fontSize: 36,
+    ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,
-    fontWeight: '300',
   },
   dotsRow: {
     flexDirection: 'row',
@@ -517,15 +516,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   label: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
   },
   input: {
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surfaceElevated,
     color: COLORS.text,
   },
@@ -539,7 +537,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   eyeButton: {
@@ -548,8 +546,7 @@ const styles = StyleSheet.create({
   },
   eyeButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
   },
   strengthRow: {
     flexDirection: 'row',
@@ -569,8 +566,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   strengthLabel: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+    ...TYPOGRAPHY.label,
   },
   digitRow: {
     flexDirection: 'row',
@@ -586,8 +582,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.border,
     textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '400',
+    ...TYPOGRAPHY.title2,
     color: COLORS.text,
   },
   digitBoxFilled: {
@@ -604,7 +599,6 @@ const styles = StyleSheet.create({
   verifyingText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.primary,
-    fontWeight: '400',
   },
   button: {
     backgroundColor: COLORS.primary,
@@ -626,8 +620,7 @@ const styles = StyleSheet.create({
   },
   resendButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
   },
   resendDisabled: {
     color: COLORS.textMuted,

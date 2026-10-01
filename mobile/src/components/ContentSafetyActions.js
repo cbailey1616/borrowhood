@@ -53,7 +53,7 @@ export default function ContentSafetyActions({ type, id, onBlocked, open = false
     >
       {busy ? <ActivityIndicator size="small" color={COLORS.textSecondary} />
         : <Ionicons name="flag-outline" size={16} color={COLORS.textSecondary} illustrated={false} />}
-      <Text style={styles.subtleLabel}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.subtleLabel}>{label}</Text>
     </HapticPressable> : <ActionButton label={label} icon="flag-outline" loading={busy} onPress={() => showSheet('menu')} />)}
     {!!sheet && <ActionSheet key={sheet} isVisible {...dialog} onClose={() => {
       if (inFlight.current || currentSheet.current !== sheet) return;
@@ -68,5 +68,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm,
   },
-  subtleLabel: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1, textAlign: 'center' },
+  subtleLabel: { ...TYPOGRAPHY.buttonCaption, color: COLORS.textSecondary, flexShrink: 1, textAlign: 'center' },
 });

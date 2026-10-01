@@ -12,12 +12,12 @@ export default function UserBadges({
   layout = 'default',
 }) {
   const exchangeLabel = `${totalTransactions} completed ${totalTransactions === 1 ? 'exchange' : 'exchanges'}`;
-  const fontSize = size === 'small' ? 11 : 13;
+  const fontSize = size === 'small' ? TYPOGRAPHY.caption2.fontSize : TYPOGRAPHY.footnote.fontSize;
 
   if (layout === 'summary') return (
     <View style={styles.summary} accessible accessibilityLabel={exchangeLabel}>
       <Ionicons name="swap-horizontal" size={20} illustrated color={COLORS.primary} />
-      <Text style={styles.summaryText}>{exchangeLabel}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.summaryText}>{exchangeLabel}</Text>
     </View>
   );
 
@@ -25,9 +25,9 @@ export default function UserBadges({
     <View style={[styles.container, centered && styles.centered, compact && styles.compact]}>
       {isVerified && <View style={styles.verified}>
         <VerifiedBadge size={size === 'small' ? 14 : 18} interactive />
-        {!compact && <Text style={[styles.verifiedText, { fontSize }]}>Verified identity</Text>}
+        {!compact && <Text maxFontSizeMultiplier={1.4} style={[styles.verifiedText, { fontSize }]}>Verified identity</Text>}
       </View>}
-      <Text style={[styles.exchangeText, { fontSize }, centered && styles.centeredText]}>{exchangeLabel}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={[styles.exchangeText, { fontSize }, centered && styles.centeredText]}>{exchangeLabel}</Text>
     </View>
   );
 }
@@ -40,6 +40,6 @@ const styles = StyleSheet.create({
   centeredText: { textAlign: 'center' },
   compact: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 0, gap: 4 },
   verified: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4 },
-  verifiedText: { flexShrink: 1, fontWeight: '400', color: COLORS.primary },
-  exchangeText: { color: COLORS.textSecondary },
+  verifiedText: { ...TYPOGRAPHY.label, flexShrink: 1, color: COLORS.primary },
+  exchangeText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

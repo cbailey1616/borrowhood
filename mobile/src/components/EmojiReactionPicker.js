@@ -6,7 +6,7 @@ import { Ionicons } from './Icon';
 import ReactionIcon from './ReactionIcon';
 import { REACTION_OPTIONS, REACTION_PICKER_COLUMNS, REACTION_PICKER_CELL_HEIGHT, REACTION_PICKER_PADDING } from '../utils/reactions';
 import { haptics } from '../utils/haptics';
-import { COLORS } from '../utils/config';
+import { COLORS, CARD_SURFACE } from '../utils/config';
 
 export { REACTION_OPTIONS as EMOJI_OPTIONS } from '../utils/reactions';
 
@@ -22,7 +22,7 @@ export default function EmojiReactionPicker({ onSelect, onMore, style, options =
   }, [onMore]);
 
   return <Animated.View entering={FadeIn.duration(150)} style={[styles.container, style]}>
-    <View style={[styles.card, { width: Math.min(340, width - 32), backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+    <View style={[styles.card, { width: Math.min(340, width - 32), backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.grid}>
         {options.map(item => <HapticPressable key={item.key} accessibilityRole="button"
           accessibilityLabel={`React: ${item.label}`} haptic={null} style={styles.emojiButton}
@@ -39,9 +39,10 @@ export default function EmojiReactionPicker({ onSelect, onMore, style, options =
 }
 const styles = StyleSheet.create({
   container: { position: 'absolute', zIndex: 100 },
-  card: { borderRadius: 18, padding: REACTION_PICKER_PADDING, borderWidth: 1 },
+  card: { ...CARD_SURFACE, borderRadius: 18, padding: REACTION_PICKER_PADDING, borderWidth: 1 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   emojiButton: { width: `${100 / REACTION_PICKER_COLUMNS}%`, height: REACTION_PICKER_CELL_HEIGHT,
-    alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+    alignItems: 'center', justifyContent: 'center', borderRadius: 14,
+  },
   moreButton: { height: REACTION_PICKER_CELL_HEIGHT, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
 });

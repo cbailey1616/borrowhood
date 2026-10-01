@@ -76,7 +76,7 @@ export default function OnboardingCompleteScreen() {
         origin={{ x: -10, y: 0 }}
         fadeOut
         autoStart
-        colors={[COLORS.primary, COLORS.primaryLight, COLORS.warning, '#fff']}
+        colors={[COLORS.primary, COLORS.primaryLight, COLORS.warning, COLORS.white]}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} bounces={false}><Animated.View style={styles.content} entering={FadeInDown.duration(550).springify().damping(16)}>
@@ -121,7 +121,7 @@ export default function OnboardingCompleteScreen() {
             <Text style={styles.primaryButtonText}>
               {isCompleting ? 'Setting up...' : 'Start Exploring'}
             </Text>
-            {!isCompleting && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+            {!isCompleting && <Ionicons name="arrow-forward" size={18} color={COLORS.white} />}
           </LinearGradient>
         </HapticPressable>
       </View>
@@ -159,15 +159,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: COLORS.tints.warning20,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.full,
     marginTop: SPACING.xl,
   },
-  founderText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  founderText: { ...TYPOGRAPHY.caption1,
     color: COLORS.warning,
   },
   footer: {
@@ -186,9 +184,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
 });

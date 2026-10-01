@@ -4,7 +4,7 @@ import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import api from '../services/api';
 import useNavigationTask from '../hooks/useNavigationTask';
-import { COLORS } from '../utils/config';
+import { COLORS, TYPOGRAPHY } from '../utils/config';
 
 export default function ThreadMessageButton({ author, currentUserId, navigation, context, isOwn }) {
   const startNavigationTask = useNavigationTask(navigation, author?.id);
@@ -37,10 +37,10 @@ export default function ThreadMessageButton({ author, currentUserId, navigation,
       style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 48, paddingHorizontal: 8 }}>
       <Ionicons name="chatbubble" size={18} color={COLORS.primary} illustrated />
       <View style={{ maxWidth: 150 }}>
-        <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '400' }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 11 }} numberOfLines={1}>To {author.firstName || 'neighbor'}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={{ color: COLORS.primary, ...TYPOGRAPHY.buttonCaption }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={{ color: COLORS.textSecondary, ...TYPOGRAPHY.caption2 }} numberOfLines={1}>To {author.firstName || 'neighbor'}</Text>
       </View>
     </HapticPressable>
-    {failed && <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary, fontSize: 12 }}>Couldn’t open chat. Please try again.</Text>}
+    {failed && <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary, ...TYPOGRAPHY.caption1 }}>Couldn’t open chat. Please try again.</Text>}
   </View>;
 }

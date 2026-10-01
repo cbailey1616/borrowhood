@@ -38,16 +38,16 @@ export default function RequestPhotoPicker({ uri, onChange, disabled }) {
   return <View style={{ marginBottom: 20, gap: 8 }}>
     {!!uri && <Image source={{ uri }} accessibilityLabel="Wanted item photo" resizeMode="contain"
       style={{ width: '100%', height: 180, borderRadius: RADIUS.md }} onError={() => setFailed(true)} />}
-    {uri && failed && <Text accessibilityRole="alert" style={{ color: COLORS.textSecondary }}>This photo couldn’t load. Remove it and choose it again.</Text>}
+    {uri && failed && <Text accessibilityRole="alert" style={{ ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary }}>This photo couldn’t load. Remove it and choose it again.</Text>}
     <HapticPressable accessibilityRole="button" accessibilityLabel={uri ? 'Change request photo' : 'Add request photo'}
       disabled={disabled || picking} onPress={() => setSourceVisible(true)} style={{ minHeight: 56, paddingHorizontal: 16, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: disabled || picking ? 0.5 : 1 }}>
       <Ionicons name="image-outline" size={22} color={COLORS.primary} />
-      <Text style={{ ...TYPOGRAPHY.body, fontWeight: '400', color: COLORS.primary, flex: 1 }}>{uri ? 'Change photo' : 'Add photo'}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.button, color: COLORS.primary, flex: 1 }}>{uri ? 'Change photo' : 'Add photo'}</Text>
       <Ionicons name="add" size={20} color={COLORS.primary} />
     </HapticPressable>
     {!!uri && <HapticPressable accessibilityRole="button" accessibilityLabel="Remove request photo" disabled={disabled || picking}
       onPress={() => { setFailed(false); onChange(null); }} style={{ minHeight: 44, justifyContent: 'center' }}>
-      <Text style={{ color: COLORS.primary }}>Remove photo</Text>
+      <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.button, color: COLORS.primary }}>Remove photo</Text>
     </HapticPressable>}
     <ActionSheet isVisible={sourceVisible} onClose={() => setSourceVisible(false)} title={uri ? 'Change photo' : 'Add photo'}
       actions={[

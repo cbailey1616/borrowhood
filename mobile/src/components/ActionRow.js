@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 
 // Navigation and expanded choices have a visible surface, icon and chevron.
 export default function ActionRow({ label, description, icon, onPress, variant = 'secondary',
@@ -17,7 +17,7 @@ export default function ActionRow({ label, description, icon, onPress, variant =
       <Ionicons name={icon} size={24} color={color} illustrated={false} />
     </View>}
     <View style={styles.copy}>
-      <Text style={[styles.label, { color }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={[styles.label, { color }]}>{label}</Text>
       {!!description && <Text style={[styles.description, primary && { color: COLORS.greenText }]}>{description}</Text>}
     </View>
     <Ionicons name="chevron-forward" size={20} color={color} illustrated={false} />
@@ -25,13 +25,15 @@ export default function ActionRow({ label, description, icon, onPress, variant =
 }
 
 const styles = StyleSheet.create({
-  row: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
-    padding: SPACING.lg, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface },
+  row: { ...CARD_SURFACE, minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
+    padding: SPACING.lg, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface,
+  },
   primary: { backgroundColor: COLORS.primary },
   danger: { borderWidth: 1, borderColor: COLORS.dangerMuted },
   icon: { width: 44, height: 44, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryMuted,
-    alignItems: 'center', justifyContent: 'center' },
-  primaryIcon: { backgroundColor: 'rgba(251,246,236,0.14)' },
+    alignItems: 'center', justifyContent: 'center',
+  },
+  primaryIcon: { backgroundColor: COLORS.parchmentTint },
   dangerIcon: { backgroundColor: COLORS.dangerMuted },
   copy: { flex: 1, minWidth: 0, gap: SPACING.xs },
   label: { ...TYPOGRAPHY.headline },

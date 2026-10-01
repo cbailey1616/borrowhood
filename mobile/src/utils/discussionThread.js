@@ -33,10 +33,10 @@ export function composerScrollOffset(offset, viewport, composer, margin = 8) {
 export { REACTION_OPTIONS as DISCUSSION_EMOJIS } from './reactions';
 
 export const DISCUSSION_DARK_COLORS = {
-  ...COLORS, background: '#151D19', surface: '#202B24', surfaceElevated: '#29362C',
-  text: '#EEF2E9', textSecondary: '#CDD6CC', textMuted: '#A0ABA1',
-  primary: '#BCD7A5', primaryDark: '#CFE4BC', primaryLight: '#859D71', primaryMuted: '#30432F',
-  border: '#435043', borderLight: '#354238', separator: '#354238', danger: '#F0A493',
+  ...COLORS, background: COLORS.discussionDark.background, surface: COLORS.discussionDark.surface, surfaceElevated: COLORS.discussionDark.surfaceElevated,
+  text: COLORS.discussionDark.text, textSecondary: COLORS.discussionDark.textSecondary, textMuted: COLORS.discussionDark.textMuted,
+  primary: COLORS.discussionDark.primary, primaryDark: COLORS.discussionDark.primaryDark, primaryLight: COLORS.discussionDark.primaryLight, primaryMuted: COLORS.discussionDark.primaryMuted,
+  border: COLORS.discussionDark.border, borderLight: COLORS.discussionDark.separator, separator: COLORS.discussionDark.separator, danger: COLORS.discussionDark.danger,
 };
 export function sortDiscussion(items, order = 'top') {
   return [...items].sort((a,b) => {

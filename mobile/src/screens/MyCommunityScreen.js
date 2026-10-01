@@ -8,7 +8,7 @@ import LayeredCard from '../components/LayeredCard';
 import BackHeader from '../components/BackHeader';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { COVER_ASPECT } from '../utils/coverCrop';
 
 export default function MyCommunityScreen({ navigation, route }) {
@@ -53,8 +53,9 @@ export default function MyCommunityScreen({ navigation, route }) {
     navigation.setOptions?.({ header: props => <BackHeader navigation={props.navigation} title="My Neighborhood"
       rightElement={canManage ? <HapticPressable style={styles.manage} accessibilityRole="button" accessibilityLabel="Manage neighborhood"
         onPress={() => navigation.navigate('CommunitySettings', { id: communityId })}>
-        <Text style={styles.manageText}>Manage</Text>
-      </HapticPressable> : null} /> });
+        <Text maxFontSizeMultiplier={1.4} style={styles.manageText}>Manage</Text>
+      </HapticPressable> : null} />
+    });
   }, [navigation, communityId, canManage]);
 
   useFocusEffect(useCallback(() => {
@@ -145,7 +146,7 @@ export default function MyCommunityScreen({ navigation, route }) {
           <Text style={styles.shortcutTitle}>Neighborhood chat</Text>
           <Text style={styles.description} numberOfLines={2}>{chatNote}</Text>
         </View>
-        {unreadCount > 0 && <View style={styles.unread}><Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>}
+        {unreadCount > 0 && <View style={styles.unread}><Text maxFontSizeMultiplier={1.4} style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>}
         <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
       </HapticPressable>
       <HapticPressable style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood items"
@@ -160,7 +161,7 @@ export default function MyCommunityScreen({ navigation, route }) {
         <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
       </HapticPressable>
       {!!community.announcement?.trim() && <LayeredCard style={styles.announcement} radius={RADIUS.lg}>
-        <Text style={styles.announcementTitle} accessibilityRole="header">Announcement</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.announcementTitle} accessibilityRole="header">Announcement</Text>
         <Text style={styles.announcementBody}>{community.announcement}</Text>
       </LayeredCard>}
     </View>
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: COLORS.background },
   overviewContent: { paddingBottom: 40 },
   manage: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  manageText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  manageText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary , },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
   stateContent: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
   stateCard: { width: '100%', maxWidth: 480, padding: 24, alignItems: 'center' },
@@ -180,31 +181,32 @@ const styles = StyleSheet.create({
   stateDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
   stateButton: { minHeight: 52, width: '100%', marginTop: 24, paddingHorizontal: 18, paddingVertical: 14, borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  stateButtonText: { ...TYPOGRAPHY.body, color: COLORS.surface, textAlign: 'center', flexShrink: 1 },
+  stateButtonText: { ...TYPOGRAPHY.button, color: COLORS.surface, textAlign: 'center', flexShrink: 1 , },
   refreshError: { paddingHorizontal: SPACING.lg, paddingVertical: 12, minHeight: 44 },
   selector: { padding: SPACING.md, gap: 8 },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
   selected: { backgroundColor: COLORS.primary },
   hero: { paddingHorizontal: SPACING.lg, paddingTop: 36, overflow: 'hidden' },
-  heroContent: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg },
+  heroContent: { ...CARD_SURFACE, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg },
   cover: { width: '100%', aspectRatio: COVER_ASPECT, borderRadius: RADIUS.lg, marginBottom: 12 },
   coverFallback: { backgroundColor: COLORS.primaryMuted, justifyContent: 'center', alignItems: 'center', gap: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   identity: { flex: 1, minWidth: 0 },
-  name: { ...TYPOGRAPHY.h2, fontFamily: 'Fraunces_600SemiBold', color: COLORS.text },
+  name: { ...TYPOGRAPHY.h2,  color: COLORS.text },
   button: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
   buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
   members: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'flex-start', minHeight: 44 },
   description: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   shortcuts: { padding: SPACING.lg, gap: SPACING.md },
-  shortcut: { minHeight: 100, padding: SPACING.lg, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface,
-    flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  shortcut: { ...CARD_SURFACE, minHeight: 100, padding: SPACING.lg, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface,
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.md
+  },
   shortcutIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
   shortcutText: { flex: 1, minWidth: 0, gap: SPACING.xs },
   shortcutTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   unread: { minWidth: 24, minHeight: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
   unreadText: { ...TYPOGRAPHY.caption1, color: COLORS.surface },
   announcement: { padding: SPACING.lg, gap: SPACING.sm },
-  announcementTitle: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  announcementTitle: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary , },
   announcementBody: { ...TYPOGRAPHY.body, color: COLORS.text },
 });

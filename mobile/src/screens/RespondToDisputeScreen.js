@@ -125,7 +125,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}
             haptic="light"
           >
-            <Text style={styles.primaryButtonText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
         </View>
       </View>
@@ -144,7 +144,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           <View style={styles.cardContent}>
             <View style={styles.typeBadge}>
               <Ionicons name={typeInfo.icon} size={20} color={COLORS.primary} />
-              <Text style={styles.typeLabel}>{typeInfo.label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.typeLabel}>{typeInfo.label}</Text>
             </View>
             <Text style={styles.claimantText}>Filed by {claimantName}</Text>
             <Text style={styles.claimDescription}>{description}</Text>
@@ -154,7 +154,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {/* Response Description */}
         <View style={[styles.cardBox, styles.card, fieldErrors.description && styles.fieldError]}>
           <View style={styles.cardContent}>
-            <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>
               {isCounter ? 'Reason for Counter *' : 'Reason for Declining *'}
             </Text>
             <Text style={styles.cardHint}>Minimum 10 characters</Text>
@@ -173,7 +173,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
               textAlignVertical="top"
               maxLength={2000}
             />
-            <Text style={styles.charCount}>{responseDescription.length}/2000</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.charCount}>{responseDescription.length}/2000</Text>
           </View>
         </View>
 
@@ -181,7 +181,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {isCounter && (
           <View style={[styles.cardBox, styles.card, fieldErrors.amount && styles.fieldError]}>
             <View style={styles.cardContent}>
-              <Text style={[styles.cardLabel, fieldErrors.amount && styles.fieldErrorLabel]}>Your Counter Amount *</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.amount && styles.fieldErrorLabel]}>Your Counter Amount *</Text>
               <Text style={styles.cardHint}>
                 {requestedAmount != null
                   ? `They requested $${requestedAmount.toFixed(2)}. How much do you think is fair?`
@@ -211,7 +211,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {/* Response Photos */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Photos</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Photos</Text>
             <Text style={styles.cardHint}>Upload up to 4 photos to support your response</Text>
 
             <View style={styles.photosGrid}>
@@ -260,9 +260,9 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           haptic="medium"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={styles.primaryButtonText}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>
               {isCounter ? 'Submit Counter' : 'Submit Decline'}
             </Text>
           )}
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   card: {
     marginBottom: SPACING.lg,
   },
@@ -339,9 +339,8 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   cardLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
-    fontWeight: '400',
     marginBottom: SPACING.xs,
   },
   cardHint: {
@@ -356,9 +355,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   typeLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
-    fontWeight: '400',
   },
   claimantText: {
     ...TYPOGRAPHY.caption1,
@@ -454,7 +452,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
   },
 });

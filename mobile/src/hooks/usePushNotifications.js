@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import api from '../services/api';
+import { COLORS } from '../utils/config';
 
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -157,7 +158,7 @@ async function registerForPushNotifications({ skipRequest = false } = {}) {
       name: 'default',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#4F46E5',
+      lightColor: COLORS.notificationLED,
     });
   }
 

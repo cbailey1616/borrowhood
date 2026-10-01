@@ -4,7 +4,7 @@ import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import api from '../services/api';
 import { useError } from '../context/ErrorContext';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 export default function ExchangeEndorsement({ transaction, onSaved, embedded = false }) {
   const [selection, setSelection] = useState(null);
   const [sent, setSent] = useState(null);
@@ -35,8 +35,8 @@ export default function ExchangeEndorsement({ transaction, onSaved, embedded = f
   return <View style={[styles.card, embedded && styles.embedded]}>
     {submitted ? <View style={styles.savedVote}>
       <Ionicons name={savedChoice === null ? 'balance-scale' : savedChoice ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={26} illustrated color={COLORS.primary} />
-      <Text style={styles.sentLabel}>Endorsement sent</Text>
-      <Text style={styles.savedLabel}>{savedChoice === null ? 'Neutral' : savedChoice ? 'Thumbs up' : 'Thumbs down'}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.sentLabel}>Endorsement sent</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.savedLabel}>{savedChoice === null ? 'Neutral' : savedChoice ? 'Thumbs up' : 'Thumbs down'}</Text>
     </View> : <>
       <Text accessibilityRole="header" style={styles.title}>Leave an endorsement</Text>
       <View style={{ flexDirection:stackChoices ? 'column' : 'row',gap:12 }}>
@@ -44,23 +44,23 @@ export default function ExchangeEndorsement({ transaction, onSaved, embedded = f
           accessibilityState={{ selected:choice === positive,disabled:saving }} disabled={saving} onPress={() => setSelection({ id: transaction.id, positive })}
           style={{ flexGrow:1,flexShrink:1,flexBasis:stackChoices ? 'auto' : 0,flexDirection:stackChoices ? 'row' : 'column',minHeight:stackChoices ? 56 : 88,gap:stackChoices ? 12 : 6,padding:12,alignItems:'center',justifyContent:stackChoices ? 'flex-start' : 'center',borderWidth:choice===positive ? 2 : 1,borderColor:choice===positive ? COLORS.primary : COLORS.borderBrown,borderRadius:RADIUS.md,backgroundColor:choice===positive ? COLORS.primaryMuted : COLORS.surface }}>
           <Ionicons name={positive === null ? 'balance-scale' : positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={32} illustrated selected={choice===positive} color={COLORS.primary} />
-          <Text style={{ ...TYPOGRAPHY.footnote,color:COLORS.primary,textAlign:stackChoices ? 'left' : 'center',flexShrink:1,fontFamily:choice===positive ? 'DMSans_500Medium' : 'DMSans_400Regular',fontWeight:choice===positive ? '500' : '400' }}>{positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption,color:COLORS.primary,textAlign:stackChoices ? 'left' : 'center',flexShrink:1 }}>{positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}</Text>
         </HapticPressable>)}
       </View>
       <HapticPressable accessibilityRole="button" accessibilityLabel="Send endorsement" disabled={saving || choice===undefined} onPress={send}
         accessibilityState={{ disabled:saving || choice===undefined,busy:saving }}
         style={{ minHeight:48,padding:SPACING.sm,borderRadius:RADIUS.md,backgroundColor:COLORS.primary,opacity:choice===undefined ? 0.5 : 1,alignItems:'center',justifyContent:'center' }}>
-        {saving ? <ActivityIndicator color={COLORS.surface} /> : <Text style={{ ...TYPOGRAPHY.button,color:COLORS.surface,textAlign:'center' }}>Send endorsement</Text>}
+        {saving ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.button,color:COLORS.surface,textAlign:'center' }}>Send endorsement</Text>}
       </HapticPressable>
     </>}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  card: { padding:SPACING.lg,marginTop:SPACING.lg,borderWidth:1,borderColor:COLORS.borderGreen,borderRadius:RADIUS.lg,backgroundColor:COLORS.surface,gap:SPACING.md },
+  card: { ...CARD_SURFACE, padding:SPACING.lg,marginTop:SPACING.lg,borderWidth:1,borderColor:COLORS.border,borderRadius:RADIUS.lg,backgroundColor:COLORS.surface,gap:SPACING.md },
   embedded: { padding:0,marginTop:0,borderWidth:0,backgroundColor:'transparent' },
   title: { ...TYPOGRAPHY.h2,color:COLORS.primary,lineHeight:28 },
   savedVote: { flexDirection:'row',alignItems:'center',gap:SPACING.sm },
-  sentLabel: { ...TYPOGRAPHY.footnote,color:COLORS.primary,flex:1 },
-  savedLabel: { ...TYPOGRAPHY.footnote,color:COLORS.textSecondary,flexShrink:1 },
+  sentLabel: { ...TYPOGRAPHY.buttonCaption,color:COLORS.primary,flex:1 },
+  savedLabel: { ...TYPOGRAPHY.buttonCaption,color:COLORS.textSecondary,flexShrink:1 },
 });

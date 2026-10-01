@@ -8,8 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Modal,
-} from 'react-native';
+  Modal, } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import HeroIcon from '../components/HeroIcon';
 import { Ionicons } from '../components/Icon';
@@ -124,7 +123,7 @@ export default function LendingCirclesScreen({ navigation }) {
                 onPress={() => handleLeaveCircle(circle.id)}
                 haptic="warning"
               >
-                <Text style={styles.leaveButtonText}>Leave</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.leaveButtonText}>Leave</Text>
               </HapticPressable>
             ) : circle.isInvited ? (
               <HapticPressable
@@ -224,7 +223,7 @@ export default function LendingCirclesScreen({ navigation }) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Create Circle</Text>
 
-            <Text style={styles.inputLabel}>Circle Name</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.inputLabel}>Circle Name</Text>
             <TextInput
               style={styles.input}
               value={newCircle.name}
@@ -233,7 +232,7 @@ export default function LendingCirclesScreen({ navigation }) {
               placeholderTextColor={COLORS.textMuted}
             />
 
-            <Text style={styles.inputLabel}>Description (optional)</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.inputLabel}>Description (optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={newCircle.description}
@@ -295,7 +294,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -337,8 +336,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  circleIcon: {
-    fontSize: 24,
+  circleIcon: { fontWeight: '400', fontFamily: 'DMSans_400Regular',
+    fontSize: TYPOGRAPHY.title2.fontSize,
     marginRight: SPACING.md,
   },
   circleInfo: {
@@ -388,9 +387,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full,
   },
-  joinButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 14,
+  joinButtonText: { ...TYPOGRAPHY.button,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.background,
   },
   leaveButton: {
@@ -401,16 +399,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
   },
-  leaveButtonText: {
-    ...TYPOGRAPHY.footnote,
+  leaveButtonText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.surface,
   },
   emptyState: {
     padding: 40,
     alignItems: 'center',
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIcon: { fontWeight: '400', fontFamily: 'DMSans_400Regular',
+    fontSize: TYPOGRAPHY.largeTitle.fontSize,
     marginBottom: SPACING.lg,
     opacity: 0.5,
   },
@@ -441,10 +438,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
-  fabText: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: '300',
+  fabText: { fontFamily: 'DMSans_400Regular',
+    fontSize: TYPOGRAPHY.h1.fontSize,
+    color: COLORS.white,
+    fontWeight: '400',
   },
   modalOverlay: {
     flex: 1,
@@ -457,15 +454,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: RADIUS.xl,
     padding: SPACING.xl,
   },
-  modalTitle: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
+  modalTitle: { ...TYPOGRAPHY.h2,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.xl,
   },
-  inputLabel: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+  inputLabel: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
