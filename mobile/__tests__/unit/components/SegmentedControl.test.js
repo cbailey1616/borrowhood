@@ -1,5 +1,7 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { COLORS } from '../../../src/utils/config';
 
 jest.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: null }),
@@ -24,6 +26,15 @@ describe('SegmentedControl', () => {
     );
     expect(getByText('Items')).toBeTruthy();
     expect(getByText('Requests')).toBeTruthy();
+  });
+
+  it('uses darker ink for unselected ribbon labels and keeps only the selected tab bold', () => {
+    const SegmentedControl = require('../../../src/components/SegmentedControl').default;
+    const screen = render(<SegmentedControl variant="underline" segments={['Items', 'Wanted', 'My requests']}
+      selectedIndex={2} onIndexChange={jest.fn()} />);
+    expect(StyleSheet.flatten(screen.getByText('Items').props.style).color).toBe(COLORS.primary);
+    expect(StyleSheet.flatten(screen.getByText('Items').props.style).fontFamily).toBe('DMSans_400Regular');
+    expect(StyleSheet.flatten(screen.getByText('My requests').props.style).fontFamily).toBe('DMSans_600SemiBold');
   });
 
   it('fires onIndexChange when tapping inactive segment', () => {

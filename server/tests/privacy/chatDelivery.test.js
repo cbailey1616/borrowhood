@@ -7,7 +7,7 @@ function database() {
   const client = { query: vi.fn(async (sql, params) => {
     if (sql.includes('FROM user_blocks')) return { rows: [] };
     if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
-    if (sql.includes('client_request_hash FROM messages')) return { rows: messages.has(`${params[0]}:${params[1]}`) ? [messages.get(`${params[0]}:${params[1]}`)] : [] };
+    if (sql.includes('client_request_hash') && sql.startsWith('SELECT')) return { rows: messages.has(`${params[0]}:${params[1]}`) ? [messages.get(`${params[0]}:${params[1]}`)] : [] };
     if (sql.startsWith('SELECT id FROM conversations')) return { rows: conversation ? [{ id: conversation }] : [] };
     if (sql.startsWith('INSERT INTO conversations')) { conversation = 'conversation-1'; return { rows: [{ id: conversation }] }; }
     if (sql.startsWith('UPDATE conversations')) return { rows: [] };

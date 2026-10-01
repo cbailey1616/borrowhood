@@ -16,6 +16,7 @@ import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
+import { Ionicons } from '../components/Icon';
 
 export default function CommunityLibraryScreen({ navigation }) {
   const [items, setItems] = useState([]);
@@ -171,7 +172,7 @@ export default function CommunityLibraryScreen({ navigation }) {
         />
       ) : (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📚</Text>
+          <Ionicons name="library-outline" illustrated size={48} color={COLORS.primary} style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>Library is Empty</Text>
           <Text style={styles.emptyText}>
             Be the first to donate an item to the community library!
@@ -341,7 +342,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: SPACING.lg,
   },
   emptyTitle: {

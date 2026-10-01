@@ -85,11 +85,20 @@ jobs:
           "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/app-store-screenshots"
           cp screenshots/README.md "$RUNNER_TEMP/app-store-screenshots/README.md"
           cp screenshots/assets.json "$RUNNER_TEMP/app-store-screenshots/photo-sources.json"
-      - name: Save upload-ready App Store screenshots
+      - name: Save native source captures
         uses: actions/upload-artifact@v4
         with:
           name: borrowhood-app-store-screenshots
           path: ${{ runner.temp }}/app-store-screenshots
+          retention-days: 14
+      - name: Build promotional screenshot set
+        run: |
+          "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/promotional.py "$RUNNER_TEMP/app-store-screenshots" "$RUNNER_TEMP/promotional-screenshots"
+      - name: Save promotional screenshot set
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrowhood-app-store-promotional
+          path: ${{ runner.temp }}/promotional-screenshots
           retention-days: 14
       - uses: actions/setup-java@v4
         with:

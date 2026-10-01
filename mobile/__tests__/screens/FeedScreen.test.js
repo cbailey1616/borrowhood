@@ -46,6 +46,45 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it.each([['listing', 8, '8 comments'], ['request', 1, '1 comment'], ['ribbon', 0, '0 comments']])(
+    'shows the discussion count on a %s tile', async (surface, commentCount, label) => {
+      const item = { id: 'counted-post', type: surface === 'listing' ? 'listing' : 'request',
+        title: 'Garden tools', commentCount, user: { firstName: 'Sam' } };
+      api.getFeed.mockResolvedValue(surface === 'ribbon'
+        ? { items: [], requests: [item], hasMore: false }
+        : { items: [item], hasMore: false });
+      const Screen = require('../../src/screens/FeedScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} />);
+      expect(await screen.findByText(label, {}, { timeout: 5000 })).toBeTruthy();
+    });
+  it('shows the exchange overview only once in a tablet feed containing only Wanted posts', async () => {
+    const dimensions = jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({ width: 1024, height: 852, scale: 1, fontScale: 1 });
+    try {
+      api.getTransactions.mockResolvedValue([{ id: 'quiet', status: 'picked_up', isBorrower: true,
+        endDate: '2099-12-20', listing: { title: 'Ladder' } }]);
+      api.getFeed.mockResolvedValue({ items: [], requests: [{ id: 'wanted', type: 'request', title: 'Drill wanted',
+        user: { id: 'sam', firstName: 'Sam' } }], hasMore: false });
+      const Screen = require('../../src/screens/FeedScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} />);
+      await screen.findByText('Drill wanted', {}, { timeout: 5000 });
+      await screen.findByTestId('Feed.exchanges.overview', {}, { timeout: 5000 });
+      expect(screen.getAllByTestId('Feed.exchanges.overview')).toHaveLength(1);
+      screen.unmount();
+    } finally {
+      dimensions.mockRestore();
+    }
+  });
+  it('keeps quiet active loans discoverable through the exchange overview', async () => {
+    api.getTransactions.mockResolvedValue([{ id: 'quiet', status: 'picked_up', isBorrower: true,
+      borrower: { id: mockUser.id }, lender: { id: 'sam' }, endDate: '2099-12-20', listing: { title: 'Ladder' } }]);
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    const overview = await screen.findByTestId('Feed.exchanges.overview');
+    expect(screen.getByText('1 active')).toBeTruthy();
+    expect(screen.queryByTestId('Feed.exchanges')).toBeNull();
+    fireEvent.press(overview);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Exchanges');
+  });
   it.each(['listing', 'request', 'ribbon'])('shows the author’s woodland rank on a %s tile and opens its explanation without opening the post', async surface => {
     const item = { id: 'ranked-post', type: surface === 'listing' ? 'listing' : 'request', title: 'Garden tools', createdAt: '2026-09-12T08:00:00.000Z',
       user: { id: 'neighbor', firstName: 'Alexandra Very Long Display Name', isVerified: true,
@@ -160,6 +199,7 @@ describe('FeedScreen', () => {
     await screen.findByText('Drill', {}, { timeout: 5000 });
     fireEvent.press(screen.getByTestId('Feed.type.sell'));
     fireEvent.press(screen.getByLabelText('Filter posts'));
+    expect(await screen.findByText('Category · All')).toBeTruthy();
     fireEvent.press(await screen.findByLabelText('Filter by category'));
     fireEvent.press(await screen.findByLabelText('Tools'));
     await waitFor(() => expect(api.getFeed).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'sell', categoryId: 'cat-1' })));
@@ -569,12 +609,15 @@ it.each(['success', 'failure'])('keeps native refresh in control through a delay
   scroll.mockClear();
   fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
   expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+  expect(screen.getByLabelText('Refreshing').props.accessibilityState.busy).toBe(true);
   expect(screen.getByText('One item')).toBeTruthy();
   expect(scroll).not.toHaveBeenCalled();
   await act(async () => outcome === 'success'
     ? finish({ items: [{ id: 'two', type: 'listing', title: 'New item', user: { firstName: 'Sam' } }], hasMore: false })
     : fail(new Error('offline')));
-  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+  await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
+  expect(screen.queryByLabelText('Refreshing')).toBeNull();
   expect(screen.getByText(outcome === 'success' ? 'New item' : 'One item')).toBeTruthy();
   expect(scroll).not.toHaveBeenCalled();
   scroll.mockRestore();

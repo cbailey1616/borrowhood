@@ -1,0 +1,13 @@
+DRAFT — for the next tested candidate; not submitted.
+
+Borrowhood helps adults share physical items with neighbors, join neighborhoods, and chat about exchanges. Any agreed payment for physical goods or borrowing is arranged directly between neighbors outside the app. Borrowhood does not collect those payments.
+
+Identity verification is optional and free in this release. Stripe Identity performs the hosted identity check; it is not used to collect a verification fee. The legacy Stripe verification-payment endpoint is disabled. Browsing Town previews, onboarding skip options and reporting content are available without completing a personal ID check. Additional access depends on the sharing audience and identity status shown in the app.
+
+The codebase and binary include support for a planned Apple non-consumable identity-verification entitlement (com.borrowhood.app.verification). Purchases are disabled in this release by both the free-launch service configuration and the app's fixed build flag. This feature will not be remotely enabled in this build. A future version and the first non-consumable will be submitted together for review before paid verification is offered. There is no external verification checkout.
+
+Safety: listing and Wanted details include Report or block, including masked Town previews. Public comments, neighborhood messages and private messages provide the same actions in their menus. Public text is screened for known objectionable language before publication. Reports include the submitted content and photos for authorized administrative review and removal. Bidirectional blocking hides public replies and prevents new private messages. Support: chris@borrowhood.net.
+
+Account deletion is in Profile → Delete Account. The app deletes account data, anonymizes limited records needed by another participant for an unresolved physical exchange, clears local credentials, and requests revocation of Apple authorization. Apple outages are retried securely after deletion. Earlier Apple accounts without stored revocation credentials can still delete immediately and receive Apple's instructions for disconnecting the earlier authorization.
+
+Before submitting these notes: attach the exact tested build; enter and verify the reviewer credentials in the dedicated App Review Information fields; explain the supplied demonstration account's existing verification and neighborhood status; confirm current privacy answers, age rating and screenshots. Remove this draft instruction only after those checks. Do not include real ID documents, passwords or private keys in these notes.

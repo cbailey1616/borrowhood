@@ -84,7 +84,7 @@ export default function MyCommunityScreen({ navigation, route }) {
 
   if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading your neighborhood" /></View>;
 
-  if (!community) return <ScrollView style={styles.page} contentContainerStyle={styles.stateContent}>
+  if (!community) return <View style={styles.page}><ScrollView contentContainerStyle={styles.stateContent}>
     <LayeredCard style={styles.stateCard} radius={RADIUS.xl}>
       <View style={styles.stateIcon}><Ionicons name="home" size={44} illustrated color={COLORS.primary} /></View>
       <Text style={styles.stateTitle} accessibilityRole="header">{error ? 'Couldn’t load your neighborhood' : 'Meet your neighbors'}</Text>
@@ -95,7 +95,7 @@ export default function MyCommunityScreen({ navigation, route }) {
         {!error && <Ionicons name="arrow-forward" size={20} color={COLORS.surface} />}
       </HapticPressable>
     </LayeredCard>
-  </ScrollView>;
+  </ScrollView></View>;
 
   return <ScrollView style={styles.page} contentContainerStyle={styles.overviewContent}
     refreshControl={<RefreshControl refreshing={loading} onRefresh={retry} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
@@ -109,6 +109,7 @@ export default function MyCommunityScreen({ navigation, route }) {
       </HapticPressable>)}
     </ScrollView>}
     <View style={styles.hero}>
+      <View style={styles.heroContent}>
       {community.bannerUrl && failedCover !== coverKey
         ? <Image source={{ uri: community.bannerUrl }} style={styles.cover} resizeMode="cover"
           accessibilityLabel={`${community.name} cover`} onError={() => setFailedCover(coverKey)} />
@@ -132,6 +133,7 @@ export default function MyCommunityScreen({ navigation, route }) {
           onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}>
           <Text style={styles.buttonText}>+ Invite</Text>
         </HapticPressable>
+      </View>
       </View>
     </View>
     <View style={styles.shortcuts}>
@@ -171,7 +173,7 @@ const styles = StyleSheet.create({
   manage: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 4 },
   manageText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  stateContent: { padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
+  stateContent: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
   stateCard: { width: '100%', maxWidth: 480, padding: 24, alignItems: 'center' },
   stateIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   stateTitle: { ...TYPOGRAPHY.h2, color: COLORS.text, textAlign: 'center' },
@@ -183,12 +185,13 @@ const styles = StyleSheet.create({
   selector: { padding: SPACING.md, gap: 8 },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
   selected: { backgroundColor: COLORS.primary },
-  hero: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
+  hero: { paddingHorizontal: SPACING.lg, paddingTop: 36, overflow: 'hidden' },
+  heroContent: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg },
   cover: { width: '100%', aspectRatio: COVER_ASPECT, borderRadius: RADIUS.lg, marginBottom: 12 },
   coverFallback: { backgroundColor: COLORS.primaryMuted, justifyContent: 'center', alignItems: 'center', gap: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   identity: { flex: 1, minWidth: 0 },
-  name: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  name: { ...TYPOGRAPHY.h2, fontFamily: 'Fraunces_600SemiBold', color: COLORS.text },
   button: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
   buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
   members: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'flex-start', minHeight: 44 },

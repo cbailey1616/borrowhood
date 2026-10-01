@@ -211,8 +211,11 @@ const startSocialLinkCode = (provider, token) =>
 const completeSocialLinkCode = (provider, token, challengeId, code) =>
   post('/auth/social-link/complete', { provider, ...token, challengeId, code });
 
-const loginWithApple = (identityToken, fullName) =>
-  post('/auth/apple', { identityToken, fullName });
+const loginWithApple = (identityToken, fullName, authorizationCode) =>
+  post('/auth/apple', { identityToken, fullName, authorizationCode });
+
+const reportContent = (type, id, reason) => post(`/safety/content/${type}/${id}/report`, { reason });
+const blockContentAuthor = (type, id) => post(`/safety/content/${type}/${id}/block`, {});
 
 const deleteAccount = () =>
   del('/auth/account');
@@ -268,8 +271,8 @@ const getCommunity = (id) =>
 const joinCommunity = (id) =>
   post(`/communities/${id}/join`);
 
-const leaveCommunity = (id) =>
-  post(`/communities/${id}/leave`);
+const leaveCommunity = (id, options = {}) =>
+  post(`/communities/${id}/leave`, options);
 
 const updateCommunity = (id, data) =>
   patch(`/communities/${id}`, data);
@@ -325,6 +328,17 @@ const getCategories = () =>
 // ============================================
 // Feed
 // ============================================
+const getProjectIdeas = () => get('/projects/ideas');
+const getProjects = () => get('/projects');
+const getProject = id => get(`/projects/${id}`);
+const createProject = data => post('/projects', data);
+const updateProjectItem = (id, itemId, data) => patch(`/projects/${id}/items/${itemId}`, data);
+const resetProjectItem = (id, itemId) => post(`/projects/${id}/items/${itemId}/reset`);
+const linkProjectExchange = (id, itemId, transactionId) => post(`/projects/${id}/items/${itemId}/exchange`, {transactionId});
+const addProjectItem = (id, data) => post(`/projects/${id}/items`, data);
+const deleteProjectItem = (id, itemId) => del(`/projects/${id}/items/${itemId}`);
+const deleteProject = id => del(`/projects/${id}`);
+
 const getFeed = (params) =>
   get('/feed', params);
 
@@ -884,6 +898,8 @@ export default {
   loginWithGoogle,
   loginWithApple,
   deleteAccount,
+  reportContent,
+  blockContentAuthor,
   // Users
   getUser,
   updateProfile,
@@ -921,6 +937,7 @@ export default {
   getCategories,
   // Feed
   getFeed,
+  getProjectIdeas, getProjects, getProject, createProject, updateProjectItem, resetProjectItem, linkProjectExchange, addProjectItem, deleteProjectItem, deleteProject,
   getUserSafety: id => get(`/safety/${id}`),
   blockUser: id => post(`/safety/${id}/block`),
   unblockUser: id => del(`/safety/${id}/block`),
@@ -993,7 +1010,15 @@ export default {
   getConnectStatus,
   createConnectAccount,
   getConnectOnboardingLink,
+  reactToDiscussion: (listingId,postId,emoji) => post(`/listings/${listingId}/discussions/${postId}/react`,{emoji}),
+  removeDiscussionReaction: (listingId,postId,emoji) => del(`/listings/${listingId}/discussions/${postId}/react${emoji ? `?emoji=${encodeURIComponent(emoji)}` : ''}`),
+  reactToRequestDiscussion: (requestId,postId,emoji) => post(`/requests/${requestId}/discussions/${postId}/react`,{emoji}),
+  removeRequestDiscussionReaction: (requestId,postId,emoji) => del(`/requests/${requestId}/discussions/${postId}/react${emoji ? `?emoji=${encodeURIComponent(emoji)}` : ''}`),
+  reactToCommunityMessage: (id,messageId,emoji) => post(`/communities/${id}/chat/${messageId}/react`,{emoji}),
+  removeCommunityReaction: (id,messageId) => del(`/communities/${id}/chat/${messageId}/react`),
   // Discussions
+  voteOnDiscussion: (id,postId,value) => post(`/listings/${id}/discussions/${postId}/vote`, {value}),
+  voteOnRequestDiscussion: (id,postId,value) => post(`/requests/${id}/discussions/${postId}/vote`, {value}),
   getDiscussions,
   getDiscussionReplies,
   getDiscussionThread: (listingId, postId) => get(`/listings/${listingId}/discussions/${postId}`),

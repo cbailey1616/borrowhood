@@ -33,8 +33,8 @@ export default function SocialSignInButtons({ disabled = false, onBusyChange, on
         if (idToken) await loginWithGoogle(idToken);
       } else {
         const credential = await appleCredential();
-        token = { identityToken: credential.identityToken };
-        await loginWithApple(credential.identityToken, credential.fullName);
+        token = { identityToken: credential.identityToken, authorizationCode: credential.authorizationCode };
+        await loginWithApple(credential.identityToken, credential.fullName, credential.authorizationCode);
       }
     } catch (e) {
       if (e.code === 'ACCOUNT_LINK_REQUIRED' && onLinkRequired && mounted.current) {

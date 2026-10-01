@@ -39,7 +39,7 @@ export default function PrivacySafetyScreen({ navigation }) {
       tint: COLORS.warningMuted,
       title: 'Identity verification',
       summary: 'Know what the badge means.',
-      detail: 'Identity checks are handled by Stripe. A verified badge means someone has completed identity verification. You can check your own verification status here.',
+      detail: 'A verified badge means Stripe confirmed that person is who they say they are. You can check your own verification status here.',
       action: 'View verification',
       onPress: () => navigation.navigate('IdentityVerification', { source: 'generic' }),
     },

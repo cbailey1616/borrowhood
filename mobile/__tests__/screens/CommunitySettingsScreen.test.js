@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { Linking } from 'react-native';
@@ -18,6 +18,20 @@ beforeEach(() => { jest.clearAllMocks(); api.getCommunity.mockResolvedValue({ id
 describe('CommunitySettingsScreen', () => {
   const coverRoute = { params: { id: 'comm-1', editCover: true } };
   const editableCommunity = { id: 'comm-1', name: 'Test Hood', description: 'A neighborhood', role: 'organizer', bannerUrl: 'https://example.com/old.jpg' };
+
+  it('keeps themed member and invitation controls linked to their existing flows', async () => {
+    api.getCommunity.mockResolvedValue(editableCommunity);
+    const Screen = require('../../src/screens/CommunitySettingsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={{ params: { id: 'comm-1' } }} />);
+    const Icon = require('../../src/components/Icon').default;
+    await screen.findByText('Manage Members');
+    const names = screen.UNSAFE_getAllByType(Icon.type).map(icon => icon.props.name);
+    expect(names).toEqual(expect.arrayContaining(['neighbors-manage-outline', 'neighbor-invite-outline']));
+    fireEvent.press(screen.getByText('Manage Members'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', expect.objectContaining({ id: 'comm-1' }));
+    fireEvent.press(screen.getByText('Invite Neighbors'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('InviteMembers', { communityId: 'comm-1' });
+  });
 
   it.each([[null, 'Cleanup on Saturday'], ['Cleanup on Saturday', '']])('saves a posted or cleared announcement (%s)', async (before, after) => {
     api.getCommunity.mockResolvedValue({ ...editableCommunity, announcement: before });
@@ -177,5 +191,75 @@ describe('CommunitySettingsScreen', () => {
     const { findByText } = render(<Screen navigation={mockNavigation} route={route} />);
     fireEvent.press(await findByText('Notification settings'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('NotificationSettings');
+  });
+
+  const leavingCommunity = { id: 'comm-1', name: 'Test Hood', role: 'organizer', memberCount: 3, organizers: [{ id: 'user-1' }] };
+  const leaveSheet = screen => screen.UNSAFE_getAllByType(require('../../src/components/ActionSheet').default)
+    .find(sheet => sheet.props.variant === 'confirmation');
+  async function openLeave(community = leavingCommunity) {
+    api.getCommunity.mockResolvedValue(community);
+    const Screen = require('../../src/screens/CommunitySettingsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByText('Leave Neighborhood'));
+    await waitFor(() => expect(leaveSheet(screen).props.isVisible).toBe(true));
+    return screen;
+  }
+
+  it('asks the last steward to choose a replacement without leaving yet', async () => {
+    const screen = await openLeave();
+    expect(api.getCommunity).toHaveBeenCalledTimes(2);
+    expect(leaveSheet(screen).props.title).toBe('Choose a new steward');
+    act(() => leaveSheet(screen).props.actions.find(action => action.label === 'Choose steward').onPress());
+    expect(api.leaveCommunity).not.toHaveBeenCalled();
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', { id: 'comm-1', role: 'organizer', handoff: true });
+  });
+
+  it('lets a steward leave normally when another steward remains', async () => {
+    api.leaveCommunity.mockResolvedValueOnce({ success: true, archived: false });
+    const screen = await openLeave({ ...leavingCommunity, organizers: [{ id: 'user-1' }, { id: 'other' }] });
+    expect(leaveSheet(screen).props.title).toBe('Leave Neighborhood');
+    await act(async () => leaveSheet(screen).props.actions.find(action => action.label === 'Leave').onPress());
+    expect(api.leaveCommunity).toHaveBeenCalledWith('comm-1');
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Main');
+  });
+
+  it('explains archiving before the final neighbor confirms leaving', async () => {
+    api.leaveCommunity.mockResolvedValueOnce({ success: true, archived: true });
+    const screen = await openLeave({ ...leavingCommunity, memberCount: 1 });
+    expect(leaveSheet(screen).props.title).toBe('Archive neighborhood?');
+    act(() => leaveSheet(screen).props.actions.find(action => action.label === 'Cancel').onPress());
+    expect(api.leaveCommunity).not.toHaveBeenCalled();
+    await act(async () => leaveSheet(screen).props.actions.find(action => action.label === 'Archive & leave').onPress());
+    expect(api.leaveCommunity).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Main');
+  });
+
+  it('keeps the user in the neighborhood if refreshing the membership fails', async () => {
+    api.getCommunity.mockResolvedValueOnce(leavingCommunity).mockRejectedValueOnce(new Error('Offline'));
+    const Screen = require('../../src/screens/CommunitySettingsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    fireEvent.press(await screen.findByText('Leave Neighborhood'));
+    await waitFor(() => expect(mockShowError).toHaveBeenCalledWith({ message: 'Offline' }));
+    expect(leaveSheet(screen).props.isVisible).toBe(false);
+    expect(api.leaveCommunity).not.toHaveBeenCalled();
+    expect(screen.getByText('Leave Neighborhood')).toBeTruthy();
+  });
+
+  it('recovers to the replacement picker if the other steward leaves meanwhile', async () => {
+    api.leaveCommunity.mockRejectedValueOnce(Object.assign(new Error('Choose another steward'), { code: 'STEWARD_HANDOFF_REQUIRED' }));
+    const screen = await openLeave({ ...leavingCommunity, organizers: [{ id: 'other' }] });
+    await act(async () => leaveSheet(screen).props.actions.find(action => action.label === 'Leave').onPress());
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CommunityMembers', { id: 'comm-1', role: 'organizer', handoff: true });
+    expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Main');
+  });
+
+  it('explains that active exchanges need finishing and allows a retry', async () => {
+    const message = 'Finish your active exchanges in this neighborhood before leaving.';
+    api.leaveCommunity.mockRejectedValueOnce(Object.assign(new Error(message), { code: 'ACTIVE_NEIGHBORHOOD_EXCHANGES' }));
+    const screen = await openLeave({ ...leavingCommunity, role: 'member' });
+    await act(async () => leaveSheet(screen).props.actions.find(action => action.label === 'Leave').onPress());
+    expect(mockShowError).toHaveBeenCalledWith({ message });
+    expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    expect(screen.getAllByText('Leave Neighborhood').length).toBeGreaterThan(0);
   });
 });

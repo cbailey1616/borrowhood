@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act, within } from '@testing-library/react-native';
 import api from '../../src/services/api';
+import useBiometrics from '../../src/hooks/useBiometrics';
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '999' }));
 
 const mockLogout = jest.fn();
@@ -46,11 +47,18 @@ describe('ProfileScreen', () => {
     fireEvent.press(screen.getByText('Delete My Account'));
     await waitFor(() => expect(mockLogout).toHaveBeenCalledWith({ sessionExpired:true }));
     expect(api.deleteAccount).toHaveBeenCalledTimes(1);
+    expect(useBiometrics.mock.results.reduce((count, result) => count + result.value.disableBiometrics.mock.calls.length, 0)).toBe(1);
   });
   it('renders user name', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const { getByTestId } = render(<ProfileScreen navigation={mockNavigation} />);
     expect(getByTestId('Profile.header.name')).toBeTruthy();
+  });
+  it('restores woodland artwork behind the bold profile heading', () => {
+    const ProfileScreen = require('../../src/screens/ProfileScreen').default;
+    const screen = render(<ProfileScreen navigation={mockNavigation} />);
+    expect(screen.getByTestId('Woodland.artwork', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText('Profile')).toHaveStyle({ fontFamily: 'DMSans_700Bold' });
   });
 
   it('shows verified badge when user.isVerified', () => {

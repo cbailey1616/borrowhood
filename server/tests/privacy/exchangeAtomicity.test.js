@@ -23,10 +23,11 @@ beforeAll(async () => {
       updated_at TIMESTAMPTZ DEFAULT NOW(), times_borrowed INT DEFAULT 0);
     CREATE TABLE borrow_transactions(id TEXT PRIMARY KEY, listing_id TEXT REFERENCES listings(id),
       borrower_id TEXT DEFAULT 'borrower', lender_id TEXT DEFAULT 'owner', status TEXT DEFAULT 'approved',
-      actual_pickup_at TIMESTAMPTZ, actual_return_at TIMESTAMPTZ, accepted_at TIMESTAMPTZ,
+      actual_pickup_at TIMESTAMPTZ, actual_return_at TIMESTAMPTZ, return_requested_at TIMESTAMPTZ, return_auto_closed_at TIMESTAMPTZ, accepted_at TIMESTAMPTZ,
       requested_start_date DATE, requested_end_date DATE, condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT,
       condition_notes TEXT, lender_response TEXT, payment_status TEXT DEFAULT 'none', stripe_payment_intent_id TEXT);
-    CREATE TABLE listing_availability(listing_id TEXT, start_date DATE, end_date DATE, is_available BOOLEAN);`);
+    CREATE TABLE listing_availability(listing_id TEXT, start_date DATE, end_date DATE, is_available BOOLEAN);
+    CREATE TABLE notifications(transaction_id TEXT, type TEXT, created_at TIMESTAMPTZ);`);
   app = express(); app.use(express.json()); app.use((req,res,next) => { req.user = { id: req.headers['x-user'] || 'borrower' }; next(); });
   app.post('/rentals/:id/pickup', body('condition').optional().isIn(['like_new','good','fair','worn']), confirmBorrowPickup());
   app.post('/transactions/:id/pickup', confirmBorrowPickup({ borrowerOnly: true }));

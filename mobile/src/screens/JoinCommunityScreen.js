@@ -170,7 +170,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
             <Ionicons name="time-outline" size={18} color={COLORS.primary} />
             <View style={{ flex: 1 }}>
               <Text style={styles.memberBadgeText}>Approval requested</Text>
-              <Text style={styles.neighborhoodStats}>Waiting for a neighborhood moderator.</Text>
+              <Text style={styles.neighborhoodStats}>Waiting for a neighborhood steward.</Text>
             </View>
           </View>
         ) : (

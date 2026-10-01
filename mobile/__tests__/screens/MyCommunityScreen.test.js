@@ -3,6 +3,7 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../src/services/api';
 import Screen from '../../src/screens/MyCommunityScreen';
+import WoodlandBackdrop from '../../src/components/WoodlandBackdrop';
 const navigation = { navigate: jest.fn(), setOptions: jest.fn() };
 const mockUser = { id: 'me' };
 jest.mock('../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
@@ -19,6 +20,19 @@ it('offers the cover editor when a moderator has no cover',async()=>{
  const screen=render(<Screen navigation={navigation}/>);
  fireEvent.press(await screen.findByText('Add cover photo'));
  expect(navigation.navigate).toHaveBeenCalledWith('CommunitySettings',{id:'hood',editCover:true});
+});
+it('keeps the uploaded cover without a decorative profile backdrop',async()=>{
+ api.getCommunities.mockResolvedValue([{...community,bannerUrl:'https://example.com/cover'}]);
+ const screen=render(<Screen navigation={navigation}/>);
+ const cover=await screen.findByLabelText('Maple Grove cover');
+ expect(cover.props.source.uri).toBe('https://example.com/cover');
+ expect(screen.UNSAFE_queryAllByType(WoodlandBackdrop)).toHaveLength(0);
+});
+it('keeps the empty neighborhood profile plain',async()=>{
+ api.getCommunities.mockResolvedValue([]);
+ const screen=render(<Screen navigation={navigation}/>);
+ await screen.findByText('Find your neighborhood');
+ expect(screen.UNSAFE_queryAllByType(WoodlandBackdrop)).toHaveLength(0);
 });
 it('reloads a failed cover with a fresh membership response',async()=>{
  api.getCommunities.mockResolvedValueOnce([{...community,bannerUrl:'https://example.com/expired'}])

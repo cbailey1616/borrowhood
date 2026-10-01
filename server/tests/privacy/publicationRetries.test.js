@@ -1,3 +1,4 @@
+import { ensureDiscussionReactionSchema } from '../../src/services/publicReactions.js';
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import express from 'express';
@@ -21,7 +22,7 @@ vi.mock('../../src/services/listingAccess.js', () => ({
 }));
 vi.mock('../../src/services/privatePhotos.js', () => ({ ownedPhotoReferences: async photos => photos, readOwnedPhoto: vi.fn() }));
 vi.mock('../../src/services/notifications.js', () => ({ sendNotification: vi.fn(), sendBulkNotification: vi.fn() }));
-vi.mock('../../src/services/discussionNotifications.js', () => ({ notifyThreadParticipants: vi.fn(), getDiscussionThread: vi.fn() }));
+vi.mock('../../src/services/discussionNotifications.js', () => ({ notifyThreadParticipants: vi.fn(), getDiscussionThread: vi.fn().mockResolvedValue({ post: { id: "parent" } }) }));
 vi.mock('../../src/services/imageAnalysis.js', () => ({ analyzeItemImage: vi.fn() }));
 import { ensurePublicationSchema, publishOnce } from '../../src/services/publicationReceipts.js';
 import { sendNotification } from '../../src/services/notifications.js';
@@ -52,6 +53,7 @@ beforeAll(async () => {
       user_id UUID, parent_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());`);
   await ensurePublicationSchema();
   await ensurePublicationSchema();
+  await ensureDiscussionReactionSchema();
 }, 20000);
 afterAll(async () => state.db.close());
 beforeEach(async () => {

@@ -1,3 +1,6 @@
+import { discussionVote, discussionVoteSql, visibleDiscussionSql } from '../services/discussionControls.js';
+import { discussionReaction, publicReactionSql } from '../services/publicReactions.js';
+import { screenContent, unblockedSql } from '../services/contentPolicy.js';
 import { publishOnce } from '../services/publicationReceipts.js';
 import { canViewListing } from '../services/listingAccess.js';
 import { Router } from 'express';
@@ -8,6 +11,10 @@ import { sendNotification } from '../services/notifications.js';
 import { notifyThreadParticipants, getDiscussionThread } from '../services/discussionNotifications.js';
 
 const router = Router();
+router.post('/:listingId/discussions/:postId/vote', authenticate, discussionVote('listing'));
+router.post('/:listingId/discussions/:postId/react', authenticate, discussionReaction('listing'));
+router.delete('/:listingId/discussions/:postId/react', authenticate, discussionReaction('listing'));
+router.use(screenContent());
 
 router.get('/:listingId/discussions/:postId', authenticate, async (req, res) => {
   try {
@@ -30,7 +37,10 @@ async function checkListingAccess(req, res, listingId) {
 // Get top-level discussion posts for a listing
 // ============================================
 router.get('/:listingId/discussions', authenticate, async (req, res) => {
-  const { page = 1, limit = 20 } = req.query;
+  const page = Math.max(1, Math.trunc(Number(req.query.page) || 1));
+  const limit = Math.max(1, Math.min(50, Math.trunc(Number(req.query.limit) || 20)));
+  const order = req.query.sort === 'top' ? 'score DESC, d.created_at DESC, d.id DESC'
+    : req.query.sort === 'oldest' ? 'd.created_at ASC, d.id ASC' : 'd.created_at DESC, d.id DESC';
   const offset = (page - 1) * limit;
 
   try {
@@ -38,27 +48,30 @@ router.get('/:listingId/discussions', authenticate, async (req, res) => {
     if (!hasAccess) return;
 
     const result = await query(
-      `SELECT d.id, d.content, d.reply_count, d.created_at, d.updated_at,
+      `SELECT d.id, d.content, (SELECT COUNT(*)::int FROM listing_discussions r WHERE r.parent_id=d.id AND r.is_hidden=false AND ${unblockedSql('r.user_id', '$4')} AND ${visibleDiscussionSql('r', '$4')}) AS reply_count, d.created_at, d.updated_at, ${discussionVoteSql('d', '$4')}, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$4')} AS reactions,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
-       WHERE d.listing_id = $1 AND d.parent_id IS NULL AND d.is_hidden = false
-       ORDER BY d.created_at DESC
+       WHERE d.listing_id = $1 AND d.parent_id IS NULL AND d.is_hidden = false AND ${unblockedSql('d.user_id', '$4')}
+       ORDER BY ${order}
        LIMIT $2 OFFSET $3`,
-      [req.params.listingId, limit, offset]
+      [req.params.listingId, limit, offset, req.user.id]
     );
 
     // Get total count
     const countResult = await query(
-      `SELECT COUNT(*) FROM listing_discussions
-       WHERE listing_id = $1 AND parent_id IS NULL AND is_hidden = false`,
-      [req.params.listingId]
+      `SELECT COUNT(*) FROM listing_discussions d
+       WHERE listing_id = $1 AND parent_id IS NULL AND is_hidden = false AND ${unblockedSql('d.user_id', '$2')}`,
+      [req.params.listingId, req.user.id]
     );
 
     res.json({
       posts: result.rows.map(d => ({
         id: d.id,
         content: d.content,
+        reactions: d.reactions || [],
+        score: Number(d.score) || 0, viewerVote: Number(d.viewer_vote) || 0,
+        ...(d.parent_id ? { parentId: d.parent_id, replyToId: d.reply_to_id || d.parent_id } : {}),
         replyCount: d.reply_count,
         createdAt: d.created_at,
         updatedAt: d.updated_at,
@@ -93,21 +106,24 @@ router.get('/:listingId/discussions/:postId/replies', authenticate, async (req, 
     if (!hasAccess) return;
 
     const result = await query(
-      `SELECT d.id, d.content, d.created_at, d.updated_at,
+      `SELECT d.id, d.content, d.created_at, d.updated_at, d.parent_id, d.reply_to_id, ${discussionVoteSql('d', '$5')}, ${publicReactionSql('discussion_reactions', 'discussion_id', 'd', '$5')} AS reactions,
               u.id as user_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM listing_discussions d
        JOIN users u ON d.user_id = u.id
        WHERE d.parent_id = $1 AND d.is_hidden = false AND d.listing_id=$4
-         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false)
+         AND EXISTS (SELECT 1 FROM listing_discussions root WHERE root.id=d.parent_id AND root.is_hidden=false AND ${unblockedSql('root.user_id', '$5')}) AND ${unblockedSql('d.user_id', '$5')} AND ${visibleDiscussionSql('d', '$5')}
        ORDER BY d.created_at ASC, d.id ASC
        LIMIT $2 OFFSET $3`,
-      [req.params.postId, limit, offset, req.params.listingId]
+      [req.params.postId, limit, offset, req.params.listingId, req.user.id]
     );
 
     res.json({
       replies: result.rows.map(d => ({
         id: d.id,
         content: d.content,
+        reactions: d.reactions || [],
+        score: Number(d.score) || 0, viewerVote: Number(d.viewer_vote) || 0,
+        ...(d.parent_id ? { parentId: d.parent_id, replyToId: d.reply_to_id || d.parent_id } : {}),
         createdAt: d.created_at,
         updatedAt: d.updated_at,
         user: {
@@ -133,13 +149,15 @@ router.post('/:listingId/discussions', authenticate,
   body('clientRequestId').optional().isUUID(),
   body('content').trim().isLength({ min: 1, max: 2000 }),
   body('parentId').optional().isUUID(),
+  body('replyToId').optional().isUUID(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { content, parentId } = req.body;
+    const { content, parentId, replyToId } = req.body;
+    if (replyToId && !parentId) return res.status(400).json({ error: 'Choose a reply thread' });
     const { listingId } = req.params;
 
     try {
@@ -174,6 +192,12 @@ router.post('/:listingId/discussions', authenticate,
         }
       }
 
+      if (parentId && !await getDiscussionThread('listing', listingId, parentId, req.user.id)) return res.status(404).json({ error: 'Comment no longer available' });
+      if (replyToId) {
+        const replyTarget = await getDiscussionThread('listing', listingId, replyToId, req.user.id);
+        if (!replyTarget || replyTarget.post.id !== parentId) return res.status(404).json({ error: 'Reply no longer available' });
+      }
+
       // Get poster's name for notifications
       const posterResult = await query(
         'SELECT first_name, last_name, display_name FROM users WHERE id = $1',
@@ -185,13 +209,14 @@ router.post('/:listingId/discussions', authenticate,
 
       const { value: post, replayed } = await publishOnce({ userId: req.user.id, operation: `listing-comment:${listingId}`, payload: req.body }, async client => {
         const result = await client.query(
-          `INSERT INTO listing_discussions (listing_id, user_id, parent_id, content)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO listing_discussions (listing_id, user_id, parent_id, content, reply_to_id)
+           VALUES ($1, $2, $3, $4, $5)
            RETURNING id, created_at`,
-          [listingId, req.user.id, parentId || null, content]
+          [listingId, req.user.id, parentId || null, content, replyToId || parentId || null]
         );
 
         const post = result.rows[0];
+        await client.query('INSERT INTO discussion_votes(discussion_id,user_id,value) VALUES($1,$2,1)', [post.id, req.user.id]);
 
         // Save Activity and durable delivery jobs in the publication transaction.
         if (parentId) {
@@ -225,6 +250,7 @@ router.post('/:listingId/discussions', authenticate,
         replayed,
         content,
         parentId: parentId || null,
+        replyToId: replyToId || parentId || null, score: 1, viewerVote: 1,
         createdAt: post.created_at,
         user: {
           id: req.user.id,

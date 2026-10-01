@@ -1,3 +1,4 @@
+import ContentSafetyActions from '../components/ContentSafetyActions';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import { listingAvailability } from '../utils/listingAvailability';
@@ -352,6 +353,7 @@ export default function ListingDetailScreen({ route, navigation }) {
               </LayeredCard>
             </>
           )}
+          {!listing.isOwner && <ContentSafetyActions type="listing" id={listing.id} variant="subtle" onBlocked={() => navigation.goBack()} />}
         </View>
       </ScrollView>
 
@@ -416,7 +418,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                 accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : isTransferListing(listing) ? 'Claim this item' : 'Request to borrow'}
                 accessibilityRole="button"
                 style={styles.borrowButton}
-                onPress={() => navigation.navigate('BorrowRequest', { listing })}
+                onPress={() => navigation.navigate('BorrowRequest', { listing, ...(route.params.projectItemId ? { projectItemId: route.params.projectItemId } : {}), ...(route.params.projectDraft ? { projectDraft: route.params.projectDraft } : {}) })}
                 haptic="medium"
               >
                 <Text style={styles.borrowButtonText}>

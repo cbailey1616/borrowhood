@@ -6,8 +6,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  RefreshControl,
   useWindowDimensions,
   InteractionManager,
 } from 'react-native';
@@ -21,7 +19,9 @@ import Animated, {
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
+import WoodlandHeader from '../components/WoodlandHeader';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
@@ -54,7 +54,7 @@ function HeartButton({ onUnsave, title }) {
   );
 }
 
-export default function SavedScreen({ navigation }) {
+export default function SavedScreen({ navigation, embedded = false }) {
   const { width } = useWindowDimensions();
   const columns = width >= 1100 ? 4 : width >= 768 ? 3 : 2;
   const gridWidth = Math.min(width, 1440);
@@ -144,23 +144,18 @@ export default function SavedScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Saved" />
+      {!embedded && !isLoading && listings.length === 0 && <WoodlandBackdrop fullScreen />}
+      {!embedded && <WoodlandHeader title="Saved" />}
 
-      <FlatList
+      <BorrowhoodRefreshList
         data={listings}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         key={`saved-${columns}`}
         numColumns={columns}
         contentContainerStyle={[styles.listContent, { maxWidth: gridWidth }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.spinner}
-            colors={[COLORS.spinner]}
-          />
-        }
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
@@ -279,6 +274,9 @@ const styles = StyleSheet.create({
   // Empty state
   emptyContainer: {
     flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    margin: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 64,

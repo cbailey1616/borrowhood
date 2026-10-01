@@ -46,7 +46,8 @@ export default function CreateRequestScreen({ navigation, route }) {
   const startNavigationTask = useNavigationTask(navigation);
   const { user, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
-  const draftScope = user?.id ? `${user.id}.request.new` : null;
+  const requestSource = route?.params?.projectItemId ? `project.${route.params.projectItemId}` : route?.params?.initialTitle ? `idea.${route.params.initialTitle}` : 'new';
+  const draftScope = user?.id ? `${user.id}.request.${requestSource}` : null;
   const [formData, setFormData, draft] = useFormDraft(draftScope, {
     type: 'item',
     photoUri: null,
@@ -278,7 +279,6 @@ export default function CreateRequestScreen({ navigation, route }) {
         <Ionicons name={showDetails ? 'chevron-up' : 'add'} size={20} color={COLORS.primary} />
       </HapticPressable>
       {showDetails && <>
-      {draft.restored && !draft.error && <DraftStatus draft={draft} allowDiscard quiet />}
       <View style={styles.section}>
         <Text style={styles.label}>Details (optional)</Text>
         <TextInput

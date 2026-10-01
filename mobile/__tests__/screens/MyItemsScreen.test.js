@@ -66,6 +66,15 @@ beforeEach(() => {
 });
 
 describe('MyItemsScreen', () => {
+  it('keeps the exchange shortcut available on every posts tab', async () => {
+    const Screen = require('../../src/screens/MyItemsScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    for (const tab of [0, 1, 2]) {
+      await act(async () => fireEvent.press(screen.getByTestId(`MyItems.segment.${tab}`)));
+      fireEvent.press(screen.getByTestId('MyItems.exchanges'));
+      expect(mockNavigation.navigate).toHaveBeenLastCalledWith('Exchanges');
+    }
+  });
   it.each(['listing', 'request'])('requires confirmation to delete a %s and lets the owner keep it', async type => {
     const post = { id:'post-1',title:'My ladder',status:type === 'listing' ? 'active' : 'open',isAvailable:true };
     (type === 'listing' ? api.getMyListings : api.getMyRequests).mockResolvedValue([post]);
@@ -167,6 +176,7 @@ describe('MyItemsScreen', () => {
     expect(screen.getByTestId('native-photo').props.source).toBe(source);
     await act(async () => finishRefresh([{ ...listing, title: 'Updated ladder' }]));
     await screen.findByText('Updated ladder');
+    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
 
     api.getMyListings.mockResolvedValue([{ ...listing }]);
     const interact = jest.spyOn(InteractionManager, 'runAfterInteractions').mockImplementation(callback => {
@@ -354,4 +364,14 @@ describe('MyItemsScreen', () => {
     await selectTab(screen, failed === 'sent' ? 1 : 2);
     await screen.findByText(failed === 'sent' ? 'Need a ladder' : 'Cabinet glue');
   });
+});
+
+it('shows saved items under My items and keeps their heart pink',async()=>{
+ api.getSavedListings.mockResolvedValue([{id:'saved',title:'Saved cooler',isAvailable:true,listingType:'lend',isFree:true,owner:{firstName:'Kate'}}]);
+ const Screen=require('../../src/screens/MyItemsScreen').default;
+ const screen=render(<Screen navigation={mockNavigation}/>);
+ fireEvent.press(screen.getByTestId('MyItems.segment.3'));
+ expect(await screen.findByText('Saved cooler')).toBeTruthy();
+ expect(screen.getByText('My items')).toBeTruthy();
+ expect(screen.getByTestId('MyItems.segment.3').props.accessibilityState.selected).toBe(true);
 });

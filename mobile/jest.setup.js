@@ -319,7 +319,7 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 
 jest.mock('expo-apple-authentication', () => ({
   isAvailableAsync: jest.fn().mockResolvedValue(true),
-  signInAsync: jest.fn().mockImplementation(async options => ({ identityToken: 'apple-token', state: options.state, fullName: { givenName: 'Chris' } })),
+  signInAsync: jest.fn().mockImplementation(async options => ({ identityToken: 'apple-token', authorizationCode: 'apple-code', state: options.state, fullName: { givenName: 'Chris' } })),
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
   AppleAuthenticationButtonType: { CONTINUE: 2 },
   AppleAuthenticationButtonStyle: { BLACK: 0, WHITE_OUTLINE: 2 },
@@ -457,11 +457,17 @@ jest.mock('./src/services/api', () => ({
     unsaveListing: jest.fn(),
     checkSaved: jest.fn().mockResolvedValue({ saved: false }),
     // Feed
+    getProjectIdeas: jest.fn().mockResolvedValue([]),
+    getProjects: jest.fn().mockResolvedValue([]),
+    getProject: jest.fn(), createProject: jest.fn(), updateProjectItem: jest.fn(), linkProjectExchange: jest.fn(),
+    resetProjectItem: jest.fn(), addProjectItem: jest.fn(), deleteProjectItem: jest.fn(), deleteProject: jest.fn(),
     getFeed: jest.fn().mockResolvedValue({ items: [], hasMore: false }),
     recordFeedEvents: jest.fn().mockResolvedValue({ ok: true }),
     getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),
     blockUser: jest.fn().mockResolvedValue({ blocked: true }),
     unblockUser: jest.fn().mockResolvedValue({ blocked: false }),
+    reportContent: jest.fn().mockResolvedValue({ ok: true }),
+    blockContentAuthor: jest.fn().mockResolvedValue({ ok: true }),
     reportUser: jest.fn().mockResolvedValue({ ok: true }),
     // Categories
     getCategories: jest.fn().mockResolvedValue([]),
@@ -483,6 +489,12 @@ jest.mock('./src/services/api', () => ({
     respondToDispute: jest.fn().mockResolvedValue({ success: true, status: 'underReview' }),
     resolveDispute: jest.fn().mockResolvedValue({ success: true }),
     // Discussions
+    reactToDiscussion: jest.fn().mockResolvedValue({}),
+    removeDiscussionReaction: jest.fn().mockResolvedValue({}),
+    reactToRequestDiscussion: jest.fn().mockResolvedValue({}),
+    removeRequestDiscussionReaction: jest.fn().mockResolvedValue({}),
+    reactToCommunityMessage: jest.fn().mockResolvedValue({}),
+    removeCommunityReaction: jest.fn().mockResolvedValue({}),
     getDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
     getRequestDiscussions: jest.fn().mockResolvedValue({ discussions: [], count: 0 }),
     // Referrals

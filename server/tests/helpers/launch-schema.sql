@@ -40,7 +40,7 @@ CREATE TABLE notifications(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id
  is_read BOOLEAN DEFAULT false,read_at TIMESTAMPTZ,created_at TIMESTAMPTZ DEFAULT NOW(),push_sent BOOLEAN DEFAULT false);
 CREATE TABLE conversations(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user1_id UUID,user2_id UUID,listing_id UUID,created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),conversation_id UUID,sender_id UUID,content TEXT,
- image_url TEXT,deleted_at TIMESTAMPTZ,is_read BOOLEAN DEFAULT false,created_at TIMESTAMPTZ DEFAULT NOW(),parent_id UUID,
+ image_url TEXT,deleted_at TIMESTAMPTZ,is_read BOOLEAN DEFAULT false,created_at TIMESTAMPTZ DEFAULT NOW(),parent_id UUID,reply_to_id UUID,
  client_request_id UUID,client_request_hash TEXT);
 CREATE UNIQUE INDEX idx_messages_client_request ON messages(sender_id,client_request_id) WHERE client_request_id IS NOT NULL;
 CREATE INDEX launch_messages_conversation ON messages(conversation_id,created_at);
@@ -48,3 +48,8 @@ CREATE TABLE message_reactions(message_id UUID,user_id UUID,emoji TEXT);
 CREATE TABLE disputes(id UUID PRIMARY KEY,transaction_id UUID,created_at TIMESTAMPTZ,photo_urls TEXT[],response_photo_urls TEXT[],evidence_urls TEXT[],claimant_user_id UUID,respondent_user_id UUID);
 CREATE TABLE bundles(id UUID PRIMARY KEY,owner_id UUID,photo_url TEXT);
 CREATE TABLE bundle_items(bundle_id UUID,listing_id UUID);
+
+CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),listing_id UUID,request_id UUID,
+ user_id UUID,parent_id UUID,reply_to_id UUID,is_hidden BOOLEAN NOT NULL DEFAULT false);
+CREATE INDEX launch_discussions_listing ON listing_discussions(listing_id);
+CREATE INDEX launch_discussions_request ON listing_discussions(request_id);

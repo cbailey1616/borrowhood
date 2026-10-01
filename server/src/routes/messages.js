@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { communityConversations } from '../services/communityChat.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
 import { canViewListing } from '../services/listingAccess.js';
@@ -9,6 +10,7 @@ import { body, validationResult } from 'express-validator';
 import { sendNotification } from '../services/notifications.js';
 
 const router = Router();
+router.use(screenContent());
 
 router.get('/capabilities', authenticate, async (req, res) => {
   try {
@@ -16,7 +18,9 @@ router.get('/capabilities', authenticate, async (req, res) => {
       WHERE table_schema = current_schema() AND table_name = 'messages'
       AND column_name IN ('client_request_id', 'client_request_hash')`);
     const index = await query("SELECT to_regclass('idx_messages_client_request') AS ready");
-    res.json({ idempotentMessages: schema.rows[0]?.count === 2 && !!index.rows[0]?.ready });
+    const threads = await query(`SELECT COUNT(*)::int AS count FROM information_schema.columns
+      WHERE table_schema = current_schema() AND table_name = 'messages' AND column_name IN ('parent_id','reply_to_id')`);
+    res.json({ idempotentMessages: schema.rows[0]?.count === 2 && !!index.rows[0]?.ready, threadedMessages: threads.rows[0]?.count === 2 });
   } catch { res.json({ idempotentMessages: false }); }
 });
 
@@ -107,8 +111,12 @@ router.get('/conversations', authenticate, async (req, res) => {
 // Get messages in a conversation
 // ============================================
 router.get('/conversations/:id', authenticate, async (req, res) => {
-  const { page = 1, limit = 50 } = req.query;
+  const page = Math.max(1, Math.min(100000, parseInt(req.query.page, 10) || 1));
+  const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 50));
   const offset = (page - 1) * limit;
+  const threadId = req.query.threadId;
+  const threaded = req.query.threaded === 'true' || !!threadId;
+  if (threadId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(threadId)) return res.status(400).json({ error: 'Invalid thread' });
 
   try {
     // Verify user is part of conversation
@@ -122,6 +130,12 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
     }
 
     const conv = convCheck.rows[0];
+    let root = null;
+    if (threadId) {
+      const parent = await query('SELECT id, sender_id, content, image_url, deleted_at, created_at FROM messages WHERE id=$1 AND conversation_id=$2 AND parent_id IS NULL', [threadId, req.params.id]);
+      root = parent.rows[0];
+      if (!root) return res.status(404).json({ error: 'Message thread not found' });
+    }
 
     // Get other user info
     const otherUserId = conv.user1_id === req.user.id ? conv.user2_id : conv.user1_id;
@@ -150,23 +164,26 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
 
     // Read state only clears the viewer's own unread badge. Do not return it
     // to either participant as a receipt for the other person's activity.
-    await query(
+    if (!threaded) await query(
       'UPDATE messages SET is_read = true WHERE conversation_id = $1 AND sender_id != $2 AND is_read = false',
       [req.params.id, req.user.id]
     );
 
     // Get messages
     const messages = await query(
-      `SELECT m.id, m.sender_id, m.content, m.created_at, m.deleted_at, m.image_url
+      `SELECT m.id, m.sender_id, m.content, m.created_at, m.deleted_at, m.image_url, m.parent_id, m.reply_to_id,
+         (SELECT COUNT(*)::int FROM messages r WHERE r.conversation_id=m.conversation_id AND r.parent_id=m.id) AS reply_count,
+         (SELECT COUNT(*)::int FROM messages r WHERE r.conversation_id=m.conversation_id AND r.parent_id=m.id AND r.sender_id!=$4 AND r.is_read=false) AS unread_reply_count
        FROM messages m
-       WHERE m.conversation_id = $1
-       ORDER BY m.created_at DESC
+       WHERE m.conversation_id = $1 ${threadId ? 'AND m.parent_id=$5' : threaded ? 'AND m.parent_id IS NULL' : ''}
+       ORDER BY m.created_at DESC, m.id DESC
        LIMIT $2 OFFSET $3`,
-      [req.params.id, limit, offset]
+      [req.params.id, limit, offset, req.user.id, ...(threadId ? [threadId] : [])]
     );
+    if (threaded) await query('UPDATE messages SET is_read=true WHERE id=ANY($1::uuid[]) AND sender_id!=$2', [messages.rows.map(m=>m.id).concat(root ? [root.id] : []), req.user.id]);
 
     // Batch-load reactions for returned messages
-    const messageIds = messages.rows.map(m => m.id);
+    const messageIds = messages.rows.map(m => m.id).concat(root ? [root.id] : []);
     let reactionsMap = {};
     if (messageIds.length > 0) {
       const reactions = await query(
@@ -190,9 +207,16 @@ router.get('/conversations/:id', authenticate, async (req, res) => {
           profilePhotoUrl: otherUser.rows[0].profile_photo_url,
         } : null,
       },
+      thread: root ? { id: root.id, senderId: root.sender_id, content: root.deleted_at ? null : root.content,
+        imageUrl: root.deleted_at ? null : root.image_url, isDeleted: !!root.deleted_at, createdAt: root.created_at, isOwnMessage: root.sender_id === req.user.id, reactions: reactionsMap[root.id] || [] } : null,
+      hasMore: messages.rows.length === limit,
       messages: messages.rows.map(m => ({
         id: m.id,
         senderId: m.sender_id,
+        parentId: m.parent_id || null,
+        replyToId: m.reply_to_id || null,
+        replyCount: m.reply_count || 0,
+        unreadReplyCount: m.unread_reply_count || 0,
         content: m.deleted_at ? null : m.content,
         imageUrl: m.deleted_at ? null : m.image_url,
         isDeleted: !!m.deleted_at,
@@ -217,13 +241,14 @@ router.post('/', authenticate,
   body('imageUrl').optional().isString(),
   body('listingId').optional().isUUID(),
   body('clientRequestId').optional().isUUID(),
+  body('parentId').optional().isUUID(),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { recipientId, content, imageUrl, listingId, clientRequestId } = req.body;
+    const { recipientId, content, imageUrl, listingId, clientRequestId, parentId } = req.body;
 
     if (!content && !imageUrl) {
       return res.status(400).json({ error: 'Message must have content or an image' });
@@ -242,7 +267,7 @@ router.post('/', authenticate,
         if (access.some(allowed => !allowed)) return res.status(404).json({ error: 'Listing not found' });
       }
       const message = await withTransaction(client => deliverMessage(client, {
-        senderId: req.user.id, recipientId, content, imageUrl, listingId, clientRequestId,
+        senderId: req.user.id, recipientId, content, imageUrl, listingId, clientRequestId, parentId,
       }));
       const conversationId = message.conversation_id;
 
@@ -263,6 +288,7 @@ router.post('/', authenticate,
               senderName: sender.rows[0]?.display_name || sender.rows[0]?.first_name || 'Someone',
               messagePreview: preview,
               conversationId,
+              ...(message.parent_id ? { threadId: message.parent_id } : {}),
             },
             { fromUserId: req.user.id }
           ).catch(err => console.error('Message notification failed:', err.message));
@@ -274,6 +300,8 @@ router.post('/', authenticate,
       res.status(message.replayed ? 200 : 201).json({
         id: message.id,
         conversationId,
+        parentId: message.parent_id || null,
+        replyToId: message.reply_to_id || null,
         content: content || null,
         imageUrl: imageUrl || null,
         createdAt: message.created_at,
@@ -281,7 +309,7 @@ router.post('/', authenticate,
 
     } catch (err) {
       console.error('Send message error:', err);
-      const expectedError = [403, 409].includes(err.status);
+      const expectedError = [403, 404, 409].includes(err.status);
       res.status(expectedError ? err.status : 500).json({ error: expectedError ? err.message : 'Failed to send message' });
     }
   }

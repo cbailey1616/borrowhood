@@ -26,5 +26,5 @@ export default function useFeedHeader({ pinned = false, columns = 1 } = {}) {
   // FlatList remounts when its column count changes.
   useLayoutEffect(() => { scrollY.setValue(0); }, [scrollY, columns]);
 
-  return { height, onLayout, onScroll, style: { transform: [{ translateY: pinned ? 0 : translateY }] } };
+  return { height, onLayout, onScroll, scrollY, style: { transform: [{ translateY: pinned ? 0 : translateY }] } };
 }

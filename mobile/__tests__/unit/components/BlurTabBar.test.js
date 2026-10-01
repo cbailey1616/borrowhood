@@ -15,7 +15,7 @@ const createTabBarProps = (activeIndex = 0) => ({
     index: activeIndex,
     routes: [
       { key: 'Feed-key', name: 'Feed' },
-      { key: 'Saved-key', name: 'Saved' },
+      { key: 'Ideas-key', name: 'Ideas' },
       { key: 'MyItems-key', name: 'MyItems' },
       { key: 'Activity-key', name: 'Activity' },
       { key: 'Profile-key', name: 'Profile' },
@@ -23,7 +23,7 @@ const createTabBarProps = (activeIndex = 0) => ({
   },
   descriptors: {
     'Feed-key': { options: {} },
-    'Saved-key': { options: {} },
+    'Ideas-key': { options: {} },
     'MyItems-key': { options: {} },
     'Activity-key': { options: {} },
     'Profile-key': { options: {} },
@@ -42,8 +42,8 @@ describe('BlurTabBar', () => {
     const props = createTabBarProps();
     const { getByText } = render(<BlurTabBar {...props} />);
     expect(getByText('Home')).toBeTruthy();
-    expect(getByText('Saved')).toBeTruthy();
-    expect(getByText('My Posts')).toBeTruthy();
+    expect(getByText('Ideas')).toBeTruthy();
+    expect(getByText('My items')).toBeTruthy();
     expect(getByText('Inbox')).toBeTruthy();
     expect(getByText('Profile')).toBeTruthy();
   });
@@ -52,21 +52,17 @@ describe('BlurTabBar', () => {
     const BlurTabBar = require('../../../src/components/BlurTabBar').default;
     const props = createTabBarProps(0);
     const { getByText } = render(<BlurTabBar {...props} />);
-    fireEvent.press(getByText('Saved'));
-    expect(props.navigation.navigate).toHaveBeenCalledWith('Saved');
+    fireEvent.press(getByText('Ideas'));
+    expect(props.navigation.navigate).toHaveBeenCalledWith('Ideas');
   });
 
-  it.each([0, 1])('keeps the Saved heart filled pink with tab %i active', activeIndex => {
-    const BlurTabBar = require('../../../src/components/BlurTabBar').default;
-    const screen = render(<BlurTabBar {...createTabBarProps(activeIndex)} />);
-    const savedSource = screen.getByTestId('TabBar.Saved.icon').props.source;
-    const svg = decodeURIComponent((Array.isArray(savedSource) ? savedSource[0] : savedSource).uri);
-    expect(svg).toContain(`fill="${COLORS.saved}"`);
-    expect(svg).toContain('fill-opacity="1"');
-    expect(svg).toContain(`stroke="${COLORS.saved}"`);
-    const homeSource = screen.getByTestId('TabBar.Feed.icon').props.source;
-    const homeSvg = decodeURIComponent((Array.isArray(homeSource) ? homeSource[0] : homeSource).uri);
-    expect(homeSvg).not.toContain(COLORS.saved);
+  it.each([0,1])('uses the themed Ideas bulb with tab %i active',activeIndex=>{
+    const Bar=require('../../../src/components/BlurTabBar').default;
+    const screen=render(<Bar {...createTabBarProps(activeIndex)}/>);
+    expect(screen.getByLabelText('Ideas')).toBeTruthy();
+    const source=screen.getByTestId('TabBar.Ideas.icon').props.source;
+    const svg=decodeURIComponent((Array.isArray(source)?source[0]:source).uri);
+    expect(svg).toContain('#E9CA92');
   });
 
   it('shows badge count on Inbox tab', () => {

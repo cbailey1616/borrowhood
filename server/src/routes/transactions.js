@@ -1,3 +1,4 @@
+import { lockProjectItem } from '../services/projects.js';
 import { endorsementState, submitEndorsement } from '../services/endorsements.js';
 import { declineBorrow } from '../services/borrowDecline.js';
 import { confirmBorrowPickup } from '../services/borrowPickup.js';
@@ -30,6 +31,7 @@ const router = Router();
 // ============================================
 router.post('/', authenticate,
   body('listingId').isUUID(),
+  body('projectItemId').optional().isUUID(),
   body('startDate').optional().isISO8601({ strict: true }),
   body('endDate').optional().isISO8601({ strict: true }),
   body('message').optional().isLength({ max: 500 }),
@@ -117,6 +119,7 @@ router.post('/', authenticate,
       // Only lock for paid rentals (authorization hold prevents double-booking)
       // Free rentals + giveaways stay available until the lender approves
       const requiresPayment = totalChargeCents >= 50;
+      if (requiresPayment && req.body.projectItemId) return res.status(400).json({error:'Projects currently support free borrowing.'});
       if (requiresPayment) {
         const lockResult = await query(
           `UPDATE listings SET is_available = false WHERE id = $1 AND is_available = true RETURNING id`,
@@ -157,7 +160,10 @@ router.post('/', authenticate,
         const duplicate = await client.query(`SELECT id FROM borrow_transactions WHERE listing_id=$1 AND borrower_id=$2
           AND status IN ('pending','approved','paid','picked_up','return_pending') LIMIT 1`, [listingId,req.user.id]);
         if (duplicate.rows.length) throw Object.assign(new Error('You already have a request for this item.'), { status:409 });
-        return insertBorrow(client.query.bind(client));
+        if (req.body.projectItemId) await lockProjectItem(client, req.body.projectItemId, req.user.id);
+        const created = await insertBorrow(client.query.bind(client));
+        if (req.body.projectItemId) await client.query('UPDATE borrow_project_items SET transaction_id=$2 WHERE id=$1', [req.body.projectItemId,created.rows[0].id]);
+        return created;
       });
       const transactionId = result.rows[0].id;
 

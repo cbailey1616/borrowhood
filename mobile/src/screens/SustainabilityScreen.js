@@ -211,7 +211,7 @@ export default function SustainabilityScreen() {
 
       <AnimatedCard index={7}>
         <View style={styles.tipCard}>
-          <Text style={styles.tipIcon}>💡</Text>
+          <Icon name="bulb-outline" illustrated size={24} color={COLORS.primary} />
           <Text style={styles.tipText}>
             Every item shared prevents manufacturing of a new one and keeps it out of landfills.
             You're making a real difference!
@@ -408,9 +408,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.md,
-  },
-  tipIcon: {
-    fontSize: 24,
   },
   tipText: {
     flex: 1,

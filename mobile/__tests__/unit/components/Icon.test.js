@@ -2,6 +2,20 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 
 describe('Icon', () => {
+  it('uses dedicated woodland history and invitation drawings even through older icon names', () => {
+    const { hasBorrowhoodIcon, resolveIconName, iconSvg } = require('../../../src/assets/borrowhood-icons');
+    for (const name of ['history-ledger-outline', 'neighbor-invite-outline', 'neighbors-manage-outline']) {
+      expect(hasBorrowhoodIcon(name)).toBe(true);
+    }
+    expect(resolveIconName('receipt-outline')).toBe('history-ledger');
+    expect(resolveIconName('person-add-outline')).toBe('neighbor-invite');
+    const invitation = iconSvg('neighbor-invite', { illustrated: true });
+    expect(invitation).toContain('#E7C590');
+    expect(invitation).toContain('#ABC5B8');
+    expect(invitation).not.toEqual(iconSvg('person', { illustrated: true }));
+    expect(iconSvg('neighbors-manage', { illustrated: true })).not.toEqual(iconSvg('shield-checkmark', { illustrated: true }));
+  });
+
   it('draws distinct thumbs and the notification off control instead of fallback tags', () => {
     const { hasBorrowhoodIcon, resolveIconName, iconSvg } = require('../../../src/assets/borrowhood-icons');
     for (const name of ['thumbs-up-outline', 'thumbs-down-outline', 'remove']) {
@@ -25,7 +39,7 @@ describe('Icon', () => {
     expect(iconSvg('heart', { illustrated: true, selected: true })).toContain('fill-opacity="1"');
   });
 
-  it('uses native symbols only for platform biometric branding', () => {
+  it('uses only Borrowhood drawings for app icons, including biometrics', () => {
     const fs = require('fs');
     const path = require('path');
     const scan = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
@@ -33,9 +47,41 @@ describe('Icon', () => {
       return entry.isDirectory() ? scan(file) : /\.[jt]sx?$/.test(file) ? [file] : [];
     });
     for (const file of scan(path.resolve(__dirname, '../../../src'))) {
-      if (path.basename(file) === 'BiometricIcon.js') continue;
       expect(fs.readFileSync(file, 'utf8')).not.toMatch(/(?:from\s*|require\s*\(\s*)['"](?:@expo\/vector-icons|react-native-vector-icons|expo-symbols)/);
     }
+  });
+  it('has a themed drawing for every static app icon reference', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const parser = require('@babel/parser');
+    const traverse = require('@babel/traverse').default;
+    const { hasBorrowhoodIcon } = require('../../../src/assets/borrowhood-icons');
+    const missing = [];
+    const scan = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+      const file = path.join(dir, entry.name);
+      return entry.isDirectory() ? scan(file) : /\.[jt]sx?$/.test(file) ? [file] : [];
+    });
+    for (const file of scan(path.resolve(__dirname, '../../../src'))) {
+      const ast = parser.parse(fs.readFileSync(file, 'utf8'), { sourceType: 'module', plugins: ['jsx'] });
+      const check = name => { if (name && !hasBorrowhoodIcon(name)) missing.push(`${path.basename(file)}: ${name}`); };
+      traverse(ast, {
+        StringLiteral({ node }) {
+          if (node.value !== '-outline' && node.value.endsWith('-outline')) check(node.value);
+        },
+        JSXAttribute({ node, parent }) {
+          const component = parent.name?.name;
+          if (['Icon', 'Ionicons', 'FriendlyIcon', 'HeroIcon', 'ShimmerImage'].includes(component)
+            && ['name', 'icon', 'placeholderIcon'].includes(node.name.name)) {
+            const value = node.value?.type === 'StringLiteral' ? node.value.value : node.value?.expression?.value;
+            check(value);
+          }
+        },
+        ObjectProperty({ node }) {
+          if ((node.key.name || node.key.value) === 'icon' && node.value.type === 'StringLiteral') check(node.value.value);
+        },
+      });
+    }
+    expect(missing).toEqual([]);
   });
   beforeEach(() => jest.clearAllMocks());
 

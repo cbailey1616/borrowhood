@@ -12,6 +12,7 @@ vi.mock('../../src/middleware/auth.js', () => ({ generateTokens: vi.fn(), authen
   if (!req.headers['x-user']) return res.sendStatus(401);
   req.user = { id: req.headers['x-user'] }; next();
 } }));
+import { ensureAppleSignInSchema, encryptAppleToken } from '../../src/services/appleSignInTokens.js';
 import routes from '../../src/routes/auth.js';
 import { sendNotification } from '../../src/services/notifications.js';
 import { cancelPaymentIntent } from '../../src/services/stripe.js';
@@ -21,7 +22,8 @@ beforeAll(async () => {
   await state.db.exec(`CREATE TABLE users(id TEXT PRIMARY KEY, first_name TEXT, last_name TEXT, display_name TEXT, email TEXT,
     password_hash TEXT, phone TEXT, bio TEXT, profile_photo_url TEXT, status TEXT DEFAULT 'verified',
     stripe_customer_id TEXT, stripe_connect_account_id TEXT, stripe_identity_session_id TEXT,
-    date_of_birth DATE, address_line1 TEXT, referred_by TEXT REFERENCES users(id));
+    date_of_birth DATE, address_line1 TEXT, address_line2 TEXT, is_verified BOOLEAN, verified_at TIMESTAMPTZ,
+    city TEXT, state TEXT, zip_code TEXT, location TEXT, push_token TEXT, apple_id TEXT, google_id TEXT, token_invalidated_at TIMESTAMPTZ, referred_by TEXT REFERENCES users(id));
     CREATE TABLE listings(id TEXT PRIMARY KEY, owner_id TEXT REFERENCES users(id), title TEXT DEFAULT 'Ladder',
       status TEXT DEFAULT 'active', is_available BOOLEAN DEFAULT false);
     CREATE TABLE borrow_transactions(id TEXT PRIMARY KEY, listing_id TEXT REFERENCES listings(id),
@@ -41,6 +43,9 @@ beforeAll(async () => {
     CREATE TABLE community_chat_messages(sender_id TEXT, content TEXT, deleted_at TIMESTAMPTZ);
     CREATE TABLE messages(id TEXT, conversation_id TEXT, sender_id TEXT);
     CREATE TABLE message_reactions(user_id TEXT, message_id TEXT);
+    CREATE TABLE safety_reports(reported_id TEXT,content_snapshot JSONB);
+    CREATE TABLE push_devices(user_id TEXT);
+    CREATE TABLE social_link_codes(user_id TEXT);
     CREATE TABLE friendships(user_id TEXT, friend_id TEXT);
     CREATE TABLE community_memberships(user_id TEXT);
     CREATE TABLE user_badges(user_id TEXT);
@@ -51,12 +56,14 @@ beforeAll(async () => {
     CREATE TABLE item_requests(user_id TEXT);
     CREATE TABLE notifications(user_id TEXT, from_user_id TEXT,
       transaction_id TEXT REFERENCES borrow_transactions(id), listing_id TEXT REFERENCES listings(id));`);
+  await ensureAppleSignInSchema();
   app = express(); app.use(express.json()); app.use('/auth', routes);
 }, 20000);
 afterAll(async () => { await state.db?.close(); });
 beforeEach(async () => {
+  vi.stubEnv('JWT_SECRET','deletion-test-secret');
   vi.clearAllMocks(); cancelPaymentIntent.mockResolvedValue({}); sendNotification.mockResolvedValue('notice');
-  await state.db.exec(`DROP TRIGGER IF EXISTS fail_delete ON users; TRUNCATE users, listings, borrow_transactions, disputes CASCADE;
+  await state.db.exec(`DROP TRIGGER IF EXISTS fail_delete ON users; TRUNCATE users, listings, borrow_transactions, disputes, apple_token_revocations CASCADE;
     INSERT INTO users(id,email,first_name) VALUES('owner','owner@example.test','Owner'),('borrower','borrower@example.test','Borrower'),('other','other@example.test','Other');
     INSERT INTO listings(id,owner_id) VALUES('item','owner');`);
 });
@@ -131,4 +138,30 @@ it('does not report a committed deletion as failed when a notification fails', a
   await seed('pending'); sendNotification.mockRejectedValueOnce(new Error('notifications unavailable'));
   expect((await del()).status).toBe(200);
   expect(await rows('SELECT id FROM users WHERE id=$1',['borrower'])).toHaveLength(0);
+});
+
+it('deletes legacy Apple accounts without blocking on missing historical tokens and gives disconnect instructions', async () => {
+  await state.db.query("UPDATE users SET apple_id='legacy-apple' WHERE id='borrower'");
+  const result = await del();
+  expect(result.status).toBe(200);
+  expect(result.body.appleRevocation).toEqual({ status:'manual', helpUrl:'https://support.apple.com/102571' });
+  expect(await rows("SELECT id FROM users WHERE id='borrower'")).toHaveLength(0);
+});
+it('commits deletion with a durable encrypted revocation when Apple is unavailable', async () => {
+  await state.db.query("UPDATE users SET apple_id='apple', apple_refresh_token_ciphertext=$1 WHERE id='borrower'", [encryptAppleToken('refresh-secret')]);
+  const result = await del();
+  expect(result.status).toBe(200); expect(result.body.appleRevocation).toEqual({ status:'queued' });
+  expect(await rows("SELECT id FROM users WHERE id='borrower'")).toHaveLength(0);
+  const jobs = await rows('SELECT * FROM apple_token_revocations');
+  expect(jobs).toHaveLength(1); expect(jobs[0].attempts).toBe(1);
+  expect(JSON.stringify(jobs)).not.toContain('refresh-secret');
+});
+it('clears provider identities, precise location and push registrations from retained accounts', async () => {
+  await seed('picked_up');
+  await state.db.exec("UPDATE users SET google_id='google-sub', city='Private town', address_line2='Apt 3', push_token='push' WHERE id='borrower'; INSERT INTO push_devices VALUES('borrower')");
+  expect((await del()).status).toBe(200);
+  const [u] = await rows("SELECT google_id,city,address_line2,push_token,is_verified,token_invalidated_at FROM users WHERE id='borrower'");
+  expect(u).toMatchObject({ google_id:null,city:null,address_line2:null,push_token:null,is_verified:false });
+  expect(u.token_invalidated_at).toBeTruthy();
+  expect(await rows("SELECT * FROM push_devices WHERE user_id='borrower'")).toHaveLength(0);
 });

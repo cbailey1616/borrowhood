@@ -1,3 +1,4 @@
+import { screenContent } from '../services/contentPolicy.js';
 import { publishOnce } from '../services/publicationReceipts.js';
 import { ownedPhotoReferences } from '../services/privatePhotos.js';
 import { townPreviewSql, canPreviewTownPost, townRequestPreview } from '../services/townPreview.js';
@@ -13,6 +14,7 @@ import { requestActiveSql, validRequestTimeZone } from '../utils/requestState.js
 import { endorsementSummary } from '../services/endorsements.js';
 
 const router = Router();
+router.use(screenContent());
 
 // ============================================
 // GET /api/requests
@@ -451,7 +453,7 @@ router.patch('/:id', authenticate,
       if (req.body.timeZone !== undefined && !validRequestTimeZone(req.body.timeZone)) return res.status(400).json({ error: 'Choose a valid timezone.' });
       // Verify ownership
       const request = await query(
-        'SELECT user_id, community_id, type FROM item_requests WHERE id = $1',
+        'SELECT user_id, community_id, type, moderation_removed_at FROM item_requests WHERE id = $1',
         [req.params.id]
       );
 
@@ -462,6 +464,8 @@ router.patch('/:id', authenticate,
       if (request.rows[0].user_id !== req.user.id) {
         return res.status(403).json({ error: 'Not authorized' });
       }
+
+      if (request.rows[0].moderation_removed_at) return res.status(403).json({ error: 'This post was removed by Borrowhood. Contact chris@borrowhood.net to appeal.' });
 
       if (req.body.visibility !== undefined) {
         const scopes = req.body.visibility;
@@ -515,6 +519,8 @@ router.patch('/:id', authenticate,
       if (updates.length === 0) {
         return res.status(400).json({ error: 'No updates provided' });
       }
+      if (request.rows[0].moderation_removed_at) return res.status(403).json({ error: 'This post was removed by Borrowhood. Contact chris@borrowhood.net to appeal.' });
+
       if (req.body.visibility !== undefined) {
         updates.push('town_preview_enabled = $' + paramIndex++);
         values.push(req.body.visibility.includes('town') && req.body.townPreviewEnabled === true);
@@ -523,11 +529,12 @@ router.patch('/:id', authenticate,
 
       values.push(req.params.id);
 
-      await query(
-        `UPDATE item_requests SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+      const updated = await query(
+        `UPDATE item_requests SET ${updates.join(', ')} WHERE id = $${paramIndex} AND moderation_removed_at IS NULL`,
         values
       );
 
+      if (!updated.rowCount) return res.status(403).json({ error: 'This post is no longer editable.' });
       res.json({ success: true });
     } catch (err) {
       console.error('Update request error:', err);

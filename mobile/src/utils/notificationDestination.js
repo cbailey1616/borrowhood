@@ -13,7 +13,7 @@ export function notificationDestination(item = {}) {
     return { name: 'RequestQueue', params: { listingId: item.queueListingId || item.listingId } };
   }
   if (item.type === 'new_message') return item.conversationId
-    ? { name: 'Chat', params: { conversationId: item.conversationId } } : inbox('messages');
+    ? { name: 'Chat', params: { conversationId: item.conversationId, ...(item.threadId ? { threadId: item.threadId } : {}) } } : inbox('messages');
   if (['new_request', 'request_offer'].includes(item.type) && item.requestId) {
     return { name: 'RequestDetail', params: { id: item.requestId } };
   }
@@ -23,7 +23,7 @@ export function notificationDestination(item = {}) {
   if (['rank_up', 'rank_down', 'rank_ready', 'new_rating', 'rating_received'].includes(item.type)) {
     return { name: 'Main', params: { screen: 'Profile', params: { openRating: true } } };
   }
-  if (item.type === 'join_approved') return item.communityId
+  if (['join_approved', 'steward_assigned'].includes(item.type)) return item.communityId
     ? { name: 'MyCommunity', params: { communityId: item.communityId } } : { name: 'Main', params: { screen: 'Feed' } };
   if (item.type === 'join_request') return item.communityId
     ? { name: 'CommunityMembers', params: { id: item.communityId } } : { name: 'MyCommunity' };

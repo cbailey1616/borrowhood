@@ -14,10 +14,13 @@ const LARGE_TITLE_THRESHOLD = 80;
 export default function NativeHeader({
   title,
   titleStyle,
+  titleRowStyle,
   scrollY,
   rightElement,
   leftElement,
+  style,
   children,
+  backdrop,
   includeTopInset = true,
 }) {
   const insets = useSafeAreaInsets();
@@ -59,12 +62,16 @@ export default function NativeHeader({
 
   return (
     <View>
-      <Animated.View style={[styles.headerWrapper, { paddingTop: topInset + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, wrapperStyle]}>
+      <Animated.View style={[styles.headerWrapper, { paddingTop: topInset + 4, paddingBottom: SPACING.lg, overflow: 'hidden' }, style, wrapperStyle]}>
+        {backdrop}
         <Animated.View style={largeTitleStyle}>
-          {(title || rightElement) && (
-            <View style={styles.titleRow}>
-              {title ? <Text style={[styles.largeTitle, titleStyle]}>{title}</Text> : <View />}
-              {rightElement && <View>{rightElement}</View>}
+          {(title || leftElement || rightElement) && (
+            <View style={[styles.titleRow, titleRowStyle]}>
+              <View style={styles.titleGroup}>
+                {leftElement}
+                {title ? <Text accessibilityRole="header" style={[styles.largeTitle, titleStyle]}>{title}</Text> : null}
+              </View>
+              {rightElement && <View style={styles.rightElement}>{rightElement}</View>}
             </View>
           )}
           {children}
@@ -85,6 +92,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.md,
   },
+  titleGroup: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  rightElement: { flexShrink: 0, marginLeft: SPACING.sm },
   largeTitle: {
     ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,

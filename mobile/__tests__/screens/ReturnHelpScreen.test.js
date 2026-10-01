@@ -6,10 +6,10 @@ import api from '../../src/services/api';
 import Screen from '../../src/screens/ReturnHelpScreen';
 const mockUser={id:'borrower',isAdmin:false};
 jest.mock('../../src/context/AuthContext',()=>({useAuth:()=>({user:mockUser})}));
-const navigation={navigate:jest.fn(),goBack:jest.fn()};
+const navigation={navigate:jest.fn(),replace:jest.fn(),goBack:jest.fn()};
 const report={id:'report',transaction_id:'exchange',title:'Ladder',owner_name:'Owner',borrower_name:'Borrower',borrower_id:'borrower',status:'open',version:3,detail:'The ladder is missing.',response_due_at:'2026-09-20T12:00:00Z',history:[]};
 beforeEach(()=>{
- jest.clearAllMocks();jest.useFakeTimers();jest.setSystemTime(new Date('2026-09-25T16:00:00Z'));
+ jest.clearAllMocks();jest.useFakeTimers();jest.setSystemTime(new Date(2026,8,25,12));
  useFocusEffect.mockImplementation(callback=>React.useEffect(callback,[callback]));
  mockUser.id='borrower';mockUser.isAdmin=false;
  api.getConversations.mockResolvedValue([]);
@@ -180,14 +180,22 @@ it('keeps messaging available during a borrowing restriction',async()=>{
  await waitFor(()=>expect(navigation.navigate).toHaveBeenCalledWith('Chat',expect.objectContaining({recipientId:'owner'})));
 });
 
-it('refreshes the return status when coming back from the exchange',async()=>{
+it('takes a routine pending return directly to the exchange instead of a duplicate help screen',async()=>{
  api.getTransaction.mockResolvedValue(borrowerExchange);api.getReturnHelp.mockResolvedValue(noReports);
  const s=render(<Screen route={{params:{transaction:borrowerExchange}}} navigation={navigation}/>);
  await s.findByRole('button',{name:'Need more time?'});
  api.getTransaction.mockResolvedValue({...borrowerExchange,status:'return_pending'});
  act(()=>{useFocusEffect.mock.calls.at(-1)[0]();});
- expect(await s.findByText('Waiting for the owner')).toBeTruthy();
+ await waitFor(()=>expect(navigation.replace).toHaveBeenCalledWith('TransactionDetail',{id:borrowerExchange.id}));
+ expect(s.queryByText('Waiting for the owner')).toBeNull();
  expect(s.queryByRole('button',{name:'Need more time?'})).toBeNull();
+});
+it('keeps Return help open when a pending return has an actual report to respond to',async()=>{
+ api.getTransaction.mockResolvedValue({...borrowerExchange,status:'return_pending'});
+ api.getReturnHelp.mockResolvedValue({...noReports,reports:[report]});
+ const s=render(<Screen route={{params:{transaction:borrowerExchange}}} navigation={navigation}/>);
+ expect(await s.findByText('Respond')).toBeTruthy();
+ expect(navigation.replace).not.toHaveBeenCalled();
 });
 
 it('does not reopen chat after leaving the screen during a lookup',async()=>{
@@ -200,11 +208,11 @@ it('does not reopen chat after leaving the screen during a lookup',async()=>{
  expect(navigation.navigate).not.toHaveBeenCalled();
 });
 
-it('offers an exchange destination from the profile entry point',async()=>{
+it('opens the exchange tracker when return help has no specific exchange',async()=>{
  api.getReturnHelp.mockResolvedValue(noReports);
  const s=render(<Screen route={{params:{}}} navigation={navigation}/>);
  fireEvent.press(await s.findByRole('button',{name:'View my exchanges'}));
- expect(navigation.navigate).toHaveBeenCalledWith('Main',{screen:'Activity',params:{tab:'activity'}});
+ expect(navigation.navigate).toHaveBeenCalledWith('Exchanges');
 });
 
 it('shows a retry instead of claiming there are no reports when loading fails',async()=>{

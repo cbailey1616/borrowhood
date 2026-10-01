@@ -6,14 +6,13 @@ import { randomUUID } from 'expo-crypto';
 import { listingAvailability } from '../utils/listingAvailability';
 import { isTransferListing } from '../utils/directFee';
 import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
+import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   useWindowDimensions,
-  RefreshControl,
   Animated as RNAnimated,
   InteractionManager,
 } from 'react-native';
@@ -25,7 +24,10 @@ import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import SegmentedControl from '../components/SegmentedControl';
-import NativeHeader from '../components/NativeHeader';
+import SavedScreen from './SavedScreen';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
+import WoodlandHeader from '../components/WoodlandHeader';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import ActionSheet from '../components/ActionSheet';
 import { useError } from '../context/ErrorContext';
 import { useAuth } from '../context/AuthContext';
@@ -63,6 +65,7 @@ export default function MyItemsScreen({ navigation }) {
   const fetchData = useCallback(async () => {
     const currentFetch = ++fetchId.current;
     setLoadError(false);
+    if(activeTab===3){setIsLoading(false);setIsRefreshing(false);return;}
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
@@ -277,8 +280,10 @@ export default function MyItemsScreen({ navigation }) {
             <View style={styles.requestContent}>
               <View style={styles.requestHeader}>
                 <View style={styles.requestTitleRow}>
-                  <RequestTypeIcon type={item.type} size={28} />
-                  <Text style={[styles.requestTitle, { fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
+                  <View style={styles.requestIconPanel}>
+                    <RequestTypeIcon type={item.type} size={28} />
+                  </View>
+                  <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
                 </View>
                 <View style={styles.requestBadges}>
                   {item.type === 'service' && (
@@ -322,19 +327,24 @@ export default function MyItemsScreen({ navigation }) {
               )}
 
               <View style={styles.requestFooter}>
-                <Text style={styles.requestDate}>
-                  {!item.neededFrom && !item.neededUntil ? 'Flexible' : ''}
-                </Text>
+                <View style={styles.requestTiming}>
+                  {!item.neededFrom && !item.neededUntil && <>
+                    <Ionicons name="time-outline" size={16} illustrated={false} color={COLORS.textSecondary} />
+                    <Text style={styles.requestDate}>Flexible</Text>
+                  </>}
+                </View>
                 {item.isExpired && item.status === 'open' && (
                   <HapticPressable
                     style={styles.renewButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Renew ${item.title}`}
                     onPress={(e) => {
                       e.stopPropagation?.();
                       handleRenew(item.id);
                     }}
                     haptic="medium"
                   >
-                    <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                    <Ionicons name="refresh" size={16} color={COLORS.surface} />
                     <Text style={styles.renewButtonText}>Renew</Text>
                   </HapticPressable>
                 )}
@@ -398,12 +408,12 @@ export default function MyItemsScreen({ navigation }) {
       </HapticPressable>
     </View>
   ) : null;
-  const refreshControl = <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />;
   const contentContainerStyle = [styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }];
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="My Posts" titleStyle={{ flexShrink: 1 }} rightElement={activeTab !== 2 &&
+      {activeTab!==3 && !isLoading && !loadError && visibleItems.length === 0 && <WoodlandBackdrop fullScreen />}
+      <WoodlandHeader title="My items" titleStyle={{ flexShrink: 1 }} rightElement={activeTab < 2 &&
         <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
           onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
           <Ionicons name="add" size={20} color={COLORS.surface} />
@@ -413,17 +423,18 @@ export default function MyItemsScreen({ navigation }) {
         <SegmentedControl
           testID="MyItems.segment"
           variant="underline"
-          segments={['Items', 'Wanted', 'My requests']}
+          segments={['Items', 'Wanted', 'Requests', {label:'Saved',icon:'heart',color:COLORS.savedOutline,fillColor:COLORS.saved}]}
           selectedIndex={activeTab}
           onIndexChange={setActiveTab}
           style={styles.segmented}
         />
 
-      </NativeHeader>
+      </WoodlandHeader>
 
+      {activeTab===3?<SavedScreen navigation={navigation} embedded/>:<>
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
 
-      <FlatList
+      <BorrowhoodRefreshList
         key={`posts-${activeTab}-${columns}`}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
@@ -433,9 +444,12 @@ export default function MyItemsScreen({ navigation }) {
         </View>}
         keyExtractor={(item) => item.id}
         contentContainerStyle={contentContainerStyle}
-        refreshControl={refreshControl}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={emptyContent}
+        ListHeaderComponent={<ExchangeOverviewLink testID="MyItems.exchanges" onPress={() => navigation.navigate('Exchanges')} />}
       />
+      </>}
       <ActionSheet
         isVisible={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
@@ -596,25 +610,32 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    gap: SPACING.sm,
     marginBottom: SPACING.sm,
   },
   requestTitleRow: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-    marginRight: SPACING.md,
+    gap: 12,
+  },
+  requestIconPanel: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: COLORS.primaryMuted,
+    alignItems: 'center', justifyContent: 'center',
   },
   requestTitle: {
     flex: 1,
     ...TYPOGRAPHY.headline,
-    color: COLORS.text,
+    fontFamily: 'DMSans_600SemiBold',
+    fontSize: 20,
+    lineHeight: 26,
+    color: COLORS.primaryDark,
   },
   requestBadges: {
+    marginLeft: 56,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: SPACING.xs,
   },
@@ -622,7 +643,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '20',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.full,
   },
   serviceBadgeText: {
     ...TYPOGRAPHY.caption1,
@@ -632,7 +653,7 @@ const styles = StyleSheet.create({
   requestStatusBadge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.xs,
+    borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
@@ -656,36 +677,41 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   requestFooter: {
+    marginTop: SPACING.sm,
+    paddingTop: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.borderLight,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   requestDate: {
-    ...TYPOGRAPHY.caption1,
-    color: COLORS.textMuted,
+    ...TYPOGRAPHY.footnote,
+    color: COLORS.textSecondary,
   },
+  requestTiming: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   renewButton: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryMuted,
+    backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.full,
     gap: SPACING.xs,
   },
   renewButtonText: {
-    ...TYPOGRAPHY.caption1,
+    ...TYPOGRAPHY.footnote,
+    fontFamily: 'DMSans_500Medium',
     fontWeight: '400',
-    color: COLORS.primary,
+    color: COLORS.surface,
   },
   emptyContainer: {
-    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 64,
+    paddingVertical: 32,
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,

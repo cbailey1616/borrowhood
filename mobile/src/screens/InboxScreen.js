@@ -11,8 +11,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  RefreshControl,
   Image,
   InteractionManager,
   Linking,
@@ -26,7 +24,10 @@ import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import LayeredCard from '../components/LayeredCard';
 import SegmentedControl from '../components/SegmentedControl';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandBackdrop from '../components/WoodlandBackdrop';
+import WoodlandHeader from '../components/WoodlandHeader';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
+import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import ActionButton from '../components/ActionButton';
 import ActionSheet from '../components/ActionSheet';
 import { SkeletonListItem } from '../components/SkeletonLoader';
@@ -70,6 +71,8 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   useEffect(() => {
     requestVersion.current += 1;
+    tabChosen.current = !!route?.params?.tab;
+    setActiveTab(route?.params?.tab === 'messages' ? 0 : 1);
     knownTransactions.current = [];
     activityRecords.current = [];
     pageCount.current = 1;
@@ -157,7 +160,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
         onRead?.();
       });
       const timer = setInterval(fetchData, 10000);
-      return () => { task.cancel(); clearInterval(timer); requestVersion.current += 1; tabChosen.current = false; };
+      return () => { task.cancel(); clearInterval(timer); requestVersion.current += 1; };
     }, [fetchData, checkNotifPermission, onRead])
   );
 
@@ -348,7 +351,8 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Inbox" rightElement={
+      {!isLoading && (activeTab === 1 ? (unreadOnly ? notifications.filter(item => !item.isRead) : notifications) : (unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations)).length === 0 && <WoodlandBackdrop fullScreen />}
+      <WoodlandHeader title="Inbox" rightElement={
         <View style={styles.headerActions}>
           {unreadOnly && <HapticPressable style={styles.activeFilter}
             accessibilityLabel="Show all inbox items" onPress={() => selectUnreadOnly(false)}>
@@ -375,7 +379,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
           onIndexChange={index => { tabChosen.current = true; setActiveTab(index === 0 ? 1 : 0); }}
           style={styles.segmented}
         />
-      </NativeHeader>
+      </WoodlandHeader>
 
       {isLoading ? (
         <View style={styles.skeletonContainer}>
@@ -385,21 +389,16 @@ export default function InboxScreen({ navigation, route, onRead }) {
           <SkeletonListItem />
         </View>
       ) : activeTab === 1 ? (
-        <FlatList
+        <BorrowhoodRefreshList
           data={unreadOnly ? notifications.filter(item => !item.isRead) : notifications}
           renderItem={renderNotification}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.spinner}
-              colors={[COLORS.spinner]}
-            />
-          }
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={
             <>
+              <ExchangeOverviewLink testID="Inbox.exchanges" onPress={() => navigation.navigate('Exchanges')} />
               {(loadError.activity || loadError.exchanges) && renderRetry(loadError.activity && loadError.exchanges ? 'Couldn’t refresh activity and exchanges.' : loadError.activity ? 'Couldn’t refresh activity.' : 'Couldn’t refresh exchanges.')}
               {notifsDenied && (
                 <HapticPressable
@@ -434,19 +433,13 @@ export default function InboxScreen({ navigation, route, onRead }) {
           }
         />
       ) : (
-        <FlatList
+        <BorrowhoodRefreshList
           data={unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.spinner}
-              colors={[COLORS.spinner]}
-            />
-          }
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={loadError.messages ? renderRetry('Couldn’t refresh messages.') : null}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -612,6 +605,9 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    margin: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,

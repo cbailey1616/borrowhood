@@ -113,6 +113,25 @@ describe('protected photo delivery', () => {
     expect(query.mock.calls[2][0]).toContain('privacy_version = 1');
     expect(send).not.toHaveBeenCalled();
   });
+  it('returns 404 rather than a server error for a non-admin without photo access', async () => {
+    query.mockResolvedValueOnce({ rows: [{ id, is_admin: false }] }).mockResolvedValueOnce({ rows: [{ exists: 1 }] });
+    expect((await request(app).get(new URL(privatePhotoUrl(source, id)).pathname)).status).toBe(404);
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('permits administrator access only when the inaccessible photo is attached to a safety report', async () => {
+    const url = new URL(privatePhotoUrl('https://borrowhood-uploads.s3.us-east-1.amazonaws.com/listings/owner/evidence.jpg', id));
+    query.mockResolvedValueOnce({ rows: [{ id, is_admin: true }] }).mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] });
+    expect((await request(app).get(url.pathname)).status).toBe(404);
+    expect(send).not.toHaveBeenCalled();
+    query.mockResolvedValueOnce({ rows: [{ id, is_admin: true }] }).mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ exists: 1 }] });
+    send.mockResolvedValue({ ContentType:'image/jpeg', Body:Readable.from(Buffer.from('reported-photo')) });
+    const result=await request(app).get(url.pathname);
+    expect(result.status).toBe(200);expect(result.body.toString()).toBe('reported-photo');
+    expect(query.mock.calls.at(-1)[0]).toContain('safety_reports');
+  });
   it('blocks new private uploads even before they are attached to a listing', async () => {
     expect((await request(app).get('/uploads/private-listing-example.jpg')).status).toBe(404);
   });

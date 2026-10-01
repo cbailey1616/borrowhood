@@ -7,15 +7,19 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from PIL import Image
 
 app = Path(sys.argv[1]).resolve()
 output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
+source_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
 devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
-screens = [('01-home', 'home'), ('02-request-details', 'request-detail'), ('03-giveaway', 'giveaway'),
-           ('04-my-posts', 'posts'), ('05-inbox', 'inbox'), ('06-messages', 'chat'), ('07-comments', 'comments'), ('08-friends', 'friends'),
-           ('09-neighborhood', 'neighborhood')]
+screens = [('01-home','home'),('02-ideas','ideas'),('03-plan','plan'),('04-exchange','owner-pickup'),
+           ('05-my-items','posts'),('06-inbox','inbox-messages'),('07-thread','thread'),('08-request','request-detail'),
+           ('09-neighborhood','neighborhood'),('10-friends','friends'),('11-profile','profile'),('12-ranks','ranks'),
+           ('13-giveaway','giveaway'),('14-sale','sell'),('15-comments','comments')]
+
 review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
 review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/reserved-queue', 'reserved-queue'), ('ui-review/owner-pending-request', 'owner-pending-request'), ('ui-review/inbox', 'inbox')]
@@ -123,7 +127,8 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
             if digest in hashes and not route.startswith('refresh-'):
                 raise RuntimeError(f'Duplicate screen on {name}; navigation needs inspection')
             hashes.add(digest)
-            manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest})
+            manifest.append({'file': str(target.relative_to(output)), 'device': name, 'runtime': runtime, 'width': size[0], 'height': size[1], 'mode': 'RGB', 'sha256': digest,
+                             'sourceCommit': source_commit, 'capturedAt': datetime.now(timezone.utc).isoformat()})
     finally:
         run('shutdown', udid, check=False)
         if created_device:

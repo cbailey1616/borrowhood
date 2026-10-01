@@ -29,6 +29,21 @@ const laurelSprig = c => p('M7 29C3 26 2 22 3 18')
   + p('M3 21C1 19 2 17 3 16C5 18 5 20 3 21Z', panel(c));
 
 const DRAWINGS = {
+  'project-beach': c => p('M3 15C3 1 29 1 29 15C25 11 20 11 16 15C12 11 7 11 3 15Z',panel(c)) + p('M16 15V26C16 31 24 31 24 26M16 4C11 7 10 10 10 13M16 4C21 7 22 10 22 13'),
+  'project-diy': c => p('M4 7H22V17H4Z',panel(c)) + p('M22 10H29M22 14H29') + p('M9 17L8 27H17L15 17Z',accent(c)) + p('M6 5H15'),
+  'project-snow': c => p('M8 2C4 3 4 7 6 11L19 29L23 26L10 7C8 5 9 3 8 2Z',panel(c)) + p('M24 2C28 3 28 7 26 11L13 29L9 26L22 7C24 5 23 3 24 2Z',accent(c)),
+  'project-guests': c => rect(3,14,26,11,3,panel(c)) + rect(5,8,9,6,2,accent(c)) + p('M3 8V29M29 19V29M3 23H29'),
+  'project-paddle': c => p('M16 2C30 13 26 28 16 30C6 28 2 13 16 2Z',panel(c)) + p('M16 8C23 15 22 21 16 24C10 21 9 15 16 8Z',accent(c)) + p('M4 28L28 4M3 26L6 29M26 3L29 6'),
+  'folding-table': c => rect(3,7,26,6,2,panel(c)) + p('M7 13L24 29M25 13L8 29'),
+  'folding-chair': c => rect(8,3,16,11,3,panel(c)) + p('M8 14L6 21H26L24 14M8 21L24 29M24 21L8 29'),
+  cooler: c => rect(4,9,24,20,4,panel(c)) + rect(3,5,26,6,2,accent(c)) + p('M4 14H1V22H4M28 14H31V22H28M12 13H20'),
+  car: c => p('M5 13L8 5H24L27 13V26H23V23H9V26H5Z',panel(c)) + p('M5 13H27M10 8H22') + circle(10,18,2,accent(c)) + circle(22,18,2,accent(c)),
+  'musical-notes': c => rect(6,3,20,26,4,panel(c)) + circle(16,20,6,accent(c)) + circle(16,8,2),
+  'project-party': c => p('M3 14H29V19H3Z', panel(c)) + p('M6 19V29M26 19V29M3 3Q16 10 29 3') + circle(9,7,2,accent(c)) + circle(23,7,2,accent(c)) + p('M14 14V11H18V14'),
+  'project-movie': c => rect(3,4,26,18,3,panel(c)) + p('M16 22V29M9 29H23') + p('M13 9L21 13L13 18Z',accent(c)),
+  'project-paint': c => rect(3,3,21,8,3,panel(c)) + p('M24 7H28V16H16V20') + rect(13,20,6,10,2,accent(c)),
+  'project-garden': c => p('M3 10H25L21 21H9Z',panel(c)) + p('M25 10L28 5H31M9 21L6 27M21 21L26 28') + circle(16,26,4,accent(c)) + p('M10 10L8 3M15 10V2M20 10L23 3'),
+  'project-camp': c => p('M2 27L16 5L30 27Z',panel(c)) + p('M16 5V27M10 27L16 16L22 27',accent(c)) + p('M13 2L19 8M19 2L13 8'),
   // A woodland progression drawn for Borrowhood, rather than generic medals.
   'neighbor-sprout': c => p('M16 18C9 19 5 15 5 9C12 8 17 12 16 18Z', panel(c))
     + p('M16 14C15 7 20 3 27 4C28 11 23 15 16 14Z', accent(c))
@@ -67,18 +82,34 @@ const DRAWINGS = {
     + p('M17 18L26 7', 'stroke-width="1.4"')
     + p('M6.5 23C11 19 17 20 23 22L25.5 23.5C20 26.5 12 26.5 6.5 23Z', panel(c)),
   home: c => p('M7 14V26C7 28 9 29 11 29H23C25 29 26 28 26 26V14', panel(c)) + p('M3 15L14 5C15 4 17 4 18 5L29 15', accent(c)) + p('M13 29V21C13 18 20 18 20 21V29M22 8V4H26V11'),
+  grid: c => rect(4, 4, 10, 10, 3, panel(c)) + rect(18, 4, 10, 10, 3, accent(c))
+    + rect(4, 18, 10, 10, 3, accent(c)) + rect(18, 18, 10, 10, 3, panel(c)),
   heart,
   basket,
   cube: c => p('M5 11L16 5L27 11V23L16 29L5 23Z', panel(c)) + p('M5 11L16 17L27 11M16 17V29M10 8L21 14'),
   notifications: bell,
   'notifications-off': c => bell(c) + p('M4 4L28 28'),
   person,
-  'person-add': c => `<g transform="translate(-3 0) scale(.85 1)">${person(c)}</g>` + p('M24 12V22M19 17H29'),
+  'neighbor-invite': c => p('M3 13L16 5L29 13V26C29 28 27 29 25 29H7C5 29 3 28 3 26Z', accent(c))
+    + rect(7, 3, 18, 20, 2, panel(c)) + p('M16 7V13M13 10H19')
+    + p('M3 13L16 22L29 13V26C29 28 27 29 25 29H7C5 29 3 28 3 26Z', accent(c))
+    + p('M3 27L11 20M29 27L21 20')
+    + p('M15 25C12 21 15 19 19 19C20 23 18 26 15 25Z', `${panel(c)} stroke-width="1.3"`)
+    + p('M14 26L18 21', 'stroke-width="1.3"'),
+  'neighbors-manage': c => p('M5 14V26C5 28 7 29 9 29H23C25 29 27 28 27 26V14Z', panel(c))
+    + p('M2 14L14 4C15 3 17 3 18 4L30 14L27 17L16 7L5 17Z', accent(c))
+    + circle(11, 17, 2.5, accent(c)) + circle(21, 17, 2.5, accent(c))
+    + p('M7 28V26C7 20 15 20 15 26V28M17 28V26C17 20 25 20 25 26V28'),
   'person-remove': c => `<g transform="translate(-3 0) scale(.85 1)">${person(c)}</g>` + p('M20 17H29'),
   people: c => circle(12, 10, 4, panel(c)) + circle(23, 11, 3, accent(c)) + p('M3 27V24C3 15 21 15 21 24V27Z', panel(c)) + p('M23 18C27 18 30 21 30 25V27H25'),
   chatbubble: chat,
   'chat-question': c => chatPanel(c) + p('M12 11C12 6 21 7 20 12C19 15 16 14 16 17') + dot(16, 20, c, 1.1),
   'chat-reply': c => chatPanel(c) + p('M13 10L8 14L13 18M9 14H19C23 14 25 17 25 20'),
+  'reaction-add': c => p('M18.5 6.8A10.5 10.5 0 1 0 24.7 14.5', 'stroke-width="2.1"')
+    + circle(10.5, 15.5, 1.2, `fill="${c.stroke}" stroke="none"`)
+    + circle(18.5, 15.5, 1.2, `fill="${c.stroke}" stroke="none"`)
+    + p('M9.5 20Q14.5 25 19.5 20', 'stroke-width="2.1"')
+    + p('M25 3.5V11.5M21 7.5H29', 'stroke-width="2.1"'),
   mail: c => rect(3, 7, 26, 20, 4, panel(c)) + p('M4 9L14 17C15 18 17 18 18 17L28 9M4 25L11 19M28 25L21 19'),
   'mail-unread': c => rect(3, 9, 26, 18, 4, panel(c))
     + p('M4 11L14 18C15 19 17 19 18 18L28 11')
@@ -103,8 +134,12 @@ const DRAWINGS = {
   'lock-closed': c => rect(5, 14, 22, 15, 4, panel(c)) + p('M10 14V9C10 1 22 1 22 9V14') + circle(16, 21, 1.5) + p('M16 22V25'),
   star: c => p('M16 3L20 11L29 13L22 20L24 29L16 25L8 29L10 20L3 13L12 11Z', panel(c)),
   bulb: c => p('M10 21C10 17 6 17 6 11C6-1 26-1 26 11C26 17 22 17 22 21Z', panel(c)) + p('M11 25H21M13 29H19M16 21V15M12 12L16 15L20 12'),
+  'ideas-bulb': c => p('M10 21C10 17 6 16 6 11C6 0 26 0 26 11C26 16 22 17 22 21Z', panel(c)) + p('M11 24H21M12 27H20M14 30H18M16 21V15M12 12L16 15L20 12M2 11H0M30 11H32M5 3L3 1M27 3L29 1','stroke-width="1.6"'),
   'happy': c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M10 20C13 25 19 25 22 20'),
   sad: c => circle(16, 16, 13, panel(c)) + dot(11, 13, c, 1.3) + dot(21, 13, c, 1.3) + p('M11 23C13 19 19 19 21 23'),
+  laugh: c => circle(16, 16, 13, panel(c)) + p('M8 12C10 9 12 9 14 12M18 12C20 9 22 9 24 12')
+    + p('M9 18H23C23 28 9 28 9 18Z', accent(c)),
+  surprised: c => circle(16, 16, 13, panel(c)) + dot(11, 12, c, 1.3) + dot(21, 12, c, 1.3) + circle(16, 22, 3.5, accent(c)),
   hammer: c => p('M6 4H16L22 10L17 15L11 10H6Z', panel(c)) + p('M17 14L25 23C28 26 24 30 21 27L13 17Z', accent(c)),
   handshake: c => p('M7 10L11 8L15 9L21 8L26 12L24 19L19 25C18 26 16 26 15 25L8 19L6 15Z', panel(c))
     + p('M15 9L12 12C10 14 12 17 14 15L17 13L25 19L22 23L18 26L10 20', accent(c))
@@ -120,6 +155,9 @@ const DRAWINGS = {
   brush: c => p('M9 26C5 21 5 12 9 7L16 3L19 11L28 14L23 20C18 24 15 26 9 26Z', panel(c)) + p('M9 26L6 29M12 10L17 16M18 8L23 14'),
   sparkles: c => p('M16 11C8-1 23-1 16 11C28 3 33 16 21 17C32 27 18 33 16 22C9 34-1 24 11 17C-2 13 6 2 16 11Z', panel(c)) + circle(16, 16, 4, accent(c)),
   pricetag: tag,
+  'money-bag': c => p('M12 10L9 4Q16 7 23 4L20 10Z', accent(c))
+    + p('M12 10C10 14 5 17 5 23C5 28 9 29 16 29S27 28 27 23C27 17 22 14 20 10Z', panel(c))
+    + p('M11 11H21M18.5 17.5C17 16 13 16 13 19C13 22 19 20 19 23C19 26 15 26 13 24.5M16 15V27'),
   ribbon: c => circle(16, 12, 9, panel(c)) + p('M10 20L7 30L14 27L16 22M22 20L25 30L18 27L16 22') + circle(16, 12, 4),
   trophy: c => p('M9 4H23V12C23 24 9 24 9 12Z', panel(c)) + p('M9 7H3V11C3 16 6 18 11 18M23 7H29V11C29 16 26 18 21 18M16 21V28M10 29H22'),
   flag: c => p('M6 29V4M6 5C14 0 20 12 28 7V21C20 26 14 14 6 19', panel(c)),
@@ -140,7 +178,13 @@ const DRAWINGS = {
   'stats-chart': c => rect(4, 17, 5, 12, 2, panel(c)) + rect(14, 10, 5, 19, 2, accent(c)) + rect(24, 3, 5, 26, 2, panel(c)),
   'trending-up': () => p('M3 25L12 16L18 20L29 7M21 7H29V15'),
   'document-text': book,
-  receipt: c => p('M7 3H25V29L20 26L16 29L12 26L7 29Z', panel(c)) + p('M11 9H21M11 15H21M11 21H17'),
+  'history-ledger': c => p('M7 6H25V26H7Z', panel(c))
+    + rect(4, 3, 24, 6, 3, panel(c))
+    + rect(4, 23, 24, 6, 3, panel(c))
+    + p('M10 14H22M10 18H19M8 3V9M24 23V29'),
+  'selection-check': c => rect(4, 4, 24, 24, 7, panel(c))
+    + p('M10 16L14 20L22 11'),
+  'selection-check-empty': c => rect(4, 4, 24, 24, 7),
   card: c => rect(3, 6, 26, 22, 4, panel(c)) + p('M3 13H29M8 22H14'),
   cash: c => rect(3, 7, 26, 19, 3, panel(c)) + circle(16, 16.5, 4.5) + p('M3 12C7 12 8 10 8 7M24 7C24 10 26 12 29 12M3 21C7 21 8 23 8 26M24 26C24 23 26 21 29 21'),
   wallet: c => p('M27 9H7C3 9 3 4 7 4H24V9M5 8V25C5 28 8 29 11 29H27V9', panel(c)) + rect(20, 16, 10, 7, 2, accent(c)) + dot(24, 19.5, c),
@@ -157,7 +201,12 @@ const DRAWINGS = {
   link: () => p('M13 21L10 24C7 27 3 25 3 22C3 20 4 19 5 18L11 12C14 9 17 9 20 12M19 11L22 8C25 5 29 7 29 10C29 12 28 13 27 14L21 20C18 23 15 23 12 20M12 20L20 12'),
   eye: c => p('M2 16C9 3 23 3 30 16C23 29 9 29 2 16Z', panel(c)) + circle(16, 16, 4),
   'finger-print': () => p('M6 18V14C6 0 26 0 26 14V19M10 22V14C10 6 22 6 22 14V22M14 26V14C14 12 18 12 18 14V24L16 29M5 23L7 27M25 24L23 29'),
+  faceid: c => p('M3 10V5C3 3 5 3 10 3M22 3H27C29 3 29 5 29 10M29 22V27C29 29 27 29 22 29M10 29H5C3 29 3 27 3 22')
+    + p('M10 11V14M22 11V14M16 12V18L14 19M10 22C13 26 19 26 22 22'),
   scan: () => p('M3 11V4H10M22 4H29V11M29 22V29H22M10 29H3V22M3 16H29'),
+  expand: () => p('M12 4H4V12M4 4L13 13M20 4H28V12M28 4L19 13M4 20V28H12M4 28L13 19M28 20V28H20M28 28L19 19'),
+  ban: c => shield(c) + p('M9 10L23 24'),
+  'return-down-back': c => rect(13, 3, 15, 13, 3, panel(c)) + p('M18 3V8H23V3M24 20V24C24 27 21 28 18 28H5M10 23L5 28L10 31'),
   hourglass: c => p('M7 3H25V7C25 12 21 13 18 16C21 19 25 20 25 25V29H7V25C7 20 11 19 14 16C11 13 7 12 7 7Z', panel(c)) + p('M7 3H25M7 29H25M11 7H21'),
   flash: c => p('M18 2L5 19H15L13 30L28 12H18Z', panel(c)),
   bug: c => rect(10, 8, 12, 21, 6, panel(c)) + p('M12 8L9 3M20 8L23 3M10 14H4M22 14H28M10 21H3M22 21H29M10 26L5 30M22 26L27 30M16 14V29'),
@@ -200,9 +249,15 @@ const ALIASES = {
   chatbubbles: 'chatbubble', alert: 'alert-circle', help: 'help-circle',
   repeat: 'swap-horizontal', flame: 'bonfire', rocket: 'rank-archer', library: 'document-text',
   'checkmark-shield': 'shield-checkmark',
+  receipt: 'history-ledger', 'person-add': 'neighbor-invite',
+  options: 'filter',
 };
 const PALETTES = {
   'request-note': ['#E7C590', '#A7BF98'],
+  'history-ledger': ['#E7C590', '#ABC5B8'],
+  'selection-check': ['#B8CBA8', '#ABC5B8'],
+  'neighbor-invite': ['#E7C590', '#ABC5B8'],
+  'neighbors-manage': ['#ABC5B8', '#E7C590'],
   pencil: ['#DFB66F', '#DEA088'],
   'neighbor-sprout': ['#B8CBA8', '#98B68B'],
   'rank-jester': ['#B8CBA8', '#E7C590'],
@@ -213,10 +268,12 @@ const PALETTES = {
   'rank-robin': ['#D1AB50', '#E7CC7A'],
   tree: ['#9DBB90', '#D0A27A'],
   heart: ['#E6A392', '#D48976'], home: ['#B8CBB0', '#DCA083'],
+  grid: ['#B8CBB0', '#E7C590'],
   handshake: ['#ABC5B8', '#E7C590'],
   'thumbs-up': ['#ABC5B8', '#E7C590'],
   'balance-scale': ['#B8CBA8', '#C3A66C'],
   'thumbs-down': ['#DEA088', '#E7C590'],
+  laugh: ['#E9CA92', '#DEA088'], surprised: ['#B8CAD7', '#E9CA92'], sad: ['#B8CAD7', '#D8E5DA'],
   basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
   chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
   'mail-unread': ['#E7C590', '#DEA088'],
@@ -230,8 +287,9 @@ const PALETTES = {
   time: ['#E9CA92', '#DEA088'],
   calendar: ['#B8C4DA', '#D6DDE9'],
   person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
+  'money-bag': ['#E9CA92', '#A7BF98'],
   gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
-  notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'],
+  notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'], 'ideas-bulb': ['#E9CA92', '#D9AD75'],
   bonfire: ['#E4A080', '#E9CA92'], football: ['#CDA182', '#E1BE9F'],
   hammer: ['#B9C4C3', '#DAAF8A'], construct: ['#B9C4C3', '#DAAF8A'],
 };
@@ -247,14 +305,15 @@ export function hasBorrowhoodIcon(name) {
   return Boolean(DRAWINGS[ALIASES[base] || base]);
 }
 
-export function iconSvg(name, { color = '#42594C', illustrated = false, selected = false } = {}) {
+export function iconSvg(name, { color = '#42594C', fillColor, illustrated = false, selected = false } = {}) {
   const base = resolveIconName(name);
   // Only color values belong in attributes; never interpolate names or markup.
   const safeColor = String(color).replace(/[<>"'&]/g, '') || '#42594C';
+  const safeFill = fillColor == null ? null : String(fillColor).replace(/[<>"'&]/g, '');
   const palette = PALETTES[base] || ['#C3CFB2', '#DDB89B'];
   const c = {
     stroke: illustrated ? '#42594C' : safeColor,
-    fill: illustrated ? palette[0] : safeColor,
+    fill: safeFill || (illustrated ? palette[0] : safeColor),
     accent: illustrated ? palette[1] : safeColor,
     opacity: base === 'heart' && !selected ? 0 : illustrated ? 1 : selected ? (['heart', 'bookmark', 'star', 'ellipse'].includes(base) ? 1 : 0.2) : 0,
   };

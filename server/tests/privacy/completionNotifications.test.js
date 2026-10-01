@@ -11,6 +11,12 @@ beforeEach(() => {
 });
 
 describe('completion notifications', () => {
+  it('explains automatic closure without claiming the owner confirmed', async () => {
+    await sendNotification('neighbor-1', 'return_confirmed', { autoClosed:true, transactionId:'exchange-1' });
+    const saved=query.mock.calls[0][1];
+    expect(saved[3]).toContain('Return closed after 48 hours without a reported issue.');
+    expect(saved[5]).toBe('exchange-1');
+  });
   it('explains account deletion and links unresolved exchanges to their retained record', async () => {
     await sendNotification('neighbor-1', 'exchange_account_deleted', { itemTitle:'Drill', transactionId:'exchange-1' });
     const saved = query.mock.calls[0][1];

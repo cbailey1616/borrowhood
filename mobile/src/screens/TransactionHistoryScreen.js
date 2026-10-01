@@ -120,23 +120,30 @@ export default function TransactionHistoryScreen({ navigation }) {
     const otherUser = borrower ? item.lender : item.borrower;
     const name = [otherUser?.firstName, otherUser?.lastName].filter(Boolean).join(' ') || 'a neighbor';
     const date = historyDate(item);
+    const title = item.listing?.title || 'Item unavailable';
+    const person = `${roleLabel(item, borrower)} ${name}`;
 
     return (
       <LayeredCard style={styles.card}>
-        <HapticPressable style={styles.cardBody}
+        <HapticPressable style={styles.cardBody} testID={`History.${item.id}`} accessibilityRole="button"
+          accessibilityLabel={[title, config.label, person, date].filter(Boolean).join('. ')}
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}>
-          <ShimmerImage source={{ uri: item.listing?.photoUrl }} style={styles.photo}
-            contentPosition="center" placeholderIcon={listingIcon(item)} />
-          <View style={styles.cardContent}>
-            <Text style={styles.listingTitle} numberOfLines={2}>{item.listing?.title || 'Item unavailable'}</Text>
-            <View style={[styles.statusBadge, config.complete && styles.completeBadge]}>
-              <Ionicons name={config.icon} size={14} color={config.complete ? COLORS.primary : COLORS.textSecondary} />
+          <View style={styles.itemRow}>
+            <ShimmerImage source={{ uri: item.listing?.photoUrl }} style={styles.photo}
+              contentPosition="center" placeholderIcon={listingIcon(item)} />
+            <View style={styles.cardContent}>
+              <Text style={styles.listingTitle} numberOfLines={2}>{title}</Text>
+              <Text style={styles.otherUser} numberOfLines={2}>{person}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+          </View>
+          <View style={styles.summaryRow}>
+            <View style={styles.statusBadge}>
+              <Ionicons name={config.icon} size={18} illustrated color={config.complete ? COLORS.primary : COLORS.textSecondary} />
               <Text style={[styles.statusText, config.complete && styles.completeText]}>{config.label}</Text>
             </View>
-            <Text style={styles.otherUser} numberOfLines={2}>{roleLabel(item, borrower)} {name}</Text>
             {!!date && <Text style={styles.date}>{date}</Text>}
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
         </HapticPressable>
       </LayeredCard>
     );
@@ -144,6 +151,7 @@ export default function TransactionHistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View style={{ paddingTop: 20, overflow: 'hidden' }}>
       <View style={styles.controls}>
         <SegmentedControl variant="underline" segments={ROLE_SEGMENTS}
           selectedIndex={selectedIndex} onIndexChange={setSelectedIndex} testID="History.tabs" />
@@ -157,6 +165,8 @@ export default function TransactionHistoryScreen({ navigation }) {
         </View>
       </View>
 
+      </View>
+
       {loadError && <View style={styles.errorRow}>
         <Text style={styles.errorText} accessibilityRole="alert">Couldn't load history. Please try again.</Text>
         <ActionButton label="Retry" onPress={onRefresh} loading={isRefreshing} accessibilityLabel="Retry history" />
@@ -167,7 +177,7 @@ export default function TransactionHistoryScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}
           ListEmptyComponent={!loadError ? <View style={styles.emptyContainer}>
-            <HeroIcon icon="receipt-outline" size={72} />
+            <HeroIcon icon="history-ledger-outline" size={72} />
             <Text style={styles.emptyTitle}>{hasFilter ? 'No matching history' : 'No history yet'}</Text>
             <Text style={styles.emptySubtitle}>{hasFilter
               ? 'Try a different filter to see more.'
@@ -193,16 +203,17 @@ const styles = StyleSheet.create({
   listContent: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xl, width: '100%', maxWidth: 760, alignSelf: 'center' },
   skeletonWrap: { padding: SPACING.lg, gap: SPACING.md, width: '100%', maxWidth: 760, alignSelf: 'center' },
   card: { marginBottom: SPACING.md },
-  cardBody: { flexDirection: 'row', alignItems: 'center', padding: SPACING.lg, gap: SPACING.md, borderRadius: RADIUS.lg },
-  photo: { width: 72, height: 80, borderRadius: RADIUS.md },
-  cardContent: { flex: 1, minWidth: 0, gap: SPACING.xs },
-  listingTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: SPACING.xs, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated },
-  completeBadge: { backgroundColor: COLORS.primaryMuted },
-  statusText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, flexShrink: 1 },
+  cardBody: { padding: SPACING.md, gap: SPACING.md, borderRadius: RADIUS.lg },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  photo: { width: 76, height: 76, borderRadius: RADIUS.sm },
+  cardContent: { flex: 1, minWidth: 0, gap: SPACING.sm },
+  listingTitle: { ...TYPOGRAPHY.headline, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', letterSpacing: 0, color: COLORS.text },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: SPACING.md, rowGap: SPACING.xs, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.separator },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, maxWidth: '100%' },
+  statusText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
   completeText: { color: COLORS.primary },
   otherUser: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
-  date: { ...TYPOGRAPHY.caption1, color: COLORS.textMuted },
+  date: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, flexShrink: 1 },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, padding: SPACING.xl },
   emptyTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, textAlign: 'center' },
   emptySubtitle: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, textAlign: 'center' },

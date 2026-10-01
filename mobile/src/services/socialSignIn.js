@@ -24,7 +24,7 @@ export async function appleCredential() {
     requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
     state,
   });
-  if (credential.state !== state || !credential.identityToken) {
+  if (credential.state !== state || !credential.identityToken || !credential.authorizationCode) {
     throw new Error('Apple couldn’t finish signing you in. Please try again.');
   }
   return credential;

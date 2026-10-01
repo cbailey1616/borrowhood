@@ -17,7 +17,8 @@ describe('notification destinations', () => {
   });
 
   it.each(['request_approved', 'request_declined', 'borrow_cancelled', 'pickup_confirmed',
-    'return_confirmed', 'giveaway_complete', 'giveaway_expired', 'giveaway_pickup_expired', 'return_reminder'])
+    'return_requested', 'return_confirmed', 'giveaway_complete', 'giveaway_expired', 'giveaway_pickup_expired', 'return_reminder',
+    'pickup_check', 'pickup_extended', 'return_date_extended', 'return_reported_missing', 'return_case_updated'])
   ('keeps %s linked to the affected exchange', type => {
     expect(notificationDestination({ type, transactionId: 'exchange', listingId: 'item' }))
       .toEqual({ name: 'TransactionDetail', params: { id: 'exchange' } });
@@ -49,6 +50,13 @@ describe('notification destinations', () => {
   });
 });
 
-it('opens the neighborhood after a moderator approves a return', () => {
-  expect(notificationDestination({ type: 'join_approved', communityId: 'hood-1' })).toEqual({ name: 'MyCommunity', params: { communityId: 'hood-1' } });
+it.each(['join_approved', 'steward_assigned'])('opens the affected neighborhood for %s', type => {
+  expect(notificationDestination({ type, communityId: 'hood-1' })).toEqual({ name: 'MyCommunity', params: { communityId: 'hood-1' } });
+  expect(notificationDestination({ type })).toEqual({ name: 'Main', params: { screen: 'Feed' } });
+});
+
+
+it('opens private reply notifications in their thread', () => {
+  expect(notificationDestination({ type: 'new_message', conversationId: 'conversation', threadId: 'root' }))
+    .toEqual({ name: 'Chat', params: { conversationId: 'conversation', threadId: 'root' } });
 });

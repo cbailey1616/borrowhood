@@ -32,6 +32,8 @@ export default function CommunitySettingsScreen({ route, navigation }) {
   const [community, setCommunity] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showLeaveSheet, setShowLeaveSheet] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const leaveLock = useRef(false);
 
   // Edit state
   const [editName, setEditName] = useState('');
@@ -49,6 +51,10 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
   const canEdit = community?.role === 'organizer' || user?.isAdmin;
   const canManageMembers = community?.role === 'organizer';
+  const isLastMember = community?.memberCount === 1;
+  const needsHandoff = canManageMembers && community?.memberCount > 1
+    && !(community?.organizers || []).some(steward => steward.id !== user?.id);
+  const chooseSteward = () => navigation.navigate('CommunityMembers', { id, role: 'organizer', handoff: true });
 
   useEffect(() => {
     let active = true;
@@ -169,18 +175,36 @@ export default function CommunitySettingsScreen({ route, navigation }) {
     }
   };
 
-  const performLeaveCommunity = async () => {
+  const requestLeave = async () => {
+    if (leaveLock.current) return;
     const isCurrent = startNavigationTask();
+    leaveLock.current = true; setIsLeaving(true);
+    try {
+      // Refresh the counts before explaining whether this is a handoff or archive.
+      const latest = await api.getCommunity(id);
+      if (isCurrent()) { setCommunity(latest); setShowLeaveSheet(true); }
+    } catch (error) {
+      if (isCurrent()) showError({ message: error.message || 'Could not check this neighborhood. Please try again.' });
+    } finally {
+      leaveLock.current = false; setIsLeaving(false);
+    }
+  };
+
+  const performLeaveCommunity = async () => {
+    if (leaveLock.current) return;
+    const isCurrent = startNavigationTask();
+    if (!isCurrent()) return;
+    leaveLock.current = true; setIsLeaving(true);
     try {
       await api.leaveCommunity(id);
-      haptics.success();
-      if (isCurrent()) navigation.navigate('Main');
+      if (isCurrent()) { haptics.success(); navigation.navigate('Main'); }
     } catch (error) {
+      if (!isCurrent()) return;
       haptics.error();
-      const msg = error.message || 'Failed to leave neighborhood';
-      showError({ message: msg.includes('active listings')
-        ? 'Please delete or pause your listings in this neighborhood first.'
-        : msg });
+      if (error.code === 'STEWARD_HANDOFF_REQUIRED') chooseSteward();
+      else showError({ message: error.message || 'Failed to leave neighborhood' });
+    } finally {
+      leaveLock.current = false; setIsLeaving(false);
     }
   };
 
@@ -329,7 +353,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           onPress={() => navigation.navigate('CommunityMembers', { id, role: community?.role })}
           haptic="light"
         >
-          <Ionicons name={canManageMembers ? 'shield-checkmark-outline' : 'people-outline'} size={20} color={COLORS.primary} />
+          <Ionicons name="neighbors-manage-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
@@ -339,7 +363,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
           onPress={() => navigation.navigate('InviteMembers', { communityId: id })}
           haptic="light"
         >
-          <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+          <Ionicons name="neighbor-invite-outline" size={20} color={COLORS.primary} />
           <Text style={styles.actionButtonText}>Invite Neighbors</Text>
           <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
         </HapticPressable>
@@ -349,11 +373,12 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       <View style={styles.section}>
         <HapticPressable
           style={[styles.actionButton, styles.leaveButton]}
-          onPress={() => setShowLeaveSheet(true)}
+          onPress={requestLeave}
+          disabled={isLeaving}
           haptic="medium"
         >
           <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-          <Text style={[styles.actionButtonText, styles.leaveText]}>Leave Neighborhood</Text>
+          {isLeaving ? <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Checking neighborhood" /> : <Text style={[styles.actionButtonText, styles.leaveText]}>Leave Neighborhood</Text>}
         </HapticPressable>
       </View>
 
@@ -372,14 +397,15 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       <ActionSheet
         isVisible={showLeaveSheet}
         onClose={() => setShowLeaveSheet(false)}
-        title="Leave Neighborhood"
-        message={`Are you sure you want to leave ${community?.name}? You'll lose access to neighborhood items and members.`}
-        actions={[
-          {
-            label: 'Leave',
-            destructive: true,
-            onPress: performLeaveCommunity,
-          },
+        variant="confirmation"
+        title={needsHandoff ? 'Choose a new steward' : isLastMember ? 'Archive neighborhood?' : 'Leave Neighborhood'}
+        message={needsHandoff ? 'You’re the last steward. Choose a neighbor to take over before you leave.'
+          : isLastMember ? 'You’re the last neighbor. Leaving will archive this neighborhood.'
+          : `Leave ${community?.name}? You’ll lose access to its items and chat.`}
+        actions={[needsHandoff
+          ? { label: 'Choose steward', primary: true, onPress: chooseSteward }
+          : { label: isLastMember ? 'Archive & leave' : 'Leave', destructive: true, onPress: performLeaveCommunity },
+          { label: 'Cancel', onPress: () => {} },
         ]}
       />
     </ScrollView>

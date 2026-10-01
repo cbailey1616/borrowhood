@@ -1,3 +1,6 @@
+import { ensureDiscussionReactionSchema } from '../services/publicReactions.js';
+import { ensureProjectSchema } from '../services/projects.js';
+import { ensureAppleSignInSchema } from '../services/appleSignInTokens.js';
 import { ensureCommunityMembershipSchema } from '../services/communityMemberships.js';
 import { ensureFeedWindowSchema } from '../services/feedWindows.js';
 import { ensureCommunityChatSchema } from '../services/communityChat.js';
@@ -649,6 +652,7 @@ export async function runMigrations() {
         // Numbered migration replay can install these before the legacy enum
         // conversion. Restore them in this same transaction after conversion.
         await client.query('DROP INDEX IF EXISTS pending_pickup_reviews');
+        await client.query('DROP INDEX IF EXISTS borrow_pending_return_timer');
         await client.query('DROP TRIGGER IF EXISTS schedule_pickup_review ON borrow_transactions');
         await client.query('DROP TRIGGER IF EXISTS resolve_pickup_review_notice ON borrow_transactions');
         await client.query('ALTER TABLE borrow_transactions ALTER COLUMN status DROP DEFAULT');
@@ -658,6 +662,7 @@ export async function runMigrations() {
           ON borrow_transactions(requested_end_date, status) WHERE status = 'picked_up'`);
         await client.query(`CREATE INDEX idx_transactions_due
           ON borrow_transactions(requested_end_date) WHERE status = 'picked_up'`);
+        await client.query("CREATE INDEX IF NOT EXISTS borrow_pending_return_timer ON borrow_transactions(return_requested_at) WHERE status='return_pending'");
         await ensurePickupFollowupSchema(client);
       });
       logger.info('Migration complete: borrow_transactions.status is now varchar');
@@ -706,14 +711,22 @@ export async function runMigrations() {
     await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_request
       ON messages (sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
 
+    // Private replies belong to one root message in the same conversation.
+    await query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES messages(id) ON DELETE CASCADE');
+    await query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL');
+    await query('CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages (conversation_id, parent_id, created_at, id)');
+
     await ensureEndorsementSchema();
     await ensureRankNotificationSchema();
     await ensureNotificationSchema();
     await ensurePickupFollowupSchema();
     await ensureReturnRecoverySchema();
+    await ensureDiscussionReactionSchema();
     await ensureCommunityChatSchema();
     await ensureCommunityMembershipSchema();
     await ensureVerificationPurchaseSchema();
+    await ensureProjectSchema();
+    await ensureAppleSignInSchema();
     logger.info('Migrations check complete');
   } catch (err) {
     logger.error('Migration error:', err);

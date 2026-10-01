@@ -16,7 +16,7 @@ import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
-  Saved: { active: 'heart', inactive: 'heart' },
+  Ideas: { active: 'ideas-bulb', inactive: 'ideas-bulb' },
   MyItems: { active: 'basket', inactive: 'basket-outline' },
   Activity: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
@@ -24,8 +24,8 @@ const TAB_ICONS = {
 
 const TAB_LABELS = {
   Feed: 'Home',
-  Saved: 'Saved',
-  MyItems: 'My Posts',
+  Ideas: 'Ideas',
+  MyItems: 'My items',
   Activity: 'Inbox',
   Profile: 'Profile',
 };
@@ -51,7 +51,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
   const iconName = isFocused ? icons.active : icons.inactive;
   const label = TAB_LABELS[route.name] || route.name;
   const isSaved = route.name === 'Saved';
-  const iconColor = isSaved ? COLORS.saved : isFocused ? COLORS.primary : COLORS.textSecondary;
+  const iconColor = isSaved ? COLORS.savedOutline : isFocused ? COLORS.primary : COLORS.textSecondary;
 
   return (
     <HapticPressable
@@ -79,6 +79,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
           illustrated={!isSaved}
           selected={isSaved || isFocused}
           color={iconColor}
+          fillColor={isSaved ? COLORS.saved : undefined}
         />
         {hasUpdate && (route.name === 'Activity'
           ? <View testID="TabBar.Activity.badge" style={styles.unreadBadge}>

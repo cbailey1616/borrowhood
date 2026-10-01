@@ -66,6 +66,15 @@ describe('TransactionHistoryScreen', () => {
     fireEvent.press(camera);
     expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
   });
+  it('exposes each refreshed tile as a single complete exchange button', async () => {
+    const Screen = require('../../src/screens/TransactionHistoryScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    const tile = await screen.findByRole('button', { name: 'Camera. Returned. Borrowed from Alice Jones. Mar 1, 2026 – Mar 8, 2026' });
+    expect(tile).toBe(screen.getByTestId('History.txn-1'));
+    fireEvent.press(tile);
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('TransactionDetail', { id: 'txn-1' });
+    expect(screen.getByText('Camera')).toHaveStyle({ fontFamily: 'DMSans_600SemiBold', letterSpacing: 0 });
+  });
 
   it('shows empty state when no transactions', async () => {
     api.getTransactions.mockResolvedValue([]);

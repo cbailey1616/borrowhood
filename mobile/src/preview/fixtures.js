@@ -21,14 +21,24 @@ export const listings = [
   { id: 'preview-books', title: 'A few good reads', description: 'Finished these and would love to pass them along.', categoryId: 'other', icon: 'document-text', listingType: 'giveaway', user: { ...neighbor, firstName: 'Taylor', totalTransactions: 82 } },
 ].map(item => ({ type: 'listing', listingType: 'lend', isFree: true, isAvailable: true, condition: 'good', visibility: 'neighborhood', createdAt: new Date().toISOString(), ...item, owner: item.user, ownerId: item.user.id, photoUrl: artwork(item.icon), photos: [artwork(item.icon)] }));
 export const conversation = { id: 'preview-chat', otherUser: neighbor, listing: listings[0], lastMessage: 'Perfect, see you then!', lastMessageAt: new Date().toISOString(), unreadCount: 0 };
+const returnDate = new Date();
+returnDate.setDate(returnDate.getDate() + 4);
+export const previewExchanges = [
+  { id: 'preview-return', status: 'return_pending', isBorrower: false, listing: listings[0], borrower: neighbor, lender: previewUser },
+  { id: 'preview-pickup', status: 'approved', isBorrower: true, listing: listings[2], borrower: previewUser, lender: listings[2].user },
+  { id: 'preview-loan', status: 'picked_up', isBorrower: true, listing: listings[1], borrower: previewUser, lender: listings[1].user,
+    endDate: returnDate.toLocaleDateString('sv-SE') },
+].map(exchange => ({ listingType: exchange.listing.listingType, createdAt: new Date().toISOString(), ...exchange }));
 export const messages = [
   { id: 'preview-message-1', content: 'About item: “Cordless drill & bits”\n\nHi Jamie! Could I borrow this on Saturday?', senderId: previewUser.id, isOwnMessage: true },
   { id: 'preview-message-2', content: 'Of course! A little weekend project?', senderId: neighbor.id, isOwnMessage: false },
   { id: 'preview-message-3', content: 'Finally putting those shelves up 😄', senderId: previewUser.id, isOwnMessage: true },
   { id: 'preview-message-4', content: 'I’ll put the bits in the case too.', senderId: neighbor.id, isOwnMessage: false },
   { id: 'preview-message-5', content: 'Would 10 work for pickup?', senderId: neighbor.id, isOwnMessage: false },
+  { id: 'preview-thread-reply-1', parentId: 'preview-message-5', content: '10 works! Where should I meet you?', senderId: previewUser.id, isOwnMessage: true },
+  { id: 'preview-thread-reply-2', parentId: 'preview-message-5', content: 'By the garage. I’ll have everything ready.', senderId: neighbor.id, isOwnMessage: false },
   { id: 'preview-message-6', content: 'Perfect. Thanks, Jamie!', senderId: previewUser.id, isOwnMessage: true },
-].map((message, index) => ({ ...message, isRead: true, reactions: [], createdAt: new Date(Date.now() - (6 - index) * 60000).toISOString() }));
+].map((message, index) => ({ ...message, isRead: true, reactions: [], createdAt: new Date(Date.now() - (8 - index) * 60000).toISOString() }));
 
 export const comments = [
   { id: 'preview-comment-1', content: 'Does it come with a masonry bit? Hoping to put up a shelf this weekend.', user: { ...neighbor, id: 'preview-sam', firstName: 'Sam', lastName: 'Rivera' }, replyCount: 2, createdAt: new Date(Date.now() - 3600000).toISOString() },

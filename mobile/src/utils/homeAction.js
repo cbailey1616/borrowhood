@@ -1,6 +1,7 @@
 import { listingIcon } from './listingPresentation';
 import { isTransferListing } from './directFee';
 import { groupPendingExchanges } from './requestActivity';
+import { parseCalendarDate } from './calendarDate';
 
 export const exchangeIsActive = transaction => ['pending', 'approved', 'paid', 'return_pending', 'disputed'].includes(transaction.status)
   || (transaction.status === 'picked_up' && !isTransferListing(transaction))
@@ -11,8 +12,8 @@ const isLender = (transaction, userId) => transaction.isBorrower === false || (!
 const time = value => new Date(value).getTime() || 0;
 // Due dates are calendar dates, including across daylight-saving changes.
 const calendarDay = value => {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00`) : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+  const date = parseCalendarDate(value);
+  return date ? Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000 : null;
 };
 
 const returnTiming = (transaction, now) => {

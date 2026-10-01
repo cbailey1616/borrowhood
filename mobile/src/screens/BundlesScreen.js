@@ -266,7 +266,7 @@ export default function BundlesScreen({ navigation }) {
                   />
                   <Text style={styles.listingItemTitle} numberOfLines={1}>{item.title}</Text>
                   {newBundle.listingIds.includes(item.id) && (
-                    <Text style={styles.checkmark}>✓</Text>
+                    <Ionicons name="checkmark" size={20} color={COLORS.primary} />
                   )}
                 </HapticPressable>
               )}
@@ -530,12 +530,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text,
     marginLeft: SPACING.md - 2,
-  },
-  checkmark: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: COLORS.primary,
-    fontWeight: '400',
   },
   validationError: {
     ...TYPOGRAPHY.footnote,

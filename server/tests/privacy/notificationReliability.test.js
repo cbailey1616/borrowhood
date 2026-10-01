@@ -1,3 +1,4 @@
+import { ensureDiscussionReactionSchema } from '../../src/services/publicReactions.js';
 import { ensureCommunityChatSchema } from '../../src/services/communityChat.js';
 import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
@@ -50,7 +51,7 @@ beforeAll(async () => {
       is_read BOOLEAN DEFAULT false, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), push_sent BOOLEAN DEFAULT false);
     CREATE TABLE conversations(id UUID PRIMARY KEY, user1_id UUID, user2_id UUID, listing_id UUID, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE messages(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), conversation_id UUID, sender_id UUID, content TEXT,
-      image_url TEXT, deleted_at TIMESTAMPTZ, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
+      image_url TEXT, parent_id UUID, reply_to_id UUID, deleted_at TIMESTAMPTZ, is_read BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE message_reactions(message_id UUID, user_id UUID, emoji TEXT);
     CREATE TABLE listing_discussions(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), listing_id UUID, request_id UUID, parent_id UUID,
       user_id UUID, content TEXT, is_hidden BOOLEAN DEFAULT false, reply_count INT DEFAULT 0,
@@ -63,6 +64,7 @@ beforeAll(async () => {
   await ensurePublicationSchema();
   app = express(); app.use(express.json()); app.use('/notifications', notificationRoutes);
   app.use('/listings', discussionRoutes); app.use('/requests', requestDiscussionRoutes); app.use('/messages', messageRoutes);
+  await ensureDiscussionReactionSchema();
 }, 20000);
 beforeEach(async () => {
   state.allowed = true;
@@ -415,7 +417,7 @@ it.each([['listing',false],['listing',true],['request',false],['request',true]])
     IF NEW.user_id='${isReply ? B : A}' THEN RAISE EXCEPTION 'injected activity failure'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
     CREATE TRIGGER fail_notice BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION fail_notice()`);
   const path = `/${kind === 'listing' ? 'listings' : 'requests'}/${item}/discussions`;
-  const payload = {content:'Tomorrow works',clientRequestId:phone,...(isReply ? {parentId:root} : {})};
+  const payload = {content:'Tomorrow works',clientRequestId:phone,...(isReply ? {parentId:root,replyToId:reply} : {})};
   await request(app).post(path).set('x-user',C).send(payload).expect(500);
   expect(await count('listing_discussions')).toBe(2);
   expect(await count('publication_receipts')).toBe(0);
@@ -425,6 +427,11 @@ it.each([['listing',false],['listing',true],['request',false],['request',true]])
   const first=await request(app).post(path).set('x-user',C).send(payload).expect(201);
   const repeat=await request(app).post(path).set('x-user',C).send(payload).expect(201);
   expect(repeat.body.id).toBe(first.body.id);
+  if (isReply) {
+    expect(first.body).toMatchObject({parentId:root,replyToId:reply,score:1,viewerVote:1});
+    expect((await rows('SELECT parent_id,reply_to_id FROM listing_discussions WHERE id=$1',[first.body.id]))[0]).toEqual({parent_id:root,reply_to_id:reply});
+  }
+  expect(await count('discussion_votes')).toBe(1);
   expect(await count('listing_discussions')).toBe(3);
   expect(await count('publication_receipts')).toBe(1);
   expect(await count('notifications')).toBe(isReply ? 2 : 1);
@@ -448,8 +455,8 @@ it('combines neighborhood channels with direct messages and counts each unread c
 it('does not give new neighborhood members an old preview or notification badge', async () => {
   const hood = '99999999-9999-4999-8999-999999999998';
   await state.db.query("INSERT INTO communities(id,name) VALUES($1,'New neighborhood')", [hood]);
-  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id)
-    VALUES($1,$2,'Before joining',gen_random_uuid())`,[hood,B]);
+  await state.db.query(`INSERT INTO community_chat_messages(community_id,sender_id,content,client_request_id,created_at)
+    VALUES($1,$2,'Before joining',gen_random_uuid(),NOW()-INTERVAL '1 minute')`,[hood,B]);
   await state.db.query('INSERT INTO community_memberships(community_id,user_id) VALUES($1,$2)',[hood,A]);
   const inbox = await request(app).get('/messages/conversations').set('x-user',A).expect(200);
   expect(inbox.body.find(c=>c.communityId===hood)).toMatchObject({lastMessage:null,lastMessageAt:null,unreadCount:0});

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import BlurTabBar from '../components/BlurTabBar';
 
 import FeedScreen from '../screens/FeedScreen';
-import SavedScreen from '../screens/SavedScreen';
+import IdeasScreen from '../screens/IdeasScreen';
 import MyItemsScreen from '../screens/MyItemsScreen';
 import InboxScreen from '../screens/InboxScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -32,14 +32,14 @@ export default function MainNavigator() {
         options={{ title: 'Home' }}
       />
       <Tab.Screen
-        name="Saved"
-        component={SavedScreen}
-        options={{ title: 'Saved' }}
+        name="Ideas"
+        component={IdeasScreen}
+        options={{ title: 'Ideas' }}
       />
       <Tab.Screen
         name="MyItems"
         component={MyItemsScreen}
-        options={{ title: 'My Posts' }}
+        options={{ title: 'My items' }}
       />
       <Tab.Screen
         name="Activity"

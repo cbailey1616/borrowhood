@@ -276,7 +276,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const waitingForReturn = activeReturn && transaction.isLender && transaction.status === 'picked_up';
   const returnDue = formatCalendarDate(transaction.endDate, { weekday: 'short', month: 'short', day: 'numeric' });
   const showMessageRow = !primaryIsMessage && !finished && !needsPickupReview;
-  const showReturnHelp = !isGiveaway && !!transaction.actualPickupAt;
+  const showReturnHelp = activeReturn && transaction.isLender && !!transaction.actualPickupAt;
 
   return (
     <KeyboardAvoidingView

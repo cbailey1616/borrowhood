@@ -13,6 +13,7 @@ import HapticPressable from '../components/HapticPressable';
 import ActionButton from '../components/ActionButton';
 import { ThemedAlert as Alert } from '../components/ThemedAlert';
 import { useAuth } from '../context/AuthContext';
+import useNavigationTask from '../hooks/useNavigationTask';
 import { useError } from '../context/ErrorContext';
 import api from '../services/api';
 import { haptics } from '../utils/haptics';
@@ -21,6 +22,14 @@ import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 export default function CommunityMembersScreen({ route, navigation }) {
   const communityId = route?.params?.id || route?.params?.communityId;
   const { user } = useAuth();
+  const handoff = route?.params?.handoff === true;
+  const startNavigationTask = useNavigationTask(navigation, `${user?.id}:${communityId}:${handoff}`);
+  const handoffLock = useRef(false);
+  const [handoffId, setHandoffId] = useState(null);
+  const [moreCandidates, setMoreCandidates] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const page = useRef(1);
+  const paging = useRef(false);
   const { showToast, showError } = useError();
   const [actionMember, setActionMember] = useState(null);
   const [members, setMembers] = useState([]);
@@ -47,12 +56,13 @@ export default function CommunityMembersScreen({ route, navigation }) {
   const fetchMembers = useCallback(async () => {
     if (!communityId) { setLoading(false); return; }
     try {
-      const data = await api.getCommunityMembers(communityId, { limit: 100 });
+      const data = await api.getCommunityMembers(communityId, { limit: 100, ...(handoff ? { forSteward: true, page: 1 } : {}) });
+      page.current = 1; setMoreCandidates(handoff && data?.length === 100);
       setMembers(data || []);
       const me = (data || []).find(m => m.id === user?.id);
       const role = me?.role || route?.params?.role || 'member';
       setUserRole(role);
-      if (role === 'organizer') await fetchRequests();
+      if (role === 'organizer' && !handoff) await fetchRequests();
       else { setRejoinRequests([]); setRequestLoadError(false); }
       setLoadError(false);
     } catch (err) {
@@ -61,7 +71,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [communityId, route?.params?.role, user?.id, fetchRequests]);
+  }, [communityId, route?.params?.role, user?.id, fetchRequests, handoff]);
 
   useEffect(() => {
     fetchMembers();
@@ -69,26 +79,70 @@ export default function CommunityMembersScreen({ route, navigation }) {
     return () => unsubscribe?.();
   }, [fetchMembers, navigation]);
   useEffect(() => {
-    navigation.setOptions?.({ title: 'Neighbors' });
-  }, [isOrganizer, navigation]);
+    navigation.setOptions?.({ title: handoff ? 'Choose a steward' : 'Neighbors' });
+  }, [isOrganizer, navigation, handoff]);
+
+  const loadMoreCandidates = async () => {
+    if (paging.current || !moreCandidates || handoffLock.current) return;
+    const isCurrent = startNavigationTask();
+    paging.current = true; setLoadingMore(true);
+    try {
+      const nextPage = page.current + 1;
+      const data = await api.getCommunityMembers(communityId, { limit: 100, forSteward: true, page: nextPage });
+      if (!isCurrent()) return;
+      setMembers(current => [...current, ...data.filter(item => !current.some(existing => existing.id === item.id))]);
+      page.current = nextPage; setMoreCandidates(data.length === 100);
+    } catch (error) {
+      if (isCurrent()) showError({ message: error.message || 'Could not load more neighbors. Please try again.' });
+    } finally {
+      paging.current = false; setLoadingMore(false);
+    }
+  };
+
+  const chooseSuccessor = member => {
+    if (handoffLock.current) return;
+    Alert.alert('Make steward & leave?', `${member.firstName} will look after the neighborhood. You’ll leave it.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Make steward & leave', onPress: async () => {
+        if (handoffLock.current) return;
+        const isCurrent = startNavigationTask();
+        if (!isCurrent()) return;
+        handoffLock.current = true; setHandoffId(member.id);
+        try {
+          await api.leaveCommunity(communityId, { successorId: member.id });
+          if (isCurrent()) {
+            haptics.success(); showToast('Stewardship passed on. You’ve left the neighborhood.', 'success');
+            navigation.navigate('Main');
+          }
+        } catch (error) {
+          if (isCurrent()) {
+            showError({ message: error.message || 'Could not pass on stewardship. Please try again.' });
+            if (error.code === 'INVALID_STEWARD') await fetchMembers();
+          }
+        } finally {
+          handoffLock.current = false; setHandoffId(null);
+        }
+      } },
+    ]);
+  };
 
   const handlePromote = (member) => {
     Alert.alert(
-      'Make Moderator',
-      `Make ${member.firstName} a moderator?`,
+      'Make Steward',
+      `Make ${member.firstName} a steward?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Make Moderator',
+          text: 'Make Steward',
           onPress: async () => {
             try {
               await api.addCommunityAdmin(communityId, member.id);
               haptics.success();
-              showToast(`${member.firstName} is now a moderator`, 'success');
+              showToast(`${member.firstName} is now a steward`, 'success');
               fetchMembers();
             } catch (err) {
               haptics.error();
-              showError({ message: err.message || 'Could not make this member a moderator' });
+              showError({ message: err.message || 'Could not make this member a steward' });
             }
           },
         },
@@ -99,7 +153,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
   const handleRemove = (member) => {
     Alert.alert(
       'Remove Member',
-      `Remove ${member.firstName} from this neighborhood? They’ll need a moderator’s approval to rejoin.`,
+      `Remove ${member.firstName} from this neighborhood? They’ll need a steward’s approval to rejoin.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -146,7 +200,9 @@ export default function CommunityMembersScreen({ route, navigation }) {
     <HapticPressable
       haptic="light"
       style={styles.memberRow}
-      onPress={() => navigation.navigate('UserProfile', { id: item.id })}
+      disabled={handoff && !!handoffId}
+      accessibilityLabel={handoff ? `Choose ${item.firstName} as steward` : undefined}
+      onPress={() => handoff ? chooseSuccessor(item) : navigation.navigate('UserProfile', { id: item.id })}
     >
       <ShimmerImage placeholderIcon="person"
         source={{ uri: item.profilePhotoUrl || null }}
@@ -158,7 +214,7 @@ export default function CommunityMembersScreen({ route, navigation }) {
           {item.role === 'organizer' && (
             <View style={styles.adminBadge}>
               <Ionicons name="shield-checkmark" size={12} color={COLORS.primary} />
-              <Text style={styles.adminBadgeText}>Moderator</Text>
+              <Text style={styles.adminBadgeText}>Steward</Text>
             </View>
           )}
         </View>
@@ -166,7 +222,8 @@ export default function CommunityMembersScreen({ route, navigation }) {
           <Text style={styles.memberLocation}>{item.city}{item.state ? `, ${item.state}` : ''}</Text>
         )}
       </View>
-      {isOrganizer && item.role !== 'organizer' && item.id !== user?.id && (
+      {handoff && (handoffId === item.id ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />)}
+      {!handoff && isOrganizer && item.role !== 'organizer' && item.id !== user?.id && (
         <HapticPressable accessibilityRole="button" accessibilityLabel={`Manage ${item.firstName}`}
           onPress={event => { event?.stopPropagation?.(); setActionMember(item); }} style={{ padding: 12 }} disabled={removingMemberId === item.id}>
           <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.primary} />
@@ -202,7 +259,8 @@ export default function CommunityMembersScreen({ route, navigation }) {
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.cardGap} />}
         ListHeaderComponent={<>
-          {isOrganizer && (requestLoadError || rejoinRequests.length > 0) && <View style={styles.requestsSection}>
+          {handoff && <Text style={[styles.requestDetail, { marginBottom: SPACING.lg }]}>Choose a neighbor to manage members and neighborhood settings.</Text>}
+          {!handoff && isOrganizer && (requestLoadError || rejoinRequests.length > 0) && <View style={styles.requestsSection}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>Rejoin requests</Text>
             <Text style={styles.requestDetail}>These neighbors were removed. Approve a request to welcome them back.</Text>
             {requestLoadError && <View>
@@ -232,19 +290,23 @@ export default function CommunityMembersScreen({ route, navigation }) {
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{members.length}</Text>
             </View>
-            <HapticPressable accessibilityLabel="Invite neighbors" onPress={() => navigation.navigate('InviteMembers', { communityId })}
-              style={{ marginLeft: 'auto', backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 12 }}><Text style={{ color: COLORS.surface }}>+ Invite</Text></HapticPressable>
+            {!handoff && <HapticPressable accessibilityLabel="Invite neighbors" onPress={() => navigation.navigate('InviteMembers', { communityId })}
+              style={{ marginLeft: 'auto', backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 12 }}><Text style={{ color: COLORS.surface }}>+ Invite</Text></HapticPressable>}
           </View>
         </>}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No members yet</Text>
+            <Text style={styles.emptyText}>{handoff ? 'No eligible neighbors found. Go back to check the neighborhood again.' : 'No members yet'}</Text>
+            {handoff && <ActionButton label="Back to neighborhood" onPress={() => navigation.goBack()} />}
           </View>
         }
+        ListFooterComponent={handoff && moreCandidates ? <View style={{ marginTop: SPACING.md }}>
+          {loadingMore ? <ActivityIndicator color={COLORS.spinner} /> : <ActionButton label="More neighbors" disabled={!!handoffId} onPress={loadMoreCandidates} />}
+        </View> : null}
       />
       <ActionSheet isVisible={!!actionMember} onClose={() => setActionMember(null)} title={actionMember?.firstName}
         actions={actionMember ? [
-          { label: 'Make moderator', onPress: () => handlePromote(actionMember) },
+          { label: 'Make steward', onPress: () => handlePromote(actionMember) },
           { label: 'Remove from neighborhood', destructive: true, onPress: () => handleRemove(actionMember) },
         ] : []} />
     </View>

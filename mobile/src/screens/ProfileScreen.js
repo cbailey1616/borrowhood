@@ -9,6 +9,7 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Application from 'expo-application';
@@ -18,7 +19,7 @@ import MemberSummary from '../components/MemberSummary';
 import VerifiedBadge from '../components/VerifiedBadge';
 import HapticPressable from '../components/HapticPressable';
 import { GroupedListSection, GroupedListItem } from '../components/GroupedList';
-import NativeHeader from '../components/NativeHeader';
+import WoodlandHeader from '../components/WoodlandHeader';
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -134,9 +135,16 @@ export default function ProfileScreen({ navigation, route }) {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      await api.deleteAccount();
+      const result = await api.deleteAccount();
+      await disableBiometrics();
       haptics.success();
       await logout({ sessionExpired: true });
+      if (result?.appleRevocation?.status === 'manual') {
+        Alert.alert('Account deleted', 'Your Borrowhood account has been deleted. To also disconnect your earlier Apple sign-in, open Settings → your name → Sign in with Apple → Borrowhood → Delete.', [
+          { text: 'Done', style: 'cancel' },
+          { text: 'Apple instructions', onPress: () => Linking.openURL('https://support.apple.com/102571').catch(() => {}) },
+        ]);
+      }
     } catch (err) {
       showError({
         message: err.message || 'Failed to delete account. Please try again or contact support.',
@@ -148,7 +156,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <NativeHeader title="Profile" />
+      <WoodlandHeader title="Profile" />
 
       <ScrollView
         style={styles.scrollView}
@@ -226,9 +234,14 @@ export default function ProfileScreen({ navigation, route }) {
             onPress={() => navigation.navigate('MyCommunity')}
           />
           <GroupedListItem
-            icon="receipt-outline"
+            icon="history-ledger-outline"
             title="History"
             onPress={() => navigation.navigate('TransactionHistory')}
+          />
+          <GroupedListItem
+            icon="handshake-outline"
+            title="Your exchanges"
+            onPress={() => navigation.navigate('Exchanges')}
           />
           <GroupedListItem
             icon="people-outline"
@@ -274,7 +287,6 @@ export default function ProfileScreen({ navigation, route }) {
             title="Notifications"
             onPress={() => navigation.navigate('NotificationSettings')}
           />
-          <GroupedListItem icon="time-outline" title="Return help" onPress={() => navigation.navigate('ReturnHelp')} />
           <GroupedListItem
             icon="shield-checkmark-outline"
             title="Privacy & safety"

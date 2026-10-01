@@ -12,13 +12,16 @@ import { FeedSeenContext } from '../hooks/useInboxBadges';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { randomUUID } from 'expo-crypto';
+import { Image } from 'expo-image';
+import FeedWoodlandBackdrop from '../components/FeedWoodlandBackdrop';
+import FeedHeaderTextFade from '../components/FeedHeaderTextFade';
+import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   ScrollView,
-  RefreshControl,
   Animated,
   ActivityIndicator,
   AppState,
@@ -33,6 +36,8 @@ import NeighborRankBadge from '../components/NeighborRankBadge';
 import RankInfoSheet from '../components/RankInfoSheet';
 import { memberReputation } from '../utils/reputation';
 import { nextHomeAction } from '../utils/homeAction';
+import { trackedExchanges } from '../utils/exchangeTracking';
+import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import useSavedListings from '../hooks/useSavedListings';
 import useFeedHeader from '../hooks/useFeedHeader';
 import { useError } from '../context/ErrorContext';
@@ -52,11 +57,11 @@ import { ENABLE_PAID_TIERS } from '../utils/config';
 
 
 const FILTER_OPTIONS = [
-  { key: 'all', label: 'All' },
-  { key: 'listings', label: 'Borrow' },
-  { key: 'giveaway', label: 'Giveaways' },
-  { key: 'sell', label: 'For sale' },
-  { key: 'requests', label: 'Wanted' },
+  { key: 'all', label: 'All', icon: 'grid' },
+  { key: 'listings', label: 'Borrow', icon: listingIcon() },
+  { key: 'giveaway', label: 'Giveaways', icon: listingIcon({ listingType: 'giveaway' }) },
+  { key: 'sell', label: 'For sale', icon: 'money-bag' },
+  { key: 'requests', label: 'Wanted', icon: requestPresentation().icon },
 ];
 
 const VISIBILITY_OPTIONS = [
@@ -83,7 +88,7 @@ export default function FeedScreen({ navigation, route }) {
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
-  const { user, refreshUser, isGracePeriodActive } = useAuth();
+  const { user, refreshUser, isGracePeriodActive, feedWoodlandScene = 0 } = useAuth();
   const { showToast, showError } = useError();
   const saved = useSavedListings(navigation, user?.id, { showToast, showError });
   const [feed, setFeed] = useState([]);
@@ -337,6 +342,7 @@ export default function FeedScreen({ navigation, route }) {
   };
 
   const homeAction = nextHomeAction(activeExchanges, activeDisputes, user?.id);
+  const exchanges = trackedExchanges(activeExchanges, user?.id, new Date(), activeDisputes);
 
   const onEndReached = () => {
     if (!feedInFlight.current && !feedError && hasMore) {
@@ -402,7 +408,7 @@ export default function FeedScreen({ navigation, route }) {
       : `${visibilityFilters.length} Areas`;
 
   const categoryChipLabel = categoryFilters.length === 0
-    ? 'Categories'
+    ? 'All'
     : categoryFilters.length === 1
       ? categories.find(c => c.id === categoryFilters[0])?.name || 'Category'
       : `${categoryFilters.length} Categories`;
@@ -453,7 +459,9 @@ export default function FeedScreen({ navigation, route }) {
       style={[styles.publicReplies, compact && styles.ribbonReplies]}
     >
       <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
-      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>Comments</Text>
+      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>
+        {Number.isInteger(item.commentCount) ? `${item.commentCount} ${item.commentCount === 1 ? 'comment' : 'comments'}` : 'Comments'}
+      </Text>
       {!compact && <Text style={styles.publicRepliesAction}>View</Text>}
     </HapticPressable>
   );
@@ -542,20 +550,25 @@ export default function FeedScreen({ navigation, route }) {
     </LayeredCard>
   );
 
-  const renderBanners = () => homeAction ? (
-    <LayeredCard style={{ marginBottom: SPACING.md }}>
-      <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
-        accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
-        onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
-        style={styles.exchangeCard}>
-        <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
-        <View style={styles.exchangeContent}>
-          <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
-          <Text style={styles.exchangeActionText}>{homeAction.label}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
-      </HapticPressable>
-    </LayeredCard>
+  const renderBanners = () => homeAction || exchanges.length ? (
+    <View>
+      <ExchangeOverviewLink testID="Feed.exchanges.overview" count={exchanges.length || undefined}
+        needsYou={exchanges.filter(exchange => exchange.section === 'needs-you').length}
+        onPress={() => navigation.navigate('Exchanges')} />
+      {!!homeAction && <LayeredCard style={{ marginBottom: SPACING.md }}>
+        <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
+          accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
+          onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
+          style={styles.exchangeCard}>
+          <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
+          <View style={styles.exchangeContent}>
+            <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
+            <Text style={styles.exchangeActionText}>{homeAction.label}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+        </HapticPressable>
+      </LayeredCard>}
+    </View>
   ) : null;
 
   const carouselRequests = !search.trim() && activeFilters.length === 0
@@ -563,7 +576,7 @@ export default function FeedScreen({ navigation, route }) {
   const availableFeed = feed.filter(item => item.type !== 'listing' || listingAvailability(item).available);
   const verticalFeed = carouselRequests.length ? availableFeed.filter(item => item.type !== 'request') : availableFeed;
   const displayFeed = [
-    ...(homeAction && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
+    ...((homeAction || exchanges.length) && (feed.length || carouselRequests.length) ? [{ id:'banners',type:'feed-banners' }] : []),
     ...(carouselRequests.length ? [{ id:'request-carousel', type:'request-carousel' }] : []),
     ...(carouselRequests.length && verticalFeed.length ? [{ id:'available-heading',type:'listing-heading' }] : []), ...verticalFeed,
   ];
@@ -600,16 +613,22 @@ export default function FeedScreen({ navigation, route }) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: tabBarHeight }]}>
+    <View style={[styles.container, { paddingBottom: tabBarHeight }]}>
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
           style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
+          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} topOffset={-28} />
+          <FeedHeaderTextFade width={feedWidth} topOffset={insets.top} />
           <NativeHeader
             includeTopInset={false}
             title="Borrowhood"
-            titleStyle={styles.feedTitle}
+            style={[styles.feedHeaderSurface, { paddingTop: insets.top + SPACING.sm }, width < 375 && styles.feedHeaderSurfaceCompact]}
+            titleStyle={[styles.feedTitle, width < 375 && styles.feedTitleCompact]}
+            titleRowStyle={styles.feedTitleRow}
+            leftElement={<Image source={require('../../assets/logo.png')} contentFit="contain" transition={0}
+              style={styles.brandMark} accessible={false} />}
             rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
-              <Ionicons name="add" size={20} color={COLORS.surface} />
+              <Ionicons name="add" size={18} color={COLORS.surface} />
               <Text style={styles.addButtonText}>Post</Text>
             </HapticPressable>}
           >
@@ -626,13 +645,15 @@ export default function FeedScreen({ navigation, route }) {
                 <Text style={styles.neighborhoodFilterText} numberOfLines={1}>{neighborhood.name || 'Neighborhood'}</Text>
                 <Ionicons name="close" size={18} color={COLORS.primary} />
               </HapticPressable>}
-              <ScrollView horizontal style={styles.typeRibbon} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ScrollView horizontal style={[styles.typeRibbon, width < 375 && styles.typeRibbonCompact]} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.typeTabs} testID="Feed.typeRibbon" accessibilityRole="tablist" accessibilityLabel="Post type">
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
                     const label = option.key === 'all' && neighborhood ? 'All items' : option.label;
-                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, selected && styles.typeTabActive]}>
-                      <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{label}</Text>
+                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
+                      <Ionicons name={option.icon} size={26} illustrated color={COLORS.primary} accessible={false} />
+                      <Text numberOfLines={1} style={[styles.typeTabText, width < 400 && styles.typeTabTextCompact, selected && styles.typeTabTextActive]}>{label}</Text>
+                      {selected && <View accessible={false} style={styles.typeTabIndicator} />}
                     </HapticPressable>;
                   })}
                 </View>
@@ -640,7 +661,7 @@ export default function FeedScreen({ navigation, route }) {
             </>}
           </NativeHeader>
         </Animated.View>
-        <Animated.FlatList
+        <BorrowhoodRefreshList
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 800 }}
           ref={listRef}
@@ -657,16 +678,11 @@ export default function FeedScreen({ navigation, route }) {
           automaticallyAdjustKeyboardInsets
           bounces
           removeClippedSubviews={false}
-          style={{ backgroundColor: FEED.bg }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              progressViewOffset={feedHeader.height}
-              onRefresh={onRefresh}
-              tintColor={COLORS.spinner}
-              colors={[COLORS.spinner]}
-            />
-          }
+          refreshing={isRefreshing}
+          progressViewOffset={feedHeader.height}
+          indicatorTop={feedHeader.height}
+          onRefresh={onRefresh}
+          scrollY={feedHeader.scrollY}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
           ListHeaderComponent={
@@ -702,7 +718,7 @@ export default function FeedScreen({ navigation, route }) {
               </View>
             ) : null
           }
-          ListEmptyComponent={<View>{renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.spinner} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
+          ListEmptyComponent={<View>{(columns === 1 || !displayFeed.some(item => item.type === 'feed-banners')) && renderBanners()}{isFetching && !isRefreshing ? <ActivityIndicator style={{ padding: 40 }} color={COLORS.spinner} accessibilityLabel="Loading items" /> : !feedError && !hasFilters && user?.city ? (
             <View style={styles.welcomeContainer}>
               <HeroIcon icon="home-outline" size={88} />
               <Text style={styles.emptyTitle}>What would you like to do?</Text>
@@ -760,8 +776,8 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setShowFiltersSheet(false)}
         title="Filter posts"
         actions={[
-          { label: `Visibility · ${visibilityChipLabel}`, accessibilityLabel: 'Filter by visibility', icon: <Ionicons name="people-outline" size={22} />, onPress: () => setActiveDropdown('visibility') },
-          ...(categories.length ? [{ label: `Category · ${categoryChipLabel}`, accessibilityLabel: 'Filter by category', icon: <Ionicons name="pricetag-outline" size={22} />, onPress: () => setActiveDropdown('category') }] : []),
+          { label: `Visibility · ${visibilityChipLabel}`, accessibilityLabel: 'Filter by visibility', icon: <Ionicons name="neighbors-manage-outline" size={26} />, onPress: () => setActiveDropdown('visibility') },
+          ...(categories.length ? [{ label: `Category · ${categoryChipLabel}`, accessibilityLabel: 'Filter by category', icon: <Ionicons name="grid-outline" size={26} />, onPress: () => setActiveDropdown('category') }] : []),
           ...(extraFilterCount ? [{ label: 'Clear filters', onPress: () => { setVisibilityFilters([]); setCategoryFilters([]); setNeighborhood(null); } }] : []),
         ]}
       />
@@ -779,15 +795,15 @@ export default function FeedScreen({ navigation, route }) {
           {
             label: 'Everyone',
             icon: visibilityFilters.length === 0
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
+              : <Ionicons name="selection-check-empty" size={26} illustrated={false} color={COLORS.textMuted} />,
             onPress: () => { setVisibilityFilters([]); setNeighborhood(null); },
           },
           ...VISIBILITY_OPTIONS.filter(o => o.key !== 'all').map(opt => ({
             label: opt.label,
             icon: visibilityFilters.includes(opt.key)
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
+              : <Ionicons name="selection-check-empty" size={26} illustrated={false} color={COLORS.textMuted} />,
             onPress: opt.key === 'town'
               ? handleTownToggle
               : () => { setNeighborhood(null); toggleFilter(opt.key, visibilityKeys, setVisibilityFilters); },
@@ -806,16 +822,16 @@ export default function FeedScreen({ navigation, route }) {
         multiSelect
         actions={[
           {
-            label: 'All Categories',
+            label: 'All',
             icon: categoryFilters.length === 0
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              : <Ionicons name="ellipse-outline" size={20} color={COLORS.textMuted} />,
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
+              : <Ionicons name="selection-check-empty" size={26} illustrated={false} color={COLORS.textMuted} />,
             onPress: () => setCategoryFilters([]),
           },
           ...categories.map(cat => ({
             label: cat.name,
             icon: categoryFilters.includes(cat.id)
-              ? <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              ? <Ionicons name="selection-check" size={26} color={COLORS.primary} />
               : <CategoryIcon icon={cat.icon || 'pricetag-outline'} size={26} />,
             onPress: () => {
               const allCatIds = categories.map(c => c.id);
@@ -917,15 +933,22 @@ const styles = StyleSheet.create({
   ribbonAuthorButton: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
   ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
   ribbonRepliesText: { flex: 0 },
-  addButtonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface, fontWeight: '400' },
-  feedTitle: { fontSize: 28, lineHeight: 36 },
+  addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '400' },
+  feedTitle: { fontSize: 28, lineHeight: 36, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0, color: COLORS.primaryDark },
+  feedTitleCompact: { fontSize: 24, lineHeight: 32 },
+  feedTitleRow: { marginBottom: 44 },
+  brandMark: { width: 36, height: 36, flexShrink: 0 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
+  typeRibbonCompact: { marginHorizontal: -SPACING.lg },
   typeRibbonContent: { flexGrow: 1 },
-  typeTabs: { flexGrow: 1, flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator },
-  typeTab: { minHeight: 44, minWidth: 44, flexShrink: 0, paddingHorizontal: SPACING.xs, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  typeTabActive: { borderBottomColor: COLORS.primary },
-  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 14, fontWeight: '400', color: COLORS.textSecondary },
-  typeTabTextActive: { color: COLORS.primary },
+  typeTabs: { flex: 1, flexDirection: 'row', alignItems: 'stretch',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.borderGreen },
+  typeTab: { flex: 1, minWidth: 44, minHeight: 64, paddingTop: 4, paddingBottom: SPACING.sm, gap: 4,
+    alignItems: 'center', justifyContent: 'center' },
+  typeTabIndicator: { position: 'absolute', bottom: 0, width: 28, height: 3, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 13, lineHeight: 20, fontWeight: '400', color: COLORS.textSecondary },
+  typeTabTextCompact: { fontSize: 12 },
+  typeTabTextActive: { fontFamily: 'DMSans_600SemiBold', color: COLORS.primaryDark },
   sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
   requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   requestTitle: { fontSize: 22, lineHeight: 29 },
@@ -939,25 +962,29 @@ const styles = StyleSheet.create({
   },
   feedViewport: { flex: 1, overflow: 'hidden' },
   feedHeader: { position: 'absolute', top: 0, zIndex: 1, backgroundColor: FEED.bg },
+  feedHeaderSurface: { backgroundColor: 'transparent', paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
+  feedHeaderSurfaceCompact: { paddingHorizontal: SPACING.lg },
   skeletonContainer: {
     padding: SPACING.lg,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.surface, borderRadius: RADIUS.full,
+    paddingRight: SPACING.xs, paddingVertical: 2, marginBottom: SPACING.md, ...SHADOWS.md,
   },
   headerSearchBar: {
-    flex: 1, backgroundColor: COLORS.surface, borderWidth: 0, borderRadius: RADIUS.md,
+    flex: 1, minWidth: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: RADIUS.full,
   },
-  filtersButton: { width: 48, height: 48, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
+  filtersButton: { width: 44, height: 44, flexShrink: 0, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.primaryMuted },
   neighborhoodFilter: { minHeight: 44, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: RADIUS.full,
     alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryMuted },
   neighborhoodFilterText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
   filtersButtonActive: { backgroundColor: COLORS.primary },
   addButton: {
     flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+    ...SHADOWS.md,
   },
   filtersSection: {
     paddingBottom: SPACING.md,

@@ -1,3 +1,4 @@
+import ContentSafetyActions from '../components/ContentSafetyActions';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -303,6 +304,7 @@ export default function RequestDetailScreen({ route, navigation }) {
         </HapticPressable>)}
         {acceptingOffers && <ActionButton label="Add a comment" onPress={() => openComments(true)} />}
       </View></LayeredCard>}
+      {!request.isOwner && <ContentSafetyActions type="request" id={request.id} variant="subtle" onBlocked={() => navigation.goBack()} />}
     </ScrollView>
 
     {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}

@@ -23,6 +23,7 @@ beforeAll(async()=>{
   state.db=new PGlite();
   await state.db.exec(await readFile(new URL('../helpers/launch-schema.sql',import.meta.url),'utf8'));
   await state.db.exec(await readFile(new URL('../../migrations/020_exchange_endorsements.sql',import.meta.url),'utf8'));
+  await state.db.exec(await readFile(new URL('../../migrations/025_discussion_thread_controls.sql',import.meta.url),'utf8'));
   await ensureFeedWindowSchema();
   await state.db.query('INSERT INTO users(id) VALUES($1),($2)',[owner,viewer]);
   // Equal microsecond timestamps expose skipped/duplicated keyset boundaries.
@@ -91,6 +92,34 @@ it('refreshes an expired snapshot and rejects out-of-sequence deep requests',asy
   await state.db.query("UPDATE feed_windows SET created_at=NOW()-INTERVAL '2 days' WHERE token=$1",[session]);
   expect((await get({session})).status).toBe(200);
   expect((await get({session:randomUUID(),page:11})).status).toBe(409);
+});
+it('rotates viewed posts on a fresh session while preserving the current order and search access',async()=>{
+  const observer=randomUUID(),otherObserver=randomUUID();
+  await state.db.query('INSERT INTO users(id) VALUES($1),($2)',[observer,otherObserver]);
+  const observerToken=jwt.sign({userId:observer},process.env.JWT_SECRET);
+  const session=randomUUID();
+  const first=await get({session,layout:'sections'},observerToken);
+  expect(first.status).toBe(200);
+  const listingKeys=first.body.items.map(item=>item.id);
+  const requestKeys=first.body.requests.map(item=>item.id);
+  const events=[...listingKeys.map(id=>({id,type:'listing',event:'seen'})),...requestKeys.map(id=>({id,type:'request',event:'seen'}))];
+  expect((await request(app).post('/feed/events').set('Authorization',`Bearer ${observerToken}`).send({events})).status).toBe(200);
+  const repeated=await get({session,layout:'sections'},observerToken);
+  expect(repeated.body.items.map(item=>item.id)).toEqual(listingKeys);
+  expect(repeated.body.requests.map(item=>item.id)).toEqual(requestKeys);
+  const fresh=await get({session:randomUUID(),layout:'sections'},observerToken);
+  expect(fresh.body.items.every(item=>!listingKeys.includes(item.id))).toBe(true);
+  expect(fresh.body.requests.every(item=>!requestKeys.includes(item.id))).toBe(true);
+  // A recent view by somebody else must not reset this viewer's cooldown.
+  const selected=listingKeys[0];
+  await state.db.query("UPDATE feed_events SET seen_at=NOW()-INTERVAL '8 days' WHERE user_id=$1 AND item_id=$2",[observer,selected]);
+  await state.db.query("INSERT INTO feed_events(user_id,item_type,item_id,seen_at) VALUES($1,'listing',$2,NOW())",[otherObserver,selected]);
+  const recovered=await get({session:randomUUID(),layout:'sections'},observerToken);
+  expect(recovered.body.items.some(item=>item.id===selected)).toBe(true);
+  const matching=await get({session:randomUUID(),search:first.body.items[0].title},observerToken);
+  expect(matching.body.items.some(item=>item.id===selected)).toBe(true);
+  // Keep the retention test below independent of this scenario's impressions.
+  await state.db.query('DELETE FROM feed_events WHERE user_id=ANY($1::uuid[])',[[observer,otherObserver]]);
 });
 it('cleans expired ranking data while retaining current snapshots and recent clicks',async()=>{
   const old=randomUUID(),recent=randomUUID(),session=randomUUID();
