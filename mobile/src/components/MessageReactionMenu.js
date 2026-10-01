@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Modal, View, Pressable, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EmojiReactionPicker from './EmojiReactionPicker';
+import { reactionPickerHeight } from '../utils/reactions';
 
 // Window coordinates belong in a modal. A nested thread/header must not clip
 // the toolbar or subtract its own layout offset from the long-press position.
@@ -14,7 +15,7 @@ export default function MessageReactionMenu({ visible, position, onClose, onSele
   useEffect(() => () => { pendingMore.current = null; }, []);
   const close = () => { pendingMore.current = null; onClose(); };
   const more = () => { pendingMore.current = onMore; onClose(); };
-  const pickerHeight = options ? 260 : 64;
+  const pickerHeight = reactionPickerHeight(options?.length, !!onMore);
   const top = Math.max(insets.top + 12, Math.min((position?.y ?? height * .4) - pickerHeight, height - insets.bottom - pickerHeight - 16));
   return <Modal visible={!!visible} transparent animationType="fade" onRequestClose={close} onDismiss={finishDismissal}>
     <View style={StyleSheet.absoluteFill}>

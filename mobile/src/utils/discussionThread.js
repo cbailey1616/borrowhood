@@ -1,11 +1,36 @@
 import { COLORS } from './config';
 
-export const DISCUSSION_EMOJIS = [
-  ['👍','Like'],['❤️','Love'],['😂','Laugh'],['😮','Surprised'],['😢','Sad'],
-  ['🔥','Fire'],['🎉','Celebrate'],['👀','Eyes'],['💯','Hundred percent'],
-  ['🙏','Thank you'],['🤔','Thinking'],['👏','Applause'],['🙌','Raised hands'],
-  ['😊','Smile'],['✅','Check'],['🤝','Handshake'],['✨','Sparkles'],['🛋️','Sofa'],['👎','Dislike'],
-].map(([emoji,label]) => ({ key: emoji, emoji, label }));
+// Match the rest of the app; small secondary text also stays AA-readable on pills.
+export const DISCUSSION_LIGHT_COLORS = { ...COLORS, textMuted: COLORS.textSecondary };
+
+export function formatDiscussionTime(value, now = Date.now()) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const minutes = Math.floor(Math.max(0, now - date.getTime()) / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
+  if (minutes < 10080) return `${Math.floor(minutes / 1440)}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function discussionInitials(user) {
+  const name = user?.displayName || [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+  const parts = name.split(/\s+/).map(part => part.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean);
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0]?.[0] || 'N').toUpperCase();
+}
+
+// Both rectangles come from measureInWindow, including the native header/safe areas.
+export function composerScrollOffset(offset, viewport, composer, margin = 8) {
+  if (!viewport || !composer || viewport.height <= 0 || composer.height <= 0) return offset;
+  const top = viewport.y + margin;
+  const bottom = viewport.y + viewport.height - margin;
+  if (composer.y + composer.height > bottom) return Math.max(0, offset + composer.y + composer.height - bottom);
+  if (composer.y < top) return Math.max(0, offset + composer.y - top);
+  return offset;
+}
+
+export { REACTION_OPTIONS as DISCUSSION_EMOJIS } from './reactions';
 
 export const DISCUSSION_DARK_COLORS = {
   ...COLORS, background: '#151D19', surface: '#202B24', surfaceElevated: '#29362C',

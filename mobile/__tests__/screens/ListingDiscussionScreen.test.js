@@ -143,7 +143,8 @@ describe('ListingDiscussionScreen', () => {
       persist: jest.fn(),
     }));
     const composerPadding = () => StyleSheet.flatten(screen.getByTestId('Comments.composer').props.style).paddingBottom;
-    expect(composerPadding()).toBeGreaterThanOrEqual(mockInsets.bottom);
+    expect(composerPadding()).toBe(8);
+    expect(StyleSheet.flatten(screen.UNSAFE_getByType(FlatList).props.contentContainerStyle).paddingBottom).toBeGreaterThanOrEqual(mockInsets.bottom);
     await act(async () => DeviceEventEmitter.emit('keyboardWillShow', {
       duration: 0, easing: 'keyboard',
       endCoordinates: { screenY: keyboardTop, screenX: 0, width: 390, height: screenHeight - keyboardTop },
@@ -162,7 +163,8 @@ describe('ListingDiscussionScreen', () => {
       endCoordinates: { screenY: screenHeight, screenX: 0, width: 390, height: 0 },
     }));
     expect(StyleSheet.flatten(screen.getByTestId('Comments.keyboardLayout').props.style).paddingBottom).toBe(0);
-    expect(composerPadding()).toBeGreaterThanOrEqual(mockInsets.bottom);
+    expect(composerPadding()).toBe(8);
+    expect(StyleSheet.flatten(screen.UNSAFE_getByType(FlatList).props.contentContainerStyle).paddingBottom).toBeGreaterThanOrEqual(mockInsets.bottom);
   });
 
   it('fetches discussions on mount', async () => {
@@ -455,10 +457,14 @@ describe('focused comment threads', () => {
     api.getDiscussionReplies.mockResolvedValueOnce({ replies: firstPage }).mockResolvedValueOnce({ replies: [makePost('reply-50', 'Last neighbor')] });
     const screen = renderScreen();
     fireEvent.press(await screen.findByLabelText('View 51 replies to Alice'));
-    fireEvent.press(await screen.findByText('Show more replies'));
-    await waitFor(() => expect(api.getDiscussionReplies).toHaveBeenLastCalledWith('listing-1', 'root-alice', { page: 2, limit: 50 }));
     await waitFor(() => expect(screen.UNSAFE_getByType(FlatList).props.data).toHaveLength(52));
-    expect(screen.queryByText('Show more replies')).toBeNull();
+    const list = screen.UNSAFE_getByType(FlatList);
+    const end = list.props.data.length - 1;
+    const footer = render(list.props.renderItem({item:list.props.data[end],index:end}));
+    fireEvent.press(footer.getByText('Show more replies'));
+    await waitFor(() => expect(api.getDiscussionReplies).toHaveBeenLastCalledWith('listing-1', 'root-alice', { page: 2, limit: 50 }));
+    await waitFor(() => expect(screen.UNSAFE_getByType(FlatList).props.data).toHaveLength(53));
+    expect(screen.UNSAFE_getByType(FlatList).props.data.filter(row => row.kind === 'composer')).toHaveLength(1);
   });
 });
 
@@ -523,7 +529,7 @@ it('keeps multiple emoji reactions and removes only the selected chip',async()=>
  const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
  fireEvent.press(await screen.findByLabelText('Like reaction, 1'));
  await waitFor(()=>expect(api.removeDiscussionReaction).toHaveBeenCalledWith('listing-1','multi','👍'));
- expect(screen.getByLabelText('🔥 reaction, 1')).toBeTruthy();
+ expect(screen.getByLabelText('Fire reaction, 1')).toBeTruthy();
  expect(screen.queryByLabelText('Like reaction, 1')).toBeNull();
 });
 
@@ -569,4 +575,138 @@ it('suggests a visible neighbor at @ and preserves the main draft while sorting'
  fireEvent.press(screen.getByLabelText('Sort newest'));
  await waitFor(()=>expect(api.getDiscussions).toHaveBeenLastCalledWith('listing-1',{limit:50,page:1,sort:'newest'}));
  expect(screen.getByLabelText('Comment').props.value).toBe('@Alice ');
+});
+
+it('uses the app light theme even when the iPhone is in dark mode, with one scrolling header',async()=>{
+ const scheme=jest.spyOn(require('react-native'),'useColorScheme').mockReturnValue('dark');
+ try {
+  const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
+  await screen.findByLabelText('Comment');
+  const { COLORS }=require('../../src/utils/config');
+  expect(StyleSheet.flatten(screen.getByTestId('Comments.keyboardLayout').props.style).backgroundColor).toBe(COLORS.background);
+  expect(mockNavigation.setOptions).toHaveBeenLastCalledWith(expect.objectContaining({headerStyle:{backgroundColor:COLORS.background},statusBarStyle:'dark'}));
+  expect(screen.getByLabelText('Comment').props.keyboardAppearance).toBe('light');
+  const header=screen.getByTestId('Comments.header');
+  const all=header.findAll(node=>['View original post','Comment','Post comment'].includes(node.props.accessibilityLabel));
+  expect(new Set(all.map(node=>node.props.accessibilityLabel))).toEqual(new Set(['View original post','Comment','Post comment']));
+  expect(StyleSheet.flatten(screen.getByTestId('Comments.composer').props.style).paddingBottom).toBe(8);
+ } finally { scheme.mockRestore(); }
+});
+
+it('connects replies to their parent and puts one rounded editor after the replies',async()=>{
+ api.getDiscussions.mockResolvedValue({posts:[makePost('parent','Chris',{replyCount:1})]});
+ api.getDiscussionReplies.mockResolvedValue({replies:[makePost('child','Kate',{replyToId:'parent',user:{id:'kate',firstName:'Kate',lastName:'K.'}})]});
+ const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
+ fireEvent.press(await screen.findByLabelText('View 1 reply to Chris'));
+ await screen.findByText('KK');
+ const rows=screen.UNSAFE_getByType(FlatList).props.data;
+ expect(rows.map(row=>row.id)).toEqual(['parent','child','composer-parent']);
+ expect(StyleSheet.flatten(screen.getByTestId('Comments.row.parent').props.style).marginBottom).toBeUndefined();
+ expect(StyleSheet.flatten(screen.getByTestId('Comments.row.child').props.style).marginBottom).toBeUndefined();
+ const rail=StyleSheet.flatten(screen.getByTestId('Comments.rail.child.1').props.style);
+ const connector=StyleSheet.flatten(screen.getByTestId('Comments.connector.parent').props.style);
+ expect(rail).toMatchObject({top:0,bottom:0,width:2,left:connector.left});
+ expect(StyleSheet.flatten(screen.getByTestId('Comments.composer').props.style).backgroundColor).toBe('transparent');
+ expect(screen.getByLabelText('Kate K. avatar')).toBeTruthy();
+ expect(StyleSheet.flatten(screen.getByLabelText('Kate K. avatar').props.style).backgroundColor).toBe(require('../../src/utils/config').COLORS.primaryMuted);
+ expect(screen.getByLabelText('Collapse comment by Chris')).toBeTruthy();
+ expect(screen.getByTestId('Comments.replyEditorRow.parent')).toBeTruthy();
+});
+
+it('preserves the actual reply editor and draft when delayed replies arrive',async()=>{
+ let resolveReplies;
+ api.getDiscussions.mockResolvedValue({posts:[makePost('parent','Chris',{replyCount:1})]});
+ api.getDiscussionReplies.mockReturnValueOnce(new Promise(resolve=>{resolveReplies=resolve;}));
+ const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
+ fireEvent.press(await screen.findByLabelText('Reply to Chris'));
+ const editor=await screen.findByLabelText('Comment');
+ fireEvent(editor,'focus');
+ fireEvent.changeText(editor,'Tomorrow works 👍');
+ await act(async()=>resolveReplies({replies:[makePost('late','Kate',{replyToId:'parent'})]}));
+ await screen.findByText('Kate’s comment');
+ expect(screen.getByLabelText('Comment')).toBe(editor);
+ expect(screen.getByLabelText('Comment').props.value).toBe('Tomorrow works 👍');
+ expect(screen.UNSAFE_getByType(FlatList).props.data.at(-1).id).toBe('composer-parent');
+});
+
+it('scrolls the full reply card into the resized iPhone viewport when the keyboard opens',async()=>{
+ let keyboardOpen=false;
+ View.prototype.measureInWindow.mockImplementation(function(callback){
+  const id=this.props?.testID;
+  if(id==='Comments.keyboardLayout') callback(0,120,390,724);
+  else if(id==='Comments.viewport') callback(0,120,390,keyboardOpen?400:724);
+  else if(id==='Comments.composer') callback(16,460,358,210);
+  else callback(0,120,390,100);
+ });
+ const scroll=jest.spyOn(FlatList.prototype,'scrollToOffset').mockImplementation(()=>{});
+ const jump=jest.spyOn(FlatList.prototype,'scrollToIndex').mockImplementation(()=>{});
+ try {
+  api.getDiscussions.mockResolvedValue({posts:[makePost('parent','Chris')]});
+  const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
+  fireEvent.press(await screen.findByLabelText('Reply to Chris'));
+  fireEvent(await screen.findByLabelText('Comment'),'focus');
+  act(()=>screen.UNSAFE_getByType(FlatList).props.onScroll({nativeEvent:{contentOffset:{y:100}}}));
+  keyboardOpen=true;
+  await act(async()=>DeviceEventEmitter.emit('keyboardDidShow',{duration:0,easing:'keyboard',endCoordinates:{screenY:520,screenX:0,width:390,height:324}}));
+  await waitFor(()=>expect(scroll).toHaveBeenCalledWith({offset:258,animated:true}));
+  expect(StyleSheet.flatten(screen.getByTestId('Comments.keyboardLayout').props.style).paddingBottom).toBe(324);
+  await act(async()=>DeviceEventEmitter.emit('keyboardDidHide',{duration:0,easing:'keyboard'}));
+ } finally {scroll.mockRestore();jump.mockRestore();}
+});
+
+it('reveals a still-focused editor when delayed replies move it behind the open keyboard',async()=>{
+ let resolveReplies;
+ let keyboardOpen=false;
+ let composerY=300;
+ View.prototype.measureInWindow.mockImplementation(function(callback){
+  const id=this.props?.testID;
+  if(id==='Comments.keyboardLayout') callback(0,120,390,724);
+  else if(id==='Comments.viewport') callback(0,120,390,keyboardOpen?400:724);
+  else if(id==='Comments.composer') callback(16,composerY,358,180);
+  else callback(0,120,390,100);
+ });
+ const scroll=jest.spyOn(FlatList.prototype,'scrollToOffset').mockImplementation(()=>{});
+ const jump=jest.spyOn(FlatList.prototype,'scrollToIndex').mockImplementation(()=>{});
+ try {
+  api.getDiscussions.mockResolvedValue({posts:[makePost('parent','Chris',{replyCount:2})]});
+  api.getDiscussionReplies.mockReturnValueOnce(new Promise(resolve=>{resolveReplies=resolve;}));
+  const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
+  fireEvent.press(await screen.findByLabelText('Reply to Chris'));
+  const editor=await screen.findByLabelText('Comment');
+  fireEvent(editor,'focus');
+  fireEvent.changeText(editor,'Tomorrow works 👍');
+  const list=screen.UNSAFE_getByType(FlatList);
+  act(()=>list.props.onScroll({nativeEvent:{contentOffset:{y:100}}}));
+  keyboardOpen=true;
+  await act(async()=>DeviceEventEmitter.emit('keyboardDidShow',{
+   duration:0,easing:'keyboard',endCoordinates:{screenY:520,screenX:0,width:390,height:324},
+  }));
+  // Consume the opening jump and finish its scheduled measurements. The
+  // later reveal must come from changed content, not a pending focus event.
+  act(()=>list.props.onContentSizeChange());
+  await act(async()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+  await act(async()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+  expect(scroll).not.toHaveBeenCalled();
+  scroll.mockClear();
+  jump.mockClear();
+
+  await act(async()=>resolveReplies({replies:[
+   makePost('late-one','Kate',{replyToId:'parent'}),
+   makePost('late-two','Lauren',{replyToId:'parent'}),
+  ]}));
+  await screen.findByText('Kate’s comment');
+  expect(screen.getByLabelText('Comment')).toBe(editor);
+  expect(screen.getByLabelText('Comment').props.value).toBe('Tomorrow works 👍');
+  // Its cell has moved, but the editor's own size/relative layout is unchanged.
+  composerY=460;
+  act(()=>screen.UNSAFE_getByType(FlatList).props.onContentSizeChange());
+  await waitFor(()=>expect(scroll).toHaveBeenCalledWith({offset:228,animated:true}));
+  expect(jump).not.toHaveBeenCalled();
+  await act(async()=>DeviceEventEmitter.emit('keyboardDidHide',{duration:0,easing:'keyboard'}));
+ } finally {scroll.mockRestore();jump.mockRestore();}
 });

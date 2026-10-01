@@ -1,96 +1,47 @@
 import { useCallback } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import BlurCard from './BlurCard';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
-import ReactionIcon, { REACTION_OPTIONS } from './ReactionIcon';
+import ReactionIcon from './ReactionIcon';
+import { REACTION_OPTIONS, REACTION_PICKER_COLUMNS, REACTION_PICKER_CELL_HEIGHT, REACTION_PICKER_PADDING } from '../utils/reactions';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS } from '../utils/config';
+import { COLORS } from '../utils/config';
 
-const EMOJI_OPTIONS = REACTION_OPTIONS;
+export { REACTION_OPTIONS as EMOJI_OPTIONS } from '../utils/reactions';
 
-export { EMOJI_OPTIONS };
-
-export default function EmojiReactionPicker({ onSelect, onMore, style, options, colors = COLORS }) {
+export default function EmojiReactionPicker({ onSelect, onMore, style, options = REACTION_OPTIONS, colors = COLORS }) {
   const { width } = useWindowDimensions();
-  const handleSelect = useCallback((emoji) => {
+  const handleSelect = useCallback(emoji => {
     haptics.light();
     onSelect?.(emoji);
   }, [onSelect]);
-
   const handleMore = useCallback(() => {
     haptics.light();
     onMore?.();
   }, [onMore]);
 
-  if (options) return <Animated.View entering={FadeIn.duration(150)} style={[styles.container,style]}>
-    <View style={{width:Math.min(340,width-32),borderRadius:18,padding:12,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.borderLight}}>
-      <View style={{flexDirection:'row',flexWrap:'wrap'}}>
-        {options.map(item => <HapticPressable key={item.key} accessibilityLabel={`React: ${item.label}`}
-          style={{width:'16.666%',minHeight:44,alignItems:'center',justifyContent:'center'}} onPress={() => handleSelect(item.emoji)}>
-          <Text style={{fontSize:25}}>{item.emoji}</Text>
+  return <Animated.View entering={FadeIn.duration(150)} style={[styles.container, style]}>
+    <View style={[styles.card, { width: Math.min(340, width - 32), backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+      <View style={styles.grid}>
+        {options.map(item => <HapticPressable key={item.key} accessibilityRole="button"
+          accessibilityLabel={`React: ${item.label}`} haptic={null} style={styles.emojiButton}
+          onPress={() => handleSelect(item.emoji)}>
+          <ReactionIcon emoji={item.emoji} size={25} />
         </HapticPressable>)}
-        {!!onMore && <HapticPressable style={{minHeight:44,width:'100%',alignItems:'center',justifyContent:'center'}}
-          onPress={handleMore} accessibilityLabel="More message actions"><Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted}/></HapticPressable>}
       </View>
+      {!!onMore && <HapticPressable accessibilityRole="button" accessibilityLabel="More message actions"
+        haptic={null} onPress={handleMore} style={styles.moreButton}>
+        <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+      </HapticPressable>}
     </View>
   </Animated.View>;
-
-  return (
-    <Animated.View entering={FadeIn.duration(150)} style={[styles.container, style]}>
-      <BlurCard style={styles.card} intensity={80}>
-        <View style={[styles.bar, { width: Math.min(340, width - 32) }]}>
-          {EMOJI_OPTIONS.map((item, index) => (
-            <Animated.View key={item.key} style={styles.slot} entering={FadeIn.delay(index * 30)}>
-              <HapticPressable
-                onPress={() => handleSelect(item.emoji)}
-                accessibilityRole="button"
-                accessibilityLabel={`React: ${item.label}`}
-                haptic={null}
-                style={styles.emojiButton}
-              >
-                <ReactionIcon emoji={item.emoji} />
-              </HapticPressable>
-            </Animated.View>
-          ))}
-          <Animated.View style={styles.slot} entering={FadeIn.delay(EMOJI_OPTIONS.length * 30)}>
-            <HapticPressable onPress={handleMore} haptic={null} style={styles.moreButton} accessibilityRole="button" accessibilityLabel="More message actions">
-              <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textSecondary} />
-            </HapticPressable>
-          </Animated.View>
-        </View>
-      </BlurCard>
-    </Animated.View>
-  );
 }
-
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    zIndex: 100,
-  },
-  card: {
-    borderRadius: RADIUS.full,
-  },
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-  },
-  slot: { flex: 1 },
-  emojiButton: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-  },
-  moreButton: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    backgroundColor: COLORS.surfaceElevated,
-  },
+  container: { position: 'absolute', zIndex: 100 },
+  card: { borderRadius: 18, padding: REACTION_PICKER_PADDING, borderWidth: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  emojiButton: { width: `${100 / REACTION_PICKER_COLUMNS}%`, height: REACTION_PICKER_CELL_HEIGHT,
+    alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  moreButton: { height: REACTION_PICKER_CELL_HEIGHT, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
 });

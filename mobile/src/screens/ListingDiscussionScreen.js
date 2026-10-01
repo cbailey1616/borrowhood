@@ -4,11 +4,11 @@ import MessageReactions from '../components/MessageReactions';
 import ContentSafetyActions from '../components/ContentSafetyActions';
 import { randomUUID } from 'expo-crypto';
 import DiscussionComposer from '../components/DiscussionComposer';
-import { DISCUSSION_EMOJIS, DISCUSSION_DARK_COLORS, flattenDiscussion, discussionMentions, removeDiscussionBranch } from '../utils/discussionThread';
+import { DISCUSSION_EMOJIS, DISCUSSION_LIGHT_COLORS, flattenDiscussion, discussionMentions, removeDiscussionBranch, formatDiscussionTime, discussionInitials, composerScrollOffset } from '../utils/discussionThread';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ShimmerImage from '../components/ShimmerImage';
 import ConversationContextCard from '../components/ConversationContextCard';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { UNSTABLE_usePreventRemove as usePreventRemove, useIsFocused } from '@react-navigation/native';
 import useNavigationTask from '../hooks/useNavigationTask';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +19,6 @@ import {
   FlatList,
   ActivityIndicator,
   Keyboard,
-  useColorScheme,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
@@ -31,8 +30,7 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
-  const scheme = useColorScheme();
-  const colors = useMemo(() => scheme === 'dark' ? DISCUSSION_DARK_COLORS : COLORS, [scheme]);
+  const colors = DISCUSSION_LIGHT_COLORS;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isFocused = useIsFocused();
   const startNavigationTask = useNavigationTask(navigation, route.params.requestId || route.params.listingId);
@@ -49,6 +47,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const isOwner = target?.isOwner;
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [failedAvatars, setFailedAvatars] = useState(new Set());
   const [reactionTarget, setReactionTarget] = useState(null);
   const reacting = useRef(false);
   const [actionTarget, setActionTarget] = useState(null);
@@ -92,9 +91,60 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
+  const listViewportRef = useRef(null);
+  const listOffset = useRef(0);
+  const composerRefs = useRef({});
+  const composerRefCallbacks = useRef({});
+  const keyboardVisibleRef = useRef(keyboardVisible);
+  keyboardVisibleRef.current = keyboardVisible;
+  const focusedComposerKey = useRef(null);
+  const pendingComposerFocus = useRef(null);
+
+  const ensureComposerVisible = useCallback(() => {
+    const key = focusedComposerKey.current;
+    const editor = composerRefs.current[key];
+    if (!editor || !listViewportRef.current) return;
+    listViewportRef.current.measureInWindow((_x, y, _width, height) => {
+      editor.measureInWindow((_cx, editorY, _cw, editorHeight) => {
+        if (composerRefs.current[key] !== editor || focusedComposerKey.current !== key) return;
+        const offset = composerScrollOffset(listOffset.current, {y,height}, {y:editorY,height:editorHeight});
+        if (Math.abs(offset - listOffset.current) > 1) listRef.current?.scrollToOffset({offset,animated:true});
+      });
+    });
+  }, []);
+
+  const focusReplyComposer = useCallback(() => {
+    const key = pendingComposerFocus.current;
+    if (!key || !composerRefs.current[key] || !inputRef.current) return;
+    pendingComposerFocus.current = null;
+    inputRef.current.focus();
+    requestAnimationFrame(ensureComposerVisible);
+  }, [ensureComposerVisible]);
   const scrollTarget = useRef(null);
   const scrollRetry = useRef(null);
   const scrollAttempts = useRef(0);
+  const scrollPosition = useRef(0.3);
+
+  // Stable callback refs distinguish a real native remount from an ordinary keystroke.
+  const composerRef = key => {
+    if (!composerRefCallbacks.current[key]) composerRefCallbacks.current[key] = node => {
+      composerRefs.current[key] = node;
+      if (!node && focusedComposerKey.current === key && keyboardVisibleRef.current) pendingComposerFocus.current = key;
+      if (node && pendingComposerFocus.current === key) requestAnimationFrame(focusReplyComposer);
+    };
+    return composerRefCallbacks.current[key];
+  };
+
+  useEffect(() => {
+    const reveal = () => requestAnimationFrame(ensureComposerVisible);
+    const shown = Keyboard.addListener('keyboardDidShow', reveal);
+    const changed = Keyboard.addListener('keyboardDidChangeFrame', reveal);
+    return () => { shown.remove(); changed.remove(); };
+  }, [ensureComposerVisible]);
+
+  useEffect(() => {
+    if (keyboardVisible) requestAnimationFrame(ensureComposerVisible);
+  }, [keyboardVisible, ensureComposerVisible]);
 
   useEffect(() => () => clearTimeout(scrollRetry.current), [activeThreadId]);
 
@@ -122,6 +172,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     pendingSubmissions.current = {};
     clearTimeout(scrollRetry.current);
     scrollTarget.current = null;
+    focusedComposerKey.current = null; pendingComposerFocus.current = null; listOffset.current = 0;
     scrollAttempts.current = 0;
     setReactionTarget(null); setActionTarget(null);
     setReplyToPostId(null); setExpandedThreads(new Set()); setCollapsedComments(new Set());
@@ -140,7 +191,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
 
 
   useEffect(() => {
-    navigation.setOptions({ title: 'Comments', headerBackButtonMenuEnabled: false, headerStyle: {backgroundColor:colors.background}, headerTintColor:colors.text });
+    navigation.setOptions({ title: 'Comments', headerBackButtonMenuEnabled: false, headerStyle: {backgroundColor:colors.background}, headerTintColor:colors.text, statusBarStyle:'dark', contentStyle:{backgroundColor:colors.background} });
   }, [activeThreadId, navigation, colors]);
 
   usePreventRemove(isFocused && !!activeThreadId, () => closeThread());
@@ -244,11 +295,13 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     setActiveThreadId(postId);
     setSendError('');
     if (!loadedReplies.current.has(postId)) fetchReplies(postId);
-    scrollTarget.current = {draftKey:postId,messageId:replyToId};
-    if (focus) setTimeout(() => inputRef.current?.focus(), 50);
+    scrollAttempts.current = 0;
+    pendingComposerFocus.current = focus ? postId : null;
+    if (focus) scrollTarget.current = {draftKey:postId,composer:true};
   };
 
   const closeThread = () => {
+    focusedComposerKey.current = null; pendingComposerFocus.current = null;
     Keyboard.dismiss();
     setActiveThreadId(null);
     setReplyToPostId(null);
@@ -374,21 +427,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     setDeleteSheetVisible(true);
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   const openPrivateChat = async (post) => {
     if (openingChat.current) return;
     const isCurrent = startNavigationTask();
@@ -429,6 +467,22 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   };
 
   const threadRows = useMemo(() => flattenDiscussion(posts,replies,expandedThreads,collapsedComments,sort), [posts,replies,expandedThreads,collapsedComments,sort]);
+  // Keep the reply editor keyed independently of the last reply so loading or
+  // sorting replies does not replace the native TextInput being edited.
+  const listRows = useMemo(() => threadRows.flatMap((post,index) => {
+    const lastInThread = threadRows[index+1]?.rootId !== post.rootId;
+    return lastInThread && activeThreadId === post.rootId && !collapsedComments.has(post.rootId)
+      ? [post,{id:`composer-${post.rootId}`,rootId:post.rootId,kind:'composer',depth:0}] : [post];
+  }), [threadRows,activeThreadId,collapsedComments]);
+
+  useEffect(() => {
+    if (pendingComposerFocus.current !== activeThreadId || !activeThreadId) return;
+    const index = listRows.findIndex(row => row.kind === 'composer' && row.rootId === activeThreadId);
+    scrollPosition.current = 1;
+    if (index >= 0) listRef.current?.scrollToIndex({index,animated:false,viewPosition:1});
+    requestAnimationFrame(focusReplyComposer);
+  }, [activeThreadId, replyToPostId, listRows, focusReplyComposer]);
+
   const mentions = useMemo(() => discussionMentions(posts,replies,user), [posts,replies,user]);
   const replyTarget = replyToPostId ? threadRows.find(post => post.id === replyToPostId) : null;
 
@@ -451,10 +505,15 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     const name = [post.user.firstName,post.user.lastName].filter(Boolean).join(' ') || 'Neighbor';
     const collapsed = collapsedComments.has(post.id);
     const identity = <>
-      <ShimmerImage placeholderIcon="person" source={{uri:post.user.profilePhotoUrl || null}} style={styles.postAvatar}/>
+      {post.user.profilePhotoUrl && !failedAvatars.has(post.user.profilePhotoUrl)
+        ? <ShimmerImage placeholderIcon="person" source={{uri:post.user.profilePhotoUrl}} style={styles.postAvatar}
+          onError={() => setFailedAvatars(previous => new Set([...previous,post.user.profilePhotoUrl]))}/>
+        : <View style={[styles.postAvatar,styles.fallbackAvatar]} accessibilityLabel={`${name} avatar`}>
+          <Text style={styles.avatarInitials}>{discussionInitials(post.user)}</Text>
+        </View>}
       <View style={styles.commentMeta}>
         <Text style={styles.postAuthor}>{name}</Text>
-        <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
+        <Text style={styles.postDate}>{formatDiscussionTime(post.createdAt)}</Text>
       </View>
     </>;
     return <HapticPressable style={styles.comment} onLongPress={event => openReactions(post,parentId,event)}
@@ -466,7 +525,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           accessibilityState={{expanded:!collapsed}} style={styles.moreButton} onPress={() => {
             setCollapsedComments(previous => { const next = new Set(previous); if (next.has(post.id)) next.delete(post.id); else next.add(post.id); return next; });
             if (!collapsed && activeThreadId === (parentId || post.id)) closeThread();
-          }}><Ionicons name={collapsed ? 'add' : 'remove'} size={18} color={colors.textMuted}/></HapticPressable>
+          }}><Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={18} color={colors.textMuted}/></HapticPressable>
         <HapticPressable accessibilityLabel={`Comment options for ${post.user.firstName}`} style={styles.moreButton}
           onPress={() => setActionTarget({post,parentId})}><Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted}/></HapticPressable>
       </View>
@@ -496,19 +555,40 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             <Text style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
           </HapticPressable>}
         </View>
-        {activeThreadId && replyToPostId === post.id && renderInputBar(true)}
       </View>}
     </HapticPressable>;
   };
 
-  const renderPost = ({item:post}) => <View style={[styles.postCard,post.depth > 0 && [styles.threadReply,{marginLeft:Math.min(3,post.depth)*12}],
-    post.id === discussionId && {backgroundColor:colors.primaryMuted}]}>
-    {renderComment(post,post.depth > 0 ? post.rootId : null)}
-    {post.depth === 0 && expandedThreads.has(post.id) && !collapsedComments.has(post.id) && renderThreadStatus(post.id)}
-  </View>;
+  const renderPost = ({item:post,index}) => {
+    if (post.kind === 'composer') return <View testID={`Comments.replyEditorRow.${post.rootId}`} style={[styles.postCard,styles.threadEnd]}>
+      {renderThreadStatus(post.rootId)}
+      {renderInputBar(true)}
+    </View>;
+    const next = listRows[index + 1];
+    const continues = next?.rootId === post.rootId;
+    const depth = Math.min(3,post.depth);
+    return <View testID={`Comments.row.${post.id}`} style={[styles.postCard,
+      post.depth === 0 && styles.threadStart, !continues && styles.threadEnd,
+      post.id === discussionId && {backgroundColor:colors.primaryMuted}]}>
+      <View style={styles.commentRow}>
+        {/* Continuous rails share the card's surface, including across nested rows. */}
+        {Array.from({length:depth},(_,level) => <View key={level} pointerEvents="none"
+          testID={`Comments.rail.${post.id}.${level+1}`}
+          style={[styles.threadRail,{left:SPACING.md+(level+1)*12}]}/>)}
+        {continues && next.depth > post.depth && <View pointerEvents="none"
+          testID={`Comments.connector.${post.id}`}
+          style={[styles.threadConnector,{left:SPACING.md+Math.min(3,next.depth)*12}]}/>}
+        <View style={depth > 0 && {marginLeft:depth*12,paddingLeft:12}}>
+          {renderComment(post,post.depth > 0 ? post.rootId : null)}
+        </View>
+      </View>
+      {!continues && expandedThreads.has(post.rootId) && !collapsedComments.has(post.rootId) && renderThreadStatus(post.rootId)}
+    </View>;
+  };
 
-  const renderThreadStatus = (postId = activeThreadId) => (
-    <View style={styles.threadStatus}>
+  const renderThreadStatus = (postId = activeThreadId) => {
+    if (!loadingReplies[postId] && !replyErrors[postId] && !hasMoreReplies[postId]) return null;
+    return <View style={styles.threadStatus}>
       {loadingReplies[postId] ? <View style={styles.replyStatus}>
         <ActivityIndicator size="small" color={colors.spinner} />
         <Text style={styles.statusText}>Loading replies…</Text>
@@ -523,8 +603,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           <Text style={styles.actionText}>Show more replies</Text>
         </HapticPressable>
       ) : null}
-    </View>
-  );
+    </View>;
+  };
 
   if (isLoading) {
     return (
@@ -537,12 +617,14 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const renderInputBar = (inline = false) => {
     const key = inline ? draftKey : 'comments';
     const text = drafts[key] || '';
-    return <View testID={inline || !activeThreadId ? 'Comments.composer' : 'Comments.mainComposer'} style={[styles.composeContainer,{
-      paddingBottom:inline ? 8 : keyboardVisible ? SPACING.sm : Math.max(insets.bottom,SPACING.md),
-    }]}>
+    return <View testID={inline || !activeThreadId ? 'Comments.composer' : 'Comments.mainComposer'} collapsable={false}
+      ref={composerRef(key)}
+      onLayout={() => { if (focusedComposerKey.current === key) requestAnimationFrame(ensureComposerVisible); }}
+      style={[styles.composeContainer,inline ? styles.inlineComposer : styles.mainComposer]}>
       {!!sendErrors[key] && <Text accessibilityRole="alert" style={styles.sendError}>{sendErrors[key]}</Text>}
       <DiscussionComposer ref={inline || !activeThreadId ? inputRef : undefined} resetKey={key} value={text}
-        colors={colors} dark={scheme === 'dark'} mentions={mentions}
+        colors={colors} mentions={mentions}
+        onFocus={() => { focusedComposerKey.current = key; requestAnimationFrame(ensureComposerVisible); }}
         replyTo={inline ? mentions.find(person => person.id === replyTarget?.user.id)?.name || 'Neighbor' : undefined}
         onCancel={closeThread} onChangeText={value => setDrafts(previous => ({...previous,[key]:value}))}
         onSend={() => handleSubmit(inline ? activeThreadId : null)}
@@ -555,36 +637,32 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   return (
     <ComposerKeyboardView
       testID="Comments.keyboardLayout"
-      style={styles.container}
+      style={[styles.container,{paddingLeft:insets.left,paddingRight:insets.right}]}
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
-      {/* Header */}
-      <ConversationContextCard
-        colors={colors}
-        title={targetTitle || (isRequest ? 'Wanted post' : 'Shared item')}
-        label="Public comments"
-        photoUrl={target?.photoUrl || target?.photos?.[0]}
-        icon={isRequest ? 'chatbubble' : 'basket'}
-        accessibilityLabel="View original post"
-        onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}
-      />
-      {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
-
+      <View ref={listViewportRef} collapsable={false} style={styles.list}
+        testID="Comments.viewport" onLayout={() => requestAnimationFrame(ensureComposerVisible)}>
       <FlatList
         ref={listRef}
         style={styles.list}
-        data={threadRows}
+        data={listRows}
         renderItem={renderPost}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent,{paddingBottom:keyboardVisible ? SPACING.lg : Math.max(insets.bottom,SPACING.lg)}]}
+        onScroll={event => { listOffset.current = Math.max(0,event.nativeEvent.contentOffset.y); }}
+        scrollEventThrottle={16}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => {
+          // Loading replies can move an already mounted editor below the keyboard.
+          if (keyboardVisibleRef.current) requestAnimationFrame(ensureComposerVisible);
           if (!scrollTarget.current || (scrollTarget.current.draftKey !== draftKey && scrollTarget.current.draftKey !== 'comments')) return;
-          const { atEnd, messageId } = scrollTarget.current;
+          const { atEnd, messageId, composer, draftKey:targetKey } = scrollTarget.current;
           scrollTarget.current = null;
-          const index = messageId ? threadRows.findIndex(reply => reply.id === messageId) : -1;
-          if (index >= 0) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.3 });
+          const index = composer ? listRows.findIndex(row => row.kind === 'composer' && row.rootId === targetKey)
+            : messageId ? listRows.findIndex(reply => reply.id === messageId) : -1;
+          scrollPosition.current = composer ? 1 : 0.3;
+          if (index >= 0) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: scrollPosition.current });
           else if (atEnd) listRef.current?.scrollToEnd({ animated: true });
           else listRef.current?.scrollToOffset({ offset: 0, animated: true });
         }}
@@ -594,10 +672,20 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           listRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
           clearTimeout(scrollRetry.current);
           scrollRetry.current = setTimeout(() => {
-            if (generation === threadGeneration.current) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.3 });
+            if (generation === threadGeneration.current) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: scrollPosition.current });
           }, 100);
         }}
-        ListHeaderComponent={<View>
+        ListHeaderComponent={<View testID="Comments.header">
+      <ConversationContextCard
+        colors={colors}
+        title={targetTitle || (isRequest ? 'Wanted post' : 'Shared item')}
+        label="Public comments"
+        photoUrl={target?.photoUrl || target?.photos?.[0]}
+        icon={isRequest ? 'chatbubble' : 'basket'}
+        accessibilityLabel="View original post"
+        onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}
+      />
+          {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
           {renderInputBar(false)}
           <View style={styles.sortToolbar} accessibilityRole="tablist">
             <Text style={styles.sortLabel}>The conversation</Text>
@@ -625,7 +713,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
           </View>
         }
       />
-
+      </View>
 
       <MessageReactionMenu options={DISCUSSION_EMOJIS} colors={colors} visible={!!reactionTarget} position={reactionTarget?.position} onClose={() => setReactionTarget(null)}
         onSelect={emoji => react(reactionTarget.post,emoji)} onMore={() => { setActionTarget(reactionTarget); setReactionTarget(null); }} />
@@ -686,9 +774,7 @@ const makeStyles = COLORS => StyleSheet.create({
   },
   threadError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, padding: SPACING.lg },
   listContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.lg,
+    paddingTop: SPACING.xs,
   },
   list: { flex: 1 },
   emptyContainer: {
@@ -708,18 +794,21 @@ const makeStyles = COLORS => StyleSheet.create({
     textAlign: 'center',
   },
   postCard: {
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    borderRadius: RADIUS.lg,
+    marginHorizontal: SPACING.lg,
     backgroundColor: COLORS.surface,
   },
+  threadStart: {borderTopLeftRadius:RADIUS.lg,borderTopRightRadius:RADIUS.lg},
+  threadEnd: {borderBottomLeftRadius:RADIUS.lg,borderBottomRightRadius:RADIUS.lg,marginBottom:SPACING.md},
+  commentRow: {padding:SPACING.md},
+  threadRail: {position:'absolute',top:0,bottom:0,width:2,backgroundColor:COLORS.primaryLight},
+  threadConnector: {position:'absolute',bottom:0,height:SPACING.md,width:2,backgroundColor:COLORS.primaryLight},
   comment: { minWidth: 0 },
   commentBody:{marginLeft:0},
   mention:{color:COLORS.primary,backgroundColor:COLORS.primaryMuted,fontWeight:'600'},
-  voteControl:{flexDirection:'row',borderRadius:10,backgroundColor:COLORS.surfaceElevated,alignItems:'center'},
+  voteControl:{flexDirection:'row',alignItems:'center'},
   voteButton:{minHeight:44,minWidth:34,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,paddingHorizontal:4},
   voteScore:{...TYPOGRAPHY.caption1,color:COLORS.text},
-  sortToolbar:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:4,marginBottom:12},
+  sortToolbar:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:4,marginHorizontal:SPACING.lg,marginBottom:12},
   sortLabel:{...TYPOGRAPHY.caption1,color:COLORS.textMuted,marginRight:'auto'},
   sortButton:{minHeight:44,paddingHorizontal:10,alignItems:'center',justifyContent:'center',borderRadius:10},
   sortSelected:{backgroundColor:COLORS.primaryMuted},
@@ -732,6 +821,8 @@ const makeStyles = COLORS => StyleSheet.create({
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primaryMuted,
   },
+  fallbackAvatar: {alignItems:'center',justifyContent:'center',backgroundColor:COLORS.primaryMuted},
+  avatarInitials: {...TYPOGRAPHY.caption1,fontWeight:'600',color:COLORS.primary},
   postAuthor: {
     ...TYPOGRAPHY.subheadline,
     fontWeight:'600',
@@ -780,23 +871,15 @@ const makeStyles = COLORS => StyleSheet.create({
     fontWeight: '400',
     flexShrink: 1,
   },
-  threadParent: { padding: SPACING.md, marginBottom: SPACING.md, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg },
-  threadCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.md, paddingHorizontal: SPACING.xs },
-  threadReply: {
-    marginLeft: SPACING.lg,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: COLORS.border,
-    borderRadius:0,marginBottom:SPACING.xs,backgroundColor:'transparent',
-  },
-  threadStatus: { paddingVertical: SPACING.md },
+  threadStatus: { paddingHorizontal:SPACING.md,paddingBottom:SPACING.md },
   replyStatus: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: SPACING.sm },
   statusText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   replyError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, flexShrink: 1 },
   composeContainer: {
     flexShrink: 0,
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 0,
-    paddingTop: SPACING.sm,
+    backgroundColor:'transparent',
   },
+  mainComposer: {paddingHorizontal:SPACING.lg,paddingTop:SPACING.xs,paddingBottom:SPACING.sm},
+  inlineComposer: {paddingHorizontal:SPACING.md,paddingBottom:SPACING.md},
   sendError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, marginBottom: SPACING.sm },
 });
