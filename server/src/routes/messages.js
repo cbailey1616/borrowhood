@@ -1,3 +1,4 @@
+import { REACTION_EMOJIS } from '../services/reactionEmojiSchema.js';
 import { screenContent } from '../services/contentPolicy.js';
 import { communityConversations } from '../services/communityChat.js';
 import { listingAccessSql } from '../utils/sharingPolicy.js';
@@ -378,10 +379,9 @@ router.post('/conversations/:id/read', authenticate, async (req, res) => {
 // POST /api/messages/:id/react
 // Add or update emoji reaction on a message
 // ============================================
-const ALLOWED_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎'];
 
 router.post('/:id/react', authenticate,
-  body('emoji').isString().isIn(ALLOWED_EMOJIS).withMessage('Invalid emoji'),
+  body('emoji').isString().isIn(REACTION_EMOJIS).withMessage('Invalid emoji'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

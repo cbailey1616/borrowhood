@@ -11,3 +11,13 @@ it('keeps a thread reaction picker on screen and waits for native dismissal befo
  fireEvent(screen.UNSAFE_getByType(Modal),'dismiss');expect(more).toHaveBeenCalledTimes(1);
  fireEvent(screen.UNSAFE_getByType(Modal),'dismiss');expect(more).toHaveBeenCalledTimes(1);
 });
+
+it('uses the same full grid and geometry in default and comments menus', () => {
+ const { REACTION_OPTIONS, reactionPickerHeight } = require('../../../src/utils/reactions');
+ const defaultMenu = render(<MessageReactionMenu visible position={{y:600}} onClose={jest.fn()} onSelect={jest.fn()}/>);
+ const explicitMenu = render(<MessageReactionMenu visible options={REACTION_OPTIONS} position={{y:600}} onClose={jest.fn()} onSelect={jest.fn()}/>);
+ expect(defaultMenu.UNSAFE_getByType(EmojiReactionPicker).props.style).toEqual(explicitMenu.UNSAFE_getByType(EmojiReactionPicker).props.style);
+ expect(defaultMenu.getAllByRole('button').filter(button=>button.props.accessibilityLabel.startsWith('React:'))).toHaveLength(19);
+ expect(reactionPickerHeight()).toBe(202);
+ expect(reactionPickerHeight(19,true)).toBe(246);
+});

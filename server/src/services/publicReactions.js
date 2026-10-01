@@ -4,8 +4,9 @@ import { unblockedSql } from './contentPolicy.js';
 import { canViewListing, canViewRequest } from './listingAccess.js';
 import { getDiscussionThread } from './discussionNotifications.js';
 
-export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎'];
-export const DISCUSSION_EMOJIS = [...REACTION_EMOJIS, '🔥', '🎉', '👀', '💯', '🙏', '🤔', '👏', '🙌', '😊', '✅', '🤝', '✨', '🛋️'];
+import { REACTION_EMOJIS } from './reactionEmojiSchema.js';
+export { REACTION_EMOJIS } from './reactionEmojiSchema.js';
+export const DISCUSSION_EMOJIS = REACTION_EMOJIS;
 export async function ensureDiscussionReactionSchema(db = { query }) {
   await db.query(await readFile(new URL('../../migrations/025_discussion_thread_controls.sql', import.meta.url), 'utf8'));
 }
