@@ -5,7 +5,7 @@ import EmojiReactionPicker from './EmojiReactionPicker';
 
 // Window coordinates belong in a modal. A nested thread/header must not clip
 // the toolbar or subtract its own layout offset from the long-press position.
-export default function MessageReactionMenu({ visible, position, onClose, onSelect, onMore }) {
+export default function MessageReactionMenu({ visible, position, onClose, onSelect, onMore, options, colors }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const pendingMore = useRef(null);
@@ -14,11 +14,12 @@ export default function MessageReactionMenu({ visible, position, onClose, onSele
   useEffect(() => () => { pendingMore.current = null; }, []);
   const close = () => { pendingMore.current = null; onClose(); };
   const more = () => { pendingMore.current = onMore; onClose(); };
-  const top = Math.max(insets.top + 12, Math.min((position?.y ?? height * .4) - 64, height - insets.bottom - 80));
+  const pickerHeight = options ? 260 : 64;
+  const top = Math.max(insets.top + 12, Math.min((position?.y ?? height * .4) - pickerHeight, height - insets.bottom - pickerHeight - 16));
   return <Modal visible={!!visible} transparent animationType="fade" onRequestClose={close} onDismiss={finishDismissal}>
     <View style={StyleSheet.absoluteFill}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close reactions" />
-      <EmojiReactionPicker onSelect={onSelect} onMore={more}
+      <EmojiReactionPicker options={options} colors={colors} onSelect={onSelect} onMore={onMore ? more : undefined}
         style={{ top, left: (width - Math.min(340, width - 32)) / 2 }} />
     </View>
   </Modal>;

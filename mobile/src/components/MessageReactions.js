@@ -5,20 +5,20 @@ import ReactionIcon, { reactionOption } from './ReactionIcon';
 import Icon from './Icon';
 import { COLORS, TYPOGRAPHY } from '../utils/config';
 
-export default function MessageReactions({ reactions = [], userId, onToggle, onAdd, disabled = false, inline = false }) {
+export default function MessageReactions({ reactions = [], userId, onToggle, onAdd, disabled = false, inline = false, compact = false, colors = COLORS }) {
   const groups = new Map();
   reactions.forEach(r => groups.set(r.emoji, [...(groups.get(r.emoji) || []), r.userId]));
   return <View style={[styles.row, inline && styles.inlineRow]}>
     {[...groups].map(([emoji, people]) => <HapticPressable key={emoji} disabled={disabled}
       accessibilityRole="button" accessibilityLabel={`${reactionOption(emoji)?.label || emoji} reaction, ${people.length}`}
       accessibilityState={{ selected: people.includes(userId), disabled }} onPress={() => onToggle(emoji)}
-      style={[styles.pill, people.includes(userId) && styles.selected]}>
-      <ReactionIcon emoji={emoji} size={18} />
-      {people.length > 1 && <Text style={styles.count}>{people.length}</Text>}
+      style={[styles.pill, {borderColor:colors.borderLight,backgroundColor:colors.surfaceElevated}, people.includes(userId) && [styles.selected,{borderColor:colors.primaryLight,backgroundColor:colors.primaryMuted}]]}>
+      <ReactionIcon emoji={emoji} size={18} overrideColor={colors.primary} />
+      <Text style={[styles.count,{color:colors.primary}]}>{people.length}</Text>
     </HapticPressable>)}
     {!!onAdd && <HapticPressable disabled={disabled} accessibilityRole="button" accessibilityLabel="Add reaction"
       onPress={onAdd} style={styles.add}>
-      <View style={styles.addDisc}><Icon name="reaction-add" size={25} color={COLORS.surface} illustrated={false} /></View>
+      <View style={[styles.addDisc,compact && {backgroundColor: 'transparent'}]}><Icon name="reaction-add" size={25} color={compact ? colors.primary : COLORS.surface} illustrated={false} /></View>
     </HapticPressable>}
   </View>;
 }

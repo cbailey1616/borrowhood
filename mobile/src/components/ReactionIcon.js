@@ -15,9 +15,9 @@ export const REACTION_OPTIONS = [
 
 export const reactionOption = emoji => REACTION_OPTIONS.find(option => option.emoji.replace(/\uFE0F/g, '') === emoji.replace(/\uFE0F/g, ''));
 
-export default function ReactionIcon({ emoji, size = 24, style }) {
+export default function ReactionIcon({ emoji, size = 24, style, overrideColor = COLORS.primary }) {
   const option = reactionOption(emoji);
   // An unrecognized custom reaction is user content, not an app icon.
-  return option ? <Ionicons name={option.icon} size={size} illustrated color={COLORS.primary} style={style} />
+  return option ? <Ionicons name={option.icon} size={size} illustrated color={overrideColor} style={style} />
     : <Text style={[{ fontSize: size }, style]}>{emoji}</Text>;
 }
