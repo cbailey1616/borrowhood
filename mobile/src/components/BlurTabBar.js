@@ -32,7 +32,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
 
   return (
     <HapticPressable
-      haptic={null}
+      haptic="selection"
       onPress={onPress}
       onLongPress={onLongPress}
       pressedBackgroundColor={COLORS.cardHover}
@@ -44,7 +44,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
       accessibilityLabel={label}
       accessibilityValue={hasUpdate ? { text: route.name === 'Feed' ? 'New posts' : `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}` } : undefined}
     >
-      <View style={styles.iconContainer}>
+      <View testID={`TabBar.${route.name}.highlight`} style={[styles.iconContainer, isFocused && styles.selectedIconContainer]}>
         <Ionicons
           testID={`TabBar.${route.name}.icon`}
           name={iconName}
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
+  selectedIconContainer: { backgroundColor: COLORS.primaryMuted },
   label: {
     ...TYPOGRAPHY.label,
     marginTop: 4,

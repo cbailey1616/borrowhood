@@ -10,6 +10,22 @@ jest.mock('../../../src/context/ErrorContext', () => ({
 }));
 
 describe('ActionSheet', () => {
+  it.each(['menu', 'options', 'item'])('preserves colored category icons and explicit control styling in %s sheets', variant => {
+    const ActionSheet = require('../../../src/components/ActionSheet').default;
+    const CategoryIcon = require('../../../src/components/CategoryIcon').default;
+    const Icon = require('../../../src/components/Icon').default;
+    const { iconSvg } = require('../../../src/assets/borrowhood-icons');
+    const { Image } = require('expo-image');
+    const screen = render(<ActionSheet isVisible title="Category" variant={variant} onClose={jest.fn()}
+      actions={[
+        { label: 'Tools & Hardware', icon: <CategoryIcon icon="hammer-outline" />, onPress: jest.fn() },
+        { label: 'Close', icon: <Icon name="close" illustrated={false} />, onPress: jest.fn() },
+      ]} />);
+    const drawings = screen.UNSAFE_getAllByType(Image).map(image => decodeURIComponent(image.props.source.uri.split(',')[1]));
+    expect(drawings).toContain(iconSvg('hammer-outline', { illustrated: true, selected: false }));
+    expect(drawings).toContain(iconSvg('close', { illustrated: false, selected: false }));
+  });
+
   it.each([false, true])('exposes the current filter selection and dismisses before applying it (%s)', selected => {
     const ActionSheet = require('../../../src/components/ActionSheet').default;
     const close = jest.fn();

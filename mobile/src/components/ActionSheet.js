@@ -94,7 +94,7 @@ export default function ActionSheet({
               {itemMenu && <View style={styles.itemHandle} accessible={false} />}
               {confirmation || options ? <>
                 <View style={[styles.confirmationHeader, itemMenu && styles.itemHeader]}>
-                  {icon ? <View style={[styles.confirmationIcon, itemMenu && styles.itemHeaderIcon]}>{React.isValidElement(icon) ? React.cloneElement(icon, { size: 22, illustrated: false }) : icon}</View> : null}
+                  {icon ? <View style={[styles.confirmationIcon, itemMenu && styles.itemHeaderIcon]}>{React.isValidElement(icon) ? React.cloneElement(icon, { size: 22 }) : icon}</View> : null}
                   <Text maxFontSizeMultiplier={1.4} style={[styles.confirmationTitle, itemMenu && styles.itemTitle]} accessibilityRole="header">{title}</Text>
                   <HapticPressable accessibilityRole="button" accessibilityLabel={options ? `Close ${title || 'options'}` : 'Close confirmation'} onPress={handleCancel} style={[styles.confirmationClose, itemMenu && styles.itemClose]}>
                     <Ionicons name="close" size={20} color={COLORS.primary} />
@@ -135,7 +135,7 @@ export default function ActionSheet({
                     ]}
                   >
                     {action.icon ? (
-                      <View style={[styles.actionIcon, options && styles.optionIcon, itemMenu && styles.itemActionIcon]}>{React.isValidElement(action.icon) ? React.cloneElement(action.icon, { size: 22, illustrated: false }) : action.icon}</View>
+                      <View style={[styles.actionIcon, options && styles.optionIcon, itemMenu && styles.itemActionIcon]}>{React.isValidElement(action.icon) ? React.cloneElement(action.icon, { size: 22 }) : action.icon}</View>
                     ) : null}
                     <Text maxFontSizeMultiplier={1.4}
                       style={[
