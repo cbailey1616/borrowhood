@@ -142,7 +142,7 @@ export default function MyCommunityScreen({ navigation, route }) {
       <LayeredCard style={styles.shortcutGroup}>
       <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood chat"
         accessibilityHint={unreadCount ? `${unreadCount} unread messages` : 'Open your neighborhood chat'}
-        onPress={() => navigation.navigate('CommunityChat', { communityId: community.id, communityName: community.name })}>
+        onPress={() => navigation.navigate('CommunityChat', { communityId: community.id, communityName: community.name, memberCount: community.memberCount })}>
         <Ionicons name="chatbubble-ellipses" size={22} color={COLORS.textSecondary} />
         <View style={styles.shortcutText}>
           <Text style={styles.shortcutTitle}>Neighborhood chat</Text>
