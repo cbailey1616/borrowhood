@@ -1,8 +1,8 @@
 import React from 'react';
 import { FriendlyIcon } from './Icon';
 
-// Category controls use the same untiled line drawings as other list rows.
-export default function CategoryIcon({ icon, size = 22, radius, illustrated = false, ...props }) {
+// Keep category drawings in the original woodland palette, without a tile.
+export default function CategoryIcon({ icon, size = 22, radius, illustrated = true, ...props }) {
   return <FriendlyIcon {...props} name={String(icon).startsWith('sparkles') ? 'brush' : icon}
     size={size} illustrated={illustrated} />;
 }

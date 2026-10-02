@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { COLORS } from '../../../src/utils/config';
+import { haptics } from '../../../src/utils/haptics';
 
 jest.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: null }),
@@ -54,6 +55,34 @@ describe('BlurTabBar', () => {
     const { getByText } = render(<BlurTabBar {...props} />);
     fireEvent.press(getByText('Ideas'));
     expect(props.navigation.navigate).toHaveBeenCalledWith('Ideas');
+  });
+
+  it('gives one selection haptic per tab tap, including a tap on the active tab', () => {
+    const Bar = require('../../../src/components/BlurTabBar').default;
+    const selection = jest.spyOn(haptics, 'selection');
+    try {
+      const props = createTabBarProps();
+      const screen = render(<Bar {...props} />);
+      expect(selection).not.toHaveBeenCalled();
+      fireEvent.press(screen.getByLabelText('Home'));
+      expect(selection).toHaveBeenCalledTimes(1);
+      expect(props.navigation.navigate).not.toHaveBeenCalled();
+      fireEvent.press(screen.getByLabelText('Inbox'));
+      expect(selection).toHaveBeenCalledTimes(2);
+      expect(props.navigation.navigate).toHaveBeenCalledWith('Activity');
+    } finally { selection.mockRestore(); }
+  });
+
+  it('moves the sage highlight with the selected tab while preserving unread badges', () => {
+    const Bar = require('../../../src/components/BlurTabBar').default;
+    const screen = render(<Bar {...createTabBarProps(0)} unreadCount={5} />);
+    const background = tab => StyleSheet.flatten(screen.getByTestId(`TabBar.${tab}.highlight`).props.style).backgroundColor;
+    expect(background('Feed')).toBe(COLORS.primaryMuted);
+    expect(background('Activity')).toBeUndefined();
+    screen.rerender(<Bar {...createTabBarProps(3)} unreadCount={5} />);
+    expect(background('Feed')).toBeUndefined();
+    expect(background('Activity')).toBe(COLORS.primaryMuted);
+    expect(screen.getByTestId('TabBar.Activity.badge')).toBeTruthy();
   });
 
   it.each([0,1])('keeps the original honey Ideas bulb with tab %i active',activeIndex=>{

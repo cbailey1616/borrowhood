@@ -12,7 +12,7 @@ export default function ConversationHeader({ navigation, person, userId }) {
   const openProfile = () => {
     if (userId) navigation.navigate('UserProfile', { id: userId });
   };
-  return <View style={[styles.header, { paddingTop: insets.top }]}>
+  return <View style={[styles.header, { paddingTop: insets.top, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
     <View style={styles.row}>
       <HapticPressable haptic={null} scaleDown={1} accessibilityLabel="Back" style={styles.back} onPress={() => {
         if (navigation.canGoBack()) navigation.goBack();
@@ -34,11 +34,11 @@ export default function ConversationHeader({ navigation, person, userId }) {
 }
 
 const styles = StyleSheet.create({
-  header: { backgroundColor: COLORS.background, paddingHorizontal: SPACING.lg },
-  row: { minHeight: 68, paddingVertical: SPACING.sm, flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  header: { backgroundColor: COLORS.background, paddingHorizontal: SPACING.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator },
+  row: { minHeight: 60, paddingVertical: SPACING.sm, flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   back: { width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   identity: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: SPACING.md, opacity: 1 },
-  avatar: { width: 42, height: 42, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted },
+  avatar: { width: 36, height: 36, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryMuted },
   nameColumn: { flex: 1, gap: 2 },
   name: { ...TYPOGRAPHY.headline, color: COLORS.text, fontFamily: 'DMSans_500Medium', fontWeight: '500' },
   hint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },

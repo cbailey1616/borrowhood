@@ -12,7 +12,7 @@ export default function MessageReactions({ reactions = [], userId, onToggle, onA
     {[...groups].map(([emoji, people]) => <HapticPressable key={emoji} haptic="selection" scaleDown={1} disabled={disabled}
       accessibilityRole="button" accessibilityLabel={`${reactionOption(emoji)?.label || emoji} reaction, ${people.length}`}
       accessibilityState={{ selected: people.includes(userId), disabled }} onPress={() => onToggle(emoji)}
-      style={[styles.pill, {borderColor:colors.borderLight,backgroundColor:colors.surfaceElevated}, people.includes(userId) && [styles.selected,{borderColor:colors.primaryLight,backgroundColor:colors.primaryMuted}]]}>
+      style={[styles.pill, compact && styles.compactPill, {borderColor:colors.borderLight,backgroundColor:colors.surfaceElevated}, people.includes(userId) && [styles.selected,{borderColor:colors.primaryLight,backgroundColor:colors.primaryMuted}]]}>
       <ReactionIcon emoji={emoji} size={18} overrideColor={colors.primary} />
       <Text maxFontSizeMultiplier={1.4} style={[styles.count,{color:colors.primary}]}>{people.length}</Text>
     </HapticPressable>)}
@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight, backgroundColor: COLORS.surfaceElevated, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
   },
   selected: { borderColor: COLORS.primaryLight, backgroundColor: COLORS.primaryMuted },
+  compactPill: { minHeight: 32, minWidth: 36, paddingHorizontal: 8 },
   count: { ...TYPOGRAPHY.caption1, color: COLORS.primary },
   add: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', opacity: 1 },
 });
