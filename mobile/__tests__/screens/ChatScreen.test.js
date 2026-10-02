@@ -23,6 +23,25 @@ jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showErro
 beforeEach(() => { jest.clearAllMocks(); View.prototype.measureInWindow.mockReset(); mockHeaderHeight = 88; mockWindowHeight = 844; mockWindowWidth = 390; SecureStore.getItemAsync.mockResolvedValue(null); SecureStore.setItemAsync.mockResolvedValue(); api.getUser.mockResolvedValue({ id: 'user-2', firstName: 'Alice', lastName: 'Jones' }); api.getUserSafety.mockResolvedValue({ blocked: false }); api.getMessageCapabilities.mockResolvedValue({ idempotentMessages: false }); api.getConversation.mockResolvedValue({ conversation: { id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones', profilePhotoUrl: null } }, messages: [] }); api.sendMessage.mockResolvedValue({ id: 'msg-1' }); });
 describe('ChatScreen', () => {
   const route = { params: { conversationId: 'conv-1' } };
+  it('places received, historical own, and newly sent messages on the correct side', async () => {
+    api.getConversation.mockResolvedValue({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice' } }, messages: [
+      { id: 'received', content: 'Can I collect it?', senderId: 'user-2', isOwnMessage: false, createdAt: '2026-10-02T10:00:00Z' },
+      { id: 'own', content: 'Of course', senderId: 'user-1', isOwnMessage: true, createdAt: '2026-10-02T10:01:00Z' },
+      { id: 'legacy-own', content: 'Saturday works', senderId: 'user-1', createdAt: '2026-10-02T10:02:00Z' },
+    ] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const MessageBubble = require('../../src/components/MessageBubble').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Saturday works');
+    const bubbles = () => screen.UNSAFE_getAllByType(MessageBubble).map(bubble => [bubble.props.testID, bubble.props.own]);
+    expect(bubbles()).toEqual([['Chat.message.received', false], ['Chat.message.own', true], ['Chat.message.legacy-own', true]]);
+    fireEvent.changeText(screen.getByTestId('Chat.input.message'), 'See you then');
+    await waitFor(() => expect(screen.getByLabelText('Send message')).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText('Send message'));
+    await screen.findByText('See you then');
+    expect(bubbles()).toContainEqual(['Chat.message.msg-1', true]);
+    expect(screen.queryByTestId('Chat.avatar.own')).toBeNull();
+  });
   it('never shows read receipts, including with messages from an older server', async () => {
     api.getConversation.mockResolvedValueOnce({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice' } },
       messages: [true, false].map((isRead, index) => ({ id: `message-${index}`, content: `Hello ${index}`, isOwnMessage: true, isRead, createdAt: new Date().toISOString() })) });

@@ -10,6 +10,8 @@ import ActionButton from '../components/ActionButton';
 import { privateMessagePrefix, messagePresentation } from '../utils/conversationContext';
 import { mergeMessages } from '../utils/chatMessages';
 import ConversationHeader from '../components/ConversationHeader';
+import MessageBubble, { ChatDateDivider } from '../components/MessageBubble';
+import { chatMessageMeta } from '../utils/chatPresentation';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
@@ -26,9 +28,6 @@ import {
   useWindowDimensions,
 
 } from 'react-native';
-import Animated, {
-  FadeInUp,
-} from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import useFormDraft from '../hooks/useFormDraft';
@@ -40,7 +39,6 @@ import ActionSheet from '../components/ActionSheet';
 import ShimmerImage from '../components/ShimmerImage';
 import { ThemedAlert as Alert } from '../components/ThemedAlert';
 import MessageReactionMenu from '../components/MessageReactionMenu';
-import MessageReactions from '../components/MessageReactions';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
@@ -329,21 +327,6 @@ function ChatConversation({ route, navigation }) {
     { text: 'I checked — clear it', onPress: () => setComposer(current => ({ ...current, pending: null })) },
   ]);
 
-  const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (date) => {
-    const d = new Date(date);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (d.toDateString() === today.toDateString()) return 'Today';
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}) });
-  };
-
   const handleMessageLongPress = useCallback((message) => {
     if (message.isDeleted) return;
     const ref = messageRefs.current[message.id];
@@ -495,98 +478,42 @@ function ChatConversation({ route, navigation }) {
     return actions;
   }, [handleCopyMessage, handleDeleteMessage, profileId, navigation, safeThreads, activeThreadId, composer.pending, draft.ready, isUploading]);
 
-  const renderReactionPills = item => <MessageReactions reactions={item.reactions} userId={user.id} onToggle={emoji => handleToggleReaction(item, emoji)} onAdd={item.isDeleted ? undefined : () => handleMessageLongPress(item)} />;
-
   const renderMessage = ({ item, index, isRoot = false }) => {
-    const showDate = !isRoot && !activeThreadId && (index === 0 ||
-      formatDate(visibleMessages[index - 1]?.createdAt || item.createdAt) !== formatDate(item.createdAt));
     const previous = isRoot ? null : visibleMessages[index - 1];
-    const startsGroup = isRoot || !previous || previous.isOwnMessage !== item.isOwnMessage ||
-      new Date(item.createdAt) - new Date(previous.createdAt) >= 5 * 60000 ||
-      formatDate(previous.createdAt) !== formatDate(item.createdAt);
+    const meta = chatMessageMeta(item, previous);
+    const own = item.isOwnMessage ?? item.senderId === user.id;
     const { text, context } = messagePresentation(item.content);
-
-    return (
-      <View>
-        {showDate && (
-          <View style={styles.dateHeader}>
-            <View style={styles.datePill}>
-              <Text maxFontSizeMultiplier={1.4} style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+    return <View>
+      {!isRoot && !activeThreadId && meta.showDate && <ChatDateDivider label={meta.day} />}
+      <MessageBubble ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
+        testID={`Chat.message.${item.id}`} own={own} startsGroup={meta.startsGroup}
+        senderName={own ? user?.firstName || 'You' : profileName}
+        avatarUrl={otherUser?.profilePhotoUrl} onProfile={!own && profileId ? openProfile : undefined}
+        profileAccessibilityLabel={`View ${profileName}’s profile`} avatarTestID={`Chat.avatar.${item.id}`}
+        time={isRoot ? `${meta.day} · ${meta.time}` : meta.time} deleted={item.isDeleted}
+        onLongPress={() => handleMessageLongPress(item)}
+        reactions={item.reactions} userId={user.id} onToggleReaction={emoji => handleToggleReaction(item, emoji)}
+        onAddReaction={() => handleMessageLongPress(item)}
+        onOptions={() => { setSelectedMessage(item); setActionSheetVisible(true); }}
+        onReply={safeThreads && !activeThreadId && item.replyCount > 0 ? () => openThread(item) : undefined}
+        replyLabel={`${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}`}
+        replyAccessibilityLabel={`View ${item.replyCount} replies to message`}
+        replyDisabled={isSending || isUploading || !!composer.pending || !draft.ready} unreadReplyCount={item.unreadReplyCount}>
+        {item.isDeleted ? <Text style={styles.deletedMessageText}>This message was deleted</Text> : <>
+          {context && <View style={styles.messageContext}>
+            <View style={styles.messageContextTitle}>
+              {context.type === 'request' ? <RequestTypeIcon type={context.requestType} size={18} /> : <ListingTypeIcon listing={context} />}
+              <Text style={styles.messageContextText}>{context.title}</Text>
             </View>
-          </View>
-        )}
-        <View style={[styles.messageContainer, styles.compactContainer]}>
-          {isRoot && <View style={styles.rootAuthor}>
-            <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId} accessibilityLabel={item.isOwnMessage ? 'Your profile photo' : `View ${profileName}’s profile`}>
-              <ShimmerImage source={{ uri: (item.isOwnMessage ? user?.profilePhotoUrl : otherUser?.profilePhotoUrl) || null }} placeholderIcon="person" style={styles.compactAvatar}/>
-            </HapticPressable>
-            <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.4} style={[styles.compactName, activeThreadId && styles.threadText]}>{item.isOwnMessage ? user?.firstName || 'You' : profileName}</Text>
-              <Text maxFontSizeMultiplier={1.4} style={styles.threadTime}>{new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at {formatTime(item.createdAt)}</Text></View>
+            {!!context.replyText && <Text style={styles.messageQuote}>“{context.replyText}”</Text>}
           </View>}
-          <Animated.View
-            ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
-            entering={reduceMotion ? undefined : FadeInUp.duration(160)}
-            style={styles.compactRow}
-          >
-            {!isRoot && (startsGroup ? <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId}
-              style={styles.compactAvatarSlot} accessibilityLabel={item.isOwnMessage ? 'Your profile photo' : `View ${profileName}’s profile`}
-              testID={item.isOwnMessage ? undefined : `Chat.avatar.${item.id}`}>
-              <ShimmerImage source={{ uri: (item.isOwnMessage ? user?.profilePhotoUrl : otherUser?.profilePhotoUrl) || null }} placeholderIcon="person" style={styles.compactAvatar}/>
-            </HapticPressable> : <View style={styles.compactAvatarSlot}/>)}
-            <View style={styles.compactBody}>
-              {startsGroup && !isRoot && <View style={styles.compactMeta}>
-                <Text maxFontSizeMultiplier={1.4} style={[styles.compactName, activeThreadId && styles.threadText]}>{item.isOwnMessage ? user?.firstName || 'You' : profileName}</Text>
-                <Text maxFontSizeMultiplier={1.4} style={[styles.compactTime, activeThreadId && styles.threadTime]}>{formatTime(item.createdAt)}</Text>
-              </View>}
-            {item.isDeleted ? (
-              <View style={styles.compactDeleted}>
-                <Text style={styles.deletedMessageText}>This message was deleted</Text>
-              </View>
-            ) : (
-              <HapticPressable
-                onLongPress={() => handleMessageLongPress(item)}
-                haptic={null}
-                accessible={false}
-                accessibilityRole={undefined}
-                style={styles.compactMessage}
-              >
-                {context && <View style={styles.messageContext}>
-                  <View style={styles.messageContextTitle}>
-                    {context.type === 'request' ? <RequestTypeIcon type={context.requestType} size={18} /> : <ListingTypeIcon listing={context} /> }
-                    <Text style={styles.messageContextText}>{context.title}</Text>
-                  </View>
-                  {!!context.replyText && <Text style={styles.messageQuote}>“{context.replyText}”</Text>}
-                </View>}
-                {item.imageUrl && (
-                  <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic={null}>
-                    <ShimmerImage source={{ uri: item.imageUrl }} style={[styles.messageImage, isRoot && { width: '100%', height: 210 }]} accessibilityLabel="Chat photo" />
-                  </HapticPressable>
-                )}
-                {text ? (
-                  <Text style={[styles.compactText, activeThreadId && styles.threadText]}>
-                    {text}
-                  </Text>
-                ) : null}
-              </HapticPressable>
-            )}
-            </View>
-          </Animated.View>
-          <View style={[styles.compactReactions, isRoot && { marginLeft: 0 }, activeThreadId && styles.threadReactionRow]}>
-            {renderReactionPills(item)}
-          </View>
-          {safeThreads && !activeThreadId && item.replyCount > 0 && <HapticPressable
-            accessibilityLabel={item.replyCount ? `View ${item.replyCount} replies to message` : 'Reply to message'}
-            disabled={isSending || isUploading || !!composer.pending || !draft.ready}
-            onPress={() => openThread(item)} style={styles.threadLink}>
-            <Ionicons name="chat-reply" size={18}/>
-            <Text maxFontSizeMultiplier={1.4} style={styles.threadLinkText}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text>
-            {!!item.unreadReplyCount && <View style={styles.threadUnread}><Text maxFontSizeMultiplier={1.4} style={styles.threadUnreadText}>{item.unreadReplyCount} new</Text></View>}
-            <Ionicons name="chevron-forward" size={14}/>
+          {!!item.imageUrl && <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic={null}>
+            <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
           </HapticPressable>}
-
-        </View>
-      </View>
-    );
+          {!!text && <Text style={[styles.messageText, own && styles.ownMessageText]}>{text}</Text>}
+        </>}
+      </MessageBubble>
+    </View>;
   };
 
   if (isLoading) {
@@ -620,7 +547,7 @@ function ChatConversation({ route, navigation }) {
         data={visibleMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.messagesContent, safeThreads && activeThreadId && styles.threadMessagesContent]}
+        contentContainerStyle={[styles.messagesContent, { paddingLeft: Math.max(insets.left, SPACING.md), paddingRight: Math.max(insets.right, SPACING.md) }]}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -628,6 +555,7 @@ function ChatConversation({ route, navigation }) {
         onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => { nearBottom.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 100; }}
         scrollEventThrottle={100}
         onContentSizeChange={() => { if (nearBottom.current) flatListRef.current?.scrollToEnd({ animated: false }); }}
+        onLayout={() => { if (nearBottom.current) flatListRef.current?.scrollToEnd({ animated: false }); }}
         ListHeaderComponent={<>
           {hasEarlier && <HapticPressable accessibilityLabel="Load earlier messages" onPress={()=>{ nearBottom.current = false; fetchMessages(threadPage + 1); }} style={styles.earlier}><Text maxFontSizeMultiplier={1.4} style={styles.threadLinkText}>Earlier messages</Text></HapticPressable>}
           {safeThreads && activeThreadId && threadRoot && <View style={styles.threadParent}>
@@ -668,7 +596,7 @@ function ChatConversation({ route, navigation }) {
           <Ionicons name="close" size={22} color={COLORS.primary} />
         </HapticPressable>
       </View>}
-      <View testID="Chat.composerDock" style={[styles.inputContainer, activeThreadId && styles.threadDock, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
+      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12), paddingLeft: Math.max(insets.left, SPACING.md), paddingRight: Math.max(insets.right, SPACING.md) }]}>
         {!!contextPrefix && !composer.pending && <View testID="Chat.postReference" style={styles.postReference}>
           <HapticPressable style={styles.postReferenceLink} accessibilityLabel={`View ${activeContext.title}`}
             onPress={() => navigation.navigate(activeContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: activeContext.id })}>
@@ -698,8 +626,8 @@ function ChatConversation({ route, navigation }) {
           editable={!messagesBlocked}
           disabled={(safeThreads && activeThreadId && !threadRoot) || (!newMessage.trim() && !attachment) || !!composer.pending || !draft.ready || messagesBlocked}
           leadingAction={
-            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={[styles.attachPhotoButton, activeThreadId && styles.threadAttach]} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
-              {isUploading ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="add" size={26} color={activeThreadId ? COLORS.primary : COLORS.primary} />}
+            <HapticPressable accessibilityLabel="Attach a photo" accessibilityRole="button" style={styles.attachPhotoButton} onPress={() => setPhotoMenuVisible(true)} disabled={isUploading || isSending || !!composer.pending || !draft.ready || messagesBlocked}>
+              {isUploading ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="add" size={26} color={COLORS.primary} />}
             </HapticPressable>
           }
         />
@@ -746,43 +674,16 @@ function ChatConversation({ route, navigation }) {
 
 const styles = StyleSheet.create({
   threadSurface: { backgroundColor: COLORS.background },
-  threadText: { color: COLORS.text },
-  threadTime: { color: COLORS.textSecondary, ...TYPOGRAPHY.caption1 },
-  threadDock: { backgroundColor: COLORS.background, borderTopWidth: 0, paddingHorizontal: 14 },
-  threadAttach: { backgroundColor: COLORS.primaryMuted, borderRadius: 24 },
-  rootAuthor: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  threadReactionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 10 },
-  threadReactionPill: { backgroundColor: COLORS.surfaceElevated, borderColor: COLORS.primaryMuted },
-  reactionAddMark: { position: 'absolute', top: 2, right: 3, backgroundColor: COLORS.surfaceElevated, borderRadius: 8 },
-  addReaction: { width: 36, height: 30, borderRadius: 18, backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
-  compactContainer: { marginBottom: 5 },
-  compactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  compactAvatarSlot: { width: 34, minHeight: 28 },
-  compactAvatar: { width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted },
-  compactBody: { flex: 1, minWidth: 0 },
-  compactMeta: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 3 },
-  compactName: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
-  compactTime: { ...TYPOGRAPHY.caption2, color: COLORS.textMuted },
-  compactMessage: { paddingBottom: 4 },
-  compactText: { ...TYPOGRAPHY.body, lineHeight: 23, color: COLORS.text, fontWeight: '400', fontFamily: 'DMSans_400Regular', },
-  compactDeleted: { paddingVertical: 4 },
-  compactReactions: { marginLeft: 44, alignItems: 'flex-start' },
   replyDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 16 },
   replyDividerText: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, fontFamily: 'DMSans_500Medium', fontWeight: '500', },
   replyDividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator },
-  threadMessagesContent: { justifyContent: 'flex-start', paddingHorizontal: 12 },
   threadBar: { paddingHorizontal: 12, paddingBottom: 8, gap: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background },
   threadBack: { width: 44, height: 44, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.separator },
   threadHeading: { flex: 1, minHeight: 44, paddingHorizontal: 16, paddingVertical: 5, backgroundColor: COLORS.surface, borderRadius: 24, borderWidth: 1, borderColor: COLORS.separator },
   threadSubtitle: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   threadTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   threadParent: { marginBottom: 4 },
-  threadParentName: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.primary, marginBottom: 6, fontWeight: '500', },
-  threadLink: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 38, alignSelf: 'flex-start', marginLeft: 42, paddingHorizontal: 4 },
-  ownThreadLink: { alignSelf: 'flex-end', marginLeft: 0, marginRight: 4 },
   threadLinkText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.primary, fontWeight: '500', },
-  threadUnread: { backgroundColor: COLORS.primaryMuted, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  threadUnreadText: { ...TYPOGRAPHY.caption2, color: COLORS.primaryDark },
   earlier: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   attachmentPreview: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: COLORS.surface },
   attachmentThumbnail: { width: 72, height: 72, borderRadius: RADIUS.md },
@@ -790,7 +691,7 @@ const styles = StyleSheet.create({
   removeAttachment: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   container: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
@@ -799,76 +700,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   messagesContent: {
-    padding: SPACING.lg,
+    paddingVertical: SPACING.sm,
     flexGrow: 1,
     justifyContent: 'flex-start',
-  },
-  dateHeader: {
-    alignItems: 'center',
-    marginVertical: SPACING.md,
-  },
-  datePill: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceElevated,
-  },
-  dateText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-    color: COLORS.textSecondary,
-  },
-  messageRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: SPACING.sm,
-  },
-  ownMessageRow: {
-    justifyContent: 'flex-end',
-  },
-  otherMessageRow: {
-    justifyContent: 'flex-start',
-  },
-  messageAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primaryMuted,
-  },
-  avatarSlot: { width: 44, minHeight: 44, alignItems: 'flex-start', justifyContent: 'flex-end', paddingBottom: 2, opacity: 1 },
-  messageBubble: {
-    maxWidth: '82%',
-    flexShrink: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: RADIUS.lg,
-  },
-  ownMessage: {
-    backgroundColor: COLORS.chatOwn,
-    borderBottomRightRadius: SPACING.sm,
-  },
-  otherMessage: {
-    backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: SPACING.sm,
-  },
-  deletedMessage: {
-    backgroundColor: COLORS.whiteTint,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: COLORS.separator,
   },
   deletedMessageText: {
     ...TYPOGRAPHY.subheadline,
     fontStyle: 'italic',
     color: COLORS.textMuted,
   },
-  imageBubble: {
-    paddingHorizontal: SPACING.xs,
-    paddingTop: SPACING.xs,
-  },
   messageImage: {
     width: 220,
-    height: 220,
+    maxWidth: '100%',
+    aspectRatio: 1,
     borderRadius: RADIUS.md,
     marginBottom: SPACING.xs,
   },
@@ -890,31 +734,14 @@ const styles = StyleSheet.create({
   messageText: {
     ...TYPOGRAPHY.body,
     lineHeight: 23,
+    color: COLORS.text,
   },
   messageContext: { borderLeftWidth: 2, borderLeftColor: COLORS.primary, paddingLeft: SPACING.sm, marginBottom: SPACING.sm, marginTop: 2 },
   messageContextTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   messageContextText: { ...TYPOGRAPHY.caption1, color: COLORS.primary, flexShrink: 1 },
   messageQuote: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginTop: SPACING.xs },
-  imageCaption: { paddingHorizontal: SPACING.sm },
   ownMessageText: {
     color: COLORS.chatOwnText,
-  },
-  otherMessageText: {
-    color: COLORS.text,
-  },
-  messageTime: {
-    ...TYPOGRAPHY.caption1,
-    fontSize: TYPOGRAPHY.caption2.fontSize,
-  },
-  ownMessageMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-    marginTop: SPACING.xs,
-  },
-  ownMessageTime: {
-    color: COLORS.textSecondary,
   },
   emptyMessages: {
     flex: 1,
@@ -931,6 +758,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.sm,
     backgroundColor: COLORS.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
   },
   postReference: { flexDirection: 'row', alignItems: 'center', paddingLeft: SPACING.md, paddingRight: SPACING.xs, marginBottom: SPACING.xs, backgroundColor: COLORS.surface, borderRadius: RADIUS.md },
   postReferenceLink: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: SPACING.sm },
@@ -945,57 +774,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  messageContainer: {
-  },
   blockedNotice: { paddingHorizontal: SPACING.lg, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: SPACING.sm },
   blockedText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   profileLink: { minHeight: 44, justifyContent: 'center' },
   profileLinkText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, textDecorationLine: 'underline' },
-  emojiPickerOverlay: {
-    position: 'absolute',
-    zIndex: 200,
-  },
-  emojiPickerRight: {
-    right: SPACING.lg,
-  },
-  emojiPickerLeft: {
-    left: 36 + SPACING.lg,
-  },
-  reactionPillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: -4,
-    marginBottom: SPACING.xs,
-  },
-  ownReactionPills: {
-    justifyContent: 'flex-end',
-    paddingRight: SPACING.sm,
-  },
-  otherReactionPills: {
-    justifyContent: 'flex-start',
-    paddingLeft: 36 + SPACING.sm,
-  },
-  reactionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceElevated,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
-    borderRadius: RADIUS.full,
-    gap: 3,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  reactionPillOwn: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  reactionCount: {
-    ...TYPOGRAPHY.caption1,
-    fontSize: TYPOGRAPHY.caption2.fontSize,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-    fontFamily: 'DMSans_500Medium',
-  },
 });
