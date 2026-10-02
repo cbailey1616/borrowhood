@@ -15,9 +15,9 @@ export default function VerificationBenefits() {
   const close = () => setVisible(false);
   return <>
     <View style={styles.card}>
-      <View style={styles.row}><Icon name="identity-seal" size={22} color={COLORS.primary} illustrated={false} />
+      <View style={styles.row}><Icon name="identity-seal" size={22} color={COLORS.primary} />
         <View style={styles.copy}><Text style={styles.title}>A verified badge</Text><Text style={styles.detail}>Identity checked through Stripe.</Text></View></View>
-      <View style={styles.divider} /><View style={styles.row}><Icon name="home" size={22} color={COLORS.primary} illustrated={false} />
+      <View style={styles.divider} /><View style={styles.row}><Icon name="home" size={22} color={COLORS.primary} />
         <View style={styles.copy}><Text style={styles.title}>Town borrowing</Text><Text style={styles.detail}>See who’s lending in Town.</Text></View></View>
     </View>
     <HapticPressable accessibilityRole="button" accessibilityHint="Opens a comparison of available features"

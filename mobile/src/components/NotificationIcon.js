@@ -65,15 +65,15 @@ const APPEARANCE = {
   circle_invite: ['neighbor-invite', 'sage'],
 };
 
-// Read status belongs to the row and unread dot; the line drawing stays quiet.
+// Keep the original object palette; warning and danger tones use their clear ink.
 export default function NotificationIcon({ notification = {}, size = 22 }) {
   const [name, tone] = notification.queueListingId
     ? ['people', 'clay']
     : APPEARANCE[notification.type] || ['notifications', 'gold'];
-  const { color = COLORS.primary } = TONES[tone];
+  const { color = COLORS.primary, illustrated = true } = TONES[tone];
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      <Icon name={name} size={Math.min(size, 22)} color={color} illustrated={false} />
+      <Icon name={name} size={Math.min(size, 22)} color={color} illustrated={illustrated} />
     </View>
   );
 }

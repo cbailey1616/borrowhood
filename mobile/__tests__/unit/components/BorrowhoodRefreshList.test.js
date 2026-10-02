@@ -94,28 +94,29 @@ it('keeps a fast native refresh visible for the rebound and spin without resetti
   expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
   expect(stopAnimation).toHaveBeenCalledTimes(1);
   expect(scrollToOffset).not.toHaveBeenCalled();
-  expect(haptics.light).not.toHaveBeenCalled();
+  expect(haptics.light).toHaveBeenCalledTimes(1);
 });
-it('keeps refresh feedback quiet and avoids duplicate refresh triggers',async()=>{
+it('gives one light haptic when a pull starts refreshing and avoids duplicate triggers',async()=>{
  const onRefresh=jest.fn();
  const screen=render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={onRefresh}/>);
  await ready();
  scroll(screen,-80);scroll(screen,-100);scroll(screen,-90);
  expect(haptics.light).not.toHaveBeenCalled();
  fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
- expect(haptics.light).not.toHaveBeenCalled();
+ expect(haptics.light).toHaveBeenCalledTimes(1);
  fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
  expect(onRefresh).toHaveBeenCalledTimes(1);
  act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS));
- expect(haptics.light).not.toHaveBeenCalled();
+ expect(haptics.light).toHaveBeenCalledTimes(1);
 });
 it('does not give a completion haptic after leaving the page',async()=>{
  const screen=render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={jest.fn()}/>);
  await ready();
  fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
+ expect(haptics.light).toHaveBeenCalledTimes(1);
  screen.unmount();
  act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS));
- expect(haptics.light).not.toHaveBeenCalled();
+ expect(haptics.light).toHaveBeenCalledTimes(1);
 });
 
 it('keeps the hat behind the feed and hides it as the content snaps back while still refreshing', async () => {
@@ -225,7 +226,7 @@ it('gives Ideas the same stretch and full-turn hold while retaining its keyboard
   expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
   act(() => jest.advanceTimersByTime(1));
   expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
-  expect(haptics.light).not.toHaveBeenCalled();
+  expect(haptics.light).toHaveBeenCalledTimes(1);
   expect(screen.getByText('Existing plan')).toBeTruthy();
 });
 

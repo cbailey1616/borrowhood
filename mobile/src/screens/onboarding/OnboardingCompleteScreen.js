@@ -101,7 +101,7 @@ export default function OnboardingCompleteScreen() {
 
         {isFounder && (
           <View style={styles.founderBadge}>
-            <Ionicons name="flag-outline" size={22} illustrated={false} color={COLORS.warning} />
+            <Ionicons name="flag-outline" size={22} color={COLORS.warning} />
             <Text style={styles.founderText}>Neighborhood Founder</Text>
           </View>
         )}

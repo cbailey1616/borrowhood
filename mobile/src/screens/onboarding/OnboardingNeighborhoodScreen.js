@@ -152,7 +152,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
             accessibilityState={{ checked: item.id === selectedId, disabled: busy }} disabled={busy}
             pressedBackgroundColor={COLORS.cardHover}
             onPress={() => setSelectedId(item.id)} style={[styles.row, item.id === selectedId && styles.selected]}>
-            <Ionicons name="home-outline" size={22} illustrated={false} color={COLORS.primary} />
+            <Ionicons name="home-outline" size={22} color={COLORS.primary} />
             <View style={styles.rowContent}><Text style={styles.rowTitle}>{item.name}</Text>
               <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : item.rejoinStatus === 'pending' ? ' · Approval requested' : item.rejoinStatus === 'removed' ? ' · Steward approval required' : ''}</Text></View>
             <Ionicons name={item.id === selectedId ? 'checkmark-circle-outline' : 'ellipse-outline'} size={22} illustrated={false} color={COLORS.primary} />

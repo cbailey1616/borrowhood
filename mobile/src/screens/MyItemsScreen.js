@@ -214,7 +214,7 @@ export default function MyItemsScreen({ navigation }) {
                   ]}>{availability.label}</Text>
                 </View>}
                 <View style={styles.sharingRow} accessible accessibilityLabel={`Visible to: ${sharing.label}`}>
-                  <Ionicons name={sharing.icon} size={16} illustrated={false} />
+                  <Ionicons name={sharing.icon} size={16} />
                   <Text style={styles.summaryMeta}>{sharing.label}</Text>
                 </View>
                 {item.activeOffers > 0 && <Text style={styles.summaryMeta}>{item.activeOffers} private {item.activeOffers === 1 ? 'offer' : 'offers'}</Text>}
@@ -225,7 +225,7 @@ export default function MyItemsScreen({ navigation }) {
           {exchange && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.exchangeSummary} accessibilityRole="button"
             accessibilityLabel={`View exchange for ${item.title}: ${exchange.person}${exchange.timing ? `, ${exchange.timing}` : ''}`}
             onPress={() => navigation.navigate('TransactionDetail', { id: item.activeExchange.id })}>
-            <Ionicons name="person" size={22} illustrated={false} />
+            <Ionicons name="person" size={22} />
             <View style={styles.exchangeCopy}>
               <Text style={styles.exchangePerson}>{exchange.person}</Text>
               {!!exchange.timing && <Text style={[styles.summaryMeta, exchange.attention && styles.attentionText, exchange.overdue && styles.overdueText]}>{exchange.timing}</Text>}
@@ -279,7 +279,7 @@ export default function MyItemsScreen({ navigation }) {
               <View style={styles.requestHeader}>
                 <View style={styles.requestTitleRow}>
                   <View style={styles.requestIconPanel}>
-                    <RequestTypeIcon type={item.type} size={22} illustrated={false} />
+                    <RequestTypeIcon type={item.type} size={22} />
                   </View>
                   <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
                 </View>
@@ -327,7 +327,7 @@ export default function MyItemsScreen({ navigation }) {
               <View style={styles.requestFooter}>
                 <View style={styles.requestTiming}>
                   {!item.neededFrom && !item.neededUntil && <>
-                    <Ionicons name="time-outline" size={16} illustrated={false} color={COLORS.textSecondary} />
+                    <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
                     <Text maxFontSizeMultiplier={1.4} style={styles.requestDate}>Flexible</Text>
                   </>}
                 </View>

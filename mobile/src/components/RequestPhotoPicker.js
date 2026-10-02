@@ -51,8 +51,8 @@ export default function RequestPhotoPicker({ uri, onChange, disabled }) {
     </HapticPressable>}
     <ActionSheet isVisible={sourceVisible} onClose={() => setSourceVisible(false)} title={uri ? 'Change photo' : 'Add photo'}
       actions={[
-        { label: 'Take photo', testID: 'RequestPhoto.camera', icon: <Ionicons name="camera" size={28} illustrated={false} />, onPress: () => choosePhoto(true) },
-        { label: 'Choose photo', testID: 'RequestPhoto.library', icon: <Ionicons name="image" size={28} illustrated={false} />, onPress: () => choosePhoto(false) },
+        { label: 'Take photo', testID: 'RequestPhoto.camera', icon: <Ionicons name="camera" size={28} />, onPress: () => choosePhoto(true) },
+        { label: 'Choose photo', testID: 'RequestPhoto.library', icon: <Ionicons name="image" size={28} />, onPress: () => choosePhoto(false) },
       ]} />
   </View>;
 }

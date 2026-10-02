@@ -191,7 +191,7 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.form}>
           {isVerified && (
             <View style={styles.verifiedBanner}>
-              <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} illustrated={false} />
+              <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} />
               <Text style={styles.verifiedBannerText}>
                 Legal name and location are locked after verification.
               </Text>
@@ -288,7 +288,7 @@ export default function EditProfileScreen({ navigation }) {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionLabel}>
               <Text style={styles.sectionTitle}>Location</Text>
-              {isVerified && <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} illustrated={false} />}
+              {isVerified && <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} />}
             </View>
             {!isVerified && (
               <HapticPressable

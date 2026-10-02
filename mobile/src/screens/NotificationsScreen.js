@@ -1,3 +1,4 @@
+import RefreshControl from '../components/HapticRefreshControl';
 import NotificationIcon from '../components/NotificationIcon';
 import { notificationDestination } from '../utils/notificationDestination';
 import { groupRequestNotifications, readActivity } from '../utils/requestActivity';
@@ -6,8 +7,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  RefreshControl, } from 'react-native';
+  FlatList, } from 'react-native';
 import HeroIcon from '../components/HeroIcon';
 import api from '../services/api';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION  } from '../utils/config';
