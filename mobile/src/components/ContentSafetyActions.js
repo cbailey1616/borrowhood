@@ -30,7 +30,7 @@ export default function ContentSafetyActions({ type, id, onBlocked, open = false
   });
   const block = () => run(async () => {
     await api.blockContentAuthor(type, id);
-    setFeedback({ title: 'Neighbor blocked', message: 'Their posts and public replies will be hidden. You can’t send each other new messages. Existing exchanges remain available.' });
+    setFeedback({ title: 'Neighbor blocked', message: 'Your profile, items and posts are hidden from this person, and their posts and public replies are hidden from you. New messages are blocked. Existing conversations and exchanges stay available.' });
     showSheet('feedback'); onBlocked?.();
   });
   const dialog = sheet === 'menu' ? {
@@ -42,7 +42,7 @@ export default function ContentSafetyActions({ type, id, onBlocked, open = false
     title: 'Report content', message: 'What is wrong with this post or message?',
     actions: ['Scam or fraud', 'Harassment', 'Unsafe behavior', 'Inappropriate content'].map(reason => ({ label: reason, onPress: () => report(reason) })),
   } : sheet === 'block' ? {
-    title: 'Block this neighbor?', message: 'Their posts and public replies will be hidden. Existing exchanges remain available.',
+    title: 'Block this neighbor?', message: 'They won’t be able to see your profile, items or posts, or send you new messages. Their posts and public replies will be hidden from you too. Existing conversations and exchanges stay available.',
     actions: [{ label: 'Block neighbor', destructive: true, onPress: block }],
   } : { ...feedback, actions: [{ label: 'Done' }] };
   if (!id) return null;

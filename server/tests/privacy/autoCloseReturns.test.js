@@ -20,13 +20,14 @@ beforeAll(async () => {
       condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT, condition_notes TEXT);
     CREATE TABLE notifications(transaction_id TEXT, type TEXT, user_id TEXT, created_at TIMESTAMPTZ);
     CREATE TABLE disputes(transaction_id TEXT);
-    CREATE TABLE return_reports(transaction_id TEXT,status TEXT,resolved_at TIMESTAMPTZ);`);
+    CREATE TABLE return_reports(transaction_id TEXT,status TEXT,resolved_at TIMESTAMPTZ);
+    CREATE TABLE safety_reports(content_type TEXT,content_id TEXT,status TEXT);`);
   await ensureExchangeCompletionSchema();
 }, 15000);
 afterAll(async () => state.db.close());
 beforeEach(async () => {
   state.failRecipient = null;
-  await state.db.exec('TRUNCATE listings,borrow_transactions,notifications,disputes,return_reports');
+  await state.db.exec('TRUNCATE listings,borrow_transactions,notifications,disputes,return_reports,safety_reports');
   await state.db.exec("INSERT INTO listings(id) VALUES('item'); INSERT INTO borrow_transactions(id,listing_id) VALUES('borrow','item')");
 });
 const ageReturn = () => state.db.exec("UPDATE borrow_transactions SET status='return_pending',return_requested_at=NOW()-INTERVAL '49 hours' WHERE id='borrow'");
@@ -55,15 +56,22 @@ it('closes after 48 hours, restores inventory and notifies both once', async () 
   expect((await listing()).times_borrowed).toBe(1);
   expect((await state.db.query('SELECT user_id FROM notifications ORDER BY user_id')).rows.map(r=>r.user_id)).toEqual(['borrower','owner']);
 });
-it.each(['dispute','report','condition','paid'])('keeps a %s return open for review', async kind => {
+it.each(['dispute','report','damage','condition','paid'])('keeps a %s return open for review', async kind => {
   await ageReturn();
   if(kind==='dispute') await state.db.exec("INSERT INTO disputes VALUES('borrow')");
   if(kind==='report') await state.db.exec("INSERT INTO return_reports VALUES('borrow','open',NULL)");
+  if(kind==='damage') await state.db.exec("INSERT INTO safety_reports VALUES('exchange','borrow','open')");
   if(kind==='condition') await state.db.exec("UPDATE borrow_transactions SET condition_at_return='worn'");
   if(kind==='paid') await state.db.exec('UPDATE borrow_transactions SET rental_fee=5');
   await autoCloseReturns();
   expect((await row()).status).toBe('return_pending');
   expect((await listing()).times_borrowed).toBe(0);
+});
+it('allows an automatic return after a damage report is dismissed',async()=>{
+  await ageReturn();
+  await state.db.exec("INSERT INTO safety_reports VALUES('exchange','borrow','dismissed')");
+  await autoCloseReturns();
+  expect((await row()).status).toBe('completed');
 });
 it('never closes an overdue borrow that has not been marked returned', async () => {
   await state.db.exec("UPDATE borrow_transactions SET return_requested_at=NOW()-INTERVAL '10 days'");

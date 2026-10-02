@@ -207,6 +207,11 @@ const DRAWINGS = {
   scan: () => p('M3 11V4H10M22 4H29V11M29 22V29H22M10 29H3V22M3 16H29'),
   expand: () => p('M12 4H4V12M4 4L13 13M20 4H28V12M28 4L19 13M4 20V28H12M4 28L13 19M28 20V28H20M28 28L19 19'),
   ban: c => shield(c) + p('M9 10L23 24'),
+  // A crossed-out profile silhouette makes the account block action explicit.
+  'block-person': c => p('M20 25V22C23 20 25 17 24 12C23 6 16 5 12 8C10 10 10 12 9 14L7 18L10 19L11 22H14V25L11 27H23Z', panel(c))
+    + p('M16 2A14 14 0 1 1 16 30A14 14 0 1 1 16 2ZM16 6A10 10 0 1 0 16 26A10 10 0 1 0 16 6Z', `${accent(c)} fill-rule="evenodd"`)
+    + p('M8 8L24 24', 'stroke-width="6"')
+    + p('M8 8L24 24', `stroke="${c.accent}" stroke-width="3"`),
   'return-down-back': c => rect(13, 3, 15, 13, 3, panel(c)) + p('M18 3V8H23V3M24 20V24C24 27 21 28 18 28H5M10 23L5 28L10 31'),
   hourglass: c => p('M7 3H25V7C25 12 21 13 18 16C21 19 25 20 25 25V29H7V25C7 20 11 19 14 16C11 13 7 12 7 7Z', panel(c)) + p('M7 3H25M7 29H25M11 7H21'),
   flash: c => p('M18 2L5 19H15L13 30L28 12H18Z', panel(c)),
@@ -287,6 +292,7 @@ const PALETTES = {
   alarm: [COLORS.artwork.clay06, COLORS.artwork.wood38],
   time: [COLORS.artwork.wood38, COLORS.artwork.clay06],
   calendar: [COLORS.artwork.sky04, COLORS.artwork.sky05],
+  'block-person': [COLORS.illustration.clay, COLORS.danger],
   person: [COLORS.artwork.sage35, COLORS.artwork.clay07], leaf: [COLORS.artwork.sage18, COLORS.artwork.sage65],
   'money-bag': [COLORS.artwork.wood38, COLORS.artwork.sage20],
   gift: [COLORS.artwork.wood42, COLORS.artwork.sage34], camera: [COLORS.artwork.sky04, COLORS.artwork.sky05],

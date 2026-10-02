@@ -62,6 +62,11 @@ it('preserves specific issue and payment-failure information inside the exchange
   const [payment] = inboxActivity([notice('failed', { type: 'payment_failed', body: 'Your payment could not be completed.' })], [exchange], 'me');
   expect(payment.body).toBe('Your payment could not be completed.');
 });
+it.each(['return_reported_missing','return_case_updated'])('preserves %s account report instructions and response access in Inbox',type=>{
+  const body='The owner reported an item not returned. Reports are for account review and may lead to a ban.';
+  const [row]=inboxActivity([notice('report',{type,body})],[{...exchange,status:'return_pending'}],'me');
+  expect(row).toMatchObject({body,action:null,destination:{name:'ReturnHelp',params:{transaction:{id:'exchange'},reports:true}}});
+});
 
 it('does not merge public discussion replies into a private exchange', () => {
   const rows = inboxActivity([notice('reply', { type: 'discussion_reply', discussionId: 'post' })], [exchange], 'me');

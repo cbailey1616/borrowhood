@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from './Icon';
 import { COLORS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from './HapticPressable';
+import ShimmerImage from './ShimmerImage';
 
 const TAB_ICONS = {
   Feed: { active: 'home', inactive: 'home-outline' },
@@ -23,12 +24,23 @@ const TAB_LABELS = {
   Profile: 'Profile',
 };
 
-function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCount = 0 }) {
+function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCount = 0, profilePhotoUrl }) {
   const icons = TAB_ICONS[route.name] || { active: 'ellipse', inactive: 'ellipse-outline' };
   const iconName = isFocused ? icons.active : icons.inactive;
   const label = TAB_LABELS[route.name] || route.name;
   const isSaved = route.name === 'Saved';
   const iconColor = isSaved ? COLORS.savedOutline : isFocused ? COLORS.primary : COLORS.textSecondary;
+  const photo = route.name === 'Profile' ? profilePhotoUrl : null;
+  const icon = <Ionicons
+    testID={`TabBar.${route.name}.icon`}
+    name={iconName}
+    size={26}
+    illustrated
+    style={{ opacity: isFocused ? 1 : 0.78 }}
+    selected={isSaved && isFocused}
+    color={iconColor}
+    fillColor={isSaved ? COLORS.saved : undefined}
+  />;
 
   return (
     <HapticPressable
@@ -44,17 +56,11 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
       accessibilityLabel={label}
       accessibilityValue={hasUpdate ? { text: route.name === 'Feed' ? 'New posts' : `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}` } : undefined}
     >
-      <View testID={`TabBar.${route.name}.highlight`} style={[styles.iconContainer, isFocused && styles.selectedIconContainer]}>
-        <Ionicons
-          testID={`TabBar.${route.name}.icon`}
-          name={iconName}
-          size={26}
-          illustrated
-          style={{ opacity: isFocused ? 1 : 0.78 }}
-          selected={isSaved && isFocused}
-          color={iconColor}
-          fillColor={isSaved ? COLORS.saved : undefined}
-        />
+      <View testID={`TabBar.${route.name}.highlight`} style={[styles.iconContainer, isFocused && !photo && styles.selectedIconContainer]}>
+        {photo ? <View style={[styles.avatarRing, isFocused && styles.selectedAvatarRing]}>
+          <ShimmerImage source={{ uri: photo }} style={styles.avatar} placeholderIcon="person" placeholder={icon}
+            testID="TabBar.Profile.photo" accessible={false} />
+        </View> : icon}
         {hasUpdate && (route.name === 'Activity'
           ? <View testID="TabBar.Activity.badge" style={styles.unreadBadge}>
               <Text maxFontSizeMultiplier={1.4} style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -73,7 +79,7 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
   );
 }
 
-export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0, hasNewFeed = false }) {
+export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0, hasNewFeed = false, profilePhotoUrl }) {
   const insets = useSafeAreaInsets();
   const reportHeight = useContext(BottomTabBarHeightCallbackContext);
   const onLayout = event => reportHeight?.(event.nativeEvent.layout.height);
@@ -111,6 +117,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
             onLongPress={onLongPress}
             hasUpdate={route.name === 'Activity' ? unreadCount > 0 : route.name === 'Feed' ? hasNewFeed : false}
             unreadCount={route.name === 'Activity' ? unreadCount : 0}
+            profilePhotoUrl={profilePhotoUrl}
           />
         );
       })}
@@ -176,6 +183,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   selectedIconContainer: { backgroundColor: COLORS.primaryMuted },
+  avatarRing: {
+    width: 32, height: 32, borderRadius: 16, borderWidth: 2,
+    borderColor: 'transparent', padding: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  selectedAvatarRing: { borderColor: COLORS.primary },
+  avatar: { width: 26, height: 26, borderRadius: 13 },
   label: {
     ...TYPOGRAPHY.label,
     marginTop: 4,

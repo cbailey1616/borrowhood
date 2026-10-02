@@ -27,6 +27,7 @@ try {
   await client.query(`
     CREATE TEMP TABLE users (id text, is_verified boolean, city text, state text, status text DEFAULT 'pending');
     CREATE TEMP TABLE listings (id text, owner_id text, visibility text, privacy_version integer, status text, circle_id text, community_id text, listing_type text DEFAULT 'lend', town_preview_enabled boolean DEFAULT false);
+    CREATE TEMP TABLE user_blocks (user_id text, blocked_id text);
     CREATE TEMP TABLE friendships (user_id text, friend_id text, status text);
     CREATE TEMP TABLE lending_circle_members (circle_id text, user_id text, status text);
     CREATE TEMP TABLE community_memberships (community_id text, user_id text);
@@ -141,6 +142,22 @@ try {
     const result = await client.query(`SELECT ${requestAccessSql('r', '$1')} AS allowed FROM item_requests r WHERE id = 'group-request'`, [viewer]);
     assert.equal(result.rows[0].allowed, expected, `group request / ${viewer}`);
     checks++;
+  }
+  // Blocking overrides audiences and prior exchange grants in either direction.
+  await client.query("UPDATE listings SET status='active' WHERE id='private'");
+  for (const [viewer, item] of [['friend', 'combined'], ['neighbor', 'private']]) {
+    await checkItem(item, viewer, true);
+    for (const [blocker, blocked] of [['owner', viewer], [viewer, 'owner']]) {
+      await client.query('INSERT INTO user_blocks VALUES($1,$2)', [blocker, blocked]);
+      await checkItem(item, viewer, false);
+      await checkItem(item, viewer, false, true);
+      if (viewer === 'friend') {
+        const result = await client.query(`SELECT ${requestAccessSql('r', '$1')} AS allowed FROM item_requests r WHERE id='group-request'`, [viewer]);
+        assert.equal(result.rows[0].allowed, false, 'Blocked Wanted post'); checks++;
+      }
+      await client.query('DELETE FROM user_blocks');
+      await checkItem(item, viewer, true);
+    }
   }
   console.log(`Passed ${checks} PostgreSQL policy checks using temporary fixtures. No application data changed.`);
 } catch (error) {

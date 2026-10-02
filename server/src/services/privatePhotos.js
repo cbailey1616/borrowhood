@@ -1,3 +1,4 @@
+import { profileVisibleSql } from './contentPolicy.js';
 import jwt from 'jsonwebtoken';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { townPreviewSql } from './townPreview.js';
@@ -175,7 +176,7 @@ export async function servePrivatePhoto(req, res) {
         AND (viewer.token_invalidated_at IS NULL OR viewer.token_invalidated_at <= to_timestamp($3))
         AND (${listingAccessSql('l', '$2')} OR ${townPreviewSql('l', 'owner_id', '$2', { listing: true })} OR EXISTS (SELECT 1 FROM item_requests rp WHERE rp.photo_url = $1 AND (${requestAccessSql('rp', '$2')} OR ${townPreviewSql('rp', 'user_id', '$2')}))) LIMIT 1`, [data.src, data.sub, data.iat]) : await query(`
       SELECT 1 FROM item_requests rp WHERE rp.photo_url = $1 AND (${requestAccessSql('rp', '$2')} OR ${townPreviewSql('rp', 'user_id', '$2')})
-      UNION ALL SELECT 1 FROM users WHERE profile_photo_url = $1
+      UNION ALL SELECT 1 FROM users WHERE profile_photo_url = $1 AND ${profileVisibleSql('users.id', '$2')}
       UNION ALL SELECT 1 FROM messages m JOIN conversations c ON c.id = m.conversation_id
         WHERE m.image_url = $1 AND m.deleted_at IS NULL AND (c.user1_id = $2 OR c.user2_id = $2)
       UNION ALL SELECT 1 FROM communities WHERE banner_url = $1
@@ -189,6 +190,12 @@ export async function servePrivatePhoto(req, res) {
               AND dm.community_id = dl.community_id AND dm.role = 'organizer'))
       UNION ALL SELECT 1 FROM borrow_transactions dt
         WHERE $1 = ANY(dt.damage_evidence_urls) AND (dt.borrower_id = $2 OR dt.lender_id = $2)
+      UNION ALL SELECT 1 FROM return_reports rr
+        WHERE $1 = ANY(rr.photos) AND (rr.owner_id = $2 OR rr.borrower_id = $2
+          OR EXISTS (SELECT 1 FROM users ru WHERE ru.id=$2 AND ru.is_admin=true))
+      UNION ALL SELECT 1 FROM safety_reports sr JOIN borrow_transactions st ON st.id=sr.content_id
+        WHERE sr.content_type='exchange' AND sr.content_snapshot->'photos' ? $1
+          AND (st.lender_id=$2 OR st.borrower_id=$2)
       UNION ALL SELECT 1 FROM lending_circles lc JOIN lending_circle_members cm ON cm.circle_id = lc.id
         WHERE lc.photo_url = $1 AND cm.user_id = $2 AND cm.status = 'active'
       UNION ALL SELECT 1 FROM bundles b WHERE b.photo_url = $1 AND (b.owner_id = $2 OR (

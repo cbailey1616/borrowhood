@@ -24,8 +24,9 @@ const explanations = {
 };
 const date = value => value ? new Date(value).toLocaleString() : '';
 
-export default function SafetyReportsScreen({ navigation }) {
+export default function SafetyReportsScreen({ navigation, route }) {
   const { user } = useAuth();
+  const reportId = route?.params?.reportId;
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState('open');
   const [data, setData] = useState({ reports: [], page: 1, hasMore: false });
@@ -42,12 +43,18 @@ export default function SafetyReportsScreen({ navigation }) {
     const version = ++loadVersion.current;
     setLoading(true); setError('');
     try {
-      const result = await api.getSafetyReports(filter, page);
-      if (version === loadVersion.current) setData(previous => ({ ...result, reports: page === 1 ? result.reports : [...previous.reports, ...result.reports] }));
+      const result = await api.getSafetyReports(reportId ? 'all' : filter, page, reportId);
+      if (version === loadVersion.current) {
+        setData(previous => ({ ...result, reports: page === 1 ? result.reports : [...previous.reports, ...result.reports] }));
+        if (reportId) setSelected(result.reports.find(report => report.id === reportId) || null);
+      }
     } catch (e) { if (version === loadVersion.current) setError(e.message || 'Could not load reports.'); }
     finally { if (version === loadVersion.current) setLoading(false); }
-  }, [filter, user?.isAdmin]);
-  useEffect(() => { load(); return () => { loadVersion.current++; }; }, [load]);
+  }, [filter, reportId, user?.isAdmin]);
+  useEffect(() => {
+    setSelected(null); setNote(''); setData({ reports: [], page: 1, hasMore: false });
+    load(); return () => { loadVersion.current++; };
+  }, [load]);
   const choose = action => {
     Keyboard.dismiss();
     if (note.trim().length < 3) { setError('Add a review note before making a decision.'); return; }
@@ -68,16 +75,16 @@ export default function SafetyReportsScreen({ navigation }) {
       contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { if (!saving) { setSelected(null); load(); } }} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
       <View style={styles.heading}><View style={{ flex: 1 }}>
-        <Text style={styles.title}>Community safety</Text><Text style={styles.body}>Review reports and manage account access.</Text>
+        <Text style={styles.title}>{reportId ? 'Report review' : 'Community safety'}</Text><Text style={styles.body}>Review reports and manage account access.</Text>
       </View></View>
-      <SegmentedControl segments={['Open reports', 'All reports']} selectedIndex={filter === 'open' ? 0 : 1} onIndexChange={i => {
+      {!reportId && <SegmentedControl segments={['Open reports', 'All reports']} selectedIndex={filter === 'open' ? 0 : 1} onIndexChange={i => {
         if (saving) return; setSelected(null); setNote(''); setData({ reports: [], page: 1, hasMore: false }); setFilter(i ? 'all' : 'open');
-      }} />
+      }} />}
       {!!error && <View style={styles.errorBox}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
         {!saving && <ActionButton label="Refresh reports" icon="refresh-outline" disabled={loading} onPress={() => { setSelected(null); load(); }} />}
       </View>}
       {loading && !data.reports.length && <ActivityIndicator color={COLORS.spinner} />}
-      {!loading && !error && !data.reports.length && <LayeredCard style={styles.card}><Ionicons name="document-text-outline" size={28} color={COLORS.primary} /><Text style={styles.name}>{filter === 'open' ? 'No open reports' : 'No reports yet'}</Text><Text style={styles.body}>Reports submitted by members will appear here.</Text></LayeredCard>}
+      {!loading && !error && !data.reports.length && <LayeredCard style={styles.card}><Ionicons name="document-text-outline" size={28} color={COLORS.primary} /><Text style={styles.name}>{reportId ? 'This report is no longer available.' : filter === 'open' ? 'No open reports' : 'No reports yet'}</Text>{!reportId && <Text style={styles.body}>Reports submitted by members will appear here.</Text>}</LayeredCard>}
       {data.reports.map(report => <LayeredCard key={report.id} style={styles.card}>
         <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} disabled={saving} accessibilityLabel={`Review report about ${report.reportedName}`} onPress={() => {
           setSelected(selected?.id === report.id ? null : report); setNote(''); setError('');
@@ -94,6 +101,7 @@ export default function SafetyReportsScreen({ navigation }) {
               accessibilityLabel="Reported photo" style={{ width: '100%', height: 260, borderRadius: 12, marginTop: 12 }} resizeMode="contain" />)}
           </View>}
           <Text style={styles.body}>Reported by {report.reporterName}</Text>
+          {report.contentType==='exchange'&&<Text style={styles.body}>Exchange report · submitted by the {report.contentSnapshot?.reporterRole||'neighbor'}. Account review only.</Text>}
           <Text style={styles.body}>Account: {report.accountStatus || 'Deleted'} · {report.reportCount} total reports</Text>
           <Text style={styles.body}>{report.activeExchanges} active exchanges</Text>
           {!!report.reportedId && <ActionButton label="View reported profile" icon="person-outline" disabled={saving} onPress={() => navigation.navigate('UserProfile', { id: report.reportedId })} />}
@@ -102,7 +110,7 @@ export default function SafetyReportsScreen({ navigation }) {
           <TextInput accessibilityLabel="Review note" multiline value={note} onChangeText={setNote} maxLength={2000} editable={!saving}
             placeholder="Explain your decision. Visible only to administrators." placeholderTextColor={COLORS.textSecondary} style={styles.input} />
           <Text style={styles.caption}>Every decision is saved with the reviewer and time. A report alone does not suspend an account.</Text>
-          {report.contentId && <ActionButton label="Remove content" destructive disabled={saving} icon="trash-outline" onPress={() => choose('remove_content')} />}
+          {report.contentId && report.contentType!=='exchange' && <ActionButton label="Remove content" destructive disabled={saving} icon="trash-outline" onPress={() => choose('remove_content')} />}
           {saving ? <ActivityIndicator color={COLORS.spinner} /> : <>
             {report.reportedId && !report.reportedIsAdmin && report.reportedId !== user.id && report.accountStatus !== 'suspended' &&
               <ActionButton label="Suspend account" variant="primary" destructive icon="ban-outline" onPress={() => choose('suspend')} />}

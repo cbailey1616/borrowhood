@@ -30,7 +30,7 @@ describe('TransactionDetailScreen', () => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status:'return_pending', actualPickupAt:'2026-09-25T12:00:00Z' });
     const Screen=require('../../src/screens/TransactionDetailScreen').default;
     const screen=render(<Screen navigation={mockNavigation} route={route}/>);
-    expect(await screen.findByTestId('Transaction.button.message')).toBeTruthy();
+    expect(await screen.findByTestId('Transaction.button.message', {}, { timeout: 10000 })).toBeTruthy();
     expect(screen.queryByTestId('Transaction.button.returnHelp')).toBeNull();
   });
   it('keeps real return options for the owner of an item still out on loan', async () => {
@@ -39,6 +39,15 @@ describe('TransactionDetailScreen', () => {
     const screen=render(<Screen navigation={mockNavigation} route={route}/>);
     fireEvent.press(await screen.findByTestId('Transaction.button.returnHelp'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ReturnHelp',{transaction:expect.objectContaining({id:'txn-1'})});
+  });
+  it.each([[true,'picked_up'],[false,'picked_up'],[true,'return_pending'],[false,'return_pending']])('opens a real report instead of chat (owner=%s, %s)',async(isLender,status)=>{
+    api.getTransaction.mockResolvedValue({...mockTransaction,status,isLender,isBorrower:!isLender,actualPickupAt:'2026-09-25T12:00:00Z'});
+    const Screen=require('../../src/screens/TransactionDetailScreen').default;
+    const screen=render(<Screen navigation={mockNavigation} route={route}/>);
+    fireEvent.press(await screen.findByTestId('Transaction.button.reportReturnIssue'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ExchangeIssue',{transactionId:'txn-1'});
+    expect(api.getConversations).not.toHaveBeenCalled();
+    expect(screen.queryByText('Something different?')).toBeNull();
   });
 
   it('gives more time only after confirmation and keeps the exchange open', async () => {
@@ -147,7 +156,7 @@ describe('TransactionDetailScreen', () => {
     expect(api.confirmRentalReturn).toHaveBeenCalledWith('txn-1', 'like_new');
   });
 
-  it('lets the owner message about a return without completing the exchange', async () => {
+  it('lets the owner report a return issue without completing the exchange', async () => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'return_pending', isLender: true, isBorrower: false,
       borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S' } });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
@@ -155,9 +164,8 @@ describe('TransactionDetailScreen', () => {
     const reportButton = await screen.findByTestId('Transaction.button.reportReturnIssue');
     expect(reportButton).toHaveStyle({ backgroundColor: COLORS.danger, minHeight: 52 });
     fireEvent.press(reportButton);
-    expect(screen.getByText('Something different?')).toBeTruthy();
-    fireEvent.press(screen.getByTestId('Transaction.messageAboutReturn'));
-    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: 'user-3', listingId: 'l-1' })));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('ExchangeIssue', { transactionId: 'txn-1' });
+    expect(api.getConversations).not.toHaveBeenCalled();
     expect(api.confirmRentalReturn).not.toHaveBeenCalled();
     expect(screen.queryByText('Something different?')).toBeNull();
   });

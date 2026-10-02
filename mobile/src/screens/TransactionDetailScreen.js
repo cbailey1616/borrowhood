@@ -60,7 +60,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const [fetchError, setFetchError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [returnIssueVisible, setReturnIssueVisible] = useState(false);
   const [pickupSheetVisible, setPickupSheetVisible] = useState(false);
   const [moreTimeSheetVisible, setMoreTimeSheetVisible] = useState(false);
   const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
@@ -347,8 +346,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
           {primaryAction && <ActionButton testID={primaryAction.testID} label={primaryAction.label} variant="primary"
             icon={needsPickup || needsReturn ? 'checkmark-circle-outline' : primaryIsMessage ? 'chatbubble-outline' : 'people-outline'}
             loading={actionLoading} disabled={!!fetchError && (needsPickup || needsReturn)} onPress={primaryAction.onPress} />}
-          {needsReturn && <ActionButton label="Report an issue" variant="primary" destructive icon="flag-outline"
-            testID="Transaction.button.reportReturnIssue" disabled={actionLoading} onPress={() => setReturnIssueVisible(true)} />}
+          {(needsReturn || (activeReturn && transaction.isBorrower)) && <ActionButton label="Report an issue" variant="primary" destructive icon="flag-outline"
+            testID="Transaction.button.reportReturnIssue" disabled={actionLoading || !!fetchError}
+            onPress={() => navigation.navigate('ExchangeIssue', { transactionId: id })} />}
           {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"
             disabled={actionLoading || !!fetchError} style={styles.outlinedAction} onPress={() => setMoreTimeSheetVisible(true)} />}
           {canCancel && <HapticPressable accessibilityRole="button" accessibilityLabel={cancelLabel} testID="Transaction.button.cancel"
@@ -363,7 +363,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {!showEndorsement && (showMessageRow || showReturnHelp) && <LayeredCard radius={RADIUS.xl} style={styles.groupedActions}>
           {showMessageRow && <ActionRow label={`Message ${otherPerson.firstName}`} icon="chatbubble-outline"
             accessibilityLabel={`Message ${otherPerson.firstName} privately`} onPress={messageNeighbor} isLast={!showReturnHelp} />}
-          {showReturnHelp && <ActionRow label={transaction.isLender && needsReturn ? 'Return options' : 'Return help'} icon="return-down-back-outline"
+          {showReturnHelp && <ActionRow label="Return options" icon="return-down-back-outline"
             testID="Transaction.button.returnHelp" onPress={() => navigation.navigate('ReturnHelp', { transaction })} isLast />}
         </LayeredCard>}
 
@@ -438,23 +438,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </View>}
         </>}
       </ScrollView>
-
-      <ActionSheet
-        isVisible={returnIssueVisible}
-        onClose={() => setReturnIssueVisible(false)}
-        variant="confirmation"
-        icon={<ListingTypeIcon listing={transaction} size={28} />}
-        title="Something different?"
-        message="Tell your neighbor about any damage or change in condition. The return stays open until the owner confirms it."
-        actions={[
-          {
-            label: 'Message neighbor',
-            testID: 'Transaction.messageAboutReturn',
-            onPress: messageNeighbor,
-            primary: true,
-          },
-        ]}
-      />
 
       <ActionSheet
         isVisible={pickupSheetVisible}

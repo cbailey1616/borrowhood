@@ -152,3 +152,13 @@ it('does not offer report/block for your own profile', async () => {
   expect(screen.queryByText('Report user')).toBeNull();
   expect(screen.queryByText('Block user')).toBeNull();
 });
+
+it('clears a previously visible profile after access is revoked on focus', async()=>{
+ const Screen=require('../../src/screens/UserProfileScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'user-2'}}} />);
+ await screen.findByText(/Alice/);
+ api.getUser.mockRejectedValueOnce(Object.assign(new Error('User not found'),{status:404}));
+ const focus=mockNavigation.addListener.mock.calls.find(([event])=>event==='focus')[1];
+ await act(async()=>focus());
+ expect(screen.queryByText(/Alice/)).toBeNull();
+});

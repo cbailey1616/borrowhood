@@ -51,6 +51,16 @@ it('shows existing database reports without exposing credentials or unrelated me
   expect(res.body.reports[0]).toMatchObject({ reportedName:'Target',reporterName:'Reporter',reason:'Harassment',status:'open',version:0,reportCount:1,history:[] });
   expect(JSON.stringify(res.body)).not.toMatch(/password|token|email|message_content/);
 });
+it('loads a dashboard-selected report with its history and validates the report filter', async () => {
+  await review('dismiss');
+  await state.db.query("INSERT INTO safety_reports(reporter_id,reported_id,reason) VALUES($1,$2,'Other report')", [reporter.id,target.id]);
+  const res=await staffRequest('get',`?status=all&reportId=${reportId}`);
+  expect(res.status).toBe(200);expect(res.body.reports).toHaveLength(1);
+  expect(res.body.reports[0]).toMatchObject({id:reportId,status:'dismissed'});
+  expect(res.body.reports[0].history).toHaveLength(1);
+  expect((await staffRequest('get','?reportId=invalid')).status).toBe(400);
+  expect((await request(app).get(`/admin?status=all&reportId=${reportId}`).set('Authorization',`Bearer ${token(reporter)}`)).status).toBe(403);
+});
 it('accepts a member report without suspending or personally blocking anyone', async () => {
   const res = await request(app).post(`/safety/${target.id}/report`).set('Authorization',`Bearer ${token(reporter)}`).send({ reason:'Inappropriate content' });
   expect(res.status).toBe(200);

@@ -33,6 +33,7 @@ export async function ensureSafetyReviewSchema() {
     await db.query('ALTER TABLE IF EXISTS item_requests ADD COLUMN IF NOT EXISTS moderation_removed_at TIMESTAMPTZ');
     await db.query('CREATE INDEX IF NOT EXISTS safety_reports_queue_idx ON safety_reports(status, created_at DESC)');
     await db.query('CREATE INDEX IF NOT EXISTS safety_reports_person_idx ON safety_reports(reported_id)');
+    await db.query("CREATE INDEX IF NOT EXISTS safety_reports_exchange_idx ON safety_reports(content_id,reporter_id) WHERE content_type='exchange'");
     await db.query('CREATE INDEX IF NOT EXISTS safety_review_actions_report_idx ON safety_review_actions(report_id, created_at)');
   });
 }
@@ -40,7 +41,7 @@ export async function ensureSafetyReviewSchema() {
 const failure = (status, message) => Object.assign(new Error(message), { status });
 const personName = alias => `COALESCE(NULLIF(${alias}.display_name,''), NULLIF(TRIM(CONCAT_WS(' ',${alias}.first_name,${alias}.last_name)),''), 'Deleted account')`;
 
-export async function listSafetyReports(status, page) {
+export async function listSafetyReports(status, page, reportId = null) {
   const result = await query(`SELECT r.id, r.reason, r.status, r.version, r.created_at AS "createdAt",
     r.content_type AS "contentType", r.content_id AS "contentId", r.content_snapshot AS "contentSnapshot",
     r.reviewed_at AS "reviewedAt", r.reporter_id AS "reporterId", r.reported_id AS "reportedId",
@@ -53,8 +54,8 @@ export async function listSafetyReports(status, page) {
       AND b.status IN ('approved','paid','picked_up','return_pending')) AS "activeExchanges"
     FROM safety_reports r LEFT JOIN users reporter ON reporter.id=r.reporter_id
     LEFT JOIN users reported ON reported.id=r.reported_id
-    WHERE ($1::text = 'all' OR r.status=$1)
-    ORDER BY r.created_at DESC, r.id DESC LIMIT 26 OFFSET $2`, [status, (page - 1) * 25]);
+    WHERE ($1::text = 'all' OR r.status=$1) AND ($3::uuid IS NULL OR r.id=$3)
+    ORDER BY r.created_at DESC, r.id DESC LIMIT 26 OFFSET $2`, [status, (page - 1) * 25, reportId]);
   const reports = result.rows.slice(0, 25);
   if (reports.length) {
     const history = await query(`SELECT a.report_id AS "reportId", a.action, a.note, a.created_at AS "createdAt",

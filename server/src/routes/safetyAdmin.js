@@ -7,9 +7,11 @@ router.use(authenticate, requireAdmin);
 router.get('/', async (req, res) => {
   const status = req.query.status || 'open';
   const page = Number(req.query.page || 1);
-  if (!['open','reviewed','dismissed','all'].includes(status) || !Number.isInteger(page) || page < 1 || page > 10000)
+  const reportId = req.query.reportId;
+  if (!['open','reviewed','dismissed','all'].includes(status) || !Number.isInteger(page) || page < 1 || page > 10000 ||
+      (reportId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reportId)))
     return res.status(400).json({ error: 'Choose a valid report filter and page.' });
-  try { res.json(await listSafetyReports(status, page)); }
+  try { res.json(await listSafetyReports(status, page, reportId)); }
   catch { res.status(500).json({ error: 'Could not load reports. Please try again.' }); }
 });
 router.post('/:id/review', async (req, res) => {
