@@ -12,6 +12,7 @@ beforeAll(async () => {
       town_preview_enabled BOOLEAN DEFAULT true, is_available BOOLEAN DEFAULT true);
     CREATE TABLE item_requests(id TEXT PRIMARY KEY, user_id TEXT, visibility TEXT DEFAULT 'town', community_id TEXT,
       status TEXT DEFAULT 'open', expires_at TIMESTAMPTZ, needed_until DATE, time_zone TEXT DEFAULT 'UTC', town_preview_enabled BOOLEAN DEFAULT false);
+    CREATE TABLE user_blocks(user_id TEXT, blocked_id TEXT);
     CREATE TABLE friendships(user_id TEXT, friend_id TEXT, status TEXT);
     CREATE TABLE community_memberships(community_id TEXT, user_id TEXT);
     CREATE TABLE lending_circle_members(circle_id TEXT, user_id TEXT, status TEXT);
@@ -20,7 +21,7 @@ beforeAll(async () => {
     CREATE TABLE borrow_transactions(listing_id TEXT, borrower_id TEXT, status TEXT);`);
 }, 20000);
 beforeEach(async () => {
-  await state.db.exec(`TRUNCATE users,listings,item_requests,friendships,community_memberships,lending_circle_members,listing_shares,borrow_transactions;
+  await state.db.exec(`TRUNCATE user_blocks,users,listings,item_requests,friendships,community_memberships,lending_circle_members,listing_shares,borrow_transactions;
     INSERT INTO users(id,city,state,is_verified) VALUES('owner','Upton','MA',true),('friend','Upton','MA',false),
       ('neighbor','Upton','MA',false),('verified',' upton ','ma',true),('other-town','Upton','NY',true);
     INSERT INTO listings(id,owner_id,visibility,community_id,circle_id) VALUES
@@ -105,4 +106,33 @@ it('uses request membership and hides suspended owners from audiences and previe
   expect(await canViewRequest('group','neighbor')).toBe(false);
   expect(await canViewListing('friends','friend')).toBe(false);
   expect(await canPreviewTownPost('town','verified')).toBe(false);
+});
+
+it.each([['owner', 'verified'], ['verified', 'owner']])('blocks every post access path for %s blocking %s', async (blocker, blocked) => {
+  await state.db.exec("INSERT INTO item_requests(id,user_id,visibility,town_preview_enabled) VALUES('owner-need','owner','town',true)");
+  await offerListing('need', 'private', 'owner');
+  await state.db.exec("INSERT INTO borrow_transactions VALUES('private','verified','paid')");
+  expect(await canViewListing('private', 'verified')).toBe(true);
+  expect(await canViewRequest('owner-need', 'verified')).toBe(true);
+  await state.db.query('INSERT INTO user_blocks VALUES($1,$2)', [blocker, blocked]);
+  for (const id of ['town', 'private']) {
+    expect(await canViewListing(id, 'verified')).toBe(false);
+    expect(await canViewListing(id, 'verified', { discovery: true })).toBe(false);
+    expect(await canPreviewTownPost(id, 'verified')).toBe(false);
+  }
+  expect(await canViewRequest('owner-need', 'verified')).toBe(false);
+  expect(await canPreviewTownPost('owner-need', 'verified', 'request')).toBe(false);
+  await expect(offerListing('need', 'private', 'owner')).rejects.toThrow();
+  expect(await canViewListing('private', 'owner')).toBe(true);
+  await state.db.exec('DELETE FROM user_blocks');
+  expect(await canViewListing('private', 'verified')).toBe(true);
+  expect(await canViewRequest('owner-need', 'verified')).toBe(true);
+});
+
+it.each([['friend','friends'], ['neighbor','neighborhood'], ['neighbor','circle']])('blocks %s from the %s audience until unblocked',async(viewer,listing)=>{
+ expect(await canViewListing(listing,viewer)).toBe(true);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',['owner',viewer]);
+ expect(await canViewListing(listing,viewer)).toBe(false);
+ await state.db.exec('DELETE FROM user_blocks');
+ expect(await canViewListing(listing,viewer)).toBe(true);
 });

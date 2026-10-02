@@ -13,6 +13,7 @@ it('requires confirmation, supports cancellation, and blocks the selected member
   const changed = jest.fn(); const screen = await open({ onBlockChange: changed });
   fireEvent.press(screen.getByText('Block user'));
   expect(screen.getByText('Block Alex?')).toBeTruthy();
+  expect(screen.getByText('They won’t be able to see your profile, items or posts, or send you new messages. Their posts will be hidden from you too. Existing conversations and exchanges stay available.')).toBeTruthy();
   expect(api.blockUser).not.toHaveBeenCalled();
   fireEvent.press(screen.getByText('Not now'));
   expect(api.blockUser).not.toHaveBeenCalled();

@@ -29,6 +29,9 @@ export function notificationDestination(item = {}) {
     ? { name: 'CommunityMembers', params: { id: item.communityId } } : { name: 'MyCommunity' };
   if (['verification_expiring', 'verification_failed'].includes(item.type)) return { name: 'IdentityVerification', params: { source: 'generic' } };
   if (item.type === 'circle_invite') return { name: 'LendingCircles' };
+  if (['return_reported_missing', 'return_case_updated'].includes(item.type) && item.transactionId) {
+    return { name: 'ReturnHelp', params: { transaction: { id: item.transactionId }, reports: true } };
+  }
   if (item.disputeId) return { name: 'DisputeDetail', params: { id: item.disputeId } };
   if (item.transactionId) return { name: 'TransactionDetail', params: { id: item.transactionId } };
   if (item.listingId) return { name: 'ListingDetail', params: { id: item.listingId } };

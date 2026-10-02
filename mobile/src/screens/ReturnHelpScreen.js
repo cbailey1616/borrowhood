@@ -27,7 +27,8 @@ export default function ReturnHelpScreen({route,navigation}) {
   const {user}=useAuth();
   const admin=!!route.params?.admin && !!user?.isAdmin;
   const transactionId=route.params?.transaction?.id;
-  const startNavigationTask=useNavigationTask(navigation,transactionId);
+  const reportId=admin?route.params?.reportId:undefined;
+  const startNavigationTask=useNavigationTask(navigation,transactionId||reportId);
   const [transaction,setTransaction]=useState(null);
   const [data,setData]=useState({reports:[],restriction:null,page:1,hasMore:false});
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('');
@@ -38,12 +39,12 @@ export default function ReturnHelpScreen({route,navigation}) {
   const load=useCallback(async(page=1)=>{
     const token=++generation.current;setLoading(true);setError('');
     try {
-      const [result,t]=await Promise.all([api.getReturnHelp(admin,page,transactionId),transactionId?api.getTransaction(transactionId):null]);
+      const [result,t]=await Promise.all([api.getReturnHelp(admin,page,transactionId,reportId),transactionId?api.getTransaction(transactionId):null]);
       if(token!==generation.current)return;
       setData(previous=>({...result,reports:page===1?result.reports:[...previous.reports,...result.reports]}));setTransaction(t);
-    }catch(e){if(token===generation.current)setError(e.message||'Could not load return help.');}
+    }catch(e){if(token===generation.current)setError(e.message||'Could not load return reports.');}
     finally{if(token===generation.current)setLoading(false);}
-  },[admin,transactionId]);
+  },[admin,transactionId,reportId]);
   useFocusEffect(useCallback(()=>{
     setForm(null);setDecision(null);setPicker(false);setSuccess('');setMessaging(false);
     setTransaction(null);setData({reports:[],restriction:null,page:1,hasMore:false});load();
@@ -69,12 +70,11 @@ export default function ReturnHelpScreen({route,navigation}) {
     }
     const token=generation.current;flight.current=true;setBusy(true);setError('');
     try {
-      if(form.kind==='report')await api.reportNonReturn(transactionId,note.trim());
-      else if(form.kind==='extend')await api.extendReturn(transactionId,localDate(date));
+      if(form.kind==='extend')await api.extendReturn(transactionId,localDate(date));
       else if(form.kind==='review')await api.reviewReturnReport(form.report.id,{action,note:note.trim(),version:form.report.version});
       else await api.respondReturnReport(form.report.id,note.trim(),form.report.version,form.kind==='appeal');
       if(token!==generation.current)return;
-      setForm(null);setPicker(false);setSuccess(form.kind==='report'?'Report saved. Your neighbor has 48 hours to respond. A report alone does not cause a ban.':form.kind==='extend'?`Return date saved: ${returnDateLabel(date)}.`:'Update saved.');await load();
+      setForm(null);setPicker(false);setSuccess(form.kind==='extend'?`Return date saved: ${returnDateLabel(date)}.`:'Update saved.');await load();
     }catch(e){if(token===generation.current)setError(e.message||'Could not save. Refresh and try again.');}
     finally{flight.current=false;setBusy(false);}
   };
@@ -96,13 +96,12 @@ export default function ReturnHelpScreen({route,navigation}) {
     }catch{if(isCurrent())navigation.navigate('Chat',params);}
     finally{if(isCurrent())setMessaging(false);}
   };
-  const existingReport=data.reports.some(r=>r.transaction_id===transactionId && !(r.status==='dismissed' && r.reported_due_date && new Date(r.due_date)>new Date(r.reported_due_date)));
   const exchangeFirst=guidance?.exchangeFirst||!guidance?.canMessage;
   const showOptions=guidance&&(guidance.canExtend||guidance.canMessage||!exchangeFirst);
   const showSecondary=guidance?.canMessage||!exchangeFirst;
   const renderForm=()=>form&&<LayeredCard style={styles.card}>
     <View style={styles.statusHeading}>
-      <Text style={styles.statusTitle}>{form.kind==='report'?'Item not returned':editingDate?'Give more time':form.kind==='appeal'?'Appeal this decision':form.kind==='review'?'Review this report':'Your response'}</Text>
+      <Text style={styles.statusTitle}>{editingDate?'Give more time':form.kind==='appeal'?'Appeal this decision':form.kind==='review'?'Review this report':'Your response'}</Text>
     </View>
     {editingDate?<>
       <Text style={styles.body}>Choose a new date you’ve agreed with {guidance.neighbor?.firstName||'your neighbor'}.</Text>
@@ -139,7 +138,7 @@ export default function ReturnHelpScreen({route,navigation}) {
       {form.report.confirmed_owners>=3 && form.report.restriction?.state==='review' && action(labels.ban,()=>setDecision('ban'),true)}
       {form.report.restriction?.state==='hold' && action(labels.restore,()=>setDecision('restore'))}
     </>:editingDate?<ActionButton label="Save return date" variant="primary" icon="checkmark" loading={busy} disabled={loading||!extensionDates.available} onPress={()=>submit()}/>
-      :action(form.kind==='report'?'Send report':form.kind==='appeal'?'Send appeal':'Send response',()=>setDecision(form.kind),form.kind==='report',true)}
+      :action(form.kind==='appeal'?'Send appeal':'Send response',()=>setDecision(form.kind),false,true)}
     {action('Cancel',()=>{setForm(null);setPicker(false);setError('');})}
   </LayeredCard>;
   if(routineReturn)return null;
@@ -156,7 +155,7 @@ export default function ReturnHelpScreen({route,navigation}) {
         </View>
       </View>
     </LayeredCard> : !transactionId&&<View style={styles.pageHeading}>
-      <Text style={styles.heading}>{admin?'Return reviews':'Return help'}</Text>
+      <Text style={styles.heading}>{admin?'Return reviews':'Return reports'}</Text>
     </View>}
     {loading&&!guidance&&!data.reports.length&&<ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading return details"/>}
     {!!error&&!editingDate&&<View style={styles.section}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
@@ -178,17 +177,16 @@ export default function ReturnHelpScreen({route,navigation}) {
       {showOptions&&<View style={styles.section}>
         <Text maxFontSizeMultiplier={1.4} style={styles.sectionLabel}>Return options</Text>
         <LayeredCard style={styles.groupedActions}>
-          {guidance.canExtend&&<ActionRow label="Give more time" description="Agree on a later return date" icon="calendar-outline" disabled={busy||loading} onPress={()=>begin('extend')} isLast={!(guidance.canRequestTime&&guidance.canMessage)&&!showSecondary&&!(guidance.canReport&&!existingReport)}/>}
-          {guidance.canRequestTime&&guidance.canMessage&&<ActionRow label="Need more time?" description="Ask the owner about a new date" icon="calendar-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!showSecondary&&!(guidance.canReport&&!existingReport)}/>}
-          {exchangeFirst&&guidance.canMessage?<ActionRow label={guidance.messageLabel} description="Keep return arrangements in one place" icon="chatbubble-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!(guidance.canReport&&!existingReport)}/>
-            :!exchangeFirst?<ActionRow label="View exchange" description={guidance.exchangeDescription} icon="receipt-outline" disabled={busy||loading} onPress={viewExchange} isLast={!(guidance.canReport&&!existingReport)}/>:null}
-          {guidance.canReport&&!existingReport&&<ActionRow label="Item not returned" description="Ask for help with a missing return" icon="flag-outline" variant="danger" style={styles.reportRow} disabled={busy||loading} onPress={()=>begin('report')} isLast/>}
+          {guidance.canExtend&&<ActionRow label="Give more time" description="Agree on a later return date" icon="calendar-outline" disabled={busy||loading} onPress={()=>begin('extend')} isLast={!(guidance.canRequestTime&&guidance.canMessage)&&!showSecondary}/>}
+          {guidance.canRequestTime&&guidance.canMessage&&<ActionRow label="Need more time?" description="Ask the owner about a new date" icon="calendar-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!showSecondary}/>}
+          {exchangeFirst&&guidance.canMessage?<ActionRow label={guidance.messageLabel} description="Keep return arrangements in one place" icon="chatbubble-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast/>
+            :!exchangeFirst?<ActionRow label="View exchange" description={guidance.exchangeDescription} icon="receipt-outline" disabled={busy||loading} onPress={viewExchange} isLast/>:null}
         </LayeredCard>
       </View>}
     </>}
     {!loading&&!error&&!transactionId&&!admin&&<View style={styles.returnStatus}>
-      <Text style={styles.statusTitle}>Need help with a return?</Text>
-      <Text style={styles.body}>Choose an exchange to arrange a return, agree on more time, or report a missing item.</Text>
+      <Text style={styles.statusTitle}>Report a return issue</Text>
+      <Text style={styles.body}>Choose an exchange to report an item that wasn’t returned or was damaged. Reports are for account review.</Text>
       <ActionButton label="View my exchanges" icon="swap-horizontal-outline" variant="primary" onPress={()=>navigation.navigate('Exchanges')}/>
     </View>}
     {renderForm()}
@@ -196,7 +194,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     {(data.reports.length>0||(admin&&!loading&&!error))&&<View style={styles.sectionHeader}>
       {data.reports.length>0?<Text style={styles.title}>Return reports</Text>:<View style={styles.quietStatus}>
         <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.primary}/>
-        <Text style={[styles.body,styles.quietStatusText]}>No reports to review</Text>
+        <Text style={[styles.body,styles.quietStatusText]}>{reportId?'This report is no longer available.':'No reports to review'}</Text>
       </View>}
       <HapticPressable onPress={refresh} disabled={busy||loading||!!form} style={styles.refreshButton} accessibilityLabel="Refresh reports">
         {loading?<ActivityIndicator color={COLORS.spinner}/>:<Ionicons name="refresh-outline" size={22} color={COLORS.primary} />}
@@ -207,6 +205,7 @@ export default function ReturnHelpScreen({route,navigation}) {
       <Text style={styles.label}>{r.status==='open'?'Awaiting review':r.status==='confirmed'?'Confirmed non-return':'Report dismissed'}{r.resolved_at?' · Return resolved':''}</Text>
       <Text style={styles.body}>Return due: {formatCalendarDate(r.due_date)} · Pickup: {dateText(r.actual_pickup_at)}</Text>
       <Text style={styles.body}>{r.detail}</Text>
+      {r.photos?.map((uri,index)=><ShimmerImage key={index} source={{uri}} accessibilityLabel="Report photo" style={{width:'100%',height:240,borderRadius:RADIUS.md}} resizeMode="contain"/>)}
       <Text style={styles.body}>Respond by {new Date(r.response_due_at).toLocaleString()}</Text>
       {!!r.response&&<><Text style={styles.label}>Borrower’s response</Text><Text style={styles.body}>{r.response}</Text></>}
       {!!r.appeal&&<><Text style={styles.label}>Appeal · {r.appeal_status}</Text><Text style={styles.body}>{r.appeal}</Text></>}
@@ -230,7 +229,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     </>}
     {!!decision&&<ActionSheet isVisible variant="confirmation" title={labels[decision]?`${labels[decision]}?`:'Send this update?'}
       message={decision==='ban'?'This permanently stops new borrowing. Existing messages, returns and appeals remain available.':decision==='confirm'?'Confirm only after reviewing evidence of an actual non-return. This can restrict new borrowing.':'This update will be recorded and shared with your neighbor.'}
-      onClose={()=>setDecision(null)} actions={[{label:labels[decision]||'Confirm',destructive:['ban','confirm','report'].includes(decision),onPress:()=>submit(form?.kind==='review'?decision:null)}]}/>}
+      onClose={()=>setDecision(null)} actions={[{label:labels[decision]||'Confirm',destructive:['ban','confirm'].includes(decision),onPress:()=>submit(form?.kind==='review'?decision:null)}]}/>}
   </ScrollView>;
 }
 const styles=StyleSheet.create({
@@ -257,7 +256,6 @@ const styles=StyleSheet.create({
   dueDate:{ ...TYPOGRAPHY.footnote, color:COLORS.warning },
   sectionLabel:{ ...TYPOGRAPHY.headline, color:COLORS.primary },
   groupedActions:{overflow:'hidden'},
-  reportRow:{borderWidth:0},
   quietStatus:{flex:1,flexDirection:'row',alignItems:'center',gap:SPACING.sm},
   quietStatusText:{flex:1},
   policyButton:{minHeight:44,flexDirection:'row',alignItems:'center',gap:SPACING.sm},

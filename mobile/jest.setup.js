@@ -598,6 +598,7 @@ jest.mock('./src/services/api', () => ({
     // Cancel rental
     cancelRental: jest.fn(),
     getReturnHelp: jest.fn().mockResolvedValue({reports:[],restriction:null}),
+    getAdminReports: jest.fn().mockResolvedValue({reports:[],counts:{total:0,ready:0,waiting:0,appeals:0,reviewed:0},page:1,hasMore:false}),
   reportNonReturn: jest.fn(), extendReturn: jest.fn(), respondReturnReport: jest.fn(), reviewReturnReport: jest.fn(),
   extendPickup: jest.fn(),
     // Find account

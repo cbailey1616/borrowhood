@@ -19,7 +19,7 @@ export default function MainNavigator() {
   return (
     <FeedSeenContext.Provider value={markFeedSeen}>
     <Tab.Navigator
-      tabBar={(props) => <BlurTabBar {...props} unreadCount={badgeCounts.messages + badgeCounts.notifications} hasNewFeed={hasNewFeed} />}
+      tabBar={(props) => <BlurTabBar {...props} profilePhotoUrl={user?.profilePhotoUrl} unreadCount={badgeCounts.messages + badgeCounts.notifications} hasNewFeed={hasNewFeed} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,

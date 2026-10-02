@@ -174,14 +174,14 @@ describe('ProfileScreen', () => {
     expect(getByText('Borrowhood 1.0.0 · Build 999')).toBeTruthy();
   });
 });
-it('shows the safety review queue only to administrators', () => {
+it('shows the unified Reports dashboard only to administrators', () => {
   const ProfileScreen=require('../../src/screens/ProfileScreen').default;
   mockUser.isAdmin=false;
   const screen=render(<ProfileScreen navigation={mockNavigation} />);
-  expect(screen.queryByText('Safety reports')).toBeNull();
+  expect(screen.queryByText('Reports')).toBeNull();
   mockUser.isAdmin=true;
   screen.rerender(<ProfileScreen navigation={mockNavigation} />);
-  fireEvent.press(screen.getByText('Safety reports'));
-  expect(mockNavigation.navigate).toHaveBeenCalledWith('SafetyReports');
+  fireEvent.press(screen.getByText('Reports'));
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('AdminReports');
   delete mockUser.isAdmin;
 });

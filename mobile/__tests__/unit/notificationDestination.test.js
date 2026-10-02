@@ -18,10 +18,14 @@ describe('notification destinations', () => {
 
   it.each(['request_approved', 'request_declined', 'borrow_cancelled', 'pickup_confirmed',
     'return_requested', 'return_confirmed', 'giveaway_complete', 'giveaway_expired', 'giveaway_pickup_expired', 'return_reminder',
-    'pickup_check', 'pickup_extended', 'return_date_extended', 'return_reported_missing', 'return_case_updated'])
+    'pickup_check', 'pickup_extended', 'return_date_extended'])
   ('keeps %s linked to the affected exchange', type => {
     expect(notificationDestination({ type, transactionId: 'exchange', listingId: 'item' }))
       .toEqual({ name: 'TransactionDetail', params: { id: 'exchange' } });
+  });
+  it.each(['return_reported_missing','return_case_updated'])('opens %s directly in the account report',type=>{
+    expect(notificationDestination({type,transactionId:'exchange',listingId:'item'}))
+      .toEqual({name:'ReturnHelp',params:{transaction:{id:'exchange'},reports:true}});
   });
 
   it('opens a private offer in the request and a public reply in its public thread', () => {

@@ -33,6 +33,7 @@ beforeAll(async () => {
       town_preview_enabled BOOLEAN DEFAULT false);
     CREATE TABLE categories(id TEXT, name TEXT);
     CREATE TABLE listing_photos(listing_id TEXT, url TEXT, sort_order INT);
+    CREATE TABLE user_blocks(user_id TEXT, blocked_id TEXT);
     CREATE TABLE friendships(user_id TEXT, friend_id TEXT, status TEXT);
     CREATE TABLE lending_circle_members(circle_id TEXT, user_id TEXT, status TEXT);
     CREATE TABLE community_memberships(community_id TEXT, user_id TEXT);

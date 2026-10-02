@@ -8,6 +8,7 @@ import { itemDetailsHeaderOptions } from '../components/ItemDetailsHeader';
 import OfferItemScreen from '../screens/OfferItemScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import SafetyReportsScreen from '../screens/SafetyReportsScreen';
+import AdminReportsScreen from '../screens/AdminReportsScreen';
 import { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +27,7 @@ import OnboardingNavigator from './OnboardingNavigator';
 // Detail screens accessible from anywhere
 import ListingDetailScreen from '../screens/ListingDetailScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
+import ExchangeIssueScreen from '../screens/ExchangeIssueScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
 import DisputeDetailScreen from '../screens/DisputeDetailScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
@@ -153,7 +155,10 @@ export default function RootNavigator({ navigationRef }) {
           />
           <Stack.Screen name="RequestQueue" getId={detailRouteIds.RequestQueue} component={RequestQueueScreen} options={{ ...sharedScreenOptions, ...requestQueueHeaderOptions }} />
           <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
-          <Stack.Screen name="ReturnHelp" component={ReturnHelpScreen} options={{ ...sharedScreenOptions, title: 'Return help' }} />
+          <Stack.Screen name="ReturnHelp" component={ReturnHelpScreen} options={({ route }) => ({ ...sharedScreenOptions,
+            title: route.params?.admin ? 'Return reviews' : route.params?.reports ? 'Return reports' : route.params?.transaction ? 'Return options' : 'Return reports' })} />
+          <Stack.Screen name="ExchangeIssue" component={ExchangeIssueScreen} options={modalScreenOptions('Report an issue')} />
+          <Stack.Screen name="AdminReports" component={AdminReportsScreen} options={{ ...sharedScreenOptions, title: 'Reports' }} />
           <Stack.Screen name="SafetyReports" component={SafetyReportsScreen} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
           <Stack.Screen
             name="TransactionDetail"

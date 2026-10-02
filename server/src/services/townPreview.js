@@ -1,10 +1,11 @@
+import { unblockedSql } from './contentPolicy.js';
 import { query } from '../utils/db.js';
 import { requestActiveSql } from '../utils/requestState.js';
 
 // Existing posts keep their original audience until their owner enables previews.
 // This never grants profile, discussion, messaging, borrowing or offer permission.
 export function townPreviewSql(alias, ownerColumn, viewer, { listing = false } = {}) {
-  return `(${alias}.town_preview_enabled = true
+  return `(${unblockedSql(`${alias}.${ownerColumn}`, viewer)} AND ${alias}.town_preview_enabled = true
     AND 'town' = ANY(string_to_array(${alias}.visibility::text, ','))
     ${listing ? `AND ${alias}.privacy_version = 1 AND ${alias}.status = 'active'` : `AND ${requestActiveSql(alias)}`}
     AND EXISTS (SELECT 1 FROM users pv JOIN users po ON po.id = ${alias}.${ownerColumn}

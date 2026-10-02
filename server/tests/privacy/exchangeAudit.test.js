@@ -23,6 +23,7 @@ beforeAll(async () => {
   state.db = new PGlite();
   await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, stripe_connect_account_id TEXT, city TEXT,
       first_name TEXT DEFAULT 'Neighbor', last_name TEXT, display_name TEXT, profile_photo_url TEXT, is_verified BOOLEAN DEFAULT true);
+    CREATE TABLE user_blocks(user_id UUID,blocked_id UUID);
     CREATE TABLE listings(id UUID PRIMARY KEY, owner_id UUID, title TEXT, is_free BOOLEAN DEFAULT true, price_per_day NUMERIC DEFAULT 0,
       deposit_amount NUMERIC DEFAULT 0, listing_type TEXT DEFAULT 'lend', direct_fee JSONB, is_available BOOLEAN DEFAULT true,
       status TEXT DEFAULT 'active', min_duration INT DEFAULT 1, max_duration INT DEFAULT 14);
@@ -39,7 +40,7 @@ beforeAll(async () => {
   app = express(); app.use(express.json()); app.use('/transactions', transactions); app.use('/listings', availability);
 }, 20000);
 beforeEach(async () => {
-  await state.db.exec('TRUNCATE listings, users, borrow_transactions, listing_availability, exchange_endorsements, disputes, listing_photos');
+  await state.db.exec('TRUNCATE user_blocks,listings, users, borrow_transactions, listing_availability, exchange_endorsements, disputes, listing_photos');
   await state.db.query('INSERT INTO users(id) VALUES($1),($2),($3)', [owner, borrower, other]);
   await state.db.query("INSERT INTO listings(id,owner_id,title) VALUES($1,$2,'Ladder')", [listing, owner]);
 });
@@ -120,4 +121,14 @@ it('keeps endorsement retries immutable and participant-only', async () => {
   const outcomes = await Promise.all([true, true, false].map(vote => submitEndorsement(created.body.id, owner, vote)));
   expect(outcomes).toEqual([{ success: true }, { success: true }, { status: 409, error: 'Your endorsement has already been sent.' }]);
   expect(await rows('SELECT rater_id,ratee_id,positive FROM exchange_endorsements')).toEqual([{ rater_id: owner, ratee_id: borrower, positive: true }]);
+});
+
+it('keeps existing exchange records available to participants after blocking',async()=>{
+ const created=await send();expect(created.status).toBe(201);
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,borrower]);
+ for(const participant of [owner,borrower]) {
+  const res=await request(app).get('/transactions').set('x-user',participant);
+  expect(res.status).toBe(200);expect(res.body.map(t=>t.id)).toContain(created.body.id);
+ }
+ expect((await request(app).get('/transactions').set('x-user',other)).body).toEqual([]);
 });

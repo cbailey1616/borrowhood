@@ -52,3 +52,21 @@ it('links to the reported profile', async () => {
   fireEvent.press(screen.getByText('View reported profile'));
   expect(navigation.navigate).toHaveBeenCalledWith('UserProfile',{id:'target'});
 });
+it('shows exchange damage evidence for account review without offering content removal',async()=>{
+  api.getSafetyReports.mockResolvedValue({reports:[{...report,reason:'Item was damaged',contentType:'exchange',contentId:'exchange',
+    contentSnapshot:{title:'Pressure washer',content:'Hose is split.',reporterRole:'owner',photos:['https://photo']}}],page:1,hasMore:false});
+  const screen=await open();
+  expect(screen.getByText('Hose is split.')).toBeTruthy();
+  expect(screen.getByText('Exchange report · submitted by the owner. Account review only.')).toBeTruthy();
+  expect(screen.queryByLabelText('Remove content')).toBeNull();
+  expect(screen.getByLabelText('Suspend account')).toBeTruthy();
+});
+it('opens a dashboard-selected report directly, including a previously reviewed report',async()=>{
+  api.getSafetyReports.mockResolvedValue({reports:[{...report,status:'reviewed',history:[{action:'suspend',adminName:'Staff',note:'Reviewed damage.',createdAt:report.createdAt}]}],page:1,hasMore:false});
+  const Screen=require('../../src/screens/SafetyReportsScreen').default;
+  const screen=render(<Screen navigation={navigation} route={{params:{reportId:'report-1'}}}/>);
+  expect(await screen.findByLabelText('Review note')).toBeTruthy();
+  expect(api.getSafetyReports).toHaveBeenCalledWith('all',1,'report-1');
+  expect(screen.getByText('Reviewed damage.')).toBeTruthy();
+  expect(screen.queryByRole('tab',{name:'Open reports'})).toBeNull();
+});
