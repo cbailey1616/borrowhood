@@ -4,11 +4,12 @@ import PopupLayer from './PopupLayer';
 import SheetDismissArea from './SheetDismissArea';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import LayeredCard from './LayeredCard';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -23,6 +24,7 @@ export default function ActionSheet({
   variant = 'menu',
   icon,
 }) {
+  const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const confirmation = variant === 'confirmation';
@@ -46,17 +48,13 @@ export default function ActionSheet({
   }, [closing]);
 
   const handleCancel = useCallback(() => {
-    haptics.light();
     dismiss(() => onClose?.());
   }, [onClose, dismiss]);
 
   const handleAction = useCallback(
     (action) => {
-      if (action.destructive) {
-        haptics.warning();
-      } else {
-        haptics.light();
-      }
+      const feedback = action.haptic || (action.destructive ? 'warning' : null);
+      if (feedback && haptics[feedback]) haptics[feedback]();
       if (multiSelect) action.onPress?.();
       else dismiss(() => {
         action.onPress?.();
@@ -77,8 +75,8 @@ export default function ActionSheet({
       <View style={styles.modalContainer} onAccessibilityEscape={handleCancel}>
         {/* Full-screen dim backdrop */}
         <AnimatedPressable
-          entering={FadeIn.duration(150)}
-          exiting={FadeOut.duration(120)}
+          entering={reduceMotion ? undefined : FadeIn.duration(150)}
+          exiting={reduceMotion ? undefined : FadeOut.duration(120)}
           style={styles.backdrop}
           onPress={handleCancel}
           accessible={false}
@@ -86,8 +84,8 @@ export default function ActionSheet({
 
         {/* Sheet content */}
         <Animated.View
-          entering={SlideInDown.duration(200)}
-          exiting={SlideOutDown.duration(150)}
+          entering={reduceMotion ? undefined : SlideInDown.duration(200)}
+          exiting={reduceMotion ? undefined : SlideOutDown.duration(150)}
           style={[styles.sheetContainer, itemMenu && styles.itemSheetContainer, { paddingBottom: bottomPad, maxHeight: height - insets.top - SPACING.md }]}
         >
           <LayeredCard style={styles.sheetDepth} radius={itemMenu ? 28 : RADIUS.xl}>
@@ -96,8 +94,8 @@ export default function ActionSheet({
               {itemMenu && <View style={styles.itemHandle} accessible={false} />}
               {confirmation || options ? <>
                 <View style={[styles.confirmationHeader, itemMenu && styles.itemHeader]}>
-                  {icon ? <View style={[styles.confirmationIcon, itemMenu && styles.itemHeaderIcon]}>{icon}</View> : null}
-                  <Text style={[styles.confirmationTitle, itemMenu && styles.itemTitle]} accessibilityRole="header">{title}</Text>
+                  {icon ? <View style={[styles.confirmationIcon, itemMenu && styles.itemHeaderIcon]}>{React.isValidElement(icon) ? React.cloneElement(icon, { size: 22, illustrated: false }) : icon}</View> : null}
+                  <Text maxFontSizeMultiplier={1.4} style={[styles.confirmationTitle, itemMenu && styles.itemTitle]} accessibilityRole="header">{title}</Text>
                   <HapticPressable accessibilityRole="button" accessibilityLabel={options ? `Close ${title || 'options'}` : 'Close confirmation'} onPress={handleCancel} style={[styles.confirmationClose, itemMenu && styles.itemClose]}>
                     <Ionicons name="close" size={20} color={COLORS.primary} />
                   </HapticPressable>
@@ -118,6 +116,8 @@ export default function ActionSheet({
                     key={index}
                     onPress={() => handleAction(action)}
                     haptic={null}
+                    scaleDown={action.primary ? 0.97 : 1}
+                    pressedBackgroundColor={action.primary || action.destructive ? undefined : COLORS.cardHover}
                     accessibilityRole={options && typeof action.selected === 'boolean' ? 'checkbox' : 'button'}
                     accessibilityState={options && typeof action.selected === 'boolean' ? { checked: action.selected } : undefined}
                     testID={action.testID}
@@ -131,14 +131,13 @@ export default function ActionSheet({
                       options && styles.optionButton,
                       options && action.selected && styles.selectedOption,
                       itemMenu && styles.itemButton,
-                      itemMenu && index > 0 && styles.itemDivider,
                       itemMenu && action.destructive && styles.itemDestructiveButton,
                     ]}
                   >
                     {action.icon ? (
-                      <View style={[styles.actionIcon, options && styles.optionIcon, itemMenu && styles.itemActionIcon]}>{action.icon}</View>
+                      <View style={[styles.actionIcon, options && styles.optionIcon, itemMenu && styles.itemActionIcon]}>{React.isValidElement(action.icon) ? React.cloneElement(action.icon, { size: 22, illustrated: false }) : action.icon}</View>
                     ) : null}
-                    <Text
+                    <Text maxFontSizeMultiplier={1.4}
                       style={[
                         styles.actionText,
                         action.destructive && styles.destructiveText,
@@ -152,6 +151,9 @@ export default function ActionSheet({
                     >
                       {action.label}
                     </Text>
+                    {!confirmation && !action.primary && (!action.destructive || itemMenu) && index < actions.length - 1 &&
+                      <View pointerEvents="none" style={[styles.actionDivider,
+                        !action.icon && { left: 0 }, options && !itemMenu && styles.optionDivider]} />}
                   </HapticPressable>
                 ))}
               </View>
@@ -159,11 +161,11 @@ export default function ActionSheet({
           </LayeredCard>
           {!confirmation && !options && <HapticPressable
             onPress={handleCancel}
-            haptic="light"
+            haptic={null}
             accessibilityRole="button"
             style={styles.cancelButton}
           >
-            <Text style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cancelText}>{multiSelect ? 'Done' : cancelLabel}</Text>
           </HapticPressable>}
         </Animated.View>
       </View>
@@ -177,26 +179,25 @@ const styles = StyleSheet.create({
   itemCard: { paddingTop: 8, paddingBottom: 12 },
   itemHandle: { width: 30, height: 3, borderRadius: 2, backgroundColor: COLORS.border, alignSelf: 'center', marginBottom: 16 },
   itemHeader: { marginBottom: 12, gap: 14, alignItems: 'center' },
-  itemHeaderIcon: { width: 56, height: 60, borderRadius: 18, backgroundColor: 'transparent' },
-  itemTitle: { fontFamily: 'DMSans_700Bold', fontWeight: '700', fontSize: 23, lineHeight: 29, color: COLORS.text },
+  itemHeaderIcon: { width: 22, height: 22, backgroundColor: 'transparent' },
+  itemTitle: { ...TYPOGRAPHY.title2, lineHeight: 29, color: COLORS.text },
   itemClose: { backgroundColor: 'transparent' },
   itemActions: { gap: 0, marginBottom: 0 },
   itemButton: { minHeight: 66, paddingVertical: 14, paddingHorizontal: 0, marginTop: 0, justifyContent: 'flex-start', backgroundColor: 'transparent', borderWidth: 0, borderBottomWidth: 0, borderRadius: 0 },
-  itemDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
-  itemActionIcon: { width: 32, height: 36, minWidth: 32, minHeight: 36, backgroundColor: 'transparent', borderRadius: 0, marginRight: 18 },
-  itemActionText: { fontFamily: 'DMSans_500Medium', fontWeight: '500', fontSize: 17, lineHeight: 23, color: COLORS.text, flex: 1 },
+  itemActionIcon: { width: 22, height: 22, minWidth: 22, minHeight: 22, backgroundColor: 'transparent', marginRight: 14 },
+  itemActionText: { ...TYPOGRAPHY.headline, lineHeight: 23, color: COLORS.text, flex: 1 },
   itemDestructiveButton: { backgroundColor: 'transparent' },
   itemDestructiveText: { color: COLORS.danger },
   optionsCard: { paddingVertical: SPACING.md },
-  optionsActions: { gap: SPACING.sm, marginBottom: 0 },
-  optionButton: { minHeight: 64, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderBottomWidth: 1, borderColor: COLORS.separator, borderRadius: RADIUS.md, backgroundColor: COLORS.background },
-  selectedOption: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.borderGreen },
-  optionIcon: { width: 40, height: 40, borderRadius: RADIUS.sm, backgroundColor: COLORS.primaryMuted, marginRight: SPACING.sm },
+  optionsActions: { gap: 0, marginBottom: 0 },
+  optionButton: { minHeight: 64, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
+  selectedOption: { backgroundColor: COLORS.primaryMuted },
+  optionIcon: { width: 22, height: 22, backgroundColor: 'transparent', marginRight: SPACING.md },
   optionText: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 },
   confirmationCard: { paddingVertical: 20 },
   confirmationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  confirmationIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
-  confirmationTitle: { ...TYPOGRAPHY.h2, flex: 1, color: COLORS.primary, fontSize: 21, lineHeight: 27 },
+  confirmationIcon: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  confirmationTitle: { ...TYPOGRAPHY.title3, flex: 1, color: COLORS.primary, lineHeight: 27 },
   confirmationClose: { width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated, alignItems: 'center', justifyContent: 'center' },
   confirmationMessage: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 24, marginBottom: 20 },
   confirmationActions: { gap: 10, marginBottom: 0 },
@@ -270,18 +271,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: SPACING.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.separator,
   },
+  actionDivider: { position: 'absolute', left: 22 + SPACING.md, right: 0, bottom: 0,
+    height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
+  optionDivider: { left: SPACING.md + 22 + SPACING.md, right: SPACING.md },
   actionIcon: {
     marginRight: SPACING.md,
-    minWidth: 40,
-    minHeight: 40,
+    minWidth: 22,
+    minHeight: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionText: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
     flexShrink: 1,
   },
@@ -294,8 +296,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
   },
   destructiveText: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   primaryButton: {
     justifyContent: 'center',
@@ -306,10 +309,12 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
   },
   primaryText: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   cancelButton: {
+    ...CARD_SURFACE,
     flexShrink: 0,
     alignItems: 'center',
     paddingVertical: SPACING.lg,

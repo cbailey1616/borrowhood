@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { COLORS, RADIUS } from '../utils/config';
+import { COLORS, RADIUS, CARD_SURFACE } from '../utils/config';
 
 export default function BlurCard({
   intensity = 40,
@@ -38,10 +38,11 @@ export default function BlurCard({
 
 const styles = StyleSheet.create({
   card: {
+    ...CARD_SURFACE,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderBrown,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   inner: {
   },

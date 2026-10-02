@@ -10,8 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+  Platform, } from 'react-native';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
@@ -200,14 +199,14 @@ export default function OnboardingScreen({ onComplete }) {
     const { status } = await Notifications.requestPermissionsAsync();
     setNotifStatus(status);
     if (status === 'granted') {
-      haptics.success();
+
       // Brief pause to show the success state
       setTimeout(() => handleFinish(), 600);
     }
   };
 
   const handleFinish = async () => {
-    haptics.success();
+
     if (onComplete) {
       onComplete();
     }
@@ -216,18 +215,18 @@ export default function OnboardingScreen({ onComplete }) {
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <HeroIcon icon="location" size={76} colors={['#5AA9F0', '#2E5FC0']} />
+        <HeroIcon icon="location" size={76} colors={[COLORS.onboarding.blue, COLORS.onboarding.blueDark]} />
       </View>
       <Text style={styles.title}>Where are you located?</Text>
       <Text style={styles.subtitle}>
         We'll show you items and neighbors in your area
       </Text>
 
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.locationButton}
         onPress={handleGetLocation}
         disabled={isGettingLocation}
-        haptic="medium"
+        haptic={null}
       >
         {isGettingLocation ? (
           <ActivityIndicator color={COLORS.spinner} />
@@ -260,14 +259,14 @@ export default function OnboardingScreen({ onComplete }) {
         />
       </View>
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={[styles.primaryButton, (!city || !state) && styles.buttonDisabled]}
         onPress={handleSaveLocation}
         disabled={!city || !state || isLoading}
-        haptic="medium"
+        haptic={null}
       >
         {isLoading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={COLORS.white} />
         ) : (
           <Text style={styles.primaryButtonText}>Continue</Text>
         )}
@@ -278,7 +277,7 @@ export default function OnboardingScreen({ onComplete }) {
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <HeroIcon icon="home" size={76} colors={['#3E8E5A', '#1C5230']} />
+        <HeroIcon icon="home" size={76} colors={[COLORS.onboarding.green, COLORS.onboarding.greenDark]} />
       </View>
       <Text style={styles.title}>Join a Neighborhood</Text>
       <Text style={styles.subtitle}>
@@ -291,8 +290,8 @@ export default function OnboardingScreen({ onComplete }) {
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No neighborhoods in {city} yet.</Text>
           <Text style={styles.emptySubtext}>Be the first to create one!</Text>
-          <HapticPressable style={styles.createButton} onPress={handleCreateNeighborhood} haptic="medium">
-            <Ionicons name="add" size={20} color="#fff" />
+          <HapticPressable scaleDown={0.97} style={styles.createButton} onPress={handleCreateNeighborhood} haptic="light">
+            <Ionicons name="add" size={20} color={COLORS.white} />
             <Text style={styles.createButtonText}>Create Neighborhood</Text>
           </HapticPressable>
         </View>
@@ -318,11 +317,11 @@ export default function OnboardingScreen({ onComplete }) {
                 ) : item.rejoinStatus === 'pending' ? (
                   <View style={styles.joinedBadge}><Text style={styles.joinedText}>Approval requested</Text></View>
                 ) : (
-                  <HapticPressable
+                  <HapticPressable scaleDown={0.97}
                     style={styles.joinButton}
                     onPress={() => handleJoinNeighborhood(item)}
                     disabled={isLoading}
-                    haptic="medium"
+                    haptic={null}
                   >
                     <Text style={styles.joinButtonText}>{item.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join'}</Text>
                   </HapticPressable>
@@ -331,7 +330,7 @@ export default function OnboardingScreen({ onComplete }) {
             </View>
           )}
           ListFooterComponent={
-            <HapticPressable style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
               <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
               <Text style={styles.createLinkText}>Create a new neighborhood</Text>
             </HapticPressable>
@@ -339,10 +338,10 @@ export default function OnboardingScreen({ onComplete }) {
         />
       )}
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={styles.primaryButton}
         onPress={() => setStep(3)}
-        haptic="medium"
+        haptic={null}
       >
         <Text style={styles.primaryButtonText}>
           {joinedCommunity || neighborhoods.some(n => n.isMember) ? 'Continue' : 'Skip for now'}
@@ -359,7 +358,7 @@ export default function OnboardingScreen({ onComplete }) {
       {searchQuery.length < 2 && (
         <>
           <View style={styles.iconContainer}>
-            <HeroIcon icon="people" size={76} colors={['#9B7BE8', '#5B3FB0']} />
+            <HeroIcon icon="people" size={76} colors={[COLORS.onboarding.purple, COLORS.onboarding.purpleDark]} />
           </View>
           <Text style={styles.title}>Find Friends</Text>
           <Text style={styles.subtitle}>
@@ -395,22 +394,22 @@ export default function OnboardingScreen({ onComplete }) {
                   style={styles.friendAvatar}
                 />
                 <View style={styles.friendInfo}>
-                  <Text style={styles.friendName}>{item.firstName} {item.lastName}</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.friendName}>{item.firstName} {item.lastName}</Text>
                   {item.city && <Text style={styles.friendLocation}>{item.city}, {item.state}</Text>}
                 </View>
                 {item.isFriend || addedFriends.includes(item.id) || item.requestPending ? (
                   <View style={styles.requestedBadge}>
-                    <Text style={styles.requestedText}>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.requestedText}>
                       {item.isFriend ? 'Friends' : 'Requested'}
                     </Text>
                   </View>
                 ) : (
-                  <HapticPressable
+                  <HapticPressable scaleDown={0.97}
                     style={styles.addButton}
                     onPress={() => handleAddFriend(item)}
-                    haptic="light"
+                    haptic={null}
                   >
-                    <Ionicons name="person-add" size={18} color="#fff" />
+                    <Ionicons name="person-add" size={18} color={COLORS.white} />
                   </HapticPressable>
                 )}
               </View>
@@ -429,10 +428,10 @@ export default function OnboardingScreen({ onComplete }) {
         </View>
       )}
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={styles.primaryButton}
         onPress={() => setStep(4)}
-        haptic="medium"
+        haptic={null}
       >
         <Text style={styles.primaryButtonText}>
           {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
@@ -444,7 +443,7 @@ export default function OnboardingScreen({ onComplete }) {
   const renderStep4 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <HeroIcon icon="notifications" size={76} colors={['#F0A93E', '#C0392B']} />
+        <HeroIcon icon="notifications" size={76} colors={[COLORS.onboarding.honey, COLORS.onboarding.red]} />
       </View>
       <Text style={styles.title}>Stay in the Loop</Text>
       <Text style={styles.subtitle}>
@@ -468,24 +467,24 @@ export default function OnboardingScreen({ onComplete }) {
 
       {notifStatus === 'granted' ? (
         <View style={[styles.primaryButton, { backgroundColor: COLORS.primary }]}>
-          <Ionicons name="checkmark-circle" size={22} color="#fff" style={{ marginRight: SPACING.sm }} />
+          <Ionicons name="checkmark-circle" size={22} color={COLORS.white} style={{ marginRight: SPACING.sm }} />
           <Text style={styles.primaryButtonText}>Notifications Enabled</Text>
         </View>
       ) : (
-        <HapticPressable
+        <HapticPressable scaleDown={0.97}
           style={styles.primaryButton}
           onPress={handleEnableNotifications}
-          haptic="medium"
+          haptic={null}
         >
-          <Ionicons name="notifications-outline" size={20} color="#fff" style={{ marginRight: SPACING.sm }} />
+          <Ionicons name="notifications-outline" size={20} color={COLORS.white} style={{ marginRight: SPACING.sm }} />
           <Text style={styles.primaryButtonText}>Enable Notifications</Text>
         </HapticPressable>
       )}
 
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={{ paddingVertical: SPACING.md, alignItems: 'center', marginTop: SPACING.sm }}
         onPress={handleFinish}
-        haptic="light"
+        haptic={null}
       >
         <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>
           {notifStatus === 'granted' ? "Let's go!" : "I'll do this later"}
@@ -592,14 +591,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     padding: SPACING.lg,
     borderRadius: RADIUS.md,
     marginBottom: SPACING.lg,
   },
-  locationButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
+  locationButtonText: { ...TYPOGRAPHY.button,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.primary,
   },
   orText: {
@@ -613,11 +611,11 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     marginBottom: SPACING.xl,
   },
-  input: {
+  input: { fontWeight: '400', fontFamily: 'DMSans_400Regular',
     backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.md,
     padding: SPACING.lg,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   inputCity: {
@@ -638,10 +636,9 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
   loader: {
     marginTop: SPACING.xxl,
@@ -661,9 +658,8 @@ const styles = StyleSheet.create({
   neighborhoodInfo: {
     flex: 1,
   },
-  neighborhoodName: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
+  neighborhoodName: { ...TYPOGRAPHY.button,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   neighborhoodStats: {
@@ -677,16 +673,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl - SPACING.xs,
     borderRadius: RADIUS.xl,
   },
-  joinButtonText: {
-    color: '#fff',
-    fontWeight: '400',
+  joinButtonText: { fontFamily: 'DMSans_500Medium',
+    color: COLORS.white,
+    fontWeight: '500',
   },
   joinedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
   },
-  joinedText: {
+  joinedText: { fontFamily: 'DMSans_400Regular',
     color: COLORS.primary,
     fontWeight: '400',
   },
@@ -701,9 +697,9 @@ const styles = StyleSheet.create({
     marginTop: SPACING.lg,
   },
   createButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
   },
   createLinkButton: {
     flexDirection: 'row',
@@ -715,7 +711,6 @@ const styles = StyleSheet.create({
   createLinkText: {
     color: COLORS.primary,
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
   },
   emptyState: {
     alignItems: 'center',
@@ -738,10 +733,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
   },
-  searchInput: {
+  searchInput: { fontWeight: '400', fontFamily: 'DMSans_400Regular',
     flex: 1,
     padding: 14,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   friendCard: {
@@ -762,9 +757,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.md,
   },
-  friendName: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+  friendName: { ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
   },
   friendLocation: {
@@ -787,9 +780,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  requestedText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  requestedText: { ...TYPOGRAPHY.label,
     color: COLORS.textSecondary,
   },
   searchPrompt: {
@@ -802,7 +793,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textMuted,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   noResults: {
     textAlign: 'center',
     color: COLORS.textMuted,

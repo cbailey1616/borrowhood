@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingAvailability } from '../utils/listingAvailability';
@@ -51,7 +52,7 @@ import ShimmerImage from '../components/ShimmerImage';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../utils/config';
 import { checkPremiumGate } from '../utils/premiumGate';
 import { ENABLE_PAID_TIERS } from '../utils/config';
 
@@ -85,6 +86,7 @@ const visibleOnHome = (item, userId) => {
 };
 
 export default function FeedScreen({ navigation, route }) {
+  const reduceMotion = useReduceMotion();
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
@@ -104,7 +106,7 @@ export default function FeedScreen({ navigation, route }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const feedHeader = useFeedHeader({ pinned: searchFocused, columns });
+  const feedHeader = useFeedHeader({ pinned: searchFocused || reduceMotion, columns });
   const [activeFilters, setActiveFilters] = useState([]);
   const consumedBrowse = useRef(route?.params?.browseItems);
   const [neighborhood, setNeighborhood] = useState(route?.params?.neighborhoodItems || null);
@@ -327,10 +329,10 @@ export default function FeedScreen({ navigation, route }) {
 
   useEffect(() => navigation.addListener('tabPress', () => {
     if (!navigation.isFocused?.()) return;
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    listRef.current?.scrollToOffset({ offset: 0, animated: !reduceMotion });
     fetchActiveDisputes();
     fetchBannerData();
-  }), [navigation, fetchBannerData, fetchActiveDisputes]);
+  }), [navigation, fetchBannerData, fetchActiveDisputes, reduceMotion]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -417,13 +419,13 @@ export default function FeedScreen({ navigation, route }) {
     {
       label: 'List an Item',
       testID: 'Feed.create.listing',
-      icon: <Ionicons name="basket" size={32} illustrated />,
+      icon: <Ionicons name="basket" size={22}  />,
       onPress: () => navigation.navigate('CreateListing'),
     },
     {
       label: 'Post in Wanted',
       testID: 'Feed.create.request',
-      icon: <Ionicons name="request-note" size={32} illustrated />,
+      icon: <Ionicons name="request-note" size={22}  />,
       onPress: () => navigation.navigate('CreateRequest'),
     },
   ];
@@ -441,7 +443,7 @@ export default function FeedScreen({ navigation, route }) {
           {author.isVerified === true && <VerifiedBadge size={16} interactive />}
           <NeighborRankBadge rank={reputation?.rank} onPress={() => setSelectedRank(reputation)} />
         </View>
-        {showTime && <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>}
+        {showTime && <Text maxFontSizeMultiplier={1.4} style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>}
       </View>
     );
   };
@@ -455,14 +457,14 @@ export default function FeedScreen({ navigation, route }) {
       onPress={() => navigation.navigate('ListingDiscussion', item.type === 'request'
         ? { requestId: item.id }
         : { listingId: item.id })}
-      scaleDown={0.99}
+      scaleDown={1}
       style={[styles.publicReplies, compact && styles.ribbonReplies]}
     >
       <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
-      <Text style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>
+      <Text maxFontSizeMultiplier={1.4} style={[styles.publicRepliesText, compact && styles.ribbonRepliesText]}>
         {Number.isInteger(item.commentCount) ? `${item.commentCount} ${item.commentCount === 1 ? 'comment' : 'comments'}` : 'Comments'}
       </Text>
-      {!compact && <Text style={styles.publicRepliesAction}>View</Text>}
+      {!compact && <Text maxFontSizeMultiplier={1.4} style={styles.publicRepliesAction}>View</Text>}
     </HapticPressable>
   );
 
@@ -470,10 +472,10 @@ export default function FeedScreen({ navigation, route }) {
     return (
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
-          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID="FeedCard">
+          <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1} style={styles.tile} testID="FeedCard">
             <View style={styles.tilePhotoFrame}>
               <View style={styles.tileThumb}>
-                <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+                <ShimmerImage category={item.category} title={item.title} source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
                 {!item.ownerMasked && (
                   <HapticPressable
                     testID={`Feed.save.${item.id}`}
@@ -506,21 +508,21 @@ export default function FeedScreen({ navigation, route }) {
   const renderRibbonRequest = item => (
     <LayeredCard radius={RADIUS.xl} style={{ marginBottom: SPACING.sm }}>
       <View style={[styles.tile, styles.requestTile, { height: 152 * Math.max(1, fontScale || 1) }]} testID={`Feed.ribbon.card.${item.id}`}>
-        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+        <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1}
           style={[styles.tile, styles.ribbonContent]} testID={`Feed.request.${item.id}`}>
           <View style={styles.ribbonCopy}>
             <View style={styles.ribbonLabel}>
               <RequestTypeIcon type={item.requestType} />
-              <Text style={styles.ribbonLabelText}>{requestPresentation(item.requestType).label}</Text>
-              <Text style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.ribbonLabelText}>{requestPresentation(item.requestType).label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.tileTimeText}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
-            <Text style={styles.ribbonTitle} numberOfLines={2}>{item.title}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.ribbonTitle} numberOfLines={2}>{item.title}</Text>
           </View>
-          {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo"
+          {!!item.photoUrl && <ShimmerImage category={item.category} title={item.title} source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo"
             contentFit="cover" style={styles.ribbonPhoto} />}
         </HapticPressable>
         <View style={styles.ribbonFooter}>
-          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+          <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={1}
             style={styles.ribbonAuthorButton} accessibilityLabel={`View wanted post: ${item.title}`}>
             {renderAuthor(item, { compact: true, showTime: false })}
           </HapticPressable>
@@ -533,14 +535,14 @@ export default function FeedScreen({ navigation, route }) {
   const renderRequestItem = item => (
     <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
-        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1} style={styles.tile} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
               <View style={styles.requestIcon}><RequestTypeIcon type={item.requestType} size={28} /></View>
-              <Text style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
-            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
+            {!!item.photoUrl && <ShimmerImage category={item.category} title={item.title} source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>
@@ -556,14 +558,14 @@ export default function FeedScreen({ navigation, route }) {
         needsYou={exchanges.filter(exchange => exchange.section === 'needs-you').length}
         onPress={() => navigation.navigate('Exchanges')} />
       {!!homeAction && <LayeredCard style={{ marginBottom: SPACING.md }}>
-        <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} testID="Feed.exchanges" accessibilityRole="button"
           accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
           onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
           style={styles.exchangeCard}>
-          <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
+          <Ionicons name={homeAction.icon} size={22}  color={COLORS.primary} />
           <View style={styles.exchangeContent}>
             <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
-            <Text style={styles.exchangeActionText}>{homeAction.label}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.exchangeActionText}>{homeAction.label}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
         </HapticPressable>
@@ -583,7 +585,7 @@ export default function FeedScreen({ navigation, route }) {
   const renderItem = ({ item, index }) => {
     if (item.type === 'request-carousel') return <View style={{ marginBottom: SPACING.lg }}>
       <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:SPACING.sm }}>
-        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'400' }}>Neighbors are looking for</Text>
+        <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'600' }}>Neighbors are looking for</Text>
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
         showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
@@ -592,7 +594,7 @@ export default function FeedScreen({ navigation, route }) {
     </View>;
     if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing-heading') return <View style={{ borderTopWidth:1,borderTopColor:COLORS.borderBrown,paddingTop:SPACING.lg,marginBottom:SPACING.md }}>
-      <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'400' }}>Available nearby</Text>
+      <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'600' }}>Available nearby</Text>
     </View>;
     if (item.type === 'listing') {
       return renderListingItem(item, index);
@@ -627,22 +629,22 @@ export default function FeedScreen({ navigation, route }) {
             titleRowStyle={styles.feedTitleRow}
             leftElement={<Image source={require('../../assets/logo.png')} contentFit="contain" transition={0}
               style={styles.brandMark} accessible={false} />}
-            rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
+            rightElement={<HapticPressable scaleDown={0.97} onPress={() => setShowActionSheet(true)} haptic={null} testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
               <Ionicons name="add" size={18} color={COLORS.surface} />
-              <Text style={styles.addButtonText}>Post</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.addButtonText}>Post</Text>
             </HapticPressable>}
           >
             {(feed.length > 0 || requestCards.length > 0 || hasFilters || feedError || !user?.city) && <>
               <View style={styles.searchRow}>
                 <SearchBar value={search} onChangeText={setSearch} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
-                <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
+                <HapticPressable haptic="selection" style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
                   <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
                 </HapticPressable>
               </View>
-              {!!neighborhood && <HapticPressable style={styles.neighborhoodFilter} accessibilityRole="button" accessibilityLabel="Clear neighborhood filter"
+              {!!neighborhood && <HapticPressable haptic="selection" style={styles.neighborhoodFilter} accessibilityRole="button" accessibilityLabel="Clear neighborhood filter"
                 onPress={() => { setNeighborhood(null); setVisibilityFilters([]); }}>
                 <Ionicons name="people-outline" size={18} color={COLORS.primary} />
-                <Text style={styles.neighborhoodFilterText} numberOfLines={1}>{neighborhood.name || 'Neighborhood'}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.neighborhoodFilterText} numberOfLines={1}>{neighborhood.name || 'Neighborhood'}</Text>
                 <Ionicons name="close" size={18} color={COLORS.primary} />
               </HapticPressable>}
               <ScrollView horizontal style={[styles.typeRibbon, width < 375 && styles.typeRibbonCompact]} contentContainerStyle={styles.typeRibbonContent} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -650,9 +652,9 @@ export default function FeedScreen({ navigation, route }) {
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
                     const label = option.key === 'all' && neighborhood ? 'All items' : option.label;
-                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
-                      <Ionicons name={option.icon} size={26} illustrated color={COLORS.primary} accessible={false} />
-                      <Text numberOfLines={1} style={[styles.typeTabText, width < 400 && styles.typeTabTextCompact, selected && styles.typeTabTextActive]}>{label}</Text>
+                    return <HapticPressable haptic="selection" key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
+                      <Ionicons name={option.icon} size={22}  color={COLORS.primary} accessible={false} />
+                      <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={[styles.typeTabText, width < 400 && styles.typeTabTextCompact, selected && styles.typeTabTextActive]}>{label}</Text>
                       {selected && <View accessible={false} style={styles.typeTabIndicator} />}
                     </HapticPressable>;
                   })}
@@ -711,7 +713,7 @@ export default function FeedScreen({ navigation, route }) {
               <View style={styles.feedEnd}>
                 <Text style={styles.feedEndText}>You’re all caught up</Text>
                 <HapticPressable accessibilityRole="button" accessibilityLabel="Back to top" style={styles.backToTop}
-                  onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+                  onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: !reduceMotion })}>
                   <Ionicons name="arrow-up" size={18} color={COLORS.primary} />
                   <Text style={styles.backToTopText}>Back to top</Text>
                 </HapticPressable>
@@ -725,13 +727,14 @@ export default function FeedScreen({ navigation, route }) {
               <Text style={styles.welcomeSubtitle}>No posts nearby yet. Start by sharing or asking.</Text>
               <View style={styles.welcomeActions}>
                 <HapticPressable accessibilityRole="button" accessibilityLabel="List an item" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateListing')}>
-                  <View style={styles.welcomeActionIcon}><Ionicons name="basket" size={36} color={COLORS.primary} /></View>
-                  <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>List an item</Text><Text style={styles.welcomeActionNote}>Share an item or service.</Text></View>
+                  <Ionicons name="basket" size={22} color={COLORS.primary} />
+                  <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionTitle}>List an item</Text><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionNote}>Share an item or service.</Text></View>
                   <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
                 </HapticPressable>
-                <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
-                  <View style={styles.welcomeActionIcon}><RequestTypeIcon size={36} /></View>
-                  <View style={{ flex: 1 }}><Text style={styles.welcomeActionTitle}>Post in Wanted</Text><Text style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
+                <View style={styles.welcomeSeparator} />
+                <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateRequest')}>
+                  <RequestTypeIcon size={22} />
+                  <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionTitle}>Post in Wanted</Text><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
                   <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
                 </HapticPressable>
               </View>
@@ -742,7 +745,7 @@ export default function FeedScreen({ navigation, route }) {
               <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
               <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
               <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post what you’re looking for. Neighbors can offer to help.' : 'Add your town to discover items nearby.'}</Text>
-              <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
+              <HapticPressable scaleDown={0.97} style={styles.emptyButton} accessibilityRole="button" onPress={() => {
                 if (feedError) return fetchFeed(1, false);
                 if (!user?.city) return navigation.navigate('EditProfile');
                 if (hasFilters) {
@@ -751,7 +754,7 @@ export default function FeedScreen({ navigation, route }) {
                 }
                 navigation.navigate('CreateRequest');
               }}>
-                <Text style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.emptyButtonText}>{feedError ? 'Try again' : !user?.city ? 'Choose town' : hasFilters ? 'Clear search and filters' : 'Ask my town'}</Text>
               </HapticPressable>
               {!feedError && user?.city && <ActionButton style={{ marginTop: SPACING.sm }} onPress={() => hasFilters ? navigation.navigate('CreateRequest', { initialTitle: search.trim() }) : navigation.navigate('Friends')}
                 label={hasFilters ? 'Post in Wanted' : 'Invite a neighbor'} />}
@@ -787,7 +790,7 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setActiveDropdown(null)}
         title={
           visibilityFilters.length > 0
-            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); setNeighborhood(null); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
+            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); setNeighborhood(null); haptics.selection(); }} maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption, color: COLORS.primary }}>Clear</Text></>
             : 'Visibility'
         }
         multiSelect
@@ -816,7 +819,7 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setActiveDropdown(null)}
         title={
           categoryFilters.length > 0
-            ? <>{'Category  '}<Text onPress={() => { setCategoryFilters([]); haptics.light(); }} style={{ fontWeight: '400', color: COLORS.primary }}>Clear</Text></>
+            ? <>{'Category  '}<Text onPress={() => { setCategoryFilters([]); haptics.selection(); }} maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption, color: COLORS.primary }}>Clear</Text></>
             : 'Category'
         }
         multiSelect
@@ -872,9 +875,6 @@ export default function FeedScreen({ navigation, route }) {
         <View style={styles.overlay} testID="Feed.overlay.upgrade" accessibilityLabel="Upgrade to Plus overlay">
           <View style={styles.overlayCard}>
             <View style={styles.overlayCardInner}>
-              <View style={styles.overlayIconContainer}>
-                <Ionicons name="star" size={32} color={COLORS.primary} />
-              </View>
               <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
               <Text style={styles.overlayText}>
                 Verified members can see wanted posts and items explicitly shared in {user?.city || 'your town'}.
@@ -893,23 +893,23 @@ export default function FeedScreen({ navigation, route }) {
                   <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
                 </View>
               </View>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.overlayButton}
                 onPress={() => {
                   setShowUpgradePrompt(false);
                   navigation.navigate('Subscription', { source: 'town_browse', totalSteps: 2 });
                 }}
-                haptic="medium"
+                haptic={null}
                 testID="Feed.overlay.upgrade.button"
                 accessibilityLabel="See verification options"
                 accessibilityRole="button"
               >
-                <Text style={styles.overlayButtonText}>See verification options</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.overlayButtonText}>See verification options</Text>
               </HapticPressable>
               <HapticPressable
                 style={styles.overlayDismiss}
                 onPress={() => setShowUpgradePrompt(false)}
-                haptic="light"
+                haptic={null}
               >
                 <Text style={styles.overlayDismissText}>Not Now</Text>
               </HapticPressable>
@@ -925,7 +925,7 @@ const styles = StyleSheet.create({
   ribbonContent: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: SPACING.md },
   ribbonCopy: { flex: 1, gap: SPACING.sm },
   ribbonLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 24 },
-  ribbonLabelText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flex: 1 },
+  ribbonLabelText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flex: 1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   ribbonTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   ribbonPhoto: { width: 64, height: 64, borderRadius: RADIUS.sm },
   ribbonFooter: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 48, marginHorizontal: SPACING.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
@@ -933,9 +933,9 @@ const styles = StyleSheet.create({
   ribbonAuthorButton: { flex: 1, minWidth: 0, minHeight: 48, justifyContent: 'center' },
   ribbonReplies: { marginHorizontal: 0, borderTopWidth: 0, paddingVertical: 0, minHeight: 48, gap: SPACING.xs },
   ribbonRepliesText: { flex: 0 },
-  addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '400' },
-  feedTitle: { fontSize: 28, lineHeight: 36, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0, color: COLORS.primaryDark },
-  feedTitleCompact: { fontSize: 24, lineHeight: 32 },
+  addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '500' },
+  feedTitle: { ...TYPOGRAPHY.h1, lineHeight: 36, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0, color: COLORS.primaryDark },
+  feedTitleCompact: { ...TYPOGRAPHY.title2, lineHeight: 32, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
   feedTitleRow: { marginBottom: 44 },
   brandMark: { width: 36, height: 36, flexShrink: 0 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
@@ -946,16 +946,16 @@ const styles = StyleSheet.create({
   typeTab: { flex: 1, minWidth: 44, minHeight: 64, paddingTop: 4, paddingBottom: SPACING.sm, gap: 4,
     alignItems: 'center', justifyContent: 'center' },
   typeTabIndicator: { position: 'absolute', bottom: 0, width: 28, height: 3, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
-  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: 13, lineHeight: 20, fontWeight: '400', color: COLORS.textSecondary },
-  typeTabTextCompact: { fontSize: 12 },
-  typeTabTextActive: { fontFamily: 'DMSans_600SemiBold', color: COLORS.primaryDark },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: TYPOGRAPHY.footnote.fontSize, lineHeight: 20, fontWeight: '500', color: COLORS.textSecondary, fontFamily: 'DMSans_500Medium', },
+  typeTabTextCompact: { ...TYPOGRAPHY.caption1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
+  typeTabTextActive: { fontFamily: 'DMSans_500Medium', color: COLORS.primaryDark, fontWeight: '500', },
   sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
   requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  requestTitle: { fontSize: 22, lineHeight: 29 },
+  requestTitle: { ...TYPOGRAPHY.title2, lineHeight: 29, fontWeight: '600', fontFamily: 'DMSans_600SemiBold', },
   availabilityText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginLeft: 'auto' },
   publicReplies: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44, marginHorizontal: SPACING.lg, paddingVertical: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
-  publicRepliesText: { ...TYPOGRAPHY.footnote, fontWeight: '400', flex: 1, color: COLORS.primary },
-  publicRepliesAction: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  publicRepliesText: { ...TYPOGRAPHY.footnote, fontWeight: '500', flex: 1, color: COLORS.primary, fontFamily: 'DMSans_500Medium', },
+  publicRepliesAction: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   container: {
     flex: 1,
     backgroundColor: FEED.bg,
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryMuted },
   neighborhoodFilter: { minHeight: 44, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: RADIUS.full,
     alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryMuted },
-  neighborhoodFilterText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
+  neighborhoodFilterText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   filtersButtonActive: { backgroundColor: COLORS.primary },
   addButton: {
     flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
@@ -1000,6 +1000,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   overlayCard: {
+    ...CARD_SURFACE,
     width: '100%',
     maxWidth: 340,
     backgroundColor: COLORS.surface,
@@ -1009,26 +1010,16 @@ const styles = StyleSheet.create({
   overlayCardInner: {
     padding: 28,
   },
-  overlayIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.secondary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
   overlayTitle: {
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 10,
   },
   overlayText: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 22,
     marginBottom: SPACING.xl,
   },
@@ -1083,6 +1074,8 @@ const styles = StyleSheet.create({
   exchangeActionText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.primary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   listContent: {
     paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.md, width: '100%', maxWidth: 660, alignSelf: 'center',
@@ -1112,9 +1105,10 @@ const styles = StyleSheet.create({
   },
   requestLabelText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
     flexShrink: 1,
+    fontFamily: 'DMSans_500Medium',
   },
   tileRow: {
     flexDirection: 'column',
@@ -1135,7 +1129,7 @@ const styles = StyleSheet.create({
   },
   tileLockOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: COLORS.photoOverlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1165,14 +1159,15 @@ const styles = StyleSheet.create({
   },
   tileTypeLabelText: {
     ...TYPOGRAPHY.caption,
-    fontWeight: '400',
+    fontWeight: '500',
     letterSpacing: 0.5,
+    fontFamily: 'DMSans_500Medium',
   },
   tileTimeText: {
     ...TYPOGRAPHY.caption1, color: COLORS.textMuted, marginLeft: 'auto',
   },
   tileTitle: {
-    ...TYPOGRAPHY.headline, fontSize: 20, lineHeight: 26, color: COLORS.text, marginTop: SPACING.xs,
+    ...TYPOGRAPHY.headline, fontSize: TYPOGRAPHY.title3.fontSize, lineHeight: 26, color: COLORS.text, marginTop: SPACING.xs,
   },
   tileDesc: {
     ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, marginTop: SPACING.sm, lineHeight: 22,
@@ -1188,19 +1183,18 @@ const styles = StyleSheet.create({
   },
   tilePrice: {
     ...TYPOGRAPHY.headline,
-    fontWeight: '400',
+    fontWeight: '500',
     marginLeft: 'auto',
   },
   card: {
+    ...CARD_SURFACE,
     marginBottom: SPACING.lg,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.borderGreen,
     ...SHADOWS.md,
   },
   cardGiveaway: {
-    borderColor: COLORS.borderBrown,
+    borderColor: COLORS.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1230,7 +1224,7 @@ const styles = StyleSheet.create({
   maskedAvatar: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
   },
   userMeta: {
     marginLeft: SPACING.md,
@@ -1243,8 +1237,9 @@ const styles = StyleSheet.create({
   },
   userName: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   timeAgo: {
     ...TYPOGRAPHY.caption1,
@@ -1263,14 +1258,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderGreen,
   },
   requestCard: {
+    ...CARD_SURFACE,
     marginBottom: SPACING.lg,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     backgroundColor: COLORS.card,
     ...Platform.select({
       ios: {
-        shadowColor: 'rgba(212, 160, 60, 0.08)',
+        shadowColor: COLORS.honeyTint,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 1,
         shadowRadius: 8,
@@ -1293,18 +1287,19 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   requestBannerEmoji: {
-    fontSize: 10,
+    ...TYPOGRAPHY.caption2,
   },
   requestBannerLabel: {
-    fontSize: 11,
-    fontWeight: '400',
-    color: '#fff',
+    ...TYPOGRAPHY.caption2,
+    fontWeight: '500',
+    color: COLORS.white,
     letterSpacing: 1,
+    fontFamily: 'DMSans_500Medium',
   },
   requestBannerDate: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption2,
     fontWeight: '400',
-    color: 'rgba(255,255,255,0.85)',
+    color: COLORS.photoBadgeSurface,
   },
   requestContent: {
     backgroundColor: COLORS.surface,
@@ -1330,14 +1325,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   requestTitle: {
-    fontSize: 15,
-    fontWeight: '400',
+    ...TYPOGRAPHY.subheadline,
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: 2,
+    fontFamily: 'DMSans_500Medium',
   },
   requestSubtitle: {
-    fontSize: 12,
+    ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   requestSnippet: {
     ...TYPOGRAPHY.subheadline,
@@ -1349,27 +1347,29 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: 'rgba(45, 90, 39, 0.12)',
+    backgroundColor: COLORS.leafTint,
     borderWidth: 1,
-    borderColor: 'rgba(45, 90, 39, 0.25)',
+    borderColor: COLORS.leafBorder,
   },
   requestCTAText: {
-    fontSize: 12,
-    fontWeight: '400',
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   renewCTA: {
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
     borderWidth: 1,
-    borderColor: COLORS.primary + '40',
+    borderColor: COLORS.tints.primary40,
   },
   renewCTAText: {
-    fontSize: 12,
-    fontWeight: '400',
+    ...TYPOGRAPHY.caption1,
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   requestThreadDivider: {
     height: 1,
@@ -1398,8 +1398,9 @@ const styles = StyleSheet.create({
   },
   requestThreadLinkText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   threadContainer: {
     paddingHorizontal: SPACING.md,
@@ -1549,7 +1550,7 @@ const styles = StyleSheet.create({
   },
   borrowedBadge: {
     backgroundColor: 'transparent',
-    borderColor: COLORS.warning + '80',
+    borderColor: COLORS.tints.warning80,
   },
   borrowedBadgeText: {
     color: COLORS.warning,
@@ -1578,9 +1579,10 @@ const styles = StyleSheet.create({
   },
   ribbonText: {
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-    color: '#fff',
+    fontWeight: '500',
+    color: COLORS.white,
     letterSpacing: 1,
+    fontFamily: 'DMSans_500Medium',
   },
   cardBody: {
     padding: SPACING.lg,
@@ -1590,7 +1592,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...TYPOGRAPHY.h3,
-    fontWeight: '400',
+    fontWeight: '600',
     color: COLORS.primary,
     marginBottom: SPACING.sm,
     letterSpacing: -0.3,
@@ -1616,13 +1618,15 @@ const styles = StyleSheet.create({
   },
   freeLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   priceLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   dateRow: {
     flexDirection: 'row',
@@ -1657,8 +1661,9 @@ const styles = StyleSheet.create({
   },
   actionText: {
     ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   verifyUnlockBanner: {
     flexDirection: 'row',
@@ -1667,7 +1672,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     backgroundColor: COLORS.card,
     borderTopWidth: 1,
-    borderTopColor: COLORS.warning + '30',
+    borderTopColor: COLORS.tints.warning30,
     gap: SPACING.sm,
   },
   verifyUnlockText: {
@@ -1707,6 +1712,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   emptyButton: {
     marginTop: SPACING.xl,
@@ -1718,15 +1725,14 @@ const styles = StyleSheet.create({
   },
   emptyButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
+    color: COLORS.white,
   },
   welcomeContainer: { alignItems: 'center', paddingTop: SPACING.xl, paddingBottom: SPACING.xxl },
-  welcomeSubtitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.sm, paddingHorizontal: SPACING.lg },
-  welcomeActions: { alignSelf: 'stretch', marginTop: SPACING.xl, gap: SPACING.md },
-  welcomeAction: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary + '80', borderRadius: RADIUS.lg, minHeight: 92 },
-  welcomeRequest: { backgroundColor: COLORS.requestSurface },
-  welcomeActionIcon: { width: 44, alignItems: 'center' },
+  welcomeSubtitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.sm, paddingHorizontal: SPACING.lg, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
+  welcomeActions: { ...CARD_SURFACE, alignSelf: 'stretch', marginTop: SPACING.xl, overflow: 'hidden' },
+  welcomeAction: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.lg, minHeight: 72 },
+  welcomeSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator, marginLeft: SPACING.lg + 22 + SPACING.md },
   welcomeActionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
-  welcomeActionNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.xs },
+  welcomeActionNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.xs, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   welcomePrivacy: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.lg, textAlign: 'center' },
 });

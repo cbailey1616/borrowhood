@@ -18,7 +18,7 @@ export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fa
         <HapticPressable accessibilityLabel="Back" onPress={goBack} hitSlop={8} style={styles.back}>
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
         </HapticPressable>
-        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+        <Text maxFontSizeMultiplier={1.4} accessibilityRole="header" style={styles.title}>{title}</Text>
         {rightElement || <View accessible={false} style={styles.spacer} />}
       </View>
     </View>

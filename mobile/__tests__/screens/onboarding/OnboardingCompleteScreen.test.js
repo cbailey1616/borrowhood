@@ -5,12 +5,15 @@ import api from '../../../src/services/api';
 const mockUser = { id: 'user-1', firstName: 'Test', lastName: 'User', subscriptionTier: 'free', isVerified: false, profilePhotoUrl: null, onboardingCompleted: false, onboardingStep: 4 };
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn(), addListener: jest.fn(() => jest.fn()), getParent: () => ({ setOptions: jest.fn() }), dispatch: jest.fn(), canGoBack: () => true, replace: jest.fn(), reset: jest.fn() };
 const mockRefreshUser = jest.fn().mockResolvedValue({ isFounder: false });
+let mockReduceMotion = true;
 
 jest.mock('../../../src/context/AuthContext', () => ({ useAuth: () => ({ user: mockUser, isLoading: false, isAuthenticated: true, refreshUser: mockRefreshUser }) }));
 jest.mock('../../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn(), showToast: jest.fn() }) }));
+jest.mock('../../../src/hooks/useReduceMotion', () => () => mockReduceMotion);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockReduceMotion = true;
   api.completeOnboarding.mockResolvedValue({});
   api.getCommunities.mockResolvedValue([]);
 });
@@ -38,5 +41,17 @@ describe('OnboardingCompleteScreen', () => {
     const btn = await result.findByTestId('Onboarding.Complete.startExploring');
     await act(async () => { fireEvent.press(btn); });
     expect(api.completeOnboarding).toHaveBeenCalled();
+  });
+
+  it('removes confetti when Reduce Motion is enabled while completion stays usable', async () => {
+    const Screen = require('../../../src/screens/onboarding/OnboardingCompleteScreen').default;
+    const Confetti = require('react-native-confetti-cannon');
+    mockReduceMotion = false;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    await waitFor(() => expect(screen.UNSAFE_queryByType(Confetti)).toBeTruthy());
+    mockReduceMotion = true;
+    await act(async () => screen.rerender(<Screen navigation={mockNavigation} />));
+    expect(screen.UNSAFE_queryByType(Confetti)).toBeNull();
+    expect(screen.getByTestId('Onboarding.Complete.startExploring')).toBeEnabled();
   });
 });

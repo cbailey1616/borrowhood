@@ -1,3 +1,4 @@
+import { haptics } from '../utils/haptics';
 import TextInput from '../components/AppTextInput';
 import { useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/conf
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import { haptics } from '../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
 const TYPE_CONFIG = {
@@ -71,7 +71,6 @@ export default function RespondToDisputeScreen({ navigation, route }) {
 
     if (errors.description || errors.amount) {
       setFieldErrors(errors);
-      haptics.warning();
       return;
     }
 
@@ -79,6 +78,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
+    haptics.light();
     setSubmitting(true);
     try {
       let responsePhotoUrls = [];
@@ -94,9 +94,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
       });
 
       setCompleted(true);
-      haptics.success();
     } catch (err) {
-      haptics.error();
       showError({
         message:
           err.message ||
@@ -114,18 +112,18 @@ export default function RespondToDisputeScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.centeredContent}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
+            <Ionicons name="checkmark-circle" size={64} illustrated={true} color={COLORS.primary} />
           </View>
           <Text style={styles.title}>{isCounter ? 'Counter Submitted' : 'Decline Submitted'}</Text>
           <Text style={styles.subtitle}>
             Your response has been recorded. An organizer will review the dispute.
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.primaryButton}
             onPress={() => navigation.goBack()}
-            haptic="light"
+
           >
-            <Text style={styles.primaryButtonText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
         </View>
       </View>
@@ -144,7 +142,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           <View style={styles.cardContent}>
             <View style={styles.typeBadge}>
               <Ionicons name={typeInfo.icon} size={20} color={COLORS.primary} />
-              <Text style={styles.typeLabel}>{typeInfo.label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.typeLabel}>{typeInfo.label}</Text>
             </View>
             <Text style={styles.claimantText}>Filed by {claimantName}</Text>
             <Text style={styles.claimDescription}>{description}</Text>
@@ -154,7 +152,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {/* Response Description */}
         <View style={[styles.cardBox, styles.card, fieldErrors.description && styles.fieldError]}>
           <View style={styles.cardContent}>
-            <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>
               {isCounter ? 'Reason for Counter *' : 'Reason for Declining *'}
             </Text>
             <Text style={styles.cardHint}>Minimum 10 characters</Text>
@@ -173,7 +171,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
               textAlignVertical="top"
               maxLength={2000}
             />
-            <Text style={styles.charCount}>{responseDescription.length}/2000</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.charCount}>{responseDescription.length}/2000</Text>
           </View>
         </View>
 
@@ -181,7 +179,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {isCounter && (
           <View style={[styles.cardBox, styles.card, fieldErrors.amount && styles.fieldError]}>
             <View style={styles.cardContent}>
-              <Text style={[styles.cardLabel, fieldErrors.amount && styles.fieldErrorLabel]}>Your Counter Amount *</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.amount && styles.fieldErrorLabel]}>Your Counter Amount *</Text>
               <Text style={styles.cardHint}>
                 {requestedAmount != null
                   ? `They requested $${requestedAmount.toFixed(2)}. How much do you think is fair?`
@@ -211,7 +209,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         {/* Response Photos */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Photos</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Photos</Text>
             <Text style={styles.cardHint}>Upload up to 4 photos to support your response</Text>
 
             <View style={styles.photosGrid}>
@@ -221,7 +219,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
                   <HapticPressable
                     style={styles.removePhoto}
                     onPress={() => removePhoto(index)}
-                    haptic="light"
+
                   >
                     <Ionicons name="close-circle" size={22} color={COLORS.danger} />
                   </HapticPressable>
@@ -235,7 +233,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
                   accessibilityRole="button"
                   style={styles.addPhotoButton}
                   onPress={pickPhotos}
-                  haptic="light"
+
                 >
                   <Ionicons name="camera-outline" size={28} color={COLORS.text} />
                   <Text style={styles.addPhotoText}>Add</Text>
@@ -246,7 +244,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         </View>
 
         {/* Submit */}
-        <HapticPressable
+        <HapticPressable scaleDown={0.97}
           testID="RespondDispute.button.submit"
           accessibilityLabel={isCounter ? 'Submit counter proposal' : 'Submit decline'}
           accessibilityRole="button"
@@ -257,12 +255,11 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           ]}
           onPress={handleSubmitPress}
           disabled={!isValid || submitting}
-          haptic="medium"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={styles.primaryButtonText}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>
               {isCounter ? 'Submit Counter' : 'Submit Decline'}
             </Text>
           )}
@@ -324,7 +321,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   card: {
     marginBottom: SPACING.lg,
   },
@@ -339,9 +336,8 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   cardLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
-    fontWeight: '400',
     marginBottom: SPACING.xs,
   },
   cardHint: {
@@ -356,9 +352,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   typeLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
-    fontWeight: '400',
   },
   claimantText: {
     ...TYPOGRAPHY.caption1,
@@ -454,7 +449,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
   },
 });

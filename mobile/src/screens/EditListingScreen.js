@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import TextInput from '../components/AppTextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import GiveawayOptions from '../components/GiveawayOptions';
@@ -28,12 +29,13 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, CONDITION_LABELS, VISIBILITY_LABELS } from '../utils/config';
 
 const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function EditListingScreen({ navigation, route }) {
+  const reduceMotion = useReduceMotion();
   const { listing } = route.params;
   const { user } = useAuth();
   const { showError } = useError();
@@ -156,7 +158,7 @@ export default function EditListingScreen({ navigation, route }) {
       // Scroll to the first field with an error
       const y = errors.photos ? fieldPositions.current.photos : fieldPositions.current.title;
       if (y != null && scrollRef.current) {
-        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true);
+        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), !reduceMotion);
       }
 
       const missing = [];
@@ -271,7 +273,7 @@ export default function EditListingScreen({ navigation, route }) {
     >
       {/* Photos */}
       <View onLayout={(e) => { fieldPositions.current.photos = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.photos && styles.fieldErrorLabel]}>Photos *</Text>
         <Text style={styles.hint}>Add up to 10 photos of your item</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
           <View style={styles.photoRow}>
@@ -280,11 +282,11 @@ export default function EditListingScreen({ navigation, route }) {
               <View key={`existing-${index}`} style={styles.photoWrapper}>
                 <Image source={{ uri: url }} style={styles.photo} />
                 <HapticPressable
-                  haptic="light"
+                  haptic={null}
                   style={styles.removePhoto}
                   onPress={() => handleRemoveExistingPhoto(url)}
                 >
-                  <Ionicons name="close" size={16} color="#fff" />
+                  <Ionicons name="close" size={16} color={COLORS.white} />
                 </HapticPressable>
               </View>
             ))}
@@ -293,21 +295,21 @@ export default function EditListingScreen({ navigation, route }) {
               <View key={`new-${index}`} style={styles.photoWrapper}>
                 <Image source={{ uri }} style={styles.photo} />
                 <HapticPressable
-                  haptic="light"
+                  haptic={null}
                   style={styles.removePhoto}
                   onPress={() => handleRemoveNewPhoto(index)}
                 >
-                  <Ionicons name="close" size={16} color="#fff" />
+                  <Ionicons name="close" size={16} color={COLORS.white} />
                 </HapticPressable>
               </View>
             ))}
             {totalPhotos < 10 && (
               <View style={styles.addPhotoButtons}>
-                <HapticPressable haptic="light" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage}>
+                <HapticPressable haptic={null} style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage}>
                   <Ionicons name="images-outline" size={24} color={fieldErrors.photos ? COLORS.danger : COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
                 </HapticPressable>
-                <HapticPressable haptic="light" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto}>
+                <HapticPressable haptic={null} style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto}>
                   <Ionicons name="camera-outline" size={24} color={fieldErrors.photos ? COLORS.danger : COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Camera</Text>
                 </HapticPressable>
@@ -319,7 +321,7 @@ export default function EditListingScreen({ navigation, route }) {
 
       {/* Title */}
       <View onLayout={(e) => { fieldPositions.current.title = e.nativeEvent.layout.y; }} style={styles.section}>
-        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>Title *</Text>
         <TextInput
           style={[styles.input, fieldErrors.title && styles.fieldError]}
           value={formData.title}
@@ -334,7 +336,7 @@ export default function EditListingScreen({ navigation, route }) {
 
       {/* Description */}
       <View style={styles.section}>
-        <Text style={styles.label}>Description</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Description</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={formData.description}
@@ -351,16 +353,16 @@ export default function EditListingScreen({ navigation, route }) {
 
       {/* Condition */}
       <View style={styles.section}>
-        <Text style={styles.label}>Condition *</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Condition *</Text>
         <View style={styles.options}>
           {CONDITIONS.map((condition) => (
             <HapticPressable
               key={condition}
-              haptic="light"
+              haptic="selection"
               style={[styles.option, formData.condition === condition && styles.optionActive]}
               onPress={() => updateField('condition', condition)}
             >
-              <Text style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.optionText, formData.condition === condition && styles.optionTextActive]}>
                 {CONDITION_LABELS[condition]}
               </Text>
             </HapticPressable>
@@ -371,7 +373,7 @@ export default function EditListingScreen({ navigation, route }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.label}>Category</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.label}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
             <View style={styles.categoryRow}>
               {categories.map((cat) => {
@@ -387,7 +389,7 @@ export default function EditListingScreen({ navigation, route }) {
                     }}
                   >
                     <CategoryIcon icon={cat.icon || 'pricetag-outline'} size={18} />
-                    <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                    <Text maxFontSizeMultiplier={1.4} style={[styles.optionText, isSelected && styles.optionTextActive]}>
                       {cat.name}
                     </Text>
                   </HapticPressable>
@@ -399,7 +401,7 @@ export default function EditListingScreen({ navigation, route }) {
       )}
 
       <View style={styles.section}>
-        {listing.sharingReviewRequired && <Text style={styles.label}>This item is private until you review its audience.</Text>}
+        {listing.sharingReviewRequired && <Text maxFontSizeMultiplier={1.4} style={styles.label}>This item is private until you review its audience.</Text>}
 
         <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={listing.listingType}
           neighborhoodAvailable={Boolean(formData.communityId)}
@@ -414,14 +416,14 @@ export default function EditListingScreen({ navigation, route }) {
       {!isTransferListing(listing) && <DirectFeePicker enabled={formData.chargeFee} amount={formData.directFeeAmount}
         onToggle={value => updateField('chargeFee', value)} onAmountChange={value => updateField('directFeeAmount', value)} />}
       {!ENABLE_PAYMENTS && (!listing.isFree || listing.depositAmount > 0) && (
-        <Text style={styles.label}>Saving makes this item free to borrow, with no deposit.</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Saving makes this item free to borrow, with no deposit.</Text>
       )}
       {/* Duration */}
       {!isTransferListing(listing) && <View style={styles.section}>
-        <Text style={styles.label}>Borrow duration (days)</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Borrow duration (days)</Text>
         <View style={styles.durationRow}>
           <View style={styles.durationInput}>
-            <Text style={styles.durationLabel}>Min</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.durationLabel}>Min</Text>
             <TextInput
               style={styles.durationField}
               value={formData.minDuration}
@@ -431,7 +433,7 @@ export default function EditListingScreen({ navigation, route }) {
           </View>
           <Text style={styles.durationSeparator}>to</Text>
           <View style={styles.durationInput}>
-            <Text style={styles.durationLabel}>Max</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.durationLabel}>Max</Text>
             <TextInput
               style={styles.durationField}
               value={formData.maxDuration}
@@ -443,16 +445,16 @@ export default function EditListingScreen({ navigation, route }) {
       </View>}
 
       {/* Submit */}
-      <HapticPressable
-        haptic="medium"
+      <HapticPressable scaleDown={0.97}
+        haptic="light"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={COLORS.white} />
         ) : (
-          <Text style={styles.submitButtonText}>Save Changes</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.submitButtonText}>Save Changes</Text>
         )}
       </HapticPressable>
     </KeyboardAwareScrollView>
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -537,7 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
@@ -574,12 +576,15 @@ const styles = StyleSheet.create({
   },
   optionText: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   optionTextActive: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   toggle: {
     flexDirection: 'row',
@@ -589,7 +594,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   toggleTextDisabled: {
@@ -599,10 +604,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   payoutHintCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: COLORS.tints.primary10,
     padding: SPACING.md,
     borderRadius: RADIUS.md,
     marginBottom: SPACING.md,
@@ -640,7 +646,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
   switchKnobActive: {
     alignSelf: 'flex-end',
@@ -656,25 +662,29 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   currency: {
-    fontSize: 18,
+    ...TYPOGRAPHY.h3,
     color: COLORS.textSecondary,
   },
   priceField: {
     flex: 1,
-    fontSize: 18,
+    ...TYPOGRAPHY.h3,
     paddingVertical: 14,
     marginLeft: SPACING.xs,
     color: COLORS.text,
   },
   priceSuffix: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   priceHint: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     marginTop: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   durationRow: {
     flexDirection: 'row',
@@ -688,6 +698,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   durationField: {
     borderWidth: 1,
@@ -695,14 +707,14 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     textAlign: 'center',
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
   durationSeparator: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
     marginTop: SPACING.xl,
   },
@@ -718,13 +730,13 @@ const styles = StyleSheet.create({
   },
   percentField: {
     flex: 1,
-    fontSize: 18,
+    ...TYPOGRAPHY.h3,
     paddingVertical: 14,
     color: COLORS.text,
     textAlign: 'center',
   },
   percentSymbol: {
-    fontSize: 18,
+    ...TYPOGRAPHY.h3,
     color: COLORS.textSecondary,
   },
   submitButton: {
@@ -740,8 +752,8 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
-    fontSize: 16,
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.body.fontSize,
   },
   fieldError: {
     borderColor: COLORS.danger,

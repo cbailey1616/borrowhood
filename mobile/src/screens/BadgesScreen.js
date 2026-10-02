@@ -37,7 +37,6 @@ export default function BadgesScreen({ navigation }) {
       setMyBadges(mine);
       setAllBadges(all);
       setLeaderboard(leaders);
-      haptics.success();
     } catch (err) {
       haptics.error();
     } finally {
@@ -59,19 +58,19 @@ export default function BadgesScreen({ navigation }) {
     <AnimatedCard index={index} style={styles.badgeCardWrapper}>
       <View style={[styles.cardBox, styles.badgeCard, !earned && styles.badgeCardLocked]}>
         <Icon name={badge.icon || 'gift'} size={40} illustrated={!!earned} style={[styles.badgeIcon, !earned && styles.badgeIconLocked]} />
-        <Text style={[styles.badgeName, !earned && styles.badgeNameLocked]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.badgeName, !earned && styles.badgeNameLocked]}>
           {badge.name}
         </Text>
-        <Text style={[styles.badgeDescription, !earned && styles.badgeDescriptionLocked]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.badgeDescription, !earned && styles.badgeDescriptionLocked]}>
           {badge.description}
         </Text>
         {earned && (
-          <Text style={styles.badgeEarned}>
+          <Text maxFontSizeMultiplier={1.4} style={styles.badgeEarned}>
             Earned {new Date(earned.earnedAt).toLocaleDateString()}
           </Text>
         )}
         {!earned && badge.requirement && (
-          <Text style={styles.badgeRequirement}>{badge.requirement}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.badgeRequirement}>{badge.requirement}</Text>
         )}
       </View>
     </AnimatedCard>
@@ -79,12 +78,12 @@ export default function BadgesScreen({ navigation }) {
 
   const LeaderboardRow = ({ user, rank }) => (
     <AnimatedCard index={rank - 1}>
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.leaderboardRow}
         onPress={() => navigation.navigate('UserProfile', { id: user.id })}
-        haptic="light"
+        haptic={null}
       >
-        <Text style={[styles.rank, rank <= 3 && styles.rankTop]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.rank, rank <= 3 && styles.rankTop]}>
           {`#${rank}`}
         </Text>
         <ShimmerImage placeholderIcon="person"
@@ -92,10 +91,10 @@ export default function BadgesScreen({ navigation }) {
           style={styles.leaderAvatar}
         />
         <View style={styles.leaderInfo}>
-          <Text style={styles.leaderName}>{user.firstName} {user.lastName?.charAt(0)}.</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.leaderName}>{user.firstName} {user.lastName?.charAt(0)}.</Text>
           <Text style={styles.leaderStats}>{user.badgeCount} badges</Text>
         </View>
-        <Text style={styles.leaderPoints}>{user.totalPoints} pts</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.leaderPoints}>{user.totalPoints} pts</Text>
       </HapticPressable>
     </AnimatedCard>
   );
@@ -111,7 +110,7 @@ export default function BadgesScreen({ navigation }) {
           }}
           haptic={null}
         >
-          <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
             Badges
           </Text>
         </HapticPressable>
@@ -123,7 +122,7 @@ export default function BadgesScreen({ navigation }) {
           }}
           haptic={null}
         >
-          <Text style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
             Leaderboard
           </Text>
         </HapticPressable>
@@ -135,12 +134,12 @@ export default function BadgesScreen({ navigation }) {
             <View style={[styles.cardBox, styles.statsRow]}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{myBadges.length}</Text>
-                <Text style={styles.statLabel}>Badges Earned</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.statLabel}>Badges Earned</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{allBadges.length}</Text>
-                <Text style={styles.statLabel}>Total Available</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.statLabel}>Total Available</Text>
               </View>
             </View>
           </AnimatedCard>
@@ -201,7 +200,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -226,10 +225,13 @@ const styles = StyleSheet.create({
   tabText: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   tabTextActive: {
     color: COLORS.primary,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   content: {
     flex: 1,
@@ -257,6 +259,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
@@ -289,9 +293,10 @@ const styles = StyleSheet.create({
   },
   badgeName: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     textAlign: 'center',
+    fontFamily: 'DMSans_500Medium',
   },
   badgeNameLocked: {
     color: COLORS.textSecondary,
@@ -329,13 +334,15 @@ const styles = StyleSheet.create({
   },
   leaderboardTitle: {
     ...TYPOGRAPHY.h2,
-    fontSize: 20,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     color: COLORS.text,
   },
   leaderboardSubtitle: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   leaderboardRow: {
     flexDirection: 'row',
@@ -350,7 +357,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   rankTop: {
-    fontSize: 20,
+    ...TYPOGRAPHY.title3,
   },
   leaderAvatar: {
     width: 40,
@@ -364,8 +371,9 @@ const styles = StyleSheet.create({
   },
   leaderName: {
     ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   leaderStats: {
     ...TYPOGRAPHY.caption1,

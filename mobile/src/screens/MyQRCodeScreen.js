@@ -47,10 +47,10 @@ export default function MyQRCodeScreen() {
         <Text style={styles.caption}>Scan to add me on Borrowhood.</Text>
       </> : <Text style={styles.caption}>Couldn't load your code. Please reopen this screen.</Text>}
     </LayeredCard>
-    <HapticPressable style={styles.shareButton} onPress={shareProfile} disabled={!link || sharing}
+    <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.shareButton} onPress={shareProfile} disabled={!link || sharing}
       accessibilityLabel="Share profile">
       <Ionicons name="share-outline" size={22} color={COLORS.surface} />
-      <Text style={styles.shareText}>{sharing ? 'Opening…' : 'Share profile'}</Text>
+      <Text style={styles.shareText}>{sharing ? 'Opening…' : "Share profile"}</Text>
     </HapticPressable>
   </ScrollView>;
 }

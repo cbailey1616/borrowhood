@@ -1,7 +1,6 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { COLORS } from '../utils/config';
-import { haptics } from '../utils/haptics';
 
 const LOGO_SIZE = 56;
 export const REBOUND_MS = 200;
@@ -108,7 +107,6 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
     const listener = scrollY.addListener(({ value }) => {
       if (value <= -72 && !armed.current && !active.current) {
         armed.current = true;
-        haptics.light();
       }
       if (value >= -12 && !active.current) armed.current = false;
     });
@@ -128,7 +126,6 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
       active.current = false;
       armed.current = false;
       setHolding(false);
-      if (branded) haptics.light();
     }, remaining);
     return () => clearTimeout(timer);
   }, [refreshing, cycle, branded]);
@@ -137,7 +134,6 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
     active.current = true;
     started.current = Date.now();
     if (branded) {
-      if (!armed.current) haptics.light();
       setHolding(true);
     }
     setCycle(c => c + 1);

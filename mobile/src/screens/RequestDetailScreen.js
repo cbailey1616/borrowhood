@@ -21,7 +21,6 @@ import RankInfoSheet from '../components/RankInfoSheet';
 import { Ionicons } from '../components/Icon';
 import { memberReputation } from '../utils/reputation';
 import { requestPresentation } from '../utils/requestPresentation';
-import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 
@@ -151,7 +150,7 @@ export default function RequestDetailScreen({ route, navigation }) {
     try {
       await api.deleteRequest(id);
       if (!isCurrent()) return;
-      haptics.success(); navigation.goBack();
+      navigation.goBack();
     } catch {
       if (isCurrent()) showToast('Couldn’t close the post. Please try again.', 'error');
     } finally {
@@ -169,7 +168,6 @@ export default function RequestDetailScreen({ route, navigation }) {
       await api.withdrawOffer(id, item.id);
       if (!isCurrent()) return;
       setOffers(previous => previous.filter(offer => offer.id !== item.id));
-      haptics.success();
     } catch {
       if (isCurrent()) showToast('Couldn’t withdraw the offer. Please try again.', 'error');
     } finally {
@@ -208,18 +206,18 @@ export default function RequestDetailScreen({ route, navigation }) {
             <View style={styles.metaRow}>
               <View style={styles.typeLabel}>
                 <RequestTypeIcon type={request.type} size={18} />
-                <Text style={styles.metaText}>{presentation.label}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{presentation.label}</Text>
               </View>
               <View style={[styles.statusBadge, acceptingOffers && styles.openBadge]}>
-                <Text style={[styles.statusText, acceptingOffers && styles.openText]}>{status}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.statusText, acceptingOffers && styles.openText]}>{status}</Text>
               </View>
             </View>
             <Text style={styles.title} accessibilityRole="header">{request.title}</Text>
-            {!acceptingOffers && <Text style={styles.metaText}>
+            {!acceptingOffers && <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>
               {request.isExpired && request.isOwner ? 'Renew from My Posts.' : 'No longer accepting offers.'}
             </Text>}
           </View>
-          {!!request.photoUrl && <HapticPressable style={styles.photoFrame} onPress={() => setShowPhoto(true)}
+          {!!request.photoUrl && <HapticPressable scaleDown={0.97} style={styles.photoFrame} onPress={() => setShowPhoto(true)}
             accessibilityRole="button" accessibilityLabel="View full wanted photo" testID="Request.photo">
             <ShimmerImage source={{ uri: request.photoUrl }} contentFit="cover" contentPosition="center"
               accessibilityLabel="Wanted item photo" style={styles.photo} />
@@ -228,12 +226,12 @@ export default function RequestDetailScreen({ route, navigation }) {
           {(request.description || dateRange || request.category) && <View style={styles.details}>
             {!!request.description && <Text style={styles.body}>{request.description}</Text>}
             {!!dateRange && <View style={styles.detailRow}>
-              <Ionicons name="calendar" size={18} illustrated color={COLORS.primary} />
-              <Text style={styles.metaText}>Needed {dateRange}</Text>
+              <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
+              <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>Needed {dateRange}</Text>
             </View>}
             {!!request.category && <Text style={styles.category}>{request.category}</Text>}
           </View>}
-          {privateAccess && requester.id && <HapticPressable style={styles.requesterRow}
+          {privateAccess && requester.id && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.requesterRow}
             accessibilityRole="button" accessibilityLabel={`View ${requester.firstName}’s profile`}
             onPress={() => navigation.navigate('UserProfile', { id: requester.id })}>
             <ShimmerImage placeholderIcon="person" source={{ uri: requester.profilePhotoUrl }} style={styles.avatar} />
@@ -243,7 +241,7 @@ export default function RequestDetailScreen({ route, navigation }) {
                 {requester.isVerified === true && <VerifiedBadge size={16} />}
                 <NeighborRankBadge rank={reputation.rank} onPress={() => setShowRank(true)} />
               </View>
-              <Text style={styles.metaText}>{postedDate ? `Posted ${postedDate}` : 'Posted by'}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{postedDate ? `Posted ${postedDate}` : 'Posted by'}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </HapticPressable>}
@@ -255,30 +253,30 @@ export default function RequestDetailScreen({ route, navigation }) {
       {showOffers && <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.typeLabel}>
-            <Ionicons name="lock-closed" size={18} illustrated color={COLORS.primary} />
+            <Ionicons name="lock-closed-outline" size={22} color={COLORS.primary} />
             <Text style={styles.sectionTitle} accessibilityRole="header">Private offers</Text>
           </View>
-          {offers.length > 0 && <Text style={styles.metaText}>{offers.length}</Text>}
+          {offers.length > 0 && <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{offers.length}</Text>}
         </View>
         {offers.length > 0 && <Text style={styles.sectionHint}>Only you and the other person can see these.</Text>}
         {offerError && <ActionButton label="Couldn’t load offers. Try again" onPress={fetchOffers} />}
         {offersLoading && offers.length === 0 ? <ActivityIndicator color={COLORS.spinner} />
-          : !offerError && offers.length === 0 && <Text style={styles.metaText}>No offers yet.</Text>}
+          : !offerError && offers.length === 0 && <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>No offers yet.</Text>}
         {offers.map(item => <LayeredCard key={item.id}>
           <View style={styles.offerCard}>
-            <HapticPressable style={styles.offerRow} accessibilityRole="button" accessibilityLabel={`View offered item: ${item.title}`}
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.offerRow} accessibilityRole="button" accessibilityLabel={`View offered item: ${item.title}`}
               onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
-              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.offerPhoto} />
+              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} category={item.category} title={item.title} style={styles.offerPhoto} />
               <View style={styles.offerContent}>
                 <Text style={styles.offerTitle}>{item.title}</Text>
-                <Text style={styles.metaText}>{item.isOwn ? 'Your offer' : 'View item'}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{item.isOwn ? 'Your offer' : 'View item'}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
             </HapticPressable>
             {item.isOwn && <HapticPressable style={styles.withdrawButton} onPress={() => setWithdrawItem(item)}
               disabled={!!withdrawing} accessibilityRole="button" accessibilityLabel={`Withdraw offer: ${item.title}`}
               accessibilityState={{ disabled: !!withdrawing, busy: withdrawing === item.id }}>
-              {withdrawing === item.id ? <ActivityIndicator color={COLORS.danger} /> : <Text style={styles.withdrawText}>Withdraw offer</Text>}
+              {withdrawing === item.id ? <ActivityIndicator color={COLORS.danger} /> : <Text maxFontSizeMultiplier={1.4} style={styles.withdrawText}>Withdraw offer</Text>}
             </HapticPressable>}
           </View>
         </LayeredCard>)}
@@ -288,17 +286,17 @@ export default function RequestDetailScreen({ route, navigation }) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle} accessibilityRole="header">Comments{discussionCount > 0 ? ` (${discussionCount})` : ''}</Text>
           {discussionCount > discussions.length && <HapticPressable style={styles.viewAll} onPress={() => openComments(false)}
-            accessibilityRole="button" accessibilityLabel="View all comments"><Text style={styles.linkText}>View all</Text></HapticPressable>}
+            accessibilityRole="button" accessibilityLabel="View all comments"><Text maxFontSizeMultiplier={1.4} style={styles.linkText}>View all</Text></HapticPressable>}
         </View>
         {discussionError && <ActionButton label="Couldn’t load comments. Try again" onPress={fetchDiscussions} />}
-        {discussions.map(post => <HapticPressable key={post.id} style={styles.commentRow}
+        {discussions.map(post => <HapticPressable pressedBackgroundColor={COLORS.cardHover} key={post.id} style={styles.commentRow}
           accessibilityRole="button" accessibilityLabel={`Comment by ${post.user?.firstName || 'a neighbor'}: ${post.content}`}
           onPress={() => openComments(false)}>
           <ShimmerImage placeholderIcon="person" source={{ uri: post.user?.profilePhotoUrl }} style={styles.commentAvatar} />
           <View style={styles.offerContent}>
             <Text style={styles.commentAuthor}>{post.user?.firstName} {post.user?.lastName}</Text>
-            <Text style={styles.metaText} numberOfLines={2}>{post.content}</Text>
-            {post.replyCount > 0 && <Text style={styles.linkText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>}
+            <Text maxFontSizeMultiplier={1.4} style={styles.metaText} numberOfLines={2}>{post.content}</Text>
+            {post.replyCount > 0 && <Text maxFontSizeMultiplier={1.4} style={styles.linkText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>}
           </View>
           <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
         </HapticPressable>)}
@@ -310,22 +308,22 @@ export default function RequestDetailScreen({ route, navigation }) {
     {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}
     {(responderAction || ownerActions) && <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
       <View style={[styles.footerContent, (fontScale > 1.3 || width < 360) && styles.stackedActions]}>
-        {responderAction && <HapticPressable style={styles.primaryButton} disabled={isOpeningChat}
+        {responderAction && <HapticPressable scaleDown={0.97} style={styles.primaryButton} disabled={isOpeningChat}
           accessibilityRole="button" accessibilityLabel={request.type === 'service' ? 'I can help' : 'Offer an item privately'}
           accessibilityState={{ disabled: isOpeningChat, busy: isOpeningChat }}
           onPress={request.type === 'service' ? openServiceChat : () => navigation.navigate('OfferItem', { request })}>
           {isOpeningChat ? <ActivityIndicator color={COLORS.surface} /> : <>
             <Ionicons name={request.type === 'service' ? 'chatbubble-outline' : 'add'} size={20} color={COLORS.surface} />
-            <Text style={styles.primaryText}>{request.type === 'service' ? 'I can help' : 'Offer an item'}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryText}>{request.type === 'service' ? 'I can help' : 'Offer an item'}</Text>
           </>}
         </HapticPressable>}
         {ownerActions && <>
-          <HapticPressable style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit post"
-            onPress={() => navigation.navigate('EditRequest', { request })}><Text style={styles.primaryText}>Edit post</Text></HapticPressable>
-          <HapticPressable style={[styles.primaryButton, styles.closeButton]} disabled={isDeleting}
+          <HapticPressable scaleDown={0.97} style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit post"
+            onPress={() => navigation.navigate('EditRequest', { request })}><Text maxFontSizeMultiplier={1.4} style={styles.primaryText}>Edit post</Text></HapticPressable>
+          <HapticPressable scaleDown={0.97} style={[styles.primaryButton, styles.closeButton]} disabled={isDeleting}
             accessibilityRole="button" accessibilityLabel="Close post" accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
             onPress={() => setShowDeleteSheet(true)}>
-            {isDeleting ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.primaryText}>Close post</Text>}
+            {isDeleting ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={styles.primaryText}>Close post</Text>}
           </HapticPressable>
         </>}
       </View>
@@ -362,7 +360,7 @@ const styles = StyleSheet.create({
   openBadge: { backgroundColor: COLORS.primaryMuted },
   statusText: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },
   openText: { color: COLORS.primary },
-  title: { ...TYPOGRAPHY.h2, fontSize: 25, color: COLORS.text },
+  title: { ...TYPOGRAPHY.title2, color: COLORS.text },
   body: { ...TYPOGRAPHY.body, color: COLORS.text },
   metaText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
   photoFrame: { marginHorizontal: SPACING.sm, borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated },
@@ -375,7 +373,7 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceElevated },
   personInfo: { flex: 1, minWidth: 0 },
   personNameRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
-  personName: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1 },
+  personName: { ...TYPOGRAPHY.buttonSmall, color: COLORS.text, flexShrink: 1 },
   section: { gap: SPACING.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.sm },
   sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, flexShrink: 1 },
@@ -384,20 +382,20 @@ const styles = StyleSheet.create({
   offerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md },
   offerPhoto: { width: 52, height: 52, borderRadius: RADIUS.md, flexShrink: 0 },
   offerContent: { flex: 1, minWidth: 0, gap: SPACING.xs },
-  offerTitle: { ...TYPOGRAPHY.subheadline, color: COLORS.text, flexShrink: 1 },
+  offerTitle: { ...TYPOGRAPHY.buttonSmall, color: COLORS.text, flexShrink: 1 },
   withdrawButton: { minHeight: 44, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, justifyContent: 'center', alignItems: 'flex-end' },
-  withdrawText: { ...TYPOGRAPHY.footnote, color: COLORS.danger },
+  withdrawText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.danger },
   commentsCard: { padding: SPACING.lg, gap: SPACING.md, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg },
   commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
   commentAvatar: { width: 32, height: 32, borderRadius: RADIUS.full },
-  commentAuthor: { ...TYPOGRAPHY.footnote, color: COLORS.text },
-  linkText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  commentAuthor: { ...TYPOGRAPHY.buttonCaption, color: COLORS.text },
+  linkText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary },
   viewAll: { minHeight: 44, justifyContent: 'center', paddingHorizontal: SPACING.sm },
   footer: { padding: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, backgroundColor: COLORS.surface },
   footerContent: { flexDirection: 'row', gap: SPACING.sm, width: '100%', maxWidth: 648, alignSelf: 'center' },
   stackedActions: { flexDirection: 'column' },
   primaryButton: { flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.md, paddingVertical: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.primary },
-  primaryText: { ...TYPOGRAPHY.subheadline, color: COLORS.surface, flexShrink: 1, textAlign: 'center' },
+  primaryText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.surface, flexShrink: 1, textAlign: 'center' },
   closeButton: { backgroundColor: COLORS.danger },
   messageError: { ...TYPOGRAPHY.footnote, color: COLORS.danger, padding: SPACING.md },
   photoViewer: { flex: 1, backgroundColor: COLORS.primaryDark },

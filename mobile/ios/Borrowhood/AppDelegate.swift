@@ -27,12 +27,12 @@ public class AppDelegate: ExpoAppDelegate {
 
     window = UIWindow(frame: UIScreen.main.bounds)
     // Set parchment background during JS bundle loading
-    window?.backgroundColor = UIColor(red: 222/255, green: 210/255, blue: 181/255, alpha: 1)
+    window?.backgroundColor = UIColor(red: 243/255, green: 235/255, blue: 221/255, alpha: 1)
     factory.startReactNative(
       withModuleName: "main",
       in: window,
       launchOptions: launchOptions)
-    window?.rootViewController?.view.backgroundColor = UIColor(red: 222/255, green: 210/255, blue: 181/255, alpha: 1)
+    window?.rootViewController?.view.backgroundColor = UIColor(red: 243/255, green: 235/255, blue: 221/255, alpha: 1)
 #endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
@@ -8,8 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Modal,
-} from 'react-native';
+  Modal, } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import HeroIcon from '../components/HeroIcon';
 import { Ionicons } from '../components/Icon';
@@ -22,6 +22,7 @@ import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 
 export default function LendingCirclesScreen({ navigation }) {
+  const reduceMotion = useReduceMotion();
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,7 +42,7 @@ export default function LendingCirclesScreen({ navigation }) {
       const data = await api.getCircles();
       setCircles(data);
     } catch (err) {
-      haptics.error();
+
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,6 @@ export default function LendingCirclesScreen({ navigation }) {
 
   const handleCreateCircle = async () => {
     if (!newCircle.name.trim()) {
-      haptics.warning();
       return;
     }
 
@@ -59,9 +59,9 @@ export default function LendingCirclesScreen({ navigation }) {
       setShowCreateModal(false);
       setNewCircle({ name: '', description: '' });
       loadCircles();
-      haptics.success();
+
     } catch (err) {
-      haptics.error();
+
     } finally {
       setCreating(false);
     }
@@ -71,9 +71,9 @@ export default function LendingCirclesScreen({ navigation }) {
     try {
       await api.joinCircle(circleId);
       loadCircles();
-      haptics.success();
+
     } catch (err) {
-      haptics.error();
+
     }
   };
 
@@ -87,9 +87,9 @@ export default function LendingCirclesScreen({ navigation }) {
     try {
       await api.leaveCircle(leaveTargetId);
       loadCircles();
-      haptics.success();
+
     } catch (err) {
-      haptics.error();
+
     }
   };
 
@@ -106,12 +106,12 @@ export default function LendingCirclesScreen({ navigation }) {
 
   const CircleCard = ({ circle, index }) => (
     <AnimatedCard index={index}>
-      <HapticPressable
-        style={styles.circleCardPressable}
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+        style={[styles.cardBox,styles.circleCardPressable]}
         onPress={circle.isMember ? () => navigation.navigate('CircleDetail', { circleId: circle.id }) : undefined}
-        haptic="light"
+        haptic={null}
       >
-        <View style={[styles.cardBox, styles.circleCard]}>
+        <View style={styles.circleCard}>
           <View style={styles.circleHeader}>
             <Ionicons name="people" size={28} color={COLORS.primary} />
             <View style={styles.circleInfo}>
@@ -119,18 +119,18 @@ export default function LendingCirclesScreen({ navigation }) {
               <Text style={styles.circleMembers}>{circle.memberCount} members</Text>
             </View>
             {circle.isMember ? (
-              <HapticPressable
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 style={styles.leaveButton}
                 onPress={() => handleLeaveCircle(circle.id)}
-                haptic="warning"
+                haptic={null}
               >
-                <Text style={styles.leaveButtonText}>Leave</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.leaveButtonText}>Leave</Text>
               </HapticPressable>
             ) : circle.isInvited ? (
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.joinButton}
                 onPress={() => handleJoinCircle(circle.id)}
-                haptic="medium"
+                haptic={null}
               >
                 <Text style={styles.joinButtonText}>Join</Text>
               </HapticPressable>
@@ -201,13 +201,13 @@ export default function LendingCirclesScreen({ navigation }) {
             </Text>
           </View>
         )}
+
       </ScrollView>
 
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.fab}
         onPress={() => {
           setShowCreateModal(true);
-          haptics.medium();
         }}
         haptic={null}
       >
@@ -216,7 +216,7 @@ export default function LendingCirclesScreen({ navigation }) {
 
       <Modal
         visible={showCreateModal}
-        animationType="slide"
+        animationType={reduceMotion ? 'none' : "slide"}
         transparent
         onRequestClose={() => setShowCreateModal(false)}
       >
@@ -224,7 +224,7 @@ export default function LendingCirclesScreen({ navigation }) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Create Circle</Text>
 
-            <Text style={styles.inputLabel}>Circle Name</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.inputLabel}>Circle Name</Text>
             <TextInput
               style={styles.input}
               value={newCircle.name}
@@ -233,7 +233,7 @@ export default function LendingCirclesScreen({ navigation }) {
               placeholderTextColor={COLORS.textMuted}
             />
 
-            <Text style={styles.inputLabel}>Description (optional)</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.inputLabel}>Description (optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={newCircle.description}
@@ -245,18 +245,18 @@ export default function LendingCirclesScreen({ navigation }) {
             />
 
             <View style={styles.modalButtons}>
-              <HapticPressable
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 style={styles.cancelButton}
                 onPress={() => setShowCreateModal(false)}
-                haptic="light"
+                haptic={null}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.createButton}
                 onPress={handleCreateCircle}
                 disabled={creating}
-                haptic="medium"
+                haptic="light"
               >
                 {creating ? (
                   <ActivityIndicator size="small" color={COLORS.background} />
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  circleIcon: {
-    fontSize: 24,
+  circleIcon: { fontWeight: '400', fontFamily: 'DMSans_400Regular',
+    fontSize: TYPOGRAPHY.title2.fontSize,
     marginRight: SPACING.md,
   },
   circleInfo: {
@@ -388,9 +388,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full,
   },
-  joinButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 14,
+  joinButtonText: { ...TYPOGRAPHY.button,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.background,
   },
   leaveButton: {
@@ -401,16 +400,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
   },
-  leaveButtonText: {
-    ...TYPOGRAPHY.footnote,
+  leaveButtonText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.surface,
   },
   emptyState: {
     padding: 40,
     alignItems: 'center',
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIcon: { fontWeight: '400', fontFamily: 'DMSans_400Regular',
+    fontSize: TYPOGRAPHY.largeTitle.fontSize,
     marginBottom: SPACING.lg,
     opacity: 0.5,
   },
@@ -441,10 +439,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
-  fabText: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: '300',
+  fabText: { fontFamily: 'DMSans_400Regular',
+    fontSize: TYPOGRAPHY.h1.fontSize,
+    color: COLORS.white,
+    fontWeight: '400',
   },
   modalOverlay: {
     flex: 1,
@@ -457,15 +455,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: RADIUS.xl,
     padding: SPACING.xl,
   },
-  modalTitle: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 20,
+  modalTitle: { ...TYPOGRAPHY.h2,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.xl,
   },
-  inputLabel: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+  inputLabel: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },

@@ -3,6 +3,7 @@ import BackHeader from '../components/BackHeader';
 import { ModalHeader } from '../components/ModalControls';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { COLORS, ENABLE_PAID_TIERS } from '../utils/config';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 import OnboardingNeighborhoodScreen from '../screens/onboarding/OnboardingNeighborhoodScreen';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +18,7 @@ import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 const Stack = createNativeStackNavigator();
 
 export default function OnboardingNavigator({ initialStep = 1 }) {
+  const reduceMotion = useReduceMotion();
   const { user } = useAuth();
   const initialRoute = initialOnboardingRoute(initialStep, user);
 
@@ -29,13 +31,13 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
         contentStyle: { backgroundColor: COLORS.background },
         // Smooth cross-fade between steps; paired with each screen's on-mount
         // content entrance, the flow reads as fluid rather than a hard push.
-        animation: 'fade',
+        animation: reduceMotion ? 'none' : 'fade',
       }}
     >
       <Stack.Screen
         name="OnboardingIntro"
         component={OnboardingTownScreen}
-        options={{ animation: 'fade_from_bottom' }}
+        options={{ animation: reduceMotion ? 'none' : 'fade_from_bottom' }}
       />
       <Stack.Screen
         name="OnboardingTown"
@@ -60,7 +62,7 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
       <Stack.Screen
         name="OnboardingComplete"
         component={OnboardingCompleteScreen}
-        options={{ animation: 'fade_from_bottom' }}
+        options={{ animation: reduceMotion ? 'none' : 'fade_from_bottom' }}
       />
       <Stack.Screen
         name="OnboardingVerification"
@@ -71,7 +73,7 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
           headerShadowVisible: false,
           headerTintColor: COLORS.text,
           title: 'Verification',
-          animation: 'slide_from_right',
+          animation: reduceMotion ? 'none' : 'slide_from_right',
           header: ({ navigation, options }) => <BackHeader navigation={navigation} title={options.title} fallbackRoute="OnboardingPlan" />,
         }}
       />

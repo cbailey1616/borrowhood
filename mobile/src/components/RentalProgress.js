@@ -1,7 +1,7 @@
 import { listingIcon } from '../utils/listingPresentation';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from './Icon';
-import { COLORS, SPACING } from '../utils/config';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export default function RentalProgress({ status, isBorrower, isGiveaway, isSale = false }) {
   const steps = [
@@ -20,10 +20,10 @@ export default function RentalProgress({ status, isBorrower, isGiveaway, isSale 
       return <View key={step.label} style={styles.step}>
         {index < steps.length - 1 && <View style={[styles.line, complete && styles.lineComplete]} />}
         <View style={[styles.iconCircle, current && styles.active, complete && styles.complete]}>
-          <View style={{ opacity: stopped || index > active ? 0.55 : 1 }}><Ionicons name={step.icon} size={30} illustrated color={COLORS.primary} /></View>
+          <View style={{ opacity: stopped || index > active ? 0.55 : 1 }}><Ionicons name={step.icon} size={22} illustrated={false} color={COLORS.primary} /></View>
           {complete && <View style={styles.check}><Ionicons name="checkmark" size={10} color={COLORS.surface} /></View>}
         </View>
-        <Text style={[styles.label, current && styles.activeLabel]}>{step.label}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, current && styles.activeLabel]}>{step.label}</Text>
       </View>;
     })}
   </View>;
@@ -34,9 +34,9 @@ const styles = StyleSheet.create({
   line: { position: 'absolute', top: 24, left: '50%', width: '100%', height: 2, backgroundColor: COLORS.border },
   lineComplete: { backgroundColor: COLORS.primary },
   iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
-  active: { backgroundColor: COLORS.primaryMuted, borderColor: '#B59A53', borderWidth: 2 },
+  active: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.rentalProgressBorder, borderWidth: 2 },
   complete: { backgroundColor: COLORS.primaryMuted, borderColor: COLORS.primary },
   check: { position: 'absolute', right: -2, bottom: -2, width: 17, height: 17, borderRadius: 9, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: COLORS.surface },
-  label: { textAlign: 'center', fontSize: 11, lineHeight: 15, marginTop: 9, paddingHorizontal: 2, color: COLORS.textSecondary },
-  activeLabel: { color: COLORS.primary, fontWeight: '400' },
+  label: { textAlign: 'center', ...TYPOGRAPHY.badge, lineHeight: 15, marginTop: 9, paddingHorizontal: 2, color: COLORS.textSecondary },
+  activeLabel: { color: COLORS.primary },
 });

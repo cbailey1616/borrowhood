@@ -17,6 +17,7 @@ import { ModalHeader } from '../components/ModalControls';
 import { renderBackHeader } from '../components/BackHeader';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -77,9 +78,8 @@ const sharedScreenOptions = {
   headerBackTitleVisible: false,
   headerTintColor: COLORS.primary,
   headerTitleStyle: {
-    fontWeight: '400',
+    ...TYPOGRAPHY.headline,
     color: COLORS.primary,
-    fontSize: 17,
   },
   contentStyle: { backgroundColor: COLORS.background },
 };
@@ -93,6 +93,7 @@ const modalScreenOptions = (title) => ({
 });
 
 export default function RootNavigator({ navigationRef }) {
+  const reduceMotion = useReduceMotion();
   const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
   useProfileLinks(navigationRef, { isLoading, isAuthenticated, user });
   const [nameInput, setNameInput] = useState({ first: '', last: '' });
@@ -137,7 +138,7 @@ export default function RootNavigator({ navigationRef }) {
 
   return (
     <>
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : (
@@ -353,11 +354,12 @@ export default function RootNavigator({ navigationRef }) {
 }
 
 function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
+  const reduceMotion = useReduceMotion();
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet">
+    <Modal visible animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet">
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={nameStyles.container} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
-        <Text style={nameStyles.title}>What's your name?</Text>
+        <Text maxFontSizeMultiplier={1.4} style={nameStyles.title}>What's your name?</Text>
         <Text style={nameStyles.subtitle}>
           We need your name so neighbors know who they're borrowing from.
         </Text>
@@ -378,17 +380,18 @@ function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
           onChangeText={(v) => setNameInput(prev => ({ ...prev, last: v }))}
           autoCapitalize="words"
         />
-        {!!error && <Text accessibilityRole="alert" style={{ color: COLORS.danger, marginBottom: SPACING.md }}>{error}</Text>}
+        {!!error && <Text accessibilityRole="alert" style={{ ...TYPOGRAPHY.body, color: COLORS.danger, marginBottom: SPACING.md }}>{error}</Text>}
         <HapticPressable
           style={[nameStyles.button, !nameInput.first.trim() && { opacity: 0.5 }]}
           onPress={onSave}
           disabled={!nameInput.first.trim() || saving}
-          haptic="medium"
+          haptic={null}
+          scaleDown={0.97}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={nameStyles.buttonText}>Continue</Text>
+            <Text maxFontSizeMultiplier={1.4} style={nameStyles.buttonText}>Continue</Text>
           )}
         </HapticPressable>
       </ScrollView>
@@ -417,11 +420,11 @@ const nameStyles = StyleSheet.create({
     marginBottom: SPACING.xxl,
   },
   input: {
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surfaceElevated,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
@@ -433,7 +436,7 @@ const nameStyles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   buttonText: {
-    ...TYPOGRAPHY.headline,
-    color: '#fff',
+    ...TYPOGRAPHY.button,
+    color: COLORS.white,
   },
 });

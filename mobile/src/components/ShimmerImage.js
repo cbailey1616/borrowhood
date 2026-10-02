@@ -5,27 +5,30 @@ import SkeletonShape from './SkeletonLoader';
 import { getDecodedImage, loadDecodedImage } from '../utils/decodedImageCache';
 import { imageIdentity } from '../utils/imageIdentity';
 import Icon from './Icon';
+import ItemPhotoPlaceholder from './ItemPhotoPlaceholder';
 import { COLORS } from '../utils/config';
 
-export default function ShimmerImage({ source, placeholderIcon = 'image', ...props }) {
+export default function ShimmerImage({ source, placeholderIcon = 'image', category, title, placeholder, ...props }) {
   const src = source && typeof source === 'object' && 'uri' in source ? source.uri : source;
   if (!src || (typeof src === 'string' && src.startsWith('https://via.placeholder.com/'))) {
-    return <PhotoFallback style={props.style} icon={placeholderIcon} label={props.accessibilityLabel} />;
+    return <PhotoFallback style={props.style} icon={placeholderIcon} label={props.accessibilityLabel} category={category} title={title} placeholder={placeholder} />;
   }
   // A different photo gets its own state and native view. Changing recyclingKey
   // on an existing iOS ImageRef view can clear the image after source renders it.
   const key = imageIdentity(src);
-  return <Photo key={typeof key === 'string' || typeof key === 'number' ? key : undefined} src={src} placeholderIcon={placeholderIcon} {...props} />;
+  return <Photo key={typeof key === 'string' || typeof key === 'number' ? key : undefined} src={src} placeholderIcon={placeholderIcon} category={category} title={title} placeholder={placeholder} {...props} />;
 }
 
-function PhotoFallback({ style, icon, label = 'Photo unavailable' }) {
+function PhotoFallback({ style, icon, label = 'Photo unavailable', category, title, placeholder }) {
+  if (placeholder) return placeholder;
+  if (icon !== 'person') return <ItemPhotoPlaceholder category={category} title={title} icon={icon} style={style} accessibilityLabel={label} />;
   const width = StyleSheet.flatten(style)?.width;
   return <View accessibilityLabel={label} accessibilityRole="image" style={[style, styles.fallback]}>
-    <Icon name={icon} size={typeof width === 'number' ? Math.min(44, width * 0.55) : 32} illustrated />
+    <Icon name={icon} size={typeof width === 'number' ? Math.min(44, width * 0.55) : 32} illustrated={false} />
   </View>;
 }
 
-function Photo({ src, style, placeholderIcon, onError, onLoad, ...imageProps }) {
+function Photo({ src, style, placeholderIcon, category, title, placeholder, onError, onLoad, ...imageProps }) {
   // Small avatars use Expo's image cache without evicting decoded listing photos.
   const canDecode = placeholderIcon !== 'person' && typeof src === 'string' && typeof Image.loadAsync === 'function';
   const nativeSource = useMemo(() => {
@@ -62,7 +65,7 @@ function Photo({ src, style, placeholderIcon, onError, onLoad, ...imageProps }) 
     onLoad?.(event);
   }, [onLoad]);
 
-  if (failedUri === src) return <PhotoFallback style={style} icon={placeholderIcon} />;
+  if (failedUri === src) return <PhotoFallback style={style} icon={placeholderIcon} category={category} title={title} placeholder={placeholder} />;
 
   // Flatten style to extract width/height/borderRadius for the skeleton
   const flatStyle = StyleSheet.flatten(style) || {};

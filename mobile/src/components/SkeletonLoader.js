@@ -6,19 +6,24 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
+import useReduceMotion from '../hooks/useReduceMotion';
 import { COLORS, SPACING, RADIUS } from '../utils/config';
 
 function SkeletonShape({ width, height, borderRadius = RADIUS.sm, style }) {
-  const opacity = useSharedValue(0.3);
+  const reduceMotion = useReduceMotion();
+  const opacity = useSharedValue(0.55);
 
   useEffect(() => {
+    if (reduceMotion) { cancelAnimation(opacity); opacity.value = 0.55; return; }
     opacity.value = withRepeat(
       withTiming(0.7, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       -1,
       true
     );
-  }, []);
+    return () => cancelAnimation(opacity);
+  }, [reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

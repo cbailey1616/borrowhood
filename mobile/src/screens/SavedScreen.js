@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import { useState, useEffect, useCallback } from 'react';
 import ListingOffer from '../components/ListingOffer';
@@ -24,29 +25,29 @@ import WoodlandHeader from '../components/WoodlandHeader';
 import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 
 const GRID_GAP = SPACING.md;
 
-
 function HeartButton({ onUnsave, title }) {
+  const reduceMotion = useReduceMotion();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }));
 
   const handlePress = useCallback((event) => {
     event?.stopPropagation?.();
-    haptics.light();
-    scale.value = withSequence(
+    haptics.selection();
+    scale.value = reduceMotion ? 1 : withSequence(
       withSpring(1.3, ANIMATION.spring.bouncy),
       withSpring(1, ANIMATION.spring.default)
     );
     onUnsave();
-  }, [onUnsave]);
+  }, [onUnsave, reduceMotion, scale]);
 
   return (
-    <HapticPressable onPress={handlePress} haptic={null} style={styles.heartButton} accessibilityRole="button" accessibilityLabel={`Unsave ${title}`}>
+    <HapticPressable onPress={handlePress}  style={styles.heartButton} accessibilityRole="button" accessibilityLabel={`Unsave ${title}`}>
       <Animated.View style={animStyle}>
         <Ionicons name="heart" size={24} color={COLORS.saved} illustrated={false} selected />
       </Animated.View>
@@ -62,7 +63,6 @@ export default function SavedScreen({ navigation, embedded = false }) {
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
 
   const fetchSaved = useCallback(async () => {
     try {
@@ -105,26 +105,26 @@ export default function SavedScreen({ navigation, embedded = false }) {
 
   const renderItem = ({ item, index }) => (
     <LayeredCard style={[styles.cardWrap, { width: cardWidth }, index % columns !== columns - 1 ? { marginRight: GRID_GAP } : null]}>
-      <HapticPressable
+      <HapticPressable scaleDown={item.photoUrl ? 0.97 : 1}
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-        haptic="light"
+
         style={styles.card}
       >
         <View style={styles.imageWrap}>
           <ShimmerImage
-            source={{ uri: item.photoUrl || null }} placeholderIcon={listingIcon(item)}
+            source={{ uri: item.photoUrl || null }} placeholderIcon={listingIcon(item)} category={item.category} title={item.title}
             style={styles.cardImage}
           />
           <HeartButton title={item.title} onUnsave={() => handleUnsave(item.id)} />
           {item.isAvailable === false && (
             <View style={styles.unavailableBadge}>
-              <Text style={styles.unavailableText}>{item.status === 'given_away' ? item.listingType === 'sell' ? 'Sold' : 'Claimed' : item.listingType === 'sell' || item.listingType === 'giveaway' ? 'Unavailable' : 'Borrowed'}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.unavailableText}>{item.status === 'given_away' ? item.listingType === 'sell' ? 'Sold' : 'Claimed' : item.listingType === 'sell' || item.listingType === 'giveaway' ? 'Unavailable' : 'Borrowed'}</Text>
             </View>
           )}
         </View>
         <View style={styles.cardInfo}>
           <ListingOffer listing={item} />
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
           <View style={styles.ownerRow}>
             {item.owner?.profilePhotoUrl ? (
               <ShimmerImage placeholderIcon="person" source={{ uri: item.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
@@ -133,7 +133,7 @@ export default function SavedScreen({ navigation, embedded = false }) {
                 <Ionicons name="person" size={10} color={COLORS.textMuted} />
               </View>
             )}
-            <Text style={styles.ownerName} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.ownerName} numberOfLines={1}>
               {item.owner?.firstName || 'Unknown'}
             </Text>
           </View>
@@ -164,12 +164,12 @@ export default function SavedScreen({ navigation, embedded = false }) {
               <Text style={styles.emptySubtitle}>
                 Tap the heart on any listing to save it here
               </Text>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.browseButton}
                 onPress={() => navigation.navigate('Feed')}
-                haptic="medium"
+
               >
-                <Text style={styles.browseButtonText}>Browse Items</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.browseButtonText}>Browse Items</Text>
               </HapticPressable>
             </View>
           )
@@ -204,9 +204,7 @@ const styles = StyleSheet.create({
   // Image
   imageWrap: {
     position: 'relative',
-    margin: SPACING.sm,
-    marginBottom: 0,
-    borderRadius: RADIUS.md,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   cardImage: {
@@ -229,16 +227,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: SPACING.sm,
     left: SPACING.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: COLORS.photoOverlayStrong,
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: RADIUS.xs,
   },
   unavailableText: {
-    ...TYPOGRAPHY.caption1,
-    color: '#fff',
-    fontWeight: '400',
-    fontSize: 10,
+    ...TYPOGRAPHY.caption2,
+    color: COLORS.white,
   },
   // Info
   cardInfo: {
@@ -246,9 +242,8 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   cardTitle: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
-    fontWeight: '400',
   },
   ownerRow: {
     flexDirection: 'row',
@@ -273,6 +268,7 @@ const styles = StyleSheet.create({
   },
   // Empty state
   emptyContainer: {
+    ...CARD_SURFACE,
     flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -301,7 +297,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   browseButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.headline,
   },
 });

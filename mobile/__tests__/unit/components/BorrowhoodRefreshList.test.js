@@ -94,20 +94,20 @@ it('keeps a fast native refresh visible for the rebound and spin without resetti
   expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
   expect(stopAnimation).toHaveBeenCalledTimes(1);
   expect(scrollToOffset).not.toHaveBeenCalled();
-  expect(haptics.light).toHaveBeenCalledTimes(2);
+  expect(haptics.light).not.toHaveBeenCalled();
 });
-it('gives one threshold haptic per pull and avoids a second trigger tap',async()=>{
+it('keeps refresh feedback quiet and avoids duplicate refresh triggers',async()=>{
  const onRefresh=jest.fn();
  const screen=render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={onRefresh}/>);
  await ready();
  scroll(screen,-80);scroll(screen,-100);scroll(screen,-90);
- expect(haptics.light).toHaveBeenCalledTimes(1);
+ expect(haptics.light).not.toHaveBeenCalled();
  fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
- expect(haptics.light).toHaveBeenCalledTimes(1);
+ expect(haptics.light).not.toHaveBeenCalled();
  fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
  expect(onRefresh).toHaveBeenCalledTimes(1);
  act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS));
- expect(haptics.light).toHaveBeenCalledTimes(2);
+ expect(haptics.light).not.toHaveBeenCalled();
 });
 it('does not give a completion haptic after leaving the page',async()=>{
  const screen=render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={jest.fn()}/>);
@@ -115,7 +115,7 @@ it('does not give a completion haptic after leaving the page',async()=>{
  fireEvent(screen.UNSAFE_getByType(RefreshControl),'refresh');
  screen.unmount();
  act(()=>jest.advanceTimersByTime(MIN_REFRESH_MS));
- expect(haptics.light).toHaveBeenCalledTimes(1);
+ expect(haptics.light).not.toHaveBeenCalled();
 });
 
 it('keeps the hat behind the feed and hides it as the content snaps back while still refreshing', async () => {
@@ -208,14 +208,14 @@ it('reveals the Feed hat below its pinned ribbon and above its first tile', asyn
   expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
 });
 
-it('gives Ideas the same stretch, full-turn hold and haptics while retaining its keyboard scroll view', async () => {
+it('gives Ideas the same stretch and full-turn hold while retaining its keyboard scroll view', async () => {
   const onRefresh = jest.fn();
   const screen = render(<BorrowhoodRefreshScrollView testID="Refresh.list" refreshing={false} onRefresh={onRefresh}
     extraScrollHeight={32} keyboardShouldPersistTaps="handled"><Text>Existing plan</Text></BorrowhoodRefreshScrollView>);
   await ready();
   scroll(screen, -80);
   expect(transform(screen, 'scaleY')).toBeGreaterThan(1);
-  expect(haptics.light).toHaveBeenCalledTimes(1);
+  expect(haptics.light).not.toHaveBeenCalled();
   fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
   expect(onRefresh).toHaveBeenCalledTimes(1);
   expect(startAnimation).toHaveBeenCalledTimes(1);
@@ -225,7 +225,7 @@ it('gives Ideas the same stretch, full-turn hold and haptics while retaining its
   expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
   act(() => jest.advanceTimersByTime(1));
   expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
-  expect(haptics.light).toHaveBeenCalledTimes(2);
+  expect(haptics.light).not.toHaveBeenCalled();
   expect(screen.getByText('Existing plan')).toBeTruthy();
 });
 

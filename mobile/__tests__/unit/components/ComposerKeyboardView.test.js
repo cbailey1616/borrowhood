@@ -1,5 +1,5 @@
 import React from 'react';
-import { DeviceEventEmitter, Keyboard, Platform, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, DeviceEventEmitter, Keyboard, Platform, StyleSheet, Text, View } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import ComposerKeyboardView from '../../../src/components/ComposerKeyboardView';
 
@@ -73,11 +73,12 @@ it('remeasures on native layout, header changes and rotation without accumulatin
   expect(padding(screen)).toBe(0);
 });
 
-it('restores the composer inset when mounted with a keyboard already open', () => {
+it('restores the composer inset when mounted with a keyboard already open', async () => {
   Keyboard.metrics.mockReturnValue(keyboardEvent(520).endCoordinates);
   Keyboard.isVisible.mockReturnValue(true);
   const visibility = jest.fn();
   const screen = render(viewport({ onKeyboardVisibilityChange: visibility }));
+  await act(async () => {});
   expect(contentBottom(screen)).toBe(520);
   expect(visibility).toHaveBeenLastCalledWith(true);
 });
@@ -107,6 +108,31 @@ it('lets Android resize its own window without adding a second keyboard inset', 
   expect(visibility).toHaveBeenLastCalledWith(true);
   await emit('keyboardDidHide', keyboardEvent(844, 0));
   expect(visibility).toHaveBeenLastCalledWith(false);
+});
+
+it('does not reset an open keyboard when the motion preference finishes loading', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  let finishPreference;
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockImplementation(() => new Promise(resolve => { finishPreference = resolve; }));
+  const visibility = jest.fn();
+  const screen = render(viewport({ onKeyboardVisibilityChange: visibility }));
+  await emit('keyboardDidShow', keyboardEvent(520));
+  expect(visibility).toHaveBeenLastCalledWith(true);
+  const calls = visibility.mock.calls.length;
+  await act(async () => finishPreference(false));
+  expect(visibility).toHaveBeenCalledTimes(calls);
+  expect(visibility).toHaveBeenLastCalledWith(true);
+  expect(padding(screen)).toBe(0);
+});
+
+it('keeps keyboard geometry correct without scheduling motion when Reduce Motion is enabled', async () => {
+  jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+  const schedule = jest.spyOn(Keyboard, 'scheduleLayoutAnimation');
+  const screen = render(viewport());
+  await act(async () => {});
+  await emit('keyboardWillShow', keyboardEvent(520));
+  expect(contentBottom(screen)).toBe(520);
+  expect(schedule).not.toHaveBeenCalled();
 });
 
 it('does not move the whole conversation for a floating iPad keyboard', async () => {

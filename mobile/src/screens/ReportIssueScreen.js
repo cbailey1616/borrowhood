@@ -1,3 +1,5 @@
+import useReduceMotion from '../hooks/useReduceMotion';
+import { haptics } from '../utils/haptics';
 import TextInput from '../components/AppTextInput';
 import { useState, useRef } from 'react';
 import {
@@ -12,7 +14,6 @@ import { Ionicons } from '../components/Icon';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
-import { haptics } from '../utils/haptics';
 import { useAuth } from '../context/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -36,6 +37,7 @@ export default function ReportIssueScreen({ navigation, route }) {
   } = route.params || {};
 
   const { user } = useAuth();
+  const reduceMotion = useReduceMotion();
   const isLender = user?.id === lenderId;
 
   const filteredTypes = ISSUE_TYPES.filter(t =>
@@ -110,15 +112,15 @@ export default function ReportIssueScreen({ navigation, route }) {
     if (errors.type || errors.description) {
       setFieldErrors(errors);
       setSubmitError(null);
-      haptics.warning();
 
       const y = errors.type ? fieldPositions.current.type : fieldPositions.current.description;
       if (y != null && scrollRef.current) {
-        scrollRef.current.scrollTo({ y: Math.max(0, y - SPACING.xl), animated: true });
+        scrollRef.current.scrollTo({ y: Math.max(0, y - SPACING.xl), animated: !reduceMotion });
       }
       return;
     }
 
+    haptics.light();
     setSubmitting(true);
     try {
       let photoUrls = [];
@@ -139,9 +141,7 @@ export default function ReportIssueScreen({ navigation, route }) {
       });
 
       setCompleted(true);
-      haptics.success();
     } catch (err) {
-      haptics.error();
       setSubmitError(err.message || 'Couldn\'t submit your report right now. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
@@ -154,18 +154,18 @@ export default function ReportIssueScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.centeredContent}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
+            <Ionicons name="checkmark-circle" size={64} illustrated={true} color={COLORS.primary} />
           </View>
           <Text style={styles.title}>Issue Reported</Text>
           <Text style={styles.subtitle}>
             Your report has been sent to the other party. They have 48 hours to respond, accept, or make a counter offer. If they don't respond or you can't reach an agreement, a community organizer will step in.
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.primaryButton}
             onPress={() => navigation.goBack()}
-            haptic="light"
+
           >
-            <Text style={styles.primaryButtonText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
         </View>
       </View>
@@ -190,7 +190,7 @@ export default function ReportIssueScreen({ navigation, route }) {
           onLayout={(e) => { fieldPositions.current.type = e.nativeEvent.layout.y; }}
         >
           <View style={styles.cardContent}>
-            <Text style={[styles.cardLabel, fieldErrors.type && styles.fieldErrorLabel]}>Issue Type *</Text>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.type && styles.fieldErrorLabel]}>Issue Type *</Text>
             <Text style={styles.cardHint}>Select the type of issue you want to report</Text>
 
             {filteredTypes.map((issueType, index) => (
@@ -202,14 +202,16 @@ export default function ReportIssueScreen({ navigation, route }) {
                   index < filteredTypes.length - 1 && styles.typeRowBorder,
                 ]}
                 onPress={() => selectType(issueType.key)}
-                haptic="light"
+                haptic="selection"
+                pressedBackgroundColor={COLORS.cardHover}
+
               >
                 <Ionicons
                   name={issueType.icon}
                   size={22}
                   color={type === issueType.key ? COLORS.primary : COLORS.textSecondary}
                 />
-                <Text
+                <Text maxFontSizeMultiplier={1.4}
                   style={[
                     styles.typeLabel,
                     type === issueType.key && styles.typeLabelSelected,
@@ -231,7 +233,7 @@ export default function ReportIssueScreen({ navigation, route }) {
           onLayout={(e) => { fieldPositions.current.description = e.nativeEvent.layout.y; }}
         >
           <View style={styles.cardContent}>
-            <Text style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>Description *</Text>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cardLabel, fieldErrors.description && styles.fieldErrorLabel]}>Description *</Text>
             <Text style={styles.cardHint}>Minimum 10 characters</Text>
             <TextInput
               testID="ReportIssue.input.description"
@@ -248,14 +250,14 @@ export default function ReportIssueScreen({ navigation, route }) {
               autoCorrect={true}
               spellCheck={true}
             />
-            <Text style={styles.charCount}>{description.length}/2000</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.charCount}>{description.length}/2000</Text>
           </View>
         </View>
 
         {/* Evidence photos */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Photos</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Photos</Text>
             <Text style={styles.cardHint}>
               Optional — upload up to 4 photos as evidence
             </Text>
@@ -267,7 +269,7 @@ export default function ReportIssueScreen({ navigation, route }) {
                   <HapticPressable
                     style={styles.removePhoto}
                     onPress={() => removePhoto(index)}
-                    haptic="light"
+
                   >
                     <Ionicons name="close-circle" size={22} color={COLORS.danger} />
                   </HapticPressable>
@@ -281,7 +283,7 @@ export default function ReportIssueScreen({ navigation, route }) {
                   accessibilityRole="button"
                   style={styles.addPhotoButton}
                   onPress={pickPhotos}
-                  haptic="light"
+
                 >
                   <Ionicons name="camera-outline" size={28} color={COLORS.textSecondary} />
                   <Text style={styles.addPhotoText}>Add</Text>
@@ -298,7 +300,7 @@ export default function ReportIssueScreen({ navigation, route }) {
               <View style={styles.depositClaimRow}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.primary} />
                 <View style={styles.depositClaimInfo}>
-                  <Text style={styles.cardLabel}>Claim Security Deposit</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Claim Security Deposit</Text>
                   <Text style={styles.cardHint}>
                     The full {formatCurrency(depositAmount)} deposit will be claimed. You also keep the {formatCurrency(rentalFee || 0)} rental fee.
                   </Text>
@@ -313,7 +315,7 @@ export default function ReportIssueScreen({ navigation, route }) {
         {(type === 'damagesClaim' || type === 'lateReturn') && maxClaimCents > 0 && (
           <View style={[styles.cardBox, styles.card]}>
             <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Claim Amount</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Claim Amount</Text>
               <Text style={styles.cardHint}>
                 Up to {formatCurrency(maxClaimDollars)} (security deposit). You keep the rental fee separately.
               </Text>
@@ -354,7 +356,7 @@ export default function ReportIssueScreen({ navigation, route }) {
         )}
 
         {/* Submit */}
-        <HapticPressable
+        <HapticPressable scaleDown={0.97}
           testID="ReportIssue.button.submit"
           accessibilityLabel="Submit issue report"
           accessibilityRole="button"
@@ -364,12 +366,11 @@ export default function ReportIssueScreen({ navigation, route }) {
           ]}
           onPress={handleSubmit}
           disabled={submitting}
-          haptic="medium"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={styles.primaryButtonText}>Submit Report</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Submit Report</Text>
           )}
         </HapticPressable>
       </ScrollView>
@@ -417,7 +418,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   card: {
     marginBottom: SPACING.lg,
   },
@@ -432,9 +433,8 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   cardLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
-    fontWeight: '400',
     marginBottom: SPACING.xs,
   },
   cardHint: {
@@ -453,13 +453,12 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.separator,
   },
   typeLabel: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.button,
     color: COLORS.text,
     flex: 1,
   },
   typeLabelSelected: {
     color: COLORS.primary,
-    fontWeight: '400',
   },
   notesInput: {
     backgroundColor: COLORS.surfaceElevated,
@@ -488,7 +487,6 @@ const styles = StyleSheet.create({
   depositClaimAmount: {
     ...TYPOGRAPHY.h2,
     color: COLORS.primary,
-    fontWeight: '400',
   },
   amountInputRow: {
     flexDirection: 'row',
@@ -551,10 +549,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   errorCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.danger + '12',
+    backgroundColor: COLORS.tints.danger12,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
@@ -575,8 +574,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
-    fontSize: 16,
   },
 });

@@ -89,19 +89,16 @@ export default function PrivacySafetyScreen({ navigation }) {
       contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACING.xl }]}
     >
       <View style={styles.welcome}>
-        <View style={styles.heroIcon}>
-          <Ionicons name="shield-checkmark-outline" size={42} illustrated />
-        </View>
         <Text accessibilityRole="header" style={styles.welcomeTitle}>You’re in control.</Text>
         <Text style={styles.welcomeCopy}>A little peace of mind for sharing with neighbors.</Text>
       </View>
 
-      <View style={styles.sections}>
-        {sections.map(section => {
+      <LayeredCard style={styles.sections}>
+        {sections.map((section, index) => {
           const expanded = expandedId === section.id;
           return (
-            <LayeredCard key={section.id}>
-              <HapticPressable
+            <View key={section.id}>
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 onPress={() => setExpandedId(expanded ? null : section.id)}
                 accessibilityLabel={`${section.title}. ${section.summary}`}
                 accessibilityState={{ expanded }}
@@ -109,9 +106,7 @@ export default function PrivacySafetyScreen({ navigation }) {
                 testID={`PrivacySafety.${section.id}`}
                 style={styles.sectionHeader}
               >
-                <View style={[styles.iconTile, { backgroundColor: section.tint }]}>
-                  <Ionicons name={section.icon} size={27} illustrated />
-                </View>
+                <Ionicons name={section.icon} size={22} color={COLORS.textSecondary} illustrated={false} />
                 <View style={styles.sectionCopy}>
                   <Text style={styles.sectionTitle}>{section.title}</Text>
                   <Text style={styles.sectionSummary}>{section.summary}</Text>
@@ -124,10 +119,11 @@ export default function PrivacySafetyScreen({ navigation }) {
                   {section.action && <ActionButton label={section.action} onPress={section.onPress} style={styles.action} />}
                 </View>
               )}
-            </LayeredCard>
+              {index < sections.length - 1 && <View style={styles.sectionSeparator} />}
+            </View>
           );
         })}
-      </View>
+      </LayeredCard>
 
       <GroupedListSection header="Policies & support">
         <GroupedListItem
@@ -153,15 +149,14 @@ export default function PrivacySafetyScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
   content: { width: '100%', maxWidth: 600, alignSelf: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, gap: SPACING.xl },
-  welcome: { backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.xl, padding: SPACING.xl, alignItems: 'center', gap: SPACING.sm },
-  heroIcon: { width: 64, height: 64, borderRadius: RADIUS.full, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.xs },
-  welcomeTitle: { ...TYPOGRAPHY.h1, color: COLORS.primary, textAlign: 'center' },
-  welcomeCopy: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, textAlign: 'center', maxWidth: 280 },
-  sections: { gap: SPACING.md },
+  welcome: { paddingVertical: SPACING.lg, gap: SPACING.sm },
+  welcomeTitle: { ...TYPOGRAPHY.h1, color: COLORS.text },
+  welcomeCopy: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
+  sections: { overflow: 'hidden' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', padding: SPACING.lg, gap: SPACING.md },
-  iconTile: { width: 46, height: 46, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
+  sectionSeparator: { marginLeft: SPACING.lg + 22 + SPACING.md, marginRight: SPACING.lg, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   sectionCopy: { flex: 1, gap: SPACING.xs },
-  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
+  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text , },
   sectionSummary: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary },
   details: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg, gap: SPACING.lg },
   detailText: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },

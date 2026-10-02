@@ -7,11 +7,10 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
-} from 'react-native';
+  RefreshControl, } from 'react-native';
 import HeroIcon from '../components/HeroIcon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION  } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
@@ -74,10 +73,10 @@ export default function NotificationsScreen({ navigation }) {
       await api.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-      haptics.success();
+
     } catch (error) {
       console.error('Failed to mark all as read:', error);
-      haptics.error();
+
     }
   };
 
@@ -85,7 +84,7 @@ export default function NotificationsScreen({ navigation }) {
     if (!notification.isRead) {
       handleMarkRead(notification);
     }
-    haptics.light();
+
 
     const destination = notificationDestination(notification);
     if (destination) navigation.navigate(destination.name, destination.params);
@@ -106,18 +105,18 @@ export default function NotificationsScreen({ navigation }) {
 
   const renderItem = ({ item, index }) => (
     <AnimatedCard index={index}>
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={[styles.card, !item.isRead && styles.cardUnread]}
         onPress={() => handleNotificationPress(item)}
         haptic={null}
       >
-        <NotificationIcon notification={item} size={40} />
+        <NotificationIcon notification={item} size={22} />
         <View style={styles.cardContent}>
           <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
             {item.title}
           </Text>
           <Text style={[styles.body, !item.isRead && styles.bodyUnread]} numberOfLines={2}>{item.body}</Text>
-          <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
       </HapticPressable>
@@ -128,10 +127,10 @@ export default function NotificationsScreen({ navigation }) {
     <View style={styles.container}>
       {unreadCount > 0 && (
         <View style={styles.header}>
-          <Text style={styles.unreadLabel}>{unreadCount} unread</Text>
-          <HapticPressable
+          <Text maxFontSizeMultiplier={1.4} style={styles.unreadLabel}>{unreadCount} unread</Text>
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             onPress={handleMarkAllRead}
-            haptic="light"
+            haptic={null}
           >
             <Text style={styles.markAllRead}>Mark all read</Text>
           </HapticPressable>
@@ -157,6 +156,7 @@ export default function NotificationsScreen({ navigation }) {
             </View>
           )
         }
+
       />
 
       <ActionSheet
@@ -191,20 +191,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.separator,
   },
-  unreadLabel: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+  unreadLabel: { ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
     color: COLORS.text,
+   fontFamily: 'DMSans_500Medium'
   },
-  markAllRead: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+  markAllRead: { ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
     color: COLORS.primary,
+   fontFamily: 'DMSans_500Medium'
   },
   listContent: {
     padding: SPACING.lg,
   },
-  card: {
+  card: { ...CARD_SURFACE,
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
@@ -212,24 +212,24 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     alignItems: 'flex-start',
     gap: SPACING.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.separator,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardUnread: {
-    backgroundColor: COLORS.primary + '08',
-    borderColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary08,
+    borderColor: COLORS.tints.primary20,
   },
   cardContent: {
     flex: 1,
   },
-  title: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+  title: { ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+   fontFamily: 'DMSans_500Medium'
   },
-  titleUnread: {
-    fontWeight: '400',
+  titleUnread: { fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
     color: COLORS.text,
   },
   body: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
   },
-  bodyUnread: {
+  bodyUnread: { fontFamily: 'DMSans_400Regular',
     fontWeight: '400',
     color: COLORS.text,
   },

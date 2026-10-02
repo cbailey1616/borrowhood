@@ -25,7 +25,7 @@ it.each([
 ])('uses the plain message-style keyboard for ordinary typing without losing input options: %j', props => {
   const screen = render(<AppTextInput {...props} autoFocus testID="input" />);
   const field = screen.getByTestId('input');
-  expect(field.props.keyboardAppearance).toBe('dark');
+  expect(field.props.keyboardAppearance).toBe('light');
   expect(field.props.autoFocus).toBe(true);
   expect(field.props.inputAccessoryViewID).toBeUndefined();
   expect(field.props).toEqual(expect.objectContaining(props));

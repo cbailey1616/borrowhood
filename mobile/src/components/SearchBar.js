@@ -22,9 +22,9 @@ export default function SearchBar({
     onChangeText?.('');
   }, [onChangeText]);
 
-  const iconColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
-  const inputColor = dark ? '#fff' : COLORS.text;
-  const placeholderColor = dark ? 'rgba(255,255,255,0.5)' : COLORS.textMuted;
+  const iconColor = dark ? COLORS.whiteOverlay : COLORS.textMuted;
+  const inputColor = dark ? COLORS.white : COLORS.text;
+  const placeholderColor = dark ? COLORS.whiteOverlay : COLORS.textMuted;
 
   return (
     <View style={[styles.container, dark && styles.darkContainer, style]} testID={testID} accessibilityLabel={accessibilityLabel || placeholder} accessibilityRole="search">
@@ -49,7 +49,7 @@ export default function SearchBar({
         onSubmitEditing={onSubmitEditing}
       />
       {value && value.length > 0 ? (
-        <HapticPressable onPress={handleClear} haptic="light" style={styles.clearButton} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
+        <HapticPressable onPress={handleClear} haptic={null} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
           <Ionicons name="close-circle-sharp" size={18} color={iconColor} />
         </HapticPressable>
       ) : null}

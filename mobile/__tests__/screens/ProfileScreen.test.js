@@ -54,11 +54,11 @@ describe('ProfileScreen', () => {
     const { getByTestId } = render(<ProfileScreen navigation={mockNavigation} />);
     expect(getByTestId('Profile.header.name')).toBeTruthy();
   });
-  it('restores woodland artwork behind the bold profile heading', () => {
+  it('restores woodland artwork behind the semibold profile heading', () => {
     const ProfileScreen = require('../../src/screens/ProfileScreen').default;
     const screen = render(<ProfileScreen navigation={mockNavigation} />);
     expect(screen.getByTestId('Woodland.artwork', { includeHiddenElements: true })).toBeTruthy();
-    expect(screen.getByText('Profile')).toHaveStyle({ fontFamily: 'DMSans_700Bold' });
+    expect(screen.getByText('Profile')).toHaveStyle({ fontFamily: 'DMSans_600SemiBold' });
   });
 
   it('shows verified badge when user.isVerified', () => {

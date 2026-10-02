@@ -13,7 +13,7 @@ import { Ionicons } from '../components/Icon';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
-import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { badgeTint, CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
@@ -206,8 +206,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
     <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
       {/* Status + Type header */}
       <View style={styles.header}>
-        <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
-          <Text style={[styles.statusText, { color: statusConfig.color }]}>
+        <View style={[styles.statusBadge, { backgroundColor: badgeTint(statusConfig.color) }]}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.statusText, { color: statusConfig.color }]}>
             {statusConfig.label}
           </Text>
         </View>
@@ -218,7 +218,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
       </View>
 
       {/* Item link */}
-      <HapticPressable
+      <HapticPressable scaleDown={dispute.listing?.photos?.[0] ? 0.97 : 1}
         style={styles.itemCard}
         onPress={() => {
           if (dispute.listing?.id) {
@@ -228,9 +228,9 @@ export default function DisputeDetailScreen({ route, navigation }) {
             showToast('This listing is no longer available.', 'warning');
           }
         }}
-        haptic="light"
+        haptic={null}
       >
-        <ShimmerImage
+        <ShimmerImage category={dispute.listing?.category} title={dispute.listing?.title}
           source={{ uri: dispute.listing?.photos?.[0] || null }}
           style={styles.itemImage}
         />
@@ -257,21 +257,21 @@ export default function DisputeDetailScreen({ route, navigation }) {
         <View style={styles.sectionContent}>
           <View style={styles.cardHeader}>
             <Ionicons name="flag" size={16} color={COLORS.primary} />
-            <Text style={styles.cardHeaderLabel}>{claimantName === 'You' ? 'You filed a claim' : `${claimantName} filed a claim`}</Text>
-            <Text style={styles.cardHeaderDate}>{timeAgo(dispute.createdAt)}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardHeaderLabel}>{claimantName === 'You' ? 'You filed a claim' : `${claimantName} filed a claim`}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardHeaderDate}>{timeAgo(dispute.createdAt)}</Text>
           </View>
 
           {dispute.claimant && (
-            <HapticPressable
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}
               style={styles.personRow}
               onPress={() => navigation.navigate('UserProfile', { id: dispute.claimant.id })}
-              haptic="light"
+              haptic={null}
             >
               <ShimmerImage placeholderIcon="person"
                 source={{ uri: dispute.claimant.profilePhotoUrl || null }}
                 style={styles.avatar}
               />
-              <Text style={styles.personName}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.personName}>
                 {dispute.claimant.firstName} {dispute.claimant.lastName}
               </Text>
               <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
@@ -292,10 +292,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
           {effectiveClaimAmount > 0 && (
             <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.amountLabel}>
                 {isLenderFiled ? 'Claimed' : 'Refund Requested'}
               </Text>
-              <Text style={styles.amountValue}>{formatCurrency(effectiveClaimAmount)}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.amountValue}>{formatCurrency(effectiveClaimAmount)}</Text>
             </View>
           )}
         </View>
@@ -307,21 +307,21 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <View style={styles.sectionContent}>
             <View style={styles.cardHeader}>
               <Ionicons name="chatbubble" size={16} color={COLORS.secondary} />
-              <Text style={styles.cardHeaderLabel}>{respondentName === 'You' ? 'Your response' : `${respondentName}'s response`}</Text>
-              <Text style={styles.cardHeaderDate}>{timeAgo(dispute.response.respondedAt)}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardHeaderLabel}>{respondentName === 'You' ? 'Your response' : `${respondentName}'s response`}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardHeaderDate}>{timeAgo(dispute.response.respondedAt)}</Text>
             </View>
 
             {dispute.respondent && (
-              <HapticPressable
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 style={styles.personRow}
                 onPress={() => navigation.navigate('UserProfile', { id: dispute.respondent.id })}
-                haptic="light"
+                haptic={null}
               >
                 <ShimmerImage placeholderIcon="person"
                   source={{ uri: dispute.respondent.profilePhotoUrl || null }}
                   style={styles.avatar}
                 />
-                <Text style={styles.personName}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.personName}>
                   {dispute.respondent.firstName} {dispute.respondent.lastName}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
@@ -332,8 +332,8 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
             {dispute.response.counterAmount != null && (
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Counter Proposal</Text>
-                <Text style={styles.amountValue}>{formatCurrency(dispute.response.counterAmount)}</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.amountLabel}>Counter Proposal</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.amountValue}>{formatCurrency(dispute.response.counterAmount)}</Text>
               </View>
             )}
 
@@ -363,16 +363,16 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <View style={styles.sectionContent}>
             <View style={styles.cardHeader}>
               <Ionicons name="checkmark-circle" size={16} color={COLORS.secondary} />
-              <Text style={styles.cardHeaderLabel}>Resolution</Text>
-              <Text style={styles.cardHeaderDate}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardHeaderLabel}>Resolution</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardHeaderDate}>
                 {new Date(dispute.resolution.resolvedAt).toLocaleDateString()}
               </Text>
             </View>
 
             {dispute.resolution.resolvedAmount != null && (
               <View style={styles.amountRow}>
-                <Text style={styles.amountLabel}>Resolved Amount</Text>
-                <Text style={[styles.amountValue, { color: COLORS.secondary }]}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.amountLabel}>Resolved Amount</Text>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.amountValue, { color: COLORS.secondary }]}>
                   {formatCurrency(dispute.resolution.resolvedAmount)}
                 </Text>
               </View>
@@ -401,15 +401,15 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <View style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Borrow details</Text>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Rental Fee</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.detailLabel}>Rental Fee</Text>
               <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.rentalFee)}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Security Deposit</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.detailLabel}>Security Deposit</Text>
               <Text style={styles.detailValue}>{formatCurrency(dispute.transaction.depositAmount)}</Text>
             </View>
             <View style={[styles.detailRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total Charged</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.totalLabel}>Total Charged</Text>
               <Text style={styles.totalValue}>
                 {formatCurrency((dispute.transaction.rentalFee || 0) + (dispute.transaction.depositAmount || 0))}
               </Text>
@@ -425,14 +425,14 @@ export default function DisputeDetailScreen({ route, navigation }) {
             style={[styles.refundButton, acceptLoading && styles.buttonDisabled]}
             onPress={handleAcceptClaim}
             disabled={acceptLoading || actionLoading}
-            haptic="medium"
+            haptic={null}
           >
             {acceptLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={COLORS.white} size="small" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-                <Text style={styles.actionButtonText}>Accept</Text>
+                <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.white} />
+                <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Accept</Text>
               </>
             )}
           </HapticPressable>
@@ -447,10 +447,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
               mode: 'decline',
             })}
             disabled={acceptLoading || actionLoading}
-            haptic="medium"
+            haptic={null}
           >
-            <Ionicons name="close-circle-outline" size={18} color="#fff" />
-            <Text style={styles.actionButtonText}>Decline</Text>
+            <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
+            <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Decline</Text>
           </HapticPressable>
           {hasClaimAmount && (
             <HapticPressable
@@ -464,10 +464,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
                 mode: 'counter',
               })}
               disabled={acceptLoading || actionLoading}
-              haptic="medium"
+              haptic={null}
             >
-              <Ionicons name="swap-horizontal-outline" size={18} color="#fff" />
-              <Text style={styles.actionButtonText}>Counter</Text>
+              <Ionicons name="swap-horizontal-outline" size={18} color={COLORS.white} />
+              <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Counter</Text>
             </HapticPressable>
           )}
         </View>
@@ -480,14 +480,14 @@ export default function DisputeDetailScreen({ route, navigation }) {
             style={[styles.refundButton, counterActionLoading && styles.buttonDisabled]}
             onPress={() => setShowAcceptCounterSheet(true)}
             disabled={counterActionLoading}
-            haptic="medium"
+            haptic={null}
           >
             {counterActionLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={COLORS.white} size="small" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-                <Text style={styles.actionButtonText}>Accept {formatCurrency(dispute.response.counterAmount)}</Text>
+                <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.white} />
+                <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Accept {formatCurrency(dispute.response.counterAmount)}</Text>
               </>
             )}
           </HapticPressable>
@@ -495,10 +495,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
             style={[styles.declineButton, counterActionLoading && styles.buttonDisabled]}
             onPress={() => setShowDeclineCounterSheet(true)}
             disabled={counterActionLoading}
-            haptic="medium"
+            haptic={null}
           >
-            <Ionicons name="close-circle-outline" size={18} color="#fff" />
-            <Text style={styles.actionButtonText}>Decline</Text>
+            <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
+            <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Decline</Text>
           </HapticPressable>
         </View>
       )}
@@ -521,7 +521,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
           <View style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Resolve Dispute</Text>
 
-            <Text style={styles.formLabel}>Outcome</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.formLabel}>Outcome</Text>
             <View style={styles.outcomeOptions}>
               {[
                 { key: 'claimant', label: 'Favor Claimant', icon: 'person-outline' },
@@ -532,12 +532,12 @@ export default function DisputeDetailScreen({ route, navigation }) {
                   key={opt.key}
                   style={[styles.outcomeOption, outcome === opt.key && styles.outcomeOptionActive]}
                   onPress={() => setOutcome(opt.key)}
-                  haptic="light"
+                  haptic="selection"
                 >
                   <Ionicons
                     name={opt.icon}
                     size={16}
-                    color={outcome === opt.key ? '#fff' : COLORS.text}
+                    color={outcome === opt.key ? COLORS.white : COLORS.text}
                   />
                   <Text style={[styles.outcomeText, outcome === opt.key && styles.outcomeTextActive]}>
                     {opt.label}
@@ -548,7 +548,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
 
             {outcome === 'claimant' && (
               <>
-                <Text style={styles.formLabel}>Amount to Award</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.formLabel}>Amount to Award</Text>
                 <View style={styles.amountInputRow}>
                   <Text style={styles.dollarSign}>$</Text>
                   <TextInput
@@ -573,7 +573,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
               </>
             )}
 
-            <Text style={styles.formLabel}>Resolution Notes *</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.formLabel}>Resolution Notes *</Text>
             <TextInput
               style={styles.notesInput}
               value={notes}
@@ -593,12 +593,12 @@ export default function DisputeDetailScreen({ route, navigation }) {
               style={[styles.resolveButton, actionLoading && styles.buttonDisabled]}
               onPress={handleResolve}
               disabled={actionLoading}
-              haptic="medium"
+              haptic={null}
             >
               {actionLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={COLORS.white} />
               ) : (
-                <Text style={styles.resolveButtonText}>Resolve Dispute</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.resolveButtonText}>Resolve Dispute</Text>
               )}
             </HapticPressable>
           </View>
@@ -714,7 +714,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   typeBadge: {
     flexDirection: 'row',
@@ -728,6 +729,7 @@ const styles = StyleSheet.create({
 
   // Item card
   itemCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
@@ -735,8 +737,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     gap: SPACING.md,
     borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   itemImage: {
     width: 52,
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
 
   // Warning
   warningBanner: {
@@ -775,9 +775,10 @@ const styles = StyleSheet.create({
   },
   cardHeaderLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     flex: 1,
+    fontFamily: 'DMSans_500Medium',
   },
   cardHeaderDate: {
     ...TYPOGRAPHY.caption1,
@@ -813,9 +814,10 @@ const styles = StyleSheet.create({
   },
   personName: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     flex: 1,
+    fontFamily: 'DMSans_500Medium',
   },
 
   // Content
@@ -846,11 +848,14 @@ const styles = StyleSheet.create({
   amountLabel: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   amountValue: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
 
   // Resolution
@@ -876,9 +881,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: SPACING.md,
+    fontFamily: 'DMSans_500Medium',
   },
   detailRow: {
     flexDirection: 'row',
@@ -888,6 +894,8 @@ const styles = StyleSheet.create({
   detailLabel: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   detailValue: {
     ...TYPOGRAPHY.footnote,
@@ -902,8 +910,9 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   totalValue: {
     ...TYPOGRAPHY.footnote,
@@ -922,6 +931,8 @@ const styles = StyleSheet.create({
   conditionLabel: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   conditionValue: {
     ...TYPOGRAPHY.footnote,
@@ -980,17 +991,18 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   actionButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
   },
 
   // Resolve form
   formLabel: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: SPACING.sm,
     marginTop: SPACING.lg,
+    fontFamily: 'DMSans_500Medium',
   },
   formHint: {
     ...TYPOGRAPHY.caption1,
@@ -1024,7 +1036,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   outcomeTextActive: {
-    color: '#fff',
+    color: COLORS.white,
   },
   amountInputRow: {
     flexDirection: 'row',
@@ -1073,7 +1085,7 @@ const styles = StyleSheet.create({
   },
   resolveButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
+    fontSize: TYPOGRAPHY.body.fontSize,
+    color: COLORS.white,
   },
 });

@@ -9,12 +9,13 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config'
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
 import Icon from './Icon';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 const segmentLabel = segment => typeof segment==='string'?segment:segment.label;
 function SegmentLabel({segment,style}) {
   return <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5}}>
     {typeof segment!=='string'&&segment.icon&&<Icon name={segment.icon} size={18} color={segment.color} fillColor={segment.fillColor} illustrated={false} selected/>}
-    <Text style={style}>{segmentLabel(segment)}</Text>
+    <Text maxFontSizeMultiplier={1.4} style={style}>{segmentLabel(segment)}</Text>
   </View>;
 }
 
@@ -26,6 +27,7 @@ export default function SegmentedControl({
   testID,
   variant,
 }) {
+  const reduceMotion = useReduceMotion();
   const containerWidth = useSharedValue(0);
   const segmentCount = segments.length;
 
@@ -42,7 +44,7 @@ export default function SegmentedControl({
       width: Math.max(0, width),
       transform: [
         {
-          translateX: withSpring(
+          translateX: reduceMotion ? selectedIndex * width : withSpring(
             selectedIndex * width,
             ANIMATION.spring.default
           ),
@@ -69,7 +71,7 @@ export default function SegmentedControl({
           accessibilityLabel={segmentLabel(segment)} accessibilityRole="tab"
           accessibilityState={{ selected: selectedIndex === index }}
           style={[styles.tab, selectedIndex === index && styles.tabSelected]}>
-          <SegmentLabel segment={segment} style={[styles.segmentText, styles.tabText, segments.length>3&&{fontSize:14}, selectedIndex === index && styles.segmentTextActive]}/>
+          <SegmentLabel segment={segment} style={[styles.segmentText, styles.tabText, segments.length>3&&{fontSize: TYPOGRAPHY.bodySmall.fontSize}, selectedIndex === index && styles.segmentTextActive]}/>
         </HapticPressable>
       ))}
     </View>
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.surfaceElevated,
     borderWidth: 1,
-    borderColor: COLORS.primary + '80',
+    borderColor: COLORS.tints.primary80,
     borderRadius: RADIUS.md,
     padding: 2,
     position: 'relative',
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     bottom: 2,
     backgroundColor: COLORS.primaryMuted,
     borderWidth: 1,
-    borderColor: COLORS.primary + '70',
+    borderColor: COLORS.tints.primary70,
     borderRadius: RADIUS.md - 2,
     zIndex: 0,
   },
@@ -136,13 +138,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   segmentText: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.buttonSmall,
     color: COLORS.textSecondary,
-    fontWeight: '400',
   },
   segmentTextActive: {
     color: COLORS.primaryDark,
-    fontFamily: 'DMSans_600SemiBold',
-    fontWeight: '400',
   },
 });

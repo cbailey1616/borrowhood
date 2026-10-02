@@ -32,44 +32,50 @@ describe('ErrorContext', () => {
     expect(typeof result.current.dismissError).toBe('function');
   });
 
-  it('showError fires error haptic for generic errors', () => {
+  it('showError stays quiet by default for generic errors', () => {
     const { result } = renderHook(() => useError(), { wrapper });
     act(() => {
       result.current.showError({ message: 'Something failed' });
     });
-    expect(haptics.error).toHaveBeenCalled();
+    expect(haptics.error).not.toHaveBeenCalled();
   });
 
-  it('showError fires success haptic for success type', () => {
+  it('showError stays quiet unless success feedback is explicit', () => {
     const { result } = renderHook(() => useError(), { wrapper });
     act(() => {
       result.current.showError({ type: 'success', message: 'Done!' });
     });
-    expect(haptics.success).toHaveBeenCalled();
+    expect(haptics.success).not.toHaveBeenCalled();
   });
 
-  it('showError fires warning haptic for validation type', () => {
+  it('showError stays quiet by default for validation', () => {
     const { result } = renderHook(() => useError(), { wrapper });
     act(() => {
       result.current.showError({ type: 'validation', message: 'Field required' });
     });
-    expect(haptics.warning).toHaveBeenCalled();
+    expect(haptics.warning).not.toHaveBeenCalled();
   });
 
-  it('showToast fires success haptic for success type', () => {
+  it('showToast stays quiet by default for success messages', () => {
     const { result } = renderHook(() => useError(), { wrapper });
     act(() => {
       result.current.showToast('Saved!', 'success');
     });
-    expect(haptics.success).toHaveBeenCalled();
+    expect(haptics.success).not.toHaveBeenCalled();
   });
 
-  it('showToast fires warning haptic for error type', () => {
+  it('showToast stays quiet by default for error messages', () => {
     const { result } = renderHook(() => useError(), { wrapper });
     act(() => {
       result.current.showToast('Something went wrong');
     });
-    expect(haptics.warning).toHaveBeenCalled();
+    expect(haptics.warning).not.toHaveBeenCalled();
+  });
+
+  it('supports intentional feedback when explicitly requested', () => {
+    const { result } = renderHook(() => useError(), { wrapper });
+    act(() => result.current.showError({ message: 'Review this change', haptic: 'warning' }));
+    expect(haptics.warning).toHaveBeenCalledTimes(1);
   });
 
   it('showError auto-detects network type from message', () => {
@@ -77,7 +83,7 @@ describe('ErrorContext', () => {
     act(() => {
       result.current.showError({ message: 'Network connection failed' });
     });
-    // Should fire error haptic (network type)
-    expect(haptics.error).toHaveBeenCalled();
+    // Error classification does not introduce automatic feedback.
+    expect(haptics.error).not.toHaveBeenCalled();
   });
 });

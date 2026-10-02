@@ -77,7 +77,7 @@ export default function OnboardingPlanScreen({ navigation }) {
         onPress={() => navigation.goBack()}
         haptic="light"
       >
-        <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+        <Ionicons name="chevron-back" size={22} illustrated={false} color={COLORS.text} />
       </HapticPressable>
 
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
@@ -90,17 +90,17 @@ export default function OnboardingPlanScreen({ navigation }) {
         <View style={styles.planHeaders}>
           <View style={styles.featureLabelCol} />
           <View style={styles.planCol}>
-            <Text style={styles.planName}>Free</Text>
-            <Text style={styles.planPrice}>$0</Text>
-            <Text style={styles.planPeriod}>forever</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.planName}>Free</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.planPrice}>$0</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.planPeriod}>forever</Text>
           </View>
           <View style={[styles.planCol, styles.plusCol]}>
             <View style={styles.plusBadge}>
-              <Text style={styles.plusBadgeText}>POPULAR</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.plusBadgeText}>POPULAR</Text>
             </View>
-            <Text style={styles.planName}>Plus</Text>
-            <Text style={styles.planPrice}>Verify identity</Text>
-            <Text style={styles.planPeriod}>See verification options</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.planName}>Plus</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.planPrice}>Verify identity</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.planPeriod}>See verification options</Text>
           </View>
         </View>
 
@@ -114,16 +114,16 @@ export default function OnboardingPlanScreen({ navigation }) {
                 i < COMPARISON_ROWS.length - 1 && styles.comparisonRowBorder,
               ]}
             >
-              <Text style={styles.featureLabel}>{row.feature}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.featureLabel}>{row.feature}</Text>
               <View style={styles.checkCol}>
                 {row.free ? (
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                  <Ionicons name="checkmark-circle-outline" size={22} illustrated={false} color={COLORS.primary} />
                 ) : (
-                  <Ionicons name="close-circle" size={20} color={COLORS.gray[700]} />
+                  <Ionicons name="close-circle-outline" size={22} illustrated={false} color={COLORS.gray[700]} />
                 )}
               </View>
               <View style={styles.checkCol}>
-                <Ionicons name="checkmark-circle" size={20} color={COLORS.warning} />
+                <Ionicons name="checkmark-circle-outline" size={22} illustrated={false} color={COLORS.warning} />
               </View>
             </View>
           ))}
@@ -131,7 +131,7 @@ export default function OnboardingPlanScreen({ navigation }) {
 
         {/* Plus requirements note */}
         <View style={styles.plusNote}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
+          <Ionicons name="information-circle-outline" size={22} illustrated={false} color={COLORS.textMuted} />
           <Text style={styles.plusNoteText}>
             Plus includes identity verification through Stripe so every owner and borrower is trustworthy.
           </Text>
@@ -140,12 +140,13 @@ export default function OnboardingPlanScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
+          scaleDown={0.97}
           style={styles.plusButton}
           onPress={handleGoPlus}
           haptic="medium"
           testID="Onboarding.Plan.goPlus"
         >
-          <Ionicons name="star" size={18} color="#fff" />
+          <Ionicons name="star-outline" size={22} illustrated={false} color={COLORS.white} />
           <Text style={styles.plusButtonText}>See verification options</Text>
         </HapticPressable>
         <HapticPressable
@@ -154,7 +155,7 @@ export default function OnboardingPlanScreen({ navigation }) {
           haptic="light"
           testID="Onboarding.Plan.startFree"
         >
-          <Text style={styles.freeButtonText}>Start with Free</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.freeButtonText}>Start with Free</Text>
         </HapticPressable>
       </View>
     </View>
@@ -217,15 +218,13 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
     alignSelf: 'center',
   },
-  plusBadgeText: {
-    fontSize: 9,
-    color: '#fff',
-    fontWeight: '400',
+  plusBadgeText: { fontFamily: 'DMSans_500Medium',
+    fontSize: TYPOGRAPHY.caption2.fontSize,
+    color: COLORS.white,
+    fontWeight: '500',
     letterSpacing: 0.5,
   },
-  planName: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+  planName: { ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
     textAlign: 'center',
   },
@@ -239,7 +238,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   comparisonCard: {
     padding: 0,
     overflow: 'hidden',
@@ -289,18 +288,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACING.sm,
   },
-  plusButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  plusButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
   freeButton: {
     padding: SPACING.md,
     alignItems: 'center',
   },
-  freeButtonText: {
-    ...TYPOGRAPHY.subheadline,
+  freeButtonText: { ...TYPOGRAPHY.buttonSmall,
     color: COLORS.textSecondary,
-    fontWeight: '400',
   },
 });

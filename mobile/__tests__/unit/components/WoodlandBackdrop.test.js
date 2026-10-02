@@ -39,8 +39,8 @@ it('fades only behind ribbon content without adding a selectable surface', () =>
   expect(screen.queryByTestId('Woodland.tabs.fade', { includeHiddenElements: true })).toBeNull();
 });
 
-it('keeps the bold profile heading without decorative artwork', () => {
+it('keeps the semibold profile heading without decorative artwork', () => {
   const screen = render(<WoodlandHeader title="Profile" artwork={false} />);
   expect(screen.queryByTestId('Woodland.artwork', { includeHiddenElements: true })).toBeNull();
-  expect(StyleSheet.flatten(screen.getByText('Profile').props.style).fontFamily).toBe('DMSans_700Bold');
+  expect(StyleSheet.flatten(screen.getByText('Profile').props.style).fontFamily).toBe('DMSans_600SemiBold');
 });

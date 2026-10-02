@@ -72,24 +72,36 @@ describe('DiscussionComposer', () => {
     const input = screen.getByLabelText('Comment');
     fireEvent(input, 'selectionChange', { nativeEvent: { selection: { start: 0, end: 6 } } });
     fireEvent.press(screen.getByLabelText('Insert emoji'));
+    expect(screen.getAllByLabelText(/^React: /)).toHaveLength(19);
     fireEvent.press(screen.getByLabelText('React: Celebrate'));
     expect(screen.getByTestId('draftValue').props.children).toBe('🎉 or Sunday');
     expect(screen.getByLabelText('Comment').props.selection).toEqual({ start: 2, end: 2 });
     expect(screen.queryByLabelText('React: Celebrate')).toBeNull();
   });
 
-  it('replaces only the unfinished mention and passes focus through for keyboard scrolling', () => {
+  it('keeps typed @ text plain, omits mention controls, and passes focus through for keyboard scrolling', () => {
     const onFocus = jest.fn();
-    const screen = render(<ComposerHarness initialValue="Can @Ka" onFocus={onFocus} mentions={[
-      { id: 'kate', name: 'Kate K.', handle: 'KateK' },
-      { id: 'chris', name: 'Chris Bailey', handle: 'ChrisBailey' },
-    ]} />);
+    const screen = render(<ComposerHarness initialValue="Can @Ka" onFocus={onFocus} />);
     fireEvent(screen.getByLabelText('Comment'), 'focus');
     expect(onFocus).toHaveBeenCalledTimes(1);
-    expect(screen.queryByLabelText('Mention Chris Bailey')).toBeNull();
-    fireEvent.press(screen.getByLabelText('Mention Kate K.'));
-    expect(screen.getByTestId('draftValue').props.children).toBe('Can @KateK ');
-    expect(screen.queryByLabelText('Mention Kate K.')).toBeNull();
+    expect(screen.getByLabelText('Comment').props.keyboardAppearance).toBe('light');
+    expect(screen.queryByLabelText('Mention a neighbor')).toBeNull();
+    expect(screen.queryByLabelText('Mention suggestions')).toBeNull();
+    fireEvent.changeText(screen.getByLabelText('Comment'), 'Can @KateK help?');
+    expect(screen.getByTestId('draftValue').props.children).toBe('Can @KateK help?');
+    expect(screen.queryByLabelText('Mention suggestions')).toBeNull();
+  });
+
+  it('inserts an emoji at a collapsed caret while preserving literal @ text and keyboard geometry', () => {
+    const screen = render(<ComposerHarness initialValue="Ask @KateK" />);
+    fireEvent(screen.getByLabelText('Comment'), 'selectionChange', { nativeEvent: { selection: { start: 4, end: 4 } } });
+    fireEvent.press(screen.getByLabelText('Insert emoji'));
+    fireEvent.press(screen.getByLabelText('React: Like'));
+    expect(screen.getByTestId('draftValue').props.children).toBe('Ask 👍@KateK');
+    expect(screen.getByLabelText('Comment').props.selection).toEqual({ start: 6, end: 6 });
+    expect(screen.getByLabelText('Comment').props.keyboardAppearance).toBe('light');
+    expect(flatStyle(screen.getByTestId('DiscussionComposer.input')).height).toBe(72);
+    expect(flatStyle(screen.getByTestId('DiscussionComposer.toolbar')).flexShrink).toBe(0);
   });
 
   it('preserves directly typed emojis and enables the post action for the exact draft', () => {

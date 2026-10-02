@@ -206,21 +206,18 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
-            <ShimmerImage
+            <ShimmerImage category={listing.category} title={listing.title}
               source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
               style={styles.promptItemImage}
             />
             <View style={styles.promptItemInfo}>
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
-              <Text style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
             </View>
           </View>
 
           {/* Upgrade Card */}
           <View style={[styles.cardBox, styles.promptCard]}>
-            <View style={styles.promptIconContainer}>
-              <Ionicons name="star" size={32} color={COLORS.primary} />
-            </View>
             <Text style={styles.promptTitle}>Verify to Unlock</Text>
             <Text style={styles.promptText}>
               {listing.isFree === false
@@ -243,18 +240,18 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
             </View>
 
-            <HapticPressable
-              haptic="medium"
+            <HapticPressable scaleDown={0.97}
+              haptic={null}
               style={styles.promptButton}
               onPress={() => navigation.navigate('Subscription')}
             >
-              <Text style={styles.promptButtonText}>See verification options</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.promptButtonText}>See verification options</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </HapticPressable>
           </View>
 
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
           >
@@ -272,21 +269,18 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
-            <ShimmerImage
+            <ShimmerImage category={listing.category} title={listing.title}
               source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
               style={styles.promptItemImage}
             />
             <View style={styles.promptItemInfo}>
               <Text style={styles.promptItemTitle}>{listing.title}</Text>
-              <Text style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.promptItemOwner}>{listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner.firstName}`}</Text>
             </View>
           </View>
 
           {/* Verification Card */}
           <View style={[styles.cardBox, styles.promptCard]}>
-            <View style={styles.promptIconContainer}>
-              <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
-            </View>
             <Text style={styles.promptTitle}>Verify Your Identity</Text>
             <Text style={styles.promptText}>
               Town-wide sharing requires identity verification to keep everyone safe. This is a one-time process that only takes a minute.
@@ -307,18 +301,18 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
             </View>
 
-            <HapticPressable
-              haptic="medium"
+            <HapticPressable scaleDown={0.97}
+              haptic={null}
               style={styles.promptButton}
               onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse', totalSteps: 2 })}
             >
-              <Text style={styles.promptButtonText}>Verify Now</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.promptButtonText}>Verify Now</Text>
               <Ionicons name="arrow-forward" size={18} color={COLORS.background} />
             </HapticPressable>
           </View>
 
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
           >
@@ -338,13 +332,13 @@ export default function BorrowRequestScreen({ route, navigation }) {
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
-        <ShimmerImage
+        <ShimmerImage category={listing.category} title={listing.title}
           source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
           style={styles.itemImage}
         />
         <View style={styles.itemInfo}>
           <Text style={styles.itemTitle}>{listing.title}</Text>
-          <Text style={styles.itemOwner}>
+          <Text maxFontSizeMultiplier={1.4} style={styles.itemOwner}>
             {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner?.firstName || 'the owner'}${listing.owner?.lastName ? ` ${listing.owner.lastName}` : ''}`}
           </Text>
           <ListingOffer listing={listing} showPrice={false} />
@@ -361,20 +355,20 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
         <View style={styles.dateRow}>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dateButton, showStartPicker && styles.dateButtonActive]}
             onPress={() => { Keyboard.dismiss(); setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
           >
-            <Text style={styles.dateLabel}>Start Date</Text>
-            <Text style={styles.dateValue}>{formatDate(startDate)}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Start Date</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{formatDate(startDate)}</Text>
           </HapticPressable>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dateButton, showEndPicker && styles.dateButtonActive]}
             onPress={() => { Keyboard.dismiss(); setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
           >
-            <Text style={styles.dateLabel}>End Date</Text>
-            <Text style={styles.dateValue}>{formatDate(endDate)}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>End Date</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{formatDate(endDate)}</Text>
           </HapticPressable>
         </View>
 
@@ -393,7 +387,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             />
             {Platform.OS === 'ios' && (
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 style={styles.pickerDoneButton}
                 onPress={() => setShowStartPicker(false)}
               >
@@ -419,7 +413,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             />
             {Platform.OS === 'ios' && (
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 style={styles.pickerDoneButton}
                 onPress={() => setShowEndPicker(false)}
               >
@@ -465,20 +459,20 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <View style={styles.pricingCard}>
           {days > 0 && (
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.priceLabel}>
                 Rental fee ({days} days x ${listing.pricePerDay})
               </Text>
-              <Text style={styles.priceValue}>${rentalFee.toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.priceValue}>${rentalFee.toFixed(2)}</Text>
             </View>
           )}
           {listing.depositAmount > 0 && (
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Refundable deposit</Text>
-              <Text style={styles.priceValue}>${listing.depositAmount.toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.priceLabel}>Refundable deposit</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.priceValue}>${listing.depositAmount.toFixed(2)}</Text>
             </View>
           )}
           <View style={[styles.priceRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total authorization hold</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.totalLabel}>Total authorization hold</Text>
             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
           </View>
         </View>
@@ -497,16 +491,16 @@ export default function BorrowRequestScreen({ route, navigation }) {
     </ScrollView>
     <View style={[styles.submitFooter, { paddingBottom: keyboardVisible ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
       {/* Submit stays above the keyboard so no dismissal toolbar is needed. */}
-      <HapticPressable
-        haptic="medium"
+      <HapticPressable scaleDown={0.97}
+        haptic="light"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={COLORS.white} />
         ) : (
-          <Text style={styles.submitButtonText}>
+          <Text maxFontSizeMultiplier={1.4} style={styles.submitButtonText}>
             {isSaleListing(listing) ? 'Request to Buy' : isGiveaway ? 'Request Item' : total > 0 ? `Request & Pay $${total.toFixed(2)}` : 'Send Request'}
           </Text>
         )}
@@ -531,7 +525,7 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     paddingBottom: 40,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   promptItemCard: {
     flexDirection: 'row',
     padding: SPACING.md,
@@ -550,7 +544,7 @@ const styles = StyleSheet.create({
   },
   promptItemTitle: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   promptItemOwner: {
@@ -561,26 +555,16 @@ const styles = StyleSheet.create({
   promptCard: {
     padding: SPACING.xl,
   },
-  promptIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
   promptTitle: {
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
     marginBottom: SPACING.md,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   promptText: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: SPACING.xl,
   },
   promptBenefits: {
@@ -594,7 +578,7 @@ const styles = StyleSheet.create({
   },
   promptBenefitText: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.text,
   },
   promptButton: {
@@ -608,7 +592,7 @@ const styles = StyleSheet.create({
   },
   promptButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.background,
   },
   promptSecondaryButton: {
@@ -641,7 +625,7 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   itemOwner: {
@@ -665,7 +649,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
@@ -705,17 +689,19 @@ const styles = StyleSheet.create({
   },
   pickerDoneText: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.primary,
   },
   dateLabel: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   dateValue: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   input: {
@@ -724,14 +710,14 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
   daysText: {
     textAlign: 'center',
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.primary,
     fontWeight: '400',
     marginTop: SPACING.md,
@@ -741,10 +727,9 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   pricingCard: {
+    ...CARD_SURFACE,
     padding: SPACING.lg,
     backgroundColor: COLORS.primaryMuted,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderGreen,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
   },
@@ -755,13 +740,17 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   priceValue: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.primary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   totalRow: {
     marginTop: SPACING.sm,
@@ -772,13 +761,13 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.primary,
   },
   totalValue: {
     ...TYPOGRAPHY.h3,
-    fontSize: 18,
-    fontWeight: '400',
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    fontWeight: '600',
     color: COLORS.primary,
   },
   depositNote: {
@@ -805,8 +794,8 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...TYPOGRAPHY.button,
-    color: '#fff',
-    fontSize: 16,
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.body.fontSize,
   },
   termsText: {
     ...TYPOGRAPHY.caption1,

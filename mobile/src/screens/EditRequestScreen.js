@@ -153,7 +153,7 @@ export default function EditRequestScreen({ navigation, route }) {
     >
       {/* Type Toggle */}
       <View style={styles.section}>
-        <Text style={styles.label}>Type</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Type</Text>
         <View style={styles.options}>
           {[
             { value: 'item', label: 'Item' },
@@ -165,10 +165,10 @@ export default function EditRequestScreen({ navigation, route }) {
                 key={opt.value}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => updateField('type', opt.value)}
-                haptic="light"
+                haptic="selection"
               >
                 <RequestTypeIcon type={opt.value} size={18} color={isSelected ? COLORS.surface : COLORS.primary} style={{ marginRight: SPACING.xs }} />
-                <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.optionText, isSelected && styles.optionTextActive]}>
                   {opt.label}
                 </Text>
               </HapticPressable>
@@ -179,7 +179,7 @@ export default function EditRequestScreen({ navigation, route }) {
 
       {/* Title */}
       <View style={styles.section}>
-        <Text style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.title && styles.fieldErrorLabel]}>
           What are you looking for? *
         </Text>
         <TextInput
@@ -199,7 +199,7 @@ export default function EditRequestScreen({ navigation, route }) {
 
       {/* Description */}
       <View style={styles.section}>
-        <Text style={styles.label}>Details (optional)</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Details (optional)</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={formData.description}
@@ -218,9 +218,9 @@ export default function EditRequestScreen({ navigation, route }) {
       {/* Category */}
       {categories.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
             onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
@@ -244,12 +244,12 @@ export default function EditRequestScreen({ navigation, route }) {
 
       {/* Date Range */}
       <View style={styles.section}>
-        <Text style={styles.label}>When do you need it?</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>When do you need it?</Text>
         <Text style={styles.hint}>Optional - helps neighbors know your timeline</Text>
 
         <View style={styles.dateRow}>
           <View style={styles.dateInput}>
-            <Text style={styles.dateLabel}>From</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>From</Text>
             <TextInput
               style={styles.input}
               value={formData.neededFrom}
@@ -261,7 +261,7 @@ export default function EditRequestScreen({ navigation, route }) {
             />
           </View>
           <View style={styles.dateInput}>
-            <Text style={styles.dateLabel}>Until</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Until</Text>
             <TextInput
               style={styles.input}
               value={formData.neededUntil}
@@ -283,16 +283,16 @@ export default function EditRequestScreen({ navigation, route }) {
       </View>
 
       {/* Submit */}
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
-        haptic="medium"
+        haptic="light"
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={COLORS.white} />
         ) : (
-          <Text style={styles.submitButtonText}>Save Changes</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.submitButtonText}>Save Changes</Text>
         )}
       </HapticPressable>
     </KeyboardAwareScrollView>
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.sm,
   },
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md + 2,
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     backgroundColor: COLORS.surface,
     color: COLORS.text,
   },
@@ -363,6 +363,8 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   dropdownButton: {
     flexDirection: 'row',
@@ -406,12 +408,15 @@ const styles = StyleSheet.create({
   },
   optionText: {
     ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.bodySmall.fontSize,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   optionTextActive: {
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   submitButton: {
     backgroundColor: COLORS.primary,
@@ -425,8 +430,8 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
-    color: '#fff',
+    fontSize: TYPOGRAPHY.body.fontSize,
+    color: COLORS.white,
   },
   fieldError: {
     borderColor: COLORS.danger,

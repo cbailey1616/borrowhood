@@ -45,6 +45,7 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedScrollHandler: () => () => {},
     useDerivedValue: (fn) => ({ value: fn() }),
     withSpring: (val) => val,
+    cancelAnimation: jest.fn(),
     withTiming: (val) => val,
     withDelay: (_d, val) => val,
     withSequence: (...vals) => vals[vals.length - 1],

@@ -1,9 +1,10 @@
 import React from 'react';
 import { act, render, fireEvent } from '@testing-library/react-native';
 import { Image } from 'expo-image';
+import { StyleSheet } from 'react-native';
 import ShimmerImage from '../../../src/components/ShimmerImage';
 import { getDecodedImage, loadDecodedImage } from '../../../src/utils/decodedImageCache';
-import { API_URL } from '../../../src/utils/config';
+import { API_URL, COLORS } from '../../../src/utils/config';
 
 // Observe the props committed to the native boundary, rather than mocking the
 // app's image component or only testing the cache Map.
@@ -52,6 +53,17 @@ it('uses a local themed fallback for a missing photo without making a network re
   expect(screen.getByLabelText('Photo unavailable')).toBeTruthy();
   expect(loadDecodedImage).not.toHaveBeenCalled();
   expect(Image.sources.every(source => source.uri?.startsWith('data:image/svg+xml'))).toBe(true);
+});
+
+it('fills a missing item photo frame with its original drawing and category tint', () => {
+  const screen = render(<ShimmerImage source={{ uri: null }} category="kitchen-cooking" title="Cooking pot"
+    style={{ width: 160, height: 120, borderRadius: 16, backgroundColor: COLORS.surface }} />);
+  expect(StyleSheet.flatten(screen.getByLabelText('Photo unavailable').props.style)).toMatchObject({
+    width: 160, height: 120, borderRadius: 16, backgroundColor: COLORS.accentMuted,
+  });
+  expect(loadDecodedImage).not.toHaveBeenCalled();
+  expect(Image.sources).toHaveLength(1);
+  expect(Image.sources[0].uri).toMatch(/^data:image\/svg\+xml/);
 });
 
 it('ends the loading state when a photo fails and retries a refreshed source', async () => {
