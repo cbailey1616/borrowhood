@@ -164,7 +164,7 @@ export default function CommunityChat({ community, navigation, header }) {
       ListFooterComponent={nextBefore ? <HapticPressable haptic={null} scaleDown={1} onPress={() => refresh(nextBefore)} style={styles.more}><Text maxFontSizeMultiplier={1.4} style={styles.link}>Earlier messages</Text></HapticPressable> : null}
       renderItem={({ item }) => <View style={[styles.message, item.sender.id === user?.id && styles.own]}>
         <HapticPressable haptic={null} scaleDown={1} onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })} accessibilityLabel={`View ${item.sender.name}'s profile`}>
-          {item.sender.photoUrl ? <Image source={{ uri: item.sender.photoUrl }} style={styles.avatar} /> : <View style={styles.avatar}><Ionicons name="person" size={22} color={COLORS.primary} illustrated={false} selected={false} /></View>}
+          {item.sender.photoUrl ? <Image source={{ uri: item.sender.photoUrl }} style={styles.avatar} /> : <View style={styles.avatar}><Ionicons name="person" size={22} color={COLORS.primary} selected={false} /></View>}
         </HapticPressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.messageHeader}><HapticPressable haptic={null} scaleDown={1} onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })}><Text maxFontSizeMultiplier={1.4} style={styles.name}>{item.sender.name}</Text></HapticPressable>
@@ -172,7 +172,7 @@ export default function CommunityChat({ community, navigation, header }) {
           <HapticPressable haptic={null} longPressHaptic="selection" scaleDown={1} onLongPress={event => openReactions(item,event)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
           {!item.deleted && <MessageReactions reactions={item.reactions} userId={user.id} onToggle={emoji => react(item,emoji)} onAdd={event => openReactions(item,event)} />}
           {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable haptic={null} scaleDown={1} onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
-            <Ionicons name="chat-reply" size={22} color={COLORS.primary} illustrated={false} selected={false}/><Text maxFontSizeMultiplier={1.4} style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={18} color={COLORS.primary} illustrated={false} selected={false}/>
+            <Ionicons name="chat-reply" size={22} color={COLORS.primary} selected={false}/><Text maxFontSizeMultiplier={1.4} style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={18} color={COLORS.primary} illustrated={false} selected={false}/>
           </HapticPressable>}
           {!item.deleted && <HapticPressable haptic={null} scaleDown={1} onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={22} color={COLORS.textMuted} illustrated={false} selected={false} /></HapticPressable>}
         </View>

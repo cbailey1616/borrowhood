@@ -56,7 +56,7 @@ export default function OnboardingIntroScreen({ navigation }) {
       {page === 1 && <View style={styles.audiences}>
         {[['people', 'Friends'], ['home', 'Neighborhood'], ['location', 'Town']].map(([icon, label]) => (
           <View key={label} style={styles.audience}>
-            <Icon name={icon} size={22} illustrated={false} color={COLORS.primary} />
+            <Icon name={icon} size={22} color={COLORS.primary} />
             <Text maxFontSizeMultiplier={1.4} style={styles.audienceLabel}>{label}</Text>
           </View>
         ))}

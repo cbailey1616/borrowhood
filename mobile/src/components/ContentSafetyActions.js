@@ -52,7 +52,7 @@ export default function ContentSafetyActions({ type, id, onBlocked, open = false
       disabled={busy} onPress={() => showSheet('menu')} style={styles.subtleAction}
     >
       {busy ? <ActivityIndicator size="small" color={COLORS.textSecondary} />
-        : <Ionicons name="flag-outline" size={16} color={COLORS.textSecondary} illustrated={false} />}
+        : <Ionicons name="flag-outline" size={16} color={COLORS.textSecondary} />}
       <Text maxFontSizeMultiplier={1.4} style={styles.subtleLabel}>{label}</Text>
     </HapticPressable> : <ActionButton label={label} icon="flag-outline" loading={busy} onPress={() => showSheet('menu')} />)}
     {!!sheet && <ActionSheet key={sheet} isVisible {...dialog} onClose={() => {

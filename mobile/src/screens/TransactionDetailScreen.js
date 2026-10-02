@@ -1,3 +1,4 @@
+import RefreshControl from '../components/HapticRefreshControl';
 import useReduceMotion from '../hooks/useReduceMotion';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import ShimmerImage from '../components/ShimmerImage';
@@ -19,7 +20,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  RefreshControl,
   Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';

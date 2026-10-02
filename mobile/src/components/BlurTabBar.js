@@ -49,7 +49,8 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
           testID={`TabBar.${route.name}.icon`}
           name={iconName}
           size={26}
-          illustrated={false}
+          illustrated
+          style={{ opacity: isFocused ? 1 : 0.78 }}
           selected={isSaved && isFocused}
           color={iconColor}
           fillColor={isSaved ? COLORS.saved : undefined}

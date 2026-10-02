@@ -228,7 +228,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
             {addingFriendId === item.id ? (
               <ActivityIndicator color={COLORS.spinner} size="small" />
             ) : (
-              <Ionicons name="person-add-outline" size={22} illustrated={false} color={COLORS.primary} />
+              <Ionicons name="person-add-outline" size={22} color={COLORS.primary} />
             )}
           </HapticPressable>
         )}
@@ -358,7 +358,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
                 <ActivityIndicator color={COLORS.spinner} style={styles.loader} />
               ) : (
                 <View style={styles.emptyPrompt}>
-                  <Ionicons name="people-outline" size={22} illustrated={false} color={COLORS.gray[600]} />
+                  <Ionicons name="people-outline" size={22} color={COLORS.gray[600]} />
                   <Text style={styles.emptyText}>
                     Search for friends or sync your contacts to find them
                   </Text>

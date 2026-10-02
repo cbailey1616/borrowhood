@@ -14,7 +14,7 @@ export default function ActionButton({ label, onPress, disabled = false, loading
     disabled={disabled || loading} onPress={onPress}
     style={[styles.button, { borderColor: color }, filled && { minHeight: 52, backgroundColor: color }, style, (disabled || loading) && styles.disabled]}>
     {loading ? <ActivityIndicator color={foreground} /> : <>
-      {icon && <Ionicons name={icon} size={22} color={foreground} illustrated={false} />}
+      {icon && <Ionicons name={icon} size={22} color={foreground} />}
       <Text maxFontSizeMultiplier={1.4} style={[styles.label, { color: foreground }]}>{label}</Text>
     </>}
   </HapticPressable>;

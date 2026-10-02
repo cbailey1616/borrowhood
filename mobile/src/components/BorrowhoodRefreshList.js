@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { COLORS } from '../utils/config';
+import { haptics } from '../utils/haptics';
 
 const LOGO_SIZE = 56;
 export const REBOUND_MS = 200;
@@ -133,6 +134,7 @@ export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, n
     if (active.current) return;
     active.current = true;
     started.current = Date.now();
+    haptics.light();
     if (branded) {
       setHolding(true);
     }
