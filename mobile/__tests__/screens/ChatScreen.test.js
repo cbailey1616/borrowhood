@@ -42,6 +42,29 @@ describe('ChatScreen', () => {
     expect(bubbles()).toContainEqual(['Chat.message.msg-1', true]);
     expect(screen.queryByTestId('Chat.avatar.own')).toBeNull();
   });
+  it('uses the calm shared layout and opens message actions only on long press', async () => {
+    api.getConversation.mockResolvedValue({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice', lastName: 'Jones' } }, messages: [
+      { id: 'a', content: 'Can I collect it?', senderId: 'user-2', createdAt: '2026-10-02T10:00:00Z' },
+      { id: 'b', content: 'After work would be great.', senderId: 'user-2', createdAt: '2026-10-02T10:30:00Z' },
+      { id: 'c', content: 'Of course!', senderId: 'user-1', createdAt: '2026-10-02T10:31:00Z' },
+    ] });
+    const Screen = require('../../src/screens/ChatScreen').default;
+    const Bubble = require('../../src/components/MessageBubble').default;
+    const Composer = require('../../src/components/MessageComposer').default;
+    const screen = render(<Screen navigation={mockNavigation} route={route} />);
+    await screen.findByText('Of course!');
+    const bubbles = screen.UNSAFE_getAllByType(Bubble);
+    expect(bubbles.map(b => [b.props.quiet, b.props.startsGroup, b.props.own])).toEqual([[true, true, false], [true, false, false], [true, true, true]]);
+    expect(screen.UNSAFE_getByType(Composer).props.softSend).toBe(true);
+    expect(screen.queryByLabelText('Add reaction')).toBeNull();
+    expect(screen.queryByLabelText('Message options')).toBeNull();
+    act(() => bubbles[2].props.onLongPress());
+    expect(await screen.findByText('Add reaction')).toBeTruthy();
+    expect(screen.getByText('Delete message')).toBeTruthy();
+    View.prototype.measureInWindow.mockImplementation(callback => callback(0, 200, 290, 100));
+    fireEvent.press(screen.getByText('Add reaction'));
+    await waitFor(() => expect(screen.UNSAFE_getByType(require('../../src/components/MessageReactionMenu').default).props.visible).toBe(true));
+  });
   it('never shows read receipts, including with messages from an older server', async () => {
     api.getConversation.mockResolvedValueOnce({ conversation: { otherUser: { id: 'user-2', firstName: 'Alice' } },
       messages: [true, false].map((isRead, index) => ({ id: `message-${index}`, content: `Hello ${index}`, isOwnMessage: true, isRead, createdAt: new Date().toISOString() })) });

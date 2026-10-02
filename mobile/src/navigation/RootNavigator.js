@@ -243,7 +243,7 @@ export default function RootNavigator({ navigationRef }) {
             name="CommunityChat"
             component={CommunityChatScreen}
             getId={({ params }) => params?.communityId}
-            options={({ route }) => ({ ...sharedScreenOptions, title: route.params?.communityName || 'Neighborhood chat' })}
+            options={{ ...sharedScreenOptions, headerShown: false }}
           />
           <Stack.Screen
             name="NotificationSettings"

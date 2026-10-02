@@ -12,5 +12,5 @@ export default function CommunityChatScreen({ navigation, route }) {
   </View>;
   // Overview and Inbox use this same channel; switching accounts or channels
   // remounts its state so messages and drafts never cross those boundaries.
-  return <CommunityChat key={`${user?.id}:${id}`} community={{ id }} navigation={navigation} />;
+  return <CommunityChat key={`${user?.id}:${id}`} community={{ id, name: route.params?.communityName, memberCount: route.params?.memberCount }} navigation={navigation} />;
 }

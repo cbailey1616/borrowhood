@@ -450,18 +450,19 @@ function ChatConversation({ route, navigation }) {
 
   const getMessageActions = useCallback((message) => {
     const actions = [];
+    if (message.imageUrl && !message.isDeleted) actions.push({ label: 'View photo', onPress: () => setFullscreenImage(message.imageUrl) });
     if (!message.isDeleted) actions.push({label: 'Add reaction', onPress: () => handleMessageLongPress(message)});
     if (safeThreads && !activeThreadId && !message.isDeleted) actions.push({ label: 'Reply in thread', icon: <Ionicons name="chat-reply" size={24}/>, onPress: () => openThread(message) });
     if (message.content && !message.isDeleted) {
       actions.push({
-        label: 'Copy Text',
+        label: 'Copy text',
         icon: <Ionicons name="copy-outline" size={20} color={COLORS.text} />,
         onPress: () => handleCopyMessage(message.content),
       });
     }
     if (message.isOwnMessage && !message.isDeleted) {
       actions.push({
-        label: 'Delete Message',
+        label: 'Delete message',
         icon: <Ionicons name="trash-outline" size={20} color={COLORS.danger} />,
         destructive: true,
         onPress: () => handleDeleteMessage(message.id),
@@ -480,18 +481,19 @@ function ChatConversation({ route, navigation }) {
 
   const renderMessage = ({ item, index, isRoot = false }) => {
     const previous = isRoot ? null : visibleMessages[index - 1];
-    const meta = chatMessageMeta(item, previous);
+    const meta = chatMessageMeta(item, previous, undefined, { groupAcrossPauses: true });
     const own = item.isOwnMessage ?? item.senderId === user.id;
     const { text, context } = messagePresentation(item.content);
     return <View>
-      {!isRoot && !activeThreadId && meta.showDate && <ChatDateDivider label={meta.day} />}
+      {!isRoot && !activeThreadId && meta.showDate && <ChatDateDivider label={meta.day} quiet />}
       <MessageBubble ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
-        testID={`Chat.message.${item.id}`} own={own} startsGroup={meta.startsGroup}
+        testID={`Chat.message.${item.id}`} own={own} startsGroup={meta.startsGroup} quiet showSender
         senderName={own ? user?.firstName || 'You' : profileName}
         avatarUrl={otherUser?.profilePhotoUrl} onProfile={!own && profileId ? openProfile : undefined}
         profileAccessibilityLabel={`View ${profileName}’s profile`} avatarTestID={`Chat.avatar.${item.id}`}
         time={isRoot ? `${meta.day} · ${meta.time}` : meta.time} deleted={item.isDeleted}
-        onLongPress={() => handleMessageLongPress(item)}
+        onLongPress={() => { setSelectedMessage({ ...item, isOwnMessage: own }); setActionSheetVisible(true); }}
+        accessibilityLabel={`${own ? 'You' : profileName}: ${item.isDeleted ? 'Message deleted' : `${item.imageUrl ? 'Photo. ' : ''}${text || ''}`}`}
         reactions={item.reactions} userId={user.id} onToggleReaction={emoji => handleToggleReaction(item, emoji)}
         onAddReaction={() => handleMessageLongPress(item)}
         onOptions={() => { setSelectedMessage(item); setActionSheetVisible(true); }}
@@ -507,7 +509,7 @@ function ChatConversation({ route, navigation }) {
             </View>
             {!!context.replyText && <Text style={styles.messageQuote}>“{context.replyText}”</Text>}
           </View>}
-          {!!item.imageUrl && <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic={null}>
+          {!!item.imageUrl && <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} onLongPress={() => { setSelectedMessage({ ...item, isOwnMessage: own }); setActionSheetVisible(true); }} longPressHaptic="selection" haptic={null} scaleDown={1} accessibilityLabel="View chat photo">
             <ShimmerImage source={{ uri: item.imageUrl }} style={styles.messageImage} accessibilityLabel="Chat photo" />
           </HapticPressable>}
           {!!text && <Text style={[styles.messageText, own && styles.ownMessageText]}>{text}</Text>}
@@ -547,7 +549,7 @@ function ChatConversation({ route, navigation }) {
         data={visibleMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.messagesContent, { paddingLeft: Math.max(insets.left, SPACING.md), paddingRight: Math.max(insets.right, SPACING.md) }]}
+        contentContainerStyle={[styles.messagesContent, { paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -596,7 +598,7 @@ function ChatConversation({ route, navigation }) {
           <Ionicons name="close" size={22} color={COLORS.primary} />
         </HapticPressable>
       </View>}
-      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12), paddingLeft: Math.max(insets.left, SPACING.md), paddingRight: Math.max(insets.right, SPACING.md) }]}>
+      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, SPACING.lg), paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
         {!!contextPrefix && !composer.pending && <View testID="Chat.postReference" style={styles.postReference}>
           <HapticPressable style={styles.postReferenceLink} accessibilityLabel={`View ${activeContext.title}`}
             onPress={() => navigation.navigate(activeContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: activeContext.id })}>
@@ -612,7 +614,7 @@ function ChatConversation({ route, navigation }) {
           </HapticPressable>
         </View>}
         <MessageComposer
-          testID="Chat.composer"
+          testID="Chat.composer" softSend
           value={newMessage}
           onChangeText={setNewMessage}
           onSend={handleSend}
@@ -732,8 +734,7 @@ const styles = StyleSheet.create({
     right: 20,
   },
   messageText: {
-    ...TYPOGRAPHY.body,
-    lineHeight: 23,
+    ...TYPOGRAPHY.chatBody,
     color: COLORS.text,
   },
   messageContext: { borderLeftWidth: 2, borderLeftColor: COLORS.primary, paddingLeft: SPACING.sm, marginBottom: SPACING.sm, marginTop: 2 },

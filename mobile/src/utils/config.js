@@ -385,6 +385,7 @@ export const SPACING = {
 };
 
 export const RADIUS = {
+  chatBubble: 18,
   xs: 6,
   sm: 8,
   md: 14,
@@ -428,6 +429,7 @@ export const CARD_SURFACE = {
 };
 
 export const TYPOGRAPHY = {
+  chatBody: { fontSize: 17, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 24 },
   // Match each weight to its loaded font face; never synthesize bold from Regular.
   largeTitle: { fontSize: 32, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', lineHeight: 38, letterSpacing: -0.6 },
   title2: { fontSize: 22, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', lineHeight: 28, letterSpacing: -0.3 },
