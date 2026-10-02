@@ -15,10 +15,10 @@ export function normalizeSharing(value) {
   return [...new Set(scopes)];
 }
 
-export function audienceSql(alias, ownerColumn, viewer, { circle = false, town = true, townIdentityRequired = 'true' } = {}) {
+function sharingAudienceSql(alias, ownerColumn, viewer, { circle = false, town = true, townIdentityRequired = 'true' } = {}) {
   const owner = `${alias}.${ownerColumn}`;
   const scope = s => `'${s}' = ANY(string_to_array(${alias}.visibility::text, ','))`;
-  return `(${unblockedSql(owner, viewer)} AND EXISTS (SELECT 1 FROM users audience_owner WHERE audience_owner.id=${owner} AND audience_owner.status != 'suspended') AND (
+  return `(EXISTS (SELECT 1 FROM users audience_owner WHERE audience_owner.id=${owner} AND audience_owner.status != 'suspended') AND (
     ${owner} = ${viewer} OR
     (${scope('close_friends')} AND EXISTS (
       SELECT 1 FROM friendships sf WHERE sf.status = 'accepted'
@@ -44,10 +44,16 @@ export function audienceSql(alias, ownerColumn, viewer, { circle = false, town =
   ))`;
 }
 
+// Guard the complete policy once. Listing access also has private-share and
+// existing-exchange grants, so its block guard belongs outside all grant paths.
+export function audienceSql(alias, ownerColumn, viewer, options = {}) {
+  return `(${unblockedSql(`${alias}.${ownerColumn}`, viewer)} AND ${sharingAudienceSql(alias, ownerColumn, viewer, options)})`;
+}
+
 export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
   return `COALESCE((${unblockedSql(`${alias}.owner_id`, viewer)} AND ${alias}.status != 'deleted' AND (
     ${alias}.owner_id = ${viewer} OR
-    (${alias}.privacy_version = 1 AND ${audienceSql(alias, 'owner_id', viewer, { circle: true, townIdentityRequired: `COALESCE(${alias}.listing_type, 'lend') NOT IN ('giveaway', 'sell')` })})
+    (${alias}.privacy_version = 1 AND ${sharingAudienceSql(alias, 'owner_id', viewer, { circle: true, townIdentityRequired: `COALESCE(${alias}.listing_type, 'lend') NOT IN ('giveaway', 'sell')` })})
     ${discovery ? '' : `OR EXISTS (SELECT 1 FROM listing_shares ss
       JOIN item_requests sr ON sr.id = ss.request_id
       WHERE ss.listing_id = ${alias}.id AND ss.user_id = ${viewer}
