@@ -17,7 +17,7 @@ export function formatChatDay(value, now = new Date()) {
 const senderKey = message => message?.senderId ?? message?.sender?.id ?? (message?.isOwnMessage ? 'own' : 'other');
 
 // A new person, day, or five-minute pause starts a visual message group.
-export function chatMessageMeta(message, previous, now) {
+export function chatMessageMeta(message, previous, now, { groupAcrossPauses = false } = {}) {
   const date = new Date(message.createdAt);
   const previousDate = new Date(previous?.createdAt);
   const sameDay = !!previous && date.toDateString() === previousDate.toDateString();
@@ -26,6 +26,6 @@ export function chatMessageMeta(message, previous, now) {
     time: formatChatTime(message.createdAt),
     day: formatChatDay(message.createdAt, now),
     showDate: !sameDay,
-    startsGroup: !sameDay || senderKey(message) !== senderKey(previous) || !Number.isFinite(gap) || gap < 0 || gap >= 5 * 60000,
+    startsGroup: !sameDay || senderKey(message) !== senderKey(previous) || !Number.isFinite(gap) || gap < 0 || (!groupAcrossPauses && gap >= 5 * 60000),
   };
 }

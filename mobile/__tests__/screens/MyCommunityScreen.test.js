@@ -51,7 +51,7 @@ it('shows shortcuts without a composer and opens the same chat channel as Inbox'
  expect(screen.queryByLabelText('Message')).toBeNull();
  expect(screen.queryByLabelText('Chat options')).toBeNull();
  fireEvent.press(screen.getByLabelText('Neighborhood chat'));
- expect(navigation.navigate).toHaveBeenCalledWith('CommunityChat',{communityId:'hood',communityName:'Maple Grove'});
+ expect(navigation.navigate).toHaveBeenCalledWith('CommunityChat',{communityId:'hood',communityName:'Maple Grove',memberCount:4});
  expect(screen.queryByText('Sharing')).toBeNull();expect(screen.queryByText('Items')).toBeNull();
  fireEvent.press(screen.getByLabelText('View neighbors'));
  expect(navigation.navigate).toHaveBeenCalledWith('CommunityMembers',{id:'hood',role:'organizer'});

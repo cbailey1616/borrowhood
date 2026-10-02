@@ -10,7 +10,7 @@ const MessageComposer = forwardRef(function MessageComposer({
   value, onChangeText, onSend, placeholder = 'Write a message…',
   inputAccessibilityLabel = 'Message', sendAccessibilityLabel = 'Send message',
   inputTestID, sendTestID, testID, maxLength = 2000, editable = true,
-  disabled = false, loading = false, leadingAction, style, resetKey, dark = false,
+  disabled = false, loading = false, leadingAction, style, resetKey, dark = false, softSend = false,
 }, ref) {
   const [inputHeight, setInputHeight] = useState(48);
   useEffect(() => { setInputHeight(48); }, [resetKey]);
@@ -49,12 +49,12 @@ const MessageComposer = forwardRef(function MessageComposer({
         accessibilityLabel={sendAccessibilityLabel}
         accessibilityState={{ disabled: unavailable, busy: loading }}
         testID={sendTestID}
-        style={[styles.sendButton, unavailable && styles.sendUnavailable, dark && styles.darkSend]}
+        style={[styles.sendButton, softSend && !unavailable && styles.softSend, unavailable && styles.sendUnavailable, dark && styles.darkSend]}
         disabled={unavailable}
         onPress={() => { if (!unavailable) onSend?.(); }}
       >
         {loading ? <ActivityIndicator size="small" color={COLORS.spinner} />
-          : <Ionicons name="arrow-up" size={22} color={dark ? unavailable ? COLORS.messageDark.secondary : COLORS.white : unavailable ? COLORS.textMuted : COLORS.surface} illustrated={false} selected={false} />}
+          : <Ionicons name="arrow-up" size={22} color={dark ? unavailable ? COLORS.messageDark.secondary : COLORS.white : unavailable ? COLORS.textMuted : softSend ? COLORS.primary : COLORS.surface} illustrated={false} selected={false} />}
       </HapticPressable>
     </View>
   );
@@ -63,6 +63,7 @@ const MessageComposer = forwardRef(function MessageComposer({
 export default MessageComposer;
 
 const styles = StyleSheet.create({
+  softSend: { backgroundColor: COLORS.chatOwn },
   darkContainer: { backgroundColor: COLORS.messageDark.surface, borderColor: COLORS.messageDark.border, borderRadius: 30 },
   darkInput: { backgroundColor: 'transparent', color: COLORS.messageDark.text },
   darkSend: { backgroundColor: COLORS.messageDark.send },

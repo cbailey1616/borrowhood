@@ -17,6 +17,13 @@ it('starts a date group at midnight, even when messages are only a minute apart'
   expect(meta.startsGroup).toBe(true);
 });
 
+it('can group a neighborhood sender across pauses without changing direct-message grouping', () => {
+ const first=message('10:00'),later=message('10:30');
+ expect(chatMessageMeta(later,first,undefined,{groupAcrossPauses:true}).startsGroup).toBe(false);
+ expect(chatMessageMeta(later,first).startsGroup).toBe(true);
+ expect(chatMessageMeta(message('10:30','chris'),first,undefined,{groupAcrossPauses:true}).startsGroup).toBe(true);
+});
+
 it('uses neighborhood sender IDs and legacy direct-message ownership for grouping', () => {
   expect(chatMessageMeta({ createdAt: '2026-10-02T10:01:00', sender: { id: 'sam' } }, { createdAt: '2026-10-02T10:00:00', sender: { id: 'chris' } }).startsGroup).toBe(true);
   expect(chatMessageMeta({ createdAt: '2026-10-02T10:01:00', isOwnMessage: true }, { createdAt: '2026-10-02T10:00:00', isOwnMessage: false }).startsGroup).toBe(true);

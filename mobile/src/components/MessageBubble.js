@@ -15,7 +15,7 @@ const MessageBubble = forwardRef(function MessageBubble({
   avatarUrl, onProfile, profileAccessibilityLabel, avatarTestID, time,
   deleted = false, onLongPress, reactions = [], userId, onToggleReaction,
   onAddReaction, onReply, replyLabel, replyAccessibilityLabel, replyDisabled,
-  unreadReplyCount, onOptions, testID,
+  unreadReplyCount, onOptions, testID, quiet = false, accessibilityLabel,
 }, ref) {
   const reduceMotion = useReduceMotion();
   const initials = (senderName || 'Neighbor').trim().split(/\s+/)
@@ -23,37 +23,45 @@ const MessageBubble = forwardRef(function MessageBubble({
 
   return <Animated.View ref={ref} testID={testID} collapsable={false}
     entering={reduceMotion ? undefined : FadeInUp.duration(160)}
-    style={[styles.row, own ? styles.outgoing : styles.incoming, startsGroup && styles.groupStart]}>
-    {!own && <View style={styles.avatarSlot}>
+    style={[styles.row, own ? styles.outgoing : styles.incoming, startsGroup && styles.groupStart,
+      quiet && styles.quietRow, quiet && (startsGroup ? styles.quietGroupStart : styles.quietContinuation)]}>
+    {!own && <View style={[styles.avatarSlot, quiet && styles.quietAvatarSlot]}>
       {startsGroup && <HapticPressable haptic={null} scaleDown={1} onPress={onProfile} disabled={!onProfile}
-        style={styles.avatarButton} accessibilityLabel={profileAccessibilityLabel || `View ${senderName}’s profile`} testID={avatarTestID}>
+        style={[styles.avatarButton, quiet && styles.quietAvatarButton]} accessibilityLabel={profileAccessibilityLabel || `View ${senderName}’s profile`} testID={avatarTestID}>
         <ShimmerImage source={{ uri: avatarUrl || null }} placeholderIcon="person" style={styles.avatar}
           placeholder={<View style={[styles.avatar, styles.initialsAvatar]}><Text maxFontSizeMultiplier={1.4} style={styles.initials}>{initials}</Text></View>} />
       </HapticPressable>}
     </View>}
-    <View style={[styles.column, own ? styles.outgoingColumn : styles.incomingColumn]}>
+    <View style={[styles.column, quiet && styles.quietColumn, own ? styles.outgoingColumn : styles.incomingColumn]}>
       {showSender && startsGroup && !own && <Text maxFontSizeMultiplier={1.4} style={styles.sender}>{senderName}</Text>}
-      <HapticPressable haptic={null} scaleDown={1} longPressHaptic="selection" accessible={false}
+      <HapticPressable haptic={null} scaleDown={1} longPressHaptic="selection" accessible={quiet}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={quiet && !deleted ? 'Touch and hold for reactions, replies, and message options' : undefined}
+        accessibilityActions={quiet && !deleted ? [{ name: 'longpress', label: 'Message options' }] : undefined}
+        onAccessibilityAction={quiet && !deleted ? event => { if (event.nativeEvent.actionName === 'longpress') onLongPress?.(); } : undefined}
+        onAccessibilityTap={quiet && !deleted ? onLongPress : undefined}
         onLongPress={deleted ? undefined : onLongPress}
-        style={[styles.bubble, own ? styles.ownBubble : styles.otherBubble, deleted && styles.deletedBubble]}>
+        style={[styles.bubble, own ? styles.ownBubble : styles.otherBubble, deleted && styles.deletedBubble,
+          quiet && styles.quietBubble, quiet && reactions.length > 0 && !deleted && styles.quietReactedBubble]}>
         {children}
       </HapticPressable>
-      {!!reactions.length && !deleted && <View style={styles.reactions}>
-        <MessageReactions reactions={reactions} userId={userId} onToggle={onToggleReaction} inline compact />
+      {!!reactions.length && !deleted && <View style={[styles.reactions, quiet && styles.quietReactions]}>
+        <MessageReactions reactions={reactions} userId={userId} onToggle={onToggleReaction} inline compact touchTarget={quiet} />
       </View>}
-      <View style={[styles.footer, own && styles.outgoingFooter]}>
-        <Text maxFontSizeMultiplier={1.4} style={styles.time}>{time}</Text>
+      <View style={[styles.footer, own && styles.outgoingFooter, quiet && styles.quietFooter]}>
+        <Text maxFontSizeMultiplier={1.4} style={[styles.time, quiet && styles.quietTime]}>{time}</Text>
         {!!onReply && <HapticPressable haptic={null} scaleDown={1} disabled={replyDisabled} onPress={onReply}
-          accessibilityLabel={replyAccessibilityLabel} style={styles.reply}>
-          <Ionicons name="chat-reply" size={16} color={COLORS.primary} illustrated={false} selected={false} />
-          <Text maxFontSizeMultiplier={1.4} style={styles.replyText}>{replyLabel || 'Reply'}</Text>
+          accessibilityLabel={replyAccessibilityLabel} style={[styles.reply, quiet && styles.quietReply]}>
+          {!quiet && <Ionicons name="chat-reply" size={16} color={COLORS.primary} illustrated={false} selected={false} />}
+          {quiet ? <View style={styles.quietReplyPill}><Text maxFontSizeMultiplier={1.4} style={styles.replyText}>{replyLabel || 'Reply'}</Text></View>
+            : <Text maxFontSizeMultiplier={1.4} style={styles.replyText}>{replyLabel || 'Reply'}</Text>}
           {!!unreadReplyCount && <Text maxFontSizeMultiplier={1.4} style={styles.unread}>{unreadReplyCount} new</Text>}
         </HapticPressable>}
-        {!deleted && !!onAddReaction && <HapticPressable haptic={null} scaleDown={1} onPress={onAddReaction}
+        {!quiet && !deleted && !!onAddReaction && <HapticPressable haptic={null} scaleDown={1} onPress={onAddReaction}
           accessibilityLabel="Add reaction" style={styles.action} hitSlop={4}>
           <Ionicons name="happy-outline" size={22} color={COLORS.primary} illustrated={false} selected={false} />
         </HapticPressable>}
-        {!deleted && !!onOptions && <HapticPressable haptic={null} scaleDown={1} onPress={onOptions}
+        {!quiet && !deleted && !!onOptions && <HapticPressable haptic={null} scaleDown={1} onPress={onOptions}
           accessibilityLabel="Message options" style={styles.action} hitSlop={4}>
           <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.textSecondary} illustrated={false} selected={false} />
         </HapticPressable>}
@@ -64,11 +72,21 @@ const MessageBubble = forwardRef(function MessageBubble({
 
 export default MessageBubble;
 
-export function ChatDateDivider({ label }) {
-  return <View style={styles.dateDivider}><Text maxFontSizeMultiplier={1.4} style={styles.date}>{label}</Text></View>;
+export function ChatDateDivider({ label, quiet = false }) {
+  return <View style={[styles.dateDivider, quiet && styles.quietDateDivider]}><Text maxFontSizeMultiplier={1.4} style={[styles.date, quiet && styles.quietDate]}>{label}</Text></View>;
 }
 
 const styles = StyleSheet.create({
+  quietRow: { marginBottom: 0 }, quietGroupStart: { marginTop: SPACING.lg }, quietContinuation: { marginTop: SPACING.xs },
+  quietColumn: { width: '75%', maxWidth: '75%' }, quietAvatarSlot: { width: 44 }, quietAvatarButton: { width: 44 },
+  quietBubble: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, borderRadius: RADIUS.chatBubble, shadowOpacity: 0, elevation: 0 },
+  quietReactedBubble: { paddingBottom: SPACING.xl },
+  quietReactions: { marginTop: -18, paddingHorizontal: SPACING.xs, zIndex: 1 },
+  quietFooter: { width: '100%', gap: SPACING.sm, paddingHorizontal: 2, minHeight: 24 }, quietTime: { ...TYPOGRAPHY.footnote },
+  quietReply: { minHeight: 44, minWidth: 44, paddingHorizontal: 0, flexWrap: 'nowrap', justifyContent: 'center' },
+  quietReplyPill: { paddingVertical: SPACING.xs, paddingHorizontal: SPACING.md, backgroundColor: COLORS.surfaceElevated, borderRadius: RADIUS.full },
+  quietDateDivider: { paddingVertical: SPACING.md },
+  quietDate: { ...TYPOGRAPHY.footnote, backgroundColor: COLORS.surfaceElevated, paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs, borderRadius: RADIUS.full, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.xs, marginBottom: SPACING.xs },
   incoming: { justifyContent: 'flex-start' }, outgoing: { justifyContent: 'flex-end' },
   groupStart: { marginTop: SPACING.sm },
