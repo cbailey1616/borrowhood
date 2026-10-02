@@ -13,7 +13,7 @@ export default function ActionRow({ label, description, icon, onPress, variant =
     accessibilityLabel={accessibilityLabel || label}
     accessibilityState={{ ...accessibilityState, disabled }}
     style={[styles.row, primary && styles.primary, style]}>
-    {icon && <Ionicons name={icon} size={22} color={color} illustrated={false} />}
+    {icon && <Ionicons name={icon} size={22} color={color} />}
     <View style={styles.copy}>
       <Text maxFontSizeMultiplier={1.4} style={[styles.label, { color }]}>{label}</Text>
       {!!description && <Text style={[styles.description, primary && { color: COLORS.greenText }]}>{description}</Text>}

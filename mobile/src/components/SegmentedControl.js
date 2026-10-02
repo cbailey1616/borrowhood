@@ -14,7 +14,7 @@ import useReduceMotion from '../hooks/useReduceMotion';
 const segmentLabel = segment => typeof segment==='string'?segment:segment.label;
 function SegmentLabel({segment,style}) {
   return <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5}}>
-    {typeof segment!=='string'&&segment.icon&&<Icon name={segment.icon} size={18} color={segment.color} fillColor={segment.fillColor} illustrated={false} selected/>}
+    {typeof segment!=='string'&&segment.icon&&<Icon name={segment.icon} size={18} color={segment.color} fillColor={segment.fillColor} selected/>}
     <Text maxFontSizeMultiplier={1.4} style={style}>{segmentLabel(segment)}</Text>
   </View>;
 }

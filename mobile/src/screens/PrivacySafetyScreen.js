@@ -106,7 +106,7 @@ export default function PrivacySafetyScreen({ navigation }) {
                 testID={`PrivacySafety.${section.id}`}
                 style={styles.sectionHeader}
               >
-                <Ionicons name={section.icon} size={22} color={COLORS.textSecondary} illustrated={false} />
+                <Ionicons name={section.icon} size={22} color={COLORS.textSecondary} />
                 <View style={styles.sectionCopy}>
                   <Text style={styles.sectionTitle}>{section.title}</Text>
                   <Text style={styles.sectionSummary}>{section.summary}</Text>

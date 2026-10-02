@@ -20,7 +20,7 @@ export default function RentalProgress({ status, isBorrower, isGiveaway, isSale 
       return <View key={step.label} style={styles.step}>
         {index < steps.length - 1 && <View style={[styles.line, complete && styles.lineComplete]} />}
         <View style={[styles.iconCircle, current && styles.active, complete && styles.complete]}>
-          <View style={{ opacity: stopped || index > active ? 0.55 : 1 }}><Ionicons name={step.icon} size={22} illustrated={false} color={COLORS.primary} /></View>
+          <View style={{ opacity: stopped || index > active ? 0.55 : 1 }}><Ionicons name={step.icon} size={22} illustrated color={COLORS.primary} /></View>
           {complete && <View style={styles.check}><Ionicons name="checkmark" size={10} color={COLORS.surface} /></View>}
         </View>
         <Text maxFontSizeMultiplier={1.4} style={[styles.label, current && styles.activeLabel]}>{step.label}</Text>

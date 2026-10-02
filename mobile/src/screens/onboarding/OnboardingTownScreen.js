@@ -121,7 +121,7 @@ export default function OnboardingTownScreen({ navigation }) {
         </View>}
       </LayeredCard>
       <View style={styles.privacyNote}>
-        <Ionicons name="lock-closed-outline" size={22} illustrated={false} color={COLORS.primary} />
+        <Ionicons name="lock-closed-outline" size={22} color={COLORS.primary} />
         <Text style={styles.privacyText}>{locked ? 'Name and town are locked after verification.' : 'Your street address stays private.'}</Text>
       </View>
     </OnboardingLayout>

@@ -1,6 +1,7 @@
+import RefreshControl from '../components/HapticRefreshControl';
 import ShimmerImage from '../components/ShimmerImage';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import TextInput from '../components/AppTextInput';

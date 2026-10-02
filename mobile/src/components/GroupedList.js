@@ -61,8 +61,8 @@ export function GroupedListItem({
       <View style={styles.itemInner}>
         {icon ? (
           <View style={styles.iconBox}>
-            {React.isValidElement(icon) ? React.cloneElement(icon, { size: 22, color: destructive ? COLORS.danger : iconColor, illustrated: false })
-              : <Ionicons name={icon} size={22} color={destructive ? COLORS.danger : iconColor} illustrated={false} />}
+            {React.isValidElement(icon) ? React.cloneElement(icon, { size: 22, color: destructive ? COLORS.danger : iconColor, illustrated: destructive ? false : icon.props.illustrated })
+              : <Ionicons name={icon} size={22} color={destructive ? COLORS.danger : iconColor} />}
           </View>
         ) : null}
         <View style={styles.itemContent}>

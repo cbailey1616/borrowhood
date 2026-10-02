@@ -1,3 +1,4 @@
+import RefreshControl from '../components/HapticRefreshControl';
 import ItemPhotoPlaceholder from '../components/ItemPhotoPlaceholder';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
@@ -11,7 +12,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
   Image,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';

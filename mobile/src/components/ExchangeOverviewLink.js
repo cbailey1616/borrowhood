@@ -8,7 +8,7 @@ export default function ExchangeOverviewLink({ onPress, count, needsYou = 0, tes
   const summary = typeof count === 'number' ? needsYou ? `${needsYou} need you` : `${count} active` : null;
   return <HapticPressable testID={testID} onPress={onPress} style={[styles.row, style]}
     accessibilityRole="button" accessibilityLabel={`Your exchanges${summary ? `. ${summary}` : ''}`}>
-    <Ionicons name="handshake-outline" illustrated={false} size={22} color={COLORS.primary} />
+    <Ionicons name="handshake-outline" size={22} color={COLORS.primary} />
     <View style={styles.text}>
       <Text style={styles.title}>Your exchanges</Text>
       {!!summary && <Text style={styles.summary}>{summary}</Text>}

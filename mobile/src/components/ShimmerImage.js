@@ -24,7 +24,7 @@ function PhotoFallback({ style, icon, label = 'Photo unavailable', category, tit
   if (icon !== 'person') return <ItemPhotoPlaceholder category={category} title={title} icon={icon} style={style} accessibilityLabel={label} />;
   const width = StyleSheet.flatten(style)?.width;
   return <View accessibilityLabel={label} accessibilityRole="image" style={[style, styles.fallback]}>
-    <Icon name={icon} size={typeof width === 'number' ? Math.min(44, width * 0.55) : 32} illustrated={false} />
+    <Icon name={icon} size={typeof width === 'number' ? Math.min(44, width * 0.55) : 32} />
   </View>;
 }
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { COLORS } from '../../../src/utils/config';
 
 describe('Icon', () => {
   it('uses dedicated woodland history and invitation drawings even through older icon names', () => {
@@ -24,23 +25,38 @@ describe('Icon', () => {
     }
     expect(iconSvg('thumbs-up-outline', { illustrated: true })).not.toEqual(iconSvg('thumbs-down-outline', { illustrated: true }));
   });
-  it('does not automatically add illustrated fills to functional icons', () => {
+  it('restores woodland colors for feature drawings while keeping controls and contrast-sensitive ink clear', () => {
     const { usesWarmIllustration } = require('../../../src/components/Icon');
-    expect(usesWarmIllustration('cube-outline', '#42594C')).toBe(false);
-    expect(usesWarmIllustration('create-outline', '#42594C')).toBe(false);
-    expect(usesWarmIllustration('home', '#fff')).toBe(false);
-    expect(usesWarmIllustration('trash', '#B54242')).toBe(false);
-    expect(usesWarmIllustration('close', '#42594C')).toBe(false);
+    expect(usesWarmIllustration('cube-outline', COLORS.primary)).toBe(true);
+    expect(usesWarmIllustration('receipt-outline', COLORS.textSecondary)).toBe(true);
+    expect(usesWarmIllustration('create-outline', COLORS.primary)).toBe(false);
+    expect(usesWarmIllustration('home', COLORS.surface)).toBe(false);
+    expect(usesWarmIllustration('trash', COLORS.danger)).toBe(false);
+    expect(usesWarmIllustration('close', COLORS.primary)).toBe(false);
+    expect(usesWarmIllustration('chevron-back', COLORS.primary)).toBe(false);
   });
 
-  it('uses illustrated colors only when the caller explicitly opts in', () => {
+  it('restores original feature colors and respects an explicit monochrome override', () => {
     const Icon = require('../../../src/components/Icon').default;
     const { Image } = require('expo-image');
-    const plain = render(<Icon name="home" />);
-    const illustrated = render(<Icon name="home" illustrated />);
+    const plain = render(<Icon name="home" illustrated={false} />);
+    const illustrated = render(<Icon name="home" />);
     const svg = view => decodeURIComponent(view.UNSAFE_getByType(Image).props.source.uri.split(',')[1]);
     expect(svg(plain)).toContain('fill-opacity="0"');
     expect(svg(illustrated)).toContain('fill-opacity="1"');
+    expect(svg(illustrated)).toContain(COLORS.artwork.clay04);
+    expect(svg(illustrated)).toContain(COLORS.artwork.sage49);
+  });
+
+  it('keeps selected saved hearts filled and unselected hearts outlined', () => {
+    const Icon = require('../../../src/components/Icon').default;
+    const { Image } = require('expo-image');
+    const saved = render(<Icon name="heart" color={COLORS.saved} illustrated={false} />);
+    const unsaved = render(<Icon name="heart-outline" color={COLORS.saved} illustrated={false} />);
+    const svg = view => decodeURIComponent(view.UNSAFE_getByType(Image).props.source.uri.split(',')[1]);
+    expect(svg(saved)).toContain('fill-opacity="1"');
+    expect(svg(saved)).toContain(COLORS.saved);
+    expect(svg(unsaved)).toContain('fill-opacity="0"');
   });
 
   it('keeps an unselected heart unfilled even with the warm illustration palette', () => {

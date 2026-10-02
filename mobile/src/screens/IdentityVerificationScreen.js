@@ -157,7 +157,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         )}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.content, styles.processingContent]} bounces={false}>
           <View style={styles.processingIndicator} testID="Identity.status.submitted" accessibilityLabel="Verification processing" accessibilityRole="image">
-            <Ionicons name="time" size={22} color={COLORS.warning} illustrated={false} />
+            <Ionicons name="time" size={22} color={COLORS.warning} />
           </View>
           <Text style={[styles.title, styles.processingCopy]}>Verification Processing</Text>
           <Text style={[styles.subtitle, styles.processingCopy]}>

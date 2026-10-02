@@ -1,3 +1,4 @@
+import RefreshControl from '../components/HapticRefreshControl';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -7,7 +8,6 @@ import {
   FlatList,
   ActivityIndicator,
   Image,
-  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';

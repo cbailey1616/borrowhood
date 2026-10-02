@@ -1,5 +1,6 @@
+import RefreshControl from '../components/HapticRefreshControl';
 import React, { useCallback, useLayoutEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, AppState, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { randomUUID } from 'expo-crypto';
 import { useAuth } from '../context/AuthContext';
@@ -142,7 +143,7 @@ export default function MyCommunityScreen({ navigation, route }) {
       <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood chat"
         accessibilityHint={unreadCount ? `${unreadCount} unread messages` : 'Open your neighborhood chat'}
         onPress={() => navigation.navigate('CommunityChat', { communityId: community.id, communityName: community.name })}>
-        <Ionicons name="chatbubble-ellipses" size={22} illustrated={false} color={COLORS.textSecondary} />
+        <Ionicons name="chatbubble-ellipses" size={22} color={COLORS.textSecondary} />
         <View style={styles.shortcutText}>
           <Text style={styles.shortcutTitle}>Neighborhood chat</Text>
           <Text style={styles.description} numberOfLines={2}>{chatNote}</Text>
@@ -155,7 +156,7 @@ export default function MyCommunityScreen({ navigation, route }) {
         onPress={() => navigation.navigate('Main', { screen: 'Feed', params: {
           neighborhoodItems: { id: community.id, name: community.name, requestId: randomUUID() },
         } })}>
-        <Ionicons name="basket" size={22} illustrated={false} color={COLORS.textSecondary} />
+        <Ionicons name="basket" size={22} color={COLORS.textSecondary} />
         <View style={styles.shortcutText}>
           <Text style={styles.shortcutTitle}>Neighborhood items</Text>
           <Text style={styles.description}>Browse items shared here.</Text>

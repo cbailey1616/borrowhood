@@ -308,7 +308,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                     onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
                     style={styles.detailRow}
                   >
-                    <Ionicons name="chatbubbles" size={22} color={COLORS.textSecondary} illustrated={false} />
+                    <Ionicons name="chatbubbles" size={22} color={COLORS.textSecondary} />
                     <View style={styles.rowContent}>
                       <Text style={styles.rowTitle}>Comments</Text>
                     </View>
