@@ -64,6 +64,8 @@
     <string>Allow Borrowhood to select photos for your listings and private chats.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
+    <key>RCTRootViewBackgroundColor</key>
+    <integer>4294175709</integer>
     <key>UIBackgroundModes</key>
     <array>
       <string>remote-notification</string>
@@ -91,7 +93,7 @@
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIUserInterfaceStyle</key>
-    <string>Automatic</string>
+    <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
   </dict>

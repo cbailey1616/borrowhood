@@ -6,15 +6,17 @@ import SheetDismissArea from './SheetDismissArea';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import { NEIGHBOR_RANKS, RATING_UNLOCK_EXCHANGES } from '../utils/reputation';
+import useReduceMotion from '../hooks/useReduceMotion';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew = false }) {
+  const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   return <PopupLayer visible={isVisible} onRequestClose={onClose}>
     <View style={styles.container} onAccessibilityEscape={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessible={false} />
-      <Animated.View entering={SlideInDown.duration(200)} accessibilityViewIsModal
+      <Animated.View entering={reduceMotion ? undefined : SlideInDown.duration(200)} accessibilityViewIsModal
         style={[styles.sheet, { maxHeight: height - insets.top - SPACING.md, paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
         <SheetDismissArea onDismiss={onClose}>
         <View style={styles.handle} />
@@ -50,13 +52,13 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
                   <Ionicons name={rank.icon} size={24} illustrated color={COLORS.primary} />
                   <View style={styles.levelCopy}>
                     <View style={styles.levelNameGroup}>
-                      <Text style={styles.levelName}>{rank.label}</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={styles.levelName}>{rank.label}</Text>
                       {isCurrent && <View style={styles.currentBadge}>
                         <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                        <Text style={styles.current}>Current</Text>
+                        <Text maxFontSizeMultiplier={1.4} style={styles.current}>Current</Text>
                       </View>}
                     </View>
-                    <Text style={[styles.note, styles.levelTone]}>{rank.tone}</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={[styles.note, styles.levelTone]}>{rank.tone}</Text>
                   </View>
                 </View>
               </View>;
@@ -96,6 +98,6 @@ const styles = StyleSheet.create({
   levelName: { ...TYPOGRAPHY.headline, color: COLORS.primary, flexShrink: 1 },
   levelTone: { flexShrink: 1 },
   currentBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, flexShrink: 1 },
-  current: { ...TYPOGRAPHY.caption1, color: COLORS.primary, fontWeight: '400', flexShrink: 1 },
+  current: { ...TYPOGRAPHY.label, color: COLORS.primary,  flexShrink: 1 },
   note: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

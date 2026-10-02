@@ -13,7 +13,6 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import { useError } from '../context/ErrorContext';
-import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
@@ -47,7 +46,6 @@ export default function ReferralScreen() {
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(referralCode);
-    haptics.success();
     showToast('Referral code copied!');
   };
 
@@ -56,7 +54,6 @@ export default function ReferralScreen() {
       await Share.share({
         message: `Join me on BorrowHood! Use my referral code ${referralCode} when you sign up. Borrow and share with your neighbors!`,
       });
-      haptics.light();
     } catch (error) {
       // User cancelled share
     }
@@ -66,7 +63,6 @@ export default function ReferralScreen() {
     setIsClaiming(true);
     try {
       await api.claimReferralReward();
-      haptics.success();
       showToast('Free Plus activated for 1 year!');
       fetchData();
     } catch (error) {
@@ -90,8 +86,7 @@ export default function ReferralScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero */}
-      <View style={[styles.cardBox, styles.heroCard]}>
-        <Ionicons name="gift" size={48} color={COLORS.primary} />
+      <View style={styles.heroCard}>
         <Text style={styles.heroTitle}>Invite Friends, Get Plus Free</Text>
         <Text style={styles.heroSubtitle}>
           Invite {TARGET} friends to join BorrowHood and earn a free year of Plus!
@@ -120,7 +115,7 @@ export default function ReferralScreen() {
                   <Ionicons name="checkmark" size={14} color={COLORS.background} />
                 )}
               </View>
-              <Text style={styles.milestoneLabel}>Friend {i}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.milestoneLabel}>Friend {i}</Text>
             </View>
           ))}
         </View>
@@ -128,46 +123,46 @@ export default function ReferralScreen() {
 
       {/* Referral Code */}
       <View style={[styles.cardBox, styles.codeCard]}>
-        <Text style={styles.codeLabel}>Your Referral Code</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.codeLabel}>Your Referral Code</Text>
         <View style={styles.codeRow}>
           <Text style={styles.codeText}>{referralCode}</Text>
           <HapticPressable
             style={styles.copyButton}
             onPress={handleCopy}
-            haptic="light"
+
           >
             <Ionicons name="copy-outline" size={20} color={COLORS.primary} />
           </HapticPressable>
         </View>
 
-        <HapticPressable
+        <HapticPressable scaleDown={0.97}
           style={styles.shareButton}
           onPress={handleShare}
-          haptic="medium"
+
         >
           <Ionicons name="share-outline" size={20} color={COLORS.background} />
-          <Text style={styles.shareButtonText}>Share with Friends</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.shareButtonText}>Share with Friends</Text>
         </HapticPressable>
       </View>
 
       {/* Claim Reward */}
       {status?.eligible && (
         <View style={[styles.cardBox, styles.claimCard]}>
-          <Ionicons name="trophy" size={32} color={COLORS.warning} />
+          <Ionicons name="trophy" size={32} illustrated={true} color={COLORS.warning} />
           <Text style={styles.claimTitle}>You did it!</Text>
           <Text style={styles.claimSubtitle}>
             Claim your free year of Plus now
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.claimButton}
             onPress={handleClaim}
             disabled={isClaiming}
-            haptic="heavy"
+
           >
             {isClaiming ? (
               <ActivityIndicator color={COLORS.background} />
             ) : (
-              <Text style={styles.claimButtonText}>Claim Free Plus</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.claimButtonText}>Claim Free Plus</Text>
             )}
           </HapticPressable>
         </View>
@@ -175,7 +170,7 @@ export default function ReferralScreen() {
 
       {status?.rewardClaimed && (
         <View style={[styles.cardBox, styles.claimedCard]}>
-          <Ionicons name="checkmark-circle" size={32} color={COLORS.secondary} />
+          <Ionicons name="checkmark-circle" size={32} illustrated={true} color={COLORS.secondary} />
           <Text style={styles.claimedText}>Plus reward active!</Text>
         </View>
       )}
@@ -194,7 +189,7 @@ export default function ReferralScreen() {
                 <Text style={styles.friendName}>
                   {friend.firstName} {friend.lastName}
                 </Text>
-                <Text style={styles.friendDate}>
+                <Text maxFontSizeMultiplier={1.4} style={styles.friendDate}>
                   Joined {new Date(friend.joinedAt).toLocaleDateString()}
                 </Text>
               </View>
@@ -223,22 +218,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   // Hero
   heroCard: {
-    alignItems: 'center',
-    padding: SPACING.xxl,
+    alignItems: 'flex-start',
+    paddingVertical: SPACING.sm,
     gap: SPACING.md,
   },
   heroTitle: {
-    ...TYPOGRAPHY.h2,
+    ...TYPOGRAPHY.h1,
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   heroSubtitle: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   // Progress
   progressCard: {
@@ -285,7 +280,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   milestoneLabel: {
-    ...TYPOGRAPHY.caption2,
+    ...TYPOGRAPHY.badge,
     color: COLORS.textMuted,
   },
   // Code
@@ -294,9 +289,8 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   codeLabel: {
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
-    fontWeight: '400',
   },
   codeRow: {
     flexDirection: 'row',
@@ -312,7 +306,6 @@ const styles = StyleSheet.create({
   codeText: {
     ...TYPOGRAPHY.title3,
     color: COLORS.text,
-    fontWeight: '400',
     letterSpacing: 1,
   },
   copyButton: {
@@ -392,7 +385,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   friendName: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
   },
   friendDate: {

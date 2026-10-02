@@ -73,8 +73,8 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
 
   const renderItem = ({ item }) => (
     <LayeredCard style={styles.cardDepth}>
-      <HapticPressable
-        haptic="light"
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+        haptic={null}
         style={[styles.card, selectedId === item.id && { backgroundColor: COLORS.primaryMuted }]}
         accessibilityState={{ selected: selectedId === item.id }}
         onPress={() => item.kind === 'community' ? navigation.navigate('MyCommunity', { communityId: item.communityId }) : onSelect ? onSelect(item.id) : navigation.navigate('Chat', { conversationId: item.id })}
@@ -86,7 +86,7 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
           />
           {item.unreadCount > 0 && (
             <View style={styles.unreadBadge}>
-              <Text style={styles.unreadCount}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.unreadCount}>
                 {item.unreadCount > 9 ? '9+' : item.unreadCount}
               </Text>
             </View>
@@ -95,13 +95,13 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
 
         <View style={styles.content}>
           <View style={styles.headerRow}>
-            <Text numberOfLines={1} style={[styles.name, { flex: 1 }, item.unreadCount > 0 && styles.nameUnread]}>
+            <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={[styles.name, { flex: 1 }, item.unreadCount > 0 && styles.nameUnread]}>
               {item.kind === 'community' ? item.name : [item.otherUser?.firstName || 'Unknown', item.otherUser?.lastName].filter(Boolean).join(' ')}
             </Text>
-            <Text style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.time}>{getTimeAgo(item.lastMessageAt)}</Text>
           </View>
 
-          <Text
+          <Text maxFontSizeMultiplier={1.4}
             style={[styles.lastMessage, item.unreadCount > 0 && styles.lastMessageUnread]}
             numberOfLines={1}
           >
@@ -185,8 +185,9 @@ const styles = StyleSheet.create({
   },
   unreadCount: {
     ...TYPOGRAPHY.caption,
-    color: '#fff',
-    fontWeight: '400',
+    color: COLORS.white,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   content: {
     flex: 1,
@@ -199,11 +200,13 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.body,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   nameUnread: {
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   time: {
     ...TYPOGRAPHY.caption1,
@@ -234,5 +237,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
 });

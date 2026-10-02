@@ -6,6 +6,7 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
+import useReduceMotion from '../hooks/useReduceMotion';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 const LARGE_TITLE_HEIGHT = 200;
@@ -23,11 +24,12 @@ export default function NativeHeader({
   backdrop,
   includeTopInset = true,
 }) {
+  const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const topInset = includeTopInset ? insets.top : 0;
 
   const largeTitleStyle = useAnimatedStyle(() => {
-    if (!scrollY) return { opacity: 1, transform: [{ translateY: 0 }] };
+    if (reduceMotion || !scrollY) return { opacity: 1, transform: [{ translateY: 0 }] };
     return {
       opacity: interpolate(
         scrollY.value,
@@ -49,7 +51,7 @@ export default function NativeHeader({
   });
 
   const wrapperStyle = useAnimatedStyle(() => {
-    if (!scrollY) return {};
+    if (reduceMotion || !scrollY) return {};
     return {
       maxHeight: interpolate(
         scrollY.value,

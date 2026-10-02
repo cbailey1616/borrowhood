@@ -8,7 +8,7 @@ import LayeredCard from '../components/LayeredCard';
 import BackHeader from '../components/BackHeader';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { COVER_ASPECT } from '../utils/coverCrop';
 
 export default function MyCommunityScreen({ navigation, route }) {
@@ -51,10 +51,11 @@ export default function MyCommunityScreen({ navigation, route }) {
 
   useLayoutEffect(() => {
     navigation.setOptions?.({ header: props => <BackHeader navigation={props.navigation} title="My Neighborhood"
-      rightElement={canManage ? <HapticPressable style={styles.manage} accessibilityRole="button" accessibilityLabel="Manage neighborhood"
+      rightElement={canManage ? <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.manage} accessibilityRole="button" accessibilityLabel="Manage neighborhood"
         onPress={() => navigation.navigate('CommunitySettings', { id: communityId })}>
-        <Text style={styles.manageText}>Manage</Text>
-      </HapticPressable> : null} /> });
+        <Text maxFontSizeMultiplier={1.4} style={styles.manageText}>Manage</Text>
+      </HapticPressable> : null} />
+    });
   }, [navigation, communityId, canManage]);
 
   useFocusEffect(useCallback(() => {
@@ -82,14 +83,14 @@ export default function MyCommunityScreen({ navigation, route }) {
   const chatNote = !preview || preview.loading ? 'Loading chat…' : preview.error ? 'Open neighborhood chat'
     : preview.data?.lastMessage || 'Say hello to your neighbors.';
 
-  if (!community && loading) return <View style={styles.loading}><ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading your neighborhood" /></View>;
+  if (!community && loading) return <View style={styles.loading}><ActivityIndicator size="large" color={COLORS.spinner} /></View>;
 
   if (!community) return <View style={styles.page}><ScrollView contentContainerStyle={styles.stateContent}>
     <LayeredCard style={styles.stateCard} radius={RADIUS.xl}>
       <View style={styles.stateIcon}><Ionicons name="home" size={44} illustrated color={COLORS.primary} /></View>
       <Text style={styles.stateTitle} accessibilityRole="header">{error ? 'Couldn’t load your neighborhood' : 'Meet your neighbors'}</Text>
       <Text style={styles.stateDescription}>{error ? 'Check your connection and try again.' : 'Join a neighborhood to chat and share.'}</Text>
-      <HapticPressable accessibilityRole="button" style={styles.stateButton}
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" style={styles.stateButton}
         onPress={error ? retry : () => navigation.navigate('JoinCommunity')}>
         <Text style={styles.stateButtonText}>{error ? 'Try again' : 'Find your neighborhood'}</Text>
         {!error && <Ionicons name="arrow-forward" size={20} color={COLORS.surface} />}
@@ -99,11 +100,11 @@ export default function MyCommunityScreen({ navigation, route }) {
 
   return <ScrollView style={styles.page} contentContainerStyle={styles.overviewContent}
     refreshControl={<RefreshControl refreshing={loading} onRefresh={retry} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
-    {error && <HapticPressable accessibilityRole="button" accessibilityLabel="Retry loading neighborhoods" style={styles.refreshError} onPress={retry}>
+    {error && <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel="Retry loading neighborhoods" style={styles.refreshError} onPress={retry}>
       <Text style={styles.description}>Couldn’t refresh. Tap to retry.</Text>
     </HapticPressable>}
     {communities.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selector}>
-      {communities.map(c => <HapticPressable key={c.id} onPress={() => setSelectedId(c.id)} accessibilityRole="button"
+      {communities.map(c => <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} key={c.id} onPress={() => setSelectedId(c.id)} accessibilityRole="button"
         accessibilityState={{ selected: c.id === community.id }} style={[styles.chip, c.id === community.id && styles.selected]}>
         <Text style={{ color: c.id === community.id ? COLORS.surface : COLORS.primary }}>{c.name}</Text>
       </HapticPressable>)}
@@ -113,7 +114,7 @@ export default function MyCommunityScreen({ navigation, route }) {
       {community.bannerUrl && failedCover !== coverKey
         ? <Image source={{ uri: community.bannerUrl }} style={styles.cover} resizeMode="cover"
           accessibilityLabel={`${community.name} cover`} onError={() => setFailedCover(coverKey)} />
-        : (community.bannerUrl || canManage) && <HapticPressable style={[styles.cover, styles.coverFallback]} accessibilityRole="button"
+        : (community.bannerUrl || canManage) && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={[styles.cover, styles.coverFallback]} accessibilityRole="button"
           onPress={community.bannerUrl ? () => { setFailedCover(null); retry(); }
             : () => navigation.navigate('CommunitySettings', { id: community.id, editCover: true })}>
           <Ionicons name={community.bannerUrl ? 'refresh-outline' : 'camera-outline'} size={26} color={COLORS.primary} />
@@ -122,14 +123,14 @@ export default function MyCommunityScreen({ navigation, route }) {
       <View style={styles.titleRow}>
         <View style={styles.identity}>
           <Text style={styles.name} numberOfLines={2} accessibilityRole="header">{community.name}</Text>
-          <HapticPressable style={styles.members} accessibilityRole="button" accessibilityLabel="View neighbors"
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.members} accessibilityRole="button" accessibilityLabel="View neighbors"
             onPress={() => navigation.navigate('CommunityMembers', { id: community.id, role: community.role })}>
             <Ionicons name="people-outline" size={18} color={COLORS.primary} />
             <Text style={styles.description}>{community.memberCount ?? 0} neighbors</Text>
             <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
           </HapticPressable>
         </View>
-        <HapticPressable style={styles.button} accessibilityRole="button" accessibilityLabel="Invite neighbors"
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.button} accessibilityRole="button" accessibilityLabel="Invite neighbors"
           onPress={() => navigation.navigate('InviteMembers', { communityId: community.id })}>
           <Text style={styles.buttonText}>+ Invite</Text>
         </HapticPressable>
@@ -137,30 +138,33 @@ export default function MyCommunityScreen({ navigation, route }) {
       </View>
     </View>
     <View style={styles.shortcuts}>
-      <HapticPressable style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood chat"
+      <LayeredCard style={styles.shortcutGroup}>
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood chat"
         accessibilityHint={unreadCount ? `${unreadCount} unread messages` : 'Open your neighborhood chat'}
         onPress={() => navigation.navigate('CommunityChat', { communityId: community.id, communityName: community.name })}>
-        <View style={styles.shortcutIcon}><Ionicons name="chatbubble-ellipses" size={30} illustrated color={COLORS.primary} /></View>
+        <Ionicons name="chatbubble-ellipses" size={22} illustrated={false} color={COLORS.textSecondary} />
         <View style={styles.shortcutText}>
           <Text style={styles.shortcutTitle}>Neighborhood chat</Text>
           <Text style={styles.description} numberOfLines={2}>{chatNote}</Text>
         </View>
-        {unreadCount > 0 && <View style={styles.unread}><Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>}
+        {unreadCount > 0 && <View style={styles.unread}><Text maxFontSizeMultiplier={1.4} style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>}
         <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
       </HapticPressable>
-      <HapticPressable style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood items"
+      <View style={styles.shortcutSeparator} />
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.shortcut} accessibilityRole="button" accessibilityLabel="Neighborhood items"
         onPress={() => navigation.navigate('Main', { screen: 'Feed', params: {
           neighborhoodItems: { id: community.id, name: community.name, requestId: randomUUID() },
         } })}>
-        <View style={styles.shortcutIcon}><Ionicons name="basket" size={30} illustrated color={COLORS.primary} /></View>
+        <Ionicons name="basket" size={22} illustrated={false} color={COLORS.textSecondary} />
         <View style={styles.shortcutText}>
           <Text style={styles.shortcutTitle}>Neighborhood items</Text>
           <Text style={styles.description}>Browse items shared here.</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
       </HapticPressable>
+      </LayeredCard>
       {!!community.announcement?.trim() && <LayeredCard style={styles.announcement} radius={RADIUS.lg}>
-        <Text style={styles.announcementTitle} accessibilityRole="header">Announcement</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.announcementTitle} accessibilityRole="header">Announcement</Text>
         <Text style={styles.announcementBody}>{community.announcement}</Text>
       </LayeredCard>}
     </View>
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: COLORS.background },
   overviewContent: { paddingBottom: 40 },
   manage: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  manageText: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  manageText: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary , },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
   stateContent: { flexGrow: 1, justifyContent: 'center', padding: SPACING.lg, paddingTop: 28, paddingBottom: 40, alignItems: 'center' },
   stateCard: { width: '100%', maxWidth: 480, padding: 24, alignItems: 'center' },
@@ -180,31 +184,33 @@ const styles = StyleSheet.create({
   stateDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
   stateButton: { minHeight: 52, width: '100%', marginTop: 24, paddingHorizontal: 18, paddingVertical: 14, borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  stateButtonText: { ...TYPOGRAPHY.body, color: COLORS.surface, textAlign: 'center', flexShrink: 1 },
+  stateButtonText: { ...TYPOGRAPHY.button, color: COLORS.surface, textAlign: 'center', flexShrink: 1 , },
   refreshError: { paddingHorizontal: SPACING.lg, paddingVertical: 12, minHeight: 44 },
   selector: { padding: SPACING.md, gap: 8 },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
   selected: { backgroundColor: COLORS.primary },
   hero: { paddingHorizontal: SPACING.lg, paddingTop: 36, overflow: 'hidden' },
-  heroContent: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg },
+  heroContent: { ...CARD_SURFACE, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg },
   cover: { width: '100%', aspectRatio: COVER_ASPECT, borderRadius: RADIUS.lg, marginBottom: 12 },
   coverFallback: { backgroundColor: COLORS.primaryMuted, justifyContent: 'center', alignItems: 'center', gap: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   identity: { flex: 1, minWidth: 0 },
-  name: { ...TYPOGRAPHY.h2, fontFamily: 'Fraunces_600SemiBold', color: COLORS.text },
+  name: { ...TYPOGRAPHY.h2,  color: COLORS.text },
   button: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
   buttonText: { ...TYPOGRAPHY.footnote, color: COLORS.surface },
   members: { flexDirection: 'row', gap: 6, alignItems: 'center', alignSelf: 'flex-start', minHeight: 44 },
   description: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   shortcuts: { padding: SPACING.lg, gap: SPACING.md },
-  shortcut: { minHeight: 100, padding: SPACING.lg, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface,
-    flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  shortcutIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
+  shortcutGroup: { overflow: 'hidden' },
+  shortcutSeparator: { marginLeft: SPACING.lg + 22 + SPACING.md, marginRight: SPACING.lg, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
+  shortcut: { minHeight: 76, padding: SPACING.lg,
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.md
+  },
   shortcutText: { flex: 1, minWidth: 0, gap: SPACING.xs },
   shortcutTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   unread: { minWidth: 24, minHeight: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
   unreadText: { ...TYPOGRAPHY.caption1, color: COLORS.surface },
   announcement: { padding: SPACING.lg, gap: SPACING.sm },
-  announcementTitle: { ...TYPOGRAPHY.footnote, color: COLORS.primary },
+  announcementTitle: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary , },
   announcementBody: { ...TYPOGRAPHY.body, color: COLORS.text },
 });

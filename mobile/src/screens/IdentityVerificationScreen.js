@@ -10,8 +10,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator, } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
@@ -77,12 +76,12 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     try {
       const result = await purchase.verify(isCurrent);
       if (!result || !isCurrent()) return;
-      haptics.success();
+
       setStatus(isUserVerified(result) ? 'verified' : 'submitted');
       await refreshUser();
     } catch (err) {
       if (!isCurrent()) return;
-      haptics.error();
+
       showError({
         message: err.message || 'Couldn\'t start verification right now. Please check your connection and try again.',
         type: 'network',
@@ -118,17 +117,17 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
           <View style={styles.iconContainer} testID="Identity.status.verified" accessibilityLabel="Verified" accessibilityRole="image">
             <View style={styles.successCircle}>
-              <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+              <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} illustrated />
             </View>
           </View>
           <Text style={styles.title}>You’re verified</Text>
           <Text style={styles.subtitle}>
             You’re ready to borrow across town.
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.primaryButton}
             onPress={handleVerifiedDone}
-            haptic="light"
+            haptic={null}
           >
             <Text style={styles.primaryButtonText}>
               {ENABLE_PAYMENTS && source === 'rental_listing' ? 'Continue' : 'Done'}
@@ -156,23 +155,21 @@ export default function IdentityVerificationScreen({ navigation, route }) {
         {source !== 'generic' && totalSteps && (
           <GateStepper currentStep={2} totalSteps={totalSteps} source={source} />
         )}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} bounces={false}>
-          <View style={styles.iconContainer} testID="Identity.status.submitted" accessibilityLabel="Verification processing" accessibilityRole="image">
-            <View style={[styles.successCircle, { backgroundColor: COLORS.warning + '20' }]}>
-              <Ionicons name="time" size={48} color={COLORS.warning} />
-            </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.content, styles.processingContent]} bounces={false}>
+          <View style={styles.processingIndicator} testID="Identity.status.submitted" accessibilityLabel="Verification processing" accessibilityRole="image">
+            <Ionicons name="time" size={22} color={COLORS.warning} illustrated={false} />
           </View>
-          <Text style={styles.title}>Verification Processing</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, styles.processingCopy]}>Verification Processing</Text>
+          <Text style={[styles.subtitle, styles.processingCopy]}>
             Stripe is reviewing your verification. You can keep browsing and posting while you wait.
           </Text>
-          <Text style={styles.graceNotice}>
+          <Text style={[styles.graceNotice, styles.processingCopy]}>
             Your verified badge will appear once verification is complete.
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.primaryButton}
             onPress={handleContinue}
-            haptic="light"
+            haptic={null}
           >
             <Text style={styles.primaryButtonText}>
               {ENABLE_PAYMENTS && source === 'rental_listing' ? 'Continue' : 'Start Exploring'}
@@ -205,7 +202,7 @@ export default function IdentityVerificationScreen({ navigation, route }) {
     <View style={[styles.actionFooter, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
       <View style={styles.readableWidth}>
         <VerificationPurchaseActions purchase={purchase} onVerify={handleVerify} testID="Identity.button.verify" />
-        <HapticPressable
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover}
           style={styles.tertiaryButton}
           onPress={() => {
             if (source === 'onboarding') {
@@ -214,11 +211,11 @@ export default function IdentityVerificationScreen({ navigation, route }) {
               navigation.goBack();
             }
           }}
-          haptic="light"
+          haptic={null}
           testID="Identity.button.skipForNow"
           accessibilityLabel="Skip for now"
         >
-          <Text style={styles.tertiaryButtonText}>Skip for now</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.tertiaryButtonText}>Skip for now</Text>
         </HapticPressable>
       </View>
     </View>
@@ -256,6 +253,9 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     justifyContent: 'center',
   },
+  processingContent: { justifyContent: 'flex-start' },
+  processingIndicator: { alignItems: 'flex-start', marginBottom: SPACING.lg },
+  processingCopy: { textAlign: 'left' },
   introductionContent: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xl },
   readableWidth: { width: '100%', maxWidth: 520, alignSelf: 'center' },
   actionFooter: { backgroundColor: COLORS.surface, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.borderLight },
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -299,9 +299,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
   },
   tertiaryButton: {
     minHeight: 44,
@@ -315,6 +315,6 @@ const styles = StyleSheet.create({
   },
   tertiaryButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
+    ...TYPOGRAPHY.buttonCaption,
   },
 });

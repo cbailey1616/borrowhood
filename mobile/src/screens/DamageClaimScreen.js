@@ -96,7 +96,7 @@ export default function DamageClaimScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.centeredContent}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
+            <Ionicons illustrated={true} name="checkmark-circle" size={64} color={COLORS.primary} />
           </View>
           <Text style={styles.title}>Claim Submitted</Text>
           <Text style={styles.subtitle}>
@@ -107,9 +107,9 @@ export default function DamageClaimScreen({ navigation, route }) {
           <HapticPressable
             style={styles.primaryButton}
             onPress={() => navigation.goBack()}
-            haptic="light"
+            haptic={null}
           >
-            <Text style={styles.primaryButtonText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
         </View>
       </View>
@@ -131,14 +131,14 @@ export default function DamageClaimScreen({ navigation, route }) {
         {conditionAtPickup && conditionAtReturn && (
           <View style={[styles.cardBox, styles.card]}>
             <View style={styles.cardContent}>
-              <Text style={styles.cardLabel}>Condition Change</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Condition Change</Text>
               <View style={styles.conditionRow}>
                 <View style={styles.conditionBadge}>
-                  <Text style={styles.conditionBadgeText}>Pickup: {conditionAtPickup}</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.conditionBadgeText}>Pickup: {conditionAtPickup}</Text>
                 </View>
                 <Ionicons name="arrow-forward" size={16} color={COLORS.textMuted} />
                 <View style={[styles.conditionBadge, styles.conditionBadgeDamaged]}>
-                  <Text style={styles.conditionBadgeDamagedText}>Return: {conditionAtReturn}</Text>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.conditionBadgeDamagedText}>Return: {conditionAtReturn}</Text>
                 </View>
               </View>
             </View>
@@ -148,7 +148,7 @@ export default function DamageClaimScreen({ navigation, route }) {
         {/* Claim amount */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Claim Amount</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Claim Amount</Text>
             <Text style={styles.cardHint}>
               Maximum: {formatCurrency(depositAmount)} (deposit)
             </Text>
@@ -177,7 +177,7 @@ export default function DamageClaimScreen({ navigation, route }) {
         {/* Damage description */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Describe the Damage</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Describe the Damage</Text>
             <Text style={styles.cardHint}>Minimum 10 characters</Text>
             <TextInput
               testID="DamageClaim.input.description"
@@ -194,14 +194,14 @@ export default function DamageClaimScreen({ navigation, route }) {
               autoCorrect={true}
               spellCheck={true}
             />
-            <Text style={styles.charCount}>{notes.length}/1000</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.charCount}>{notes.length}/1000</Text>
           </View>
         </View>
 
         {/* Evidence photos */}
         <View style={[styles.cardBox, styles.card]}>
           <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>Evidence Photos</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.cardLabel}>Evidence Photos</Text>
             <Text style={styles.cardHint}>
               Optional — upload up to 5 photos of the damage
             </Text>
@@ -213,7 +213,7 @@ export default function DamageClaimScreen({ navigation, route }) {
                   <HapticPressable
                     style={styles.removePhoto}
                     onPress={() => removePhoto(index)}
-                    haptic="light"
+                    haptic={null}
                   >
                     <Ionicons name="close-circle" size={22} color={COLORS.danger} />
                   </HapticPressable>
@@ -227,7 +227,7 @@ export default function DamageClaimScreen({ navigation, route }) {
                   accessibilityRole="button"
                   style={styles.addPhotoButton}
                   onPress={pickPhotos}
-                  haptic="light"
+                  haptic={null}
                 >
                   <Ionicons name="camera-outline" size={28} color={COLORS.textSecondary} />
                   <Text style={styles.addPhotoText}>Add</Text>
@@ -256,12 +256,12 @@ export default function DamageClaimScreen({ navigation, route }) {
           ]}
           onPress={handleSubmit}
           disabled={!isValid || submitting}
-          haptic="medium"
+          haptic="light"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={COLORS.white} />
           ) : (
-            <Text style={styles.primaryButtonText}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>
               Submit Claim for {formatCurrency(claimCents / 100)}
             </Text>
           )}
@@ -311,12 +311,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: SPACING.xxl,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   successCircle: {
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   card: {
     marginBottom: SPACING.lg,
   },
@@ -326,8 +328,9 @@ const styles = StyleSheet.create({
   cardLabel: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
-    fontWeight: '400',
+    fontWeight: '500',
     marginBottom: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
   },
   cardHint: {
     ...TYPOGRAPHY.caption1,
@@ -399,6 +402,8 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'right',
     marginTop: SPACING.xs,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   photosGrid: {
     flexDirection: 'row',
@@ -436,10 +441,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   errorCard: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.danger + '12',
+    backgroundColor: COLORS.tints.danger12,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
@@ -460,9 +466,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.button,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
   },
   disclaimer: {
     ...TYPOGRAPHY.caption1,

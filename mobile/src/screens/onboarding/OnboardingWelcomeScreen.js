@@ -39,6 +39,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
+          scaleDown={0.97}
           style={styles.primaryButton}
           onPress={handleGetStarted}
           haptic="medium"
@@ -92,9 +93,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     alignItems: 'center',
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
 });

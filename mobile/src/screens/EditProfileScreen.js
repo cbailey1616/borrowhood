@@ -196,7 +196,7 @@ export default function EditProfileScreen({ navigation }) {
                 Legal name and location are locked after verification.
               </Text>
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 onPress={() => {
                   showError({
                     type: 'verification',
@@ -208,14 +208,14 @@ export default function EditProfileScreen({ navigation }) {
                   });
                 }}
               >
-                <Text style={styles.verifiedChangeLink}>Change</Text>
+                <Text maxFontSizeMultiplier={1.4} style={styles.verifiedChangeLink}>Change</Text>
               </HapticPressable>
             </View>
           )}
 
           <View style={styles.row}>
             <View style={[styles.inputContainer, { flex: 1 }]}>
-              <Text style={styles.label}>First name</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.label}>First name</Text>
               <TextInput
                 style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.firstName}
@@ -227,7 +227,7 @@ export default function EditProfileScreen({ navigation }) {
               />
             </View>
             <View style={[styles.inputContainer, { flex: 1 }]}>
-              <Text style={styles.label}>Last name</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.label}>Last name</Text>
               <TextInput
                 style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.lastName}
@@ -241,7 +241,7 @@ export default function EditProfileScreen({ navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Display name</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.label}>Display name</Text>
             <TextInput
               style={styles.input}
               value={formData.displayName}
@@ -256,7 +256,7 @@ export default function EditProfileScreen({ navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.label}>Phone</Text>
             <TextInput
               style={styles.input}
               value={formData.phone}
@@ -268,7 +268,7 @@ export default function EditProfileScreen({ navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Bio</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.label}>Bio</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={formData.bio}
@@ -292,7 +292,7 @@ export default function EditProfileScreen({ navigation }) {
             </View>
             {!isVerified && (
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 style={styles.locationButton}
                 onPress={handleGetLocation}
                 disabled={isGettingLocation}
@@ -302,7 +302,7 @@ export default function EditProfileScreen({ navigation }) {
                 ) : (
                   <>
                     <Ionicons name="location" size={16} color={COLORS.primary} />
-                    <Text style={styles.locationButtonText}>Use Current</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.locationButtonText}>Use Current</Text>
                   </>
                 )}
               </HapticPressable>
@@ -311,7 +311,7 @@ export default function EditProfileScreen({ navigation }) {
 
           <View style={styles.row}>
             <View style={[styles.inputContainer, { flex: 2 }]}>
-              <Text style={styles.label}>City</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.label}>City</Text>
               <TextInput
                 style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.city}
@@ -323,7 +323,7 @@ export default function EditProfileScreen({ navigation }) {
               />
             </View>
             <View style={[styles.inputContainer, { flex: 1 }]}>
-              <Text style={styles.label}>State</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.label}>State</Text>
               <TextInput
                 style={[styles.input, isVerified && styles.inputLocked]}
                 value={formData.state}
@@ -349,8 +349,8 @@ export default function EditProfileScreen({ navigation }) {
         </View>
 
       <View style={styles.footer}>
-        <HapticPressable
-          haptic="medium"
+        <HapticPressable scaleDown={0.97}
+          haptic={null}
           style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isLoading}
@@ -361,7 +361,7 @@ export default function EditProfileScreen({ navigation }) {
               {isUploadingPhoto && <Text style={styles.uploadingText}>Uploading photo...</Text>}
             </View>
           ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.saveButtonText}>Save Changes</Text>
           )}
         </HapticPressable>
       </View>
@@ -425,8 +425,9 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
   },
   input: {
     borderWidth: 1,
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.card,
     color: COLORS.text,
   },
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   locationButton: {
@@ -485,12 +486,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
   },
   locationButtonText: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   fieldHint: {
     ...TYPOGRAPHY.caption1,
@@ -511,13 +513,14 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
   },
   infoValue: {
     ...TYPOGRAPHY.body,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },

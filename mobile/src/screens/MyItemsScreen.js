@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import RequestTypeIcon from '../components/RequestTypeIcon';
@@ -14,9 +15,9 @@ import {
   StyleSheet,
   useWindowDimensions,
   Animated as RNAnimated,
-  InteractionManager,
-} from 'react-native';
+  InteractionManager, } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
+import ItemPhotoPlaceholder from '../components/ItemPhotoPlaceholder';
 import LayeredCard from '../components/LayeredCard';
 import ListingOffer from '../components/ListingOffer';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -33,7 +34,7 @@ import { useError } from '../context/ErrorContext';
 import { useAuth } from '../context/AuthContext';
 import { haptics } from '../utils/haptics';
 import api from '../services/api';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 const shortDate = value => {
   if (!value) return '';
@@ -44,6 +45,7 @@ const requestDateRange = item => isTransferListing(item) ? ''
   : [shortDate(item.startDate), shortDate(item.endDate)].filter(Boolean).join(' – ');
 
 export default function MyItemsScreen({ navigation }) {
+  const reduceMotion = useReduceMotion();
   const { width, fontScale } = useWindowDimensions();
   const columns = width >= 900 && fontScale < 1.5 ? 2 : 1;
   const gridWidth = Math.min(width, 1200);
@@ -127,7 +129,6 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const handleSwipeDelete = async (item, type) => {
-    haptics.warning();
     try {
       if (type === 'listing') {
         await api.deleteListing(item.id);
@@ -136,9 +137,7 @@ export default function MyItemsScreen({ navigation }) {
         await api.deleteRequest(item.id);
         setRequests(prev => prev.filter(r => r.id !== item.id));
       }
-      haptics.success();
     } catch (error) {
-      haptics.error();
       swipeableRefs.current[item.id]?.close();
       showError({
         message: error.message || 'Couldn\'t delete this item right now. Please check your connection and try again.',
@@ -153,22 +152,22 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const renderRightActions = (progress, dragX, onDelete) => {
-    const scale = dragX.interpolate({
+    const scale = reduceMotion ? 1 : dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0.5],
       extrapolate: 'clamp',
     });
 
     return (
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.deleteAction}
         accessibilityRole="button"
         onPress={onDelete}
-        haptic="warning"
+        haptic={null}
       >
         <RNAnimated.View style={{ transform: [{ scale }] }}>
-          <Ionicons name="trash-outline" size={24} color="#fff" />
-          <Text style={styles.deleteActionText}>Delete</Text>
+          <Ionicons name="trash-outline" size={24} color={COLORS.white} />
+          <Text maxFontSizeMultiplier={1.4} style={styles.deleteActionText}>Delete</Text>
         </RNAnimated.View>
       </HapticPressable>
     );
@@ -181,23 +180,23 @@ export default function MyItemsScreen({ navigation }) {
     return (
     <View>
       <Swipeable
+        overshootRight={!reduceMotion}
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
           renderRightActions(progress, dragX, () => requestDelete(item, 'listing'))
         }
       >
         <LayeredCard style={styles.cardDepth}>
-          <HapticPressable
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={styles.card}
+            scaleDown={item.photoUrl ? 0.97 : 1}
             onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-            haptic="light"
+            haptic={null}
           >
             {item.photoUrl ? (
-              <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.cardImage} />
+              <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} category={item.category} title={item.title} style={styles.cardImage} />
             ) : (
-              <View style={[styles.cardImage, styles.imagePlaceholder]}>
-                <ListingTypeIcon listing={item} size={32} />
-              </View>
+              <ItemPhotoPlaceholder category={item.category} title={item.title} style={styles.cardImage} />
             )}
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
@@ -208,14 +207,14 @@ export default function MyItemsScreen({ navigation }) {
                   availability.state === 'borrowed' && styles.borrowedBadge,
                   availability.state === 'reserved' && styles.reservedBadge,
                 ]}>
-                  <Text style={[
+                  <Text maxFontSizeMultiplier={1.4} style={[
                     styles.statusText,
                     availability.state === 'borrowed' && styles.borrowedText,
                     availability.state === 'reserved' && styles.reservedText,
                   ]}>{availability.label}</Text>
                 </View>}
                 <View style={styles.sharingRow} accessible accessibilityLabel={`Visible to: ${sharing.label}`}>
-                  <Ionicons name={sharing.icon} size={16} illustrated />
+                  <Ionicons name={sharing.icon} size={16} illustrated={false} />
                   <Text style={styles.summaryMeta}>{sharing.label}</Text>
                 </View>
                 {item.activeOffers > 0 && <Text style={styles.summaryMeta}>{item.activeOffers} private {item.activeOffers === 1 ? 'offer' : 'offers'}</Text>}
@@ -223,10 +222,10 @@ export default function MyItemsScreen({ navigation }) {
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} style={{ alignSelf: 'center', marginRight: 12 }} />
           </HapticPressable>
-          {exchange && <HapticPressable style={styles.exchangeSummary} accessibilityRole="button"
+          {exchange && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.exchangeSummary} accessibilityRole="button"
             accessibilityLabel={`View exchange for ${item.title}: ${exchange.person}${exchange.timing ? `, ${exchange.timing}` : ''}`}
             onPress={() => navigation.navigate('TransactionDetail', { id: item.activeExchange.id })}>
-            <Ionicons name="person" size={22} illustrated />
+            <Ionicons name="person" size={22} illustrated={false} />
             <View style={styles.exchangeCopy}>
               <Text style={styles.exchangePerson}>{exchange.person}</Text>
               {!!exchange.timing && <Text style={[styles.summaryMeta, exchange.attention && styles.attentionText, exchange.overdue && styles.overdueText]}>{exchange.timing}</Text>}
@@ -235,7 +234,7 @@ export default function MyItemsScreen({ navigation }) {
           </HapticPressable>}
           {item.detailsUnavailable && <Text style={styles.detailsUnavailable}>Exchange details couldn’t load. Pull to refresh.</Text>}
           {item.pendingRequests > 0 && (
-            <HapticPressable accessibilityRole="button"
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button"
               accessibilityLabel={`Review ${item.pendingRequests} ${item.pendingRequests === 1 ? 'request' : 'requests'} for ${item.title}`}
               onPress={() => navigation.navigate('RequestQueue', { listingId: item.id })} style={styles.requestReview}>
               <ListingTypeIcon listing={item} size={20} />
@@ -252,10 +251,8 @@ export default function MyItemsScreen({ navigation }) {
   const handleRenew = async (requestId) => {
     try {
       await api.renewRequest(requestId);
-      haptics.success();
       fetchData();
     } catch (error) {
-      haptics.error();
       showError({
         message: error.message || 'Couldn\'t renew your wanted post right now. Please check your connection and try again.',
         type: 'network',
@@ -266,29 +263,30 @@ export default function MyItemsScreen({ navigation }) {
   const renderRequestItem = ({ item, index }) => (
     <View>
       <Swipeable
+        overshootRight={!reduceMotion}
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
           renderRightActions(progress, dragX, () => requestDelete(item, 'request'))
         }
       >
         <LayeredCard style={styles.cardDepth}>
-          <HapticPressable
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={[styles.requestCard, item.isExpired && styles.requestCardExpired]}
             onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-            haptic="light"
+            haptic={null}
           >
             <View style={styles.requestContent}>
               <View style={styles.requestHeader}>
                 <View style={styles.requestTitleRow}>
                   <View style={styles.requestIconPanel}>
-                    <RequestTypeIcon type={item.type} size={28} />
+                    <RequestTypeIcon type={item.type} size={22} illustrated={false} />
                   </View>
                   <Text style={styles.requestTitle} numberOfLines={2}>{item.title}</Text>
                 </View>
                 <View style={styles.requestBadges}>
                   {item.type === 'service' && (
                     <View style={styles.serviceBadge}>
-                      <Text style={styles.serviceBadgeText}>Help wanted</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={styles.serviceBadgeText}>Help wanted</Text>
                     </View>
                   )}
                   <View style={[
@@ -297,7 +295,7 @@ export default function MyItemsScreen({ navigation }) {
                       : item.status === 'open' ? { backgroundColor: COLORS.primaryMuted }
                       : { backgroundColor: COLORS.surfaceElevated }
                   ]}>
-                    <Text style={[
+                    <Text maxFontSizeMultiplier={1.4} style={[
                       styles.requestStatusText,
                       item.isExpired ? { color: COLORS.danger }
                         : item.status === 'open' ? { color: COLORS.primary }
@@ -318,7 +316,7 @@ export default function MyItemsScreen({ navigation }) {
               {(item.neededFrom || item.neededUntil) && (
                 <View style={styles.dateRow}>
                   <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-                  <Text style={styles.dateText}>
+                  <Text maxFontSizeMultiplier={1.4} style={styles.dateText}>
                     {item.neededFrom && new Date(item.neededFrom).toLocaleDateString()}
                     {item.neededFrom && item.neededUntil && ' - '}
                     {item.neededUntil && new Date(item.neededUntil).toLocaleDateString()}
@@ -330,11 +328,11 @@ export default function MyItemsScreen({ navigation }) {
                 <View style={styles.requestTiming}>
                   {!item.neededFrom && !item.neededUntil && <>
                     <Ionicons name="time-outline" size={16} illustrated={false} color={COLORS.textSecondary} />
-                    <Text style={styles.requestDate}>Flexible</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.requestDate}>Flexible</Text>
                   </>}
                 </View>
                 {item.isExpired && item.status === 'open' && (
-                  <HapticPressable
+                  <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                     style={styles.renewButton}
                     accessibilityRole="button"
                     accessibilityLabel={`Renew ${item.title}`}
@@ -342,10 +340,10 @@ export default function MyItemsScreen({ navigation }) {
                       e.stopPropagation?.();
                       handleRenew(item.id);
                     }}
-                    haptic="medium"
+                    haptic="light"
                   >
                     <Ionicons name="refresh" size={16} color={COLORS.surface} />
-                    <Text style={styles.renewButtonText}>Renew</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.renewButtonText}>Renew</Text>
                   </HapticPressable>
                 )}
               </View>
@@ -361,23 +359,21 @@ export default function MyItemsScreen({ navigation }) {
     const dates = requestDateRange(item);
     return (
       <LayeredCard style={styles.cardDepth}>
-        <HapticPressable
-          style={styles.sentRequestCard}
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+          style={styles.sentRequestCard} scaleDown={item.listing.photoUrl ? 0.97 : 1}
           accessibilityLabel={`${item.listing.title}, ${status}`}
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
-          haptic="light"
+          haptic={null}
         >
           {item.listing.photoUrl ? (
-            <ShimmerImage source={{ uri: item.listing.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.sentRequestImage} />
+            <ShimmerImage source={{ uri: item.listing.photoUrl }} placeholderIcon={listingIcon(item)} category={item.listing.category} title={item.listing.title} style={styles.sentRequestImage} />
           ) : (
-            <View style={[styles.sentRequestImage, styles.imagePlaceholder]}>
-              <ListingTypeIcon listing={item} size={28} />
-            </View>
+            <ItemPhotoPlaceholder category={item.listing.category} title={item.listing.title} style={styles.sentRequestImage} />
           )}
           <View style={styles.sentRequestInfo}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.listing.title}</Text>
             <View style={styles.sentRequestStatus}>
-              <Text style={styles.sentRequestStatusText}>{status}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.sentRequestStatusText}>{status}</Text>
             </View>
             {!!item.lender?.firstName && <Text style={styles.sentRequestMeta} numberOfLines={1}>From {item.lender.firstName}</Text>}
             {!!dates && <Text style={styles.sentRequestMeta}>{dates}</Text>}
@@ -402,7 +398,7 @@ export default function MyItemsScreen({ navigation }) {
       <HeroIcon icon={activeTab === 0 ? 'basket' : 'search'} size={80} />
       <Text style={styles.emptyTitle}>{emptyState.title}</Text>
       <Text style={styles.emptySubtitle}>{emptyState.subtitle}</Text>
-      <HapticPressable style={styles.addButton} accessibilityRole="button" onPress={() => emptyState.route === 'Feed' ? browseItems() : navigation.navigate(emptyState.route)} haptic="medium">
+      <HapticPressable scaleDown={0.97} style={styles.addButton} accessibilityRole="button" onPress={() => emptyState.route === 'Feed' ? browseItems() : navigation.navigate(emptyState.route)} haptic={null}>
         <Ionicons name={emptyState.route === 'Feed' ? 'search' : 'add'} size={20} color={COLORS.surface} />
         <Text style={styles.addButtonText}>{emptyState.action}</Text>
       </HapticPressable>
@@ -414,9 +410,9 @@ export default function MyItemsScreen({ navigation }) {
     <View style={styles.container}>
       {activeTab!==3 && !isLoading && !loadError && visibleItems.length === 0 && <WoodlandBackdrop fullScreen />}
       <WoodlandHeader title="My items" titleStyle={{ flexShrink: 1 }} rightElement={activeTab < 2 &&
-        <HapticPressable accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
           onPress={() => navigation.navigate(activeTab === 0 ? 'CreateListing' : 'CreateRequest')} style={styles.compactAdd}>
-          <Ionicons name="add" size={20} color={COLORS.surface} />
+          <Ionicons name='add' size={20} color={COLORS.surface} />
           <Text style={styles.headerButtonText}>Add</Text>
         </HapticPressable>
       }>
@@ -432,7 +428,7 @@ export default function MyItemsScreen({ navigation }) {
       </WoodlandHeader>
 
       {activeTab===3?<SavedScreen navigation={navigation} embedded/>:<>
-      {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: COLORS.primary, fontWeight: '400' }}>Try again</Text></HapticPressable></View>}
+      {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ ...TYPOGRAPHY.button, color: COLORS.primary }}>Try again</Text></HapticPressable></View>}
 
       <BorrowhoodRefreshList
         key={`posts-${activeTab}-${columns}`}
@@ -507,7 +503,7 @@ const styles = StyleSheet.create({
   exchangeSummary: { marginHorizontal: SPACING.sm, marginBottom: SPACING.sm, padding: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.borderLight, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   exchangeCopy: { flex: 1, gap: SPACING.xs },
   exchangePerson: { ...TYPOGRAPHY.subheadline, color: COLORS.text },
-  attentionText: { color: COLORS.primary, fontWeight: '500' },
+  attentionText: { fontFamily: 'DMSans_500Medium', color: COLORS.primary, fontWeight: '500' },
   overdueText: { color: COLORS.danger },
   detailsUnavailable: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, marginHorizontal: SPACING.md, marginBottom: SPACING.md },
   card: {
@@ -524,10 +520,6 @@ const styles = StyleSheet.create({
     marginRight: 0,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.surfaceElevated,
-  },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   cardContent: {
     flex: 1,
@@ -563,9 +555,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primaryMuted,
   },
-  statusText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  statusText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   borrowedBadge: { backgroundColor: COLORS.warningMuted },
@@ -578,9 +568,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
   },
-  pendingText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  pendingText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   requestCard: {
@@ -620,34 +608,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   requestIconPanel: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: COLORS.primaryMuted,
+    width: 22, height: 22,
     alignItems: 'center', justifyContent: 'center',
   },
   requestTitle: {
     flex: 1,
     ...TYPOGRAPHY.headline,
     fontFamily: 'DMSans_600SemiBold',
-    fontSize: 20,
+    fontSize: TYPOGRAPHY.title3.fontSize,
     lineHeight: 26,
     color: COLORS.primaryDark,
+   fontWeight: '600'
   },
   requestBadges: {
-    marginLeft: 56,
+    marginLeft: 34,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: SPACING.xs,
   },
   serviceBadge: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
   },
-  serviceBadgeText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  serviceBadgeText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   requestStatusBadge: {
@@ -657,10 +643,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  requestStatusText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
-  },
+  requestStatusText: { ...TYPOGRAPHY.label, },
   requestDescription: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
@@ -700,13 +683,10 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     gap: SPACING.xs,
   },
-  renewButtonText: {
-    ...TYPOGRAPHY.footnote,
-    fontFamily: 'DMSans_500Medium',
-    fontWeight: '400',
+  renewButtonText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.surface,
   },
-  emptyContainer: {
+  emptyContainer: { ...CARD_SURFACE,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     alignItems: 'center',
@@ -736,7 +716,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   addButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.headline,
   },
   sentRequestCard: {
@@ -769,8 +749,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.xs,
   },
-  sentRequestStatusText: {
-    ...TYPOGRAPHY.caption1,
+  sentRequestStatusText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   deleteAction: {
@@ -782,9 +761,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
   },
   deleteActionText: {
-    color: '#fff',
+    color: COLORS.white,
     ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
     marginTop: SPACING.xs,
   },
 });

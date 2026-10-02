@@ -1,5 +1,5 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import ContentSafetyActions from '../components/ContentSafetyActions';
-import ListingTypeIcon from '../components/ListingTypeIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import { listingAvailability } from '../utils/listingAvailability';
 import TownIdentityPrompt from '../components/TownIdentityPrompt';
@@ -15,14 +15,12 @@ import {
   ScrollView,
   Image,
   Share,
-  useWindowDimensions,
-} from 'react-native';
+  useWindowDimensions, } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withSequence,
-} from 'react-native-reanimated';
+  withSequence, } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -31,6 +29,7 @@ import ActionSheet from '../components/ActionSheet';
 import RentalProgress from '../components/RentalProgress';
 import { SkeletonCard } from '../components/SkeletonLoader';
 import ShimmerImage from '../components/ShimmerImage';
+import ItemPhotoPlaceholder from '../components/ItemPhotoPlaceholder';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import { haptics } from '../utils/haptics';
@@ -39,6 +38,7 @@ import { COLORS, CONDITION_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from
 
 
 export default function ListingDetailScreen({ route, navigation }) {
+  const reduceMotion = useReduceMotion();
   const startNavigationTask = useNavigationTask(navigation, route.params.id);
   const insets = useSafeAreaInsets();
   const { width: windowWidth, fontScale } = useWindowDimensions();
@@ -91,8 +91,8 @@ export default function ListingDetailScreen({ route, navigation }) {
   };
 
   const toggleSave = useCallback(async () => {
-    haptics.light();
-    heartScale.value = withSequence(
+    haptics.selection();
+    heartScale.value = reduceMotion ? 1 : withSequence(
       withSpring(1.3, ANIMATION.spring.bouncy),
       withSpring(1, ANIMATION.spring.default)
     );
@@ -107,10 +107,9 @@ export default function ListingDetailScreen({ route, navigation }) {
     } catch (error) {
       console.error('Failed to toggle save:', error);
     }
-  }, [isSaved, id]);
+  }, [isSaved, id, reduceMotion]);
 
   const handleShare = async () => {
-    haptics.light();
     try {
       const isGiveaway = isTransferListing(listing);
       const priceText = directFeeLabel(listing) || (isGiveaway ? 'Free Item' : listing.isFree ? 'Free' : `$${listing.pricePerDay}/day`);
@@ -141,11 +140,9 @@ export default function ListingDetailScreen({ route, navigation }) {
     const isCurrent = startNavigationTask();
     try {
       await api.deleteListing(id);
-      haptics.success();
       showToast('Listing deleted', 'success');
       if (isCurrent()) navigation.goBack();
     } catch (error) {
-      haptics.error();
       showError({ message: error.message || 'Couldn\'t delete this listing right now. Please check your connection and try again.' });
     }
   };
@@ -195,15 +192,13 @@ export default function ListingDetailScreen({ route, navigation }) {
               listing.photos.map((photo, index) => (
                 <ShimmerImage
                   key={index}
-                  source={{ uri: photo }} placeholderIcon={listingIcon(listing)}
+                  source={{ uri: photo }} placeholderIcon={listingIcon(listing)} category={listing.category} title={listing.title}
                   style={[styles.photo, photoStyle]}
-                  sharedTransitionTag={index === 0 ? `listing-photo-${id}` : undefined}
+                  sharedTransitionTag={!reduceMotion && index === 0 ? `listing-photo-${id}` : undefined}
                 />
               ))
             ) : (
-              <View style={[styles.photo, photoStyle, styles.noPhoto]}>
-                <ListingTypeIcon listing={listing} size={48} />
-              </View>
+              <ItemPhotoPlaceholder category={listing.category} title={listing.title} style={[styles.photo, photoStyle]} />
             )}
           </ScrollView>
 
@@ -223,7 +218,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 
           {!listing.ownerMasked && (
             <View style={styles.photoActions}>
-              <HapticPressable testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover} testID="ListingDetail.button.save" accessibilityLabel={isSaved ? 'Unsave listing' : 'Save listing'} accessibilityState={{ selected: isSaved }} accessibilityRole="button" onPress={toggleSave} haptic={null} style={styles.actionBtn}>
                 <Animated.View style={heartAnimStyle}>
                   <Ionicons
                     name={isSaved ? 'heart' : 'heart-outline'}
@@ -233,7 +228,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   />
                 </Animated.View>
               </HapticPressable>
-              <HapticPressable onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share listing" haptic="light" style={styles.actionBtn}>
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share listing" haptic={null} style={styles.actionBtn}>
                 <Ionicons name="arrow-redo-outline" size={20} color={COLORS.primary} />
               </HapticPressable>
             </View>
@@ -250,7 +245,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                   <View style={styles.itemMetadata}>
                     {!listing.ownerMasked && condition && (
                       <View accessible accessibilityLabel={`Condition: ${condition}`} style={styles.conditionBadge}>
-                        <Text style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
+                        <Text maxFontSizeMultiplier={1.4} style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
                       </View>
                     )}
                     {!!location && <View style={styles.locationRow}>
@@ -282,11 +277,11 @@ export default function ListingDetailScreen({ route, navigation }) {
               {/* Active Transaction Status */}
               {listing.activeTransaction && (
                 <LayeredCard style={styles.transactionDepth}>
-                  <HapticPressable
+                  <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                     accessibilityRole="button"
                     accessibilityLabel="View active exchange details"
                     onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
-                    haptic="light"
+                    haptic={null}
                   >
                     <View style={[styles.transactionCard, styles.cardBox]}>
                       <RentalProgress
@@ -297,7 +292,7 @@ export default function ListingDetailScreen({ route, navigation }) {
                         isSale={isSaleListing(listing)}
                       />
                       <View style={styles.viewTransactionRow}>
-                        <Text style={styles.viewTransactionText}>View exchange</Text>
+                        <Text maxFontSizeMultiplier={1.4} style={styles.viewTransactionText}>View exchange</Text>
                         <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
                       </View>
                     </View>
@@ -307,15 +302,13 @@ export default function ListingDetailScreen({ route, navigation }) {
 
               <LayeredCard style={styles.detailsDepth}>
                 <View style={styles.detailsGroup}>
-                  <HapticPressable
+                  <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                     accessibilityRole="button"
                     accessibilityLabel="Comments"
                     onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
                     style={styles.detailRow}
                   >
-                    <View style={styles.rowIcon}>
-                      <Ionicons name="chatbubbles" size={22} color={COLORS.primary} />
-                    </View>
+                    <Ionicons name="chatbubbles" size={22} color={COLORS.textSecondary} illustrated={false} />
                     <View style={styles.rowContent}>
                       <Text style={styles.rowTitle}>Comments</Text>
                     </View>
@@ -324,12 +317,12 @@ export default function ListingDetailScreen({ route, navigation }) {
 
                   <View style={styles.rowSeparator} />
 
-                  <HapticPressable
+                  <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                     accessibilityRole="button"
                     accessibilityLabel={`View ${listing.owner.firstName} ${listing.owner.lastName}'s profile`}
                     onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
                     style={styles.detailRow}
-                    haptic="light"
+                    haptic={null}
                   >
                     {listing.owner.profilePhotoUrl ? (
                       <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
@@ -361,7 +354,7 @@ export default function ListingDetailScreen({ route, navigation }) {
       {!listing.isOwner && !listing.ownerMasked && !(isTransferListing(listing) && !listing.isAvailable && !listing.activeTransaction) && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
           <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
-            <HapticPressable
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}
               style={[styles.messageButton, messageLoading && { opacity: 0.5 }]}
               testID="ListingDetail.button.message"
               accessibilityRole="button"
@@ -379,15 +372,15 @@ export default function ListingDetailScreen({ route, navigation }) {
                     navigation.navigate('Chat', { conversationId: existing.id, recipientId: listing.owner.id, listingId: listing.id, listing });
                   } else {
                     navigation.navigate('Chat', {
-                      recipientId: listing.owner.id,
-                      listingId: listing.id,
-                      listing: {
-                        id: listing.id,
-                        title: listing.title,
-                        photoUrl: listing.photos?.[0],
-                        owner: listing.owner,
-                      }
-                    });
+                    recipientId: listing.owner.id,
+                    listingId: listing.id,
+                    listing: {
+                      id: listing.id,
+                      title: listing.title,
+                      photoUrl: listing.photos?.[0],
+                      owner: listing.owner,
+                    }
+                  });
                   }
                 } catch {
                   if (!isCurrent()) return;
@@ -405,21 +398,21 @@ export default function ListingDetailScreen({ route, navigation }) {
                   setMessageLoading(false);
                 }
               }}
-              haptic="light"
+              haptic={null}
             >
               <Ionicons name="chatbubble" size={20} color={COLORS.primary} />
-              <Text style={styles.messageButtonText}>
-                {messageLoading ? 'Opening…' : !listing.isAvailable && !listing.activeTransaction ? 'Message owner' : 'Message'}
+              <Text maxFontSizeMultiplier={1.4} style={styles.messageButtonText}>
+                {messageLoading ? 'Opening…' : !listing.isAvailable && !listing.activeTransaction ? "Message owner" : 'Message'}
               </Text>
             </HapticPressable>
             {availability.available && !listing.activeTransaction && (
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 testID="ListingDetail.button.borrow"
-                accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : isTransferListing(listing) ? 'Claim this item' : 'Request to borrow'}
+                accessibilityLabel={isSaleListing(listing) ? 'Request to buy this item' : isTransferListing(listing) ? 'Claim this item' : 'Request to Borrow'}
                 accessibilityRole="button"
                 style={styles.borrowButton}
                 onPress={() => navigation.navigate('BorrowRequest', { listing, ...(route.params.projectItemId ? { projectItemId: route.params.projectItemId } : {}), ...(route.params.projectDraft ? { projectDraft: route.params.projectDraft } : {}) })}
-                haptic="medium"
+                haptic={null}
               >
                 <Text style={styles.borrowButtonText}>
                   {isSaleListing(listing) ? 'Request to Buy' : isTransferListing(listing) ? 'Request This Item' : 'Request to Borrow'}
@@ -427,10 +420,10 @@ export default function ListingDetailScreen({ route, navigation }) {
               </HapticPressable>
             )}
             {listing.activeTransaction && (
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.borrowButton}
                 onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}
-                haptic="medium"
+                haptic={null}
               >
                 <Text style={styles.borrowButtonText}>View Request</Text>
               </HapticPressable>
@@ -441,27 +434,27 @@ export default function ListingDetailScreen({ route, navigation }) {
 
       {listing.isOwner && (
         <View style={[styles.footerWrap, { paddingBottom: insets.bottom }]}>
-          {!!listing.pendingRequests && <HapticPressable accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{color:COLORS.primary,fontWeight:'400'}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
+          {!!listing.pendingRequests && <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel="View request queue" onPress={() => navigation.navigate('RequestQueue', { listingId:listing.id })} style={{ minHeight:48,padding:12,marginBottom:SPACING.sm,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center' }}><Text style={{...TYPOGRAPHY.button,color:COLORS.primary}}>{listing.pendingRequests} waiting · View queue</Text></HapticPressable>}
           <View style={[styles.footerActions, wide && { width: '100%', maxWidth: 1200, alignSelf: 'center' }]}>
-            <HapticPressable
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}
               style={styles.deleteButton}
               accessibilityRole="button"
               accessibilityLabel="Delete item"
               onPress={() => setDeleteSheetVisible(true)}
-              haptic="light"
+              haptic={null}
             >
               <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
             </HapticPressable>
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               accessibilityRole="button"
               accessibilityLabel="Edit item"
               style={[styles.borrowButton, styles.editButton, listing.activeTransaction?.status !== 'pending' && listing.activeTransaction && styles.editSecondary]}
               onPress={() => navigation.navigate('EditListing', { listing })}
-              haptic="light"
+              haptic={null}
             >
               <Text style={[styles.borrowButtonText, listing.activeTransaction?.status !== 'pending' && listing.activeTransaction && { color: COLORS.primary }]}>Edit</Text>
             </HapticPressable>
-            {listing.activeTransaction && listing.activeTransaction.status !== 'pending' && <HapticPressable
+            {listing.activeTransaction && listing.activeTransaction.status !== 'pending' && <HapticPressable scaleDown={0.97}
               accessibilityRole="button" accessibilityLabel="View active exchange" testID="ListingDetail.button.exchange"
               style={styles.borrowButton} onPress={() => navigation.navigate('TransactionDetail', { id: listing.activeTransaction.id })}>
               <Text style={styles.borrowButtonText}>View exchange</Text>
@@ -477,7 +470,7 @@ export default function ListingDetailScreen({ route, navigation }) {
         message={`Are you sure you want to delete "${listing?.title}"? This cannot be undone.`}
         actions={[
           {
-            label: 'Delete Listing',
+            label: "Delete Listing",
             onPress: handleDelete,
             destructive: true,
           },
@@ -501,7 +494,6 @@ const styles = StyleSheet.create({
   errorText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
   gallery: { position: 'relative' },
   photo: { height: 300, backgroundColor: COLORS.separator },
-  noPhoto: { justifyContent: 'center', alignItems: 'center' },
   photoActions: {
     position: 'absolute',
     top: SPACING.lg,
@@ -529,8 +521,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)' },
-  dotActive: { backgroundColor: '#fff', width: 10, height: 10, borderRadius: 5 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.whiteOverlaySoft },
+  dotActive: { backgroundColor: COLORS.white, width: 10, height: 10, borderRadius: 5 },
   content: { padding: 20 },
   itemSummary: { paddingBottom: SPACING.xl },
   summaryHeading: { flexDirection: 'row', alignItems: 'flex-start', columnGap: SPACING.lg, rowGap: SPACING.sm },
@@ -570,7 +562,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
   },
-  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, marginBottom: SPACING.xs },
+  sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text, marginBottom: SPACING.xs , },
   availabilityDetail: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
   transactionDepth: { marginBottom: SPACING.lg },
   cardBox: { backgroundColor: COLORS.card, borderRadius: RADIUS.lg },
@@ -585,7 +577,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.separator,
   },
-  viewTransactionText: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.primary },
+  viewTransactionText: { ...TYPOGRAPHY.buttonSmall,  color: COLORS.primary , },
   detailsDepth: { marginBottom: SPACING.sm },
   detailsGroup: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
   detailRow: {
@@ -596,20 +588,12 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
     gap: SPACING.md,
   },
-  rowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   rowContent: { flex: 1, minWidth: 0 },
   rowTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   rowSubtitle: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 2 },
   rowSeparator: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 72,
+    marginLeft: SPACING.lg + 22 + SPACING.md,
     marginRight: SPACING.lg,
     backgroundColor: COLORS.separator,
   },
@@ -643,9 +627,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  messageButtonText: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+  messageButtonText: { ...TYPOGRAPHY.buttonCaption,
     color: COLORS.primary,
     textAlign: 'center',
     flexShrink: 1,
@@ -674,5 +656,5 @@ const styles = StyleSheet.create({
   },
   editButton: { backgroundColor: COLORS.primary },
   editSecondary: { flex: 0, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, paddingHorizontal: 16 },
-  borrowButtonText: { color: '#fff', ...TYPOGRAPHY.headline, textAlign: 'center', flexShrink: 1 },
+  borrowButtonText: { color: COLORS.white, ...TYPOGRAPHY.headline, textAlign: 'center', flexShrink: 1 },
 });

@@ -1,3 +1,4 @@
+import { COLORS } from '../utils/config';
 // Borrowhood's own rounded drawings. A 32-unit grid and one stroke weight keep
 // the small controls related to the larger, gently colored illustrations.
 const p = (d, extra = '') => `<path d="${d}" ${extra}/>`;
@@ -229,7 +230,7 @@ const DRAWINGS = {
   checkmark: () => p('M5 16L12 23L27 8'),
   'checkmark-done': () => p('M2 16L8 22L22 8M14 20L18 24L30 12'),
   'checkmark-circle': c => circle(16, 16, 13, panel(c)) + p('M9 16L14 21L23 11'),
-  'identity-seal': c => p('M16 2L20 4L25 4L28 8L28 13L30 16L28 20L27 25L22 27L18 29L13 28L8 28L5 24L3 20L4 15L3 10L7 7L10 3Z', `fill="${c.stroke}" stroke="none"`) + p('M9 16L14 21L23 11', 'fill="none" stroke="#FAF6EB" stroke-width="3"'),
+  'identity-seal': c => p('M16 2L20 4L25 4L28 8L28 13L30 16L28 20L27 25L22 27L18 29L13 28L8 28L5 24L3 20L4 15L3 10L7 7L10 3Z', `fill="${c.stroke}" stroke="none"`) + p('M9 16L14 21L23 11', `fill="none" stroke="${COLORS.artwork.parchment20}" stroke-width="3"`),
   checkbox: c => rect(3, 3, 26, 26, 6, panel(c)) + p('M9 16L14 21L23 11'),
   square: c => rect(3, 3, 26, 26, 6, panel(c)),
   'close-circle': c => circle(16, 16, 13, panel(c)) + p('M11 11L21 21M11 21L21 11'),
@@ -253,45 +254,45 @@ const ALIASES = {
   options: 'filter',
 };
 const PALETTES = {
-  'request-note': ['#E7C590', '#A7BF98'],
-  'history-ledger': ['#E7C590', '#ABC5B8'],
-  'selection-check': ['#B8CBA8', '#ABC5B8'],
-  'neighbor-invite': ['#E7C590', '#ABC5B8'],
-  'neighbors-manage': ['#ABC5B8', '#E7C590'],
-  pencil: ['#DFB66F', '#DEA088'],
-  'neighbor-sprout': ['#B8CBA8', '#98B68B'],
-  'rank-jester': ['#B8CBA8', '#E7C590'],
-  acorn: ['#DBBB8E', '#A7BF98'],
-  'rank-archer': ['#ACBA91', '#BA9653'],
-  'rank-outlaw': ['#B86555', '#D58A74'],
-  'rank-ranger': ['#9DBB90', '#C3A66C'],
-  'rank-robin': ['#D1AB50', '#E7CC7A'],
-  tree: ['#9DBB90', '#D0A27A'],
-  heart: ['#E6A392', '#D48976'], home: ['#B8CBB0', '#DCA083'],
-  grid: ['#B8CBB0', '#E7C590'],
-  handshake: ['#ABC5B8', '#E7C590'],
-  'thumbs-up': ['#ABC5B8', '#E7C590'],
-  'balance-scale': ['#B8CBA8', '#C3A66C'],
-  'thumbs-down': ['#DEA088', '#E7C590'],
-  laugh: ['#E9CA92', '#DEA088'], surprised: ['#B8CAD7', '#E9CA92'], sad: ['#B8CAD7', '#D8E5DA'],
-  basket: ['#E7C590', '#D9AE74'], cube: ['#E7C590', '#D9AE74'],
-  chatbubble: ['#AFCABB', '#D8E5DA'], people: ['#ABC5B8', '#E0AB91'],
-  'mail-unread': ['#E7C590', '#DEA088'],
-  'messages-read': ['#AFCABB', '#D8E5DA'],
-  'chat-question': ['#B8CAD7', '#D8E5DA'],
-  'chat-reply': ['#AFCABB', '#D8E5DA'],
-  trophy: ['#DFB66F', '#E7CC7A'],
-  ribbon: ['#E7CC7A', '#A7BF98'],
-  star: ['#E7CC7A', '#DFB66F'],
-  alarm: ['#DEA088', '#E9CA92'],
-  time: ['#E9CA92', '#DEA088'],
-  calendar: ['#B8C4DA', '#D6DDE9'],
-  person: ['#ABC5B8', '#E0AB91'], leaf: ['#A7C393', '#D0DDB7'],
-  'money-bag': ['#E9CA92', '#A7BF98'],
-  gift: ['#E7BB9F', '#B7C9A6'], camera: ['#B8C4DA', '#D6DDE9'],
-  notifications: ['#E9CA92', '#D9AD75'], bulb: ['#E9CA92', '#D9AD75'], 'ideas-bulb': ['#E9CA92', '#D9AD75'],
-  bonfire: ['#E4A080', '#E9CA92'], football: ['#CDA182', '#E1BE9F'],
-  hammer: ['#B9C4C3', '#DAAF8A'], construct: ['#B9C4C3', '#DAAF8A'],
+  'request-note': [COLORS.artwork.wood33, COLORS.artwork.sage20],
+  'history-ledger': [COLORS.artwork.wood33, COLORS.artwork.sage35],
+  'selection-check': [COLORS.artwork.sage40, COLORS.artwork.sage35],
+  'neighbor-invite': [COLORS.artwork.wood33, COLORS.artwork.sage35],
+  'neighbors-manage': [COLORS.artwork.sage35, COLORS.artwork.wood33],
+  pencil: [COLORS.artwork.wood18, COLORS.artwork.clay06],
+  'neighbor-sprout': [COLORS.artwork.sage40, COLORS.artwork.sage11],
+  'rank-jester': [COLORS.artwork.sage40, COLORS.artwork.wood33],
+  acorn: [COLORS.artwork.wood30, COLORS.artwork.sage20],
+  'rank-archer': [COLORS.artwork.sage14, COLORS.artwork.honey01],
+  'rank-outlaw': [COLORS.artwork.clay01, COLORS.artwork.clay02],
+  'rank-ranger': [COLORS.artwork.sage13, COLORS.artwork.honey04],
+  'rank-robin': [COLORS.artwork.honey02, COLORS.artwork.honey17],
+  tree: [COLORS.artwork.sage13, COLORS.artwork.wood15],
+  heart: [COLORS.artwork.clay08, COLORS.artwork.clay03], home: [COLORS.artwork.sage49, COLORS.artwork.clay04],
+  grid: [COLORS.artwork.sage49, COLORS.artwork.wood33],
+  handshake: [COLORS.artwork.sage35, COLORS.artwork.wood33],
+  'thumbs-up': [COLORS.artwork.sage35, COLORS.artwork.wood33],
+  'balance-scale': [COLORS.artwork.sage40, COLORS.artwork.honey04],
+  'thumbs-down': [COLORS.artwork.clay06, COLORS.artwork.wood33],
+  laugh: [COLORS.artwork.wood38, COLORS.artwork.clay06], surprised: [COLORS.artwork.sky02, COLORS.artwork.wood38], sad: [COLORS.artwork.sky02, COLORS.artwork.sage74],
+  basket: [COLORS.artwork.wood33, COLORS.artwork.wood16], cube: [COLORS.artwork.wood33, COLORS.artwork.wood16],
+  chatbubble: [COLORS.artwork.sage47, COLORS.artwork.sage74], people: [COLORS.artwork.sage35, COLORS.artwork.clay07],
+  'mail-unread': [COLORS.artwork.wood33, COLORS.artwork.clay06],
+  'messages-read': [COLORS.artwork.sage47, COLORS.artwork.sage74],
+  'chat-question': [COLORS.artwork.sky02, COLORS.artwork.sage74],
+  'chat-reply': [COLORS.artwork.sage47, COLORS.artwork.sage74],
+  trophy: [COLORS.artwork.wood18, COLORS.artwork.honey17],
+  ribbon: [COLORS.artwork.honey17, COLORS.artwork.sage20],
+  star: [COLORS.artwork.honey17, COLORS.artwork.wood18],
+  alarm: [COLORS.artwork.clay06, COLORS.artwork.wood38],
+  time: [COLORS.artwork.wood38, COLORS.artwork.clay06],
+  calendar: [COLORS.artwork.sky04, COLORS.artwork.sky05],
+  person: [COLORS.artwork.sage35, COLORS.artwork.clay07], leaf: [COLORS.artwork.sage18, COLORS.artwork.sage65],
+  'money-bag': [COLORS.artwork.wood38, COLORS.artwork.sage20],
+  gift: [COLORS.artwork.wood42, COLORS.artwork.sage34], camera: [COLORS.artwork.sky04, COLORS.artwork.sky05],
+  notifications: [COLORS.artwork.wood38, COLORS.artwork.wood17], bulb: [COLORS.artwork.wood38, COLORS.artwork.wood17], 'ideas-bulb': [COLORS.artwork.wood38, COLORS.artwork.wood17],
+  bonfire: [COLORS.artwork.clay05, COLORS.artwork.wood38], football: [COLORS.artwork.wood19, COLORS.artwork.wood39],
+  hammer: [COLORS.artwork.stone08, COLORS.artwork.wood28], construct: [COLORS.artwork.stone08, COLORS.artwork.wood28],
 };
 
 export function resolveIconName(name = 'pricetag') {
@@ -305,14 +306,14 @@ export function hasBorrowhoodIcon(name) {
   return Boolean(DRAWINGS[ALIASES[base] || base]);
 }
 
-export function iconSvg(name, { color = '#42594C', fillColor, illustrated = false, selected = false } = {}) {
+export function iconSvg(name, { color = COLORS.artwork.ink01, fillColor, illustrated = false, selected = false } = {}) {
   const base = resolveIconName(name);
   // Only color values belong in attributes; never interpolate names or markup.
-  const safeColor = String(color).replace(/[<>"'&]/g, '') || '#42594C';
+  const safeColor = String(color).replace(/[<>"'&]/g, '') || COLORS.artwork.ink01;
   const safeFill = fillColor == null ? null : String(fillColor).replace(/[<>"'&]/g, '');
-  const palette = PALETTES[base] || ['#C3CFB2', '#DDB89B'];
+  const palette = PALETTES[base] || [COLORS.artwork.sage53, COLORS.artwork.wood34];
   const c = {
-    stroke: illustrated ? '#42594C' : safeColor,
+    stroke: illustrated ? COLORS.artwork.ink01 : safeColor,
     fill: safeFill || (illustrated ? palette[0] : safeColor),
     accent: illustrated ? palette[1] : safeColor,
     opacity: base === 'heart' && !selected ? 0 : illustrated ? 1 : selected ? (['heart', 'bookmark', 'star', 'ellipse'].includes(base) ? 1 : 0.2) : 0,

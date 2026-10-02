@@ -56,13 +56,14 @@ describe('BlurTabBar', () => {
     expect(props.navigation.navigate).toHaveBeenCalledWith('Ideas');
   });
 
-  it.each([0,1])('uses the themed Ideas bulb with tab %i active',activeIndex=>{
+  it.each([0,1])('uses a monochrome Ideas bulb with tab %i active',activeIndex=>{
     const Bar=require('../../../src/components/BlurTabBar').default;
     const screen=render(<Bar {...createTabBarProps(activeIndex)}/>);
     expect(screen.getByLabelText('Ideas')).toBeTruthy();
     const source=screen.getByTestId('TabBar.Ideas.icon').props.source;
     const svg=decodeURIComponent((Array.isArray(source)?source[0]:source).uri);
-    expect(svg).toContain('#E9CA92');
+    expect(svg).toContain(activeIndex === 1 ? COLORS.primary : COLORS.textSecondary);
+    expect(svg).not.toContain(COLORS.artwork.wood38);
   });
 
   it('shows badge count on Inbox tab', () => {

@@ -11,7 +11,7 @@ import {
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '../components/Icon';
 import api from '../services/api';
-import { COLORS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
+import { badgeTint, CARD_SURFACE, COLORS, TRANSACTION_STATUS_LABELS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
 import HapticPressable from '../components/HapticPressable';
 import BlurCard from '../components/BlurCard';
 import AnimatedCard from '../components/AnimatedCard';
@@ -112,12 +112,12 @@ export default function ActivityScreen({ navigation }) {
 
     return (
       <AnimatedCard index={index}>
-        <HapticPressable
+        <HapticPressable scaleDown={item.listing?.photoUrl ? 0.97 : 1}
           style={styles.card}
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
-          haptic="light"
+          haptic={null}
         >
-          <ShimmerImage
+          <ShimmerImage category={item.listing?.category} title={item.listing?.title}
             source={{ uri: item.listing?.photoUrl || null }}
             style={styles.cardImage}
           />
@@ -125,15 +125,15 @@ export default function ActivityScreen({ navigation }) {
             <Text style={styles.cardTitle} numberOfLines={1}>{item.listing?.title || 'Item'}</Text>
 
             <View style={styles.personRow}>
-              <Text style={styles.roleLabel}>{roleLabel}</Text>
-              <Text style={styles.personName}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.roleLabel}>{roleLabel}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.personName}>
                 {otherPerson?.firstName || 'Unknown'} {otherPerson?.lastName?.[0] ? `${otherPerson.lastName[0]}.` : ''}
               </Text>
             </View>
 
             <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={14} color={COLORS.gray[400]} />
-              <Text style={styles.dateText}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.dateText}>
                 {new Date(item.startDate).toLocaleDateString()} - {new Date(item.endDate).toLocaleDateString()}
               </Text>
             </View>
@@ -141,13 +141,13 @@ export default function ActivityScreen({ navigation }) {
             <View style={styles.cardFooter}>
               <View style={[
                 styles.statusBadge,
-                { backgroundColor: getStatusColor(item.status) + '20' }
+                { backgroundColor: badgeTint(getStatusColor(item.status)) }
               ]}>
-                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                <Text maxFontSizeMultiplier={1.4} style={[styles.statusText, { color: getStatusColor(item.status) }]}>
                   {TRANSACTION_STATUS_LABELS[item.status] || item.status}
                 </Text>
               </View>
-              <Text style={styles.amount}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.amount}>
                 ${((item.rentalFee || 0) + (item.depositAmount || 0)).toFixed(2)}
               </Text>
             </View>
@@ -161,8 +161,8 @@ export default function ActivityScreen({ navigation }) {
     <View style={styles.container}>
       {unreadCount > 0 && (
         <View style={styles.unreadHeader}>
-          <Text style={styles.unreadLabel}>{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</Text>
-          <HapticPressable onPress={handleMarkAllRead} disabled={markingRead} haptic="light">
+          <Text maxFontSizeMultiplier={1.4} style={styles.unreadLabel}>{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</Text>
+          <HapticPressable onPress={handleMarkAllRead} disabled={markingRead} haptic={null}>
             <Text style={[styles.markAllRead, markingRead && { opacity: 0.5 }]}>Mark all read</Text>
           </HapticPressable>
         </View>
@@ -178,7 +178,7 @@ export default function ActivityScreen({ navigation }) {
             }}
             haptic={null}
           >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
               {tab.label}
             </Text>
           </HapticPressable>
@@ -196,7 +196,7 @@ export default function ActivityScreen({ navigation }) {
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
-              <Ionicons name="swap-horizontal-outline" size={64} color={COLORS.gray[300]} />
+              <Ionicons illustrated={true} name="swap-horizontal-outline" size={64} color={COLORS.gray[300]} />
               <Text style={styles.emptyTitle}>No activity yet</Text>
               <Text style={styles.emptySubtitle}>
                 {activeTab === 'borrower'
@@ -230,13 +230,15 @@ const styles = StyleSheet.create({
   },
   unreadLabel: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   markAllRead: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.primary,
+    fontFamily: 'DMSans_500Medium',
   },
   tabs: {
     flexDirection: 'row',
@@ -254,12 +256,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   tabActive: {
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.tints.primary15,
   },
   tabText: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
   },
   tabTextActive: {
     color: COLORS.primary,
@@ -268,13 +271,12 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   card: {
+    ...CARD_SURFACE,
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     marginBottom: SPACING.md,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
   },
   cardImage: {
     width: 80,
@@ -288,7 +290,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...TYPOGRAPHY.headline,
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body.fontSize,
     color: COLORS.text,
   },
   personRow: {
@@ -298,11 +300,14 @@ const styles = StyleSheet.create({
   roleLabel: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.textSecondary,
+    fontFamily: 'DMSans_500Medium',
+    fontWeight: '500',
   },
   personName: {
     ...TYPOGRAPHY.caption1,
     color: COLORS.text,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   dateRow: {
     flexDirection: 'row',
@@ -325,12 +330,14 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...TYPOGRAPHY.caption,
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   amount: {
     ...TYPOGRAPHY.bodySmall,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
+    fontFamily: 'DMSans_500Medium',
   },
   emptyContainer: {
     flex: 1,
@@ -349,5 +356,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
     textAlign: 'center',
     paddingHorizontal: SPACING.xxl,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
 });

@@ -1,3 +1,4 @@
+import useReduceMotion from '../../hooks/useReduceMotion';
 import TextInput from '../../components/AppTextInput';
 import { UNSTABLE_usePreventRemove as usePreventRemove, useIsFocused } from '@react-navigation/native';
 import useNavigationTask from '../../hooks/useNavigationTask';
@@ -19,7 +20,6 @@ import HapticPressable from '../../components/HapticPressable';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -50,6 +50,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   const { changePassword, logout } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const { showError } = useError();
+  const reduceMotion = useReduceMotion();
   const [step, setStep] = useState(isChangeMode ? 'password' : 'email');
   const startNavigationTask = useNavigationTask(navigation, step);
   const [email, setEmail] = useState(prefillEmail || '');
@@ -84,7 +85,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   }, [resendCooldown]);
 
   const animateStep = (nextStep) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setStep(nextStep);
   };
 
@@ -100,7 +101,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       if (!isCurrent()) return;
       setResendCooldown(60);
       animateStep('code');
-      haptics.light();
     } catch (error) {
       if (!isCurrent()) return;
       showError({
@@ -164,10 +164,8 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       if (!isCurrent()) return;
       setResetToken(response.resetToken);
       animateStep('password');
-      haptics.success();
     } catch (error) {
       if (!isCurrent()) return;
-      haptics.error();
       setDigits(['', '', '', '', '', '']);
       digitRefs.current[0]?.focus();
       showError({
@@ -186,7 +184,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       await api.forgotPassword(email);
       setResendCooldown(60);
       setDigits(['', '', '', '', '', '']);
-      haptics.light();
       showError({
         type: 'success',
         title: 'Code sent',
@@ -218,7 +215,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       if (isChangeMode) await changePassword(currentPassword, newPassword);
       else await api.resetPassword(resetToken, newPassword);
       if (!isCurrent()) return;
-      haptics.success();
       if (isChangeMode) {
         showError({
           type: 'success',
@@ -236,7 +232,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         if (route?.params?.changeMode) await logout();
       }
     } catch (error) {
-      haptics.error();
       showError({
         type: 'auth',
         message: error.message || 'Reset token expired. Please start over.',
@@ -272,8 +267,8 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         style={styles.content}
       >
         <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} contentContainerStyle={{ paddingBottom: SPACING.xl }}>
-        <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
-          <Text style={styles.backButtonText}>{'\u2039'}</Text>
+        <HapticPressable style={styles.backButton} onPress={handleBack} >
+          <Text maxFontSizeMultiplier={1.4} style={styles.backButtonText}>{'\u2039'}</Text>
         </HapticPressable>
 
         {/* Step dots */}
@@ -316,11 +311,11 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     autoFocus
                   />
                 </View>
-                <HapticPressable
+                <HapticPressable scaleDown={0.97}
                   style={[styles.button, isLoading && styles.buttonDisabled]}
                   onPress={handleSendCode}
                   disabled={isLoading}
-                  haptic="medium"
+
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
@@ -336,7 +331,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
               <>
                 <View style={styles.digitRow}>
                   {digits.map((d, i) => (
-                    <TextInput
+                    <TextInput maxFontSizeMultiplier={1.4}
                       key={i}
                       ref={el => digitRefs.current[i] = el}
                       style={[styles.digitBox, d ? styles.digitBoxFilled : null]}
@@ -362,9 +357,9 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   style={styles.resendButton}
                   onPress={handleResend}
                   disabled={resendCooldown > 0 || isLoading}
-                  haptic="light"
+
                 >
-                  <Text style={[styles.resendButtonText, resendCooldown > 0 && styles.resendDisabled]}>
+                  <Text maxFontSizeMultiplier={1.4} style={[styles.resendButtonText, resendCooldown > 0 && styles.resendDisabled]}>
                     {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
                   </Text>
                 </HapticPressable>
@@ -380,7 +375,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     placeholder="Enter current password" secureTextEntry={!showPassword} autoCapitalize="none"
                     autoCorrect={false} autoComplete="current-password" textContentType="password" />
                   <HapticPressable onPress={() => { setRecovering(true); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); animateStep('email'); }} disabled={isLoading} style={styles.resendButton} accessibilityRole="link">
-                    <Text style={styles.resendButtonText}>Forgot your password?</Text>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.resendButtonText}>Forgot your password?</Text>
                   </HapticPressable>
                 </View>}
                 <View style={styles.inputContainer}>
@@ -402,9 +397,9 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     <HapticPressable
                       onPress={() => setShowPassword(!showPassword)}
                       style={styles.eyeButton}
-                      haptic="light"
+                      haptic="selection"
                     >
-                      <Text style={styles.eyeButtonText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={styles.eyeButtonText}>{showPassword ? 'Hide' : 'Show'}</Text>
                     </HapticPressable>
                   </View>
                   {/* Strength indicator */}
@@ -413,7 +408,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                       <View style={styles.strengthBar}>
                         <View style={[styles.strengthFill, { width: `${strength.width * 100}%`, backgroundColor: strength.color }]} />
                       </View>
-                      <Text style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
+                      <Text maxFontSizeMultiplier={1.4} style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
                     </View>
                   )}
                 </View>
@@ -434,11 +429,11 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   />
                 </View>
 
-                <HapticPressable
+                <HapticPressable scaleDown={0.97}
                   style={[styles.button, isLoading && styles.buttonDisabled]}
                   onPress={handleResetPassword}
                   disabled={isLoading}
-                  haptic="medium"
+
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
@@ -472,9 +467,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   backButtonText: {
-    fontSize: 36,
+    ...TYPOGRAPHY.largeTitle,
     color: COLORS.text,
-    fontWeight: '300',
   },
   dotsRow: {
     flexDirection: 'row',
@@ -517,15 +511,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   label: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.textSecondary,
   },
   input: {
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     backgroundColor: COLORS.surfaceElevated,
     color: COLORS.text,
   },
@@ -539,7 +532,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SPACING.lg,
     paddingVertical: 14,
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.text,
   },
   eyeButton: {
@@ -548,8 +541,7 @@ const styles = StyleSheet.create({
   },
   eyeButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
   },
   strengthRow: {
     flexDirection: 'row',
@@ -569,8 +561,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   strengthLabel: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+    ...TYPOGRAPHY.label,
   },
   digitRow: {
     flexDirection: 'row',
@@ -586,8 +577,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.border,
     textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '400',
+    ...TYPOGRAPHY.title2,
     color: COLORS.text,
   },
   digitBoxFilled: {
@@ -604,7 +594,6 @@ const styles = StyleSheet.create({
   verifyingText: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.primary,
-    fontWeight: '400',
   },
   button: {
     backgroundColor: COLORS.primary,
@@ -626,8 +615,7 @@ const styles = StyleSheet.create({
   },
   resendButtonText: {
     color: COLORS.primary,
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
   },
   resendDisabled: {
     color: COLORS.textMuted,

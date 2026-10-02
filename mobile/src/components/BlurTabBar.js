@@ -3,15 +3,8 @@ import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs
 import { View, Text, Platform, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-} from 'react-native-reanimated';
 import { Ionicons } from './Icon';
-import { COLORS, ANIMATION } from '../utils/config';
-import { haptics } from '../utils/haptics';
+import { COLORS, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from './HapticPressable';
 
 const TAB_ICONS = {
@@ -31,22 +24,6 @@ const TAB_LABELS = {
 };
 
 function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCount = 0 }) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePress = useCallback(() => {
-    if (!isFocused) {
-      scale.value = withSequence(
-        withSpring(1.15, ANIMATION.spring.bouncy),
-        withSpring(1, ANIMATION.spring.default)
-      );
-    }
-    onPress();
-  }, [isFocused, onPress]);
-
   const icons = TAB_ICONS[route.name] || { active: 'ellipse', inactive: 'ellipse-outline' };
   const iconName = isFocused ? icons.active : icons.inactive;
   const label = TAB_LABELS[route.name] || route.name;
@@ -55,9 +32,10 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
 
   return (
     <HapticPressable
-      haptic="selection"
-      onPress={handlePress}
+      haptic={null}
+      onPress={onPress}
       onLongPress={onLongPress}
+      pressedBackgroundColor={COLORS.cardHover}
       style={styles.tabButton}
       scaleDown={1}
       testID={`TabBar.${route.name}`}
@@ -66,31 +44,25 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
       accessibilityLabel={label}
       accessibilityValue={hasUpdate ? { text: route.name === 'Feed' ? 'New posts' : `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}` } : undefined}
     >
-      <Animated.View style={[
-        styles.iconContainer,
-        isFocused && styles.iconContainerActive,
-        isFocused && isSaved && styles.savedIconContainerActive,
-        animatedStyle,
-      ]}>
+      <View style={styles.iconContainer}>
         <Ionicons
           testID={`TabBar.${route.name}.icon`}
           name={iconName}
           size={26}
-          illustrated={!isSaved}
-          selected={isSaved || isFocused}
+          illustrated={false}
+          selected={isSaved && isFocused}
           color={iconColor}
           fillColor={isSaved ? COLORS.saved : undefined}
         />
         {hasUpdate && (route.name === 'Activity'
           ? <View testID="TabBar.Activity.badge" style={styles.unreadBadge}>
-              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
             </View>
           : <View testID="TabBar.Feed.dot" style={styles.unreadDot} />)}
-      </Animated.View>
-      <Text
+      </View>
+      <Text maxFontSizeMultiplier={1.4}
         style={[
           styles.label,
-          isFocused && { fontWeight: '400' },
           { color: isFocused ? COLORS.primary : COLORS.textSecondary },
         ]}
       >
@@ -110,7 +82,6 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
-
         const onPress = () => {
           const event = navigation.emit({
             type: 'tabPress',
@@ -203,15 +174,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
-  iconContainerActive: {
-    backgroundColor: COLORS.primaryMuted,
-  },
-  savedIconContainerActive: {
-    backgroundColor: COLORS.savedMuted,
-  },
   label: {
-    fontSize: 12,
-    fontWeight: '400',
+    ...TYPOGRAPHY.label,
     marginTop: 4,
   },
   unreadDot: {
@@ -225,9 +189,9 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     position: 'absolute', top: -5, right: -2,
-    minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 4,
+    minWidth: 22, minHeight: 22, borderRadius: 11, paddingHorizontal: 4, paddingVertical: 1,
     backgroundColor: COLORS.success, borderWidth: 2, borderColor: COLORS.surface,
     alignItems: 'center', justifyContent: 'center',
   },
-  badgeText: { color: COLORS.surface, fontSize: 11, fontWeight: '400' },
+  badgeText: { color: COLORS.surface, ...TYPOGRAPHY.badge },
 });

@@ -4,7 +4,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import HapticPressable from './HapticPressable';
 import { useAuth } from '../context/AuthContext';
 import { appleCredential, googleCredential, isSignInCancellation } from '../services/socialSignIn';
-import { COLORS } from '../utils/config';
+import { COLORS, TYPOGRAPHY } from '../utils/config';
 
 export default function SocialSignInButtons({ disabled = false, onBusyChange, onLinkRequired }) {
   const { loginWithGoogle, loginWithApple } = useAuth();
@@ -57,7 +57,7 @@ export default function SocialSignInButtons({ disabled = false, onBusyChange, on
           onPress={() => signIn('google')} testID="Auth.google" accessibilityRole="button"
           accessibilityLabel="Continue with Google" accessibilityState={{ disabled: disabled || !!busy }}>
           <Image source={require('../../assets/brand/google-g.png')} style={styles.googleLogo} accessible={false} />
-          <Text style={styles.googleText}>Continue with Google</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.googleText}>Continue with Google</Text>
         </HapticPressable>
         {appleAvailable && <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
@@ -81,10 +81,10 @@ const styles = StyleSheet.create({
   button: { width: '100%', height: 48 },
   appleButton: { marginTop: 12 },
   // Google-approved light styling; keep the provider mark in its original colors.
-  googleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#747775' },
+  googleButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.brand.googleBorder },
   googleLogo: { width: 20, height: 20, resizeMode: 'contain' },
-  googleText: { fontFamily: 'GoogleSansMedium', fontSize: 17, lineHeight: 24, color: '#1F1F1F', includeFontPadding: false },
+  googleText: { ...TYPOGRAPHY.headline, fontFamily: 'GoogleSansMedium', lineHeight: 24, color: COLORS.brand.googleText, includeFontPadding: false },
   progress: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 8 },
-  note: { fontSize: 15, color: COLORS.textSecondary },
-  error: { fontSize: 15, lineHeight: 22, color: COLORS.danger, marginVertical: 8 },
+  note: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary },
+  error: { ...TYPOGRAPHY.subheadline, lineHeight: 22, color: COLORS.danger, marginVertical: 8 },
 });

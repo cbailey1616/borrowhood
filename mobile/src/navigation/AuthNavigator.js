@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { COLORS } from '../utils/config';
+import useReduceMotion from '../hooks/useReduceMotion';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -11,43 +12,45 @@ import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
 const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
+  const reduceMotion = useReduceMotion();
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        animation: reduceMotion ? 'none' : 'slide_from_right',
         contentStyle: { backgroundColor: COLORS.background },
       }}
     >
       <Stack.Screen
         name="Welcome"
         component={WelcomeScreen}
-        options={{ animation: 'fade_from_bottom' }}
+        options={{ animation: reduceMotion ? 'none' : 'fade_from_bottom' }}
       />
       <Stack.Screen
         name="Login"
         component={LoginScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: reduceMotion ? 'none' : 'slide_from_right' }}
       />
       <Stack.Screen
         name="Register"
         component={RegisterScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: reduceMotion ? 'none' : 'slide_from_right' }}
       />
-      <Stack.Screen name="VerifySignupEmail" component={VerifySignupEmailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="VerifySignupEmail" component={VerifySignupEmailScreen} options={{ animation: reduceMotion ? 'none' : 'slide_from_right' }} />
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: reduceMotion ? 'none' : 'slide_from_right' }}
       />
       <Stack.Screen
         name="FindAccount"
         component={FindAccountScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: reduceMotion ? 'none' : 'slide_from_right' }}
       />
       <Stack.Screen
         name="VerifyIdentity"
         component={VerifyIdentityScreen}
-        options={{ animation: 'slide_from_right' }}
+        options={{ animation: reduceMotion ? 'none' : 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

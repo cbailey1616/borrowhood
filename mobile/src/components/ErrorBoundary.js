@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { COLORS } from '../utils/config';
+import { COLORS, TYPOGRAPHY, CARD_SURFACE } from '../utils/config';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -27,14 +27,13 @@ class ErrorBoundary extends React.Component {
       return (
         <View style={styles.container}>
           <View style={styles.content}>
-            <Text style={styles.icon}>!</Text>
             <Text style={styles.title}>Something went wrong</Text>
             <Text style={styles.message}>
               We're sorry for the inconvenience. Please try again.
             </Text>
 
             <Pressable style={styles.retryButton} onPress={this.handleRetry}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.retryButtonText}>Try Again</Text>
             </Pressable>
 
             {__DEV__ && this.state.error && (
@@ -66,32 +65,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   content: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     maxWidth: 300,
   },
-  icon: {
-    fontSize: 48,
-    color: COLORS.warning,
-    marginBottom: 16,
-    fontWeight: '400',
-    width: 80,
-    height: 80,
-    lineHeight: 80,
-    textAlign: 'center',
-    backgroundColor: COLORS.warning + '20',
-    borderRadius: 40,
-  },
   title: {
-    fontSize: 22,
-    fontWeight: '400',
+    ...TYPOGRAPHY.title2,
     color: COLORS.text,
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   message: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 22,
     marginBottom: 24,
   },
@@ -102,11 +88,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   retryButtonText: {
-    fontSize: 16,
-    fontWeight: '400',
+    ...TYPOGRAPHY.button,
     color: COLORS.background,
   },
   errorDetails: {
+    ...CARD_SURFACE,
     marginTop: 24,
     padding: 12,
     backgroundColor: COLORS.surface,
@@ -115,18 +101,18 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   errorTitle: {
-    fontSize: 12,
-    fontWeight: '400',
+    ...TYPOGRAPHY.caption1,
+    fontFamily: 'DMSans_500Medium', fontWeight: '500',
     color: COLORS.danger,
     marginBottom: 8,
   },
   errorText: {
-    fontSize: 11,
+    ...TYPOGRAPHY.caption2,
     color: COLORS.danger,
     fontFamily: 'monospace',
   },
   errorStack: {
-    fontSize: 10,
+    ...TYPOGRAPHY.caption2,
     color: COLORS.textMuted,
     fontFamily: 'monospace',
     marginTop: 8,

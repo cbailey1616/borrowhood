@@ -4,20 +4,25 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import useReduceMotion from '../hooks/useReduceMotion';
 import { COLORS, SPACING, ANIMATION } from '../utils/config';
 
 // Continuous onboarding progress — a thin track with a green gradient fill
 // that springs to step/total as the user advances. Replaces per-screen dots
 // on the form steps for a cohesive sense of progress.
 export default function OnboardingProgressBar({ step, total = 4 }) {
+  const reduceMotion = useReduceMotion();
   const pct = Math.max(0, Math.min(1, step / total));
   const w = useSharedValue(pct);
 
   useEffect(() => {
+    if (reduceMotion) { cancelAnimation(w); w.value = pct; return; }
     w.value = withSpring(pct, ANIMATION.spring.gentle);
-  }, [pct]);
+    return () => cancelAnimation(w);
+  }, [pct, reduceMotion]);
 
   const fillStyle = useAnimatedStyle(() => ({ width: `${w.value * 100}%` }));
 

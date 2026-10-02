@@ -1,6 +1,6 @@
-import ListingTypeIcon from '../components/ListingTypeIcon';
+import ShimmerImage from '../components/ShimmerImage';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import TextInput from '../components/AppTextInput';
@@ -12,7 +12,7 @@ import { Ionicons } from '../components/Icon';
 import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 import { parseCalendarDate, formatCalendarDate } from '../utils/calendarDate';
 import { returnExtensionDates, returnHelpGuidance } from '../utils/returnHelpGuidance';
 import useNavigationTask from '../hooks/useNavigationTask';
@@ -101,19 +101,18 @@ export default function ReturnHelpScreen({route,navigation}) {
   const showSecondary=guidance?.canMessage||!exchangeFirst;
   const renderForm=()=>form&&<LayeredCard style={styles.card}>
     <View style={styles.statusHeading}>
-      {editingDate&&<View style={styles.iconTile}><Ionicons name="calendar-outline" size={28} color={COLORS.primary}/></View>}
       <Text style={styles.statusTitle}>{form.kind==='report'?'Item not returned':editingDate?'Give more time':form.kind==='appeal'?'Appeal this decision':form.kind==='review'?'Review this report':'Your response'}</Text>
     </View>
     {editingDate?<>
       <Text style={styles.body}>Choose a new date you’ve agreed with {guidance.neighbor?.firstName||'your neighbor'}.</Text>
       <View style={styles.currentDate}>
-        <Text style={styles.dateLabel}>Current return date</Text>
-        <Text style={styles.dateValue}>{returnDateLabel(transaction.endDate)||'Not set'}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Current return date</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{returnDateLabel(transaction.endDate)||'Not set'}</Text>
       </View>
       {extensionDates.available?<>
         <HapticPressable accessibilityLabel={`Change return date, ${returnDateLabel(date)}`} accessibilityState={{expanded:picker,disabled:busy}}
           disabled={busy} onPress={()=>setPicker(!picker)} style={[styles.dateButton,picker&&styles.dateButtonActive]}>
-          <View style={styles.dateCopy}><Text style={styles.dateLabel}>New return date</Text><Text style={styles.dateValue}>{returnDateLabel(date)}</Text></View>
+          <View style={styles.dateCopy}><Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>New return date</Text><Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{returnDateLabel(date)}</Text></View>
           <Ionicons name={picker?'chevron-up':'chevron-down'} size={20} color={COLORS.primary}/>
         </HapticPressable>
         {picker&&<View style={styles.datePickerCard}>
@@ -121,7 +120,7 @@ export default function ReturnHelpScreen({route,navigation}) {
             themeVariant="light" textColor={COLORS.text} accentColor={COLORS.primary} style={styles.datePicker} disabled={busy}
             minimumDate={extensionDates.minimumDate} maximumDate={extensionDates.maximumDate}
             onChange={(event,value)=>{if(busy)return;if(Platform.OS!=='ios')setPicker(false);if(event.type!=='dismissed'&&value){setDate(value);setError('');}}}/>
-          {Platform.OS==='ios'&&<HapticPressable accessibilityLabel="Done choosing return date" disabled={busy} style={styles.dateDone} onPress={()=>setPicker(false)}><Text style={styles.dateDoneLabel}>Done</Text></HapticPressable>}
+          {Platform.OS==='ios'&&<HapticPressable accessibilityLabel="Done choosing return date" disabled={busy} style={styles.dateDone} onPress={()=>setPicker(false)}><Text maxFontSizeMultiplier={1.4} style={styles.dateDoneLabel}>Done</Text></HapticPressable>}
         </View>}
         <View style={styles.dateNote}>
           <Ionicons name="notifications-outline" size={20} color={COLORS.primary}/>
@@ -147,8 +146,8 @@ export default function ReturnHelpScreen({route,navigation}) {
     refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} enabled={!busy&&!form} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
     {transaction?.listing ? <LayeredCard radius={RADIUS.xl}>
       <View style={styles.itemSummary}>
-        {transaction.listing.photos?.[0] ? <Image source={{uri:transaction.listing.photos[0]}} style={styles.itemPhoto} resizeMode="cover" />
-          : <View style={[styles.itemPhoto,styles.placeholder]}><ListingTypeIcon listing={transaction} size={36} /></View>}
+        <ShimmerImage source={transaction.listing.photos?.[0] ? { uri: transaction.listing.photos[0] } : null}
+          category={transaction.listing.category} title={transaction.listing.title} style={styles.itemPhoto} />
         <View style={styles.itemCopy}>
           <Text style={styles.eyebrow}>{transaction.isLender?'Your item':'You borrowed'}</Text>
           <Text style={styles.heading}>{transaction.listing.title}</Text>
@@ -156,7 +155,6 @@ export default function ReturnHelpScreen({route,navigation}) {
         </View>
       </View>
     </LayeredCard> : !transactionId&&<View style={styles.pageHeading}>
-      <View style={styles.iconTile}><Ionicons name="return-down-back-outline" size={28} color={COLORS.primary} /></View>
       <Text style={styles.heading}>{admin?'Return reviews':'Return help'}</Text>
     </View>}
     {loading&&!guidance&&!data.reports.length&&<ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading return details"/>}
@@ -168,23 +166,22 @@ export default function ReturnHelpScreen({route,navigation}) {
     {guidance&&!form&&<>
       <View style={[styles.returnStatus,guidance.overdue&&styles.overdueStatus]}>
         <View style={styles.statusHeading}>
-          <Ionicons name={guidance.icon} size={28} color={guidance.overdue?COLORS.warning:COLORS.primary}/>
+          <Ionicons name={guidance.icon} size={22} color={guidance.overdue?COLORS.warning:COLORS.primary}/>
           <Text style={styles.statusTitle}>{guidance.title}</Text>
         </View>
-        {guidance.overdue&&!!guidance.dueLabel&&<Text style={styles.dueDate}>Was due {guidance.dueLabel}</Text>}
+        {guidance.overdue&&!!guidance.dueLabel&&<Text maxFontSizeMultiplier={1.4} style={styles.dueDate}>Was due {guidance.dueLabel}</Text>}
         <Text style={styles.body}>{guidance.detail}</Text>
         <ActionButton label={exchangeFirst?'View exchange':guidance.messageLabel} icon={exchangeFirst?'receipt-outline':'chatbubble-outline'}
           variant="primary" disabled={busy||loading} loading={!exchangeFirst&&messaging} onPress={exchangeFirst?viewExchange:messageNeighbor}/>
       </View>
       {showOptions&&<View style={styles.section}>
-        <Text style={styles.sectionLabel}>Return options</Text>
-        <LayeredCard>
-          {guidance.canExtend&&<ActionRow label="Give more time" description="Agree on a later return date" icon="calendar-outline" disabled={busy||loading} onPress={()=>begin('extend')}/>}
-          {guidance.canRequestTime&&guidance.canMessage&&<ActionRow label="Need more time?" description="Ask the owner about a new date" icon="calendar-outline" disabled={busy||loading||messaging} onPress={messageNeighbor}/>}
-          {(guidance.canExtend||guidance.canRequestTime)&&showSecondary&&<View style={styles.divider}/>}
-          {exchangeFirst&&guidance.canMessage?<ActionRow label={guidance.messageLabel} description="Keep return arrangements in one place" icon="chatbubble-outline" disabled={busy||loading||messaging} onPress={messageNeighbor}/>
-            :!exchangeFirst?<ActionRow label="View exchange" description={guidance.exchangeDescription} icon="receipt-outline" disabled={busy||loading} onPress={viewExchange}/>:null}
-          {guidance.canReport&&!existingReport&&<><View style={styles.divider}/><ActionRow label="Item not returned" description="Ask for help with a missing return" icon="flag-outline" variant="danger" style={styles.reportRow} disabled={busy||loading} onPress={()=>begin('report')}/></>}
+        <Text maxFontSizeMultiplier={1.4} style={styles.sectionLabel}>Return options</Text>
+        <LayeredCard style={styles.groupedActions}>
+          {guidance.canExtend&&<ActionRow label="Give more time" description="Agree on a later return date" icon="calendar-outline" disabled={busy||loading} onPress={()=>begin('extend')} isLast={!(guidance.canRequestTime&&guidance.canMessage)&&!showSecondary&&!(guidance.canReport&&!existingReport)}/>}
+          {guidance.canRequestTime&&guidance.canMessage&&<ActionRow label="Need more time?" description="Ask the owner about a new date" icon="calendar-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!showSecondary&&!(guidance.canReport&&!existingReport)}/>}
+          {exchangeFirst&&guidance.canMessage?<ActionRow label={guidance.messageLabel} description="Keep return arrangements in one place" icon="chatbubble-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!(guidance.canReport&&!existingReport)}/>
+            :!exchangeFirst?<ActionRow label="View exchange" description={guidance.exchangeDescription} icon="receipt-outline" disabled={busy||loading} onPress={viewExchange} isLast={!(guidance.canReport&&!existingReport)}/>:null}
+          {guidance.canReport&&!existingReport&&<ActionRow label="Item not returned" description="Ask for help with a missing return" icon="flag-outline" variant="danger" style={styles.reportRow} disabled={busy||loading} onPress={()=>begin('report')} isLast/>}
         </LayeredCard>
       </View>}
     </>}
@@ -222,7 +219,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     {data.hasMore&&action('Load more',()=>load(data.page+1))}
     <HapticPressable style={styles.policyButton} onPress={()=>setPolicy(!policy)} accessibilityLabel="How return reports work" accessibilityState={{expanded:policy}}>
       <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary}/>
-      <Text style={styles.policyLabel}>How return reports work</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.policyLabel}>How return reports work</Text>
       <Ionicons name={policy?'chevron-up':'chevron-down'} size={18} color={COLORS.textSecondary}/>
     </HapticPressable>
     {policy&&<LayeredCard style={styles.card}>
@@ -238,43 +235,42 @@ export default function ReturnHelpScreen({route,navigation}) {
 const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:COLORS.background},
   content:{padding:20,paddingBottom:50,gap:SPACING.lg,maxWidth:720,width:'100%',alignSelf:'center'},
-  heading:{...TYPOGRAPHY.title3,color:COLORS.primary},title:{...TYPOGRAPHY.title3,color:COLORS.primary},
-  body:{...TYPOGRAPHY.bodySmall,lineHeight:22,color:COLORS.textSecondary},label:{...TYPOGRAPHY.subheadline,color:COLORS.primary},
+  heading:{ ...TYPOGRAPHY.title3, color:COLORS.primary },title:{ ...TYPOGRAPHY.title3, color:COLORS.primary },
+  body:{ ...TYPOGRAPHY.bodySmall, lineHeight:22, color:COLORS.textSecondary },label:{ ...TYPOGRAPHY.buttonSmall, color:COLORS.primary },
   card:{padding:18,gap:SPACING.md},section:{gap:SPACING.md,marginTop:SPACING.sm},
-  notice:{padding:SPACING.lg,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted,gap:SPACING.sm},
-  input:{...TYPOGRAPHY.body,minHeight:120,borderRadius:RADIUS.md,padding:14,color:COLORS.text,backgroundColor:COLORS.surfaceElevated,textAlignVertical:'top'},
-  error:{...TYPOGRAPHY.body,color:COLORS.danger},
-  success:{...TYPOGRAPHY.bodySmall,lineHeight:22,color:COLORS.primary,flex:1},
-  successNotice:{padding:SPACING.lg,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted,flexDirection:'row',alignItems:'center',gap:SPACING.md},
+  notice:{ ...CARD_SURFACE,padding:SPACING.lg,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted,gap:SPACING.sm},
+  input:{ ...TYPOGRAPHY.body, minHeight:120, borderRadius:RADIUS.md, padding:14, color:COLORS.text, backgroundColor:COLORS.surfaceElevated, textAlignVertical:'top' },
+  error:{ ...TYPOGRAPHY.body, color:COLORS.danger },
+  success:{ ...TYPOGRAPHY.bodySmall, lineHeight:22, color:COLORS.primary, flex:1 },
+  successNotice:{ ...CARD_SURFACE,padding:SPACING.lg,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted,flexDirection:'row',alignItems:'center',gap:SPACING.md},
   itemSummary:{flexDirection:'row',alignItems:'center',padding:SPACING.lg,gap:SPACING.lg},
   itemPhoto:{width:76,height:86,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted},
   placeholder:{alignItems:'center',justifyContent:'center'},itemCopy:{flex:1,minWidth:0,gap:SPACING.xs},
-  eyebrow:{...TYPOGRAPHY.footnote,color:COLORS.textSecondary},
+  eyebrow:{ ...TYPOGRAPHY.footnote, color:COLORS.textSecondary },
   sectionHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:SPACING.md},
   refreshButton:{width:44,height:44,borderRadius:RADIUS.full,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},
-  returnStatus:{padding:SPACING.lg,borderRadius:RADIUS.lg,backgroundColor:COLORS.primaryMuted,gap:SPACING.md},
+  returnStatus:{ ...CARD_SURFACE,padding:SPACING.lg,borderRadius:RADIUS.lg,backgroundColor:COLORS.primaryMuted,gap:SPACING.md},
   overdueStatus:{backgroundColor:COLORS.warningMuted},
   statusHeading:{flexDirection:'row',alignItems:'center',gap:SPACING.md},
-  statusTitle:{...TYPOGRAPHY.title3,color:COLORS.primary,flexShrink:1},
-  dueDate:{...TYPOGRAPHY.footnote,color:COLORS.warning},
-  sectionLabel:{...TYPOGRAPHY.headline,color:COLORS.primary},
-  divider:{height:1,backgroundColor:COLORS.border,marginHorizontal:SPACING.lg},
+  statusTitle:{ ...TYPOGRAPHY.title3, color:COLORS.primary, flexShrink:1 },
+  dueDate:{ ...TYPOGRAPHY.footnote, color:COLORS.warning },
+  sectionLabel:{ ...TYPOGRAPHY.headline, color:COLORS.primary },
+  groupedActions:{overflow:'hidden'},
   reportRow:{borderWidth:0},
   quietStatus:{flex:1,flexDirection:'row',alignItems:'center',gap:SPACING.sm},
   quietStatusText:{flex:1},
   policyButton:{minHeight:44,flexDirection:'row',alignItems:'center',gap:SPACING.sm},
-  policyLabel:{...TYPOGRAPHY.footnote,color:COLORS.textSecondary,flex:1},
-  iconTile:{width:48,height:48,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted,alignItems:'center',justifyContent:'center'},
+  policyLabel:{ ...TYPOGRAPHY.buttonCaption, color:COLORS.textSecondary, flex:1 },
   pageHeading:{flexDirection:'row',alignItems:'center',gap:SPACING.md},
   currentDate:{paddingHorizontal:SPACING.sm,gap:SPACING.xs},
-  dateLabel:{...TYPOGRAPHY.footnote,color:COLORS.textSecondary},
-  dateValue:{...TYPOGRAPHY.headline,color:COLORS.primary},
+  dateLabel:{ ...TYPOGRAPHY.buttonCaption, color:COLORS.textSecondary },
+  dateValue:{ ...TYPOGRAPHY.headline, color:COLORS.primary },
   dateCopy:{flex:1,minWidth:0,gap:SPACING.xs},
   dateButton:{minHeight:76,padding:SPACING.md,borderWidth:1,borderColor:COLORS.primary,borderRadius:RADIUS.md,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:SPACING.md},
   dateButtonActive:{backgroundColor:COLORS.primaryMuted},
   datePickerCard:{borderRadius:RADIUS.md,backgroundColor:COLORS.surfaceElevated,borderWidth:1,borderColor:COLORS.border,overflow:'hidden'},
   datePicker:{width:'100%',backgroundColor:COLORS.surfaceElevated},
   dateDone:{minHeight:44,minWidth:68,alignSelf:'flex-end',alignItems:'center',justifyContent:'center',margin:SPACING.sm,borderRadius:RADIUS.full,backgroundColor:COLORS.primaryMuted},
-  dateDoneLabel:{...TYPOGRAPHY.headline,color:COLORS.primary},
+  dateDoneLabel:{ ...TYPOGRAPHY.headline, color:COLORS.primary },
   dateNote:{flexDirection:'row',alignItems:'flex-start',gap:SPACING.sm,paddingVertical:SPACING.sm},
 });

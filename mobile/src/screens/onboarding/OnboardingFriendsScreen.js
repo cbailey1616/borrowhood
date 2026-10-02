@@ -12,10 +12,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
-  Share,
-} from 'react-native';
+  Share, } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import useReduceMotion from '../../hooks/useReduceMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '../../components/Icon';
@@ -32,6 +32,7 @@ import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } 
 export default function OnboardingFriendsScreen({ navigation, route }) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const joinedCommunityId = route.params?.joinedCommunityId;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -201,19 +202,19 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
     addedFriends.includes(userId);
 
   const renderUserRow = (item) => (
-    <View style={[styles.friendCard, styles.cardBox]} key={item.id}>
+    <View style={styles.friendCard} key={item.id}>
       <View style={styles.friendRow}>
         <ShimmerImage placeholderIcon="person"
           source={{ uri: item.profilePhotoUrl || null }}
           style={styles.friendAvatar}
         />
         <View style={styles.friendInfo}>
-          <Text style={styles.friendName}>{item.firstName} {item.lastName}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.friendName}>{item.firstName} {item.lastName}</Text>
           {item.city && <Text style={styles.friendLocation}>{item.city}, {item.state}</Text>}
         </View>
         {item.isFriend || isFriendOrAdded(item.id) ? (
           <View style={styles.requestedBadge}>
-            <Text style={styles.requestedText}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.requestedText}>
               {item.isFriend ? 'Friends' : 'Requested'}
             </Text>
           </View>
@@ -225,9 +226,9 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
             haptic="light"
           >
             {addingFriendId === item.id ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={COLORS.spinner} size="small" />
             ) : (
-              <Ionicons name="person-add" size={18} color="#fff" />
+              <Ionicons name="person-add-outline" size={22} illustrated={false} color={COLORS.primary} />
             )}
           </HapticPressable>
         )}
@@ -238,17 +239,17 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
   const renderContactRow = (contact) => (
     <View style={styles.contactRow} key={contact.id}>
       <View style={styles.contactAvatar}>
-        <Text style={styles.contactInitial}>{contact.name.charAt(0).toUpperCase()}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.contactInitial}>{contact.name.charAt(0).toUpperCase()}</Text>
       </View>
       <View style={styles.friendInfo}>
-        <Text style={styles.friendName}>{contact.name}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.friendName}>{contact.name}</Text>
       </View>
       <HapticPressable
         style={styles.inviteButton}
         onPress={() => handleInviteContact(contact)}
         haptic="light"
       >
-        <Text style={styles.inviteButtonText}>Invite</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.inviteButtonText}>Invite</Text>
       </HapticPressable>
     </View>
   );
@@ -270,10 +271,10 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
         onPress={() => navigation.goBack()}
         haptic="light"
       >
-        <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+        <Ionicons name="chevron-back" size={22} illustrated={false} color={COLORS.text} />
       </HapticPressable>
 
-      <Animated.View style={styles.stepContainer} entering={FadeInDown.duration(500).springify().damping(18)}>
+      <Animated.View style={styles.stepContainer} entering={reduceMotion ? undefined : FadeIn.duration(180)}>
         <Text style={styles.title}>Find Friends</Text>
         <Text style={styles.subtitle}>
           Add friends to share items just with people you know
@@ -299,9 +300,9 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               {isSyncingContacts ? (
                 <ActivityIndicator color={COLORS.spinner} size="small" />
               ) : (
-                <Ionicons name="call-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="call-outline" size={22} illustrated={false} color={COLORS.primary} />
               )}
-              <Text style={styles.actionButtonText}>Sync Contacts</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Sync Contacts</Text>
             </HapticPressable>
 
             <HapticPressable
@@ -310,8 +311,8 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               haptic="light"
               testID="Onboarding.Friends.invite"
             >
-              <Ionicons name="share-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.actionButtonText}>Invite Friends</Text>
+              <Ionicons name="share-outline" size={22} illustrated={false} color={COLORS.primary} />
+              <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Invite Friends</Text>
             </HapticPressable>
           </View>
         )}
@@ -357,7 +358,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
                 <ActivityIndicator color={COLORS.spinner} style={styles.loader} />
               ) : (
                 <View style={styles.emptyPrompt}>
-                  <Ionicons name="people-outline" size={40} color={COLORS.gray[600]} />
+                  <Ionicons name="people-outline" size={22} illustrated={false} color={COLORS.gray[600]} />
                   <Text style={styles.emptyText}>
                     Search for friends or sync your contacts to find them
                   </Text>
@@ -371,6 +372,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
       {!keyboardVisible && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
           <HapticPressable
+            scaleDown={0.97}
             onPress={handleContinue}
             haptic="medium"
             testID="Onboarding.Friends.continue"
@@ -384,7 +386,7 @@ export default function OnboardingFriendsScreen({ navigation, route }) {
               <Text style={styles.primaryButtonText}>
                 {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
               </Text>
-              {addedFriends.length > 0 && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+              {addedFriends.length > 0 && <Ionicons name="arrow-forward" size={22} illustrated={false} color={COLORS.white} />}
             </LinearGradient>
           </HapticPressable>
         </View>
@@ -444,18 +446,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.surface,
     paddingVertical: SPACING.md,
     borderRadius: RADIUS.md,
   },
-  actionButtonText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  actionButtonText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
-  sectionHeader: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  sectionHeader: { ...TYPOGRAPHY.caption1,
     color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -466,12 +464,16 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxl,
   },
   list: {
+    ...CARD_SURFACE,
     flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.border },
   friendCard: {
-    marginBottom: SPACING.sm,
     padding: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
   },
   friendRow: {
     flexDirection: 'row',
@@ -480,16 +482,14 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.gray[700],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryMuted,
   },
   friendInfo: {
     flex: 1,
     marginLeft: SPACING.md,
   },
-  friendName: {
-    ...TYPOGRAPHY.subheadline,
-    fontWeight: '400',
+  friendName: { ...TYPOGRAPHY.buttonSmall,
     color: COLORS.text,
   },
   friendLocation: {
@@ -497,10 +497,10 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primary,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -512,9 +512,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  requestedText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  requestedText: { ...TYPOGRAPHY.label,
     color: COLORS.textSecondary,
   },
   contactRow: {
@@ -525,8 +523,8 @@ const styles = StyleSheet.create({
   contactAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.gray[700],
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -538,11 +536,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs + 2,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
   },
-  inviteButtonText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  inviteButtonText: { ...TYPOGRAPHY.label,
     color: COLORS.primary,
   },
   emptyPrompt: {
@@ -578,9 +574,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
 });

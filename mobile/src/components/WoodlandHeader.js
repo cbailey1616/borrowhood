@@ -6,8 +6,8 @@ import WoodlandBackdrop from './WoodlandBackdrop';
 import { COLORS, SPACING } from '../utils/config';
 
 const WOODLAND_TITLE_STYLE = {
-  fontFamily: 'DMSans_700Bold',
-  fontWeight: '700',
+  fontFamily: 'DMSans_600SemiBold',
+  fontWeight: '600',
   letterSpacing: 0,
 };
 
@@ -18,7 +18,7 @@ export default function WoodlandHeader({ titleStyle, titleRowStyle, children, ar
     {children && artwork ? <View>
       <LinearGradient testID="Woodland.tabs.fade" pointerEvents="none" accessible={false}
         importantForAccessibility="no-hide-descendants"
-        colors={[`${COLORS.background}00`, `${COLORS.background}EF`, `${COLORS.background}F5`, `${COLORS.background}00`]}
+        colors={[COLORS.tints.background00, COLORS.tints.backgroundEF, COLORS.tints.backgroundF5, COLORS.tints.background00]}
         locations={[0, 0.3, 0.7, 1]} style={styles.tabFade} />
       {children}
     </View> : children}

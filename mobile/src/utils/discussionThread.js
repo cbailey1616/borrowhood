@@ -33,24 +33,24 @@ export function composerScrollOffset(offset, viewport, composer, margin = 8) {
 export { REACTION_OPTIONS as DISCUSSION_EMOJIS } from './reactions';
 
 export const DISCUSSION_DARK_COLORS = {
-  ...COLORS, background: '#151D19', surface: '#202B24', surfaceElevated: '#29362C',
-  text: '#EEF2E9', textSecondary: '#CDD6CC', textMuted: '#A0ABA1',
-  primary: '#BCD7A5', primaryDark: '#CFE4BC', primaryLight: '#859D71', primaryMuted: '#30432F',
-  border: '#435043', borderLight: '#354238', separator: '#354238', danger: '#F0A493',
+  ...COLORS, background: COLORS.discussionDark.background, surface: COLORS.discussionDark.surface, surfaceElevated: COLORS.discussionDark.surfaceElevated,
+  text: COLORS.discussionDark.text, textSecondary: COLORS.discussionDark.textSecondary, textMuted: COLORS.discussionDark.textMuted,
+  primary: COLORS.discussionDark.primary, primaryDark: COLORS.discussionDark.primaryDark, primaryLight: COLORS.discussionDark.primaryLight, primaryMuted: COLORS.discussionDark.primaryMuted,
+  border: COLORS.discussionDark.border, borderLight: COLORS.discussionDark.separator, separator: COLORS.discussionDark.separator, danger: COLORS.discussionDark.danger,
 };
-export function sortDiscussion(items, order = 'top') {
+// Comments always follow the conversation: older first, newest at the bottom.
+// Stable ID ordering makes pagination deterministic when timestamps match.
+export function sortDiscussion(items) {
   return [...items].sort((a,b) => {
-    const dates = (new Date(b.createdAt).getTime() || 0) - (new Date(a.createdAt).getTime() || 0);
-    if (order === 'oldest') return -dates || String(a.id).localeCompare(String(b.id));
-    if (order === 'newest') return dates || String(b.id).localeCompare(String(a.id));
-    return (b.score || 0) - (a.score || 0) || dates || String(b.id).localeCompare(String(a.id));
+    const dates = (new Date(a.createdAt).getTime() || 0) - (new Date(b.createdAt).getTime() || 0);
+    return dates || String(a.id).localeCompare(String(b.id));
   });
 }
 
 // Flatten for FlatList virtualization, keeping real ancestry separate from visual depth.
-export function flattenDiscussion(posts, replies, expanded, collapsed, order) {
+export function flattenDiscussion(posts, replies, expanded, collapsed) {
   const rows = [];
-  for (const root of sortDiscussion(posts, order)) {
+  for (const root of sortDiscussion(posts)) {
     rows.push({ ...root, rootId: root.id, depth: 0 });
     if (!expanded.has(root.id) || collapsed.has(root.id)) continue;
     const children = new Map();
@@ -62,7 +62,7 @@ export function flattenDiscussion(posts, replies, expanded, collapsed, order) {
     }
     const visited = new Set([root.id]);
     const visit = (parentId, depth) => {
-      for (const child of sortDiscussion(children.get(parentId) || [], order)) {
+      for (const child of sortDiscussion(children.get(parentId) || [])) {
         if (visited.has(child.id)) continue;
         visited.add(child.id);
         rows.push({ ...child, rootId: root.id, depth });
@@ -72,23 +72,6 @@ export function flattenDiscussion(posts, replies, expanded, collapsed, order) {
     visit(root.id, 1);
   }
   return rows;
-}
-
-// Suggestions only use identities already visible in this discussion, never a global directory.
-export function discussionMentions(posts, replies, currentUser) {
-  const users = new Map();
-  const add = user => { if (user?.id) users.set(user.id, user); };
-  add(currentUser);
-  posts.forEach(post => add(post.user));
-  Object.values(replies).flat().forEach(reply => add(reply.user));
-  const handles = new Map();
-  return [...users.values()].map(user => {
-    const name = user.displayName || [user.firstName,user.lastName].filter(Boolean).join(' ') || 'Neighbor';
-    const base = name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'') || 'Neighbor';
-    const handle = handles.has(base.toLowerCase()) ? `${base}_${String(user.id).replace(/[^a-zA-Z0-9]/g,'').slice(-4)}` : base;
-    handles.set(handle.toLowerCase(), user.id);
-    return { ...user, name, handle };
-  });
 }
 
 // Remove the whole branch so orphaned descendants cannot reappear at the root.

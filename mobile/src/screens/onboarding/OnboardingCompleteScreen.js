@@ -3,7 +3,8 @@ import { ScrollView } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import useReduceMotion from '../../hooks/useReduceMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { Ionicons } from '../../components/Icon';
@@ -16,6 +17,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function OnboardingCompleteScreen() {
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const { user, refreshUser } = useAuth();
   const confettiRef = useRef(null);
 
@@ -70,16 +72,16 @@ export default function OnboardingCompleteScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + SPACING.xl }]}>
       <WoodlandBackdrop fullScreen />
-      <ConfettiCannon
+      {!reduceMotion && <ConfettiCannon
         ref={confettiRef}
         count={80}
         origin={{ x: -10, y: 0 }}
         fadeOut
         autoStart
-        colors={[COLORS.primary, COLORS.primaryLight, COLORS.warning, '#fff']}
-      />
+        colors={[COLORS.primary, COLORS.primaryLight, COLORS.warning, COLORS.white]}
+      />}
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} bounces={false}><Animated.View style={styles.content} entering={FadeInDown.duration(550).springify().damping(16)}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} bounces={false}><Animated.View style={styles.content} entering={reduceMotion ? undefined : FadeIn.duration(180)}>
         <View style={styles.checkContainer}>
           <HeroIcon icon="checkmark" size={92} glow />
         </View>
@@ -99,7 +101,7 @@ export default function OnboardingCompleteScreen() {
 
         {isFounder && (
           <View style={styles.founderBadge}>
-            <Ionicons name="flag" size={16} color={COLORS.warning} />
+            <Ionicons name="flag-outline" size={22} illustrated={false} color={COLORS.warning} />
             <Text style={styles.founderText}>Neighborhood Founder</Text>
           </View>
         )}
@@ -107,6 +109,7 @@ export default function OnboardingCompleteScreen() {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
+          scaleDown={0.97}
           onPress={handleStartExploring}
           disabled={isCompleting}
           haptic="success"
@@ -121,7 +124,7 @@ export default function OnboardingCompleteScreen() {
             <Text style={styles.primaryButtonText}>
               {isCompleting ? 'Setting up...' : 'Start Exploring'}
             </Text>
-            {!isCompleting && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+            {!isCompleting && <Ionicons name="arrow-forward" size={22} illustrated={false} color={COLORS.white} />}
           </LinearGradient>
         </HapticPressable>
       </View>
@@ -159,15 +162,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: COLORS.tints.warning20,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.full,
     marginTop: SPACING.xl,
   },
-  founderText: {
-    ...TYPOGRAPHY.caption1,
-    fontWeight: '400',
+  founderText: { ...TYPOGRAPHY.caption1,
     color: COLORS.warning,
   },
   footer: {
@@ -186,9 +187,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  primaryButtonText: {
-    ...TYPOGRAPHY.headline,
-    fontSize: 18,
-    color: '#fff',
+  primaryButtonText: { ...TYPOGRAPHY.headline,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    color: COLORS.white,
   },
 });

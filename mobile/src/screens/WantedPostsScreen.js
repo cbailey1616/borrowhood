@@ -65,7 +65,7 @@ export default function WantedPostsScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <HapticPressable
       onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-      haptic="light"
+
     >
       <View style={[styles.cardBox, styles.card]}>
         <View style={styles.cardContent}>
@@ -78,7 +78,7 @@ export default function WantedPostsScreen({ navigation }) {
               <Text style={styles.requesterName}>
                 {item.requester.firstName} {item.requester.lastName[0]}.
               </Text>
-              <Text style={styles.timeAgo}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.timeAgo}>
                 {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
@@ -94,7 +94,7 @@ export default function WantedPostsScreen({ navigation }) {
           {(item.neededFrom || item.neededUntil) && (
             <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.dateText}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.dateText}>
                 {formatDateRange(item.neededFrom, item.neededUntil)}
               </Text>
             </View>
@@ -102,17 +102,17 @@ export default function WantedPostsScreen({ navigation }) {
 
           {item.category && (
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.categoryText}>{item.category}</Text>
             </View>
           )}
 
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.haveThisButton}
             onPress={() => setSelectedRequest(item)}
-            haptic="medium"
+
           >
             <RequestTypeIcon type="service" size={18} />
-            <Text style={styles.haveThisText}>I Can Help</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.haveThisText}>I Can Help</Text>
           </HapticPressable>
         </View>
       </View>
@@ -133,7 +133,7 @@ export default function WantedPostsScreen({ navigation }) {
           returnKeyType="search"
         />
         {searchQuery.length > 0 && (
-          <HapticPressable onPress={() => setSearchQuery('')} haptic="light">
+          <HapticPressable onPress={() => setSearchQuery('')} >
             <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
           </HapticPressable>
         )}
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -220,7 +220,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     ...TYPOGRAPHY.body,
-    fontSize: 16,
     color: COLORS.text,
   },
   listContent: {
@@ -249,8 +248,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   requesterName: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.text,
   },
   timeAgo: {
@@ -264,8 +262,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   cardDescription: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     lineHeight: 20,
     marginBottom: SPACING.md,
@@ -303,8 +300,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   haveThisText: {
-    ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    ...TYPOGRAPHY.buttonCaption,
     color: COLORS.primary,
   },
   emptyContainer: {
@@ -319,8 +315,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.lg,
   },
   emptySubtitle: {
-    ...TYPOGRAPHY.footnote,
-    fontSize: 14,
+    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
     textAlign: 'center',

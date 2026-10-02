@@ -5,7 +5,9 @@ import Animated, {
   withTiming,
   withDelay,
   Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 // Staggered mount entrance — items fade + rise into place as they appear.
 // Delay is capped so far-down rows don't wait an eternity, and so recycled
@@ -16,15 +18,18 @@ export default function AnimatedCard({
   style,
   children,
 }) {
-  const progress = useSharedValue(0);
+  const reduceMotion = useReduceMotion();
+  const progress = useSharedValue(1);
 
   useEffect(() => {
+    if (reduceMotion) { cancelAnimation(progress); progress.value = 1; return; }
     const staggered = Math.min(index, 8) * delay;
     progress.value = withDelay(
       staggered,
       withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) })
     );
-  }, []);
+    return () => cancelAnimation(progress);
+  }, [reduceMotion, index, delay]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,

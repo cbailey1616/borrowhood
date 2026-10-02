@@ -9,8 +9,7 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
-  Alert,
-} from 'react-native';
+  Alert, } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Application from 'expo-application';
 import appConfig from '../../app.json';
@@ -24,7 +23,6 @@ import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
-import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
@@ -36,8 +34,7 @@ export default function ProfileScreen({ navigation, route }) {
     isBiometricsEnabled,
     biometricType,
     disableBiometrics,
-    refreshBiometrics,
-  } = useBiometrics();
+    refreshBiometrics, } = useBiometrics();
 
   const [biometricToggle, setBiometricToggle] = useState(isBiometricsEnabled);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -58,7 +55,7 @@ export default function ProfileScreen({ navigation, route }) {
   }, [isBiometricsEnabled]);
 
   const handleChangePhoto = () => {
-    haptics.medium();
+
     setShowPhotoSheet(true);
   };
 
@@ -128,7 +125,6 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const handleLogout = () => {
-    haptics.warning();
     setShowLogoutSheet(true);
   };
 
@@ -137,7 +133,7 @@ export default function ProfileScreen({ navigation, route }) {
     try {
       const result = await api.deleteAccount();
       await disableBiometrics();
-      haptics.success();
+
       await logout({ sessionExpired: true });
       if (result?.appleRevocation?.status === 'manual') {
         Alert.alert('Account deleted', 'Your Borrowhood account has been deleted. To also disconnect your earlier Apple sign-in, open Settings → your name → Sign in with Apple → Borrowhood → Delete.', [
@@ -165,14 +161,14 @@ export default function ProfileScreen({ navigation, route }) {
       >
         {__DEV__ && (
           <View style={styles.previewBanner} testID="Profile.localPreview">
-            <Text style={styles.previewTitle}>Local preview · UI 05</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.previewTitle}>Local preview · UI 05</Text>
             <Text style={styles.previewDescription}>Private inventory, clearer requests & saved drafts</Text>
           </View>
         )}
         {/* Profile Header */}
         <LayeredCard style={styles.header} radius={RADIUS.lg}>
           <View style={styles.headerInner}>
-            <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null} accessibilityLabel="Change profile photo">
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null} accessibilityLabel="Change profile photo">
               <View style={styles.avatarContainer}>
                 <ShimmerImage placeholderIcon="person"
                   source={{ uri: user?.profilePhotoUrl || null }}
@@ -180,11 +176,11 @@ export default function ProfileScreen({ navigation, route }) {
                 />
                 {uploadingPhoto ? (
                   <View style={styles.avatarOverlay}>
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={COLORS.white} />
                   </View>
                 ) : (
                   <View style={styles.avatarBadge}>
-                    <Ionicons name="create-outline" size={14} color="#fff" />
+                    <Ionicons name="create-outline" size={14} color={COLORS.white} />
                   </View>
                 )}
               </View>
@@ -201,10 +197,10 @@ export default function ProfileScreen({ navigation, route }) {
 
         {/* Verification Banner */}
         {!user?.isVerified && (
-          <HapticPressable
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={styles.verifyBanner}
             onPress={() => navigation.navigate('IdentityVerification', { source: 'profile' })}
-            haptic="medium"
+            haptic={null}
             testID="Profile.verifyBanner"
             accessibilityLabel="Verify Your Identity"
           >
@@ -246,7 +242,7 @@ export default function ProfileScreen({ navigation, route }) {
           <GroupedListItem
             icon="people-outline"
             title="Friends"
-            onPress={() => navigation.navigate('Friends')}
+            onPress={() => navigation.navigate("Friends")}
           />
         </GroupedListSection>
 
@@ -313,7 +309,7 @@ export default function ProfileScreen({ navigation, route }) {
           <GroupedListItem
             icon="trash-outline"
             title="Delete Account"
-            onPress={() => { haptics.warning(); setShowDeleteSheet(true); }}
+            onPress={() => setShowDeleteSheet(true)}
             destructive
             accessibilityLabel="Delete account"
             accessibilityRole="button"
@@ -372,7 +368,7 @@ export default function ProfileScreen({ navigation, route }) {
         title="Sign Out"
         message="Are you sure you want to sign out?"
         actions={[
-          { label: 'Sign Out', destructive: true, onPress: logout },
+          { label: "Sign Out", destructive: true, onPress: logout },
         ]}
       />
 
@@ -397,7 +393,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
-  previewTitle: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.primaryDark },
+  previewTitle: { ...TYPOGRAPHY.buttonSmall,  color: COLORS.primaryDark , },
   previewDescription: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: 2 },
   container: {
     flex: 1,
@@ -431,7 +427,7 @@ const styles = StyleSheet.create({
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: COLORS.photoOverlayMedium,
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
@@ -464,27 +460,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.warningMuted,
     borderWidth: 1,
-    borderColor: 'rgba(184, 134, 11, 0.3)',
+    borderColor: COLORS.goldBorder,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,
     gap: SPACING.md,
   },
   verifyBannerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(184, 134, 11, 0.15)',
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   verifyBannerText: {
     flex: 1,
   },
-  verifyBannerTitle: {
-    ...TYPOGRAPHY.headline,
+  verifyBannerTitle: { ...TYPOGRAPHY.headline,
     color: COLORS.text,
-    fontSize: 15,
+    fontSize: TYPOGRAPHY.subheadline.fontSize,
   },
   verifyBannerSubtitle: {
     ...TYPOGRAPHY.caption1,

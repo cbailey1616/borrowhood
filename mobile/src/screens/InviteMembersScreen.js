@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Share, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
 import LayeredCard from '../components/LayeredCard';
 import { Ionicons } from '../components/Icon';
@@ -33,15 +32,14 @@ export default function InviteMembersScreen({ route }) {
     } finally { setBusy(false); }
   };
   return <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACING.xl }]}>
-    <View style={styles.art}><HeroIcon icon="people" size={96} /></View>
     <Text style={styles.title}>Good neighbors start here.</Text>
     <Text style={styles.body}>{name ? `Invite someone to share in ${name}. They can download Borrowhood, then find your neighborhood and ask to join.` : 'Invite a neighbor to Borrowhood, then connect in the app.'}</Text>
     <LayeredCard radius={RADIUS.xl} style={styles.card}>
-      <HapticPressable style={styles.primary} disabled={busy} onPress={() => invite(true)}>
+      <HapticPressable scaleDown={0.97} style={styles.primary} disabled={busy} onPress={() => invite(true)}>
         <Ionicons name="chatbubble" size={22} color={COLORS.surface} />
         <Text style={styles.primaryText}>Invite by text</Text>
       </HapticPressable>
-      <HapticPressable style={styles.secondary} disabled={busy} onPress={() => invite(false)}>
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.secondary} disabled={busy} onPress={() => invite(false)}>
         <Ionicons name="share-outline" size={22} color={COLORS.primary} />
         <Text style={styles.secondaryText}>Share another way</Text>
       </HapticPressable>
@@ -53,13 +51,12 @@ export default function InviteMembersScreen({ route }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: SPACING.xl, gap: SPACING.lg },
-  art: { alignItems: 'center', paddingVertical: SPACING.lg },
-  title: { ...TYPOGRAPHY.h1, color: COLORS.text, textAlign: 'center' },
-  body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
+  title: { ...TYPOGRAPHY.h1, color: COLORS.text },
+  body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
   card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, padding: SPACING.lg, gap: SPACING.md },
   primary: { minHeight: 52, padding: SPACING.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, backgroundColor: COLORS.primary, borderRadius: RADIUS.md },
   primaryText: { ...TYPOGRAPHY.button, color: COLORS.surface, flexShrink: 1 },
   secondary: { minHeight: 52, padding: SPACING.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, borderColor: COLORS.borderGreen, borderWidth: 1, borderRadius: RADIUS.md },
   secondaryText: { ...TYPOGRAPHY.button, color: COLORS.primary, flexShrink: 1 },
-  hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
+  hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
 });

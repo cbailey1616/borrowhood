@@ -82,19 +82,19 @@ export default function CommunityLibraryScreen({ navigation }) {
 
   const renderItem = ({ item, index }) => (
     <AnimatedCard index={index}>
-      <HapticPressable
+      <HapticPressable scaleDown={item.photoUrl ? 0.97 : 1}
         style={styles.itemCardPressable}
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-        haptic="light"
+        haptic={null}
       >
         <View style={[styles.cardBox, styles.itemCard]}>
-          <ShimmerImage
+          <ShimmerImage category={item.category} title={item.title}
             source={{ uri: item.photoUrl || null }}
             style={styles.itemImage}
           />
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.itemCondition}>Condition: {item.condition}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.itemCondition}>Condition: {item.condition}</Text>
             {item.donatedBy && (
               <Text style={styles.donatedBy}>Donated by {item.donatedBy}</Text>
             )}
@@ -103,7 +103,7 @@ export default function CommunityLibraryScreen({ navigation }) {
                 styles.statusBadge,
                 item.isAvailable ? styles.statusAvailable : styles.statusUnavailable
               ]}>
-                <Text style={[
+                <Text maxFontSizeMultiplier={1.4} style={[
                   styles.statusText,
                   item.isAvailable ? styles.statusTextAvailable : styles.statusTextUnavailable
                 ]}>
@@ -114,20 +114,20 @@ export default function CommunityLibraryScreen({ navigation }) {
             </View>
           </View>
           {item.isAvailable ? (
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               style={styles.checkoutButton}
               onPress={() => handleCheckout(item)}
-              haptic="medium"
+              haptic={null}
             >
-              <Text style={styles.checkoutButtonText}>Check Out</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.checkoutButtonText}>Check Out</Text>
             </HapticPressable>
           ) : item.isCheckedOutByMe ? (
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               style={styles.returnButton}
               onPress={() => handleReturn(item)}
-              haptic="medium"
+              haptic={null}
             >
-              <Text style={styles.returnButtonText}>Return</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.returnButtonText}>Return</Text>
             </HapticPressable>
           ) : null}
         </View>
@@ -177,18 +177,18 @@ export default function CommunityLibraryScreen({ navigation }) {
           <Text style={styles.emptyText}>
             Be the first to donate an item to the community library!
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.donateButton}
             onPress={() => navigation.navigate('Main', { screen: 'MyItems' })}
-            haptic="medium"
+            haptic={null}
           >
-            <Text style={styles.donateButtonText}>Donate an Item</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.donateButtonText}>Donate an Item</Text>
           </HapticPressable>
         </View>
       )}
 
       <View style={[styles.cardBox, styles.infoCard]}>
-        <Text style={styles.infoIcon}>ℹ️</Text>
+        <Ionicons name="information-circle-outline" size={22} color={COLORS.primary} style={styles.infoIcon} />
         <View style={styles.infoContent}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
@@ -236,13 +236,15 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.h1,
-    fontSize: 24,
+    fontSize: TYPOGRAPHY.title2.fontSize,
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
   subtitle: {
     ...TYPOGRAPHY.footnote,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   listContent: {
     padding: SPACING.lg,
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   itemCardPressable: {
     marginBottom: SPACING.md,
   },
-  cardBox: { ...CARD_SURFACE, borderWidth: 1, borderColor: COLORS.borderLight },
+  cardBox: { ...CARD_SURFACE },
   itemCard: {
     flexDirection: 'row',
     borderRadius: RADIUS.md,
@@ -293,13 +295,15 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   statusAvailable: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.tints.primary20,
   },
   statusUnavailable: {
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: COLORS.tints.warning20,
   },
   statusText: {
     ...TYPOGRAPHY.caption,
+    fontWeight: '500',
+    fontFamily: 'DMSans_500Medium',
   },
   statusTextAvailable: {
     color: COLORS.primary,
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
   },
   checkoutButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.footnote.fontSize,
     color: COLORS.background,
   },
   returnButton: {
@@ -332,7 +336,7 @@ const styles = StyleSheet.create({
   },
   returnButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.footnote.fontSize,
     color: COLORS.text,
   },
   emptyState: {
@@ -374,7 +378,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   infoIcon: {
-    fontSize: 20,
     marginRight: SPACING.md,
   },
   infoContent: {
@@ -382,9 +385,10 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     ...TYPOGRAPHY.footnote,
-    fontWeight: '400',
+    fontWeight: '500',
     color: COLORS.text,
     marginBottom: SPACING.xs,
+    fontFamily: 'DMSans_500Medium',
   },
   infoText: {
     ...TYPOGRAPHY.footnote,

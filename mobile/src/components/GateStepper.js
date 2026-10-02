@@ -36,9 +36,9 @@ export default function GateStepper({ currentStep, totalSteps, source }) {
               ]}
             >
               {isComplete ? (
-                <Ionicons name="checkmark" size={12} color="#fff" />
+                <Ionicons name="checkmark" size={12} color={COLORS.white} />
               ) : (
-                <Text
+                <Text maxFontSizeMultiplier={1.4}
                   style={[
                     styles.circleText,
                     isCurrent && styles.circleTextCurrent,
@@ -50,7 +50,7 @@ export default function GateStepper({ currentStep, totalSteps, source }) {
             </View>
 
             {/* Label */}
-            <Text
+            <Text maxFontSizeMultiplier={1.4}
               style={[
                 styles.label,
                 isComplete && styles.labelComplete,
@@ -106,24 +106,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   circleText: {
-    ...TYPOGRAPHY.caption2,
+    ...TYPOGRAPHY.badge,
     color: COLORS.textMuted,
-    fontWeight: '400',
-    fontSize: 11,
   },
   circleTextCurrent: {
-    color: '#fff',
+    color: COLORS.white,
   },
   label: {
-    ...TYPOGRAPHY.caption2,
+    ...TYPOGRAPHY.badge,
     color: COLORS.textMuted,
-    fontSize: 11,
   },
   labelComplete: {
     color: COLORS.primary,
   },
   labelCurrent: {
     color: COLORS.text,
-    fontWeight: '400',
   },
 });

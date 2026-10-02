@@ -96,7 +96,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
 }
 const styles = StyleSheet.create({
   linkButton: { minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center' },
-  link: { ...TYPOGRAPHY.body, color: COLORS.primary, textDecorationLine: 'underline', textAlign: 'center' },
+  link: { ...TYPOGRAPHY.button, color: COLORS.primary, textDecorationLine: 'underline', textAlign: 'center' , },
   loading: { marginBottom: 16 },
   notice: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center', marginTop: 16 },
 });

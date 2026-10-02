@@ -66,30 +66,30 @@ export default function ExchangesScreen({ navigation }) {
   const onRefresh = () => { setRefreshing(true); fetchExchanges(); };
   const renderItem = ({ item }) => {
     if (item.type === 'section') return <View style={styles.section}>
-      <Ionicons name={item.icon} size={22} illustrated color={COLORS.primary} />
+      <Ionicons name={item.icon} size={22}  color={COLORS.primary} />
       <Text accessibilityRole="header" style={styles.sectionTitle}>{item.title}</Text>
-      <Text style={styles.sectionCount}>{item.count}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={styles.sectionCount}>{item.count}</Text>
     </View>;
     return <LayeredCard style={styles.card}>
-      <HapticPressable testID={`Exchanges.${item.id}`} accessibilityRole="button"
+      <HapticPressable scaleDown={item.transaction.listing?.photoUrl ? 0.97 : 1} testID={`Exchanges.${item.id}`} accessibilityRole="button"
         accessibilityLabel={`${item.title}. ${item.status}. ${item.label}`}
         onPress={() => navigation.navigate(item.destination.name, item.destination.params)} style={styles.cardBody}>
         <View style={styles.itemRow}>
-          <ShimmerImage source={{ uri: item.transaction.listing?.photoUrl }} style={styles.photo}
+          <ShimmerImage category={item.transaction.listing?.category} title={item.transaction.listing?.title} source={{ uri: item.transaction.listing?.photoUrl }} style={styles.photo}
             placeholderIcon={listingIcon(item.transaction)} contentPosition="center" />
           <View style={styles.itemText}>
             <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
             <Text style={styles.person}>{item.person}</Text>
-            <Text style={[styles.status, item.section === 'needs-you' && styles.needsYou]}>{item.status}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.status, item.section === 'needs-you' && styles.needsYou]}>{item.status}</Text>
           </View>
         </View>
         {!!item.due && <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={18} illustrated color={COLORS.primary} />
-          <Text style={[styles.date, item.due.overdue && styles.overdue]}>{item.due.label}</Text>
+          <Ionicons name="calendar-outline" size={18}  color={COLORS.primary} />
+          <Text maxFontSizeMultiplier={1.4} style={[styles.date, item.due.overdue && styles.overdue]}>{item.due.label}</Text>
         </View>}
         {!!item.nextStep && <Text style={styles.nextStep}>{item.nextStep}</Text>}
         <View style={styles.actionRow}>
-          <Text style={styles.action}>{item.label}</Text>
+          <Text maxFontSizeMultiplier={1.4} style={styles.action}>{item.label}</Text>
           <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
         </View>
       </HapticPressable>
@@ -100,8 +100,8 @@ export default function ExchangesScreen({ navigation }) {
     <View style={styles.topRow}>
       <Text style={styles.summary}>{loading || !snapshot.hasTransactions || snapshot.userId !== user?.id ? ' ' : `${exchanges.length} active`}</Text>
       <HapticPressable onPress={() => navigation.navigate('TransactionHistory')} style={styles.history} accessibilityRole="button" accessibilityLabel="Exchange history">
-        <Ionicons name="history-ledger-outline" illustrated size={20} color={COLORS.primary} />
-        <Text style={styles.action}>History</Text>
+        <Ionicons name="history-ledger-outline"  size={22} color={COLORS.primary} />
+        <Text maxFontSizeMultiplier={1.4} style={styles.action}>History</Text>
       </HapticPressable>
     </View>
     {error && <View style={styles.errorRow}>
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   list: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xl, width: '100%', maxWidth: 760, alignSelf: 'center' },
   section: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingTop: SPACING.md, paddingBottom: SPACING.md },
   sectionTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary, flex: 1 },
-  sectionCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  sectionCount: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   card: { marginBottom: SPACING.md },
   cardBody: { padding: SPACING.md, gap: SPACING.sm, borderRadius: RADIUS.md },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
@@ -136,13 +136,13 @@ const styles = StyleSheet.create({
   title: { ...TYPOGRAPHY.headline, color: COLORS.text },
   person: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   status: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
-  needsYou: { fontFamily: 'DMSans_700Bold' },
+  needsYou: { fontFamily: 'DMSans_700Bold', fontWeight: '700', },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   date: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
   overdue: { color: COLORS.danger },
   nextStep: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   actionRow: { minHeight: 36, borderTopWidth: 1, borderTopColor: COLORS.separator, paddingTop: SPACING.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  action: { ...TYPOGRAPHY.subheadline, color: COLORS.primary },
+  action: { ...TYPOGRAPHY.subheadline, color: COLORS.primary, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.xl, gap: SPACING.md },
   emptyTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, textAlign: 'center' },
   skeleton: { padding: SPACING.lg, gap: SPACING.md },

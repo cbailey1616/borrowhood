@@ -24,7 +24,7 @@ export function ModalHeader({ title }) {
 export function ModalTitle({ title }) {
   return (
     <View style={styles.titleGroup}>
-      <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+      <Text maxFontSizeMultiplier={1.4} accessibilityRole="header" style={styles.title}>{title}</Text>
     </View>
   );
 }

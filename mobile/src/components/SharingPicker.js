@@ -52,27 +52,27 @@ export default function SharingPicker({ value = ['private'], onChange, request =
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{request ? 'Who can see this post?' : 'Who can see this item?'}</Text>
-      <Text style={styles.hint}>{request ? 'Select all that apply.' : 'Select all that apply. Your other items and pickup address stay private.'}</Text>
-      {request && audienceProblem && <Text accessibilityRole="alert" style={styles.hint}>
+      <Text maxFontSizeMultiplier={1.4} style={styles.hint}>{request ? 'Select all that apply.' : 'Select all that apply. Your other items and pickup address stay private.'}</Text>
+      {request && audienceProblem && <Text maxFontSizeMultiplier={1.4} accessibilityRole="alert" style={styles.hint}>
         {audienceLoading ? 'Checking your audience…' : 'Choose who can see your post'}
       </Text>}
       {audiences.map(([scope, title, hint, icon]) => (
-        <HapticPressable key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
+        <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
           accessibilityLabel={title} style={[styles.option, value.includes(scope) && styles.selected]}
           onPress={() => confirm(scope)}>
-          <Ionicons name={icon} size={24} color={COLORS.primary} />
+          <Ionicons name={icon} size={22} illustrated={false} color={COLORS.primary} />
           <View style={styles.copy}>
-            <Text style={styles.label}>{title}</Text>
-            <Text style={styles.hint}>{scope === 'close_friends' && !friendsAvailable ? 'Invite a friend to share with them.'
+            <Text maxFontSizeMultiplier={1.4} style={styles.label}>{title}</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.hint}>{scope === 'close_friends' && !friendsAvailable ? 'Invite a friend to share with them.'
               : scope === 'neighborhood' && !neighborhoodAvailable ? 'Join or create a neighborhood.'
               : scope === 'town' ? townHint : request ? hint.replace('item', 'post') : hint}</Text>
           </View>
           <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         </HapticPressable>
       ))}
-      {!request && !audiences.some(([scope]) => value.includes(scope)) && <Text style={styles.hint}>Only you can see this item.</Text>}
+      {!request && !audiences.some(([scope]) => value.includes(scope)) && <Text maxFontSizeMultiplier={1.4} style={styles.hint}>Only you can see this item.</Text>}
       {onRetryAudience && <HapticPressable accessibilityRole="button" onPress={onRetryAudience} style={styles.option}>
-        <Text style={styles.label}>Couldn’t check friends. Try again</Text>
+        <Text maxFontSizeMultiplier={1.4} style={styles.label}>Couldn’t check friends. Try again</Text>
       </HapticPressable>}
       <ActionSheet isVisible={neighborhoodPrompt} onClose={() => setNeighborhoodPrompt(false)}
         title="Find your neighborhood" message="Join neighbors nearby, or start a neighborhood of your own. Your draft will be here when you return."
@@ -87,10 +87,11 @@ export default function SharingPicker({ value = ['private'], onChange, request =
 const styles = StyleSheet.create({
   container: { gap: SPACING.sm },
   title: { ...TYPOGRAPHY.headline, color: COLORS.text },
-  label: { ...TYPOGRAPHY.subheadline, fontWeight: '400', color: COLORS.text },
+  label: { ...TYPOGRAPHY.buttonSmall, color: COLORS.text },
   hint: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary },
   copy: { flex: 1, gap: 3 },
   option: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.md,
-    minHeight: 64, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+    minHeight: 64, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface,
+  },
   selected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryMuted },
 });
