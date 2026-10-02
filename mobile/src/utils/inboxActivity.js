@@ -37,10 +37,12 @@ export function inboxActivity(notifications = [], transactions = [], userId) {
     const action = exchangeHomeAction(exchange, userId);
     const disputeId = row.disputeId || exchange.disputeId;
     const currentIssue = exchange.status === 'disputed' && row.type?.startsWith('dispute');
+    const returnReport = ['return_reported_missing', 'return_case_updated'].includes(row.type);
     const failedPayment = row.type === 'payment_failed' && ['pending', 'approved'].includes(exchange.status);
     return { ...row, exchange, title: exchange.listing?.title || row.listingTitle || 'Shared item',
-      body: (currentIssue || failedPayment) && row.body ? row.body : exchangeStatus(exchange, userId), action,
-      destination: disputeId ? { name: 'DisputeDetail', params: { id: disputeId } }
+      body: (currentIssue || failedPayment || returnReport) && row.body ? row.body : exchangeStatus(exchange, userId), action: returnReport ? null : action,
+      destination: returnReport ? { name: 'ReturnHelp', params: { transaction: { id: exchange.id }, reports: true } }
+        : disputeId ? { name: 'DisputeDetail', params: { id: disputeId } }
         : exchange.queueListingId ? { name: 'RequestQueue', params: { listingId: exchange.queueListingId } }
         : { name: 'TransactionDetail', params: { id: exchange.id } },
     };

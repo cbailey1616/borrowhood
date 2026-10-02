@@ -59,7 +59,7 @@ export default function PrivacySafetyScreen({ navigation }) {
       tint: COLORS.accentMuted,
       title: 'Report or block',
       summary: 'A little space when you need it.',
-      detail: 'Open someone’s profile to report a concern or block them. You can get there by tapping their picture in a conversation. Blocking stops new messages between you. Reports are reviewed privately.',
+      detail: 'Open someone’s profile to report a concern or block them. You can get there by tapping their picture in a conversation. Blocking hides your profile, items and posts from that person, hides their posts from you, and stops new messages between you. Existing conversations and exchanges stay available. Reports are reviewed privately.',
     },
     {
       id: 'notifications',

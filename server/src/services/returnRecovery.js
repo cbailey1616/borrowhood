@@ -13,6 +13,7 @@ export async function ensureReturnRecoverySchema() {
       confirmed_at TIMESTAMPTZ, resolved_at TIMESTAMPTZ, version INTEGER NOT NULL DEFAULT 0,
       appeal TEXT, appeal_status TEXT CHECK(appeal_status IN ('pending','upheld','denied')));
       ALTER TABLE return_reports ADD COLUMN IF NOT EXISTS reported_due_date DATE;
+      ALTER TABLE return_reports ADD COLUMN IF NOT EXISTS photos TEXT[] NOT NULL DEFAULT '{}';
       CREATE TABLE IF NOT EXISTS borrowing_restrictions (
         user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         state TEXT NOT NULL CHECK(state IN ('hold','review','permanent')),
@@ -29,7 +30,7 @@ export async function ensureReturnRecoverySchema() {
           (TG_OP='UPDATE' AND NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('approved','paid','picked_up')) THEN
           PERFORM pg_advisory_xact_lock(hashtextextended(NEW.borrower_id::text,812770));
           IF EXISTS (SELECT 1 FROM borrowing_restrictions WHERE user_id=NEW.borrower_id) THEN
-            RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='Borrowing is paused. Open Return help in your profile to review your account.';
+            RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='Borrowing is paused. Open your exchange to review the return report.';
           END IF;
         END IF;
         RETURN NEW;
@@ -64,7 +65,7 @@ function activeLoan(t) {
   if (['sell','giveaway'].includes(t.listing_type) || !t.actual_pickup_at || t.actual_return_at ||
     !['picked_up','return_pending'].includes(t.status)) throw fail(409, 'This item is not currently awaiting return. Refresh the exchange.');
 }
-export async function reportNonReturn(id, ownerId, detail) {
+export async function reportNonReturn(id, ownerId, detail, photos = []) {
   return withTransaction(async db => {
     const t = await exchange(db, id, ownerId);
     if (t.lender_id !== ownerId) throw fail(403, 'Only the owner can report a missing return.');
@@ -78,12 +79,12 @@ export async function reportNonReturn(id, ownerId, detail) {
       await db.query(`INSERT INTO return_review_actions(report_id,reviewer_id,action,note) VALUES($1,$2,'Previous report',$3)`,
         [existing.id,ownerId,existing.detail + (existing.response ? '\nBorrower response: '+existing.response : '')]);
       await db.query(`UPDATE return_reports SET status='open',detail=$2,reported_due_date=$3,created_at=NOW(),response_due_at=NOW()+INTERVAL '48 hours',
-        response=NULL,response_at=NULL,confirmed_at=NULL,resolved_at=NULL,appeal=NULL,appeal_status=NULL,version=version+1 WHERE id=$1`,[existing.id,detail,t.requested_end_date]);
+        response=NULL,response_at=NULL,confirmed_at=NULL,resolved_at=NULL,appeal=NULL,appeal_status=NULL,photos=$4,version=version+1 WHERE id=$1`,[existing.id,detail,t.requested_end_date,photos]);
       await notify(db,t.borrower_id,'return_reported_missing',t,`return-report:${existing.id}:${existing.version+1}`);
       return {id:existing.id};
     }
-    const r = (await db.query(`INSERT INTO return_reports(transaction_id,owner_id,borrower_id,detail,reported_due_date)
-      VALUES($1,$2,$3,$4,$5) RETURNING id`, [id, ownerId, t.borrower_id, detail,t.requested_end_date])).rows[0];
+    const r = (await db.query(`INSERT INTO return_reports(transaction_id,owner_id,borrower_id,detail,reported_due_date,photos)
+      VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, [id, ownerId, t.borrower_id, detail,t.requested_end_date,photos])).rows[0];
     await notify(db, t.borrower_id, 'return_reported_missing', t, `return-report:${r.id}`);
     return r;
   });
@@ -105,7 +106,7 @@ export async function extendReturn(id, ownerId, date) {
     return { ok: true };
   });
 }
-export async function returnHelp(userId, admin = false, page = 1, transactionId = null) {
+export async function returnHelp(userId, admin = false, page = 1, transactionId = null, reportId = null) {
   const reports = (await query(`SELECT r.*, l.title, t.status AS exchange_status, t.requested_end_date AS due_date,
     t.actual_pickup_at, t.actual_return_at,
     COALESCE(NULLIF(o.display_name,''),o.first_name,'Deleted account') AS owner_name,
@@ -113,8 +114,9 @@ export async function returnHelp(userId, admin = false, page = 1, transactionId 
     FROM return_reports r JOIN borrow_transactions t ON t.id=r.transaction_id JOIN listings l ON l.id=t.listing_id
     LEFT JOIN users o ON o.id=r.owner_id LEFT JOIN users b ON b.id=r.borrower_id
     WHERE ($2 OR r.owner_id=$1 OR r.borrower_id=$1) AND ($4::uuid IS NULL OR r.transaction_id=$4)
+      AND ($5::uuid IS NULL OR r.id=$5)
     ORDER BY (r.appeal_status='pending') DESC NULLS LAST,(r.status='open') DESC,r.created_at DESC,r.id LIMIT 26 OFFSET $3`,
-  [userId, admin, (page-1)*25, transactionId])).rows;
+  [userId, admin, (page-1)*25, transactionId, reportId])).rows;
   const own = (await query('SELECT state,until_at FROM borrowing_restrictions WHERE user_id=$1', [userId])).rows[0] || null;
   for (const r of reports.slice(0,25)) {
     r.history = (await query(`SELECT action,note,created_at FROM return_review_actions WHERE report_id=$1 ORDER BY created_at,id`, [r.id])).rows;

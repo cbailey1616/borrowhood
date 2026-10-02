@@ -247,8 +247,7 @@ export default function ProfileScreen({ navigation, route }) {
         </GroupedListSection>
 
         {user?.isAdmin && <GroupedListSection header="Admin">
-          <GroupedListItem icon="time-outline" title="Return reviews" onPress={() => navigation.navigate('ReturnHelp', { admin: true })} />
-          <GroupedListItem icon="shield-checkmark-outline" title="Safety reports" onPress={() => navigation.navigate('SafetyReports')} />
+          <GroupedListItem icon="shield-checkmark-outline" title="Reports" onPress={() => navigation.navigate('AdminReports')} />
           <GroupedListItem icon="stats-chart-outline" title="App insights" onPress={() => navigation.navigate('Insights')} />
         </GroupedListSection>}
         {/* Community Section */}

@@ -1,5 +1,6 @@
 // One deny-by-default policy for every listing read. SQL aliases/parameter
 // references are supplied by application code, never by request input.
+import { unblockedSql } from '../services/contentPolicy.js';
 import { requestActiveSql } from './requestState.js';
 export const LISTING_SCOPES = ['private', 'close_friends', 'neighborhood', 'circle', 'town'];
 
@@ -17,7 +18,7 @@ export function normalizeSharing(value) {
 export function audienceSql(alias, ownerColumn, viewer, { circle = false, town = true, townIdentityRequired = 'true' } = {}) {
   const owner = `${alias}.${ownerColumn}`;
   const scope = s => `'${s}' = ANY(string_to_array(${alias}.visibility::text, ','))`;
-  return `(EXISTS (SELECT 1 FROM users audience_owner WHERE audience_owner.id=${owner} AND audience_owner.status != 'suspended') AND (
+  return `(${unblockedSql(owner, viewer)} AND EXISTS (SELECT 1 FROM users audience_owner WHERE audience_owner.id=${owner} AND audience_owner.status != 'suspended') AND (
     ${owner} = ${viewer} OR
     (${scope('close_friends')} AND EXISTS (
       SELECT 1 FROM friendships sf WHERE sf.status = 'accepted'
@@ -44,7 +45,7 @@ export function audienceSql(alias, ownerColumn, viewer, { circle = false, town =
 }
 
 export function listingAccessSql(alias, viewer, { discovery = false } = {}) {
-  return `COALESCE((${alias}.status != 'deleted' AND (
+  return `COALESCE((${unblockedSql(`${alias}.owner_id`, viewer)} AND ${alias}.status != 'deleted' AND (
     ${alias}.owner_id = ${viewer} OR
     (${alias}.privacy_version = 1 AND ${audienceSql(alias, 'owner_id', viewer, { circle: true, townIdentityRequired: `COALESCE(${alias}.listing_type, 'lend') NOT IN ('giveaway', 'sell')` })})
     ${discovery ? '' : `OR EXISTS (SELECT 1 FROM listing_shares ss

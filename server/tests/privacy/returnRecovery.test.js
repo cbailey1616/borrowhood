@@ -60,6 +60,12 @@ it('lets only the borrower respond, exposes reports only to parties, and refuses
  expect((await returnHelp(outsider)).reports).toHaveLength(0);expect((await returnHelp(owner)).reports).toHaveLength(1);
  expect((await returnHelp(admin,true)).reports[0].response).toContain('tomorrow');
 });
+it('opens the exact dashboard report without bypassing participant access',async()=>{
+ const first=await reported(await seed()),second=await reported(await seed(owner2),owner2);
+ expect((await returnHelp(admin,true,1,null,second)).reports.map(r=>r.id)).toEqual([second]);
+ expect((await returnHelp(owner,false,1,null,second)).reports).toHaveLength(0);
+ expect((await returnHelp(owner,false,1,null,first)).reports.map(r=>r.id)).toEqual([first]);
+});
 it('keeps a borrower-reported return pending, then resolves it only on owner confirmation',async()=>{
  const id=await seed(),r=await reported(id);expect(await completeFreeReturn(id,borrower,'good')).toMatchObject({pendingOwner:true});
  expect((await rows('SELECT status,actual_return_at FROM borrow_transactions WHERE id=$1',[id]))[0]).toEqual({status:'return_pending',actual_return_at:null});

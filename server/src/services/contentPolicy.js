@@ -25,3 +25,8 @@ export function screenContent(fields = ['title', 'description', 'content', 'bio'
 export const unblockedSql = (author, viewer) => `NOT EXISTS (SELECT 1 FROM user_blocks safety_block
   WHERE (safety_block.user_id = ${viewer} AND safety_block.blocked_id = ${author})
      OR (safety_block.blocked_id = ${viewer} AND safety_block.user_id = ${author}))`;
+
+// Keep the initiating member's access to the other profile for unblocking.
+// Deny the blocked member access to the blocker's profile, including direct links.
+export const profileVisibleSql = (owner, viewer) => `NOT EXISTS (SELECT 1 FROM user_blocks profile_block
+  WHERE profile_block.user_id = ${owner} AND profile_block.blocked_id = ${viewer})`;

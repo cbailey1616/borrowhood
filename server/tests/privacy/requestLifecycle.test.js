@@ -12,6 +12,7 @@ beforeAll(async () => {
     CREATE TABLE users (id text PRIMARY KEY, is_verified boolean, city text, state text, status text DEFAULT 'active');
     CREATE TABLE listings (id text PRIMARY KEY, owner_id text, visibility text DEFAULT 'private', privacy_version int DEFAULT 1,
       status text DEFAULT 'active', is_available boolean DEFAULT true, circle_id text, community_id text, listing_type text DEFAULT 'lend', town_preview_enabled boolean DEFAULT false);
+    CREATE TABLE user_blocks(user_id TEXT, blocked_id TEXT);
     CREATE TABLE friendships (user_id text, friend_id text, status text);
     CREATE TABLE lending_circle_members (circle_id text, user_id text, status text);
     CREATE TABLE community_memberships (community_id text, user_id text);

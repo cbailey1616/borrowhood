@@ -57,6 +57,7 @@ export default function UserProfileScreen({ route, navigation }) {
         setUser(data);
         if (beforeAction === friendshipRevision.current) setFriendship(status);
       } catch (error) {
+        if (mounted && current === revision && [403, 404].includes(error.status)) setUser(null);
         console.error('Failed to fetch user:', error);
       } finally {
         if (mounted && current === revision) setIsLoading(false);
@@ -136,7 +137,7 @@ export default function UserProfileScreen({ route, navigation }) {
             source={{ uri: user.profilePhotoUrl || null }}
             style={styles.avatar}
           />
-          <MemberSummary user={user} centered profileHeader badgeSize={20}>
+          <MemberSummary user={user} centered profileHeader badgeSize={24}>
             <Text style={[styles.name,{flexShrink:1}]}>{user.firstName} {user.lastName}</Text>
             {user.isVerified === true && <VerifiedBadge size={20} interactive />}
           </MemberSummary>
@@ -173,7 +174,7 @@ export default function UserProfileScreen({ route, navigation }) {
               style={[styles.friendButton, (isFriend || requestPending) && styles.friendButtonActive, requestPending && { opacity: 1 }]}
               onPress={isFriend ? () => setRemoveFriendSheetVisible(true) : handleAddFriend}
               accessibilityLabel={friendActionLabel}
-              disabled={isAddingFriend || requestPending}
+              disabled={messagesBlocked || isAddingFriend || requestPending}
             >
               {isAddingFriend ? (
                 <ActivityIndicator size="small" color={COLORS.white} />

@@ -1,4 +1,4 @@
-import { screenContent } from '../services/contentPolicy.js';
+import { screenContent, unblockedSql, profileVisibleSql } from '../services/contentPolicy.js';
 import { endorsementSummary } from '../services/endorsements.js';
 import { friendshipSummary } from '../services/friendshipSummary.js';
 import { ENABLE_PAYMENTS, REQUIRE_IDENTITY_VERIFICATION } from '../utils/constants.js';
@@ -141,7 +141,7 @@ router.get('/me/friends', authenticate, async (req, res) => {
       `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM friendships f
        JOIN users u ON f.friend_id = u.id
-       WHERE f.user_id = $1 AND f.status = 'accepted'
+       WHERE f.user_id = $1 AND f.status = 'accepted' AND ${unblockedSql('u.id', '$1')}
        ORDER BY COALESCE(u.display_name, u.first_name), u.last_name`,
       [req.user.id]
     );
@@ -167,7 +167,7 @@ router.get('/me/friend-requests', authenticate, async (req, res) => {
       `SELECT f.id as request_id, u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, f.created_at
        FROM friendships f
        JOIN users u ON f.user_id = u.id
-       WHERE f.friend_id = $1 AND f.status = 'pending'
+       WHERE f.friend_id = $1 AND f.status = 'pending' AND ${unblockedSql('u.id', '$1')}
        ORDER BY f.created_at DESC`,
       [req.user.id]
     );
@@ -194,7 +194,7 @@ router.post('/me/friend-requests/:requestId/accept', authenticate, async (req, r
     // Find the pending request
     const request = await query(
       `SELECT user_id, friend_id FROM friendships
-       WHERE id = $1 AND friend_id = $2 AND status = 'pending'`,
+       WHERE id = $1 AND friend_id = $2 AND status = 'pending' AND ${unblockedSql('friendships.user_id', '$2')}`,
       [req.params.requestId, req.user.id]
     );
 
@@ -249,7 +249,7 @@ router.post('/me/friend-requests/:requestId/decline', authenticate, async (req, 
   try {
     const result = await query(
       `DELETE FROM friendships
-       WHERE id = $1 AND friend_id = $2 AND status = 'pending'
+       WHERE id = $1 AND friend_id = $2 AND status = 'pending' AND ${unblockedSql('friendships.user_id', '$2')}
        RETURNING id`,
       [req.params.requestId, req.user.id]
     );
@@ -281,7 +281,7 @@ router.get('/suggested', authenticate, async (req, res) => {
         `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.city, u.state
          FROM community_memberships m
          JOIN users u ON m.user_id = u.id
-         WHERE m.community_id = $1 AND u.id != $2
+         WHERE m.community_id = $1 AND u.id != $2 AND ${unblockedSql('u.id', '$2')}
            AND EXISTS (SELECT 1 FROM community_memberships mine
              WHERE mine.community_id = m.community_id AND mine.user_id = $2)
          ORDER BY m.joined_at DESC
@@ -293,7 +293,7 @@ router.get('/suggested', authenticate, async (req, res) => {
       result = await query(
         `SELECT u.id, u.first_name, u.last_name, u.display_name, u.profile_photo_url, u.city, u.state
          FROM users u
-         WHERE u.id != $1 AND EXISTS (
+         WHERE u.id != $1 AND ${unblockedSql('u.id', '$1')} AND EXISTS (
            SELECT 1 FROM community_memberships m
            JOIN community_memberships m2 ON m.community_id = m2.community_id
            WHERE m.user_id = $1 AND m2.user_id = u.id
@@ -340,7 +340,7 @@ router.get('/search', authenticate, async (req, res) => {
     const result = await query(
       `SELECT id, first_name, last_name, display_name, profile_photo_url, city, state
        FROM users
-       WHERE id != $1
+       WHERE id != $1 AND ${unblockedSql('users.id', '$1')}
          AND (
            LOWER(COALESCE(display_name, first_name) || ' ' || last_name) LIKE LOWER($2)
            OR LOWER(first_name || ' ' || last_name) LIKE LOWER($2)
@@ -399,7 +399,7 @@ router.post('/contacts/match', authenticate, async (req, res) => {
       `SELECT id, first_name, last_name, display_name, profile_photo_url, city, state, phone,
               RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) as normalized_phone
        FROM users
-       WHERE id != $1
+       WHERE id != $1 AND ${unblockedSql('users.id', '$1')}
          AND phone IS NOT NULL
          AND RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) IN (${placeholders})`,
       [req.user.id, ...normalizedNumbers]
@@ -446,6 +446,8 @@ router.post('/me/friends', authenticate,
     }
 
     try {
+      const access = await query(`SELECT id FROM users WHERE id=$1 AND ${unblockedSql('users.id', '$2')}`, [friendId, req.user.id]);
+      if (!access.rows.length) return res.status(404).json({ error: 'User not available' });
       // Check if they already sent us a request - if so, auto-accept
       const existingRequest = await query(
         `SELECT id FROM friendships
@@ -964,10 +966,10 @@ router.get('/:id/ratings', authenticate, async (req, res) => {
               u.id as rater_id, u.first_name, u.last_name, u.display_name, u.profile_photo_url
        FROM ratings r
        JOIN users u ON r.rater_id = u.id
-       WHERE r.ratee_id = $1
+       WHERE r.ratee_id = $1 AND ${profileVisibleSql('r.ratee_id', '$2')} AND ${unblockedSql('u.id', '$2')}
        ORDER BY r.created_at DESC
        LIMIT 50`,
-      [req.params.id]
+      [req.params.id, req.user.id]
     );
 
     res.json(result.rows.map(r => ({
@@ -998,8 +1000,8 @@ router.get('/:id', authenticate, async (req, res) => {
       `SELECT id, first_name, last_name, display_name, profile_photo_url, bio,
               city, state, status, lender_rating as rating, lender_rating_count as rating_count,
               total_transactions, is_verified, created_at
-       FROM users WHERE id = $1`,
-      [req.params.id]
+       FROM users WHERE id = $1 AND ${profileVisibleSql('users.id', '$2')}`,
+      [req.params.id, req.user.id]
     );
 
     if (result.rows.length === 0) {

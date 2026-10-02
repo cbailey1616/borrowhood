@@ -35,7 +35,7 @@ it('keeps a failed response editable and displays the server error',async()=>{
 });
 it('does not expose administrative reviews from a forged route parameter',async()=>{
  const s=render(<Screen route={{params:{admin:true}}} navigation={navigation}/>);
- await s.findByText('Ladder');expect(api.getReturnHelp).toHaveBeenCalledWith(false,1,undefined);expect(s.queryByText('Review')).toBeNull();
+ await s.findByText('Ladder');expect(api.getReturnHelp).toHaveBeenCalledWith(false,1,undefined,undefined);expect(s.queryByText('Review')).toBeNull();
 });
 it('keeps an appeal available during a permanent borrowing restriction',async()=>{
  api.getReturnHelp.mockResolvedValue({reports:[{...report,status:'confirmed'}],restriction:{state:'permanent'},page:1,hasMore:false});
@@ -47,17 +47,15 @@ it('keeps an appeal available during a permanent borrowing restriction',async()=
 const ownerExchange={id:'exchange',isLender:true,isBorrower:false,status:'picked_up',actualPickupAt:'2026-09-25T12:00:00Z',endDate:'2026-09-27',listing:{id:'listing',title:'Ladder',listingType:'lend',photos:[]},lender:{id:'owner',firstName:'Taylor'},borrower:{id:'borrower',firstName:'Alex'}};
 const borrowerExchange={...ownerExchange,isLender:false,isBorrower:true};
 const noReports={reports:[],restriction:null,page:1,hasMore:false};
-it('opens the report card and sends only after the owner confirms',async()=>{
+it('keeps the duplicate non-return form out of return options for an overdue exchange',async()=>{
  mockUser.id='owner';
  api.getTransaction.mockResolvedValue({...ownerExchange,endDate:'2026-09-24'});
  api.getReturnHelp.mockResolvedValue({reports:[],restriction:null,page:1,hasMore:false});
  const s=render(<Screen route={{params:{transaction:ownerExchange}}} navigation={navigation}/>);
- fireEvent.press(await s.findByRole('button',{name:'Item not returned'}));
- fireEvent.changeText(s.getByLabelText('Return details'),'The agreed return did not happen.');
- fireEvent.press(s.getByRole('button',{name:'Send report'}));
+ await s.findByRole('button',{name:'Give more time'});
+ expect(s.queryByRole('button',{name:'Item not returned'})).toBeNull();
+ expect(s.queryByRole('button',{name:'Send report'})).toBeNull();
  expect(api.reportNonReturn).not.toHaveBeenCalled();
- fireEvent.press(s.getByText('Confirm'));
- await waitFor(()=>expect(api.reportNonReturn).toHaveBeenCalledWith('exchange','The agreed return did not happen.'));
 });
 
 it('shows both dates and saves an extension once from its explicit save button',async()=>{
@@ -164,11 +162,20 @@ it('does not offer duplicate reports for an already reported missing return',asy
  expect(s.queryByRole('button',{name:'Item not returned'})).toBeNull();
 });
 
-it('offers a new report only for a missed later deadline after dismissal',async()=>{
+it('keeps reporting in the exchange form after a dismissed report and later deadline',async()=>{
  api.getTransaction.mockResolvedValue({...ownerExchange,endDate:'2026-09-24'});
  api.getReturnHelp.mockResolvedValue({...noReports,reports:[{...report,status:'dismissed',reported_due_date:'2026-09-22',due_date:'2026-09-24'}]});
  const s=render(<Screen route={{params:{transaction:ownerExchange}}} navigation={navigation}/>);
- expect(await s.findByRole('button',{name:'Item not returned'})).toBeTruthy();
+ await s.findByText('Return date has passed');
+ expect(s.queryByRole('button',{name:'Item not returned'})).toBeNull();
+});
+
+it('opens the exact non-return report selected from the admin dashboard',async()=>{
+ mockUser.id='staff';mockUser.isAdmin=true;
+ const s=render(<Screen route={{params:{admin:true,reportId:'report'}}} navigation={navigation}/>);
+ expect(await s.findByText('Review')).toBeTruthy();
+ expect(api.getReturnHelp).toHaveBeenCalledWith(true,1,undefined,'report');
+ expect(api.getTransaction).not.toHaveBeenCalled();
 });
 
 it('keeps messaging available during a borrowing restriction',async()=>{

@@ -10,6 +10,7 @@ export async function autoCloseReturns() {
   const { rows } = await query(`SELECT id FROM borrow_transactions WHERE ${eligible}
     AND NOT EXISTS (SELECT 1 FROM disputes WHERE transaction_id=borrow_transactions.id)
     AND NOT EXISTS (SELECT 1 FROM return_reports WHERE transaction_id=borrow_transactions.id AND resolved_at IS NULL AND status!='dismissed')
+    AND NOT EXISTS (SELECT 1 FROM safety_reports WHERE content_type='exchange' AND content_id=borrow_transactions.id AND status!='dismissed')
     ORDER BY return_requested_at LIMIT 100`);
   for (const candidate of rows) {
     try {
@@ -20,7 +21,8 @@ export async function autoCloseReturns() {
         const { rows: [listing] } = await runQuery('SELECT * FROM listings WHERE id=$1 FOR UPDATE', [borrow.listing_id]);
         if (!listing || ['giveaway','sell'].includes(listing.listing_type)) return;
         const { rows: [issue] } = await runQuery(`SELECT 1 WHERE EXISTS (SELECT 1 FROM disputes WHERE transaction_id=$1)
-          OR EXISTS (SELECT 1 FROM return_reports WHERE transaction_id=$1 AND resolved_at IS NULL AND status!='dismissed')`, [borrow.id]);
+          OR EXISTS (SELECT 1 FROM return_reports WHERE transaction_id=$1 AND resolved_at IS NULL AND status!='dismissed')
+          OR EXISTS (SELECT 1 FROM safety_reports WHERE content_type='exchange' AND content_id=$1 AND status!='dismissed')`, [borrow.id]);
         if (issue) return;
         await runQuery(`UPDATE borrow_transactions SET status='completed', actual_return_at=return_requested_at,
           return_auto_closed_at=NOW(), payment_status='none' WHERE id=$1`, [borrow.id]);
