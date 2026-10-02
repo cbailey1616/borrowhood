@@ -194,7 +194,7 @@ router.post('/me/friend-requests/:requestId/accept', authenticate, async (req, r
     // Find the pending request
     const request = await query(
       `SELECT user_id, friend_id FROM friendships
-       WHERE id = $1 AND friend_id = $2 AND status = 'pending' AND ${unblockedSql('user_id', '$2')}`,
+       WHERE id = $1 AND friend_id = $2 AND status = 'pending' AND ${unblockedSql('friendships.user_id', '$2')}`,
       [req.params.requestId, req.user.id]
     );
 
@@ -249,7 +249,7 @@ router.post('/me/friend-requests/:requestId/decline', authenticate, async (req, 
   try {
     const result = await query(
       `DELETE FROM friendships
-       WHERE id = $1 AND friend_id = $2 AND status = 'pending' AND ${unblockedSql('user_id', '$2')}
+       WHERE id = $1 AND friend_id = $2 AND status = 'pending' AND ${unblockedSql('friendships.user_id', '$2')}
        RETURNING id`,
       [req.params.requestId, req.user.id]
     );

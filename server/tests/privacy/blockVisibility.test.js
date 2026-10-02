@@ -16,7 +16,7 @@ beforeAll(async()=>{
  state.db=new PGlite();
  await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, first_name TEXT DEFAULT 'Neighbor', last_name TEXT DEFAULT 'Bailey', display_name TEXT, profile_photo_url TEXT, bio TEXT DEFAULT 'My bio', city TEXT DEFAULT 'Upton', state TEXT DEFAULT 'MA', status TEXT DEFAULT 'active', lender_rating NUMERIC DEFAULT 5, lender_rating_count INT DEFAULT 1, total_transactions INT DEFAULT 1, is_verified BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW(), email TEXT, phone TEXT);
  CREATE TABLE user_blocks(user_id UUID, blocked_id UUID);
- CREATE TABLE friendships(id UUID DEFAULT gen_random_uuid(), user_id UUID, friend_id UUID, status TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+ CREATE TABLE friendships(id UUID DEFAULT gen_random_uuid(), user_id UUID, friend_id UUID, status TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(user_id,friend_id));
  CREATE TABLE community_memberships(community_id UUID, user_id UUID, joined_at TIMESTAMPTZ DEFAULT NOW());
  CREATE TABLE ratings(ratee_id UUID,rater_id UUID,rating INT,comment TEXT,created_at TIMESTAMPTZ DEFAULT NOW());`);
 },20000);
@@ -55,4 +55,16 @@ it('hides blocked authors ratings on a third party profile',async()=>{
  await state.db.query("INSERT INTO ratings(ratee_id,rater_id,rating,comment) VALUES($1,$2,5,'Private from blocked user')",[other,owner]);
  await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,viewer]);
  expect((await get('/'+other+'/ratings')).body).toEqual([]);
+});
+
+it.each([[owner,viewer],[viewer,owner]])('denies blocked friend acceptance without affecting unrelated requests',async(blocker,blocked)=>{
+ await state.db.query("UPDATE friendships SET status='pending' WHERE user_id=$1 AND friend_id=$2",[owner,viewer]);
+ const target=(await state.db.query('SELECT id FROM friendships WHERE user_id=$1 AND friend_id=$2',[owner,viewer])).rows[0].id;
+ await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[blocker,blocked]);
+ const accept=(id)=>request(app).post('/users/me/friend-requests/'+id+'/accept').set('x-user',viewer);
+ expect((await accept(target)).status).toBe(404);
+ const separate=(await state.db.query("INSERT INTO friendships(user_id,friend_id,status) VALUES($1,$2,'pending') RETURNING id",[other,viewer])).rows[0].id;
+ expect((await accept(separate)).status).toBe(200);
+ await state.db.exec('DELETE FROM user_blocks');
+ expect((await accept(target)).status).toBe(200);
 });
